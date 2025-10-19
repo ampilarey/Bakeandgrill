@@ -1,0 +1,32 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="white" stroke="#f16110" stroke-width="8"/>
+  
+  <!-- Oven/Bake symbol -->
+  <rect x="45" y="65" width="110" height="85" rx="12" fill="#f16110" stroke="#d4520e" stroke-width="3"/>
+  
+  <!-- Fire/Grill symbols -->
+  <circle cx="100" cy="45" r="20" fill="#ff6b00"/>
+  
+  <!-- Flames -->
+  <path d="M85 35C85.5 32.5 88 32.5 88.5 35C89 37.5 88 42 86 42S85 40 85 35Z" fill="#ffaa00"/>
+  <path cx="75" cy="50" r="8" fill="#ffaa00"/>
+  <path d="M115 35C114.5 32.5 112 32.5 111.5 35C111 37.5 112 42 114 42S115 40 115 35Z" fill="#ffaa00"/>
+  <path cx="125" cy="50" r="8" fill="#ffaa00"/>
+  
+  <!-- Oven interior - baking rack lines -->
+  <rect x="55" y="85" width="90" height="4" rx="2" fill="#d4520e"/>
+  <rect x="55" y="105" width="90" height="4" rx="2" fill="#d4520e"/>
+  <rect x="55" y="125" width="70" height="4" rx="2" fill="#d4520e"/>
+  
+  <!-- Oven handle -->
+  <rect x="145" y="100" width="12" height="30" rx="6" fill="#8b4513"/>
+  <circle cx="151" cy="115" r="4" fill="#d2691e"/>
+  
+  <!-- Small decorative elements -->
+  <circle cx="70" cy="75" r="3" fill="#ffaa00"/>
+  <circle cx="130" cy="75" r="3" fill="#ffaa00"/>
+  
+  <!-- Brand text -->
+  <text x="100" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#f16110">BAKE &amp; GRILL</text>
+</svg>
