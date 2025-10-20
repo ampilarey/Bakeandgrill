@@ -408,12 +408,12 @@
         <!-- Right Side - Hero Image -->
         <div class="image-side">
             <div class="image-container">
-                <!-- Tea Cup Image with Multiple Fallbacks -->
-                <img src="https://images.unsplash.com/photo-1578934906274-f279666767f0?w=800&auto=format&fit=crop&q=80" 
-                     alt="Beautiful Tea Cup" 
+                <!-- Beautiful Tea Setup with Steam -->
+                <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&auto=format&fit=crop&q=80" 
+                     alt="Beautiful Tea Setup with Steam and Silver Tray" 
                      class="hero-image"
                      loading="eager"
-                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&auto=format&fit=crop&q=80';">
+                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1578934906274-f279666767f0?w=800&auto=format&fit=crop&q=80';">
             </div>
             
             <!-- Floating Elements -->
