@@ -205,6 +205,12 @@
             height: 600px;
             object-fit: cover;
             transition: transform 0.3s ease;
+            display: block;
+            background-color: #f3f4f6;
+        }
+        
+        .hero-image:not([src]) {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
         }
         
         .image-container:hover .hero-image {
@@ -335,32 +341,55 @@
         <div class="content-side">
             <div class="logo-section">
                 <div class="logo">
-                    <svg width="130" height="130" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Background Circle -->
-                        <circle cx="65" cy="65" r="60" fill="#059669" stroke="#047857" stroke-width="4"/>
-                        <circle cx="65" cy="65" r="50" fill="#10b981"/>
+                    <svg width="150" height="150" viewBox="0 0 150 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Background -->
+                        <defs>
+                            <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+                            </radialGradient>
+                            <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
                         
-                        <!-- Oven/Grill Icon -->
-                        <rect x="25" y="45" width="80" height="40" rx="5" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
-                        <rect x="30" y="50" width="70" height="30" rx="3" fill="#fff"/>
+                        <!-- Main Circle -->
+                        <circle cx="75" cy="75" r="70" fill="url(#bgGradient)" stroke="#047857" stroke-width="3"/>
                         
-                        <!-- Oven Door Handle -->
-                        <circle cx="100" cy="65" r="8" fill="#047857"/>
+                        <!-- Chef's Hat (Top) -->
+                        <path d="M45 45 L75 35 L105 45 L105 55 L45 55 Z" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+                        <ellipse cx="75" cy="40" rx="30" ry="8" fill="white"/>
                         
-                        <!-- Baking Bread Icons -->
-                        <ellipse cx="50" cy="35" rx="8" ry="4" fill="#f59e0b" transform="rotate(-15 50 35)"/>
-                        <ellipse cx="75" cy="32" rx="8" ry="4" fill="#f59e0b" transform="rotate(15 75 32)"/>
-                        <ellipse cx="65" cy="38" rx="8" ry="4" fill="#f59e0b" transform="rotate(0 65 38)"/>
-                        
-                        <!-- Steam Lines -->
-                        <path d="M45 28 Q50 23 55 28" stroke="#fff" stroke-width="2" fill="none" opacity="0.8"/>
-                        <path d="M65 25 Q70 20 75 25" stroke="#fff" stroke-width="2" fill="none" opacity="0.8"/>
-                        <path d="M80 30 Q85 25 90 30" stroke="#fff" stroke-width="2" fill="none" opacity="0.8"/>
+                        <!-- Grill Plate (Center) -->
+                        <ellipse cx="75" cy="75" rx="35" ry="20" fill="url(#logoGradient)" stroke="#b45309" stroke-width="2"/>
                         
                         <!-- Grill Lines -->
-                        <line x1="35" y1="55" x2="85" y2="55" stroke="#047857" stroke-width="2"/>
-                        <line x1="35" y1="65" x2="85" y2="65" stroke="#047857" stroke-width="2"/>
-                        <line x1="35" y1="75" x2="85" y2="75" stroke="#047857" stroke-width="2"/>
+                        <line x1="50" y1="70" x2="100" y2="70" stroke="#fff" stroke-width="2" opacity="0.8"/>
+                        <line x1="50" y1="75" x2="100" y2="75" stroke="#fff" stroke-width="2" opacity="0.8"/>
+                        <line x1="50" y1="80" x2="100" y2="80" stroke="#fff" stroke-width="2" opacity="0.8"/>
+                        
+                        <!-- Baking Oven (Bottom) -->
+                        <rect x="40" y="85" width="70" height="25" rx="8" fill="#374151" stroke="#1f2937" stroke-width="2"/>
+                        <rect x="45" y="90" width="60" height="15" rx="5" fill="#1f2937"/>
+                        
+                        <!-- Oven Handle -->
+                        <circle cx="115" cy="97" r="6" fill="#6b7280" stroke="#374151" stroke-width="1"/>
+                        
+                        <!-- Bread Loaves -->
+                        <ellipse cx="60" cy="35" rx="8" ry="5" fill="#fbbf24" transform="rotate(-20 60 35)"/>
+                        <ellipse cx="75" cy="32" rx="8" ry="5" fill="#fbbf24" transform="rotate(0 75 32)"/>
+                        <ellipse cx="90" cy="35" rx="8" ry="5" fill="#fbbf24" transform="rotate(20 90 35)"/>
+                        
+                        <!-- Steam from Oven -->
+                        <path d="M60 85 Q65 78 70 85" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
+                        <path d="M75 85 Q80 75 85 85" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
+                        <path d="M90 85 Q95 78 100 85" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
+                        
+                        <!-- Steam from Bread -->
+                        <path d="M60 30 Q65 23 70 30" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.6"/>
+                        <path d="M75 27 Q80 20 85 27" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.6"/>
+                        <path d="M90 30 Q95 23 100 30" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.6"/>
                     </svg>
                 </div>
             </div>
@@ -379,11 +408,12 @@
         <!-- Right Side - Hero Image -->
         <div class="image-side">
             <div class="image-container">
-                <img src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&auto=format&fit=crop&q=80" 
+                <!-- Tea Cup Image with Multiple Fallbacks -->
+                <img src="https://images.unsplash.com/photo-1578934906274-f279666767f0?w=800&auto=format&fit=crop&q=80" 
                      alt="Beautiful Tea Cup" 
                      class="hero-image"
                      loading="eager"
-                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&auto=format&fit=crop&q=80';">
+                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&auto=format&fit=crop&q=80';">
             </div>
             
             <!-- Floating Elements -->
