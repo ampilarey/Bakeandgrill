@@ -130,10 +130,11 @@
             transform: scale(1.05);
         }
         
-        .logo img {
+        .logo svg, .logo img {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            display: block;
         }
         
         .brand-name {
@@ -334,7 +335,33 @@
         <div class="content-side">
             <div class="logo-section">
                 <div class="logo">
-                    <img src="{{ asset('logo.svg') }}" alt="Bake & Grill Logo">
+                    <svg width="130" height="130" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Background Circle -->
+                        <circle cx="65" cy="65" r="60" fill="#059669" stroke="#047857" stroke-width="4"/>
+                        <circle cx="65" cy="65" r="50" fill="#10b981"/>
+                        
+                        <!-- Oven/Grill Icon -->
+                        <rect x="25" y="45" width="80" height="40" rx="5" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
+                        <rect x="30" y="50" width="70" height="30" rx="3" fill="#fff"/>
+                        
+                        <!-- Oven Door Handle -->
+                        <circle cx="100" cy="65" r="8" fill="#047857"/>
+                        
+                        <!-- Baking Bread Icons -->
+                        <ellipse cx="50" cy="35" rx="8" ry="4" fill="#f59e0b" transform="rotate(-15 50 35)"/>
+                        <ellipse cx="75" cy="32" rx="8" ry="4" fill="#f59e0b" transform="rotate(15 75 32)"/>
+                        <ellipse cx="65" cy="38" rx="8" ry="4" fill="#f59e0b" transform="rotate(0 65 38)"/>
+                        
+                        <!-- Steam Lines -->
+                        <path d="M45 28 Q50 23 55 28" stroke="#fff" stroke-width="2" fill="none" opacity="0.8"/>
+                        <path d="M65 25 Q70 20 75 25" stroke="#fff" stroke-width="2" fill="none" opacity="0.8"/>
+                        <path d="M80 30 Q85 25 90 30" stroke="#fff" stroke-width="2" fill="none" opacity="0.8"/>
+                        
+                        <!-- Grill Lines -->
+                        <line x1="35" y1="55" x2="85" y2="55" stroke="#047857" stroke-width="2"/>
+                        <line x1="35" y1="65" x2="85" y2="65" stroke="#047857" stroke-width="2"/>
+                        <line x1="35" y1="75" x2="85" y2="75" stroke="#047857" stroke-width="2"/>
+                    </svg>
                 </div>
             </div>
             
@@ -355,7 +382,8 @@
                 <img src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&auto=format&fit=crop&q=80" 
                      alt="Beautiful Tea Cup" 
                      class="hero-image"
-                     loading="eager">
+                     loading="eager"
+                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&auto=format&fit=crop&q=80';">
             </div>
             
             <!-- Floating Elements -->
