@@ -21,6 +21,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- A_Faruwa Font for Dhivehi - Fallback to system font if not available -->
+    
     <style>
         * {
             margin: 0;
@@ -29,13 +31,13 @@
         }
         
         :root {
-            --primary-color: #d97706;
-            --primary-dark: #b45309;
-            --secondary-color: #f59e0b;
-            --accent-color: #dc2626;
-            --text-dark: #1f2937;
-            --text-light: #6b7280;
-            --bg-gradient: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fed7aa 100%);
+            --primary-color: #059669;
+            --primary-dark: #047857;
+            --secondary-color: #10b981;
+            --accent-color: #f59e0b;
+            --text-dark: #064e3b;
+            --text-light: #374151;
+            --bg-gradient: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%);
             --glass-bg: rgba(255, 255, 255, 0.25);
             --glass-border: rgba(255, 255, 255, 0.18);
         }
@@ -148,7 +150,7 @@
             color: var(--primary-dark);
             margin-bottom: 1.5rem;
             direction: rtl;
-            font-family: 'Times New Roman', serif;
+            font-family: 'A_Faruwa', 'Arial Unicode MS', 'Times New Roman', serif;
             text-align: center;
         }
         
@@ -161,7 +163,7 @@
             font-size: 1.2rem;
             font-weight: 600;
             margin-bottom: 3rem;
-            box-shadow: 0 10px 30px rgba(217, 119, 6, 0.3);
+            box-shadow: 0 10px 30px rgba(5, 150, 105, 0.3);
             animation: bounce 2s infinite;
         }
         
@@ -406,8 +408,8 @@
         <!-- Right Side - Hero Image -->
         <div class="image-side">
             <div class="image-container">
-                <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&auto=format&fit=crop&q=80" 
-                     alt="Delicious Food Preparation" 
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=800&auto=format&fit=crop&q=80" 
+                     alt="Delicious Grilled Food" 
                      class="hero-image"
                      loading="eager">
             </div>
