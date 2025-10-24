@@ -56,19 +56,6 @@
         }
         
         
-        .scheme-badge {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: var(--primary-color);
-            color: var(--secondary-color);
-            padding: 10px 15px;
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 14px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
         
         .bg-decoration {
             position: absolute;
@@ -395,20 +382,11 @@
             }
             
             
-            .scheme-badge {
-                position: relative;
-                top: auto;
-                right: auto;
-                display: inline-block;
-                margin-bottom: 20px;
-            }
         }
     </style>
 </head>
 <body>
     
-    <!-- Scheme Number Badge -->
-    <div class="scheme-badge">Main Page</div>
     
     <!-- Background Decorations -->
     <div class="bg-decoration"></div>
