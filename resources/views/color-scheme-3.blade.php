@@ -32,18 +32,11 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: #0a0a0a;
+            background: #0f0f0f;
             background-image: 
-                radial-gradient(circle at 20% 80%, rgba(218, 165, 32, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(218, 165, 32, 0.08) 0%, transparent 50%),
-                linear-gradient(45deg, transparent 30%, rgba(218, 165, 32, 0.03) 50%, transparent 70%),
-                repeating-linear-gradient(
-                    90deg,
-                    transparent,
-                    transparent 2px,
-                    rgba(218, 165, 32, 0.02) 2px,
-                    rgba(218, 165, 32, 0.02) 4px
-                );
+                radial-gradient(circle at 30% 20%, rgba(218, 165, 32, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 70% 80%, rgba(218, 165, 32, 0.08) 0%, transparent 40%),
+                linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -144,21 +137,63 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             width: 100%;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
+            padding: 3rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 4rem;
             align-items: center;
-            justify-content: center;
             position: relative;
             z-index: 10;
         }
         
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+                text-align: center;
+            }
+        }
+        
         .content-side {
-            text-align: center;
+            text-align: left;
             animation: slideInLeft 1s ease-out;
+        }
+        
+        .visual-side {
+            position: relative;
+            animation: slideInRight 1s ease-out;
+        }
+        
+        .modern-card {
+            background: rgba(218, 165, 32, 0.05);
+            border: 1px solid rgba(218, 165, 32, 0.2);
+            border-radius: 20px;
+            padding: 3rem;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .modern-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #DAA520, transparent);
+        }
+        
+        .modern-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            bottom: 0;
+            background: linear-gradient(180deg, transparent, #DAA520, transparent);
         }
         
         .logo-section {
@@ -189,18 +224,25 @@
         }
         
         .brand-name {
-            font-family: 'Playfair Display', serif;
-            font-size: 5rem;
-            font-weight: 800;
+            font-family: 'Inter', sans-serif;
+            font-size: 4.5rem;
+            font-weight: 300;
             color: var(--primary-color);
             line-height: 1.1;
-            margin-bottom: 2rem;
-            text-shadow: 
-                0 0 10px rgba(218, 165, 32, 0.5),
-                0 0 20px rgba(218, 165, 32, 0.3),
-                0 0 30px rgba(218, 165, 32, 0.2);
-            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            letter-spacing: 8px;
             text-transform: uppercase;
+            position: relative;
+        }
+        
+        .brand-name::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: var(--primary-color);
         }
         
         .dhivehi-text {
@@ -215,43 +257,59 @@
         
         .opening-badge {
             display: inline-block;
-            padding: 1.5rem 3rem;
-            background: transparent;
-            color: var(--primary-color);
-            border: 3px solid var(--primary-color);
-            border-radius: 8px;
-            font-size: 1.4rem;
-            font-weight: 700;
+            padding: 1rem 2.5rem;
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
             margin-bottom: 3rem;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            box-shadow: 
-                0 0 20px rgba(218, 165, 32, 0.3),
-                inset 0 0 20px rgba(218, 165, 32, 0.1);
+            letter-spacing: 2px;
             transition: all 0.3s ease;
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .opening-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .opening-badge:hover::before {
+            left: 100%;
         }
         
         .opening-badge:hover {
-            background: var(--primary-color);
-            color: var(--secondary-color);
             transform: translateY(-2px);
-            box-shadow: 
-                0 0 30px rgba(218, 165, 32, 0.5),
-                inset 0 0 30px rgba(218, 165, 32, 0.2);
+            box-shadow: 0 10px 25px rgba(218, 165, 32, 0.4);
         }
         
         .tagline {
-            font-size: 2rem;
+            font-size: 1.1rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            font-weight: 400;
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+        
+        .opening-text {
+            font-size: 1.8rem;
             color: var(--primary-color);
-            margin-bottom: 3rem;
-            line-height: 1.2;
-            font-weight: 700;
+            margin-bottom: 2rem;
+            font-weight: 300;
+            letter-spacing: 3px;
             text-transform: uppercase;
-            letter-spacing: 4px;
-            text-shadow: 
-                0 0 10px rgba(218, 165, 32, 0.5),
-                0 0 20px rgba(218, 165, 32, 0.3);
         }
         
         .color-info {
@@ -506,7 +564,12 @@
             <h1 class="brand-name">Bake & Grill</h1>
             <div class="dhivehi-text">އަސްލު ދިވެހި ރަހަ</div>
             
-            <p class="tagline">Opening Soon</p>
+            <div class="opening-text">Opening Soon</div>
+            
+            <p class="tagline">
+                Experience the authentic flavors of traditional Dhivehi cuisine, 
+                freshly baked goods, and expertly grilled specialties in the heart of Malé.
+            </p>
             
             <div class="opening-badge">Visit Us</div>
             
@@ -527,20 +590,39 @@
             </div>
         </div>
         
-        <div class="image-side">
-            <div class="image-container">
-                <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&auto=format&fit=crop&q=80" 
-                     alt="Beautiful Tea Setup with Steam and Silver Tray" 
-                     class="hero-image"
-                     loading="eager"
-                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1578934906274-f279666767f0?w=800&auto=format&fit=crop&q=80';">
-            </div>
-            
-            <div class="floating-element">
-                <div style="font-size: 0.9rem; color: var(--primary-color); font-weight: 600;">🍵 Fresh Tea</div>
-            </div>
-            <div class="floating-element">
-                <div style="font-size: 0.9rem; color: var(--primary-color); font-weight: 600;">🥖 Daily Baked</div>
+        <!-- Modern Visual Side -->
+        <div class="visual-side">
+            <div class="modern-card">
+                <h3 style="color: var(--primary-color); font-size: 1.5rem; margin-bottom: 2rem; font-weight: 300; letter-spacing: 2px;">PREMIUM DINING</h3>
+                <div style="display: grid; gap: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--secondary-color); font-weight: bold;">1</div>
+                        <span style="color: var(--text-light);">Authentic Dhivehi Cuisine</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--secondary-color); font-weight: bold;">2</div>
+                        <span style="color: var(--text-light);">Fresh Daily Baked Goods</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--secondary-color); font-weight: bold;">3</div>
+                        <span style="color: var(--text-light);">Expertly Grilled Specialties</span>
+                    </div>
+                </div>
+                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(218, 165, 32, 0.2);">
+                    <p style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">
+                        Located in the heart of Malé, we bring you the finest traditional flavors with a modern twist.
+                    </p>
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <div style="flex: 1; text-align: center; padding: 1rem; background: rgba(218, 165, 32, 0.05); border-radius: 10px;">
+                            <div style="color: var(--primary-color); font-size: 1.2rem; font-weight: bold;">24/7</div>
+                            <div style="color: var(--text-light); font-size: 0.8rem;">Fresh Baking</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; padding: 1rem; background: rgba(218, 165, 32, 0.05); border-radius: 10px;">
+                            <div style="color: var(--primary-color); font-size: 1.2rem; font-weight: bold;">100%</div>
+                            <div style="color: var(--text-light); font-size: 0.8rem;">Authentic</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
