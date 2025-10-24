@@ -150,10 +150,10 @@
             max-width: 1200px;
             width: 100%;
             padding: 2rem;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 2rem;
+            display: flex;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             position: relative;
             z-index: 10;
         }
@@ -269,7 +269,144 @@
             line-height: 1.4;
         }
         
-        /* Right Side - Image */
+        
+        /* Floating Elements */
+        .floating-element {
+            position: absolute;
+            background: white;
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            animation: floatElement 3s ease-in-out infinite;
+        }
+        
+        .floating-element:nth-child(1) {
+            top: 10%;
+            right: -10%;
+            animation-delay: 1s;
+        }
+        
+        .floating-element:nth-child(2) {
+            bottom: 20%;
+            left: -15%;
+            animation-delay: 2s;
+        }
+        
+        @keyframes floatElement {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+        
+        /* Animations */
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+                text-align: center;
+            }
+            
+            .content-side {
+                text-align: center;
+            }
+            
+            .brand-name {
+                font-size: 3.5rem;
+            }
+            
+            .dhivehi-text {
+                font-size: 1.8rem;
+            }
+            
+            .hero-image {
+                height: 400px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .brand-name {
+                font-size: 2.8rem;
+            }
+            
+            .dhivehi-text {
+                font-size: 1.5rem;
+            }
+            
+            .hero-image {
+                height: 300px;
+            }
+            
+            .floating-element {
+                display: none;
+            }
+            
+            .color-nav {
+                position: relative;
+                top: auto;
+                left: auto;
+                margin-bottom: 20px;
+            }
+            
+            .scheme-badge {
+                position: relative;
+                top: auto;
+                right: auto;
+                display: inline-block;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Color Scheme Navigation -->
+    <div class="color-nav">
+        <h3>Color Schemes</h3>
+        <a href="{{ route('color-scheme-1') }}" class="active">1. Warm Earth</a>
+        <a href="{{ route('color-scheme-2') }}">2. Sage & Terracotta</a>
+        <a href="{{ route('color-scheme-3') }}">3. Charcoal & Gold</a>
+        <a href="{{ route('color-scheme-4') }}">4. Burnt Orange & Navy</a>
+        <a href="{{ route('color-scheme-5') }}">5. Forest & Cream</a>
+        <a href="{{ route('color-scheme-6') }}">6. Warm Gray & Copper</a>
+        <a href="{{ route('color-scheme-7') }}">7. Deep Teal & Mustard</a>
+        <a href="{{ route('home') }}">Original</a>
+    </div>
     
     <!-- Scheme Number Badge -->
     <div class="scheme-badge">Scheme #1</div>
@@ -364,16 +501,6 @@
             </div>
         </div>
         
-        <!-- Right Side - Hero Image -->
-            
-            <!-- Floating Elements -->
-            <div class="floating-element">
-                <div style="font-size: 0.9rem; color: var(--primary-color); font-weight: 600;">🍵 Fresh Tea</div>
-            </div>
-            <div class="floating-element">
-                <div style="font-size: 0.9rem; color: var(--primary-color); font-weight: 600;">🥖 Daily Baked</div>
-            </div>
-        </div>
     </div>
 </body>
 </html>
