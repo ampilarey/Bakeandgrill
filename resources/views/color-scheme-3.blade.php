@@ -19,24 +19,27 @@
         }
         
         :root {
-            --primary-color: #36454F;
-            --primary-dark: #2C3E50;
-            --secondary-color: #DAA520;
-            --accent-color: #F0E68C;
-            --text-dark: #2F2F2F;
-            --text-light: #555555;
-            --bg-gradient: linear-gradient(135deg, #F8F8FF 0%, #F0F8FF 50%, #E6E6FA 100%);
-            --glass-bg: rgba(248, 248, 255, 0.25);
-            --glass-border: rgba(248, 248, 255, 0.18);
+            --primary-color: #DAA520;
+            --primary-dark: #B8860B;
+            --secondary-color: #2C3E50;
+            --accent-color: #F4D03F;
+            --text-dark: #DAA520;
+            --text-light: #F0E68C;
+            --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 50%, #1a1a1a 100%);
+            --glass-bg: rgba(218, 165, 32, 0.1);
+            --glass-border: rgba(218, 165, 32, 0.3);
         }
         
         body {
             font-family: 'Inter', sans-serif;
             background: var(--bg-gradient);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(218, 165, 32, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(218, 165, 32, 0.1) 0%, transparent 50%),
+                linear-gradient(45deg, transparent 30%, rgba(218, 165, 32, 0.05) 50%, transparent 70%);
             min-height: 100vh;
             display: flex;
             align-items: center;
-            justify-content: center;
             justify-content: center;
             overflow-x: hidden;
             position: relative;
@@ -180,15 +183,17 @@
         
         .brand-name {
             font-family: 'Playfair Display', serif;
-            font-size: 4.5rem;
+            font-size: 5rem;
             font-weight: 800;
-            color: var(--text-dark);
+            color: var(--primary-color);
             line-height: 1.1;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            margin-bottom: 2rem;
+            text-shadow: 
+                0 0 10px rgba(218, 165, 32, 0.5),
+                0 0 20px rgba(218, 165, 32, 0.3),
+                0 0 30px rgba(218, 165, 32, 0.2);
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
         
         .dhivehi-text {
@@ -203,22 +208,43 @@
         
         .opening-badge {
             display: inline-block;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 600;
+            padding: 1.5rem 3rem;
+            background: transparent;
+            color: var(--primary-color);
+            border: 3px solid var(--primary-color);
+            border-radius: 8px;
+            font-size: 1.4rem;
+            font-weight: 700;
             margin-bottom: 3rem;
-            box-shadow: 0 10px 30px rgba(54, 69, 79, 0.3);
-            animation: bounce 2s infinite;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            box-shadow: 
+                0 0 20px rgba(218, 165, 32, 0.3),
+                inset 0 0 20px rgba(218, 165, 32, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .opening-badge:hover {
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 
+                0 0 30px rgba(218, 165, 32, 0.5),
+                inset 0 0 30px rgba(218, 165, 32, 0.2);
         }
         
         .tagline {
-            font-size: 1.3rem;
-            color: var(--text-light);
+            font-size: 2rem;
+            color: var(--primary-color);
             margin-bottom: 3rem;
-            line-height: 1.6;
+            line-height: 1.2;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 
+                0 0 10px rgba(218, 165, 32, 0.5),
+                0 0 20px rgba(218, 165, 32, 0.3);
         }
         
         .color-info {
@@ -473,12 +499,9 @@
             <h1 class="brand-name">Bake & Grill</h1>
             <div class="dhivehi-text">އަސްލު ދިވެހި ރަހަ</div>
             
-            <div class="opening-badge">Color Scheme 3</div>
+            <p class="tagline">Opening Soon</p>
             
-            <p class="tagline">
-                Experience the authentic flavors of traditional Dhivehi cuisine, 
-                freshly baked goods, and expertly grilled specialties in the heart of Malé.
-            </p>
+            <div class="opening-badge">Visit Us</div>
             
             <div class="color-info">
                 <h4>Charcoal & Gold</h4>
