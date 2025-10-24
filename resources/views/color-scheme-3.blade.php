@@ -25,18 +25,25 @@
             --accent-color: #F4D03F;
             --text-dark: #DAA520;
             --text-light: #F0E68C;
-            --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 50%, #1a1a1a 100%);
+            --bg-gradient: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
             --glass-bg: rgba(218, 165, 32, 0.1);
             --glass-border: rgba(218, 165, 32, 0.3);
         }
         
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg-gradient);
+            background: #0a0a0a;
             background-image: 
-                radial-gradient(circle at 20% 80%, rgba(218, 165, 32, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(218, 165, 32, 0.1) 0%, transparent 50%),
-                linear-gradient(45deg, transparent 30%, rgba(218, 165, 32, 0.05) 50%, transparent 70%);
+                radial-gradient(circle at 20% 80%, rgba(218, 165, 32, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(218, 165, 32, 0.08) 0%, transparent 50%),
+                linear-gradient(45deg, transparent 30%, rgba(218, 165, 32, 0.03) 50%, transparent 70%),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(218, 165, 32, 0.02) 2px,
+                    rgba(218, 165, 32, 0.02) 4px
+                );
             min-height: 100vh;
             display: flex;
             align-items: center;
