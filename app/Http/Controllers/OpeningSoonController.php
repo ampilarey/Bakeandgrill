@@ -69,4 +69,12 @@ class OpeningSoonController extends Controller
     {
         return view('color-scheme-7');
     }
+
+    /**
+     * Display color scheme 8 page.
+     */
+    public function colorScheme8()
+    {
+        return view('color-scheme-8');
+    }
 }

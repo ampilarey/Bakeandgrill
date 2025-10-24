@@ -14,3 +14,4 @@ Route::get('/color-scheme-4', [OpeningSoonController::class, 'colorScheme4'])->n
 Route::get('/color-scheme-5', [OpeningSoonController::class, 'colorScheme5'])->name('color-scheme-5');
 Route::get('/color-scheme-6', [OpeningSoonController::class, 'colorScheme6'])->name('color-scheme-6');
 Route::get('/color-scheme-7', [OpeningSoonController::class, 'colorScheme7'])->name('color-scheme-7');
+Route::get('/color-scheme-8', [OpeningSoonController::class, 'colorScheme8'])->name('color-scheme-8');
