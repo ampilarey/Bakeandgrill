@@ -21,8 +21,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- A_Faruwa Font for Dhivehi - Fallback to system font if not available -->
-    
     <style>
         * {
             margin: 0;
@@ -31,20 +29,24 @@
         }
         
         :root {
-            --primary-color: #8B4513;
-            --primary-dark: #654321;
-            --secondary-color: #D2691E;
-            --accent-color: #F4A460;
-            --text-dark: #2F1B14;
-            --text-light: #5D4037;
-            --bg-gradient: linear-gradient(135deg, #FFF8DC 0%, #F5DEB3 50%, #DEB887 100%);
-            --glass-bg: rgba(255, 248, 220, 0.25);
-            --glass-border: rgba(255, 248, 220, 0.18);
+            --primary-color: #DAA520;
+            --primary-dark: #B8860B;
+            --secondary-color: #2C3E50;
+            --accent-color: #F4D03F;
+            --text-dark: #DAA520;
+            --text-light: #F0E68C;
+            --bg-gradient: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
+            --glass-bg: rgba(218, 165, 32, 0.1);
+            --glass-border: rgba(218, 165, 32, 0.3);
         }
         
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg-gradient);
+            background: #0f0f0f;
+            background-image: 
+                radial-gradient(circle at 30% 20%, rgba(218, 165, 32, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 70% 80%, rgba(218, 165, 32, 0.08) 0%, transparent 40%),
+                linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -53,7 +55,61 @@
             position: relative;
         }
         
-        /* Animated Background Elements */
+        .color-nav {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(218, 165, 32, 0.2);
+        }
+        
+        .color-nav h3 {
+            font-size: 14px;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .color-nav a {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .color-nav a:hover {
+            background: var(--accent-color);
+            transform: scale(1.05);
+        }
+        
+        .color-nav a.active {
+            background: var(--accent-color);
+            color: var(--secondary-color);
+        }
+        
+        .scheme-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
         .bg-decoration {
             position: absolute;
             width: 200px;
@@ -91,11 +147,10 @@
             50% { transform: translateY(-20px) rotate(180deg); }
         }
         
-        /* Main Container */
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             width: 100%;
-            padding: 2rem;
+            padding: 3rem;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 4rem;
@@ -104,10 +159,52 @@
             z-index: 10;
         }
         
-        /* Left Side - Content */
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+                text-align: center;
+            }
+        }
+        
         .content-side {
             text-align: left;
             animation: slideInLeft 1s ease-out;
+        }
+        
+        .visual-side {
+            position: relative;
+            animation: slideInRight 1s ease-out;
+        }
+        
+        .modern-card {
+            background: rgba(218, 165, 32, 0.05);
+            border: 1px solid rgba(218, 165, 32, 0.2);
+            border-radius: 20px;
+            padding: 3rem;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .modern-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #DAA520, transparent);
+        }
+        
+        .modern-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            bottom: 0;
+            background: linear-gradient(180deg, transparent, #DAA520, transparent);
         }
         
         .logo-section {
@@ -120,7 +217,7 @@
             background: white;
             border-radius: 25px;
             padding: 25px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
             margin-bottom: 3rem;
             animation: pulse 2s infinite;
             transition: transform 0.3s ease;
@@ -138,16 +235,25 @@
         }
         
         .brand-name {
-            font-family: 'Playfair Display', serif;
+            font-family: 'Inter', sans-serif;
             font-size: 4.5rem;
-            font-weight: 800;
-            color: var(--text-dark);
+            font-weight: 300;
+            color: var(--primary-color);
             line-height: 1.1;
             margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            position: relative;
+        }
+        
+        .brand-name::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: var(--primary-color);
         }
         
         .dhivehi-text {
@@ -162,62 +268,96 @@
         
         .opening-badge {
             display: inline-block;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
+            padding: 1rem 2.5rem;
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
             border-radius: 50px;
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: 600;
             margin-bottom: 3rem;
-            box-shadow: 0 10px 30px rgba(5, 150, 105, 0.3);
-            animation: bounce 2s infinite;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .opening-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .opening-badge:hover::before {
+            left: 100%;
+        }
+        
+        .opening-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(218, 165, 32, 0.4);
         }
         
         .tagline {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             color: var(--text-light);
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
             line-height: 1.6;
+            font-weight: 400;
+            letter-spacing: 1px;
+            opacity: 0.9;
         }
         
-        
-        /* Right Side - Image */
-        .image-side {
-            position: relative;
-            animation: slideInRight 1s ease-out;
+        .opening-text {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
         
-        .image-container {
-            position: relative;
-            border-radius: 30px;
-            overflow: hidden;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
-            transform: perspective(1000px) rotateY(-5deg) rotateX(5deg);
-            transition: transform 0.3s ease;
+        .color-info {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 2rem;
         }
         
-        .image-container:hover {
-            transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
+        .color-info h4 {
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
         }
         
-        .hero-image {
-            width: 100%;
-            height: 600px;
-            object-fit: cover;
-            transition: transform 0.3s ease;
-            display: block;
-            background-color: #f3f4f6;
+        .color-palette {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
         }
         
-        .hero-image:not([src]) {
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         
-        .image-container:hover .hero-image {
-            transform: scale(1.05);
+        .color-names {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            line-height: 1.4;
         }
         
-        /* Floating Elements */
         .floating-element {
             position: absolute;
             background: white;
@@ -244,7 +384,6 @@
             50% { transform: translateY(-15px); }
         }
         
-        /* Animations */
         @keyframes slideInLeft {
             from {
                 opacity: 0;
@@ -278,31 +417,6 @@
             60% { transform: translateY(-5px); }
         }
         
-        /* Responsive Design */
-        @media (max-width: 968px) {
-            .container {
-                grid-template-columns: 1fr;
-                gap: 3rem;
-                text-align: center;
-            }
-            
-            .content-side {
-                text-align: center;
-            }
-            
-            .brand-name {
-                font-size: 3.5rem;
-            }
-            
-            .dhivehi-text {
-                font-size: 1.8rem;
-            }
-            
-            .hero-image {
-                height: 400px;
-            }
-        }
-        
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -316,21 +430,43 @@
                 font-size: 1.5rem;
             }
             
-            .contact-card {
-                padding: 1.5rem;
-            }
-            
-            .hero-image {
-                height: 300px;
-            }
-            
             .floating-element {
                 display: none;
+            }
+            
+            .color-nav {
+                position: relative;
+                top: auto;
+                left: auto;
+                margin-bottom: 20px;
+            }
+            
+            .scheme-badge {
+                position: relative;
+                top: auto;
+                right: auto;
+                display: inline-block;
+                margin-bottom: 20px;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Color Scheme Navigation -->
+    <div class="color-nav">
+        <h3>Color Schemes</h3>
+        <a href="{{ route('color-scheme-1') }}">1. Warm Earth</a>
+        <a href="{{ route('color-scheme-2') }}">2. Sage & Terracotta</a>
+        <a href="{{ route('color-scheme-3') }}" class="active">3. Charcoal & Gold</a>
+        <a href="{{ route('color-scheme-4') }}">4. Burnt Orange & Navy</a>
+        <a href="{{ route('color-scheme-5') }}">5. Forest & Cream</a>
+        <a href="{{ route('color-scheme-6') }}">6. Warm Gray & Copper</a>
+        <a href="{{ route('color-scheme-7') }}">7. Deep Teal & Mustard</a>
+    </div>
+    
+    <!-- Scheme Number Badge -->
+    <div class="scheme-badge">Main Page</div>
+    
     <!-- Background Decorations -->
     <div class="bg-decoration"></div>
     <div class="bg-decoration"></div>
@@ -345,24 +481,24 @@
                         <!-- Background -->
                         <defs>
                             <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" style="stop-color:#D2691E;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#8B4513;stop-opacity:1" />
+                                <stop offset="0%" style="stop-color:#DAA520;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#36454F;stop-opacity:1" />
                             </radialGradient>
                             <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#F4A460;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#D2691E;stop-opacity:1" />
+                                <stop offset="0%" style="stop-color:#F0E68C;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#DAA520;stop-opacity:1" />
                             </linearGradient>
                         </defs>
                         
                         <!-- Main Circle -->
-                        <circle cx="75" cy="75" r="70" fill="url(#bgGradient)" stroke="#654321" stroke-width="3"/>
+                        <circle cx="75" cy="75" r="70" fill="url(#bgGradient)" stroke="#2C3E50" stroke-width="3"/>
                         
                         <!-- Chef's Hat (Top) -->
                         <path d="M45 45 L75 35 L105 45 L105 55 L45 55 Z" fill="white" stroke="#e5e7eb" stroke-width="1"/>
                         <ellipse cx="75" cy="40" rx="30" ry="8" fill="white"/>
                         
                         <!-- Grill Plate (Center) -->
-                        <ellipse cx="75" cy="75" rx="35" ry="20" fill="url(#logoGradient)" stroke="#8B4513" stroke-width="2"/>
+                        <ellipse cx="75" cy="75" rx="35" ry="20" fill="url(#logoGradient)" stroke="#36454F" stroke-width="2"/>
                         
                         <!-- Grill Lines -->
                         <line x1="50" y1="70" x2="100" y2="70" stroke="#fff" stroke-width="2" opacity="0.8"/>
@@ -377,9 +513,9 @@
                         <circle cx="115" cy="97" r="6" fill="#6b7280" stroke="#374151" stroke-width="1"/>
                         
                         <!-- Bread Loaves -->
-                        <ellipse cx="60" cy="35" rx="8" ry="5" fill="#F4A460" transform="rotate(-20 60 35)"/>
-                        <ellipse cx="75" cy="32" rx="8" ry="5" fill="#F4A460" transform="rotate(0 75 32)"/>
-                        <ellipse cx="90" cy="35" rx="8" ry="5" fill="#F4A460" transform="rotate(20 90 35)"/>
+                        <ellipse cx="60" cy="35" rx="8" ry="5" fill="#F0E68C" transform="rotate(-20 60 35)"/>
+                        <ellipse cx="75" cy="32" rx="8" ry="5" fill="#F0E68C" transform="rotate(0 75 32)"/>
+                        <ellipse cx="90" cy="35" rx="8" ry="5" fill="#F0E68C" transform="rotate(20 90 35)"/>
                         
                         <!-- Steam from Oven -->
                         <path d="M60 85 Q65 78 70 85" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
@@ -397,33 +533,68 @@
             <h1 class="brand-name">Bake & Grill</h1>
             <div class="dhivehi-text">އަސްލު ދިވެހި ރަހަ</div>
             
-            <div class="opening-badge">Opening Soon</div>
+            <div class="opening-text">Opening Soon</div>
             
             <p class="tagline">
                 Experience the authentic flavors of traditional Dhivehi cuisine, 
                 freshly baked goods, and expertly grilled specialties in the heart of Malé.
             </p>
+            
+            <div class="opening-badge">Visit Us</div>
+            
+            <div class="color-info">
+                <h4>Charcoal & Gold</h4>
+                <div class="color-palette">
+                    <div class="color-swatch" style="background: #36454F;"></div>
+                    <div class="color-swatch" style="background: #DAA520;"></div>
+                    <div class="color-swatch" style="background: #F0E68C;"></div>
+                    <div class="color-swatch" style="background: #F8F8FF;"></div>
+                </div>
+                <div class="color-names">
+                    Primary: Charcoal (#36454F)<br>
+                    Secondary: Goldenrod (#DAA520)<br>
+                    Accent: Khaki (#F0E68C)<br>
+                    Background: Ghost White (#F8F8FF)
+                </div>
+            </div>
         </div>
         
-        <!-- Right Side - Hero Image -->
-        <div class="image-side">
-            <div class="image-container">
-                <!-- Beautiful Tea Setup with Steam -->
-                <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&auto=format&fit=crop&q=80" 
-                     alt="Beautiful Tea Setup with Steam and Silver Tray" 
-                     class="hero-image"
-                     loading="eager"
-                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1578934906274-f279666767f0?w=800&auto=format&fit=crop&q=80';">
-            </div>
-            
-            <!-- Floating Elements -->
-            <div class="floating-element">
-                <div style="font-size: 0.9rem; color: var(--primary-color); font-weight: 600;">🍵 Fresh Tea</div>
-            </div>
-            <div class="floating-element">
-                <div style="font-size: 0.9rem; color: var(--primary-color); font-weight: 600;">🥖 Daily Baked</div>
+        <!-- Modern Visual Side -->
+        <div class="visual-side">
+            <div class="modern-card">
+                <h3 style="color: var(--primary-color); font-size: 1.5rem; margin-bottom: 2rem; font-weight: 300; letter-spacing: 2px;">PREMIUM DINING</h3>
+                <div style="display: grid; gap: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--secondary-color); font-weight: bold;">1</div>
+                        <span style="color: var(--text-light);">Authentic Dhivehi Cuisine</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--secondary-color); font-weight: bold;">2</div>
+                        <span style="color: var(--text-light);">Fresh Daily Baked Goods</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--secondary-color); font-weight: bold;">3</div>
+                        <span style="color: var(--text-light);">Expertly Grilled Specialties</span>
+                    </div>
+                </div>
+                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(218, 165, 32, 0.2);">
+                    <p style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">
+                        Located in the heart of Malé, we bring you the finest traditional flavors with a modern twist.
+                    </p>
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <div style="flex: 1; text-align: center; padding: 1rem; background: rgba(218, 165, 32, 0.05); border-radius: 10px;">
+                            <div style="color: var(--primary-color); font-size: 1.2rem; font-weight: bold;">24/7</div>
+                            <div style="color: var(--text-light); font-size: 0.8rem;">Fresh Baking</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; padding: 1rem; background: rgba(218, 165, 32, 0.05); border-radius: 10px;">
+                            <div style="color: var(--primary-color); font-size: 1.2rem; font-weight: bold;">100%</div>
+                            <div style="color: var(--text-light); font-size: 0.8rem;">Authentic</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+        
     </div>
 </body>
 </html>
