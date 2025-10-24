@@ -356,6 +356,7 @@
         <a href="{{ route('color-scheme-6') }}">Scheme 6</a>
         <a href="{{ route('color-scheme-7') }}">Scheme 7</a>
         <a href="{{ route('color-scheme-8') }}" class="active">Scheme 8</a>
+        <a href="{{ route('home') }}">Original</a>
     </div>
     
     <div class="container">
