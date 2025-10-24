@@ -55,46 +55,6 @@
             position: relative;
         }
         
-        .color-nav {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(218, 165, 32, 0.2);
-        }
-        
-        .color-nav h3 {
-            font-size: 14px;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        
-        .color-nav a {
-            display: inline-block;
-            padding: 5px 10px;
-            margin: 2px;
-            background: var(--primary-color);
-            color: var(--secondary-color);
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 12px;
-            transition: all 0.3s ease;
-        }
-        
-        .color-nav a:hover {
-            background: var(--accent-color);
-            transform: scale(1.05);
-        }
-        
-        .color-nav a.active {
-            background: var(--accent-color);
-            color: var(--secondary-color);
-        }
         
         .scheme-badge {
             position: fixed;
@@ -434,12 +394,6 @@
                 display: none;
             }
             
-            .color-nav {
-                position: relative;
-                top: auto;
-                left: auto;
-                margin-bottom: 20px;
-            }
             
             .scheme-badge {
                 position: relative;
@@ -452,17 +406,6 @@
     </style>
 </head>
 <body>
-    <!-- Color Scheme Navigation -->
-    <div class="color-nav">
-        <h3>Color Schemes</h3>
-        <a href="{{ route('color-scheme-1') }}">1. Warm Earth</a>
-        <a href="{{ route('color-scheme-2') }}">2. Sage & Terracotta</a>
-        <a href="{{ route('color-scheme-3') }}" class="active">3. Charcoal & Gold</a>
-        <a href="{{ route('color-scheme-4') }}">4. Burnt Orange & Navy</a>
-        <a href="{{ route('color-scheme-5') }}">5. Forest & Cream</a>
-        <a href="{{ route('color-scheme-6') }}">6. Warm Gray & Copper</a>
-        <a href="{{ route('color-scheme-7') }}">7. Deep Teal & Mustard</a>
-    </div>
     
     <!-- Scheme Number Badge -->
     <div class="scheme-badge">Main Page</div>
