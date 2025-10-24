@@ -270,40 +270,6 @@
             text-transform: uppercase;
         }
         
-        .color-info {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 2rem;
-        }
-        
-        .color-info h4 {
-            color: var(--text-dark);
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-        
-        .color-palette {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .color-swatch {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .color-names {
-            font-size: 0.9rem;
-            color: var(--text-light);
-            line-height: 1.4;
-        }
         
         .floating-element {
             position: absolute;
@@ -463,21 +429,6 @@
             
             <div class="opening-badge">Visit Us</div>
             
-            <div class="color-info">
-                <h4>Charcoal & Gold</h4>
-                <div class="color-palette">
-                    <div class="color-swatch" style="background: #36454F;"></div>
-                    <div class="color-swatch" style="background: #DAA520;"></div>
-                    <div class="color-swatch" style="background: #F0E68C;"></div>
-                    <div class="color-swatch" style="background: #F8F8FF;"></div>
-                </div>
-                <div class="color-names">
-                    Primary: Charcoal (#36454F)<br>
-                    Secondary: Goldenrod (#DAA520)<br>
-                    Accent: Khaki (#F0E68C)<br>
-                    Background: Ghost White (#F8F8FF)
-                </div>
-            </div>
         </div>
         
         <!-- Modern Visual Side -->
