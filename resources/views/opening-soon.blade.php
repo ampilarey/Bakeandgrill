@@ -31,15 +31,15 @@
         }
         
         :root {
-            --primary-color: #059669;
-            --primary-dark: #047857;
-            --secondary-color: #10b981;
-            --accent-color: #f59e0b;
-            --text-dark: #064e3b;
-            --text-light: #374151;
-            --bg-gradient: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%);
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.18);
+            --primary-color: #8B4513;
+            --primary-dark: #654321;
+            --secondary-color: #D2691E;
+            --accent-color: #F4A460;
+            --text-dark: #2F1B14;
+            --text-light: #5D4037;
+            --bg-gradient: linear-gradient(135deg, #FFF8DC 0%, #F5DEB3 50%, #DEB887 100%);
+            --glass-bg: rgba(255, 248, 220, 0.25);
+            --glass-border: rgba(255, 248, 220, 0.18);
         }
         
         body {
@@ -345,24 +345,24 @@
                         <!-- Background -->
                         <defs>
                             <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+                                <stop offset="0%" style="stop-color:#D2691E;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#8B4513;stop-opacity:1" />
                             </radialGradient>
                             <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
-                                <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+                                <stop offset="0%" style="stop-color:#F4A460;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#D2691E;stop-opacity:1" />
                             </linearGradient>
                         </defs>
                         
                         <!-- Main Circle -->
-                        <circle cx="75" cy="75" r="70" fill="url(#bgGradient)" stroke="#047857" stroke-width="3"/>
+                        <circle cx="75" cy="75" r="70" fill="url(#bgGradient)" stroke="#654321" stroke-width="3"/>
                         
                         <!-- Chef's Hat (Top) -->
                         <path d="M45 45 L75 35 L105 45 L105 55 L45 55 Z" fill="white" stroke="#e5e7eb" stroke-width="1"/>
                         <ellipse cx="75" cy="40" rx="30" ry="8" fill="white"/>
                         
                         <!-- Grill Plate (Center) -->
-                        <ellipse cx="75" cy="75" rx="35" ry="20" fill="url(#logoGradient)" stroke="#b45309" stroke-width="2"/>
+                        <ellipse cx="75" cy="75" rx="35" ry="20" fill="url(#logoGradient)" stroke="#8B4513" stroke-width="2"/>
                         
                         <!-- Grill Lines -->
                         <line x1="50" y1="70" x2="100" y2="70" stroke="#fff" stroke-width="2" opacity="0.8"/>
@@ -377,9 +377,9 @@
                         <circle cx="115" cy="97" r="6" fill="#6b7280" stroke="#374151" stroke-width="1"/>
                         
                         <!-- Bread Loaves -->
-                        <ellipse cx="60" cy="35" rx="8" ry="5" fill="#fbbf24" transform="rotate(-20 60 35)"/>
-                        <ellipse cx="75" cy="32" rx="8" ry="5" fill="#fbbf24" transform="rotate(0 75 32)"/>
-                        <ellipse cx="90" cy="35" rx="8" ry="5" fill="#fbbf24" transform="rotate(20 90 35)"/>
+                        <ellipse cx="60" cy="35" rx="8" ry="5" fill="#F4A460" transform="rotate(-20 60 35)"/>
+                        <ellipse cx="75" cy="32" rx="8" ry="5" fill="#F4A460" transform="rotate(0 75 32)"/>
+                        <ellipse cx="90" cy="35" rx="8" ry="5" fill="#F4A460" transform="rotate(20 90 35)"/>
                         
                         <!-- Steam from Oven -->
                         <path d="M60 85 Q65 78 70 85" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
