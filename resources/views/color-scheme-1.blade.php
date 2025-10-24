@@ -405,6 +405,7 @@
         <a href="{{ route('color-scheme-5') }}">5. Forest & Cream</a>
         <a href="{{ route('color-scheme-6') }}">6. Warm Gray & Copper</a>
         <a href="{{ route('color-scheme-7') }}">7. Deep Teal & Mustard</a>
+        <a href="{{ route('color-scheme-8') }}">8. Hot Red & Charcoal</a>
         <a href="{{ route('home') }}">Original</a>
     </div>
     
