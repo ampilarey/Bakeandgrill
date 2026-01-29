@@ -54,3 +54,11 @@ tar -xzf backup/storage.tar.gz -C .
 - Daily DB dump
 - Weekly full storage archive
 - Keep at least 14 days of backups
+
+## Automation example (cron)
+
+```
+0 2 * * * /bin/bash /Users/vigani/Website/Bake&Grill/scripts/backup.sh
+```
+
+Restore using `scripts/restore.sh`.

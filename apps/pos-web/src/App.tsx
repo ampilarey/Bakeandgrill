@@ -18,10 +18,12 @@ import {
   holdOrder,
   lookupBarcode,
   openShift,
+  previewSmsPromotion,
   resumeOrder,
   adjustInventory,
   createCashMovement,
   fetchTables,
+  sendSmsPromotion,
   staffLogin,
 } from "./api";
 import {
@@ -184,6 +186,13 @@ function App() {
   const [refunds, setRefunds] = useState<
     Array<{ id: number; amount: number; status: string; reason: string | null; order_id: number }>
   >([]);
+  const [promoMessage, setPromoMessage] = useState("");
+  const [promoLastOrderDays, setPromoLastOrderDays] = useState("");
+  const [promoEstimate, setPromoEstimate] = useState<{
+    recipient_count: number;
+    segments: number;
+    total_cost_mvr: number;
+  } | null>(null);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -768,6 +777,56 @@ function App() {
       .catch(() => setOpsMessage("Unable to record refund."));
   };
 
+  const handlePreviewPromotion = () => {
+    if (!token || !promoMessage.trim()) {
+      setOpsMessage("Enter a promotion message.");
+      return;
+    }
+    const lastOrderDays = promoLastOrderDays
+      ? Number.parseInt(promoLastOrderDays, 10)
+      : undefined;
+
+    previewSmsPromotion(token, {
+      message: promoMessage.trim(),
+      filters: {
+        last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined,
+      },
+    })
+      .then((response) => {
+        setPromoEstimate({
+          recipient_count: response.estimate.recipient_count,
+          segments: response.estimate.segments,
+          total_cost_mvr: response.estimate.total_cost_mvr,
+        });
+      })
+      .catch(() => setOpsMessage("Unable to preview SMS promotion."));
+  };
+
+  const handleSendPromotion = () => {
+    if (!token || !promoMessage.trim()) {
+      setOpsMessage("Enter a promotion message.");
+      return;
+    }
+    const lastOrderDays = promoLastOrderDays
+      ? Number.parseInt(promoLastOrderDays, 10)
+      : undefined;
+
+    sendSmsPromotion(token, {
+      name: "POS Promotion",
+      message: promoMessage.trim(),
+      filters: {
+        last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined,
+      },
+    })
+      .then(() => {
+        setOpsMessage("Promotion SMS queued.");
+        setPromoMessage("");
+        setPromoLastOrderDays("");
+        setPromoEstimate(null);
+      })
+      .catch(() => setOpsMessage("Unable to send promotion SMS."));
+  };
+
   const handleSyncQueue = () => {
     if (!isOnline) {
       setStatusMessage("You are offline. Sync paused.");
@@ -1235,6 +1294,46 @@ function App() {
                           Order {refund.order_id}: MVR {refund.amount.toFixed(2)} ({refund.status})
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <h2 className="text-sm font-semibold text-slate-700">SMS Promotions</h2>
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    rows={4}
+                    placeholder="Promotion message"
+                    value={promoMessage}
+                    onChange={(event) => setPromoMessage(event.target.value)}
+                  />
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    placeholder="Active in last X days (optional)"
+                    value={promoLastOrderDays}
+                    onChange={(event) => setPromoLastOrderDays(event.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      className="rounded-lg border border-slate-200 py-2 text-sm font-semibold text-slate-700"
+                      onClick={handlePreviewPromotion}
+                    >
+                      Preview
+                    </button>
+                    <button
+                      className="rounded-lg bg-slate-900 text-white py-2 text-sm font-semibold"
+                      onClick={handleSendPromotion}
+                    >
+                      Send SMS
+                    </button>
+                  </div>
+                  {promoEstimate && (
+                    <div className="text-xs text-slate-500">
+                      {promoEstimate.recipient_count} recipients ·{" "}
+                      {promoEstimate.segments} segments · Est. MVR{" "}
+                      {promoEstimate.total_cost_mvr.toFixed(2)}
                     </div>
                   )}
                 </div>

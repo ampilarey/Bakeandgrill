@@ -39,4 +39,11 @@ return [
         'url' => env('PRINT_PROXY_URL', 'http://localhost:3000'),
     ],
 
+    'dhiraagu' => [
+        'api_url' => env('DHIRAAGU_API_URL', 'https://messaging.dhiraagu.com.mv/v1/api/sms'),
+        'username' => env('DHIRAAGU_SMS_USERNAME', env('DHIRAAGU_USERNAME')),
+        'password' => env('DHIRAAGU_SMS_PASSWORD', env('DHIRAAGU_PASSWORD')),
+        'timeout' => env('DHIRAAGU_SMS_TIMEOUT', 30),
+    ],
+
 ];

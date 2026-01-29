@@ -63,6 +63,20 @@ curl -X POST http://localhost:8000/api/devices/register \
 
 POS requests should send `device_identifier` in the payload or `X-Device-Identifier` header.
 
+## SMS (Akuru / Dhiraagu)
+
+Set these in `backend/.env`:
+
+```
+DHIRAAGU_API_URL=https://messaging.dhiraagu.com.mv/v1/api/sms
+DHIRAAGU_SMS_USERNAME=your_username
+DHIRAAGU_SMS_PASSWORD=your_password
+```
+
+SMS will send via Dhiraagu if credentials are present. Otherwise it logs.
+
+Customers can opt out via `POST /api/customer/sms/opt-out` with `{ "phone": "..." }`.
+
 ### 5. Setup Print Proxy
 
 ```bash

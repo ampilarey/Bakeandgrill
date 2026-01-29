@@ -428,3 +428,59 @@ export async function createRefund(
   });
   return handleResponse(response);
 }
+
+export async function previewSmsPromotion(
+  token: string,
+  payload: {
+    message: string;
+    filters?: {
+      active_only?: boolean;
+      last_order_days?: number;
+      min_orders?: number;
+      include_opted_out?: boolean;
+    };
+  }
+): Promise<{
+  estimate: {
+    encoding: string;
+    length: number;
+    segments: number;
+    cost_mvr: number;
+    recipient_count: number;
+    total_cost_mvr: number;
+  };
+}> {
+  const response = await fetch(`${apiBaseUrl}/sms/promotions/preview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function sendSmsPromotion(
+  token: string,
+  payload: {
+    name?: string;
+    message: string;
+    filters?: {
+      active_only?: boolean;
+      last_order_days?: number;
+      min_orders?: number;
+      include_opted_out?: boolean;
+    };
+  }
+): Promise<{ promotion: { id: number; status: string } }> {
+  const response = await fetch(`${apiBaseUrl}/sms/promotions/send`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}

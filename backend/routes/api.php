@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\PrintJobController;
 use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\RefundController;
+use App\Http\Controllers\Api\SmsPromotionController;
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\TableController;
@@ -142,6 +143,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/x-report', [ReportsController::class, 'xReport']);
     Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
     Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
+    Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv']);
+    Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv']);
+    Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv']);
+    Route::get('/reports/z-report/csv', [ReportsController::class, 'zReportCsv']);
+    Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv']);
 
     // Tables
     Route::get('/tables', [TableController::class, 'index']);
@@ -162,6 +168,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/refunds', [RefundController::class, 'index']);
     Route::get('/refunds/{id}', [RefundController::class, 'show']);
     Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store']);
+
+    // SMS promotions
+    Route::get('/sms/promotions', [SmsPromotionController::class, 'index']);
+    Route::get('/sms/promotions/{id}', [SmsPromotionController::class, 'show']);
+    Route::post('/sms/promotions/preview', [SmsPromotionController::class, 'preview']);
+    Route::post('/sms/promotions/send', [SmsPromotionController::class, 'send']);
 });
 
 /*
@@ -186,6 +198,9 @@ Route::post('/receipts/{token}/resend', [ReceiptController::class, 'resend'])
     ->middleware('throttle:5,10');
 Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback'])
     ->middleware('throttle:10,10');
+
+// Customer SMS opt-out
+Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut']);
 
 /*
 |--------------------------------------------------------------------------

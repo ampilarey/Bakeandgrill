@@ -545,6 +545,28 @@ curl -X POST http://localhost:8000/api/receipts/{token}/feedback \
 
 ---
 
+### STEP 11B: SMS Promotions
+
+**API Tests:**
+```bash
+curl -X POST http://localhost:8000/api/sms/promotions/preview \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Bake & Grill promo!","filters":{"last_order_days":30}}'
+
+curl -X POST http://localhost:8000/api/sms/promotions/send \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Promo","message":"Bake & Grill promo!","filters":{"last_order_days":30}}'
+```
+
+**Checklist:**
+- [ ] Preview returns estimate
+- [ ] Send creates promotion and recipients
+- [ ] Opt-out customers excluded
+
+---
+
 ### STEP 12: Online Ordering + Customer Portal
 
 **Manual Tests:**
@@ -685,6 +707,18 @@ curl "http://localhost:8000/api/reports/sales-breakdown?from=2026-01-01&to=2026-
 
 # Inventory valuation
 curl http://localhost:8000/api/reports/inventory-valuation \
+  -H "Authorization: Bearer $TOKEN"
+
+# CSV exports
+curl http://localhost:8000/api/reports/sales-summary/csv \
+  -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/api/reports/sales-breakdown/csv \
+  -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/api/reports/x-report/csv \
+  -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/api/reports/z-report/csv \
+  -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/api/reports/inventory-valuation/csv \
   -H "Authorization: Bearer $TOKEN"
 
 # Open shift

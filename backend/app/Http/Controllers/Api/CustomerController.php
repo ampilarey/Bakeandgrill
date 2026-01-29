@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CustomerSmsOptOutRequest;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -62,5 +64,24 @@ class CustomerController extends Controller
             'message' => 'Profile updated successfully',
             'customer' => $customer,
         ]);
+    }
+
+    /**
+     * Opt out of SMS promotions.
+     */
+    public function optOut(CustomerSmsOptOutRequest $request)
+    {
+        $customer = Customer::where('phone', $request->validated()['phone'])->first();
+
+        if (!$customer) {
+            return response()->json(['message' => 'Customer not found.'], 404);
+        }
+
+        $customer->update([
+            'sms_opt_out' => true,
+            'sms_opt_out_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'SMS opt-out confirmed.']);
     }
 }
