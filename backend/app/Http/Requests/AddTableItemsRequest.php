@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class AddTableItemsRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'print' => 'sometimes|boolean',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'nullable|integer|exists:items,id',
+            'items.*.name' => 'required|string|max:255',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.modifiers' => 'nullable|array',
+            'items.*.modifiers.*.modifier_id' => 'nullable|integer|exists:modifiers,id',
+            'items.*.modifiers.*.name' => 'required|string|max:255',
+            'items.*.modifiers.*.price' => 'required|numeric|min:0',
+        ];
+    }
+}

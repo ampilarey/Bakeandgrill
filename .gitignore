@@ -13,12 +13,15 @@
 /.zed
 /auth.json
 /node_modules
+/apps/**/node_modules
 /public/build
 /public/hot
 /public/storage
 /storage/*.key
 /storage/pail
 /vendor
+/backend/vendor
+**/.phpunit.result.cache
 Homestead.json
 Homestead.yaml
 Thumbs.db

@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bakegrill-postgres
+    environment:
+      POSTGRES_DB: bakegrill
+      POSTGRES_USER: bakegrill
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bakegrill"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bakegrill-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: bakegrill-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bakegrill-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bakegrill-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/storage:/var/www/html/storage
+    environment:
+      - DB_HOST=postgres
+      - DB_DATABASE=bakegrill
+      - DB_USERNAME=bakegrill
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    networks:
+      - bakegrill-network
+
+  print-proxy:
+    build:
+      context: ./print-proxy
+      dockerfile: Dockerfile
+    container_name: bakegrill-print-proxy
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - bakegrill-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bakegrill-network:
+    driver: bridge
