@@ -14,6 +14,11 @@ class CustomerController extends Controller
      */
     public function me(Request $request)
     {
+        // SECURITY: Ensure this is a customer token, not staff
+        if (!$request->user()->tokenCan('customer')) {
+            return response()->json(['message' => 'Forbidden - customer access only'], 403);
+        }
+
         $customer = $request->user();
 
         return response()->json([

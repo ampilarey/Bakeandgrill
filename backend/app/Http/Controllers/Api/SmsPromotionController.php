@@ -7,6 +7,7 @@ use App\Http\Requests\StoreSmsPromotionRequest;
 use App\Models\Customer;
 use App\Models\SmsPromotion;
 use App\Models\SmsPromotionRecipient;
+use App\Jobs\SendSmsPromotionRecipient;
 use App\Services\AuditLogService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
@@ -59,62 +60,47 @@ class SmsPromotionController extends Controller
         $filters = $validated['filters'] ?? [];
 
         $recipientsQuery = $this->buildRecipientQuery($filters);
-        $recipients = $recipientsQuery->get();
+        $recipientCount = $recipientsQuery->count();
 
-        if ($recipients->isEmpty()) {
+        if ($recipientCount === 0) {
             return response()->json(['message' => 'No recipients found.'], 422);
         }
 
-        $promotion = DB::transaction(function () use ($validated, $filters, $recipients) {
+        if ($recipientCount > 10000) {
+            return response()->json(['message' => 'Too many recipients. Refine filters.'], 422);
+        }
+
+        $promotion = DB::transaction(function () use ($validated, $filters, $recipientsQuery) {
             $promotion = SmsPromotion::create([
                 'user_id' => request()->user()?->id,
                 'name' => $validated['name'] ?? null,
                 'message' => $validated['message'],
-                'status' => 'sending',
-                'recipient_count' => $recipients->count(),
+                'status' => 'queued',
+                'recipient_count' => $recipientsQuery->count(),
                 'filters' => $filters,
             ]);
 
-            foreach ($recipients as $customer) {
-                SmsPromotionRecipient::create([
-                    'sms_promotion_id' => $promotion->id,
-                    'customer_id' => $customer->id,
-                    'phone' => $customer->phone,
-                    'status' => 'queued',
-                ]);
-            }
+            $recipientsQuery->orderBy('id')->chunk(500, function ($chunk) use ($promotion) {
+                foreach ($chunk as $customer) {
+                    SmsPromotionRecipient::create([
+                        'sms_promotion_id' => $promotion->id,
+                        'customer_id' => $customer->id,
+                        'phone' => $customer->phone,
+                        'status' => 'queued',
+                    ]);
+                }
+            });
 
             return $promotion;
         });
 
-        $promotion->load('recipients');
-
-        $sentCount = 0;
-        $failedCount = 0;
-
-        foreach ($promotion->recipients as $recipient) {
-            $sent = $smsService->send($recipient->phone, $promotion->message);
-            if ($sent) {
-                $recipient->update([
-                    'status' => 'sent',
-                    'sent_at' => now(),
-                ]);
-                $sentCount++;
-            } else {
-                $recipient->update([
-                    'status' => 'failed',
-                    'error_message' => 'SMS send failed',
-                ]);
-                $failedCount++;
-            }
-        }
-
-        $promotion->update([
-            'status' => $failedCount > 0 ? 'failed' : 'sent',
-            'sent_count' => $sentCount,
-            'failed_count' => $failedCount,
-            'sent_at' => now(),
-        ]);
+        SmsPromotionRecipient::where('sms_promotion_id', $promotion->id)
+            ->orderBy('id')
+            ->chunk(500, function ($chunk) {
+                foreach ($chunk as $recipient) {
+                    SendSmsPromotionRecipient::dispatch($recipient->id);
+                }
+            });
 
         app(AuditLogService::class)->log(
             'sms_promotion.sent',

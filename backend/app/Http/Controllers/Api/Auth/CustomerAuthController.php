@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\OtpVerification;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -18,10 +19,18 @@ class CustomerAuthController extends Controller
     public function requestOtp(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string|regex:/^\+960[0-9]{7}$/', // Maldives phone format
+            'phone' => 'required|string',
         ]);
 
-        $phone = $request->phone;
+        // Normalize phone number (accept with or without +960)
+        $phone = $this->normalizePhone($request->phone);
+        
+        // Validate normalized format
+        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
+            throw ValidationException::withMessages([
+                'phone' => ['Please enter a valid Maldivian phone number (7 digits or +960XXXXXXX)'],
+            ]);
+        }
 
         // Rate limiting: 3 OTP requests per hour per phone
         $key = 'otp-request:' . $phone;
@@ -47,15 +56,32 @@ class CustomerAuthController extends Controller
         // Hit rate limiter
         RateLimiter::hit($key, 3600); // 1 hour
 
-        // TODO: Send OTP via SMS (for now, log it)
-        logger()->info('OTP Code for ' . $phone . ': ' . $otpCode);
+        // Send OTP via SMS
+        $smsService = app(SmsService::class);
+        $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
+        
+        $smsSent = $smsService->send($phone, $smsMessage);
+        
+        // Log only in non-production for debugging (NEVER log OTP in production)
+        if (!app()->environment('production')) {
+            logger()->info('OTP requested', [
+                'phone' => $phone,
+                'otp' => $otpCode, // Only in dev
+                'sms_sent' => $smsSent,
+            ]);
+        }
 
-        return response()->json([
+        $response = [
             'message' => 'OTP sent successfully',
             'expires_in' => 600, // 10 minutes in seconds
-            // In development, include OTP (REMOVE IN PRODUCTION)
-            'otp' => config('app.debug') ? $otpCode : null,
-        ]);
+        ];
+
+        // SECURITY: Only include OTP in local/dev environment for testing
+        if (app()->environment('local') && config('app.debug')) {
+            $response['otp'] = $otpCode;
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -68,8 +94,11 @@ class CustomerAuthController extends Controller
             'otp' => 'required|string|size:6',
         ]);
 
+        // Normalize phone number to match format used in requestOtp
+        $phone = $this->normalizePhone($request->phone);
+
         // Find latest OTP for this phone
-        $otpRecord = OtpVerification::where('phone', $request->phone)
+        $otpRecord = OtpVerification::where('phone', $phone)
             ->whereNull('used_at')
             ->where('expires_at', '>', now())
             ->orderBy('created_at', 'desc')
@@ -102,7 +131,7 @@ class CustomerAuthController extends Controller
 
         // Find or create customer
         $customer = Customer::firstOrCreate(
-            ['phone' => $request->phone],
+            ['phone' => $phone],
             [
                 'name' => $request->name ?? null,
                 'email' => $request->email ?? null,
@@ -113,8 +142,8 @@ class CustomerAuthController extends Controller
 
         $customer->update(['last_login_at' => now()]);
 
-        // Create Sanctum token
-        $token = $customer->createToken('customer-' . $customer->phone)->plainTextToken;
+        // Create Sanctum token with 'customer' ability
+        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Verified successfully',
@@ -128,5 +157,35 @@ class CustomerAuthController extends Controller
                 'tier' => $customer->tier,
             ],
         ]);
+    }
+
+    /**
+     * Normalize phone number to +960XXXXXXX format
+     */
+    private function normalizePhone(string $phone): string
+    {
+        // Remove all non-numeric characters except +
+        $digits = preg_replace('/[^0-9+]/', '', $phone);
+        
+        // Remove + sign for processing
+        $digitsOnly = str_replace('+', '', $digits);
+        
+        // If already has 960 prefix
+        if (str_starts_with($digitsOnly, '960') && strlen($digitsOnly) === 10) {
+            return '+' . $digitsOnly;
+        }
+        
+        // If 7 digits, add 960 prefix
+        if (strlen($digitsOnly) === 7) {
+            return '+960' . $digitsOnly;
+        }
+        
+        // If 10 digits starting with 960
+        if (strlen($digitsOnly) === 10 && str_starts_with($digitsOnly, '960')) {
+            return '+' . $digitsOnly;
+        }
+        
+        // Default: assume it's 7 digits and add prefix
+        return '+960' . substr($digitsOnly, -7);
     }
 }

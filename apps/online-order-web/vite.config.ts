@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  base: '/order/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -13,10 +14,24 @@ export default defineConfig({
   server: {
     port: 3003,
     host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // SECURITY: Disable sourcemaps in production
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+        },
+      },
+    },
   },
   test: {
     environment: 'jsdom',

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Policies\CashPolicy;
 use App\Policies\DiscountPolicy;
+use App\Policies\DevicePolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\RefundPolicy;
 use App\Policies\SmsPolicy;
@@ -26,5 +27,6 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('cash.manage', [CashPolicy::class, 'manage']);
         Gate::define('purchase.manage', [PurchasePolicy::class, 'manage']);
         Gate::define('sms.send', [SmsPolicy::class, 'send']);
+        Gate::define('device.manage', [DevicePolicy::class, 'manage']);
     }
 }

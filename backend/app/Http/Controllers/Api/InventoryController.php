@@ -19,6 +19,11 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
+        // SECURITY: Staff only
+        if (!$request->user()->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
         $query = InventoryItem::query();
 
         if ($request->has('active_only')) {

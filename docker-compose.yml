@@ -68,7 +68,10 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - API_URL=http://backend:8000
+      - PORT=3000
+      - BIND_HOST=0.0.0.0
+      - PRINT_PROXY_KEY=${PRINT_PROXY_KEY:-dev-key-change-in-production-12345}
+      - PRINTERS_JSON=${PRINTERS_JSON:-[{"name":"kitchen","host":"192.168.1.50","port":9100}]}
     depends_on:
       - backend
     networks:

@@ -38,6 +38,13 @@ class SmsService
             );
         }
 
+        if (app()->environment('production')) {
+            Log::error('SMS credentials missing in production', [
+                'phone' => $phone,
+            ]);
+            return false;
+        }
+
         Log::info('SMS demo mode - credentials missing', [
             'phone' => $phone,
             'message' => $message,
@@ -55,29 +62,48 @@ class SmsService
         int $timeout
     ): bool {
         $normalized = $this->normalizePhone($phone);
+        if (!preg_match('/^960\\d{7}$/', $normalized)) {
+            Log::warning('Invalid phone number format for Dhiraagu API', [
+                'original' => $phone,
+                'formatted' => $normalized,
+            ]);
+            return false;
+        }
+        
         $authorizationKey = base64_encode($username . ':' . $password);
 
         try {
             Log::info('Sending SMS via Dhiraagu API', [
                 'to' => $normalized,
                 'message_length' => strlen($message),
+                'api_url' => $apiUrl,
             ]);
 
+            // Use the JSON API format (newer Dhiraagu API)
             $response = Http::timeout($timeout)
-                ->acceptJson()
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                ])
                 ->post($apiUrl, [
                     'destination' => [$normalized],
                     'content' => $message,
                     'authorizationKey' => $authorizationKey,
                 ]);
 
+            Log::info('Dhiraagu API Response', [
+                'status_code' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             if ($response->successful()) {
                 $data = $response->json();
-                $success = isset($data['transactionStatus'])
-                    ? $data['transactionStatus'] === 'true'
-                    : true;
-
-                if ($success) {
+                
+                // Check if Dhiraagu reports success
+                if (isset($data['transactionStatus']) && $data['transactionStatus'] === 'true') {
+                    Log::info('Dhiraagu SMS sent successfully', [
+                        'phone' => $normalized,
+                        'transaction_id' => $data['transactionId'] ?? $data['referenceNumber'] ?? 'unknown',
+                    ]);
                     return true;
                 }
 
@@ -85,19 +111,19 @@ class SmsService
                     'phone' => $normalized,
                     'response' => $data,
                 ]);
-
                 return false;
             }
 
-            Log::warning('Dhiraagu SMS failed', [
+            Log::warning('Dhiraagu SMS API error', [
                 'phone' => $normalized,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
         } catch (\Throwable $error) {
-            Log::error('Dhiraagu SMS error', [
+            Log::error('Dhiraagu SMS exception', [
                 'phone' => $normalized,
                 'error' => $error->getMessage(),
+                'trace' => $error->getTraceAsString(),
             ]);
         }
 

@@ -24,7 +24,7 @@ class CategoryController extends Controller
             ->orderBy('name')
             ->get();
 
-        return response()->json(['categories' => $categories]);
+        return response()->json(['data' => $categories]);
     }
 
     /**

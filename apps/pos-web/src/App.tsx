@@ -609,7 +609,7 @@ function App() {
     }
 
     openShift(token, { opening_cash: openingValue })
-      .then((response) => {
+      .then(() => {
         setOpsMessage("Shift opened.");
         setOpeningCash("");
         return getCurrentShift(token);
@@ -629,10 +629,10 @@ function App() {
     }
 
     closeShift(token, shift.id, { closing_cash: closingValue })
-      .then((response) => {
+      .then(() => {
         setOpsMessage("Shift closed.");
         setClosingCash("");
-        setShift(response.shift);
+        setShift(null);
       })
       .catch(() => setOpsMessage("Unable to close shift."));
   };
@@ -920,7 +920,8 @@ function App() {
             )}
           </div>
           <p className="text-xs text-slate-400 mt-6">
-            Demo PIN: 1234
+            Demo PINs: Owner(1111), Admin(2222), Manager(3333), Cashier(4444)<br/>
+            Device ID: Use "POS-001" or any identifier
           </p>
         </div>
       </div>

@@ -88,64 +88,134 @@ class OrderCreationService
         $subtotal = 0;
 
         foreach ($items as $itemPayload) {
-            $itemModel = null;
-            if (!empty($itemPayload['item_id'])) {
-                $itemModel = Item::find($itemPayload['item_id']);
+            // SECURITY: item_id is required, load from DB only
+            $itemId = $itemPayload['item_id'];
+            $itemModel = Item::with(['variants', 'modifiers'])
+                ->where('id', $itemId)
+                ->where('is_active', true)
+                ->where('is_available', true)
+                ->first();
+
+            if (!$itemModel) {
+                throw new \InvalidArgumentException("Item {$itemId} not found or unavailable");
             }
 
-            $basePrice = $itemModel?->base_price ?? 0;
             $quantity = (int) $itemPayload['quantity'];
+            
+            // Determine price from DB (variant or base)
+            $variantId = $itemPayload['variant_id'] ?? null;
+            if ($variantId) {
+                $variant = $itemModel->variants()->where('id', $variantId)->first();
+                if (!$variant) {
+                    throw new \InvalidArgumentException("Variant {$variantId} not found for item {$itemId}");
+                }
+                $basePrice = (float) $variant->price;
+                $variantName = $variant->name;
+            } else {
+                $basePrice = (float) $itemModel->base_price;
+                $variantName = null;
+            }
+
             $modifierTotal = 0;
 
+            // Create order item with DB-sourced data ONLY
             $orderItem = OrderItem::create([
                 'order_id' => $order->id,
-                'item_id' => $itemModel?->id,
-                'variant_id' => null,
-                'item_name' => $itemModel?->name ?? $itemPayload['name'],
-                'variant_name' => null,
+                'item_id' => $itemModel->id,
+                'variant_id' => $variantId,
+                'item_name' => $itemModel->name, // From DB only
+                'variant_name' => $variantName,
                 'quantity' => $quantity,
                 'unit_price' => $basePrice,
-                'total_price' => 0,
+                'total_price' => 0, // Will update after modifiers
                 'notes' => null,
                 'status' => 'pending',
             ]);
 
+            // SECURITY: Process modifiers - validate they belong to item, use DB price only
             if (!empty($itemPayload['modifiers'])) {
+                $validModifierIds = $itemModel->modifiers->pluck('id')->toArray();
+                
                 foreach ($itemPayload['modifiers'] as $modifierPayload) {
-                    $modifierModel = null;
-                    if (!empty($modifierPayload['modifier_id'])) {
-                        $modifierModel = Modifier::find($modifierPayload['modifier_id']);
+                    $modifierId = $modifierPayload['modifier_id'];
+                    
+                    // Reject if modifier doesn't belong to this item
+                    if (!in_array($modifierId, $validModifierIds)) {
+                        throw new \InvalidArgumentException("Modifier {$modifierId} not valid for item {$itemId}");
                     }
 
-                    $modifierPrice = $modifierModel?->price ?? (float) $modifierPayload['price'];
-                    $modifierTotal += $modifierPrice;
+                    $modifierModel = $itemModel->modifiers()->where('modifiers.id', $modifierId)->first();
+                    
+                    // SECURITY: Use DB price ONLY - never trust client
+                    $modifierPrice = (float) $modifierModel->price;
+                    $modifierQuantity = (int) ($modifierPayload['quantity'] ?? 1);
+                    $modifierTotal += $modifierPrice * $modifierQuantity;
 
                     OrderItemModifier::create([
                         'order_item_id' => $orderItem->id,
-                        'modifier_id' => $modifierModel?->id,
-                        'modifier_name' => $modifierModel?->name ?? $modifierPayload['name'],
+                        'modifier_id' => $modifierModel->id,
+                        'modifier_name' => $modifierModel->name, // From DB only
                         'modifier_price' => $modifierPrice,
-                        'quantity' => 1,
+                        'quantity' => $modifierQuantity,
                     ]);
                 }
             }
 
+            // Calculate final line total
             $lineTotal = ($basePrice + $modifierTotal) * $quantity;
+            
+            // Prevent negative or zero totals (security check)
+            if ($lineTotal <= 0) {
+                throw new \InvalidArgumentException("Invalid line total calculated for item {$itemId}");
+            }
+            
             $subtotal += $lineTotal;
-
             $orderItem->update(['total_price' => $lineTotal]);
         }
 
         return $subtotal;
     }
 
+    /**
+     * Generate thread-safe order number using daily sequence table
+     */
     private function generateOrderNumber(): string
     {
-        $date = now()->format('Ymd');
-        $count = Order::whereDate('created_at', now()->toDateString())->count() + 1;
-        $sequence = str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        $date = now()->toDateString();
+        $dateFormatted = now()->format('Ymd');
 
-        return "BG-{$date}-{$sequence}";
+        // CONCURRENCY SAFE: Use row locking to prevent duplicate order numbers
+        $sequence = DB::transaction(function () use ($date) {
+            $dailySeq = DB::table('daily_sequences')
+                ->where('date', $date)
+                ->lockForUpdate() // Locks row for this transaction
+                ->first();
+
+            if (!$dailySeq) {
+                // First order of the day
+                DB::table('daily_sequences')->insert([
+                    'date' => $date,
+                    'last_order_number' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                return 1;
+            }
+
+            // Increment and update
+            $nextNumber = $dailySeq->last_order_number + 1;
+            DB::table('daily_sequences')
+                ->where('date', $date)
+                ->update([
+                    'last_order_number' => $nextNumber,
+                    'updated_at' => now(),
+                ]);
+
+            return $nextNumber;
+        });
+
+        $sequenceStr = str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+        return "BG-{$dateFormatted}-{$sequenceStr}";
     }
 
     private function dispatchPrintJobs(Order $order): void

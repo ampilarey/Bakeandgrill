@@ -1,21 +1,42 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\OpeningSoonController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ImageThumbController;
 use App\Http\Controllers\ReceiptPageController;
 
-// Opening Soon Page - Main route
-Route::get('/', [OpeningSoonController::class, 'index'])->name('home');
+// Thumbnails for local cafe images (faster load)
+Route::get('/thumb/{path}', [ImageThumbController::class, 'show'])
+    ->where('path', '.*')
+    ->name('thumb');
 
-// Color Scheme Pages
-Route::get('/color-scheme-1', [OpeningSoonController::class, 'colorScheme1'])->name('color-scheme-1');
-Route::get('/color-scheme-2', [OpeningSoonController::class, 'colorScheme2'])->name('color-scheme-2');
-Route::get('/color-scheme-3', [OpeningSoonController::class, 'colorScheme3'])->name('color-scheme-3');
-Route::get('/color-scheme-4', [OpeningSoonController::class, 'colorScheme4'])->name('color-scheme-4');
-Route::get('/color-scheme-5', [OpeningSoonController::class, 'colorScheme5'])->name('color-scheme-5');
-Route::get('/color-scheme-6', [OpeningSoonController::class, 'colorScheme6'])->name('color-scheme-6');
-Route::get('/color-scheme-7', [OpeningSoonController::class, 'colorScheme7'])->name('color-scheme-7');
-Route::get('/color-scheme-8', [OpeningSoonController::class, 'colorScheme8'])->name('color-scheme-8');
+// Public Website Pages (Customer-facing only)
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/menu', [HomeController::class, 'menu'])->name('menu');
+Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
+Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
+Route::get('/privacy', [HomeController::class, 'privacy'])->name('privacy');
+
+// Customer Portal (Web Login)
+use App\Http\Controllers\CustomerPortalController;
+Route::get('/customer/login', [CustomerPortalController::class, 'showLogin'])->name('customer.login');
+Route::post('/customer/request-otp', [CustomerPortalController::class, 'requestOtp'])->name('customer.request-otp');
+Route::post('/customer/verify-otp', [CustomerPortalController::class, 'verifyOtp'])->name('customer.verify-otp');
+Route::post('/customer/logout', [CustomerPortalController::class, 'logout'])->name('customer.logout');
+
+// Order Type Selection (Gateway)
+Route::get('/order-type', function() {
+    return view('order-type-select');
+})->name('order.type');
+
+// Checkout (from main menu)
+Route::get('/checkout', [HomeController::class, 'checkout'])->name('checkout');
+
+// Pre-Orders (Event Orders)
+use App\Http\Controllers\PreOrderController;
+Route::get('/pre-order', [PreOrderController::class, 'create'])->name('pre-order.create');
+Route::post('/pre-order', [PreOrderController::class, 'store'])->name('pre-order.store');
+Route::get('/pre-order/{id}/confirmation', [PreOrderController::class, 'confirmation'])->name('pre-order.confirmation');
 
 // Receipt pages
 Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])->name('receipts.show');

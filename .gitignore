@@ -1,8 +1,18 @@
 *.log
 .DS_Store
+
+# Environment files (NEVER commit secrets)
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+apps/**/.env
+apps/**/.env.*
+!apps/**/.env.example
+
+# IDE
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -11,17 +21,42 @@
 /.phpunit.cache
 /.vscode
 /.zed
-/auth.json
+
+# Dependencies
 /node_modules
 /apps/**/node_modules
+/vendor
+/backend/vendor
+/auth.json
+
+# Build artifacts
 /public/build
 /public/hot
+/apps/**/dist
+**/.phpunit.result.cache
+
+# Storage & caches
 /public/storage
 /storage/*.key
 /storage/pail
-/vendor
-/backend/vendor
-**/.phpunit.result.cache
+/backend/storage/logs/*.log
+/backend/storage/framework/cache/**
+/backend/storage/framework/sessions/**
+/backend/storage/framework/views/**
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/views/.gitignore
+
+# Database
+*.sqlite
+*.sqlite-journal
+/backend/database/*.sqlite
+/backend/database/*.sqlite-journal
+
+# OS
+Thumbs.db
+**/.DS_Store
+
+# Config
 Homestead.json
 Homestead.yaml
-Thumbs.db

@@ -1,32 +1,34 @@
 <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Background Circle -->
-  <circle cx="100" cy="100" r="95" fill="white" stroke="#f16110" stroke-width="8"/>
+  <circle cx="100" cy="100" r="95" fill="#1ba3b9"/>
+  <circle cx="100" cy="100" r="85" fill="white"/>
   
-  <!-- Oven/Bake symbol -->
-  <rect x="45" y="65" width="110" height="85" rx="12" fill="#f16110" stroke="#d4520e" stroke-width="3"/>
+  <!-- Chef's Hat (Top) -->
+  <g id="chef-hat">
+    <path d="M70 85 Q100 70 130 85 L130 95 L70 95 Z" fill="#1ba3b9"/>
+    <ellipse cx="100" cy="80" rx="35" ry="10" fill="#1ba3b9"/>
+    <rect x="75" y="95" width="50" height="8" rx="2" fill="#1ba3b9"/>
+  </g>
   
-  <!-- Fire/Grill symbols -->
-  <circle cx="100" cy="45" r="20" fill="#ff6b00"/>
+  <!-- Grill Symbol (Middle) -->
+  <g id="grill">
+    <!-- Grill plate -->
+    <ellipse cx="100" cy="125" rx="45" ry="18" fill="#1c1e21" opacity="0.9"/>
+    <ellipse cx="100" cy="123" rx="45" ry="18" fill="#2d3436"/>
+    
+    <!-- Grill lines -->
+    <line x1="70" y1="120" x2="130" y2="120" stroke="white" stroke-width="3" opacity="0.6"/>
+    <line x1="70" y1="126" x2="130" y2="126" stroke="white" stroke-width="3" opacity="0.6"/>
+    <line x1="70" y1="132" x2="130" y2="132" stroke="white" stroke-width="3" opacity="0.6"/>
+  </g>
   
-  <!-- Flames -->
-  <path d="M85 35C85.5 32.5 88 32.5 88.5 35C89 37.5 88 42 86 42S85 40 85 35Z" fill="#ffaa00"/>
-  <path cx="75" cy="50" r="8" fill="#ffaa00"/>
-  <path d="M115 35C114.5 32.5 112 32.5 111.5 35C111 37.5 112 42 114 42S115 40 115 35Z" fill="#ffaa00"/>
-  <path cx="125" cy="50" r="8" fill="#ffaa00"/>
+  <!-- Flames/Heat (Bottom) -->
+  <g id="flames">
+    <path d="M85 145 Q88 138 91 145" stroke="#e74c3c" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M100 145 Q103 135 106 145" stroke="#e67e22" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M115 145 Q118 138 121 145" stroke="#f39c12" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  </g>
   
-  <!-- Oven interior - baking rack lines -->
-  <rect x="55" y="85" width="90" height="4" rx="2" fill="#d4520e"/>
-  <rect x="55" y="105" width="90" height="4" rx="2" fill="#d4520e"/>
-  <rect x="55" y="125" width="70" height="4" rx="2" fill="#d4520e"/>
-  
-  <!-- Oven handle -->
-  <rect x="145" y="100" width="12" height="30" rx="6" fill="#8b4513"/>
-  <circle cx="151" cy="115" r="4" fill="#d2691e"/>
-  
-  <!-- Small decorative elements -->
-  <circle cx="70" cy="75" r="3" fill="#ffaa00"/>
-  <circle cx="130" cy="75" r="3" fill="#ffaa00"/>
-  
-  <!-- Brand text -->
-  <text x="100" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#f16110">BAKE &amp; GRILL</text>
+  <!-- Accent Circle -->
+  <circle cx="100" cy="100" r="88" stroke="#148a9d" stroke-width="2" fill="none" opacity="0.3"/>
 </svg>

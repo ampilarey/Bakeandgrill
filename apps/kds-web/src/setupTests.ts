@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom";
 
 if (!globalThis.crypto?.randomUUID) {
-  globalThis.crypto = {
+  (globalThis as any).crypto = {
     randomUUID: () => "test-uuid",
-  } as Crypto;
+  };
 }

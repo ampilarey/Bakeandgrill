@@ -1,0 +1,59 @@
+Handle,SKU,Name,Category,Description,Sold by weight,Option 1 name,Option 1 value,Option 2 name,Option 2 value,Option 3 name,Option 3 value,Cost,Barcode,SKU of included item,Quantity of included item,Track stock,Available for sale [Bake & Grill],Price [Bake & Grill],In stock [Bake & Grill],Low stock [Bake & Grill]
+bajiya,10000,Bajiya,Shorteats,,N,,,,,,,0.00,,,,Y,Y,3.00,-2.000,0.000
+bileh-ari,10056,Bileh ari,Shorteats,,N,,,,,,,0.00,,,,N,Y,5.00,,
+dhufa,10022,Bileh gandu,Shorteats,,N,,,,,,,0.00,,,,N,Y,15.00,,
+bis-keemia,10038,Bis keemia,Shorteats,,N,,,,,,,0.00,,,,Y,Y,4.00,11.000,0.000
+black-coffee,10018,Black coffee,Drinks,,N,,,,,,,0.00,,,,N,Y,10.00,,
+black-tea,10021,Black tea,Drinks,,N,,,,,,,0.00,,,,N,Y,3.00,,
+bombe-tea,10020,Bombe tea,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+burger-(big),10002,Burger (big),Fast food,,N,,,,,,,0.00,,,,Y,Y,45.00,0.000,
+burger-small,10001,Burger small,Fast food,,N,,,,,,,0.00,,,,Y,Y,35.00,2.000,0.000
+cake-folding,10045,Cake folhi,Sweet treats,,N,,,,,,,0.00,,,,N,Y,5.00,,
+cardamom-tea,10030,Cardamom tea,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+chicken-leg,10057,Chicken leg,Fast food,,N,,,,,,,0.00,,,,N,Y,20.00,,
+chicken-n-chips,10041,Chicken n chips,,,N,,,,,,,0.00,,,,Y,Y,25.00,0.000,0.000
+chicken-sandwich,10008,Chicken sandwich,Fast food,,N,,,,,,,0.00,,,,Y,Y,25.00,2.000,0.000
+chicken-submarine,10016,Chicken submarine,Fast food,,N,,,,,,,0.00,,,,Y,Y,35.00,-2.000,0.000
+club-sandwich-full,10043,Club sandwich full,Fast food,,N,,,,,,,0.00,,,,N,Y,65.00,,
+club-sandwich-s,10042,Club sandwich S,Fast food,,N,,,,,,,0.00,,,,Y,Y,15.00,-3.000,0.000
+coke-small,10051,Coke small,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+cream-bun,10004,Cream bun,Sweet treats,,N,,,,,,,0.00,,,,Y,Y,4.00,-16.000,0.000
+crepe/foni-folhi,10049,Crepe/foni folhi,,,N,,,,,,,0.00,,,,N,Y,7.00,,
+cutlet,10027,Cutlet,Shorteats,,N,,,,,,,0.00,,,,Y,Y,3.00,15.000,0.000
+egg-cutlets,10007,Egg cutlets,Shorteats,,N,,,,,,,0.00,,,,Y,Y,5.00,-10.000,0.000
+egg-patty,10048,Egg patty,Shorteats,,N,,,,,,,0.00,,,,N,Y,8.00,,
+f.gulha,10014,F.gulha,Shorteats,,N,,,,,,,0.00,,,,Y,Y,3.00,-29.000,0.000
+fanta-orange-small,10053,Fanta orange small,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+g-boakibaa,10050,G boakibaa,Sweet treats,,N,,,,,,,0.00,,,,Y,Y,5.00,24.000,
+g.boakibaa,10025,G.boakibaa,Sweet treats,,N,,,,,,,0.00,,,,Y,Y,8.00,-17.000,
+g.cake,10026,G.cake,Sweet treats,,N,,,,,,,0.00,,,,Y,Y,8.00,0.000,
+h.gulha,10013,H.gulha,Shorteats,,N,,,,,,,0.00,,,,Y,Y,3.00,-17.000,0.000
+hot-dog,10006,Hot dog,Fast food,,N,,,,,,,0.00,,,,Y,Y,20.00,4.000,
+illy-black,10044,Illy black,Drinks,,N,,,,,,,0.00,,,,N,Y,30.00,,
+illy-milk,10039,Illy milk,Drinks,,N,,,,,,,0.00,,,,N,Y,40.00,,
+kanamdhu-cake,10005,Kanamdhu cake,Sweet treats,,N,,,,,,,0.00,,,,Y,Y,65.00,4.000,
+kavaabu,10011,Kavaabu,Shorteats,,N,,,,,,,0.00,,,,Y,Y,5.00,-14.000,0.000
+kulhi-boakibaa,10012,Kulhi boakibaa,Shorteats,,N,,,,,,,0.00,,,,Y,Y,7.00,-9.000,0.000
+lavaza-black,10036,Lavaza black,Drinks,,N,,,,,,,0.00,,,,N,Y,25.00,,
+cappuccino,10032,Lavaza cappuccino,Drinks,,N,,,,,,,0.00,,,,N,Y,35.00,,
+lavaza-espresso-single,10033,Lavaza espresso single,Drinks,,N,,,,,,,0.00,,,,N,Y,25.00,,
+lavaza-expresso-double,10034,Lavaza expresso double,,,N,,,,,,,0.00,,,,N,Y,45.00,,
+lavaza-latte,10037,Lavaza latte,Drinks,,N,,,,,,,0.00,,,,N,Y,35.00,,
+lavaza-milk,10035,Lavaza milk,Drinks,,N,,,,,,,0.00,,,,N,Y,30.00,,
+lemon-tea,10040,Lemon tea,Drinks,,N,,,,,,,0.00,,,,N,Y,7.00,,
+mas-roshi,10010,Mas roshi,Shorteats,,N,,,,,,,0.00,,,,Y,Y,4.00,-46.000,0.000
+masala-tea,10031,Masala tea,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+milk-coffee,10019,Milk coffee,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+milk-tea,10029,Milk tea,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+paan-boakibaa,10046,Paan boakibaa,Sweet treats,,N,,,,,,,0.00,,,,N,Y,7.00,,
+pizza-slice,10017,Pizza slice,Fast food,,N,,,,,,,0.00,,,,Y,Y,12.00,0.000,
+roast-paan,10015,Roast paan,Sweet treats,,N,,,,,,,0.00,,,,Y,Y,5.00,-19.000,0.000
+sausage,10028,Sausage,Fast food,,N,,,,,,,0.00,,,,Y,Y,5.00,3.000,
+sausage-roll,10003,Sausage roll,Shorteats,,N,,,,,,,0.00,,,,Y,Y,3.00,-24.000,0.000
+schweppes-small,10055,Schweppes small,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+sprite-small,10054,Sprite small,Drinks,,N,,,,,,,0.00,,,,N,Y,15.00,,
+chicken-rolls,10047,Tuna rolls,Fast food,,N,,,,,,,0.00,,,,Y,Y,10.00,-14.000,0.000
+tuna-sandwich,10009,Tuna Sandwich,Fast food,,N,,,,,,,0.00,,,,Y,Y,10.00,-2.000,0.000
+water-b,10024,Water B,Drinks,,N,,,,,,,0.00,,,,N,Y,10.00,,
+water-s,10023,Water s,Drinks,,N,,,,,,,0.00,,,,N,Y,5.00,,
+xl-small,10052,Xl small,Drinks,,N,,,,,,,0.00,,,,N,Y,25.00,,

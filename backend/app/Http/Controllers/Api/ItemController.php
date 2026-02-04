@@ -40,7 +40,37 @@ class ItemController extends Controller
 
         $items = $query->orderBy('sort_order')->orderBy('name')->paginate(50);
 
-        return response()->json($items);
+        // PUBLIC RESPONSE: Transform to hide internal data (cost, recipe)
+        $transformed = $items->through(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'name_dv' => $item->name_dv,
+                'description' => $item->description,
+                'sku' => $item->sku,
+                'image_url' => $item->display_image_url,
+                'base_price' => $item->base_price,
+                'tax_rate' => $item->tax_rate,
+                'is_available' => $item->is_available,
+                'category_id' => $item->category_id,
+                'category' => $item->category ? [
+                    'id' => $item->category->id,
+                    'name' => $item->category->name,
+                ] : null,
+                'variants' => $item->variants->map(fn($v) => [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'price' => $v->price,
+                ]),
+                'modifiers' => $item->modifiers->map(fn($m) => [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'price' => $m->price,
+                ]),
+            ];
+        });
+
+        return response()->json($transformed);
     }
 
     /**
@@ -62,11 +92,51 @@ class ItemController extends Controller
     }
 
     /**
-     * Display a specific item
+     * Display a specific item (PUBLIC - no recipe data)
+     * For staff access with recipe data, use showWithRecipe
      */
     public function show($id)
     {
-        $item = Item::with(['category', 'variants', 'modifiers', 'recipe.recipeItems'])
+        $item = Item::with(['category', 'variants', 'modifiers'])
+            ->where('is_active', true)
+            ->findOrFail($id);
+
+        // PUBLIC RESPONSE: Only customer-facing data, NO recipe/cost internals
+        return response()->json([
+            'item' => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'name_dv' => $item->name_dv,
+                'description' => $item->description,
+                'image_url' => $item->display_image_url,
+                'base_price' => $item->base_price,
+                'tax_rate' => $item->tax_rate,
+                'is_available' => $item->is_available,
+                'category' => $item->category ? [
+                    'id' => $item->category->id,
+                    'name' => $item->category->name,
+                    'name_dv' => $item->category->name_dv,
+                ] : null,
+                'variants' => $item->variants->map(fn($v) => [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'price' => $v->price,
+                ]),
+                'modifiers' => $item->modifiers->map(fn($m) => [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'price' => $m->price,
+                ]),
+            ],
+        ]);
+    }
+
+    /**
+     * Display item with recipe data (STAFF ONLY)
+     */
+    public function showWithRecipe($id)
+    {
+        $item = Item::with(['category', 'variants', 'modifiers', 'recipe.recipeItems.inventoryItem'])
             ->findOrFail($id);
 
         return response()->json(['item' => $item]);

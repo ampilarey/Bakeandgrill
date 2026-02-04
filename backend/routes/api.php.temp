@@ -1,0 +1,9 @@
+// API endpoint to get item stock info
+Route::post('/check-stock', function(Request $request) {
+    $itemIds = $request->input('item_ids', []);
+    $items = \App\Models\Item::whereIn('id', $itemIds)
+        ->select('id', 'name', 'stock_quantity', 'track_stock', 'availability_type')
+        ->get();
+    
+    return response()->json($items);
+});

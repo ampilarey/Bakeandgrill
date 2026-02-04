@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
             DeviceSeeder::class,
             PrinterSeeder::class,
             RestaurantTableSeeder::class,
-            MenuSeeder::class,
+            ImportMenuSeeder::class,
         ]);
     }
 }

@@ -1,5 +1,8 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000/api";
+
+/** Base URL for images (same origin as API, no /api suffix) */
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "") || "http://localhost:8000";
 
 type ApiError = { message?: string; errors?: Record<string, string[]> };
 
@@ -42,6 +45,7 @@ export type Item = {
   id: number;
   name: string;
   name_dv?: string | null;
+  description?: string | null;
   base_price: number;
   image_url?: string | null;
   category_id: number;
@@ -111,13 +115,16 @@ export async function createCustomerOrder(
   token: string,
   payload: {
     items: Array<{
-      item_id: number;
-      name: string;
+      item_id: number; // REQUIRED: Server computes price from DB
       quantity: number;
-      modifiers?: Array<{ modifier_id: number; name: string; price: number }>;
+      variant_id?: number;
+      modifiers?: Array<{ 
+        modifier_id: number; // REQUIRED: Server computes price from DB
+        quantity?: number;
+      }>;
     }>;
     customer_notes?: string;
-    notes?: string;
+    type?: string;
   }
 ): Promise<{ order: Order }> {
   return request<{ order: Order }>("/customer/orders", {

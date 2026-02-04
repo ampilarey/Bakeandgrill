@@ -22,6 +22,11 @@ class OrderController extends Controller
 {
     public function store(StoreOrderRequest $request)
     {
+        // SECURITY: Ensure this is a staff token
+        if (!$request->user()->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
         $order = app(OrderCreationService::class)->createFromPayload(
             $request->validated(),
             $request->user()
@@ -42,6 +47,11 @@ class OrderController extends Controller
 
     public function storeCustomer(StoreCustomerOrderRequest $request)
     {
+        // SECURITY: Ensure this is a customer token
+        if (!$request->user()->tokenCan('customer')) {
+            return response()->json(['message' => 'Forbidden - customer access only'], 403);
+        }
+
         $customer = $request->user();
         if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Unauthorized.'], 403);

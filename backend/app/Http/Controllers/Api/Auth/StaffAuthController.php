@@ -48,7 +48,8 @@ class StaffAuthController extends Controller
         RateLimiter::clear($rateKey);
         $user->update(['last_login_at' => now()]);
 
-        $token = $user->createToken('staff-' . $user->id)->plainTextToken;
+        // Create token with 'staff' ability
+        $token = $user->createToken('staff-' . $user->id, ['staff'])->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',

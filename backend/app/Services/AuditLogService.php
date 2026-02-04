@@ -16,9 +16,12 @@ class AuditLogService
         ?Request $request = null
     ): void {
         $user = $request?->user();
+        
+        // Only log user_id if it's a User model (staff), not Customer
+        $userId = ($user instanceof \App\Models\User) ? $user->id : null;
 
         AuditLog::create([
-            'user_id' => $user?->id,
+            'user_id' => $userId,
             'action' => $action,
             'model_type' => $modelType,
             'model_id' => $modelId,

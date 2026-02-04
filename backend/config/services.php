@@ -37,6 +37,7 @@ return [
 
     'print_proxy' => [
         'url' => env('PRINT_PROXY_URL', 'http://localhost:3000'),
+        'key' => env('PRINT_PROXY_KEY'),
     ],
 
     'dhiraagu' => [

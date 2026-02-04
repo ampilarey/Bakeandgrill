@@ -13,17 +13,13 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ReportsController extends Controller
 {
     public function salesSummary(Request $request)
     {
-        $from = $request->query('from')
-            ? Carbon::parse($request->query('from'))->startOfDay()
-            : now()->startOfDay();
-        $to = $request->query('to')
-            ? Carbon::parse($request->query('to'))->endOfDay()
-            : now()->endOfDay();
+        [$from, $to] = $this->parseRange($request);
 
         $orders = Order::whereBetween('created_at', [$from, $to])
             ->where('status', 'completed');
@@ -75,12 +71,7 @@ class ReportsController extends Controller
 
     public function salesBreakdown(Request $request)
     {
-        $from = $request->query('from')
-            ? Carbon::parse($request->query('from'))->startOfDay()
-            : now()->startOfDay();
-        $to = $request->query('to')
-            ? Carbon::parse($request->query('to'))->endOfDay()
-            : now()->endOfDay();
+        [$from, $to] = $this->parseRange($request);
 
         $items = OrderItem::select(
                 'item_id',
@@ -112,21 +103,22 @@ class ReportsController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        $employees = Order::select(
-                'user_id',
+        $employees = Order::leftJoin('users', 'users.id', '=', 'orders.user_id')
+            ->select(
+                'orders.user_id',
+                'users.name',
                 DB::raw('COUNT(*) as orders_count'),
-                DB::raw('SUM(total) as total')
+                DB::raw('SUM(orders.total) as total')
             )
-            ->whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
-            ->groupBy('user_id')
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->where('orders.status', 'completed')
+            ->groupBy('orders.user_id', 'users.name')
             ->orderByDesc('total')
             ->get()
             ->map(function ($row) {
-                $user = User::find($row->user_id);
                 return [
                     'user_id' => $row->user_id,
-                    'name' => $user?->name,
+                    'name' => $row->name,
                     'orders_count' => (int) $row->orders_count,
                     'total' => (float) $row->total,
                 ];
@@ -242,12 +234,7 @@ class ReportsController extends Controller
 
     public function zReport(Request $request)
     {
-        $from = $request->query('from')
-            ? Carbon::parse($request->query('from'))->startOfDay()
-            : now()->startOfDay();
-        $to = $request->query('to')
-            ? Carbon::parse($request->query('to'))->endOfDay()
-            : now()->endOfDay();
+        [$from, $to] = $this->parseRange($request);
 
         $orders = Order::whereBetween('created_at', [$from, $to])
             ->where('status', 'completed');
@@ -332,7 +319,8 @@ class ReportsController extends Controller
     {
         $handle = fopen('php://temp', 'r+');
         foreach ($rows as $row) {
-            fputcsv($handle, $row);
+            $sanitized = array_map([$this, 'sanitizeCsvValue'], $row);
+            fputcsv($handle, $sanitized);
         }
         rewind($handle);
         $csv = stream_get_contents($handle);
@@ -342,5 +330,47 @@ class ReportsController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
+    }
+
+    private function sanitizeCsvValue($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        $string = (string) $value;
+        if (preg_match('/^[=+\\-@]/', $string)) {
+            return "'" . $string;
+        }
+
+        return $string;
+    }
+
+    private function parseRange(Request $request): array
+    {
+        $from = $request->query('from')
+            ? Carbon::parse($request->query('from'))->startOfDay()
+            : now()->startOfDay();
+        $to = $request->query('to')
+            ? Carbon::parse($request->query('to'))->endOfDay()
+            : now()->endOfDay();
+
+        if ($to->lessThan($from)) {
+            throw ValidationException::withMessages([
+                'to' => ['End date must be after start date.'],
+            ]);
+        }
+
+        if ($to->diffInDays($from) > 365) {
+            throw ValidationException::withMessages([
+                'from' => ['Date range cannot exceed 365 days.'],
+            ]);
+        }
+
+        return [$from, $to];
     }
 }

@@ -12,8 +12,16 @@ class EnsureActiveDevice
     public function handle(Request $request, Closure $next): Response
     {
         $identifier = $request->header('X-Device-Identifier')
-            ?? $request->header('X-Device-Id')
-            ?? $request->input('device_identifier');
+            ?? $request->header('X-Device-Id');
+
+        if (!$identifier) {
+            $identifier = $request->input('device_identifier');
+            if ($identifier) {
+                logger()->warning('Device identifier supplied in request body; prefer header.', [
+                    'path' => $request->path(),
+                ]);
+            }
+        }
 
         if (!$identifier) {
             return response()->json(['message' => 'Device identifier required.'], 422);

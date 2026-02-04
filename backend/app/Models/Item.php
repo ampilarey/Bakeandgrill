@@ -26,6 +26,12 @@ class Item extends Model
         'is_active',
         'is_available',
         'sort_order',
+        'stock_quantity',
+        'low_stock_threshold',
+        'track_stock',
+        'availability_type',
+        'allow_pre_order',
+        'pre_order_lead_time_minutes',
     ];
 
     public function category(): BelongsTo
@@ -49,4 +55,37 @@ class Item extends Model
     {
         return $this->hasOne(Recipe::class);
     }
+
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * URL to use for display (direct local cafe image or original for external).
+     */
+    public function getDisplayImageUrlAttribute(): ?string
+    {
+        if ($this->image_url === null || $this->image_url === '') {
+            return $this->image_url;
+        }
+        $path = trim(preg_replace('#^https?://[^/]+#', '', $this->image_url), '/');
+        if (str_starts_with($path, 'images/cafe/')) {
+            return url($path);
+        }
+        return $this->image_url;
+    }
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'is_available' => 'boolean',
+        'track_stock' => 'boolean',
+        'allow_pre_order' => 'boolean',
+        'base_price' => 'decimal:2',
+        'cost' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
+        'stock_quantity' => 'integer',
+        'low_stock_threshold' => 'integer',
+        'pre_order_lead_time_minutes' => 'integer',
+    ];
 }

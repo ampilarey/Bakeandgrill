@@ -69,6 +69,7 @@ Route::prefix('auth/customer')->group(function () {
 |--------------------------------------------------------------------------
 | Protected Staff Routes
 |--------------------------------------------------------------------------
+| Staff ability checked in controllers
 */
 Route::middleware('auth:sanctum')->group(function () {
     // Logout (for both staff and customers)
@@ -77,9 +78,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Get current user (staff)
     Route::get('/auth/me', [StaffAuthController::class, 'me']);
     
-    // Device Management (Admin only - will add middleware later)
-    Route::prefix('devices')->group(function () {
-        Route::post('/register', [DeviceController::class, 'register']);
+    // Device Management (Admin only)
+    Route::prefix('devices')->middleware('can:device.manage')->group(function () {
+        Route::post('/register', [DeviceController::class, 'register'])
+            ->middleware('throttle:10,1');
         Route::get('/', [DeviceController::class, 'index']);
         Route::patch('/{id}/disable', [DeviceController::class, 'disable']);
         Route::patch('/{id}/enable', [DeviceController::class, 'enable']);
@@ -143,11 +145,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/x-report', [ReportsController::class, 'xReport']);
     Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
     Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
-    Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv']);
-    Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv']);
-    Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv']);
-    Route::get('/reports/z-report/csv', [ReportsController::class, 'zReportCsv']);
-    Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv']);
+    Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])
+        ->middleware('throttle:20,1');
+    Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])
+        ->middleware('throttle:20,1');
+    Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])
+        ->middleware('throttle:20,1');
+    Route::get('/reports/z-report/csv', [ReportsController::class, 'zReportCsv'])
+        ->middleware('throttle:20,1');
+    Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv'])
+        ->middleware('throttle:20,1');
 
     // Tables
     Route::get('/tables', [TableController::class, 'index']);
@@ -172,14 +179,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // SMS promotions
     Route::get('/sms/promotions', [SmsPromotionController::class, 'index']);
     Route::get('/sms/promotions/{id}', [SmsPromotionController::class, 'show']);
-    Route::post('/sms/promotions/preview', [SmsPromotionController::class, 'preview']);
-    Route::post('/sms/promotions/send', [SmsPromotionController::class, 'send']);
+    Route::post('/sms/promotions/preview', [SmsPromotionController::class, 'preview'])
+        ->middleware('throttle:10,5');
+    Route::post('/sms/promotions/send', [SmsPromotionController::class, 'send'])
+        ->middleware('throttle:5,60');
 });
 
 /*
 |--------------------------------------------------------------------------
 | Protected Customer Routes
 |--------------------------------------------------------------------------
+| Customer ability checked in controllers
 */
 Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
     Route::get('/me', [CustomerController::class, 'me']);
@@ -215,6 +225,16 @@ Route::get('/items', [ItemController::class, 'index']);
 Route::get('/items/{id}', [ItemController::class, 'show']);
 Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode']);
 
+// Get stock info for multiple items
+Route::post('/items/stock-check', function(Request $request) {
+    $itemIds = $request->input('item_ids', []);
+    $items = \App\Models\Item::whereIn('id', $itemIds)
+        ->select('id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold')
+        ->get();
+    
+    return response()->json(['items' => $items]);
+});
+
 // Protected menu management (staff only)
 Route::middleware('auth:sanctum')->group(function () {
     // Categories
@@ -224,6 +244,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Items
     Route::post('/items', [ItemController::class, 'store']);
+    Route::get('/items/{id}/recipe', [ItemController::class, 'showWithRecipe']); // Staff-only recipe view
     Route::patch('/items/{id}', [ItemController::class, 'update']);
     Route::delete('/items/{id}', [ItemController::class, 'destroy']);
     Route::patch('/items/{id}/toggle-availability', [ItemController::class, 'toggleAvailability']);
