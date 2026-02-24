@@ -21,6 +21,7 @@ class StoreOrderRequest extends FormRequest
             'customer_id' => 'nullable|integer|exists:customers,id',
             'notes' => 'nullable|string',
             'customer_notes' => 'nullable|string',
+            'discount_amount' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'nullable|integer|exists:items,id',
             'items.*.name' => 'required|string|max:255',

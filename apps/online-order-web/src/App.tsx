@@ -1,4 +1,4 @@
-Sausageimport { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   API_ORIGIN,
   Category,
@@ -8,6 +8,7 @@ import {
   fetchCategories,
   fetchCustomerOrders,
   fetchItems,
+  fetchOpeningHoursStatus,
   getCustomerMe,
   requestOtp,
   verifyOtp,
@@ -135,30 +136,26 @@ function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("name");
+  const [searchQuery, _setSearchQuery] = useState("");
+  const [sortBy, _setSortBy] = useState("name");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
   const [cart, setCart] = useState<CartItem[]>(() => {
-    // Import cart from main website if exists
+    // Import cart from main website if exists (full items resolved in useEffect after API load)
     try {
       const mainWebsiteCart = localStorage.getItem('bakegrill_cart');
       if (mainWebsiteCart) {
-        const items = JSON.parse(mainWebsiteCart);
-        // Convert main website cart format to app cart format
-        return items.map((item: any) => {
-          const foundItem = items.find((i: Item) => i.id === item.id);
-          return {
-            item: foundItem || {
-              id: item.id,
-              name: item.name,
-              base_price: item.price,
-              category_id: 1,
-            },
-            quantity: item.quantity || 1,
-            modifiers: [],
-          };
-        });
+        const cartItems = JSON.parse(mainWebsiteCart) as Array<{ id: number; name?: string; price?: number; quantity?: number }>;
+        return cartItems.map((cartItem) => ({
+          item: {
+            id: cartItem.id,
+            name: cartItem.name ?? 'Item',
+            base_price: cartItem.price ?? 0,
+            category_id: 1,
+          },
+          quantity: cartItem.quantity ?? 1,
+          modifiers: [],
+        }));
       }
     } catch (e) {
       console.error('Failed to import cart:', e);
@@ -182,6 +179,17 @@ function App() {
   const [otpHint, setOtpHint] = useState<string | null>(null);
   const [authError, setAuthError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState<boolean | null>(null);
+  const [closedMessage, setClosedMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchOpeningHoursStatus()
+      .then(({ open, message }) => {
+        setIsOpen(open);
+        setClosedMessage(open ? null : message ?? "We are currently closed.");
+      })
+      .catch(() => setIsOpen(true)); // allow order if API fails
+  }, []);
 
   useEffect(() => {
     Promise.all([fetchCategories(), fetchItems()])
@@ -611,10 +619,10 @@ function App() {
           </div>
           <div>
             <h3>Quick Links</h3>
-            <a href="http://localhost:8000/menu">Menu</a>
-            <a href="http://localhost:8000/hours">Opening Hours</a>
-            <a href="http://localhost:8000/contact">Contact Us</a>
-            <a href="http://localhost:8000/privacy">Privacy Policy</a>
+            <a href="/menu">Menu</a>
+            <a href="/hours">Opening Hours</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/privacy">Privacy Policy</a>
           </div>
           <div>
             <h3>Contact</h3>
@@ -794,6 +802,11 @@ function App() {
                 </div>
               </div>
             )}
+            {isOpen === false && closedMessage && (
+              <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                🕐 {closedMessage}
+              </div>
+            )}
             <textarea
               value={pickupNotes}
               onChange={(event) => setPickupNotes(event.target.value)}
@@ -803,10 +816,10 @@ function App() {
             />
             <button
               onClick={handleCheckout}
-              disabled={cart.length === 0 || isLoading}
+              disabled={cart.length === 0 || isLoading || isOpen === false}
               className="btn-primary w-full mt-4 text-lg"
             >
-              {isLoading ? 'Processing...' : 'Place Order 🛒'}
+              {isOpen === false ? 'We\'re closed' : isLoading ? 'Processing...' : 'Place Order 🛒'}
             </button>
             {statusMessage && (
               <p className="mt-2 text-xs text-emerald-600">{statusMessage}</p>
@@ -859,10 +872,10 @@ function App() {
           </div>
           <div>
             <h3>Quick Links</h3>
-            <a href="http://localhost:8000/menu">Menu</a>
-            <a href="http://localhost:8000/hours">Opening Hours</a>
-            <a href="http://localhost:8000/contact">Contact Us</a>
-            <a href="http://localhost:8000/privacy">Privacy Policy</a>
+            <a href="/menu">Menu</a>
+            <a href="/hours">Opening Hours</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/privacy">Privacy Policy</a>
           </div>
           <div>
             <h3>Contact</h3>

@@ -275,8 +275,8 @@
                 return;
             }
             
-            // Set expiry to 30 seconds from now
-            const expiryTime = now + (30 * 1000);
+            // Set expiry to 3 minutes from now
+            const expiryTime = now + (3 * 60 * 1000);
             localStorage.setItem('cart_expiry', expiryTime.toString());
             
             checkCartExpiry();
@@ -322,11 +322,13 @@
             
             // Get remaining time
             const cartExpiry = localStorage.getItem('cart_expiry');
-            const remaining = cartExpiry ? Math.ceil((parseInt(cartExpiry) - Date.now()) / 1000) : 30;
+            const remaining = cartExpiry ? Math.ceil((parseInt(cartExpiry) - Date.now()) / 1000) : (3 * 60);
             
             // Toast
             const toast = document.createElement('div');
-            toast.innerHTML = `✓ Added ${itemName}<br><small style="opacity:0.9">Complete checkout within ${remaining} seconds</small>`;
+            const mins = Math.floor(remaining / 60);
+            const secs = remaining % 60;
+            toast.innerHTML = `✓ Added ${itemName}<br><small style="opacity:0.9">Complete checkout within ${mins > 0 ? mins + ' min ' : ''}${secs} sec</small>`;
             toast.style.cssText = 'position:fixed;top:100px;right:20px;background:#1ba3b9;color:white;padding:1rem 1.5rem;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:9999;font-weight:600;text-align:center;';
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 2500);
@@ -439,8 +441,8 @@
             </div>
             <div>
                 <h3>Location</h3>
-                <p>Majeedhee Magu, Malé, Maldives</p>
-                <p>Near ferry terminal</p>
+                <p>Kalaafaanu hingun, Male, Maldives</p>
+                <p>Near H. Sahara</p>
             </div>
             <div>
                 <h3>Quick Links</h3>

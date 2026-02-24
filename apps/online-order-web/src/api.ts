@@ -1,8 +1,9 @@
 const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000/api";
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+  (import.meta.env.PROD ? "/api" : "http://localhost:8000/api");
 
 /** Base URL for images (same origin as API, no /api suffix) */
-export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "") || "http://localhost:8000";
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "") || (import.meta.env.PROD ? "" : "http://localhost:8000");
 
 type ApiError = { message?: string; errors?: Record<string, string[]> };
 
@@ -87,6 +88,12 @@ export async function verifyOtp(payload: {
       body: JSON.stringify(payload),
     }
   );
+}
+
+export type OpeningHoursStatus = { open: boolean; message: string | null };
+
+export async function fetchOpeningHoursStatus(): Promise<OpeningHoursStatus> {
+  return request<OpeningHoursStatus>("/opening-hours/status");
 }
 
 export async function fetchCategories(): Promise<{ data: Category[] }> {

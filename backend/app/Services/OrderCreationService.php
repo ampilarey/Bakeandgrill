@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
 use App\Models\Printer;
 use App\Models\PrintJob;
+use App\Services\StockManagementService;
 use Illuminate\Support\Facades\DB;
 
 class OrderCreationService
@@ -40,9 +41,34 @@ class OrderCreationService
 
             $subtotal = $this->addOrderItems($order, $payload['items'] ?? []);
 
+            $order->load(['items.item']);
+            $taxAmount = 0;
+            foreach ($order->items as $orderItem) {
+                $item = $orderItem->item;
+                if ($item && $orderItem->total_price > 0) {
+                    $rate = (float) ($item->tax_rate ?? 0);
+                    $taxAmount += $orderItem->total_price * ($rate / 100);
+                }
+            }
+
+            $discountAmount = (float) ($payload['discount_amount'] ?? 0);
+            if ($discountAmount < 0) {
+                $discountAmount = 0;
+            }
+            if ($discountAmount > $subtotal) {
+                $discountAmount = $subtotal;
+            }
+
+            $total = $subtotal + $taxAmount - $discountAmount;
+            if ($total < 0) {
+                $total = 0;
+            }
+
             $order->update([
                 'subtotal' => $subtotal,
-                'total' => $subtotal,
+                'tax_amount' => round($taxAmount, 2),
+                'discount_amount' => round($discountAmount, 2),
+                'total' => round($total, 2),
             ]);
 
             $order = $order->load(['items.modifiers']);
@@ -101,6 +127,16 @@ class OrderCreationService
             }
 
             $quantity = (int) $itemPayload['quantity'];
+
+            // Validate stock for stock-based items
+            if ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
+                $stockOk = app(StockManagementService::class)->checkStock($itemModel, $quantity);
+                if (!$stockOk) {
+                    throw new \InvalidArgumentException(
+                        "Insufficient stock for {$itemModel->name}. Available: {$itemModel->stock_quantity}, requested: {$quantity}"
+                    );
+                }
+            }
             
             // Determine price from DB (variant or base)
             $variantId = $itemPayload['variant_id'] ?? null;

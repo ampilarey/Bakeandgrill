@@ -57,6 +57,7 @@ export async function createOrder(
     print?: boolean;
     device_identifier?: string;
     restaurant_table_id?: number | null;
+    discount_amount?: number;
     items: Array<{
       item_id?: number | null;
       name: string;

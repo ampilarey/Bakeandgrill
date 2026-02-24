@@ -106,6 +106,6 @@
     <p>For privacy-related questions or requests, contact us:</p>
     <p><strong>Email:</strong> privacy@bakeandgrill.mv</p>
     <p><strong>Phone:</strong> +960 9120011</p>
-    <p><strong>Address:</strong> Majeedhee Magu, Malé, Maldives</p>
+    <p><strong>Address:</strong> Kalaafaanu hingun, Male, Maldives (Near H. Sahara)</p>
 </div>
 @endsection

@@ -3,12 +3,21 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImageThumbController;
+use App\Http\Controllers\MenuAdminController;
 use App\Http\Controllers\ReceiptPageController;
 
 // Thumbnails for local cafe images (faster load)
 Route::get('/thumb/{path}', [ImageThumbController::class, 'show'])
     ->where('path', '.*')
     ->name('thumb');
+
+// Dashboard (redirect to home - no separate dashboard yet)
+Route::get('/dashboard', function () {
+    return redirect()->route('home');
+})->name('dashboard');
+
+// Menu admin (add/delete items) - staff login on page
+Route::get('/admin', [MenuAdminController::class, 'index'])->name('admin.menu');
 
 // Public Website Pages (Customer-facing only)
 Route::get('/', [HomeController::class, 'index'])->name('home');

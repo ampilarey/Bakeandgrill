@@ -43,6 +43,18 @@ Route::get('/health', function () {
     ]);
 });
 
+// Opening hours status (public - for online order app)
+Route::get('/opening-hours/status', function () {
+    $service = app(\App\Services\OpeningHoursService::class);
+    $open = $service->isOpenNow();
+    $message = null;
+    if (!$open) {
+        $message = $service->getClosureReason()
+            ?? config('opening_hours.closed_message', 'We are currently closed. Please check our opening hours.');
+    }
+    return response()->json(['open' => $open, 'message' => $message]);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Staff Authentication Routes

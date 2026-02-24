@@ -22,6 +22,7 @@ class StoreOrderBatchRequest extends FormRequest
             'orders.*.customer_id' => 'nullable|integer|exists:customers,id',
             'orders.*.notes' => 'nullable|string',
             'orders.*.customer_notes' => 'nullable|string',
+            'orders.*.discount_amount' => 'nullable|numeric|min:0',
             'orders.*.items' => 'required|array|min:1',
             'orders.*.items.*.item_id' => 'nullable|integer|exists:items,id',
             'orders.*.items.*.name' => 'required|string|max:255',

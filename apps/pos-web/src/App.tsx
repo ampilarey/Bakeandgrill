@@ -122,6 +122,7 @@ function App() {
   const [payments, setPayments] = useState<PaymentRow[]>([
     { id: crypto.randomUUID(), method: "cash", amount: "" },
   ]);
+  const [discountAmount, setDiscountAmount] = useState("");
   const [barcode, setBarcode] = useState("");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineQueueCount, setOfflineQueueCount] = useState(getQueueCount());
@@ -431,12 +432,14 @@ function App() {
       return;
     }
 
+    const discount = Math.max(0, Number.parseFloat(discountAmount) || 0);
     const payload = {
       type: mapOrderType(orderType),
       print: true,
       device_identifier: deviceId,
       restaurant_table_id:
         orderType === "Dine-in" ? selectedTableId ?? undefined : undefined,
+      discount_amount: discount,
       items: cartItems.map((item) => ({
         item_id: item.id,
         name: item.name,
@@ -481,6 +484,7 @@ function App() {
           setCartItems([]);
           setSelectedItem(null);
           setSelectedModifiers([]);
+          setDiscountAmount("");
           setPayments([{ id: crypto.randomUUID(), method: "cash", amount: "" }]);
           setStatusMessage("Order paid and sent to kitchen.");
         })
@@ -497,6 +501,7 @@ function App() {
     setCartItems([]);
     setSelectedItem(null);
     setSelectedModifiers([]);
+    setDiscountAmount("");
     setPayments([{ id: crypto.randomUUID(), method: "cash", amount: "" }]);
     setStatusMessage("Offline order queued. Sync when online.");
   };
@@ -514,12 +519,14 @@ function App() {
       return;
     }
 
+    const discount = Math.max(0, Number.parseFloat(discountAmount) || 0);
     const payload = {
       type: mapOrderType(orderType),
       print: false,
       device_identifier: deviceId,
       restaurant_table_id:
         orderType === "Dine-in" ? selectedTableId ?? undefined : undefined,
+      discount_amount: discount,
       items: cartItems.map((item) => ({
         item_id: item.id,
         name: item.name,
@@ -542,6 +549,7 @@ function App() {
         setCartItems([]);
         setSelectedItem(null);
         setSelectedModifiers([]);
+        setDiscountAmount("");
         setStatusMessage(`Order ${orderId} held.`);
       })
       .catch(() => {
@@ -850,6 +858,7 @@ function App() {
         print?: boolean;
         device_identifier?: string;
         restaurant_table_id?: number | null;
+        discount_amount?: number;
         items: Array<{
           item_id?: number | null;
           name: string;
@@ -1586,6 +1595,15 @@ function App() {
                     )}
                   </div>
                 ))}
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-sm text-slate-500">Discount (MVR)</span>
+                <input
+                  className="w-20 rounded-md border border-slate-200 px-2 py-1 text-sm text-right"
+                  placeholder="0"
+                  value={discountAmount}
+                  onChange={(e) => setDiscountAmount(e.target.value)}
+                />
               </div>
               <div className="flex items-center justify-between mt-3">
                 <span className="text-sm text-slate-500">Total</span>

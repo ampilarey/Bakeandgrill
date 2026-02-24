@@ -82,9 +82,9 @@
     <div class="contact-card">
         <h2>📍 Location</h2>
         <p><strong>Bake & Grill Café</strong></p>
-        <p>Majeedhee Magu</p>
-        <p>Malé, Maldives</p>
-        <p>Near the central ferry terminal</p>
+        <p>Kalaafaanu hingun</p>
+        <p>Male, Maldives</p>
+        <p>Near H. Sahara</p>
     </div>
 
     <div class="contact-card">

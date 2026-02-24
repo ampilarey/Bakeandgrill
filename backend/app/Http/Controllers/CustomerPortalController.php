@@ -48,9 +48,13 @@ class CustomerPortalController extends Controller
         // Send SMS
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes.";
-        $smsService->send($phone, $smsMessage);
+        $smsSent = $smsService->send($phone, $smsMessage);
 
-        if (!app()->environment('production')) {
+        $dhiraagu = config('services.dhiraagu');
+        $smsConfigured = !empty($dhiraagu['username']) && !empty($dhiraagu['password']);
+        if (!$smsConfigured || !$smsSent) {
+            session()->flash('otp_hint', "SMS not configured or failed. Use this code to login: {$otpCode}");
+        } elseif (!app()->environment('production')) {
             session()->flash('otp_hint', "Dev OTP: {$otpCode}");
         }
 
