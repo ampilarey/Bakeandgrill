@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\Models\SmsPromotion;
@@ -15,9 +17,7 @@ class SendSmsPromotionRecipient implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $recipientId)
-    {
-    }
+    public function __construct(public int $recipientId) {}
 
     public function handle(SmsService $smsService): void
     {
@@ -32,6 +32,7 @@ class SendSmsPromotionRecipient implements ShouldQueue
                 'status' => 'failed',
                 'error_message' => 'Promotion not found',
             ]);
+
             return;
         }
 

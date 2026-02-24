@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use App\Models\Receipt;
@@ -11,9 +13,7 @@ class ReceiptMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Receipt $receipt)
-    {
-    }
+    public function __construct(public Receipt $receipt) {}
 
     public function build(): self
     {

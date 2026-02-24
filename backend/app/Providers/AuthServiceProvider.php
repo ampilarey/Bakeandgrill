@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Policies\CashPolicy;
-use App\Policies\DiscountPolicy;
 use App\Policies\DevicePolicy;
+use App\Policies\DiscountPolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\RefundPolicy;
 use App\Policies\SmsPolicy;

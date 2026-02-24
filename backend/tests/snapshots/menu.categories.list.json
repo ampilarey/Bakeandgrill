@@ -1,0 +1,44 @@
+{
+    "data": [
+        {
+            "id": "__VOLATILE__",
+            "parent_id": null,
+            "name": "Grills",
+            "slug": "grills",
+            "name_dv": null,
+            "description": null,
+            "sort_order": 1,
+            "is_active": true,
+            "image_url": null,
+            "created_at": "__VOLATILE__",
+            "updated_at": "__VOLATILE__",
+            "items": [
+                {
+                    "id": "__VOLATILE__",
+                    "category_id": 1,
+                    "name": "Beef Burger",
+                    "name_dv": null,
+                    "description": null,
+                    "sku": "GRL-001",
+                    "barcode": "GRL-001",
+                    "image_url": null,
+                    "base_price": "30.00",
+                    "cost": "0.00",
+                    "tax_rate": "0.00",
+                    "is_active": true,
+                    "is_available": true,
+                    "sort_order": 0,
+                    "created_at": "__VOLATILE__",
+                    "updated_at": "__VOLATILE__",
+                    "deleted_at": null,
+                    "stock_quantity": 0,
+                    "low_stock_threshold": 5,
+                    "track_stock": false,
+                    "availability_type": "always",
+                    "allow_pre_order": false,
+                    "pre_order_lead_time_minutes": null
+                }
+            ]
+        }
+    ]
+}

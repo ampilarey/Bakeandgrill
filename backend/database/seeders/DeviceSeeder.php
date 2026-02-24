@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Device;
@@ -14,7 +16,7 @@ class DeviceSeeder extends Seeder
     {
         Device::firstOrCreate(
             ['identifier' => 'POS-001'],
-            ['name' => 'POS Terminal 1', 'type' => 'pos', 'is_active' => true]
+            ['name' => 'POS Terminal 1', 'type' => 'pos', 'is_active' => true],
         );
     }
 }

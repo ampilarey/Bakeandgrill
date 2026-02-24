@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Category;
@@ -25,7 +27,7 @@ class MenuSeeder extends Seeder
                 'base_price' => 45.00,
                 'tax_rate' => 0,
                 'is_active' => true,
-            ]
+            ],
         );
 
         Item::firstOrCreate(
@@ -37,7 +39,7 @@ class MenuSeeder extends Seeder
                 'base_price' => 20.00,
                 'tax_rate' => 0,
                 'is_active' => true,
-            ]
+            ],
         );
 
         Item::firstOrCreate(
@@ -49,7 +51,7 @@ class MenuSeeder extends Seeder
                 'base_price' => 25.00,
                 'tax_rate' => 0,
                 'is_active' => true,
-            ]
+            ],
         );
     }
 }

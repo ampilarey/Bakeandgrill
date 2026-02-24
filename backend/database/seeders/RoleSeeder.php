@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Role;
@@ -22,7 +24,7 @@ class RoleSeeder extends Seeder
         foreach ($roles as $role) {
             Role::firstOrCreate(
                 ['slug' => $role['slug']],
-                ['name' => $role['name'], 'is_active' => true]
+                ['name' => $role['name'], 'is_active' => true],
             );
         }
     }

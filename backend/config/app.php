@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     /*
@@ -101,7 +103,7 @@ return [
 
     'previous_keys' => [
         ...array_filter(
-            explode(',', (string) env('APP_PREVIOUS_KEYS', ''))
+            explode(',', (string) env('APP_PREVIOUS_KEYS', '')),
         ),
     ],
 
@@ -122,5 +124,22 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    // ─── Tax ────────────────────────────────────────────────────────────────
+    'tax_rate_bp' => (int) env('TAX_RATE_BP', 0),
+    'tax_inclusive' => (bool) env('TAX_INCLUSIVE', false),
+
+    // ─── Loyalty ────────────────────────────────────────────────────────────
+    'loyalty_enabled' => (bool) env('LOYALTY_ENABLED', true),
+    'loyalty_earn_rate' => (float) env('LOYALTY_EARN_RATE', 1),
+    'loyalty_redeem_rate' => (int) env('LOYALTY_REDEEM_RATE', 100),
+    'loyalty_min_redeem' => (int) env('LOYALTY_MIN_REDEEM', 100),
+    'loyalty_max_redeem' => (int) env('LOYALTY_MAX_REDEEM', 10000),
+    'loyalty_max_redeem_percent' => (float) env('LOYALTY_MAX_REDEEM_PERCENT', 50),
+    'loyalty_hold_ttl' => (int) env('LOYALTY_HOLD_TTL', 30),
+    'loyalty_tiers_enabled' => (bool) env('LOYALTY_TIERS_ENABLED', false),
+
+    // ─── Frontend ────────────────────────────────────────────────────────────
+    'frontend_url' => env('FRONTEND_URL', env('APP_URL')),
 
 ];

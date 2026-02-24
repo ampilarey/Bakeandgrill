@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\RestaurantTable;
@@ -15,7 +17,7 @@ class RestaurantTableSeeder extends Seeder
         for ($i = 1; $i <= 10; $i++) {
             RestaurantTable::firstOrCreate(
                 ['name' => 'T' . $i],
-                ['capacity' => 2, 'status' => 'available']
+                ['capacity' => 2, 'status' => 'available'],
             );
         }
     }

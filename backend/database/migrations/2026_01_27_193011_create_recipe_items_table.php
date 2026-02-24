@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -17,7 +19,7 @@ return new class extends Migration
             $table->foreignId('inventory_item_id')->nullable()->constrained('inventory_items')->nullOnDelete();
             $table->decimal('quantity', 10, 3)->default(0); // Quantity needed per recipe
             $table->timestamps();
-            
+
             $table->index('recipe_id');
             $table->index('inventory_item_id');
         });

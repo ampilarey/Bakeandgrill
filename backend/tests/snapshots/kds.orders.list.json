@@ -1,0 +1,52 @@
+{
+    "orders": [
+        {
+            "id": "__VOLATILE__",
+            "order_number": "BG-20260224-0001",
+            "type": "dine_in",
+            "status": "pending",
+            "restaurant_table_id": null,
+            "customer_id": null,
+            "user_id": "__VOLATILE__",
+            "device_id": "__VOLATILE__",
+            "subtotal": 22,
+            "tax_amount": 0,
+            "discount_amount": 0,
+            "total": 22,
+            "notes": null,
+            "customer_notes": null,
+            "held_at": null,
+            "completed_at": null,
+            "created_at": "__VOLATILE__",
+            "updated_at": "__VOLATILE__",
+            "deleted_at": null,
+            "subtotal_laar": null,
+            "tax_laar": null,
+            "promo_discount_laar": null,
+            "loyalty_discount_laar": null,
+            "manual_discount_laar": null,
+            "total_laar": null,
+            "tax_inclusive": false,
+            "tax_rate_bp": 0,
+            "paid_at": null,
+            "items": [
+                {
+                    "id": "__VOLATILE__",
+                    "order_id": "__VOLATILE__",
+                    "item_id": 1,
+                    "variant_id": null,
+                    "item_name": "Classic Burger",
+                    "variant_name": null,
+                    "quantity": 1,
+                    "unit_price": 22,
+                    "total_price": 22,
+                    "notes": null,
+                    "status": "pending",
+                    "created_at": "__VOLATILE__",
+                    "updated_at": "__VOLATILE__",
+                    "modifiers": []
+                }
+            ]
+        }
+    ]
+}

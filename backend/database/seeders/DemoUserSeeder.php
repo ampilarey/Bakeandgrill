@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Role;
@@ -32,7 +34,7 @@ class DemoUserSeeder extends Seeder
                     'role_id' => $role?->id,
                     'pin_hash' => Hash::make($userData['pin']),
                     'is_active' => true,
-                ]
+                ],
             );
         }
     }

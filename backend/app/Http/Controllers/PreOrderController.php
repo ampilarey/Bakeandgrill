@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Models\PreOrder;
 use App\Models\Item;
+use App\Models\PreOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -14,6 +16,7 @@ class PreOrderController extends Controller
         // Require login for event orders
         if (!session('customer_id')) {
             session(['intended_url' => '/pre-order']);
+
             return redirect('/customer/login')->with('message', 'Please login to place event orders');
         }
 
@@ -21,7 +24,7 @@ class PreOrderController extends Controller
             ->with('category')
             ->orderBy('name')
             ->get();
-            
+
         return view('pre-order.create', compact('items'));
     }
 
@@ -49,7 +52,9 @@ class PreOrderController extends Controller
 
         foreach ($request->items as $itemData) {
             $item = Item::find($itemData['item_id']);
-            if (!$item) continue;
+            if (!$item) {
+                continue;
+            }
 
             $lineTotal = $item->base_price * $itemData['quantity'];
             $subtotal += $lineTotal;
@@ -85,6 +90,7 @@ class PreOrderController extends Controller
     public function confirmation($id)
     {
         $preOrder = PreOrder::findOrFail($id);
+
         return view('pre-order.confirmation', compact('preOrder'));
     }
 }

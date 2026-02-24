@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -13,11 +15,11 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Category::with(['items' => function($q) {
+        $query = Category::with(['items' => function ($q) {
             $q->where('is_active', true)
-              ->where('is_available', true)
-              ->orderBy('sort_order')
-              ->orderBy('name');
+                ->where('is_available', true)
+                ->orderBy('sort_order')
+                ->orderBy('name');
         }])->where('is_active', true);
 
         $categories = $query->orderBy('sort_order')
@@ -53,10 +55,10 @@ class CategoryController extends Controller
      */
     public function show($id)
     {
-        $category = Category::with(['items' => function($q) {
+        $category = Category::with(['items' => function ($q) {
             $q->where('is_active', true)
-              ->orderBy('sort_order')
-              ->orderBy('name');
+                ->orderBy('sort_order')
+                ->orderBy('name');
         }])->findOrFail($id);
 
         return response()->json(['category' => $category]);
@@ -91,7 +93,7 @@ class CategoryController extends Controller
     public function destroy($id)
     {
         $category = Category::findOrFail($id);
-        
+
         // Check if category has items
         if ($category->items()->count() > 0) {
             return response()->json([

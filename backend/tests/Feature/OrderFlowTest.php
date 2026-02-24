@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\Category;
@@ -57,7 +59,7 @@ class OrderFlowTest extends TestCase
             'is_available' => true,
         ]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['staff']);
 
         $createResponse = $this->withHeader('X-Device-Identifier', $device->identifier)
             ->postJson('/api/orders', [

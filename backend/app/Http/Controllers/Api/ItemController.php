@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Item;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
+use App\Models\Item;
 use Illuminate\Http\Request;
 
 class ItemController extends Controller
@@ -26,10 +28,10 @@ class ItemController extends Controller
         // Search by name or SKU
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('name_dv', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('name_dv', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
@@ -57,12 +59,12 @@ class ItemController extends Controller
                     'id' => $item->category->id,
                     'name' => $item->category->name,
                 ] : null,
-                'variants' => $item->variants->map(fn($v) => [
+                'variants' => $item->variants->map(fn ($v) => [
                     'id' => $v->id,
                     'name' => $v->name,
                     'price' => $v->price,
                 ]),
-                'modifiers' => $item->modifiers->map(fn($m) => [
+                'modifiers' => $item->modifiers->map(fn ($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
                     'price' => $m->price,
@@ -117,12 +119,12 @@ class ItemController extends Controller
                     'name' => $item->category->name,
                     'name_dv' => $item->category->name_dv,
                 ] : null,
-                'variants' => $item->variants->map(fn($v) => [
+                'variants' => $item->variants->map(fn ($v) => [
                     'id' => $v->id,
                     'name' => $v->name,
                     'price' => $v->price,
                 ]),
-                'modifiers' => $item->modifiers->map(fn($m) => [
+                'modifiers' => $item->modifiers->map(fn ($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
                     'price' => $m->price,

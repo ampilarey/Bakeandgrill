@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -9,7 +11,6 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Shift;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,11 +75,11 @@ class ReportsController extends Controller
         [$from, $to] = $this->parseRange($request);
 
         $items = OrderItem::select(
-                'item_id',
-                'item_name',
-                DB::raw('SUM(quantity) as quantity'),
-                DB::raw('SUM(total_price) as total')
-            )
+            'item_id',
+            'item_name',
+            DB::raw('SUM(quantity) as quantity'),
+            DB::raw('SUM(total_price) as total'),
+        )
             ->whereHas('order', function ($query) use ($from, $to) {
                 $query->whereBetween('created_at', [$from, $to])
                     ->where('status', 'completed');
@@ -88,11 +89,11 @@ class ReportsController extends Controller
             ->get();
 
         $categories = OrderItem::select(
-                'categories.id as category_id',
-                'categories.name as category_name',
-                DB::raw('SUM(order_items.quantity) as quantity'),
-                DB::raw('SUM(order_items.total_price) as total')
-            )
+            'categories.id as category_id',
+            'categories.name as category_name',
+            DB::raw('SUM(order_items.quantity) as quantity'),
+            DB::raw('SUM(order_items.total_price) as total'),
+        )
             ->join('items', 'items.id', '=', 'order_items.item_id')
             ->join('categories', 'categories.id', '=', 'items.category_id')
             ->whereHas('order', function ($query) use ($from, $to) {
@@ -108,7 +109,7 @@ class ReportsController extends Controller
                 'orders.user_id',
                 'users.name',
                 DB::raw('COUNT(*) as orders_count'),
-                DB::raw('SUM(orders.total) as total')
+                DB::raw('SUM(orders.total) as total'),
             )
             ->whereBetween('orders.created_at', [$from, $to])
             ->where('orders.status', 'completed')
@@ -292,9 +293,9 @@ class ReportsController extends Controller
     public function inventoryValuation()
     {
         $totals = InventoryItem::select(
-                DB::raw('SUM(COALESCE(current_stock, 0) * COALESCE(unit_cost, 0)) as value'),
-                DB::raw('SUM(COALESCE(current_stock, 0)) as quantity')
-            )
+            DB::raw('SUM(COALESCE(current_stock, 0) * COALESCE(unit_cost, 0)) as value'),
+            DB::raw('SUM(COALESCE(current_stock, 0)) as quantity'),
+        )
             ->first();
 
         return response()->json([

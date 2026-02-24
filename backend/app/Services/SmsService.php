@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
@@ -34,7 +36,7 @@ class SmsService
                 $apiUrl,
                 $username,
                 $password,
-                (int) ($dhiraagu['timeout'] ?? 30)
+                (int) ($dhiraagu['timeout'] ?? 30),
             );
         }
 
@@ -42,6 +44,7 @@ class SmsService
             Log::error('SMS credentials missing in production', [
                 'phone' => $phone,
             ]);
+
             return false;
         }
 
@@ -59,7 +62,7 @@ class SmsService
         string $apiUrl,
         string $username,
         string $password,
-        int $timeout
+        int $timeout,
     ): bool {
         $normalized = $this->normalizePhone($phone);
         if (!preg_match('/^960\\d{7}$/', $normalized)) {
@@ -67,9 +70,10 @@ class SmsService
                 'original' => $phone,
                 'formatted' => $normalized,
             ]);
+
             return false;
         }
-        
+
         $authorizationKey = base64_encode($username . ':' . $password);
 
         try {
@@ -97,13 +101,14 @@ class SmsService
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 // Check if Dhiraagu reports success
                 if (isset($data['transactionStatus']) && $data['transactionStatus'] === 'true') {
                     Log::info('Dhiraagu SMS sent successfully', [
                         'phone' => $normalized,
                         'transaction_id' => $data['transactionId'] ?? $data['referenceNumber'] ?? 'unknown',
                     ]);
+
                     return true;
                 }
 
@@ -111,6 +116,7 @@ class SmsService
                     'phone' => $normalized,
                     'response' => $data,
                 ]);
+
                 return false;
             }
 

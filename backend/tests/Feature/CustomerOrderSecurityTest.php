@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
-use App\Models\Customer;
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Modifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,14 +18,14 @@ class CustomerOrderSecurityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Seed test data
         $category = Category::create([
             'name' => 'Food',
             'slug' => 'food',
             'is_active' => true,
         ]);
-        
+
         $this->item = Item::create([
             'category_id' => $category->id,
             'name' => 'Test Burger',
@@ -32,14 +34,14 @@ class CustomerOrderSecurityTest extends TestCase
             'is_active' => true,
             'is_available' => true,
         ]);
-        
+
         $this->modifier = Modifier::create([
             'name' => 'Extra Cheese',
             'price' => 10.00,
         ]);
-        
+
         $this->item->modifiers()->attach($this->modifier->id);
-        
+
         $this->customer = Customer::create([
             'phone' => '+9607654321',
             'name' => 'Test Customer',
@@ -123,7 +125,7 @@ class CustomerOrderSecurityTest extends TestCase
     public function customer_order_rejects_modifier_not_belonging_to_item()
     {
         $token = $this->customer->createToken('test', ['customer'])->plainTextToken;
-        
+
         // Create another item without this modifier
         $otherItem = Item::create([
             'category_id' => $this->item->category_id,

@@ -1,16 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\Events\OrderPaid;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Services\InventoryDeductionService;
 use App\Services\AuditLogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class KdsController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $statuses = $request->query('status')
             ? explode(',', $request->query('status'))
@@ -24,7 +28,7 @@ class KdsController extends Controller
         return response()->json(['orders' => $orders]);
     }
 
-    public function start($id)
+    public function start(Request $request, int $id): JsonResponse
     {
         $order = Order::findOrFail($id);
         if ($order->status !== 'pending') {
@@ -33,51 +37,49 @@ class KdsController extends Controller
 
         $order->update(['status' => 'in_progress']);
 
+        app(AuditLogService::class)->log('order.started', 'Order', $order->id, ['status' => 'pending'], ['status' => 'in_progress'], ['source' => 'kds'], $request);
+
         return response()->json(['order' => $order]);
     }
 
-    public function bump($id)
+    public function bump(Request $request, int $id): JsonResponse
     {
         $order = Order::findOrFail($id);
-        if (!in_array($order->status, ['pending', 'in_progress'], true)) {
+        if (!in_array($order->status, ['pending', 'in_progress', 'paid'], true)) {
             return response()->json(['message' => 'Order cannot be bumped.'], 422);
         }
 
-        $order->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
+        $oldStatus = $order->status;
 
-        app(AuditLogService::class)->log(
-            'order.completed',
-            'Order',
-            $order->id,
-            ['status' => $order->getOriginal('status')],
-            ['status' => 'completed'],
-            ['source' => 'kds'],
-            $request
-        );
+        DB::transaction(function () use ($order, $request, $oldStatus): void {
+            $order->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
 
-        try {
-            app(InventoryDeductionService::class)->deductForOrder($order, $request->user()?->id);
-        } catch (\Throwable $error) {
-            report($error);
-        }
+            app(AuditLogService::class)->log('order.completed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'completed'], ['source' => 'kds'], $request);
+
+            // If the order wasn't already paid (edge case: KDS-only flow), fire OrderPaid
+            if ($oldStatus !== 'paid') {
+                DB::afterCommit(function () use ($order): void {
+                    OrderPaid::dispatch($order->fresh(['items.modifiers', 'payments']), false);
+                });
+            }
+        });
 
         return response()->json(['order' => $order]);
     }
 
-    public function recall($id)
+    public function recall(Request $request, int $id): JsonResponse
     {
         $order = Order::findOrFail($id);
         if ($order->status !== 'completed') {
             return response()->json(['message' => 'Only completed orders can be recalled.'], 422);
         }
 
-        $order->update([
-            'status' => 'pending',
-            'completed_at' => null,
-        ]);
+        $order->update(['status' => 'pending', 'completed_at' => null]);
+
+        app(AuditLogService::class)->log('order.recalled', 'Order', $order->id, ['status' => 'completed'], ['status' => 'pending'], ['source' => 'kds'], $request);
 
         return response()->json(['order' => $order]);
     }

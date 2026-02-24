@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -23,15 +25,26 @@ class Order extends Model
         'tax_amount',
         'discount_amount',
         'total',
+        'subtotal_laar',
+        'tax_laar',
+        'promo_discount_laar',
+        'loyalty_discount_laar',
+        'manual_discount_laar',
+        'total_laar',
+        'tax_inclusive',
+        'tax_rate_bp',
         'notes',
         'customer_notes',
         'held_at',
+        'paid_at',
         'completed_at',
     ];
 
     protected $casts = [
         'held_at' => 'datetime',
+        'paid_at' => 'datetime',
         'completed_at' => 'datetime',
+        'tax_inclusive' => 'boolean',
     ];
 
     public function items(): HasMany

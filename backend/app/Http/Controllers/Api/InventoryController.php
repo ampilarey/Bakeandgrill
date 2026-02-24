@@ -1,16 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdjustInventoryRequest;
-use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\StockCountRequest;
+use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Models\InventoryItem;
 use App\Models\PurchaseItem;
-use App\Models\Supplier;
 use App\Models\StockMovement;
+use App\Models\Supplier;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +36,7 @@ class InventoryController extends Controller
             $search = $request->query('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
@@ -94,7 +96,7 @@ class InventoryController extends Controller
             ['current_stock' => $oldStock],
             ['current_stock' => $item->current_stock],
             ['movement_id' => $movement->id, 'type' => $validated['type']],
-            $request
+            $request,
         );
 
         return response()->json([
@@ -137,7 +139,7 @@ class InventoryController extends Controller
                     ['current_stock' => $oldQuantity],
                     ['current_stock' => $item->current_stock],
                     ['movement_id' => $movement->id],
-                    $request
+                    $request,
                 );
 
                 $adjustments[] = [
@@ -186,9 +188,9 @@ class InventoryController extends Controller
     public function cheapestSupplier($id)
     {
         $record = PurchaseItem::select(
-                'purchases.supplier_id',
-                DB::raw('MIN(purchase_items.unit_cost) as min_cost')
-            )
+            'purchases.supplier_id',
+            DB::raw('MIN(purchase_items.unit_cost) as min_cost'),
+        )
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->where('purchase_items.inventory_item_id', $id)
             ->groupBy('purchases.supplier_id')

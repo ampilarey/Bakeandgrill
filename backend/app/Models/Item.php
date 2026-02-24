@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -73,6 +75,7 @@ class Item extends Model
         if (str_starts_with($path, 'images/cafe/')) {
             return url($path);
         }
+
         return $this->image_url;
     }
 

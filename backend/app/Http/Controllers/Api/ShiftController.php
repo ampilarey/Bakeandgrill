@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -10,7 +12,6 @@ use App\Models\Payment;
 use App\Models\Shift;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ShiftController extends Controller
 {
@@ -50,7 +51,7 @@ class ShiftController extends Controller
             [],
             $shift->toArray(),
             [],
-            $request
+            $request,
         );
 
         return response()->json(['shift' => $shift], 201);
@@ -112,7 +113,7 @@ class ShiftController extends Controller
                 'cash_in' => $cashIn,
                 'cash_out' => $cashOut,
             ],
-            $request
+            $request,
         );
 
         return response()->json([

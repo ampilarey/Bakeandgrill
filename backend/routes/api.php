@@ -1,26 +1,30 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\Auth\StaffAuthController;
+declare(strict_types=1);
+
 use App\Http\Controllers\Api\Auth\CustomerAuthController;
 use App\Http\Controllers\Api\Auth\DeviceController;
-use App\Http\Controllers\Api\CustomerController;
-use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\Auth\StaffAuthController;
+use App\Http\Controllers\Api\BmlWebhookController;
 use App\Http\Controllers\Api\CashMovementController;
-use App\Http\Controllers\Api\ItemController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\KdsController;
 use App\Http\Controllers\Api\OrderController;
-use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PrintJobController;
+use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\ReceiptController;
-use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\RefundController;
-use App\Http\Controllers\Api\SmsPromotionController;
+use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\ShiftController;
+use App\Http\Controllers\Api\SmsPromotionController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\TableController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,13 +49,14 @@ Route::get('/health', function () {
 
 // Opening hours status (public - for online order app)
 Route::get('/opening-hours/status', function () {
-    $service = app(\App\Services\OpeningHoursService::class);
+    $service = app(App\Services\OpeningHoursService::class);
     $open = $service->isOpenNow();
     $message = null;
     if (!$open) {
         $message = $service->getClosureReason()
             ?? config('opening_hours.closed_message', 'We are currently closed. Please check our opening hours.');
     }
+
     return response()->json(['open' => $open, 'message' => $message]);
 });
 
@@ -86,10 +91,10 @@ Route::prefix('auth/customer')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // Logout (for both staff and customers)
     Route::post('/auth/logout', [StaffAuthController::class, 'logout']);
-    
+
     // Get current user (staff)
     Route::get('/auth/me', [StaffAuthController::class, 'me']);
-    
+
     // Device Management (Admin only)
     Route::prefix('devices')->middleware('can:device.manage')->group(function () {
         Route::post('/register', [DeviceController::class, 'register'])
@@ -238,12 +243,12 @@ Route::get('/items/{id}', [ItemController::class, 'show']);
 Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode']);
 
 // Get stock info for multiple items
-Route::post('/items/stock-check', function(Request $request) {
+Route::post('/items/stock-check', function (Request $request) {
     $itemIds = $request->input('item_ids', []);
-    $items = \App\Models\Item::whereIn('id', $itemIds)
+    $items = App\Models\Item::whereIn('id', $itemIds)
         ->select('id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold')
         ->get();
-    
+
     return response()->json(['items' => $items]);
 });
 
@@ -260,4 +265,63 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/items/{id}', [ItemController::class, 'update']);
     Route::delete('/items/{id}', [ItemController::class, 'destroy']);
     Route::patch('/items/{id}/toggle-availability', [ItemController::class, 'toggleAvailability']);
+});
+
+// ─── BML Payment Gateway ─────────────────────────────────────────────────────
+
+// Webhook — no auth, signature verified by VerifyBmlSignature middleware
+Route::post('/payments/bml/webhook', [BmlWebhookController::class, 'handle'])
+    ->middleware('bml.signature')
+    ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+// Initiate BML payment (customer only)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/orders/{orderId}/pay/bml', [PaymentController::class, 'initiateOnline']);
+});
+
+// ─── Promotions ──────────────────────────────────────────────────────────────
+
+// Public/customer — validate a code
+Route::post('/promotions/validate', [App\Http\Controllers\Api\PromotionController::class, 'validate'])
+    ->middleware('throttle:30,1');
+
+// Authenticated customer/staff — apply/remove promo
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/orders/{orderId}/apply-promo', [App\Http\Controllers\Api\PromotionController::class, 'applyToOrder']);
+    Route::delete('/orders/{orderId}/promo/{promotionId}', [App\Http\Controllers\Api\PromotionController::class, 'removeFromOrder']);
+});
+
+// Admin — full CRUD (requires staff token + admin permission)
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    Route::get('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminIndex']);
+    Route::post('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminStore']);
+    Route::patch('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminUpdate']);
+    Route::delete('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminDestroy']);
+    Route::get('/reports/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminReport']);
+});
+
+// ─── Loyalty ─────────────────────────────────────────────────────────────────
+
+Route::middleware('auth:sanctum')->prefix('loyalty')->group(function () {
+    Route::get('/me', [App\Http\Controllers\Api\LoyaltyController::class, 'me']);
+    Route::post('/hold-preview', [App\Http\Controllers\Api\LoyaltyController::class, 'holdPreview']);
+    Route::post('/hold', [App\Http\Controllers\Api\LoyaltyController::class, 'hold']);
+    Route::delete('/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'releaseHold']);
+});
+
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    Route::get('/loyalty/accounts', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAccountIndex']);
+    Route::get('/loyalty/accounts/{customerId}/ledger', [App\Http\Controllers\Api\LoyaltyController::class, 'adminLedger']);
+    Route::post('/loyalty/accounts/{customerId}/adjust', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAdjust']);
+    Route::get('/reports/loyalty', [App\Http\Controllers\Api\LoyaltyController::class, 'adminReport']);
+});
+
+// ─── System Health ─────────────────────────────────────────────────────────
+Route::get('/system/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toIso8601String(),
+        'environment' => app()->environment(),
+        'database' => 'connected',
+    ]);
 });

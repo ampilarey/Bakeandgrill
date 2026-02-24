@@ -1,16 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSmsPromotionRequest;
+use App\Jobs\SendSmsPromotionRecipient;
 use App\Models\Customer;
 use App\Models\SmsPromotion;
 use App\Models\SmsPromotionRecipient;
-use App\Jobs\SendSmsPromotionRecipient;
 use App\Services\AuditLogService;
 use App\Services\SmsService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -109,7 +110,7 @@ class SmsPromotionController extends Controller
             [],
             $promotion->toArray(),
             [],
-            $request
+            $request,
         );
 
         return response()->json(['promotion' => $promotion->fresh('recipients')], 201);

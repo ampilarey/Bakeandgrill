@@ -1,46 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Item;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class ImportMenuSeeder extends Seeder
 {
     /** Relevant photos from Unsplash (free to use). w=200&h=150 for faster load */
     private const WEB_IMAGES = [
-        'coffee'      => 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&h=150&fit=crop',
-        'tea'         => 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200&h=150&fit=crop',
-        'espresso'    => 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&h=150&fit=crop',
-        'cappuccino'  => 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=200&h=150&fit=crop',
-        'latte'       => 'https://images.unsplash.com/photo-1561882468-9110e03e0f78?w=200&h=150&fit=crop',
-        'burger'      => 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&h=150&fit=crop',
-        'pizza'       => 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=150&fit=crop',
-        'sandwich'    => 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=200&h=150&fit=crop',
-        'submarine'   => 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=200&h=150&fit=crop',
-        'chicken'     => 'https://images.unsplash.com/photo-1594221708779-94832f4320d1?w=200&h=150&fit=crop',
-        'hotdog'      => 'https://images.unsplash.com/photo-1612392062422-ef19b42f74df?w=200&h=150&fit=crop',
-        'sausage'     => 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=200&h=150&fit=crop',
-        'sausage_roll'=> 'https://images.unsplash.com/photo-1541599468341-241a5a2e1b1b?w=200&h=150&fit=crop',
-        'cake'        => 'https://images.unsplash.com/photo-1571115171-1e06d4b8b2c?w=200&h=150&fit=crop',
-        'pastry'      => 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=200&h=150&fit=crop',
-        'bun'         => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=150&fit=crop',
-        'crepe'       => 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=200&h=150&fit=crop',
-        'water'       => 'https://images.unsplash.com/photo-1562907550-096d085bf946?w=200&h=150&fit=crop',
-        'soda'        => 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop',
-        'lemon_lime'  => 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop',
+        'coffee' => 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&h=150&fit=crop',
+        'tea' => 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200&h=150&fit=crop',
+        'espresso' => 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=200&h=150&fit=crop',
+        'cappuccino' => 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=200&h=150&fit=crop',
+        'latte' => 'https://images.unsplash.com/photo-1561882468-9110e03e0f78?w=200&h=150&fit=crop',
+        'burger' => 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&h=150&fit=crop',
+        'pizza' => 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=150&fit=crop',
+        'sandwich' => 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=200&h=150&fit=crop',
+        'submarine' => 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=200&h=150&fit=crop',
+        'chicken' => 'https://images.unsplash.com/photo-1594221708779-94832f4320d1?w=200&h=150&fit=crop',
+        'hotdog' => 'https://images.unsplash.com/photo-1612392062422-ef19b42f74df?w=200&h=150&fit=crop',
+        'sausage' => 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=200&h=150&fit=crop',
+        'sausage_roll' => 'https://images.unsplash.com/photo-1541599468341-241a5a2e1b1b?w=200&h=150&fit=crop',
+        'cake' => 'https://images.unsplash.com/photo-1571115171-1e06d4b8b2c?w=200&h=150&fit=crop',
+        'pastry' => 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=200&h=150&fit=crop',
+        'bun' => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=150&fit=crop',
+        'crepe' => 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=200&h=150&fit=crop',
+        'water' => 'https://images.unsplash.com/photo-1562907550-096d085bf946?w=200&h=150&fit=crop',
+        'soda' => 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop',
+        'lemon_lime' => 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop',
         'orange_soda' => 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=200&h=150&fit=crop',
-        'juice'       => 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&h=150&fit=crop',
-        'fritter'     => 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=150&fit=crop',
-        'snack'       => 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=200&h=150&fit=crop',
-        'chips'       => 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200&h=150&fit=crop',
-        'bread'       => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=150&fit=crop',
-        'cutlet'      => 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=150&fit=crop',
-        'roll'        => 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=150&fit=crop',
-        'food'        => 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop',
-        'betel'       => 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=150&fit=crop',
+        'juice' => 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&h=150&fit=crop',
+        'fritter' => 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=150&fit=crop',
+        'snack' => 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=200&h=150&fit=crop',
+        'chips' => 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200&h=150&fit=crop',
+        'bread' => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=150&fit=crop',
+        'cutlet' => 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=150&fit=crop',
+        'roll' => 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=200&h=150&fit=crop',
+        'food' => 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop',
+        'betel' => 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=150&fit=crop',
     ];
 
     /** Item handle or name (lowercase) => key in WEB_IMAGES for exact match */
@@ -165,6 +166,7 @@ class ImportMenuSeeder extends Seeder
             'fast_food' => 'burger', 'sweet_treats' => 'pastry', 'other' => 'food',
         ];
         $key = $fallback[$imageKey] ?? 'food';
+
         return self::WEB_IMAGES[$key];
     }
 
@@ -252,6 +254,7 @@ class ImportMenuSeeder extends Seeder
         $csvPath = database_path('seeders/export_items.csv');
         if (!file_exists($csvPath)) {
             $this->command->error("CSV not found: {$csvPath}");
+
             return;
         }
 

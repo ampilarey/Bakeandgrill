@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -18,7 +20,7 @@ return new class extends Migration
             $table->boolean('is_required')->default(false);
             $table->integer('max_quantity')->default(1);
             $table->timestamps();
-            
+
             $table->unique(['item_id', 'modifier_id']);
         });
     }

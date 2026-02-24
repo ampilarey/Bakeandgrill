@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -55,6 +57,7 @@ class ImageThumbController extends Controller
     private function serveFile(string $filePath, string $originalPath): Response
     {
         $mime = $this->mimeForPath($originalPath);
+
         return response()->file($filePath, [
             'Content-Type' => $mime,
             'Cache-Control' => 'public, max-age=31536000',
@@ -64,6 +67,7 @@ class ImageThumbController extends Controller
     private function serveBinary(string $binary, string $originalPath): Response
     {
         $mime = $this->mimeForPath($originalPath);
+
         return response($binary, 200, [
             'Content-Type' => $mime,
             'Cache-Control' => 'public, max-age=31536000',
@@ -73,6 +77,7 @@ class ImageThumbController extends Controller
     private function mimeForPath(string $path): string
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
         return match ($ext) {
             'png' => 'image/png',
             'jpg', 'jpeg' => 'image/jpeg',
@@ -103,6 +108,7 @@ class ImageThumbController extends Controller
         $h = imagesy($image);
         if ($w <= 0 || $h <= 0) {
             imagedestroy($image);
+
             return null;
         }
         $max = self::THUMB_SIZE;
@@ -117,6 +123,7 @@ class ImageThumbController extends Controller
             };
             $out = ob_get_clean();
             imagedestroy($image);
+
             return $out ?: null;
         }
 
@@ -133,6 +140,7 @@ class ImageThumbController extends Controller
         $thumb = imagecreatetruecolor($nw, $nh);
         if ($thumb === false) {
             imagedestroy($image);
+
             return null;
         }
         if ($ext === 'png' || $ext === 'gif') {
@@ -154,6 +162,7 @@ class ImageThumbController extends Controller
         };
         $out = ob_get_clean();
         imagedestroy($thumb);
+
         return $out ?: null;
     }
 }

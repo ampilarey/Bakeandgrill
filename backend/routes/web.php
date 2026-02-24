@@ -1,10 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+declare(strict_types=1);
+
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImageThumbController;
 use App\Http\Controllers\MenuAdminController;
 use App\Http\Controllers\ReceiptPageController;
+use Illuminate\Support\Facades\Route;
 
 // Thumbnails for local cafe images (faster load)
 Route::get('/thumb/{path}', [ImageThumbController::class, 'show'])
@@ -28,13 +30,14 @@ Route::get('/privacy', [HomeController::class, 'privacy'])->name('privacy');
 
 // Customer Portal (Web Login)
 use App\Http\Controllers\CustomerPortalController;
+
 Route::get('/customer/login', [CustomerPortalController::class, 'showLogin'])->name('customer.login');
 Route::post('/customer/request-otp', [CustomerPortalController::class, 'requestOtp'])->name('customer.request-otp');
 Route::post('/customer/verify-otp', [CustomerPortalController::class, 'verifyOtp'])->name('customer.verify-otp');
 Route::post('/customer/logout', [CustomerPortalController::class, 'logout'])->name('customer.logout');
 
 // Order Type Selection (Gateway)
-Route::get('/order-type', function() {
+Route::get('/order-type', function () {
     return view('order-type-select');
 })->name('order.type');
 
@@ -43,6 +46,7 @@ Route::get('/checkout', [HomeController::class, 'checkout'])->name('checkout');
 
 // Pre-Orders (Event Orders)
 use App\Http\Controllers\PreOrderController;
+
 Route::get('/pre-order', [PreOrderController::class, 'create'])->name('pre-order.create');
 Route::post('/pre-order', [PreOrderController::class, 'store'])->name('pre-order.store');
 Route::get('/pre-order/{id}/confirmation', [PreOrderController::class, 'confirmation'])->name('pre-order.confirmation');
@@ -52,3 +56,6 @@ Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])->name('r
 Route::get('/receipts/{token}/pdf', [ReceiptPageController::class, 'pdf'])->name('receipts.pdf');
 Route::post('/receipts/{token}/feedback', [ReceiptPageController::class, 'feedback'])->name('receipts.feedback');
 Route::post('/receipts/{token}/resend', [ReceiptPageController::class, 'resend'])->name('receipts.resend');
+
+// BML Return URL (non-authoritative — redirects to frontend)
+Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -63,7 +65,7 @@ class RefundController extends Controller
             [],
             $refund->toArray(),
             ['order_id' => $order->id],
-            $request
+            $request,
         );
 
         return response()->json(['refund' => $refund], 201);

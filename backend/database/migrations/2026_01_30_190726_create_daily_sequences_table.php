@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +15,7 @@ return new class extends Migration
             $table->date('date')->unique(); // One row per day
             $table->unsignedInteger('last_order_number')->default(0);
             $table->timestamps();
-            
+
             $table->index('date');
         });
     }

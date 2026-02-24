@@ -1,0 +1,53 @@
+{
+    "current_page": 1,
+    "data": [
+        {
+            "id": "__VOLATILE__",
+            "name": "Beef Burger",
+            "name_dv": null,
+            "description": null,
+            "sku": "GRL-001",
+            "image_url": null,
+            "base_price": "30.00",
+            "tax_rate": "0.00",
+            "is_available": true,
+            "category_id": 1,
+            "category": {
+                "id": "__VOLATILE__",
+                "name": "Grills"
+            },
+            "variants": [],
+            "modifiers": []
+        }
+    ],
+    "first_page_url": "http://localhost:8000/api/items?page=1",
+    "from": 1,
+    "last_page": 1,
+    "last_page_url": "http://localhost:8000/api/items?page=1",
+    "links": [
+        {
+            "url": null,
+            "label": "&laquo; Previous",
+            "page": null,
+            "active": false
+        },
+        {
+            "url": "http://localhost:8000/api/items?page=1",
+            "label": "1",
+            "page": 1,
+            "active": true
+        },
+        {
+            "url": null,
+            "label": "Next &raquo;",
+            "page": null,
+            "active": false
+        }
+    ],
+    "next_page_url": null,
+    "path": "http://localhost:8000/api/items",
+    "per_page": 50,
+    "prev_page_url": null,
+    "to": 1,
+    "total": 1
+}

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\Order;
@@ -10,15 +12,7 @@ class InventoryDeductionService
 {
     public function deductForOrder(Order $order, ?int $userId = null): void
     {
-        DB::transaction(function () use ($order, $userId) {
-            $alreadyDeducted = StockMovement::where('reference_type', 'order')
-                ->where('reference_id', $order->id)
-                ->exists();
-
-            if ($alreadyDeducted) {
-                return;
-            }
-
+        DB::transaction(function () use ($order, $userId): void {
             $order->loadMissing('items.item.recipe.recipeItems.inventoryItem');
 
             foreach ($order->items as $orderItem) {
@@ -44,10 +38,22 @@ class InventoryDeductionService
                         continue;
                     }
 
-                    $inventoryItem->current_stock = ($inventoryItem->current_stock ?? 0) - $neededQuantity;
-                    $inventoryItem->save();
+                    $idempotencyKey = 'order:' . $order->id . ':inv:' . $inventoryItem->id;
+
+                    $alreadyDeducted = StockMovement::where('idempotency_key', $idempotencyKey)->exists();
+                    if ($alreadyDeducted) {
+                        continue;
+                    }
+
+                    // Atomic decrement — prevents race condition
+                    DB::table('inventory_items')
+                        ->where('id', $inventoryItem->id)
+                        ->decrement('current_stock', $neededQuantity);
+
+                    $inventoryItem->refresh();
 
                     StockMovement::create([
+                        'idempotency_key' => $idempotencyKey,
                         'inventory_item_id' => $inventoryItem->id,
                         'user_id' => $userId ?? $order->user_id,
                         'type' => 'sale',

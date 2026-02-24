@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\Item;
@@ -34,13 +36,13 @@ class StockReservationService
     public function reserveStock(int $itemId, int $quantity, string $sessionId): bool
     {
         $item = Item::find($itemId);
-        
+
         if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
             return true; // No reservation needed
         }
 
         $this->releaseExpiredReservations($itemId);
-        
+
         $available = $this->getAvailableStock($item);
 
         if ($available < $quantity) {

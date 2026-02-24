@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 if (!function_exists('thumb_path')) {
     /**
      * Return thumbnail path for local cafe images (e.g. thumb/images/cafe/file.png), or null.
@@ -14,6 +16,7 @@ if (!function_exists('thumb_path')) {
         if (str_starts_with($path, 'images/cafe/')) {
             return 'thumb/' . $path;
         }
+
         return null;
     }
 }
@@ -28,6 +31,7 @@ if (!function_exists('thumb_url')) {
         if ($path !== null) {
             return url($path);
         }
+
         return $imageUrl;
     }
 }

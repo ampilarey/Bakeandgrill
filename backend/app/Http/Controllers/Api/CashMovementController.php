@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -7,7 +9,6 @@ use App\Http\Requests\StoreCashMovementRequest;
 use App\Models\CashMovement;
 use App\Models\Shift;
 use App\Services\AuditLogService;
-use Illuminate\Http\Request;
 
 class CashMovementController extends Controller
 {
@@ -34,7 +35,7 @@ class CashMovementController extends Controller
             [],
             $movement->toArray(),
             ['shift_id' => $shift->id],
-            $request
+            $request,
         );
 
         return response()->json(['movement' => $movement], 201);

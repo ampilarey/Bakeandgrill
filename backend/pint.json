@@ -1,0 +1,38 @@
+{
+    "preset": "laravel",
+    "rules": {
+        "array_syntax": { "syntax": "short" },
+        "binary_operator_spaces": { "default": "single_space" },
+        "blank_line_after_opening_tag": true,
+        "blank_line_before_statement": { "statements": ["return"] },
+        "braces": { "allow_single_line_closure": true },
+        "cast_spaces": true,
+        "class_attributes_separation": { "elements": { "method": "one" } },
+        "concat_space": { "spacing": "one" },
+        "declare_strict_types": true,
+        "fully_qualified_strict_types": true,
+        "function_typehint_space": true,
+        "method_argument_space": true,
+        "no_extra_blank_lines": {
+            "tokens": ["extra", "throw", "use", "use_trait"]
+        },
+        "no_multiline_whitespace_around_double_arrow": true,
+        "no_spaces_around_offset": { "positions": ["inside", "outside"] },
+        "no_trailing_comma_in_singleline_array": true,
+        "no_unused_imports": true,
+        "no_whitespace_before_comma_in_array": true,
+        "not_operator_with_successor_space": false,
+        "object_operator_without_whitespace": true,
+        "ordered_imports": { "sort_algorithm": "alpha" },
+        "phpdoc_align": { "align": "left" },
+        "phpdoc_indent": true,
+        "phpdoc_no_package": true,
+        "phpdoc_scalar": true,
+        "phpdoc_single_line_var_spacing": true,
+        "single_quote": true,
+        "ternary_operator_spaces": true,
+        "trailing_comma_in_multiline": { "elements": ["arrays", "arguments", "parameters"] },
+        "trim_array_spaces": true,
+        "unary_operator_spaces": true
+    }
+}

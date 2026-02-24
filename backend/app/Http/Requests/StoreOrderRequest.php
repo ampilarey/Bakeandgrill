@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,13 +25,12 @@ class StoreOrderRequest extends FormRequest
             'customer_notes' => 'nullable|string',
             'discount_amount' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'nullable|integer|exists:items,id',
-            'items.*.name' => 'required|string|max:255',
+            'items.*.item_id' => 'required|integer|exists:items,id',
+            'items.*.variant_id' => 'nullable|integer|exists:variants,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.modifiers' => 'nullable|array',
-            'items.*.modifiers.*.modifier_id' => 'nullable|integer|exists:modifiers,id',
-            'items.*.modifiers.*.name' => 'required|string|max:255',
-            'items.*.modifiers.*.price' => 'required|numeric|min:0',
+            'items.*.modifiers.*.modifier_id' => 'required|integer|exists:modifiers,id',
+            'items.*.modifiers.*.quantity' => 'nullable|integer|min:1',
         ];
     }
 }

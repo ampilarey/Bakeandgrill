@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
@@ -24,7 +26,7 @@ class CustomerAuthController extends Controller
 
         // Normalize phone number (accept with or without +960)
         $phone = $this->normalizePhone($request->phone);
-        
+
         // Validate normalized format
         if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
             throw ValidationException::withMessages([
@@ -34,7 +36,7 @@ class CustomerAuthController extends Controller
 
         // Rate limiting: 3 OTP requests per hour per phone
         $key = 'otp-request:' . $phone;
-        
+
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
@@ -44,7 +46,7 @@ class CustomerAuthController extends Controller
 
         // Generate 6-digit OTP
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        
+
         // Store OTP with 10-minute expiry
         OtpVerification::create([
             'phone' => $phone,
@@ -59,9 +61,9 @@ class CustomerAuthController extends Controller
         // Send OTP via SMS
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
-        
+
         $smsSent = $smsService->send($phone, $smsMessage);
-        
+
         // Log only in non-production for debugging (NEVER log OTP in production)
         if (!app()->environment('production')) {
             logger()->info('OTP requested', [
@@ -76,8 +78,8 @@ class CustomerAuthController extends Controller
             'expires_in' => 600, // 10 minutes in seconds
         ];
 
-        // SECURITY: Only include OTP in local/dev environment for testing
-        if (app()->environment('local') && config('app.debug')) {
+        // SECURITY: Only include OTP in local/dev/testing environments
+        if (app()->environment(['local', 'testing']) && config('app.debug')) {
             $response['otp'] = $otpCode;
         }
 
@@ -120,7 +122,7 @@ class CustomerAuthController extends Controller
         // Verify OTP
         if (!Hash::check($request->otp, $otpRecord->code_hash)) {
             $otpRecord->increment('attempts');
-            
+
             throw ValidationException::withMessages([
                 'otp' => ['Invalid OTP code. ' . (5 - $otpRecord->attempts) . ' attempts remaining.'],
             ]);
@@ -137,7 +139,7 @@ class CustomerAuthController extends Controller
                 'email' => $request->email ?? null,
                 'loyalty_points' => 0,
                 'tier' => 'bronze',
-            ]
+            ],
         );
 
         $customer->update(['last_login_at' => now()]);
@@ -166,25 +168,25 @@ class CustomerAuthController extends Controller
     {
         // Remove all non-numeric characters except +
         $digits = preg_replace('/[^0-9+]/', '', $phone);
-        
+
         // Remove + sign for processing
         $digitsOnly = str_replace('+', '', $digits);
-        
+
         // If already has 960 prefix
         if (str_starts_with($digitsOnly, '960') && strlen($digitsOnly) === 10) {
             return '+' . $digitsOnly;
         }
-        
+
         // If 7 digits, add 960 prefix
         if (strlen($digitsOnly) === 7) {
             return '+960' . $digitsOnly;
         }
-        
+
         // If 10 digits starting with 960
         if (strlen($digitsOnly) === 10 && str_starts_with($digitsOnly, '960')) {
             return '+' . $digitsOnly;
         }
-        
+
         // Default: assume it's 7 digits and add prefix
         return '+960' . substr($digitsOnly, -7);
     }

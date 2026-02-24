@@ -1,0 +1,19 @@
+{
+    "item": {
+        "id": "__VOLATILE__",
+        "name": "Beef Burger",
+        "name_dv": null,
+        "description": null,
+        "image_url": null,
+        "base_price": "30.00",
+        "tax_rate": "0.00",
+        "is_available": true,
+        "category": {
+            "id": "__VOLATILE__",
+            "name": "Grills",
+            "name_dv": null
+        },
+        "variants": [],
+        "modifiers": []
+    }
+}

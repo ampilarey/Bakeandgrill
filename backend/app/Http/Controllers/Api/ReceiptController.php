@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -61,7 +63,7 @@ class ReceiptController extends Controller
             [],
             $receipt->toArray(),
             ['order_id' => $order->id],
-            $request
+            $request,
         );
 
         return response()->json([
@@ -109,7 +111,7 @@ class ReceiptController extends Controller
             [],
             $receipt->toArray(),
             [],
-            $request
+            $request,
         );
 
         return response()->json([
@@ -137,7 +139,7 @@ class ReceiptController extends Controller
             [],
             ['rating' => $feedback->rating],
             [],
-            $request
+            $request,
         );
 
         return response()->json(['feedback' => $feedback], 201);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\PrintJob;
@@ -10,7 +12,7 @@ class PrintProxyService
     public function send(PrintJob $job): bool
     {
         $printProxyKey = config('services.print_proxy.key');
-        
+
         if (!$printProxyKey) {
             \Log::error('PRINT_PROXY_KEY not configured');
             $job->update([
@@ -18,6 +20,7 @@ class PrintProxyService
                 'attempts' => $job->attempts + 1,
                 'last_error' => 'Print proxy key not configured',
             ]);
+
             return false;
         }
 
@@ -25,7 +28,7 @@ class PrintProxyService
         $payload = $job->payload;
         $payload['printer_name'] = $payload['printer']['name'] ?? null;
         $payload['type'] = $payload['printer']['type'] ?? 'kitchen';
-        
+
         // Send with API key header
         $response = Http::timeout(10)
             ->withHeaders([
@@ -33,7 +36,7 @@ class PrintProxyService
             ])
             ->post(
                 rtrim(config('services.print_proxy.url'), '/') . '/print',
-                $payload
+                $payload,
             );
 
         if ($response->successful()) {

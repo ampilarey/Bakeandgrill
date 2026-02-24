@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Models\Item;
 use Database\Seeders\ImportMenuSeeder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -26,3 +29,7 @@ Artisan::command('menu:sync-item-images', function () {
     });
     $this->info("Synced {$updated} item image(s) from local cafe photos.");
 })->purpose('Set image_url for items that have local cafe photos so uploaded photos appear on the website');
+
+// Loyalty maintenance schedules
+Schedule::command('app:expire-loyalty-holds')->everyFifteenMinutes();
+Schedule::command('app:reconcile-loyalty-balances')->dailyAt('03:00');

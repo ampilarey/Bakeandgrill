@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -48,7 +50,7 @@ class TableController extends Controller
             [],
             $table->toArray(),
             [],
-            $request
+            $request,
         );
 
         return response()->json(['table' => $table], 201);
@@ -67,7 +69,7 @@ class TableController extends Controller
             $oldValues,
             $table->toArray(),
             [],
-            $request
+            $request,
         );
 
         return response()->json(['table' => $table]);
@@ -94,7 +96,7 @@ class TableController extends Controller
 
         $order = app(OrderCreationService::class)->createFromPayload(
             $payload,
-            $request->user()
+            $request->user(),
         );
 
         $oldStatus = $table->status;
@@ -107,7 +109,7 @@ class TableController extends Controller
             ['status' => $oldStatus],
             ['status' => 'occupied'],
             ['order_id' => $order->id],
-            $request
+            $request,
         );
 
         return response()->json(['order' => $order, 'table' => $table], 201);
@@ -130,7 +132,7 @@ class TableController extends Controller
         $order = app(OrderCreationService::class)->addItemsToOrder(
             $order,
             $validated['items'],
-            $validated['print'] ?? true
+            $validated['print'] ?? true,
         );
 
         $table->update(['status' => 'occupied']);
@@ -142,7 +144,7 @@ class TableController extends Controller
             [],
             $order->toArray(),
             ['table_id' => $table->id],
-            $request
+            $request,
         );
 
         return response()->json(['order' => $order, 'table' => $table]);
@@ -161,7 +163,7 @@ class TableController extends Controller
             ['status' => $oldStatus],
             ['status' => 'available'],
             [],
-            $request
+            $request,
         );
 
         return response()->json(['table' => $table]);
@@ -215,7 +217,7 @@ class TableController extends Controller
             ['source_status' => $oldSourceStatus, 'target_status' => $oldTargetStatus],
             ['source_status' => 'available', 'target_status' => 'occupied'],
             ['source_table_id' => $sourceTable->id],
-            $request
+            $request,
         );
 
         return response()->json([
@@ -259,7 +261,7 @@ class TableController extends Controller
                 [],
                 $order->toArray(),
                 ['split_order_id' => $splitOrder->id],
-                $request
+                $request,
             );
 
             return response()->json([
@@ -298,7 +300,7 @@ class TableController extends Controller
             [],
             $order->toArray(),
             ['split_order_id' => $splitOrder->id, 'amount' => $amount],
-            $request
+            $request,
         );
 
         return response()->json([

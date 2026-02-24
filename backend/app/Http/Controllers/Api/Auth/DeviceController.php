@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
@@ -29,7 +31,7 @@ class DeviceController extends Controller
                 'ip_address' => $data['ip_address'] ?? null,
                 'is_active' => true,
                 'last_seen_at' => now(),
-            ]
+            ],
         );
 
         app(AuditLogService::class)->log(
@@ -39,7 +41,7 @@ class DeviceController extends Controller
             [],
             $device->toArray(),
             [],
-            $request
+            $request,
         );
 
         return response()->json([
@@ -72,7 +74,7 @@ class DeviceController extends Controller
             ['is_active' => true],
             ['is_active' => false],
             [],
-            request()
+            request(),
         );
 
         return response()->json([
@@ -95,7 +97,7 @@ class DeviceController extends Controller
             ['is_active' => false],
             ['is_active' => true],
             [],
-            request()
+            request(),
         );
 
         return response()->json([

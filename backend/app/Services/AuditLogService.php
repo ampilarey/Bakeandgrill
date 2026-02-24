@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
+
 class AuditLogService
 {
     public function log(
@@ -13,10 +16,10 @@ class AuditLogService
         array $oldValues = [],
         array $newValues = [],
         array $meta = [],
-        ?Request $request = null
+        ?Request $request = null,
     ): void {
         $user = $request?->user();
-        
+
         // Only log user_id if it's a User model (staff), not Customer
         $userId = ($user instanceof \App\Models\User) ? $user->id : null;
 

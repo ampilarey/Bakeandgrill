@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportPurchaseRequest;
-use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\StorePurchaseReceiptRequest;
+use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\UpdatePurchaseRequest;
 use App\Models\InventoryItem;
 use App\Models\Purchase;
@@ -43,7 +45,7 @@ class PurchaseController extends Controller
             [],
             $purchase->toArray(),
             ['items' => $purchase->items->count()],
-            $request
+            $request,
         );
 
         return response()->json(['purchase' => $purchase], 201);
@@ -87,7 +89,7 @@ class PurchaseController extends Controller
             [],
             $receipt->toArray(),
             ['purchase_id' => $purchase->id],
-            $request
+            $request,
         );
 
         return response()->json(['receipt' => $receipt], 201);
@@ -154,7 +156,7 @@ class PurchaseController extends Controller
             [],
             $purchase->toArray(),
             ['rows' => count($rows)],
-            $request
+            $request,
         );
 
         return response()->json(['purchase' => $purchase], 201);

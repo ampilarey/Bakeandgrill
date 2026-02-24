@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
-use App\Models\InventoryItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,13 +19,13 @@ class PublicApiSecurityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $category = Category::create([
             'name' => 'Food',
             'slug' => 'food',
             'is_active' => true,
         ]);
-        
+
         $this->item = Item::create([
             'category_id' => $category->id,
             'name' => 'Secret Recipe Burger',
@@ -33,14 +35,14 @@ class PublicApiSecurityTest extends TestCase
             'is_active' => true,
             'is_available' => true,
         ]);
-        
+
         // Create recipe (internal data)
         $recipe = Recipe::create([
             'item_id' => $this->item->id,
             'yield_quantity' => 1,
             'yield_unit' => 'serving',
         ]);
-        
+
         $inventoryItem = InventoryItem::create([
             'name' => 'Secret Sauce',
             'sku' => 'SAUCE-001',
@@ -48,7 +50,7 @@ class PublicApiSecurityTest extends TestCase
             'current_stock' => 1000,
             'unit_cost' => 5.00,
         ]);
-        
+
         RecipeItem::create([
             'recipe_id' => $recipe->id,
             'inventory_item_id' => $inventoryItem->id,
@@ -96,7 +98,7 @@ class PublicApiSecurityTest extends TestCase
         $items = $response->json('data');
 
         $this->assertGreaterThan(0, count($items));
-        
+
         foreach ($items as $item) {
             $this->assertArrayNotHasKey('recipe', $item);
             $this->assertArrayNotHasKey('recipeItems', $item);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\Item;
@@ -18,12 +20,12 @@ class StockManagementService
         if (!$item->track_stock) {
             return true;
         }
-        
+
         // Made to order items are always available
         if ($item->availability_type === 'made_to_order') {
             return true;
         }
-        
+
         // Check actual stock
         return $item->stock_quantity >= $quantity;
     }
@@ -36,10 +38,10 @@ class StockManagementService
         if (!$item->track_stock) {
             return;
         }
-        
+
         DB::transaction(function () use ($item, $quantity) {
             $item->decrement('stock_quantity', $quantity);
-            
+
             // Check if low stock alert needed
             if ($item->stock_quantity <= $item->low_stock_threshold) {
                 $this->triggerLowStockAlert($item);
@@ -57,13 +59,13 @@ class StockManagementService
             ->where('sent', true)
             ->where('created_at', '>=', now()->subHours(24))
             ->first();
-            
+
         if ($recentAlert) {
             return; // Don't spam alerts
         }
 
         // Get managers and owners
-        $recipients = User::whereHas('role', function($q) {
+        $recipients = User::whereHas('role', function ($q) {
             $q->whereIn('slug', ['owner', 'admin', 'manager']);
         })->where('is_active', true)->get();
 
@@ -90,7 +92,7 @@ class StockManagementService
                     \Log::error('Failed to send low stock SMS', [
                         'user' => $user->id,
                         'item' => $item->id,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -143,7 +145,7 @@ class StockManagementService
                     'badge_color' => '#e74c3c',
                 ];
             }
-            
+
             if ($item->stock_quantity <= $item->low_stock_threshold) {
                 return [
                     'available' => true,
