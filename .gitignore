@@ -57,6 +57,9 @@ apps/**/.env.*
 Thumbs.db
 **/.DS_Store
 
+# Archives (avoid large files on GitHub)
+*.zip
+
 # Config
 Homestead.json
 Homestead.yaml
