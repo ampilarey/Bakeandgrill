@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ImageThumbController extends Controller
 {
@@ -19,7 +20,7 @@ class ImageThumbController extends Controller
     /**
      * Serve a resized thumbnail for local cafe images. Generates and caches on first request.
      */
-    public function show(Request $request, string $path): Response
+    public function show(Request $request, string $path): Response|BinaryFileResponse
     {
         // Get full path from request so slashes are preserved (e.g. images/cafe/Kavaabu.png)
         $path = trim(Str::after($request->path(), 'thumb/'), '/') ?: trim($path, '/');
@@ -54,7 +55,7 @@ class ImageThumbController extends Controller
         return $this->serveBinary($resized, $path);
     }
 
-    private function serveFile(string $filePath, string $originalPath): Response
+    private function serveFile(string $filePath, string $originalPath): BinaryFileResponse
     {
         $mime = $this->mimeForPath($originalPath);
 
