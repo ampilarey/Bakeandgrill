@@ -49,4 +49,14 @@ class Customer extends Model
     {
         return $this->hasMany(SmsPromotionRecipient::class);
     }
+
+    public function loyaltyAccount(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(LoyaltyAccount::class);
+    }
+
+    public function smsLogs(): HasMany
+    {
+        return $this->hasMany(SmsLog::class);
+    }
 }

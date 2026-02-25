@@ -335,6 +335,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus']);
 });
 
+// ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
+Route::middleware(['auth:sanctum'])->prefix('admin/sms')->group(function () {
+    // Full SMS audit log (OTP + promo + campaign + transactional)
+    Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
+    Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
+
+    // Bulk SMS campaigns
+    Route::get('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'index']);
+    Route::post('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'store']);
+    Route::post('/campaigns/preview', [App\Http\Controllers\Api\SmsCampaignController::class, 'preview']);
+    Route::get('/campaigns/{campaign}', [App\Http\Controllers\Api\SmsCampaignController::class, 'show']);
+    Route::post('/campaigns/{campaign}/send', [App\Http\Controllers\Api\SmsCampaignController::class, 'send']);
+    Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);
+});
+
 // ─── System Health ─────────────────────────────────────────────────────────
 Route::get('/system/health', function () {
     return response()->json([

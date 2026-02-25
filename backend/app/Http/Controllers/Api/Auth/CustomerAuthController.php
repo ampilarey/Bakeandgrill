@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\OtpVerification;
-use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -58,11 +59,20 @@ class CustomerAuthController extends Controller
         // Hit rate limiter
         RateLimiter::hit($key, 3600); // 1 hour
 
-        // Send OTP via SMS
+        // Send OTP via SMS (logged automatically to sms_logs)
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
 
-        $smsSent = $smsService->send($phone, $smsMessage);
+        $smsLog = $smsService->send(new SmsMessage(
+            to: $phone,
+            message: $smsMessage,
+            type: 'otp',
+            referenceType: 'otp',
+            referenceId: (string) OtpVerification::where('phone', $phone)->latest()->value('id'),
+            idempotencyKey: 'otp:' . $phone . ':' . now()->format('YmdHi'),
+        ));
+
+        $smsSent = in_array($smsLog->status, ['sent', 'demo'], true);
 
         // Log only in non-production for debugging (NEVER log OTP in production)
         if (!app()->environment('production')) {
