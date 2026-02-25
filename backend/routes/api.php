@@ -352,6 +352,15 @@ Route::middleware(['auth:sanctum'])->prefix('admin/sms')->group(function () {
     Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);
 });
 
+// ─── Staff Management (Admin) ─────────────────────────────────────────────
+Route::middleware(['auth:sanctum'])->prefix('admin/staff')->group(function () {
+    Route::get('/',         [App\Http\Controllers\Api\StaffController::class, 'index']);
+    Route::post('/',        [App\Http\Controllers\Api\StaffController::class, 'store']);
+    Route::patch('/{id}',   [App\Http\Controllers\Api\StaffController::class, 'update']);
+    Route::post('/{id}/pin', [App\Http\Controllers\Api\StaffController::class, 'resetPin']);
+    Route::delete('/{id}',  [App\Http\Controllers\Api\StaffController::class, 'destroy']);
+});
+
 // ─── System Health ─────────────────────────────────────────────────────────
 Route::get('/system/health', function () {
     return response()->json([

@@ -455,3 +455,48 @@ export async function deleteItem(id: number): Promise<void> {
 export async function toggleItemAvailability(id: number): Promise<{ item: MenuItem }> {
   return req(`/items/${id}/toggle-availability`, { method: 'PATCH' });
 }
+
+// ── Staff Management ──────────────────────────────────────────────────────────
+
+export type StaffMember = {
+  id: number;
+  name: string;
+  email: string;
+  role: string | null;       // slug e.g. 'admin'
+  role_name: string | null;  // display name e.g. 'Admin'
+  role_id: number | null;
+  is_active: boolean;
+  has_pin: boolean;
+  last_login_at: string | null;
+  created_at: string;
+};
+
+export type StaffRole = { id: number; name: string; slug: string };
+
+export async function fetchStaff(): Promise<{ staff: StaffMember[]; roles: StaffRole[] }> {
+  return req('/admin/staff');
+}
+
+export async function createStaff(data: {
+  name: string;
+  email: string;
+  role_id: number;
+  pin: string;
+}): Promise<{ staff: StaffMember }> {
+  return req('/admin/staff', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateStaff(
+  id: number,
+  data: { name?: string; email?: string; role_id?: number; is_active?: boolean }
+): Promise<{ staff: StaffMember }> {
+  return req(`/admin/staff/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function resetStaffPin(id: number, pin: string): Promise<void> {
+  await req(`/admin/staff/${id}/pin`, { method: 'POST', body: JSON.stringify({ pin }) });
+}
+
+export async function deleteStaff(id: number): Promise<void> {
+  await req(`/admin/staff/${id}`, { method: 'DELETE' });
+}

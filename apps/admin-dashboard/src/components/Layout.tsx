@@ -11,6 +11,7 @@ const NAV = [
   { to: '/loyalty',    icon: '⭐', label: 'Loyalty'    },
   { to: '/sms',        icon: '📱', label: 'SMS'        },
   { to: '/reports',    icon: '📊', label: 'Reports'    },
+  { to: '/staff',      icon: '👥', label: 'Staff'      },
 ];
 
 export function Layout({
