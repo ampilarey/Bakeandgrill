@@ -297,8 +297,8 @@ export async function createLoyaltyHold(
   token: string,
   orderId: number,
   points: number
-): Promise<{ hold: { id: number; points: number; discount_laar: number } }> {
-  return request<{ hold: { id: number; points: number; discount_laar: number } }>(
+): Promise<{ hold: { points_held: number; discount_laar: number } }> {
+  return request<{ hold: { points_held: number; discount_laar: number } }>(
     "/loyalty/hold",
     {
       method: "POST",

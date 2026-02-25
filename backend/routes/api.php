@@ -211,6 +211,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
     Route::get('/me', [CustomerController::class, 'me']);
     Route::get('/orders', [CustomerController::class, 'orders']);
+    Route::get('/orders/{id}', [CustomerController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'storeCustomer']);
     Route::patch('/profile', [CustomerController::class, 'update']);
 });

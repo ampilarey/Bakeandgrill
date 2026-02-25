@@ -4,6 +4,7 @@ import {
   applyPromoCode,
   createCustomerOrder,
   createDeliveryOrder,
+  createLoyaltyHold,
   getLoyaltyAccount,
   getCustomerMe,
   initiateOnlinePayment,
@@ -371,6 +372,16 @@ export function CheckoutPage() {
         } catch (e) {
           // Non-fatal: promo errors don't block payment
           setPromoError((e as Error).message);
+        }
+      }
+
+      // Create loyalty hold if customer chose to use points
+      if (useLoyalty && loyaltyAccount && loyaltyPoints > 0) {
+        try {
+          await createLoyaltyHold(token, orderId, loyaltyPoints);
+        } catch (e) {
+          // Non-fatal: loyalty errors don't block payment
+          console.warn("Loyalty hold failed:", (e as Error).message);
         }
       }
 

@@ -53,6 +53,42 @@ class CustomerController extends Controller
     }
 
     /**
+     * GET /api/customer/orders/{id}
+     * Single order detail — used by online order status page.
+     */
+    public function show(Request $request, int $id)
+    {
+        $customer = $request->user();
+
+        $order = $customer->orders()
+            ->with(['items.item', 'payments'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'order' => [
+                'id'                        => $order->id,
+                'order_number'              => $order->order_number,
+                'status'                    => $order->status,
+                'type'                      => $order->type,
+                'total'                     => (float) $order->total,
+                'subtotal'                  => (float) ($order->subtotal ?? $order->total),
+                'delivery_fee'              => (float) ($order->delivery_fee ?? 0),
+                'promo_discount_laar'       => (int) ($order->promo_discount_laar ?? 0),
+                'loyalty_discount_laar'     => (int) ($order->loyalty_discount_laar ?? 0),
+                'paid_at'                   => $order->paid_at?->toIso8601String(),
+                'created_at'               => $order->created_at->toIso8601String(),
+                // Delivery fields
+                'delivery_address_line1'    => $order->delivery_address_line1,
+                'delivery_address_line2'    => $order->delivery_address_line2,
+                'delivery_island'           => $order->delivery_island,
+                'delivery_contact_name'     => $order->delivery_contact_name,
+                'delivery_contact_phone'    => $order->delivery_contact_phone,
+                'delivery_notes'            => $order->delivery_notes,
+            ],
+        ]);
+    }
+
+    /**
      * Update customer profile
      */
     public function update(Request $request)
