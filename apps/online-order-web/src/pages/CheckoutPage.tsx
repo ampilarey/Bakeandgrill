@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
+
+function useIsMobile() {
+  return useSyncExternalStore(
+    (cb) => { window.addEventListener("resize", cb); return () => window.removeEventListener("resize", cb); },
+    () => window.innerWidth < 768,
+    () => false,
+  );
+}
 import {
   applyPromoCode,
   createCustomerOrder,
@@ -197,6 +205,7 @@ function CartSummary({ cart }: { cart: CartItem[] }) {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [cart] = useState<CartItem[]>(readCart);
   const [token, setToken] = useState<string | null>(readToken);
@@ -422,9 +431,9 @@ export function CheckoutPage() {
         )}
       </header>
 
-      <div style={styles.layout}>
-        {/* Left column */}
-        <div style={styles.left}>
+      <div style={{ ...styles.layout, gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1fr) 380px" }}>
+        {/* Left column — on mobile, order is: form first, then cart */}
+        <div style={{ ...styles.left, order: isMobile ? 1 : 0 }}>
           {/* Auth gate */}
           {!token && (
             <AuthBlock onSuccess={handleAuthSuccess} />
@@ -592,8 +601,8 @@ export function CheckoutPage() {
           )}
         </div>
 
-        {/* Right column — order summary */}
-        <div style={styles.right}>
+        {/* Right column — order summary (shown first on mobile) */}
+        <div style={{ ...styles.right, order: isMobile ? 0 : 1 }}>
           <CartSummary cart={cart} />
 
           <div style={styles.card}>
@@ -761,7 +770,6 @@ const styles = {
     margin: "0 auto",
     padding: "24px 16px",
     display: "grid",
-    gridTemplateColumns: "minmax(0,1fr) 380px",
     gap: 24,
   } as React.CSSProperties,
 
