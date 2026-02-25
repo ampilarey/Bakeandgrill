@@ -51,13 +51,14 @@ class BmlConnectService
         int $amountLaar,
         string $localId,
         string $currency = 'MVR',
+        ?string $returnUrl = null,
     ): array {
         $payload = [
             'localId' => $this->normalizeLocalId($localId),
             'merchantId' => $this->merchantId,
             'amount' => $amountLaar,
             'currency' => $currency,
-            'redirectUrl' => config('bml.return_url'),
+            'redirectUrl' => $returnUrl ?? config('bml.return_url'),
             'logo' => null,
         ];
 

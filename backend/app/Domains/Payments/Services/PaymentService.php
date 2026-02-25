@@ -62,9 +62,14 @@ class PaymentService
             throw new \RuntimeException("Payment {$payment->id} already in state: {$payment->status}");
         }
 
+        // Embed orderId in the return URL so bmlReturn can redirect correctly.
+        // BML appends its own params (?transactionId=&state=) to whatever URL we send.
+        $returnUrl = rtrim(config('bml.return_url'), '/') . '?orderId=' . $order->id;
+
         $result = $this->bml->createPayment(
             $payment->amount_laar,
             $localId,
+            returnUrl: $returnUrl,
         );
 
         $payment->update([
