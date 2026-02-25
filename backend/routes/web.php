@@ -64,3 +64,8 @@ Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::
 Route::get('/order/{any}', function () {
     return response()->file(public_path('order/index.html'));
 })->where('any', '.*')->name('order.spa');
+
+// Admin Dashboard SPA — catch-all for /admin/* sub-paths
+Route::get('/admin/{any}', function () {
+    return response()->file(public_path('admin/index.html'));
+})->where('any', '.*')->name('admin.spa');
