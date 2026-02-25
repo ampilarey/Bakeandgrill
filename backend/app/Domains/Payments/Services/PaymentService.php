@@ -48,18 +48,51 @@ class PaymentService
             );
         });
 
-        // If the same idempotency_key already has an initiated/confirmed payment, return existing
+        // Payment already initiated — reconstruct the BML pay URL from stored transaction ID.
+        // This handles the case where the user cancelled at BML and retries.
         if ($payment->status === 'initiated') {
+            $baseUrl = rtrim(config('bml.base_url', 'https://api.merchants.bankofmaldives.com.mv'), '/');
+            $payUrl = $payment->provider_transaction_id
+                ? "{$baseUrl}/pay/{$payment->provider_transaction_id}"
+                : null;
+
+            Log::info('BML: Reusing existing initiated payment', [
+                'payment_id'     => $payment->id,
+                'order_id'       => $order->id,
+                'transaction_id' => $payment->provider_transaction_id,
+                'payment_url'    => $payUrl,
+            ]);
+
             return [
-                'payment_url' => null,
-                'payment_id' => $payment->id,
-                'local_id' => $payment->local_id,
-                'reused' => true,
+                'payment_url' => $payUrl,
+                'payment_id'  => $payment->id,
+                'local_id'    => $payment->local_id,
+                'reused'      => true,
             ];
         }
 
+        // Payment in an unexpected terminal state — create a fresh one by changing the key.
         if (!in_array($payment->status, ['created'], true)) {
-            throw new \RuntimeException("Payment {$payment->id} already in state: {$payment->status}");
+            Log::warning('BML: Payment in unexpected state, issuing new attempt', [
+                'payment_id' => $payment->id,
+                'status'     => $payment->status,
+            ]);
+            // Fall through: a new payment will be created with a suffixed idempotency key.
+            $idempotencyKey .= ':retry:' . now()->timestamp;
+            $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
+
+            $payment = Payment::create([
+                'idempotency_key' => $idempotencyKey,
+                'order_id'        => $order->id,
+                'method'          => 'bml_connect',
+                'gateway'         => 'bml',
+                'currency'        => 'MVR',
+                'amount'          => round($amountLaar / 100, 2),
+                'amount_laar'     => $amountLaar,
+                'local_id'        => $localId,
+                'status'          => 'created',
+                'processed_at'    => now(),
+            ]);
         }
 
         // Embed orderId in the return URL so bmlReturn can redirect correctly.

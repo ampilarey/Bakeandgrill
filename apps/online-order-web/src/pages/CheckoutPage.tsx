@@ -397,10 +397,14 @@ export function CheckoutPage() {
       // Initiate BML payment
       const payment = await initiateOnlinePayment(token, orderId);
 
+      if (!payment.payment_url) {
+        throw new Error("Payment could not be started. Please try again in a moment.");
+      }
+
       // Clear cart before redirect
       localStorage.removeItem("bakegrill_cart");
 
-      // Redirect to BML
+      // Redirect to BML payment page
       window.location.href = payment.payment_url;
     } catch (e) {
       setGlobalError((e as Error).message);
