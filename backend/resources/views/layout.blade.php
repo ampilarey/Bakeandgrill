@@ -263,94 +263,31 @@
             }
         }
 
-        // Cart timer - 3 minutes to checkout
-        let cartTimer = null;
-        
-        function startCartTimer() {
-            const cartExpiry = localStorage.getItem('cart_expiry');
-            const now = Date.now();
-            
-            if (cartExpiry && now < parseInt(cartExpiry)) {
-                // Timer already running
-                return;
-            }
-            
-            // Set expiry to 3 minutes from now
-            const expiryTime = now + (3 * 60 * 1000);
-            localStorage.setItem('cart_expiry', expiryTime.toString());
-            
-            checkCartExpiry();
-        }
-        
-        function checkCartExpiry() {
-            const cartExpiry = localStorage.getItem('cart_expiry');
-            if (!cartExpiry) return;
-            
-            const now = Date.now();
-            const expiryTime = parseInt(cartExpiry);
-            
-            if (now >= expiryTime) {
-                // Time's up! Clear cart
-                localStorage.removeItem('bakegrill_cart');
-                localStorage.removeItem('cart_expiry');
-                cart = [];
-                updateCartDisplay();
-                alert('⏰ Your cart expired after 3 minutes. Please add items again.');
-                window.location.href = '/menu';
-            } else {
-                // Check again in 10 seconds
-                setTimeout(checkCartExpiry, 10000);
-            }
-        }
-        
         function addToCart(itemId, itemName, price) {
             const existing = cart.find(item => item.id === itemId);
-            
             if (existing) {
                 existing.quantity += 1;
             } else {
                 cart.push({ id: itemId, name: itemName, price: parseFloat(price), quantity: 1 });
             }
-            
             localStorage.setItem('bakegrill_cart', JSON.stringify(cart));
             updateCartDisplay();
-            
-            // Start timer on first item
-            if (cart.length === 1 || !localStorage.getItem('cart_expiry')) {
-                startCartTimer();
-            }
-            
-            // Get remaining time
-            const cartExpiry = localStorage.getItem('cart_expiry');
-            const remaining = cartExpiry ? Math.ceil((parseInt(cartExpiry) - Date.now()) / 1000) : (3 * 60);
-            
-            // Toast
+
+            // Toast notification
             const toast = document.createElement('div');
-            const mins = Math.floor(remaining / 60);
-            const secs = remaining % 60;
-            toast.innerHTML = `✓ Added ${itemName}<br><small style="opacity:0.9">Complete checkout within ${mins > 0 ? mins + ' min ' : ''}${secs} sec</small>`;
-            toast.style.cssText = 'position:fixed;top:100px;right:20px;background:#1ba3b9;color:white;padding:1rem 1.5rem;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:9999;font-weight:600;text-align:center;';
+            toast.innerHTML = `✓ Added to cart — <strong>${itemName}</strong>`;
+            toast.style.cssText = 'position:fixed;top:100px;right:20px;background:#1ba3b9;color:white;padding:1rem 1.5rem;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:9999;font-weight:600;';
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 2500);
         }
-        
-        // Check cart expiry on page load
-        document.addEventListener('DOMContentLoaded', checkCartExpiry);
 
         function goToCheckout() {
             if (cart.length === 0) {
-                alert('Your cart is empty!');
+                alert('Your cart is empty! Add some items first.');
                 return;
             }
-            // Check if logged in
-            @if(!session('customer_id'))
-                if (confirm('Please login to checkout. Login now?')) {
-                    sessionStorage.setItem('afterLogin', '/checkout');
-                    window.location.href = '/customer/login';
-                }
-            @else
-                window.location.href = '/checkout';
-            @endif
+            // Cart is stored in localStorage — the /order/ SPA reads it automatically
+            window.location.href = '/order/';
         }
 
         document.addEventListener('DOMContentLoaded', updateCartDisplay);
@@ -369,7 +306,6 @@
             <nav class="nav">
                 <a href="/">Home</a>
                 <a href="/menu">Menu</a>
-                <a href="/pre-order" style="color: #f39c12; font-weight: 600;">Event Orders</a>
                 <a href="/hours">Hours</a>
                 <a href="/contact">Contact</a>
                 
@@ -394,7 +330,7 @@
                 @php
                     $isOpen = app(\App\Services\OpeningHoursService::class)->isOpenNow();
                 @endphp
-                <a href="/menu" class="order-btn">Order Online →</a>
+                <a href="/order/" class="order-btn">Order Online →</a>
             </nav>
         </div>
     </header>
@@ -425,8 +361,8 @@
             <div onclick="goToCheckout()" style="padding: 0.5rem 1rem; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; white-space: nowrap;">
                 <span id="mobile-cart-indicator">🛒 Cart</span>
             </div>
-            <a href="/menu" style="padding: 0.5rem 1rem; background: var(--teal); color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(27, 163, 185, 0.25);">Order</a>
-            <a href="/pre-order" style="padding: 0.5rem 1rem; background: #f39c12; color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 600; white-space: nowrap;">📅 Event</a>
+            <a href="/order/" style="padding: 0.5rem 1rem; background: var(--teal); color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(27, 163, 185, 0.25);">Order</a>
+            <a href="/hours" style="padding: 0.5rem 1rem; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; font-weight: 500; white-space: nowrap;">🕐 Hours</a>
         </div>
     </div>
 
@@ -457,7 +393,7 @@
                 <p>hello@bakeandgrill.mv</p>
                 <a href="https://wa.me/9609120011" target="_blank">WhatsApp</a>
                 <p style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem;">
-                    <a href="/pos" target="_blank" style="color: rgba(255,255,255,0.6);">Staff Login (POS)</a>
+                    <a href="/admin" target="_blank" style="color: rgba(255,255,255,0.6);">Staff Dashboard</a>
                 </p>
             </div>
         </div>

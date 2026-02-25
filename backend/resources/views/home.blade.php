@@ -237,7 +237,7 @@
             <div style="position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 2rem; z-index: 10;">
                 <h2 style="font-size: 3rem; font-weight: 700; margin-bottom: 1rem; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">🎉 Grand Opening Special!</h2>
                 <p style="font-size: 1.5rem; margin-bottom: 1.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">20% off on all items this week</p>
-                <a href="/menu" style="padding: 1rem 2.5rem; background: white; color: #667eea; border-radius: 999px; font-weight: 700; font-size: 1.1rem; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">Order Now →</a>
+                <a href="/order/" style="padding: 1rem 2.5rem; background: white; color: #667eea; border-radius: 999px; font-weight: 700; font-size: 1.1rem; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">Order Now →</a>
             </div>
         </div>
         
@@ -257,7 +257,7 @@
             <div style="position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 2rem; z-index: 10;">
                 <h2 style="font-size: 3rem; font-weight: 700; margin-bottom: 1rem; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">📦 Free Delivery</h2>
                 <p style="font-size: 1.5rem; margin-bottom: 1.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">On orders above MVR 200 across Malé</p>
-                <a href="/menu" style="padding: 1rem 2.5rem; background: white; color: #1ba3b9; border-radius: 999px; font-weight: 700; font-size: 1.1rem; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">Start Ordering →</a>
+                <a href="/order/" style="padding: 1rem 2.5rem; background: white; color: #1ba3b9; border-radius: 999px; font-weight: 700; font-size: 1.1rem; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">Start Ordering →</a>
             </div>
         </div>
     </div>
@@ -304,8 +304,7 @@
         <p>Authentic Dhivehi cuisine, fresh pastries, and expertly grilled specialties. Browse our menu and order online for quick pickup or delivery.</p>
         
         <div>
-            <a href="/menu" class="btn btn-primary">Order Online Now 🛒</a>
-            <a href="/pre-order" class="btn" style="background: #f39c12; color: white; border: 2px solid #f39c12;">📅 Event Orders</a>
+            <a href="/order/" class="btn btn-primary">Order Online Now 🛒</a>
             <a href="/menu" class="btn btn-secondary">View Full Menu</a>
         </div>
         
