@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, type OrderDetail } from "../api";
+import { getOrderDetail, type OrderDetail, type OrderDetailItem } from "../api";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -8,9 +8,6 @@ function readToken(): string | null {
   return localStorage.getItem("online_token");
 }
 
-function laarToMvr(laar: number): string {
-  return (laar / 100).toFixed(2);
-}
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   pending: { label: "Order Received", color: "#856404", icon: "⏳" },
@@ -197,6 +194,29 @@ export function OrderStatusPage() {
                       ` · ${order.delivery_contact_phone}`}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Items list */}
+            {order.items && order.items.length > 0 && (
+              <div style={styles.card}>
+                <h2 style={{ ...styles.sectionTitle, marginBottom: 16 }}>Items Ordered</h2>
+                {order.items.map((item: OrderDetailItem) => (
+                  <div key={item.id} style={styles.itemRow}>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14 }}>{item.item_name}</span>
+                      {item.modifiers && item.modifiers.length > 0 && (
+                        <div style={{ fontSize: 12, color: "#6c757d", marginTop: 2 }}>
+                          + {item.modifiers.map((m) => m.name).join(", ")}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ color: "#6c757d", fontSize: 14, marginRight: 12 }}>×{item.quantity}</span>
+                    <span style={{ fontWeight: 600, color: "#1ba3b9", fontSize: 14 }}>
+                      MVR {item.total_price.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -414,7 +434,12 @@ const styles = {
     fontSize: 12,
     color: "#6c757d",
   } as React.CSSProperties,
-} as const;
 
-// Suppress unused import (laarToMvr used for future order totals)
-void laarToMvr;
+  itemRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    paddingBottom: 10,
+    marginBottom: 10,
+    borderBottom: "1px solid #f0f0f0",
+  } as React.CSSProperties,
+} as const;

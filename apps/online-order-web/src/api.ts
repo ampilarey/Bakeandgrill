@@ -162,6 +162,15 @@ export type DeliveryOrderPayload = {
   customer_notes?: string;
 };
 
+export type OrderDetailItem = {
+  id: number;
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  modifiers?: Array<{ name: string; price: number }>;
+};
+
 export type OrderDetail = Order & {
   type: string;
   total: number;
@@ -174,6 +183,7 @@ export type OrderDetail = Order & {
   delivery_island?: string;
   delivery_contact_name?: string;
   delivery_contact_phone?: string;
+  items?: OrderDetailItem[];
 };
 
 export async function createDeliveryOrder(

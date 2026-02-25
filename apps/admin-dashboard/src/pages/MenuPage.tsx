@@ -2,11 +2,76 @@ import { useEffect, useRef, useState } from 'react';
 import {
   fetchAdminCategories, createCategory, updateCategory, deleteCategory,
   fetchAdminItems, createItem, updateItem, deleteItem, toggleItemAvailability,
+  uploadMenuImage,
   type MenuCategory, type MenuItem, type MenuItemPayload,
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner,
 } from '../components/Layout';
+
+// ── Image upload field ────────────────────────────────────────────────────────
+function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setUploadError('');
+    setUploading(true);
+    try {
+      const { url } = await uploadMenuImage(file);
+      onChange(url);
+    } catch (e) {
+      setUploadError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Input
+          value={value}
+          onChange={onChange}
+          placeholder="https://… or upload below"
+        />
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          style={{
+            flexShrink: 0, padding: '8px 14px', background: '#f1f5f9',
+            border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer',
+            fontSize: 13, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap',
+          }}
+        >
+          {uploading ? '⏳ Uploading…' : '📁 Upload'}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleFile(file);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      {uploadError && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{uploadError}</p>}
+      {value && (
+        <img
+          src={value}
+          alt="preview"
+          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
+    </div>
+  );
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,8 +150,8 @@ function CategoryFormModal({
         <Field label="Description">
           <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Short description…" rows={2} />
         </Field>
-        <Field label="Image URL">
-          <Input value={form.image_url} onChange={(v) => set('image_url', v)} placeholder="https://…" />
+        <Field label="Image">
+          <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
         </Field>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Sort Order">
@@ -216,10 +281,10 @@ function ItemFormModal({
             <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
           </Field>
         </div>
-        <Field label="Image URL">
-          <Input value={form.image_url} onChange={(v) => set('image_url', v)} placeholder="https://…" />
+        <Field label="Image">
+          <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
         </Field>
-        {form.image_url && (
+        {false && (
           <img
             src={form.image_url}
             alt="preview"

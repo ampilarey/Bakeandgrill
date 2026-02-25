@@ -500,3 +500,24 @@ export async function resetStaffPin(id: number, pin: string): Promise<void> {
 export async function deleteStaff(id: number): Promise<void> {
   await req(`/admin/staff/${id}`, { method: 'DELETE' });
 }
+
+// ── Image Upload ──────────────────────────────────────────────────────────────
+
+export async function uploadMenuImage(file: File): Promise<{ url: string }> {
+  const token = localStorage.getItem('admin_token');
+  const formData = new FormData();
+  formData.append('image', file);
+  const res = await fetch(`${BASE}/admin/upload-image`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body.message ?? `Upload failed (${res.status})`);
+  }
+  return res.json() as Promise<{ url: string }>;
+}

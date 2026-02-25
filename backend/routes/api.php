@@ -352,6 +352,9 @@ Route::middleware(['auth:sanctum'])->prefix('admin/sms')->group(function () {
     Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);
 });
 
+// ─── Image Upload (Admin) ──────────────────────────────────────────────────
+Route::middleware(['auth:sanctum'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
+
 // ─── Staff Management (Admin) ─────────────────────────────────────────────
 Route::middleware(['auth:sanctum'])->prefix('admin/staff')->group(function () {
     Route::get('/',         [App\Http\Controllers\Api\StaffController::class, 'index']);
