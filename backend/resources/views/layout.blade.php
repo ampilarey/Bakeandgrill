@@ -3,410 +3,544 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Bake & Grill - Dhivehi Cuisine & Artisan Baking')</title>
+    <title>@yield('title', 'Bake & Grill – Café & Online Orders')</title>
     <meta name="description" content="@yield('description', 'Fresh Dhivehi food, artisan baking, and premium grills in Malé.')">
-    
+
     <link rel="icon" type="image/svg+xml" href="{{ asset('logo.svg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --teal: #1ba3b9;
-            --teal-hover: #148a9d;
-            --dark: #1c1e21;
-            --gray: #f8f9fa;
-            --text: #2d3436;
-            --border: #e9ecef;
+            --amber:        #D4813A;
+            --amber-hover:  #B86820;
+            --amber-light:  #FEF3E8;
+            --amber-glow:   rgba(212, 129, 58, 0.22);
+            --dark:         #1C1408;
+            --surface:      #FFFFFF;
+            --bg:           #FFFDF9;
+            --border:       #EDE4D4;
+            --text:         #2A1E0C;
+            --muted:        #8B7355;
+            --success-bg:   #D6F0E2;
+            --success-text: #195C36;
+            --danger-bg:    #FCE4E1;
+            --danger-text:  #8C1C0E;
         }
+
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Poppins', sans-serif;
-            background: #ffffff;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
             color: var(--text);
             line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
 
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
+        a { text-decoration: none; color: inherit; }
 
-        .header {
+        /* ─── Desktop Header ─────────────────────────────────────── */
+        .site-header {
             position: sticky;
             top: 0;
-            background: #ffffff;
+            z-index: 300;
+            background: rgba(255, 253, 249, 0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             border-bottom: 1px solid var(--border);
-            z-index: 100;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s;
+        }
+        .site-header.scrolled { box-shadow: 0 4px 24px rgba(28, 20, 8, 0.08); }
+
+        .header-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            height: 68px;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
         }
 
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1rem 2rem;
+        .site-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--dark);
+            flex-shrink: 0;
+            letter-spacing: -0.02em;
+        }
+        .site-logo img { width: 38px; height: 38px; border-radius: 9px; }
+
+        .header-nav {
+            display: flex;
+            gap: 0.125rem;
+            align-items: center;
+            flex: 1;
+            margin-left: 0.75rem;
+        }
+        .header-nav a {
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.925rem;
+            color: var(--muted);
+            transition: all 0.15s;
+        }
+        .header-nav a:hover,
+        .header-nav a.active { background: var(--amber-light); color: var(--amber); }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            flex-shrink: 0;
+        }
+
+        .hdr-login {
+            padding: 0.45rem 0.875rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--muted);
+            transition: color 0.15s;
+        }
+        .hdr-login:hover { color: var(--text); }
+        .hdr-logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.45rem 0.875rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--muted);
+            font-family: inherit;
+            transition: color 0.15s;
+        }
+        .hdr-logout-btn:hover { color: var(--text); }
+
+        .hdr-cart {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.5rem 1rem;
+            background: var(--amber-light);
+            color: var(--amber);
+            border: 1.5px solid rgba(212,129,58,0.2);
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .hdr-cart:hover { background: var(--amber); color: white; }
+
+        .hdr-order {
+            padding: 0.55rem 1.25rem;
+            background: var(--amber);
+            color: white;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.15s;
+            box-shadow: 0 2px 10px var(--amber-glow);
+        }
+        .hdr-order:hover {
+            background: var(--amber-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px var(--amber-glow);
+        }
+
+        /* ─── Status Badge (shared) ──────────────────────────────── */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.875rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .status-badge.open  { background: var(--success-bg); color: var(--success-text); }
+        .status-badge.closed { background: var(--danger-bg);  color: var(--danger-text); }
+
+        /* ─── Mobile Header (top bar) ───────────────────────────── */
+        .mobile-header {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 300;
+            background: rgba(255, 253, 249, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+        }
+        .mob-hdr-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-
-        .logo {
+        .mob-logo {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            font-size: 1.4rem;
-            font-weight: 600;
+            gap: 0.45rem;
+            font-size: 1.05rem;
+            font-weight: 800;
             color: var(--dark);
+            letter-spacing: -0.02em;
+        }
+        .mob-logo img { width: 32px; height: 32px; border-radius: 7px; }
+        .mob-hdr-btns { display: flex; align-items: center; gap: 0.5rem; }
+        .mob-cart-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.45rem 0.875rem;
+            background: var(--amber-light);
+            color: var(--amber);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: 1px solid rgba(212,129,58,0.2);
+        }
+        .mob-order-btn {
+            padding: 0.45rem 0.875rem;
+            background: var(--amber);
+            color: white;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.8rem;
         }
 
-        .logo img {
-            width: 48px;
-            height: 48px;
+        /* ─── Mobile Bottom Nav ─────────────────────────────────── */
+        .mobile-bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 300;
+            background: rgba(255, 253, 249, 0.97);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border);
+            padding: 0.5rem 0.5rem;
+            padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+        }
+        .mob-nav-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.25rem;
+        }
+        .mob-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0.4rem 0.2rem;
+            border-radius: 10px;
+            color: var(--muted);
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mob-nav-item:hover,
+        .mob-nav-item.active { color: var(--amber); }
+        .mob-nav-icon { font-size: 1.3rem; line-height: 1; }
+        .mob-nav-order {
+            background: var(--amber);
+            color: white !important;
             border-radius: 12px;
         }
+        .mob-nav-order:hover { background: var(--amber-hover); }
 
-        .nav {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav a {
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .nav a:hover {
-            color: var(--teal);
-        }
-
-        .order-btn {
-            background: var(--teal);
-            color: white;
-            padding: 0.75rem 2rem;
-            border-radius: 999px;
-            font-weight: 600;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(27, 163, 185, 0.25);
-        }
-
-        .order-btn:hover {
-            background: var(--teal-hover);
-            transform: translateY(-2px);
-        }
-
-        .order-btn.disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        .order-btn.disabled:hover {
-            transform: none;
-        }
-
-        .cart-indicator {
-            position: relative;
-            background: var(--teal);
-            color: white;
-            padding: 0.5rem 1.25rem;
-            border-radius: 999px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .cart-indicator:hover {
-            background: var(--teal-hover);
-        }
-
-        .cart-count {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #e74c3c;
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.4rem 1rem;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-badge.open {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-badge.closed {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .footer {
+        /* ─── Footer ────────────────────────────────────────────── */
+        .site-footer {
             background: var(--dark);
             color: white;
-            padding: 3rem 2rem;
-            margin-top: 4rem;
+            padding: 4rem 2rem 2rem;
+            margin-top: 5rem;
         }
-
-        .footer-content {
-            max-width: 1400px;
+        .footer-grid {
+            max-width: 1280px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: 2fr 1fr 1fr 1fr;
             gap: 3rem;
+            padding-bottom: 3rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-
-        .footer h3 {
-            margin-bottom: 1rem;
+        .footer-brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
             font-size: 1.2rem;
-        }
-
-        .footer p, .footer a {
-            color: rgba(255,255,255,0.8);
-            margin-bottom: 0.5rem;
-            display: block;
-        }
-
-        .footer a:hover {
+            font-weight: 800;
             color: white;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+        }
+        .footer-brand-logo img { width: 36px; height: 36px; border-radius: 8px; }
+        .footer-brand p {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.9rem;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+            max-width: 280px;
+        }
+        .footer-wa {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1.25rem;
+            background: #25D366;
+            color: white;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            transition: all 0.15s;
+        }
+        .footer-wa:hover { background: #1bba58; transform: translateY(-1px); }
+        .footer-col h4 {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 1.25rem;
+        }
+        .footer-col a,
+        .footer-col p {
+            display: block;
+            color: rgba(255,255,255,0.65);
+            font-size: 0.875rem;
+            margin-bottom: 0.625rem;
+            transition: color 0.15s;
+        }
+        .footer-col a:hover { color: white; }
+        .footer-bottom {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: rgba(255,255,255,0.35);
+            font-size: 0.8rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
         }
 
-        .mobile-header {
-            display: none;
-        }
-        
+        /* ─── Responsive ─────────────────────────────────────────── */
         @media (max-width: 768px) {
-            .header {
-                display: none;
-            }
-            
-            .mobile-header {
-                display: block !important;
-                position: sticky;
-                top: 0;
-                background: #ffffff;
-                border-bottom: 1px solid var(--border);
-                z-index: 100;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-                padding: 1rem;
-            }
-            
-            .mobile-header-top {
-                display: grid;
-                grid-template-columns: 1fr auto;
-                align-items: center;
-                margin-bottom: 0.75rem;
-                gap: 0.5rem;
-            }
-            
-            .mobile-header-actions {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 0.5rem;
-            }
-            
-            .mobile-header-actions > * {
-                text-align: center;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding-left: 0.5rem !important;
-                padding-right: 0.5rem !important;
-            }
-            
-            .footer-content {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-                text-align: center;
-            }
+            .site-header   { display: none; }
+            .mobile-header { display: block; }
+            .mobile-bottom-nav { display: block; }
+            .site-footer   { padding-bottom: calc(2rem + 72px); margin-top: 3rem; }
+            .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
+            .footer-brand  { grid-column: 1 / -1; }
+            .footer-brand p { max-width: 100%; }
+            .footer-bottom { flex-direction: column; text-align: center; }
         }
+        @media (max-width: 480px) {
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ─── Shared Utility ─────────────────────────────────────── */
+        .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
+        @media (max-width: 768px) { .container { padding: 0 1rem; } }
     </style>
-    
-    <!-- Cart functionality -->
+
+    @yield('styles')
+
     <script>
-        let cart = JSON.parse(localStorage.getItem('bakegrill_cart') || '[]');
+        let cart = [];
+        try { cart = JSON.parse(localStorage.getItem('bakegrill_cart') || '[]'); } catch(e) {}
 
         function updateCartDisplay() {
-            const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-            const indicator = document.getElementById('cart-indicator');
-            const mobileIndicator = document.getElementById('mobile-cart-indicator');
-            const text = cartCount > 0 ? `🛒 Cart (${cartCount})` : '🛒 Cart';
-            
-            if (indicator) {
-                indicator.innerHTML = text;
-            }
-            if (mobileIndicator) {
-                mobileIndicator.innerHTML = text;
-            }
+            const count = cart.reduce((s, i) => s + (i.quantity || 0), 0);
+            const label = count > 0 ? `🛒 Cart (${count})` : '🛒 Cart';
+            document.querySelectorAll('.cart-display').forEach(el => el.textContent = label);
         }
 
-        function addToCart(itemId, itemName, price) {
-            const existing = cart.find(item => item.id === itemId);
-            if (existing) {
-                existing.quantity += 1;
-            } else {
-                cart.push({ id: itemId, name: itemName, price: parseFloat(price), quantity: 1 });
-            }
-            localStorage.setItem('bakegrill_cart', JSON.stringify(cart));
+        function addToCart(id, name, price) {
+            const found = cart.find(i => i.id === id);
+            if (found) found.quantity++;
+            else cart.push({ id, name, price: parseFloat(price), quantity: 1 });
+            try { localStorage.setItem('bakegrill_cart', JSON.stringify(cart)); } catch(e) {}
             updateCartDisplay();
-
-            // Toast notification
-            const toast = document.createElement('div');
-            toast.innerHTML = `✓ Added to cart — <strong>${itemName}</strong>`;
-            toast.style.cssText = 'position:fixed;top:100px;right:20px;background:#1ba3b9;color:white;padding:1rem 1.5rem;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:9999;font-weight:600;';
-            document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 2500);
+            showToast('✓ ' + name + ' added to cart');
         }
 
         function goToCheckout() {
-            if (cart.length === 0) {
-                alert('Your cart is empty! Add some items first.');
-                return;
-            }
-            // Cart is stored in localStorage — the /order/ SPA reads it automatically
+            if (!cart.length) { showToast('Your cart is empty! Add some items first.', true); return; }
             window.location.href = '/order/';
         }
 
-        document.addEventListener('DOMContentLoaded', updateCartDisplay);
+        function showToast(msg, warn) {
+            const el = document.createElement('div');
+            el.textContent = msg;
+            el.style.cssText = [
+                'position:fixed',
+                'bottom:calc(84px + env(safe-area-inset-bottom))',
+                'right:16px',
+                'padding:0.875rem 1.25rem',
+                'border-radius:12px',
+                'font-weight:600',
+                'font-size:0.875rem',
+                'z-index:9999',
+                'box-shadow:0 8px 24px rgba(0,0,0,0.15)',
+                'transition:opacity 0.3s,transform 0.3s',
+                'max-width:280px',
+                'background:' + (warn ? '#D4813A' : '#2D7A4F'),
+                'color:white',
+            ].join(';');
+            document.body.appendChild(el);
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(8px)';
+                setTimeout(() => el.remove(), 300);
+            }, 2800);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCartDisplay();
+            const hdr = document.querySelector('.site-header');
+            if (hdr) window.addEventListener('scroll', () => hdr.classList.toggle('scrolled', scrollY > 10), { passive: true });
+            const path = location.pathname;
+            document.querySelectorAll('.header-nav a, .mob-nav-item[href]').forEach(a => {
+                const h = a.getAttribute('href');
+                if (h === path || (h && h !== '/' && path.startsWith(h))) a.classList.add('active');
+            });
+        });
     </script>
-    
-    @yield('styles')
 </head>
 <body>
-    <!-- Desktop Header -->
-    <header class="header">
-        <div class="header-content">
-            <a href="/" class="logo">
-                <img src="{{ asset('logo.svg') }}" alt="Bake & Grill">
-                <span>Bake & Grill</span>
-            </a>
-            <nav class="nav">
-                <a href="/">Home</a>
-                <a href="/menu">Menu</a>
-                <a href="/hours">Hours</a>
-                <a href="/contact">Contact</a>
-                
-                @if(session('customer_id'))
-                    <span style="color: #636e72; font-weight: 500; font-size: 0.9rem;">
-                        Hi, {{ str_replace('+960', '', session('customer_name')) }}
-                    </span>
-                    <form method="POST" action="{{ route('customer.logout') }}" style="display: inline;">
-                        @csrf
-                        <button type="submit" style="background: white; border: 1px solid var(--border); color: var(--dark); padding: 0.5rem 1rem; border-radius: 999px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
-                            Logout
-                        </button>
-                    </form>
-                @else
-                    <a href="/customer/login" style="color: #636e72; font-weight: 500;">Login</a>
-                @endif
-                
-                <div class="cart-indicator" id="cart-indicator" onclick="goToCheckout()">
-                    🛒 Cart
-                </div>
-                
-                @php
-                    $isOpen = app(\App\Services\OpeningHoursService::class)->isOpenNow();
-                @endphp
-                <a href="/order/" class="order-btn">Order Online →</a>
-            </nav>
-        </div>
-    </header>
 
-    <!-- Mobile Header -->
-    <div class="mobile-header">
-        <div class="mobile-header-top">
-            <a href="/" style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; font-weight: 600; color: var(--dark);">
-                <img src="{{ asset('logo.svg') }}" alt="Bake & Grill" style="width: 36px; height: 36px; border-radius: 8px;">
-                <span>Bake & Grill</span>
-            </a>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                @if(!session('customer_id'))
-                    <a href="/customer/login" style="padding: 0.5rem 1rem; background: var(--teal); color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 600;">Login</a>
-                @else
-                    <span style="padding: 0.4rem 0.85rem; background: #e8f5f7; color: var(--teal); border-radius: 8px; font-size: 0.8rem; font-weight: 500;">👤 {{ str_replace('+960', '', session('customer_name')) }}</span>
-                    <form method="POST" action="{{ route('customer.logout') }}" style="display: inline;">
-                        @csrf
-                        <button type="submit" style="background: white; border: 1px solid var(--border); color: var(--dark); padding: 0.4rem 0.85rem; border-radius: 999px; cursor: pointer; font-size: 0.8rem;">
-                            Logout
-                        </button>
-                    </form>
-                @endif
-            </div>
-        </div>
-        <div class="mobile-header-actions">
-            <a href="/menu" style="padding: 0.5rem 1rem; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; font-weight: 500; white-space: nowrap;">🍽️ Menu</a>
-            <div onclick="goToCheckout()" style="padding: 0.5rem 1rem; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; white-space: nowrap;">
-                <span id="mobile-cart-indicator">🛒 Cart</span>
-            </div>
-            <a href="/order/" style="padding: 0.5rem 1rem; background: var(--teal); color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(27, 163, 185, 0.25);">Order</a>
-            <a href="/hours" style="padding: 0.5rem 1rem; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; font-weight: 500; white-space: nowrap;">🕐 Hours</a>
+{{-- ─── Desktop Header ─────────────────────────────────────────── --}}
+<header class="site-header">
+    <div class="header-inner">
+        <a href="/" class="site-logo">
+            <img src="{{ asset('logo.svg') }}" alt="Bake & Grill">
+            <span>Bake & Grill</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/">Home</a>
+            <a href="/menu">Menu</a>
+            <a href="/hours">Hours</a>
+            <a href="/contact">Contact</a>
+        </nav>
+        <div class="header-actions">
+            @if(session('customer_id'))
+                <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', session('customer_name')) }}</span>
+                <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
+                    @csrf
+                    <button type="submit" class="hdr-logout-btn">Logout</button>
+                </form>
+            @else
+                <a href="/customer/login" class="hdr-login">Login</a>
+            @endif
+            <button class="hdr-cart" onclick="goToCheckout()">
+                <span class="cart-display">🛒 Cart</span>
+            </button>
+            <a href="/order/" class="hdr-order">Order Now →</a>
         </div>
     </div>
+</header>
 
-    @yield('content')
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div>
-                <h3>Bake & Grill Café</h3>
-                <p>Authentic Dhivehi cuisine, fresh pastries, and premium grills in Malé.</p>
-            </div>
-            <div>
-                <h3>Location</h3>
-                <p>Kalaafaanu hingun, Male, Maldives</p>
-                <p>Near H. Sahara</p>
-            </div>
-            <div>
-                <h3>Quick Links</h3>
-                <a href="/menu">Menu</a>
-                <a href="/hours">Opening Hours</a>
-                <a href="/contact">Contact Us</a>
-                <a href="/privacy">Privacy Policy</a>
-            </div>
-            <div>
-                <h3>Contact</h3>
-                <p>+960 9120011</p>
-                <p>hello@bakeandgrill.mv</p>
-                <a href="https://wa.me/9609120011" target="_blank">WhatsApp</a>
-                <p style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem;">
-                    <a href="/admin" target="_blank" style="color: rgba(255,255,255,0.6);">Staff Dashboard</a>
-                </p>
-            </div>
+{{-- ─── Mobile Top Bar ──────────────────────────────────────────── --}}
+<div class="mobile-header">
+    <div class="mob-hdr-row">
+        <a href="/" class="mob-logo">
+            <img src="{{ asset('logo.svg') }}" alt="Bake & Grill">
+            <span>Bake & Grill</span>
+        </a>
+        <div class="mob-hdr-btns">
+            @if(session('customer_id'))
+                <span style="font-size:0.75rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', session('customer_name')) }}</span>
+            @else
+                <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
+            @endif
+            <button class="mob-cart-btn" onclick="goToCheckout()">
+                <span class="cart-display">🛒 Cart</span>
+            </button>
+            <a href="/order/" class="mob-order-btn">Order</a>
         </div>
-        <div style="text-align: center; padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); font-size: 0.9rem;">
-            © {{ date('Y') }} Bake & Grill. All rights reserved.
-        </div>
-    </footer>
+    </div>
+</div>
 
-    <style>
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    </style>
+@yield('content')
+
+{{-- ─── Footer ──────────────────────────────────────────────────── --}}
+<footer class="site-footer">
+    <div class="footer-grid">
+        <div class="footer-brand">
+            <a href="/" class="footer-brand-logo">
+                <img src="{{ asset('logo.svg') }}" alt="Bake & Grill">
+                Bake & Grill
+            </a>
+            <p>Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.</p>
+            <a href="https://wa.me/9609120011" target="_blank" class="footer-wa">💬 WhatsApp Us</a>
+        </div>
+        <div class="footer-col">
+            <h4>Quick Links</h4>
+            <a href="/">Home</a>
+            <a href="/menu">Menu</a>
+            <a href="/order/">Order Online</a>
+            <a href="/hours">Opening Hours</a>
+            <a href="/contact">Contact Us</a>
+        </div>
+        <div class="footer-col">
+            <h4>Location</h4>
+            <p>Kalaafaanu Hingun</p>
+            <p>Malé, Maldives</p>
+            <p>Near H. Sahara</p>
+        </div>
+        <div class="footer-col">
+            <h4>Contact</h4>
+            <a href="tel:+9609120011">+960 9120011</a>
+            <a href="mailto:hello@bakeandgrill.mv">hello@bakeandgrill.mv</a>
+            <a href="/privacy" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.3);font-size:0.8rem;">Privacy Policy</a>
+            <a href="/admin" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Staff Dashboard</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© {{ date('Y') }} Bake & Grill. All rights reserved.</span>
+        <span>Malé, Maldives</span>
+    </div>
+</footer>
+
+{{-- ─── Mobile Bottom Navigation ────────────────────────────────── --}}
+<nav class="mobile-bottom-nav">
+    <div class="mob-nav-grid">
+        <a href="/" class="mob-nav-item">
+            <span class="mob-nav-icon">🏠</span>Home
+        </a>
+        <a href="/menu" class="mob-nav-item">
+            <span class="mob-nav-icon">🍽️</span>Menu
+        </a>
+        <div class="mob-nav-item mob-nav-order" onclick="window.location.href='/order/'">
+            <span class="mob-nav-icon">🛒</span>Order
+        </div>
+        <a href="/hours" class="mob-nav-item">
+            <span class="mob-nav-icon">🕐</span>Hours
+        </a>
+        <a href="/contact" class="mob-nav-item">
+            <span class="mob-nav-icon">📞</span>Contact
+        </a>
+    </div>
+</nav>
+
 </body>
 </html>

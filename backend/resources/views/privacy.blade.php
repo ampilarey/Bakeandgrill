@@ -15,11 +15,19 @@
         margin-bottom: 1rem;
     }
 
+    .privacy-content h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--dark);
+    }
+
     .privacy-content h2 {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
+        font-weight: 700;
         margin-top: 2.5rem;
         margin-bottom: 1rem;
-        color: var(--teal);
+        color: var(--amber);
     }
 
     .privacy-content p {
