@@ -11,17 +11,25 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      "Accept": "application/json",
       ...options.headers,
     },
     ...options,
   });
 
   if (!response.ok) {
-    const errorBody = (await response.json().catch(() => ({}))) as ApiError;
-    const message =
-      errorBody.message ??
-      Object.values(errorBody.errors ?? {})[0]?.[0] ??
-      "Request failed";
+    const text = await response.text().catch(() => "");
+    let message = "Request failed";
+    try {
+      const errorBody = JSON.parse(text) as ApiError;
+      message =
+        errorBody.message ??
+        Object.values(errorBody.errors ?? {})[0]?.[0] ??
+        "Request failed";
+    } catch {
+      // Response was HTML (e.g. Laravel error page) — use status text
+      message = `Server error (${response.status})`;
+    }
     throw new Error(message);
   }
 

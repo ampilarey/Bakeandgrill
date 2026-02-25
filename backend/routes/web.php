@@ -18,8 +18,10 @@ Route::get('/dashboard', function () {
     return redirect()->route('home');
 })->name('dashboard');
 
-// Menu admin (add/delete items) - staff login on page
-Route::get('/admin', [MenuAdminController::class, 'index'])->name('admin.menu');
+// Old Blade admin — redirect to React SPA
+Route::get('/admin', function () {
+    return redirect('/admin/');
+})->name('admin.redirect');
 
 // Public Website Pages (Customer-facing only)
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -60,7 +62,10 @@ Route::post('/receipts/{token}/resend', [ReceiptPageController::class, 'resend']
 // BML Return URL (non-authoritative — redirects to frontend)
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');
 
-// Online Order SPA — catch-all so React Router handles /order/* sub-paths
+// Online Order SPA — redirect bare /order to /order/ then catch-all for React Router
+Route::get('/order', function () {
+    return redirect('/order/');
+})->name('order.redirect');
 Route::get('/order/{any}', function () {
     return response()->file(public_path('order/index.html'));
 })->where('any', '.*')->name('order.spa');
