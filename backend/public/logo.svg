@@ -1,110 +1,122 @@
 <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Background: rich dark brown, slight radial glow top-left -->
-    <radialGradient id="bg" cx="35%" cy="30%" r="90%">
-      <stop offset="0%" stop-color="#2E1C0A"/>
-      <stop offset="100%" stop-color="#160E04"/>
+    <!-- Background -->
+    <radialGradient id="bg" cx="35%" cy="28%" r="88%">
+      <stop offset="0%"   stop-color="#2E1C0A"/>
+      <stop offset="100%" stop-color="#150D04"/>
     </radialGradient>
 
-    <!-- Outer flame: deep amber to burnt orange -->
-    <linearGradient id="gOuter" x1="100" y1="36" x2="100" y2="158" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#FFA030"/>
-      <stop offset="45%"  stop-color="#E86010"/>
-      <stop offset="100%" stop-color="#B84400"/>
+    <!-- Outer flame: burnt orange → deep amber -->
+    <linearGradient id="gFlameOut" x1="100" y1="14" x2="100" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#FFAA38"/>
+      <stop offset="42%"  stop-color="#E86010"/>
+      <stop offset="100%" stop-color="#B03C00"/>
     </linearGradient>
 
-    <!-- Mid flame: golden amber -->
-    <linearGradient id="gMid" x1="100" y1="78" x2="100" y2="155" gradientUnits="userSpaceOnUse">
+    <!-- Mid-flame: richer amber -->
+    <linearGradient id="gFlameMid" x1="100" y1="58" x2="100" y2="116" gradientUnits="userSpaceOnUse">
       <stop offset="0%"   stop-color="#FFD060"/>
       <stop offset="100%" stop-color="#FF9020"/>
     </linearGradient>
 
-    <!-- Inner core: bright gold/cream -->
-    <linearGradient id="gInner" x1="100" y1="106" x2="100" y2="154" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#FFF5B0"/>
-      <stop offset="100%" stop-color="#FFD050"/>
-    </linearGradient>
-
-    <!-- Grill line fade -->
-    <linearGradient id="gLine1" x1="55" y1="0" x2="145" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#D4813A" stop-opacity="0"/>
-      <stop offset="15%"  stop-color="#D4813A" stop-opacity="0.9"/>
-      <stop offset="85%"  stop-color="#D4813A" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#D4813A" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="gLine2" x1="62" y1="0" x2="138" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#D4813A" stop-opacity="0"/>
-      <stop offset="15%"  stop-color="#D4813A" stop-opacity="0.65"/>
-      <stop offset="85%"  stop-color="#D4813A" stop-opacity="0.65"/>
-      <stop offset="100%" stop-color="#D4813A" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="gLine3" x1="68" y1="0" x2="132" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#D4813A" stop-opacity="0"/>
-      <stop offset="15%"  stop-color="#D4813A" stop-opacity="0.38"/>
-      <stop offset="85%"  stop-color="#D4813A" stop-opacity="0.38"/>
-      <stop offset="100%" stop-color="#D4813A" stop-opacity="0"/>
+    <!-- Inner core: cream-gold -->
+    <linearGradient id="gFlameCore" x1="100" y1="80" x2="100" y2="114" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#FFF8B8"/>
+      <stop offset="100%" stop-color="#FFD448"/>
     </linearGradient>
   </defs>
 
-  <!-- Rounded square background -->
+  <!-- ── Background ───────────────────────────────────────────── -->
   <rect width="200" height="200" rx="46" fill="url(#bg)"/>
 
-  <!-- ── Outer flame body (full silhouette) ── -->
-  <path d="
-    M 100 36
-    C 106 50 118 64 126 78
-    C 134 92 138 108 135 122
-    C 132 136 124 147 116 153
-    C 122 136 118 120 110 112
-    C 116 128 114 144 108 154
-    C 105 158 102 161 100 162
-    C 98 161 95 158 92 154
-    C 86 144 84 128 90 112
-    C 82 120 78 136 84 153
-    C 76 147 68 136 65 122
-    C 62 108 66 92 74 78
-    C 82 64 94 50 100 36
-    Z
-  " fill="url(#gOuter)"/>
+  <!-- ── Flame (compact, upper 60% of icon) ──────────────────── -->
 
-  <!-- ── Left inner wing ── -->
+  <!-- Outer flame body -->
   <path d="
-    M 100 134
-    C 97 122 93 110 87 100
-    C 83 92 80 100 80 110
-    C 80 126 88 144 96 154
-    C 98 158 100 162 100 162
-    C 96 148 92 138 92 126
-    C 88 116 88 106 94 100
-    C 96 118 98 128 100 134
+    M 100 14
+    C 104 24  112 36  120 50
+    C 128 64  131 78  128 92
+    C 126 102 120 110 114 115
+    C 119 101 116 88  109 82
+    C 114 94  113 108 107 116
+    C 105 118 102 120 100 121
+    C 98  120 95  118 93  116
+    C 87  108 86  94  91  82
+    C 84  88  81  101 86  115
+    C 80  110 74  102 72  92
+    C 69  78  72  64  80  50
+    C 88  36  96  24  100 14
     Z
-  " fill="url(#gMid)" opacity="0.7"/>
+  " fill="url(#gFlameOut)"/>
 
-  <!-- ── Right inner wing ── -->
+  <!-- Left inner wing -->
   <path d="
-    M 100 134
-    C 103 122 107 110 113 100
-    C 117 92 120 100 120 110
-    C 120 126 112 144 104 154
-    C 102 158 100 162 100 162
-    C 104 148 108 138 108 126
-    C 112 116 112 106 106 100
-    C 104 118 102 128 100 134
+    M 100 118
+    C 97  106 93  94  87  84
+    C 83  76  80  84  80  93
+    C 80  106 86  118 93  125
+    C 97  128 100 132 100 132
+    C 97  120 94  110 94  100
+    C 90  90  90  80  96  74
+    C 97  90  99  106 100 118
     Z
-  " fill="url(#gMid)" opacity="0.7"/>
+  " fill="url(#gFlameMid)" opacity="0.75"/>
 
-  <!-- ── Centre inner teardrop glow ── -->
+  <!-- Right inner wing -->
   <path d="
-    M 100 106
-    C 107 116 110 128 108 138
-    C 106 148 103 154 100 157
-    C 97 154 94 148 92 138
-    C 90 128 93 116 100 106
+    M 100 118
+    C 103 106 107 94  113 84
+    C 117 76  120 84  120 93
+    C 120 106 114 118 107 125
+    C 103 128 100 132 100 132
+    C 103 120 106 110 106 100
+    C 110 90  110 80  104 74
+    C 103 90  101 106 100 118
     Z
-  " fill="url(#gInner)"/>
+  " fill="url(#gFlameMid)" opacity="0.75"/>
 
-  <!-- ── Grill lines ── -->
-  <rect x="55"  y="170" width="90" height="5"   rx="2.5" fill="url(#gLine1)"/>
-  <rect x="62"  y="180" width="76" height="4.5" rx="2.2" fill="url(#gLine2)"/>
-  <rect x="68"  y="189" width="64" height="4"   rx="2"   fill="url(#gLine3)"/>
+  <!-- Inner teardrop glow -->
+  <path d="
+    M 100 80
+    C 107 90  110 102 108 112
+    C 107 118 104 121 100 123
+    C 96  121 93  118 92  112
+    C 90  102 93  90  100 80
+    Z
+  " fill="url(#gFlameCore)"/>
+
+  <!-- ── B & G text ────────────────────────────────────────────── -->
+
+  <!-- Big B -->
+  <text
+    x="40" y="183"
+    font-family="'Plus Jakarta Sans','Arial Black',Arial,sans-serif"
+    font-size="70"
+    font-weight="800"
+    fill="white"
+    text-anchor="middle"
+    letter-spacing="-2">B</text>
+
+  <!-- Small amber & -->
+  <text
+    x="100" y="178"
+    font-family="'Plus Jakarta Sans','Arial Black',Arial,sans-serif"
+    font-size="30"
+    font-weight="700"
+    fill="#D4813A"
+    text-anchor="middle">&#38;</text>
+
+  <!-- Big G -->
+  <text
+    x="160" y="183"
+    font-family="'Plus Jakarta Sans','Arial Black',Arial,sans-serif"
+    font-size="70"
+    font-weight="800"
+    fill="white"
+    text-anchor="middle"
+    letter-spacing="-2">G</text>
+
+  <!-- Subtle divider line between flame and text -->
+  <line x1="30" y1="134" x2="170" y2="134"
+        stroke="#D4813A" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/>
 </svg>
