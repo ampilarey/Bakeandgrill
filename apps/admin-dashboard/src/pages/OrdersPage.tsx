@@ -80,8 +80,12 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
               <Row label="Type" value={typeLabel(order.type)} />
               <Row label="Time" value={new Date(order.created_at).toLocaleString()} />
               {order.table_number && <Row label="Table" value={order.table_number} />}
-              {order.customer_name && <Row label="Customer" value={order.customer_name} />}
-              {order.customer_phone && <Row label="Phone" value={order.customer_phone} />}
+              {(order.customer?.name ?? order.customer_name) && (
+                <Row label="Customer" value={(order.customer?.name ?? order.customer_name)!} />
+              )}
+              {(order.customer?.phone ?? order.customer_phone) && (
+                <Row label="Phone" value={(order.customer?.phone ?? order.customer_phone)!} />
+              )}
               {order.paid_at && <Row label="Paid at" value={new Date(order.paid_at).toLocaleString()} />}
             </div>
 

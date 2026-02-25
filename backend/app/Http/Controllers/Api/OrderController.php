@@ -26,7 +26,7 @@ class OrderController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Order::with(['customer:id,name,phone', 'items:id,order_id,name,quantity,unit_price,subtotal'])
+        $query = Order::with(['customer:id,name,phone', 'items:id,order_id,item_name,quantity,unit_price,total_price'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('status')) {

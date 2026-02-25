@@ -315,7 +315,7 @@ export function ErrorMsg({ message }: { message: string }) {
 
 export function statColor(status: string): string {
   const map: Record<string, string> = {
-    pending: 'yellow', preparing: 'blue', ready: 'teal',
+    pending: 'yellow', preparing: 'blue', in_progress: 'blue', ready: 'teal',
     paid: 'green', completed: 'gray', cancelled: 'red',
     out_for_delivery: 'teal', draft: 'gray', sent: 'green',
     failed: 'red', active: 'green', expired: 'gray',

@@ -58,6 +58,9 @@ export type Order = {
   total: number;
   subtotal?: number;
   table_number?: string | null;
+  // Nested customer object returned by the staff list endpoint
+  customer?: { id: number; name: string; phone: string } | null;
+  // Flat fields (may be present in other endpoints)
   customer_name?: string | null;
   customer_phone?: string | null;
   notes?: string | null;
@@ -134,14 +137,14 @@ export type Promotion = {
   id: number;
   name: string;
   code: string;
-  type: string;
-  discount_value: number;
+  type: string;          // 'fixed' | 'percentage' | 'free_item'
+  discount_value: number; // laari for fixed, integer % for percentage
   scope: string;
-  min_order_amount?: number | null;
+  min_order_laar?: number | null;
   max_uses?: number | null;
-  used_count: number;
+  redemptions_count: number;
   stackable: boolean;
-  active: boolean;
+  is_active: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
   created_at: string;
@@ -154,13 +157,13 @@ export async function fetchPromotions(): Promise<{ data: Promotion[] }> {
 export type PromotionPayload = {
   name: string;
   code: string;
-  type: 'flat' | 'percent';
-  discount_value: number;
+  type: 'fixed' | 'percentage';
+  discount_value: number;  // laari for fixed, integer % for percentage
   scope?: string;
-  min_order_amount?: number | null;
+  min_order_laar?: number | null;
   max_uses?: number | null;
   stackable?: boolean;
-  active?: boolean;
+  is_active?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
 };
@@ -171,7 +174,7 @@ export async function createPromotion(data: PromotionPayload): Promise<{ promoti
 
 export async function updatePromotion(
   id: number,
-  data: Partial<PromotionPayload>
+  data: Partial<PromotionPayload> & { is_active?: boolean }
 ): Promise<{ promotion: Promotion }> {
   return req(`/admin/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
@@ -269,7 +272,19 @@ export async function fetchSmsLogStats(): Promise<{
   failed: number;
   by_type: Record<string, number>;
 }> {
-  return req('/admin/sms/logs/stats');
+  // Backend returns { stats: [{type, status, count, ...}] } — transform it
+  const res = await req<{ stats: Array<{ type: string; status: string; count: number }> }>(
+    '/admin/sms/logs/stats'
+  );
+  const stats = res.stats ?? [];
+  const total = stats.reduce((s, r) => s + r.count, 0);
+  const sent  = stats.filter((r) => r.status === 'sent').reduce((s, r) => s + r.count, 0);
+  const failed = stats.filter((r) => r.status === 'failed').reduce((s, r) => s + r.count, 0);
+  const by_type: Record<string, number> = {};
+  for (const r of stats) {
+    by_type[r.type] = (by_type[r.type] ?? 0) + r.count;
+  }
+  return { total, sent, failed, by_type };
 }
 
 export async function fetchSmsCampaigns(): Promise<{ data: SmsCampaign[] }> {
@@ -318,5 +333,19 @@ export async function fetchSalesSummary(params?: {
   const qs = new URLSearchParams();
   if (params?.from) qs.set('from', params.from);
   if (params?.to) qs.set('to', params.to);
-  return req(`/reports/sales-summary?${qs}`);
+  // Backend returns { from, to, totals: { orders_count, total, ... }, payments }
+  const res = await req<{
+    from: string;
+    to: string;
+    totals: { orders_count: number; total: number; subtotal: number };
+    payments: Record<string, number>;
+  }>(`/reports/sales-summary?${qs}`);
+  const order_count = res.totals?.orders_count ?? 0;
+  const total_revenue = res.totals?.total ?? 0;
+  return {
+    total_revenue,
+    order_count,
+    average_order_value: order_count > 0 ? total_revenue / order_count : 0,
+    period: `${res.from} – ${res.to}`,
+  };
 }

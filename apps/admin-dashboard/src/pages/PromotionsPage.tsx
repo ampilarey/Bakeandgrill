@@ -9,9 +9,9 @@ import {
 } from '../components/Layout';
 
 const EMPTY: PromotionPayload = {
-  name: '', code: '', type: 'flat', discount_value: 0,
-  scope: 'order', min_order_amount: null, max_uses: null,
-  stackable: false, active: true, starts_at: null, expires_at: null,
+  name: '', code: '', type: 'fixed', discount_value: 0,
+  scope: 'order', min_order_laar: null, max_uses: null,
+  stackable: false, is_active: true, starts_at: null, expires_at: null,
 };
 
 function PromotionForm({
@@ -27,6 +27,25 @@ function PromotionForm({
 
   const set = <K extends keyof PromotionPayload>(k: K, v: PromotionPayload[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  // discount_value: for 'fixed' type, displayed in MVR (we multiply by 100 to store as laari)
+  // for 'percentage', stored as-is (e.g. 20 = 20%)
+  const discountDisplay = form.type === 'fixed'
+    ? String((form.discount_value / 100).toFixed(2))
+    : String(form.discount_value);
+
+  const handleDiscountChange = (v: string) => {
+    const n = parseFloat(v) || 0;
+    set('discount_value', form.type === 'fixed' ? Math.round(n * 100) : n);
+  };
+
+  const minOrderDisplay = form.min_order_laar != null
+    ? String((form.min_order_laar / 100).toFixed(2))
+    : '';
+
+  const handleMinOrderChange = (v: string) => {
+    set('min_order_laar', v ? Math.round(parseFloat(v) * 100) : null);
+  };
 
   const handleSave = async () => {
     if (!form.name || !form.code) { setError('Name and code are required.'); return; }
@@ -50,21 +69,21 @@ function PromotionForm({
         <Field label="Discount Type">
           <Select
             value={form.type}
-            onChange={(v) => set('type', v as 'flat' | 'percent')}
-            options={[{ value: 'flat', label: 'Fixed (MVR)' }, { value: 'percent', label: 'Percentage (%)' }]}
+            onChange={(v) => set('type', v as 'fixed' | 'percentage')}
+            options={[{ value: 'fixed', label: 'Fixed Amount (MVR)' }, { value: 'percentage', label: 'Percentage (%)' }]}
           />
         </Field>
-        <Field label={`Discount Value (${form.type === 'percent' ? '%' : 'MVR'})`}>
+        <Field label={`Discount Value (${form.type === 'percentage' ? '%' : 'MVR'})`}>
           <Input
-            value={String(form.discount_value)}
-            onChange={(v) => set('discount_value', parseFloat(v) || 0)}
+            value={discountDisplay}
+            onChange={handleDiscountChange}
             type="number"
           />
         </Field>
         <Field label="Min Order Amount (MVR)">
           <Input
-            value={form.min_order_amount != null ? String(form.min_order_amount) : ''}
-            onChange={(v) => set('min_order_amount', v ? parseFloat(v) : null)}
+            value={minOrderDisplay}
+            onChange={handleMinOrderChange}
             type="number" placeholder="No minimum"
           />
         </Field>
@@ -84,7 +103,7 @@ function PromotionForm({
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
-          <input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} />
+          <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
           Active
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
@@ -107,6 +126,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function formatDiscount(p: Promotion): string {
+  if (p.type === 'percentage') return `${p.discount_value}%`;
+  if (p.type === 'fixed') return `MVR ${(p.discount_value / 100).toFixed(2)}`;
+  return p.type;
 }
 
 export function PromotionsPage() {
@@ -150,7 +175,7 @@ export function PromotionsPage() {
   };
 
   const handleToggle = async (p: Promotion) => {
-    await updatePromotion(p.id, { active: !p.active });
+    await updatePromotion(p.id, { is_active: !p.is_active });
     await load();
   };
 
@@ -174,10 +199,11 @@ export function PromotionsPage() {
           </h3>
           <PromotionForm
             initial={editing ? {
-              name: editing.name, code: editing.code, type: editing.type as 'flat' | 'percent',
+              name: editing.name, code: editing.code,
+              type: (editing.type === 'percentage' ? 'percentage' : 'fixed') as 'fixed' | 'percentage',
               discount_value: editing.discount_value, scope: editing.scope,
-              min_order_amount: editing.min_order_amount, max_uses: editing.max_uses,
-              stackable: editing.stackable, active: editing.active,
+              min_order_laar: editing.min_order_laar, max_uses: editing.max_uses,
+              stackable: editing.stackable, is_active: editing.is_active,
               starts_at: editing.starts_at, expires_at: editing.expires_at,
             } : EMPTY}
             onSave={creating ? handleCreate : handleUpdate}
@@ -210,21 +236,21 @@ export function PromotionsPage() {
                     </code>
                   </td>
                   <td style={{ padding: '12px 16px', color: '#0ea5e9', fontWeight: 600 }}>
-                    {p.type === 'percent' ? `${p.discount_value}%` : `MVR ${p.discount_value}`}
+                    {formatDiscount(p)}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#475569' }}>
-                    {p.used_count}{p.max_uses ? ` / ${p.max_uses}` : ''}
+                    {p.redemptions_count}{p.max_uses ? ` / ${p.max_uses}` : ''}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#475569', fontSize: 12 }}>
                     {p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '∞'}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <Badge label={p.active ? 'Active' : 'Inactive'} color={p.active ? 'green' : 'gray'} />
+                    <Badge label={p.is_active ? 'Active' : 'Inactive'} color={p.is_active ? 'green' : 'gray'} />
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn small variant="ghost" onClick={() => handleToggle(p)}>
-                        {p.active ? 'Disable' : 'Enable'}
+                        {p.is_active ? 'Disable' : 'Enable'}
                       </Btn>
                       <Btn small variant="secondary" onClick={() => { setEditing(p); setCreating(false); }}>Edit</Btn>
                       <Btn small variant="danger" onClick={() => handleDelete(p.id)}>Delete</Btn>
