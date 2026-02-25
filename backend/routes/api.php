@@ -105,6 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Orders
+    Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store'])
         ->middleware('device.active');
     Route::post('/orders/sync', [OrderController::class, 'sync'])

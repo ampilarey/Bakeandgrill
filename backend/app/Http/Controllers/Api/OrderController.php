@@ -21,6 +21,31 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    /**
+     * GET /api/orders — staff order list with filters.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $query = Order::with(['customer:id,name,phone', 'items:id,order_id,name,quantity,unit_price,subtotal'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->input('date'));
+        }
+
+        $orders = $query->paginate(30);
+
+        return response()->json($orders);
+    }
+
     public function store(StoreOrderRequest $request): JsonResponse
     {
         if (!$request->user()->tokenCan('staff')) {
