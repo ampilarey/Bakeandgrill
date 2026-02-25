@@ -51,31 +51,28 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
           <p style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>Staff Admin — Enter your PIN</p>
         </div>
 
-        {/* PIN display */}
+        {/* PIN display — shows dots as you type */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           gap: 10,
           marginBottom: 24,
+          minHeight: 54,
+          alignItems: 'center',
         }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              border: `2px solid ${pin.length > i ? '#0ea5e9' : '#e2e8f0'}`,
-              background: pin.length > i ? '#e0f2fe' : '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 20,
-              fontWeight: 800,
-              color: '#0f172a',
-              transition: 'all 0.15s',
-            }}>
-              {pin.length > i ? '●' : ''}
-            </div>
-          ))}
+          {pin.length === 0 ? (
+            <span style={{ color: '#94a3b8', fontSize: 14 }}>Enter your PIN below</span>
+          ) : (
+            Array.from({ length: pin.length }).map((_, i) => (
+              <div key={i} style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                background: '#0ea5e9',
+                transition: 'all 0.1s',
+              }} />
+            ))
+          )}
         </div>
 
         {error && (
