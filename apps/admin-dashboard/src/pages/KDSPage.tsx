@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall, type KdsTicket } from '../api';
+import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall } from '../api';
+import type { KdsTicket } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, statColor } from '../components/Layout';
 
 function elapsed(iso: string): string {
@@ -26,7 +27,7 @@ export function KDSPage() {
   const load = async () => {
     try {
       const res = await fetchKdsOrders();
-      setTickets(res.data);
+      setTickets(res.orders);
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -47,9 +48,11 @@ export function KDSPage() {
     finally { setActing(null); }
   };
 
-  const pending  = tickets.filter((t) => t.status === 'pending');
-  const cooking  = tickets.filter((t) => t.status === 'preparing');
-  const ready    = tickets.filter((t) => t.status === 'ready');
+  // Backend statuses: pending → in_progress → completed
+  // paid = online order waiting for kitchen
+  const pending = tickets.filter((t) => ['pending', 'paid'].includes(t.status));
+  const cooking = tickets.filter((t) => t.status === 'in_progress');
+  const ready:   KdsTicket[] = []; // bumped orders go straight to completed
 
   const Column = ({ title, items, color, children }: {
     title: string; items: KdsTicket[]; color: string;
@@ -176,10 +179,10 @@ function TicketHeader({ ticket }: { ticket: KdsTicket }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {ticket.items.map((item, i) => (
           <div key={i} style={{ fontSize: 13, color: '#374151' }}>
-            <span style={{ fontWeight: 700, color: '#0f172a' }}>{item.quantity}×</span> {item.name}
+            <span style={{ fontWeight: 700, color: '#0f172a' }}>{item.quantity}×</span> {item.item_name}
             {item.modifiers && item.modifiers.length > 0 && (
               <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
-                + {item.modifiers.join(', ')}
+                + {item.modifiers.map((m) => m.modifier_name).join(', ')}
               </span>
             )}
           </div>

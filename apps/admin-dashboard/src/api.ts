@@ -44,10 +44,10 @@ export async function logout(): Promise<void> {
 
 export type OrderItem = {
   id: number;
-  name: string;
+  item_name: string;
   quantity: number;
   unit_price: number;
-  subtotal: number;
+  total_price: number;
 };
 
 export type Order = {
@@ -100,15 +100,20 @@ export type KdsTicket = {
   order_number: string;
   status: string;
   type: string;
-  items: Array<{ name: string; quantity: number; modifiers?: string[] }>;
+  items: Array<{
+    item_name: string;
+    quantity: number;
+    modifiers?: Array<{ modifier_name: string }>;
+  }>;
   started_at?: string | null;
   created_at: string;
   table_number?: string | null;
   delivery_island?: string | null;
 };
 
-export async function fetchKdsOrders(): Promise<{ data: KdsTicket[] }> {
-  return req('/kds/orders');
+export async function fetchKdsOrders(): Promise<{ orders: KdsTicket[] }> {
+  // Include paid orders so online orders appear in kitchen
+  return req('/kds/orders?status=pending,in_progress,paid');
 }
 
 export async function kdsStart(id: number): Promise<void> {

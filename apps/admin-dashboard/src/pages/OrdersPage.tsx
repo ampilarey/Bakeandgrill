@@ -103,8 +103,8 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
                 <p style={{ fontWeight: 700, fontSize: 13, color: '#475569', marginBottom: 8 }}>Items</p>
                 {order.items.map((item) => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
-                    <span>{item.quantity}× {item.name}</span>
-                    <span style={{ color: '#0ea5e9', fontWeight: 600 }}>MVR {item.subtotal.toFixed(2)}</span>
+                    <span>{item.quantity}× {item.item_name}</span>
+                    <span style={{ color: '#0ea5e9', fontWeight: 600 }}>MVR {(item.total_price ?? 0).toFixed(2)}</span>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, paddingTop: 8 }}>
