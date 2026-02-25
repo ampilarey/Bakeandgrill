@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   API_ORIGIN,
   Category,
   Item,
   Modifier,
-  createCustomerOrder,
   fetchCategories,
   fetchCustomerOrders,
   fetchItems,
@@ -133,6 +133,7 @@ type CartItem = {
 };
 
 function App() {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
@@ -162,8 +163,6 @@ function App() {
     }
     return [];
   });
-  const [pickupNotes, setPickupNotes] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
 
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem("online_token");
@@ -178,9 +177,26 @@ function App() {
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpHint, setOtpHint] = useState<string | null>(null);
   const [authError, setAuthError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
+
+  // Persist cart to localStorage so CheckoutPage can read it
+  useEffect(() => {
+    const serialized = cart.map((entry) => ({
+      id: entry.item.id,
+      name: entry.item.name,
+      price: entry.item.base_price,
+      quantity: entry.quantity,
+      modifiers: entry.modifiers.map((m) => ({
+        id: m.id,
+        name: m.name,
+        price: m.price,
+      })),
+    }));
+    localStorage.setItem("bakegrill_cart", JSON.stringify(serialized));
+  }, [cart]);
 
   useEffect(() => {
     fetchOpeningHoursStatus()
@@ -404,34 +420,9 @@ function App() {
     });
   };
 
-  const handleCheckout = async () => {
-    if (!token || cart.length === 0) {
-      return;
-    }
-    setIsLoading(true);
-    setStatusMessage("");
-    try {
-      await createCustomerOrder(token, {
-        customer_notes: pickupNotes || undefined,
-        type: 'online_pickup',
-        items: cart.map((entry) => ({
-          item_id: entry.item.id,
-          quantity: entry.quantity,
-          modifiers: entry.modifiers.map((modifier) => ({
-            modifier_id: modifier.id,
-          })),
-        })),
-      });
-      setCart([]);
-      setPickupNotes("");
-      setStatusMessage("Order placed! We will start preparing it.");
-      const history = await fetchCustomerOrders(token);
-      setOrders(history.data);
-    } catch (error) {
-      setStatusMessage((error as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleCheckout = () => {
+    if (cart.length === 0) return;
+    navigate("/checkout");
   };
 
   if (!token) {
@@ -574,7 +565,6 @@ function App() {
                 ✓ {statusMessage}
               </div>
             )}
-
             <div style={{ marginTop: '2rem' }}>
               {!otpRequested ? (
                 <button
@@ -698,13 +688,7 @@ function App() {
       </header>
 
       <main className="flex-1 grid gap-6 px-6 py-6 lg:grid-cols-12 max-w-7xl mx-auto w-full" style={{ background: '#fafbfc', minHeight: '60vh' }}>
-        {statusMessage && (
-          <div className="lg:col-span-12 bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-            {statusMessage}
-          </div>
-        )}
-        
-        <section className="lg:col-span-3 space-y-3">
+          <section className="lg:col-span-3 space-y-3">
           <h2 className="text-sm font-semibold text-slate-500">Categories</h2>
           <div className="space-y-2">
             {categories.map((category) => (
@@ -807,23 +791,13 @@ function App() {
                 🕐 {closedMessage}
               </div>
             )}
-            <textarea
-              value={pickupNotes}
-              onChange={(event) => setPickupNotes(event.target.value)}
-              placeholder="Pickup notes (optional)"
-              className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              rows={3}
-            />
             <button
               onClick={handleCheckout}
-              disabled={cart.length === 0 || isLoading || isOpen === false}
+              disabled={cart.length === 0 || isOpen === false}
               className="btn-primary w-full mt-4 text-lg"
             >
-              {isOpen === false ? 'We\'re closed' : isLoading ? 'Processing...' : 'Place Order 🛒'}
+              {isOpen === false ? "We're closed" : 'Proceed to Checkout →'}
             </button>
-            {statusMessage && (
-              <p className="mt-2 text-xs text-emerald-600">{statusMessage}</p>
-            )}
           </div>
 
           <div className="cart-card">

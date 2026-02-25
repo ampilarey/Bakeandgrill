@@ -59,3 +59,8 @@ Route::post('/receipts/{token}/resend', [ReceiptPageController::class, 'resend']
 
 // BML Return URL (non-authoritative — redirects to frontend)
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');
+
+// Online Order SPA — catch-all so React Router handles /order/* sub-paths
+Route::get('/order/{any}', function () {
+    return response()->file(public_path('order/index.html'));
+})->where('any', '.*')->name('order.spa');

@@ -122,13 +122,10 @@ export async function createCustomerOrder(
   token: string,
   payload: {
     items: Array<{
-      item_id: number; // REQUIRED: Server computes price from DB
+      item_id: number;
       quantity: number;
       variant_id?: number;
-      modifiers?: Array<{ 
-        modifier_id: number; // REQUIRED: Server computes price from DB
-        quantity?: number;
-      }>;
+      modifiers?: Array<{ modifier_id: number; quantity?: number }>;
     }>;
     customer_notes?: string;
     type?: string;
@@ -138,5 +135,185 @@ export async function createCustomerOrder(
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
+  });
+}
+
+export type DeliveryOrderPayload = {
+  items: Array<{
+    item_id: number;
+    quantity: number;
+    modifiers?: Array<{ modifier_id: number }>;
+  }>;
+  delivery_address_line1: string;
+  delivery_address_line2?: string;
+  delivery_island: string;
+  delivery_contact_name: string;
+  delivery_contact_phone: string;
+  delivery_notes?: string;
+  desired_eta?: string;
+  customer_notes?: string;
+};
+
+export type OrderDetail = Order & {
+  type: string;
+  total: number;
+  subtotal?: number;
+  delivery_fee?: number;
+  promo_discount_laar?: number;
+  loyalty_discount_laar?: number;
+  paid_at?: string | null;
+  delivery_address_line1?: string;
+  delivery_island?: string;
+  delivery_contact_name?: string;
+  delivery_contact_phone?: string;
+};
+
+export async function createDeliveryOrder(
+  token: string,
+  payload: DeliveryOrderPayload
+): Promise<{ order: OrderDetail }> {
+  return request<{ order: OrderDetail }>("/orders/delivery", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getOrderDetail(
+  token: string,
+  orderId: number
+): Promise<{ order: OrderDetail }> {
+  return request<{ order: OrderDetail }>(`/customer/orders/${orderId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── BML Online Payment ──────────────────────────────────────────────────────
+
+export type InitiatePaymentResult = {
+  payment_url: string;
+  payment_id: number;
+};
+
+export async function initiateOnlinePayment(
+  token: string,
+  orderId: number
+): Promise<InitiatePaymentResult> {
+  return request<InitiatePaymentResult>(`/orders/${orderId}/pay/bml`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── Promotions ──────────────────────────────────────────────────────────────
+
+export type PromoValidation = {
+  valid: boolean;
+  promotion?: {
+    id: number;
+    code: string;
+    discount_type: string;
+    discount_value: number;
+  };
+  estimated_discount_laar?: number;
+  message?: string;
+};
+
+export async function validatePromoCode(
+  code: string,
+  token?: string
+): Promise<PromoValidation> {
+  return request<PromoValidation>("/promotions/validate", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: JSON.stringify({ code }),
+  });
+}
+
+export async function applyPromoCode(
+  token: string,
+  orderId: number,
+  code: string
+): Promise<{ order: OrderDetail; discount_laar: number }> {
+  return request<{ order: OrderDetail; discount_laar: number }>(
+    `/orders/${orderId}/apply-promo`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code }),
+    }
+  );
+}
+
+export async function removePromoCode(
+  token: string,
+  orderId: number,
+  promotionId: number
+): Promise<{ order: OrderDetail }> {
+  return request<{ order: OrderDetail }>(
+    `/orders/${orderId}/promo/${promotionId}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+}
+
+// ── Loyalty ─────────────────────────────────────────────────────────────────
+
+export type LoyaltyAccount = {
+  id: number;
+  points_balance: number;
+  tier: string;
+};
+
+export async function getLoyaltyAccount(
+  token: string
+): Promise<{ account: LoyaltyAccount | null }> {
+  return request<{ account: LoyaltyAccount | null }>("/loyalty/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export type LoyaltyHoldPreview = {
+  points: number;
+  discount_laar: number;
+  discount_mvr: number;
+};
+
+export async function previewLoyaltyHold(
+  token: string,
+  orderId: number,
+  points: number
+): Promise<LoyaltyHoldPreview> {
+  return request<LoyaltyHoldPreview>("/loyalty/hold-preview", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ order_id: orderId, points }),
+  });
+}
+
+export async function createLoyaltyHold(
+  token: string,
+  orderId: number,
+  points: number
+): Promise<{ hold: { id: number; points: number; discount_laar: number } }> {
+  return request<{ hold: { id: number; points: number; discount_laar: number } }>(
+    "/loyalty/hold",
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ order_id: orderId, points }),
+    }
+  );
+}
+
+export async function releaseLoyaltyHold(
+  token: string,
+  orderId: number
+): Promise<void> {
+  await request<void>(`/loyalty/hold/${orderId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
   });
 }
