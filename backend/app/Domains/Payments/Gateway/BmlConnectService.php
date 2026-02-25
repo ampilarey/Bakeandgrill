@@ -32,9 +32,9 @@ class BmlConnectService
     public function __construct()
     {
         $this->baseUrl = rtrim(config('bml.base_url', 'https://api.merchants.bankofmaldives.com.mv'), '/');
-        $this->appId = config('bml.app_id');
-        $this->apiKey = config('bml.api_key');
-        $this->merchantId = config('bml.merchant_id');
+        $this->appId = (string) (config('bml.app_id') ?? '');
+        $this->apiKey = (string) (config('bml.api_key') ?? '');
+        $this->merchantId = (string) (config('bml.merchant_id') ?? '');
     }
 
     /**

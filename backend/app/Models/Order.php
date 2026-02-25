@@ -38,13 +38,26 @@ class Order extends Model
         'held_at',
         'paid_at',
         'completed_at',
+        // Delivery fields
+        'delivery_address_line1',
+        'delivery_address_line2',
+        'delivery_island',
+        'delivery_contact_name',
+        'delivery_contact_phone',
+        'delivery_notes',
+        'delivery_fee',
+        'delivery_fee_laar',
+        'delivery_eta_at',
     ];
 
     protected $casts = [
         'held_at' => 'datetime',
         'paid_at' => 'datetime',
         'completed_at' => 'datetime',
+        'delivery_eta_at' => 'datetime',
         'tax_inclusive' => 'boolean',
+        'delivery_fee' => 'decimal:2',
+        'delivery_fee_laar' => 'integer',
     ];
 
     public function items(): HasMany

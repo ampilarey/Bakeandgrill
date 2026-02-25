@@ -19,15 +19,19 @@ class PaymentService
     public function __construct(private BmlConnectService $bml) {}
 
     /**
-     * Initiate a BML online payment for an order.
+     * Initiate a BML online payment for an order (full amount).
      * Returns the redirect URL for the customer.
+     *
+     * @param int|null $amountLaar Override amount in laari. Null = full order total.
+     * @param string|null $idempotencyKey Caller-supplied idempotency key (for partial payments).
      */
-    public function initiateBmlPayment(Order $order): array
+    public function initiateBmlPayment(Order $order, ?int $amountLaar = null, ?string $idempotencyKey = null): array
     {
-        $idempotencyKey = 'bml:init:' . $order->id . ':' . now()->format('Ymd');
+        $amountLaar = $amountLaar ?? (int) round($order->total * 100);
+        $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
         $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
-        $payment = DB::transaction(function () use ($order, $idempotencyKey, $localId): Payment {
+        $payment = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar): Payment {
             return Payment::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
                 [
@@ -35,8 +39,8 @@ class PaymentService
                     'method' => 'bml_connect',
                     'gateway' => 'bml',
                     'currency' => 'MVR',
-                    'amount' => $order->total,
-                    'amount_laar' => (int) round($order->total * 100),
+                    'amount' => round($amountLaar / 100, 2),
+                    'amount_laar' => $amountLaar,
                     'local_id' => $localId,
                     'status' => 'created',
                     'processed_at' => now(),
@@ -44,8 +48,18 @@ class PaymentService
             );
         });
 
-        if ($payment->status !== 'created') {
-            throw new \RuntimeException("Payment {$payment->id} already initiated (status: {$payment->status})");
+        // If the same idempotency_key already has an initiated/confirmed payment, return existing
+        if ($payment->status === 'initiated') {
+            return [
+                'payment_url' => null,
+                'payment_id' => $payment->id,
+                'local_id' => $payment->local_id,
+                'reused' => true,
+            ];
+        }
+
+        if (!in_array($payment->status, ['created'], true)) {
+            throw new \RuntimeException("Payment {$payment->id} already in state: {$payment->status}");
         }
 
         $result = $this->bml->createPayment(
@@ -62,6 +76,7 @@ class PaymentService
             'payment_id' => $payment->id,
             'order_id' => $order->id,
             'local_id' => $localId,
+            'amount_laar' => $amountLaar,
             'transaction_id' => $result['transaction_id'],
         ]);
 
@@ -69,7 +84,54 @@ class PaymentService
             'payment_url' => $result['payment_url'],
             'payment_id' => $payment->id,
             'local_id' => $localId,
+            'reused' => false,
         ];
+    }
+
+    /**
+     * Calculate the remaining balance for an order in laari.
+     * Considers confirmed, paid, and completed payments.
+     */
+    public function getRemainingBalanceLaar(Order $order): int
+    {
+        $paidLaar = $order->payments()
+            ->whereIn('status', ['confirmed', 'paid', 'completed'])
+            ->sum('amount_laar');
+
+        $orderTotalLaar = $order->total_laar ?? (int) round($order->total * 100);
+
+        return max(0, $orderTotalLaar - $paidLaar);
+    }
+
+    /**
+     * Initiate a partial BML payment.
+     *
+     * Rules:
+     * - amount must be > 0 and <= remaining_balance
+     * - idempotency_key is caller-supplied (required)
+     * - Existing pending payment with same idempotency_key is returned as-is
+     */
+    public function initiatePartialBmlPayment(Order $order, int $amountLaar, string $idempotencyKey): array
+    {
+        $remainingLaar = $this->getRemainingBalanceLaar($order);
+
+        if ($amountLaar <= 0) {
+            throw new \InvalidArgumentException('Amount must be greater than zero.');
+        }
+
+        if ($amountLaar > $remainingLaar) {
+            throw new \InvalidArgumentException(
+                "Amount ({$amountLaar} laari) exceeds remaining balance ({$remainingLaar} laari).",
+            );
+        }
+
+        $result = $this->initiateBmlPayment($order, $amountLaar, 'partial:' . $idempotencyKey);
+
+        return array_merge($result, [
+            'remaining_balance_before_laar' => $remainingLaar,
+            'remaining_balance_after_laar' => $remainingLaar - $amountLaar,
+            'amount_laar' => $amountLaar,
+        ]);
     }
 
     /**

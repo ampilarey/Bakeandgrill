@@ -316,6 +316,25 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::get('/reports/loyalty', [App\Http\Controllers\Api\LoyaltyController::class, 'adminReport']);
 });
 
+// ─── Delivery Orders ─────────────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/orders/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'store']);
+    Route::patch('/orders/{order}/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'update']);
+});
+
+// ─── Partial Online Payment ───────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/payments/online/initiate-partial', [App\Http\Controllers\Api\PaymentController::class, 'initiatePartial']);
+});
+
+// ─── SSE Real-Time Streams ───────────────────────────────────────────────────
+// staff-only streams (POS / KDS)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/stream/orders', [App\Http\Controllers\Api\StreamController::class, 'orders']);
+    Route::get('/stream/kds', [App\Http\Controllers\Api\StreamController::class, 'kds']);
+    Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus']);
+});
+
 // ─── System Health ─────────────────────────────────────────────────────────
 Route::get('/system/health', function () {
     return response()->json([
