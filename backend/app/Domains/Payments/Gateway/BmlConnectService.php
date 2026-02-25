@@ -54,12 +54,12 @@ class BmlConnectService
         ?string $returnUrl = null,
     ): array {
         $payload = [
-            'localId' => $this->normalizeLocalId($localId),
-            'merchantId' => $this->merchantId,
-            'amount' => $amountLaar,
-            'currency' => $currency,
+            'localId'     => $this->normalizeLocalId($localId),
+            'merchantId'  => $this->merchantId,
+            'amount'      => $amountLaar,
+            'currency'    => $currency,
             'redirectUrl' => $returnUrl ?? config('bml.return_url'),
-            'logo' => null,
+            // 'logo' omitted — BML rejects null; only send if you have a URL
         ];
 
         Log::info('BML: Creating payment session', [
@@ -78,11 +78,13 @@ class BmlConnectService
 
         if (!$response->successful()) {
             Log::error('BML: Payment creation failed', [
-                'local_id' => $payload['localId'],
-                'status' => $response->status(),
-                'body' => $response->body(),
+                'local_id'    => $payload['localId'],
+                'status'      => $response->status(),
+                'body'        => $response->body(),
+                'payload_sent' => $payload,
             ]);
-            throw new \RuntimeException("BML payment creation failed: {$response->status()} - {$response->body()}");
+            $body = $response->body();
+            throw new \RuntimeException("BML payment creation failed ({$response->status()}): {$body}");
         }
 
         $data = $response->json();
