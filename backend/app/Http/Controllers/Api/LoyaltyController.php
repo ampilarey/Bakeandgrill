@@ -141,9 +141,32 @@ class LoyaltyController extends Controller
 
     public function adminAccountIndex(Request $request): JsonResponse
     {
-        $accounts = LoyaltyAccount::with('customer:id,name,phone,email')
-            ->orderByDesc('lifetime_points')
-            ->paginate(50);
+        $query = LoyaltyAccount::with('customer:id,name,phone')
+            ->orderByDesc('lifetime_points');
+
+        if ($request->filled('search')) {
+            $search = '%' . $request->input('search') . '%';
+            $query->whereHas('customer', fn ($q) => $q
+                ->where('name', 'like', $search)
+                ->orWhere('phone', 'like', $search));
+        }
+
+        $accounts = $query->paginate(50);
+
+        // Flatten customer fields for frontend
+        $accounts->getCollection()->transform(function (LoyaltyAccount $account) {
+            return [
+                'id'              => $account->id,
+                'customer_id'     => $account->customer_id,
+                'customer_name'   => $account->customer?->name,
+                'customer_phone'  => $account->customer?->phone ?? '—',
+                'points_balance'  => $account->points_balance,
+                'points_held'     => $account->points_held,
+                'lifetime_points' => $account->lifetime_points,
+                'tier'            => $account->tier,
+                'updated_at'      => $account->updated_at?->toIso8601String(),
+            ];
+        });
 
         return response()->json($accounts);
     }
@@ -154,29 +177,53 @@ class LoyaltyController extends Controller
             ->orderByDesc('occurred_at')
             ->paginate(100);
 
+        // Map to frontend-expected shape
+        $ledger->getCollection()->transform(fn (LoyaltyLedger $entry) => [
+            'id'         => $entry->id,
+            'delta'      => $entry->points,
+            'reason'     => $entry->notes ?? $entry->type,
+            'created_at' => $entry->occurred_at?->toIso8601String() ?? $entry->created_at?->toIso8601String(),
+        ]);
+
         return response()->json($ledger);
     }
 
     public function adminAdjust(Request $request, int $customerId): JsonResponse
     {
         $request->validate([
-            'points' => 'required|integer',
-            'notes' => 'required|string|max:255',
+            'delta'  => 'required|integer|not_in:0',
+            'reason' => 'required|string|max:255',
         ]);
 
         $customer = Customer::findOrFail($customerId);
-        $account = $this->service->accountFor($customer);
-        $points = $request->integer('points');
+        $account  = $this->service->accountFor($customer);
+        $delta    = $request->integer('delta');
 
-        $this->service->earnPointsForOrder($customer, new class($points, $request->input('notes')) extends \stdClass
-        {
-            public int $id = 0;
-            public ?int $customer_id = null;
-            public $total = 0;
-            public ?string $order_number = 'ADMIN-ADJUST';
+        \Illuminate\Support\Facades\DB::transaction(function () use ($account, $customer, $delta, $request): void {
+            $newBalance = max(0, $account->points_balance + $delta);
+
+            LoyaltyLedger::create([
+                'customer_id'     => $customer->id,
+                'type'            => $delta > 0 ? 'admin_credit' : 'admin_debit',
+                'points'          => $delta,
+                'balance_after'   => $newBalance,
+                'notes'           => $request->input('reason'),
+                'idempotency_key' => 'admin-adjust:' . $customer->id . ':' . now()->timestamp,
+                'occurred_at'     => now(),
+            ]);
+
+            $account->update([
+                'points_balance'  => $newBalance,
+                'lifetime_points' => $delta > 0
+                    ? $account->lifetime_points + $delta
+                    : $account->lifetime_points,
+            ]);
         });
 
-        return response()->json(['message' => 'Adjusted.', 'new_balance' => $account->fresh()?->points_balance]);
+        return response()->json([
+            'message'     => 'Points adjusted.',
+            'new_balance' => $account->fresh()?->points_balance,
+        ]);
     }
 
     public function adminReport(Request $request): JsonResponse
