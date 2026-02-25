@@ -48,7 +48,12 @@ function PromotionForm({
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.code) { setError('Name and code are required.'); return; }
+    if (!form.name.trim() || !form.code.trim()) { setError('Name and code are required.'); return; }
+    if (form.discount_value <= 0) { setError('Discount value must be greater than 0.'); return; }
+    if (form.type === 'percentage' && form.discount_value > 100) { setError('Percentage discount cannot exceed 100%.'); return; }
+    if (form.starts_at && form.expires_at && form.starts_at >= form.expires_at) {
+      setError('Expiry date must be after start date.'); return;
+    }
     setError('');
     setLoading(true);
     try { await onSave(form); }

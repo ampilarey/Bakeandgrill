@@ -44,6 +44,13 @@ export function OrderStatusPage() {
     }
   };
 
+  // Clear cart only after BML confirms payment success
+  useEffect(() => {
+    if (paymentState === "CONFIRMED") {
+      localStorage.removeItem("bakegrill_cart");
+    }
+  }, [paymentState]);
+
   // Initial load + polling every 10 seconds
   useEffect(() => {
     void loadOrder();

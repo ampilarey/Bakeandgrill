@@ -107,8 +107,8 @@ class CategoryController extends Controller
     {
         $category = Category::findOrFail($id);
 
-        // Check if category has items
-        if ($category->items()->count() > 0) {
+        // Check if category has any items (including soft-deleted ones)
+        if ($category->items()->withTrashed()->count() > 0) {
             return response()->json([
                 'message' => 'Cannot delete category with items. Please move or delete items first.',
             ], 422);

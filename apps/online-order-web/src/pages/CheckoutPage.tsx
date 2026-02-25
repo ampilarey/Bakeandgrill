@@ -220,6 +220,7 @@ export function CheckoutPage() {
   const [promoApplied, setPromoApplied] = useState<{
     code: string;
     discountLaar: number;
+    pending?: boolean;
   } | null>(null);
   const [promoError, setPromoError] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
@@ -295,8 +296,14 @@ export function CheckoutPage() {
   // ── Promo ─────────────────────────────────────────────────────────────────
 
   const handleApplyPromo = async () => {
-    if (!token || !pendingOrderId) {
+    if (!token) {
       setPromoError("Please sign in first.");
+      return;
+    }
+    if (!pendingOrderId) {
+      // No order yet — store the code; it will be applied automatically when Place Order is clicked
+      setPromoError("");
+      setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: 0, pending: true });
       return;
     }
     setPromoError("");
@@ -370,17 +377,20 @@ export function CheckoutPage() {
 
       setPendingOrderId(orderId);
 
-      // Apply promo code if entered but not yet applied
-      if (promoCode.trim() && !promoApplied) {
+      // Apply promo code if entered but not yet confirmed (either typed in input or saved as pending)
+      const promoToApply = promoApplied?.pending ? promoApplied.code : promoCode.trim().toUpperCase();
+      if (promoToApply && (!promoApplied || promoApplied.pending)) {
         try {
-          const promoRes = await applyPromoCode(token, orderId, promoCode.trim().toUpperCase());
+          const promoRes = await applyPromoCode(token, orderId, promoToApply);
           setPromoApplied({
-            code: promoCode.trim().toUpperCase(),
+            code: promoToApply,
             discountLaar: promoRes.discount_laar,
           });
+          setPromoCode("");
         } catch (e) {
           // Non-fatal: promo errors don't block payment
           setPromoError((e as Error).message);
+          setPromoApplied(null);
         }
       }
 
@@ -401,10 +411,7 @@ export function CheckoutPage() {
         throw new Error("Payment could not be started. Please try again in a moment.");
       }
 
-      // Clear cart before redirect
-      localStorage.removeItem("bakegrill_cart");
-
-      // Redirect to BML payment page
+      // Redirect to BML payment page (cart cleared on return only after confirmation)
       window.location.href = payment.payment_url;
     } catch (e) {
       setGlobalError((e as Error).message);
@@ -540,8 +547,10 @@ export function CheckoutPage() {
                 {promoApplied ? (
                   <div style={styles.promoApplied}>
                     <span>
-                      ✅ <strong>{promoApplied.code}</strong> — MVR{" "}
-                      {laarToMvr(promoApplied.discountLaar)} off
+                      {promoApplied.pending
+                        ? <>⏳ <strong>{promoApplied.code}</strong> — will be applied at checkout</>
+                        : <>✅ <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
+                      }
                     </span>
                     <button
                       style={styles.removeBtn}
@@ -618,7 +627,7 @@ export function CheckoutPage() {
                 value={`MVR ${laarToMvr(deliveryFeeLaar)}`}
               />
             )}
-            {promoApplied && (
+            {promoApplied && !promoApplied.pending && (
               <SummaryRow
                 label={`Promo (${promoApplied.code})`}
                 value={`− MVR ${laarToMvr(promoApplied.discountLaar)}`}

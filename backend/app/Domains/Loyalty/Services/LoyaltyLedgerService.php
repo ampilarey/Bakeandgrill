@@ -162,7 +162,7 @@ class LoyaltyLedgerService
                 ->where('customer_id', $hold->customer_id)
                 ->update([
                     'points_balance' => $balanceAfter,
-                    'points_held' => DB::raw("MAX(0, points_held - {$hold->points_held})"),
+                    'points_held' => DB::raw('MAX(0, points_held - ' . (int) $hold->points_held . ')'),
                 ]);
 
             $hold->update(['status' => 'consumed', 'consumed_at' => now()]);
@@ -184,7 +184,7 @@ class LoyaltyLedgerService
             DB::table('loyalty_accounts')
                 ->where('customer_id', $hold->customer_id)
                 ->update([
-                    'points_held' => DB::raw("MAX(0, points_held - {$hold->points_held})"),
+                    'points_held' => DB::raw('MAX(0, points_held - ' . (int) $hold->points_held . ')'),
                 ]);
         });
     }
@@ -228,7 +228,7 @@ class LoyaltyLedgerService
                 ->where('customer_id', $customer->id)
                 ->update([
                     'points_balance' => $balanceAfter,
-                    'lifetime_points' => DB::raw("lifetime_points + {$points}"),
+                    'lifetime_points' => DB::raw('lifetime_points + ' . (int) $points),
                 ]);
         });
     }
