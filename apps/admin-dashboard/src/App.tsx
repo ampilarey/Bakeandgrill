@@ -10,6 +10,7 @@ import { PromotionsPage } from './pages/PromotionsPage';
 import { LoyaltyPage } from './pages/LoyaltyPage';
 import { SmsPage } from './pages/SmsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { MenuPage } from './pages/MenuPage';
 
 function AuthGuard({
   user,
@@ -73,6 +74,7 @@ export default function App() {
                 <Route path="loyalty"    element={<LoyaltyPage />} />
                 <Route path="sms"        element={<SmsPage />} />
                 <Route path="reports"    element={<ReportsPage />} />
+                <Route path="menu"       element={<MenuPage />} />
                 <Route path="*"          element={<Navigate to="/orders" replace />} />
               </Routes>
             </Layout>

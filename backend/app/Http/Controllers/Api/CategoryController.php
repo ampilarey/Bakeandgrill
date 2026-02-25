@@ -15,16 +15,20 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Category::with(['items' => function ($q) {
-            $q->where('is_active', true)
-                ->where('is_available', true)
-                ->orderBy('sort_order')
-                ->orderBy('name');
-        }])->where('is_active', true);
+        $isAdmin = (bool) $request->query('admin');
 
-        $categories = $query->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
+        $query = Category::with(['items' => function ($q) use ($isAdmin) {
+            if (!$isAdmin) {
+                $q->where('is_active', true)->where('is_available', true);
+            }
+            $q->orderBy('sort_order')->orderBy('name');
+        }]);
+
+        if (!$isAdmin) {
+            $query->where('is_active', true);
+        }
+
+        $categories = $query->orderBy('sort_order')->orderBy('name')->get();
 
         return response()->json(['data' => $categories]);
     }

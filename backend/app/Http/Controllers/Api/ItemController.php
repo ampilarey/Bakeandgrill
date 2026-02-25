@@ -17,8 +17,13 @@ class ItemController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Item::with(['category', 'variants', 'modifiers'])
-            ->where('is_active', true);
+        $isAdmin = (bool) $request->query('admin');
+
+        $query = Item::with(['category', 'variants', 'modifiers']);
+
+        if (!$isAdmin) {
+            $query->where('is_active', true);
+        }
 
         // Filter by category
         if ($request->has('category_id')) {
@@ -35,16 +40,16 @@ class ItemController extends Controller
             });
         }
 
-        // Filter by availability
-        if ($request->has('available_only')) {
+        // Filter by availability (public only)
+        if (!$isAdmin && $request->has('available_only')) {
             $query->where('is_available', true);
         }
 
-        $items = $query->orderBy('sort_order')->orderBy('name')->paginate(50);
+        $items = $query->orderBy('sort_order')->orderBy('name')->paginate(100);
 
-        // PUBLIC RESPONSE: Transform to hide internal data (cost, recipe)
-        $transformed = $items->through(function ($item) {
-            return [
+        // Admin gets full data; public gets stripped response
+        $transformed = $items->through(function ($item) use ($isAdmin) {
+            $data = [
                 'id' => $item->id,
                 'name' => $item->name,
                 'name_dv' => $item->name_dv,
@@ -54,6 +59,8 @@ class ItemController extends Controller
                 'base_price' => $item->base_price,
                 'tax_rate' => $item->tax_rate,
                 'is_available' => $item->is_available,
+                'is_active' => $item->is_active,
+                'sort_order' => $item->sort_order,
                 'category_id' => $item->category_id,
                 'category' => $item->category ? [
                     'id' => $item->category->id,
@@ -70,6 +77,7 @@ class ItemController extends Controller
                     'price' => $m->price,
                 ]),
             ];
+            return $data;
         });
 
         return response()->json($transformed);

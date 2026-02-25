@@ -349,3 +349,109 @@ export async function fetchSalesSummary(params?: {
     period: `${res.from} – ${res.to}`,
   };
 }
+
+// ── Menu Management ───────────────────────────────────────────────────────────
+
+export type MenuCategory = {
+  id: number;
+  name: string;
+  name_dv?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  sort_order?: number | null;
+  is_active: boolean;
+  items?: MenuItem[];
+};
+
+export type MenuItem = {
+  id: number;
+  name: string;
+  name_dv?: string | null;
+  description?: string | null;
+  sku?: string | null;
+  image_url?: string | null;
+  base_price: number;
+  tax_rate?: number | null;
+  is_available: boolean;
+  is_active: boolean;
+  sort_order?: number | null;
+  category_id?: number | null;
+  category?: { id: number; name: string } | null;
+};
+
+export async function fetchAdminCategories(): Promise<{ data: MenuCategory[] }> {
+  return req('/categories?admin=1');
+}
+
+export async function createCategory(data: {
+  name: string;
+  name_dv?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  sort_order?: number | null;
+}): Promise<{ category: MenuCategory }> {
+  return req('/categories', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateCategory(
+  id: number,
+  data: Partial<{
+    name: string;
+    name_dv: string | null;
+    description: string | null;
+    image_url: string | null;
+    sort_order: number | null;
+    is_active: boolean;
+  }>
+): Promise<{ category: MenuCategory }> {
+  return req(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  await req(`/categories/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchAdminItems(params?: {
+  category_id?: number;
+  search?: string;
+  page?: number;
+}): Promise<{ data: MenuItem[]; meta?: { total: number; last_page: number; current_page: number } }> {
+  const qs = new URLSearchParams({ admin: '1' });
+  if (params?.category_id) qs.set('category_id', String(params.category_id));
+  if (params?.search) qs.set('search', params.search);
+  if (params?.page) qs.set('page', String(params.page));
+  return req(`/items?${qs}`);
+}
+
+export type MenuItemPayload = {
+  name: string;
+  name_dv?: string | null;
+  description?: string | null;
+  sku?: string | null;
+  image_url?: string | null;
+  base_price: number;
+  tax_rate?: number | null;
+  category_id?: number | null;
+  sort_order?: number | null;
+  is_active?: boolean;
+  is_available?: boolean;
+};
+
+export async function createItem(data: MenuItemPayload): Promise<{ item: MenuItem }> {
+  return req('/items', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateItem(
+  id: number,
+  data: Partial<MenuItemPayload>
+): Promise<{ item: MenuItem }> {
+  return req(`/items/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteItem(id: number): Promise<void> {
+  await req(`/items/${id}`, { method: 'DELETE' });
+}
+
+export async function toggleItemAvailability(id: number): Promise<{ item: MenuItem }> {
+  return req(`/items/${id}/toggle-availability`, { method: 'PATCH' });
+}

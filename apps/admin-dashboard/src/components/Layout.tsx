@@ -6,6 +6,7 @@ const NAV = [
   { to: '/orders',     icon: '📋', label: 'Orders'     },
   { to: '/kds',        icon: '👨‍🍳', label: 'Kitchen'    },
   { to: '/delivery',   icon: '🛵', label: 'Delivery'   },
+  { to: '/menu',       icon: '🍽️', label: 'Menu'       },
   { to: '/promotions', icon: '🏷️',  label: 'Promos'    },
   { to: '/loyalty',    icon: '⭐', label: 'Loyalty'    },
   { to: '/sms',        icon: '📱', label: 'SMS'        },
