@@ -38,13 +38,18 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'name_dv' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
+        $data = $request->all();
+        if (isset($data['image_url']) && $data['image_url'] === '') {
+            $data['image_url'] = null;
+        }
+        $validated = validator($data, [
+            'name'       => 'required|string|max:255',
+            'name_dv'    => 'nullable|string|max:255',
+            'description'=> 'nullable|string',
             'sort_order' => 'nullable|integer',
-            'image_url' => 'nullable|url',
-        ]);
+            'is_active'  => 'nullable|boolean',
+            'image_url'  => 'nullable|url',
+        ])->validate();
 
         $category = Category::create($validated);
 
@@ -73,14 +78,18 @@ class CategoryController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'name_dv' => 'nullable|string|max:255',
+        $data = $request->all();
+        if (isset($data['image_url']) && $data['image_url'] === '') {
+            $data['image_url'] = null;
+        }
+        $validated = validator($data, [
+            'name'        => 'sometimes|string|max:255',
+            'name_dv'     => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'sort_order' => 'nullable|integer',
-            'is_active' => 'sometimes|boolean',
-            'image_url' => 'nullable|url',
-        ]);
+            'sort_order'  => 'nullable|integer',
+            'is_active'   => 'sometimes|boolean',
+            'image_url'   => 'nullable|url',
+        ])->validate();
 
         $category = Category::findOrFail($id);
         $category->update($validated);

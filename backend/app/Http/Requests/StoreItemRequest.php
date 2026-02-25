@@ -13,6 +13,13 @@ class StoreItemRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->image_url === '') {
+            $this->merge(['image_url' => null]);
+        }
+    }
+
     public function rules(): array
     {
         return [
