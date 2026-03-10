@@ -21,6 +21,10 @@ class DispatchKitchenPrintListener implements ShouldQueue
 
     public string $queue = 'default';
 
+    public int $tries = 3;
+
+    public int $backoff = 5;
+
     public function __construct(
         private OrderRepositoryInterface $orders,
         private PrintJobService $printJobService,

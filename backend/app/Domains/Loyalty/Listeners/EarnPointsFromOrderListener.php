@@ -21,6 +21,10 @@ class EarnPointsFromOrderListener implements ShouldQueue
 
     public string $queue = 'default';
 
+    public int $tries = 3;
+
+    public int $backoff = 5;
+
     public function __construct(
         private LoyaltyLedgerService $service,
         private CustomerRepositoryInterface $customers,
