@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Printing\Listeners;
 
 use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Services\PrintJobService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Dispatches receipt print jobs when an order is fully paid.
@@ -19,12 +21,31 @@ class DispatchReceiptPrintListener implements ShouldQueue
 
     public string $queue = 'default';
 
+    public function __construct(
+        private OrderRepositoryInterface $orders,
+        private PrintJobService $printJobService,
+    ) {}
+
     public function handle(OrderPaid $event): void
     {
-        if (!$event->printReceipt) {
+        if (!$event->data->printReceipt) {
             return;
         }
 
-        app(PrintJobService::class)->dispatchReceiptJobs($event->order);
+        $order = $this->orders->findWithRelations($event->data->orderId, ['items.modifiers', 'payments']);
+        if (!$order) {
+            Log::error('DispatchReceiptPrintListener: order not found', ['order_id' => $event->data->orderId]);
+
+            return;
+        }
+
+        try {
+            $this->printJobService->dispatchReceiptJobs($order);
+        } catch (\Throwable $e) {
+            Log::error('DispatchReceiptPrintListener: dispatch failed', [
+                'order_id' => $event->data->orderId,
+                'error'    => $e->getMessage(),
+            ]);
+        }
     }
 }

@@ -28,9 +28,9 @@ class ConsumeLoyaltyHoldListener implements ShouldQueue
 
     public function handle(OrderPaid $event): void
     {
-        $order = $event->order;
+        $orderId = $event->data->orderId;
 
-        $hold = LoyaltyHold::where('order_id', $order->id)
+        $hold = LoyaltyHold::where('order_id', $orderId)
             ->whereIn('status', ['active', 'expired'])
             ->first();
 
@@ -42,9 +42,9 @@ class ConsumeLoyaltyHoldListener implements ShouldQueue
             $this->service->consumeHold($hold);
         } catch (\Throwable $e) {
             Log::error('Failed to consume loyalty hold', [
-                'hold_id' => $hold->id,
-                'order_id' => $order->id,
-                'error' => $e->getMessage(),
+                'hold_id'  => $hold->id,
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
             ]);
         }
     }

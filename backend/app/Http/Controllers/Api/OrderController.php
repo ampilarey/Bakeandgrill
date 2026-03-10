@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerOrderRequest;
@@ -179,7 +180,7 @@ class OrderController extends Controller
                 app(AuditLogService::class)->log('order.paid', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'paid'], ['paid_total' => $paidTotal], $request);
 
                 DB::afterCommit(function () use ($order, $printReceipt): void {
-                    OrderPaid::dispatch($order->fresh(['items.modifiers', 'payments']), $printReceipt);
+                    OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
                 });
             });
         } else {

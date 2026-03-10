@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Models\Device;
 use App\Models\Item;
@@ -66,7 +67,7 @@ class OrderCreationService
             $order->load(['items.modifiers']);
 
             DB::afterCommit(function () use ($order, $printKitchen): void {
-                OrderCreated::dispatch($order->fresh(['items.modifiers']), $printKitchen);
+                OrderCreated::dispatch(OrderCreatedData::fromOrder($order->fresh(), $printKitchen));
             });
 
             return $order;

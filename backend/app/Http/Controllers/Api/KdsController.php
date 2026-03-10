@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
@@ -62,7 +63,7 @@ class KdsController extends Controller
             // If the order wasn't already paid (edge case: KDS-only flow), fire OrderPaid
             if ($oldStatus !== 'paid') {
                 DB::afterCommit(function () use ($order): void {
-                    OrderPaid::dispatch($order->fresh(['items.modifiers', 'payments']), false);
+                    OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), false));
                 });
             }
         });

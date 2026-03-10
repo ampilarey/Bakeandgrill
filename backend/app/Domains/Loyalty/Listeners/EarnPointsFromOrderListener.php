@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Loyalty\Listeners;
 
+use App\Domains\Loyalty\Repositories\CustomerRepositoryInterface;
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Events\OrderCompleted;
-use App\Models\Customer;
+use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -20,19 +21,30 @@ class EarnPointsFromOrderListener implements ShouldQueue
 
     public string $queue = 'default';
 
-    public function __construct(private LoyaltyLedgerService $service) {}
+    public function __construct(
+        private LoyaltyLedgerService $service,
+        private CustomerRepositoryInterface $customers,
+        private OrderRepositoryInterface $orders,
+    ) {}
 
     public function handle(OrderCompleted $event): void
     {
-        $order = $event->order;
+        $customerId = $event->data->customerId;
 
-        if (!$order->customer_id) {
+        if (!$customerId) {
             return;
         }
 
-        $customer = Customer::find($order->customer_id);
+        $customer = $this->customers->findById($customerId);
         if (!$customer) {
-            Log::warning('EarnPointsFromOrderListener: customer not found', ['customer_id' => $order->customer_id]);
+            Log::warning('EarnPointsFromOrderListener: customer not found', ['customer_id' => $customerId]);
+
+            return;
+        }
+
+        $order = $this->orders->findById($event->data->orderId);
+        if (!$order) {
+            Log::warning('EarnPointsFromOrderListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;
         }
@@ -41,9 +53,9 @@ class EarnPointsFromOrderListener implements ShouldQueue
             $this->service->earnPointsForOrder($customer, $order);
         } catch (\Throwable $e) {
             Log::error('Failed to earn loyalty points', [
-                'order_id' => $order->id,
-                'customer_id' => $order->customer_id,
-                'error' => $e->getMessage(),
+                'order_id'    => $event->data->orderId,
+                'customer_id' => $customerId,
+                'error'       => $e->getMessage(),
             ]);
         }
     }

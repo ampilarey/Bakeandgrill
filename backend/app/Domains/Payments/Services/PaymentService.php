@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Payments\Services;
 
+use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Orders\Repositories\OrderRepositoryInterface;
+use App\Domains\Payments\DTOs\PaymentConfirmedData;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Gateway\BmlConnectService;
+use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\WebhookLog;
@@ -16,13 +20,17 @@ use Illuminate\Support\Str;
 
 class PaymentService
 {
-    public function __construct(private BmlConnectService $bml) {}
+    public function __construct(
+        private BmlConnectService $bml,
+        private PaymentRepositoryInterface $payments,
+        private OrderRepositoryInterface $orders,
+    ) {}
 
     /**
      * Initiate a BML online payment for an order (full amount).
      * Returns the redirect URL for the customer.
      *
-     * @param int|null $amountLaar Override amount in laari. Null = full order total.
+     * @param int|null    $amountLaar    Override amount in laari. Null = full order total.
      * @param string|null $idempotencyKey Caller-supplied idempotency key (for partial payments).
      */
     public function initiateBmlPayment(Order $order, ?int $amountLaar = null, ?string $idempotencyKey = null): array
@@ -31,25 +39,24 @@ class PaymentService
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
         $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
-        $payment = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar): Payment {
-            return Payment::firstOrCreate(
+        $payment = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar) {
+            return $this->payments->firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
                 [
-                    'order_id' => $order->id,
-                    'method' => 'bml_connect',
-                    'gateway' => 'bml',
-                    'currency' => 'MVR',
-                    'amount' => round($amountLaar / 100, 2),
-                    'amount_laar' => $amountLaar,
-                    'local_id' => $localId,
-                    'status' => 'created',
-                    'processed_at' => now(),
+                    'order_id'        => $order->id,
+                    'method'          => 'bml_connect',
+                    'gateway'         => 'bml',
+                    'currency'        => 'MVR',
+                    'amount'          => round($amountLaar / 100, 2),
+                    'amount_laar'     => $amountLaar,
+                    'local_id'        => $localId,
+                    'status'          => 'created',
+                    'processed_at'    => now(),
                 ],
             );
         });
 
         // Payment already initiated — reconstruct the BML pay URL from stored transaction ID.
-        // This handles the case where the user cancelled at BML and retries.
         if ($payment->status === 'initiated') {
             $baseUrl = rtrim(config('bml.base_url', 'https://api.merchants.bankofmaldives.com.mv'), '/');
             $payUrl = $payment->provider_transaction_id
@@ -71,17 +78,16 @@ class PaymentService
             ];
         }
 
-        // Payment in an unexpected terminal state — create a fresh one by changing the key.
+        // Payment in an unexpected terminal state — create a fresh one.
         if (!in_array($payment->status, ['created'], true)) {
             Log::warning('BML: Payment in unexpected state, issuing new attempt', [
                 'payment_id' => $payment->id,
                 'status'     => $payment->status,
             ]);
-            // Fall through: a new payment will be created with a suffixed idempotency key.
             $idempotencyKey .= ':retry:' . now()->timestamp;
             $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
-            $payment = Payment::create([
+            $payment = $this->payments->create([
                 'idempotency_key' => $idempotencyKey,
                 'order_id'        => $order->id,
                 'method'          => 'bml_connect',
@@ -95,8 +101,6 @@ class PaymentService
             ]);
         }
 
-        // Embed orderId in the return URL so bmlReturn can redirect correctly.
-        // BML appends its own params (?transactionId=&state=) to whatever URL we send.
         $returnUrl = rtrim(config('bml.return_url'), '/') . '?orderId=' . $order->id;
 
         $result = $this->bml->createPayment(
@@ -105,36 +109,36 @@ class PaymentService
             returnUrl: $returnUrl,
         );
 
-        $payment->update([
+        $this->payments->update($payment->id, [
             'provider_transaction_id' => $result['transaction_id'],
-            'status' => 'initiated',
+            'status'                  => 'initiated',
         ]);
 
         Log::info('BML: Payment initiated', [
-            'payment_id' => $payment->id,
-            'order_id' => $order->id,
-            'local_id' => $localId,
-            'amount_laar' => $amountLaar,
+            'payment_id'     => $payment->id,
+            'order_id'       => $order->id,
+            'local_id'       => $localId,
+            'amount_laar'    => $amountLaar,
             'transaction_id' => $result['transaction_id'],
         ]);
 
         return [
             'payment_url' => $result['payment_url'],
-            'payment_id' => $payment->id,
-            'local_id' => $localId,
-            'reused' => false,
+            'payment_id'  => $payment->id,
+            'local_id'    => $localId,
+            'reused'      => false,
         ];
     }
 
     /**
      * Calculate the remaining balance for an order in laari.
-     * Considers confirmed, paid, and completed payments.
      */
     public function getRemainingBalanceLaar(Order $order): int
     {
-        $paidLaar = $order->payments()
-            ->whereIn('status', ['confirmed', 'paid', 'completed'])
-            ->sum('amount_laar');
+        $paidLaar = $this->payments->sumAmountLaarForOrder(
+            $order->id,
+            ['confirmed', 'paid', 'completed'],
+        );
 
         $orderTotalLaar = $order->total_laar ?? (int) round($order->total * 100);
 
@@ -143,11 +147,6 @@ class PaymentService
 
     /**
      * Initiate a partial BML payment.
-     *
-     * Rules:
-     * - amount must be > 0 and <= remaining_balance
-     * - idempotency_key is caller-supplied (required)
-     * - Existing pending payment with same idempotency_key is returned as-is
      */
     public function initiatePartialBmlPayment(Order $order, int $amountLaar, string $idempotencyKey): array
     {
@@ -167,16 +166,14 @@ class PaymentService
 
         return array_merge($result, [
             'remaining_balance_before_laar' => $remainingLaar,
-            'remaining_balance_after_laar' => $remainingLaar - $amountLaar,
-            'amount_laar' => $amountLaar,
+            'remaining_balance_after_laar'  => $remainingLaar - $amountLaar,
+            'amount_laar'                   => $amountLaar,
         ]);
     }
 
     /**
      * Handle incoming BML webhook.
-     *
      * Idempotent: protected by unique idempotency_key on webhook_logs.
-     * NEVER fails a confirmed payment — always store first, process second.
      */
     public function handleBmlWebhook(string $rawBody, array $headers): void
     {
@@ -189,13 +186,13 @@ class PaymentService
             return WebhookLog::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
                 [
-                    'gateway' => 'bml',
+                    'gateway'          => 'bml',
                     'gateway_event_id' => $payload['transactionId'] ?? null,
-                    'event_type' => $payload['state'] ?? 'unknown',
-                    'headers' => $headers,
-                    'raw_body' => $rawBody,
-                    'payload' => $payload,
-                    'status' => 'received',
+                    'event_type'       => $payload['state'] ?? 'unknown',
+                    'headers'          => $headers,
+                    'raw_body'         => $rawBody,
+                    'payload'          => $payload,
+                    'status'           => 'received',
                 ],
             );
         });
@@ -220,7 +217,7 @@ class PaymentService
             $log->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
             Log::error('BML: Webhook processing failed', [
                 'idempotency_key' => $idempotencyKey,
-                'error' => $e->getMessage(),
+                'error'           => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -234,15 +231,15 @@ class PaymentService
 
         Log::info('BML: Processing webhook', [
             'transaction_id' => $transactionId,
-            'state' => $state,
-            'local_id' => $localId,
+            'state'          => $state,
+            'local_id'       => $localId,
         ]);
 
         if (!$transactionId || !$localId) {
             throw new \RuntimeException('BML webhook missing transactionId or localId');
         }
 
-        $payment = Payment::where('local_id', $localId)->first();
+        $payment = $this->payments->findByLocalId($localId);
         if (!$payment) {
             Log::warning('BML: No payment found for localId', ['local_id' => $localId]);
 
@@ -251,10 +248,10 @@ class PaymentService
 
         match ($state) {
             'CONFIRMED' => $this->confirmPayment($payment, $payload),
-            'FAILED' => $payment->update(['status' => 'failed', 'gateway_response' => $payload]),
-            'CANCELLED' => $payment->update(['status' => 'cancelled', 'gateway_response' => $payload]),
-            'EXPIRED' => $payment->update(['status' => 'expired', 'gateway_response' => $payload]),
-            default => Log::info('BML: Unknown state', ['state' => $state]),
+            'FAILED'    => $this->payments->update($payment->id, ['status' => 'failed',    'gateway_response' => $payload]),
+            'CANCELLED' => $this->payments->update($payment->id, ['status' => 'cancelled', 'gateway_response' => $payload]),
+            'EXPIRED'   => $this->payments->update($payment->id, ['status' => 'expired',   'gateway_response' => $payload]),
+            default     => Log::info('BML: Unknown state', ['state' => $state]),
         };
     }
 
@@ -267,30 +264,43 @@ class PaymentService
         }
 
         DB::transaction(function () use ($payment, $payload): void {
-            $payment->update([
-                'status' => 'confirmed',
+            $this->payments->update($payment->id, [
+                'status'           => 'confirmed',
                 'gateway_response' => $payload,
             ]);
 
-            $order = $payment->order;
-            $paidTotal = $order->payments()
-                ->whereIn('status', ['paid', 'confirmed', 'completed'])
-                ->sum('amount');
+            $order = $this->orders->findById($payment->order_id);
+            if (!$order) {
+                Log::error('BML: Order not found during payment confirmation', [
+                    'payment_id' => $payment->id,
+                    'order_id'   => $payment->order_id,
+                ]);
+
+                return;
+            }
+
+            $paidTotal = $this->payments->sumAmountForOrder(
+                $order->id,
+                ['paid', 'confirmed', 'completed'],
+            );
 
             Log::info('BML: Payment confirmed', [
-                'payment_id' => $payment->id,
-                'order_id' => $order->id,
-                'paid_total' => $paidTotal,
+                'payment_id'  => $payment->id,
+                'order_id'    => $order->id,
+                'paid_total'  => $paidTotal,
                 'order_total' => $order->total,
             ]);
 
-            PaymentConfirmed::dispatch($payment, $order);
+            PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($payment, $order));
 
             if ($paidTotal >= $order->total && !in_array($order->status, ['paid', 'completed'], true)) {
-                $order->update(['status' => 'paid', 'paid_at' => now()]);
+                $this->orders->updateStatus($order->id, 'paid', ['paid_at' => now()]);
 
                 DB::afterCommit(function () use ($order): void {
-                    OrderPaid::dispatch($order->fresh(['items.modifiers', 'payments']), true);
+                    $freshOrder = $this->orders->findById($order->id);
+                    if ($freshOrder) {
+                        OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
+                    }
                 });
             }
         });
