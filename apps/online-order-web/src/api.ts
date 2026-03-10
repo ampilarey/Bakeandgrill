@@ -1,86 +1,55 @@
+// Types are defined in @shared — re-exported here for convenience
+export type {
+  Category,
+  MenuItem as Item,
+  Modifier,
+  Customer,
+  Order,
+  OrderItem,
+  LoyaltyAccount,
+  LoyaltyHoldPreview,
+  InitiatePaymentResult,
+  PromoValidation,
+  OpeningHoursStatus,
+} from '@shared/types';
+
+import { createApiClient } from '@shared/api';
+import { ENDPOINTS } from '@shared/api';
+import type {
+  Category,
+  MenuItem,
+  Modifier,
+  Customer,
+  Order,
+  OrderItem,
+  LoyaltyAccount,
+  LoyaltyHoldPreview,
+  InitiatePaymentResult,
+  PromoValidation,
+  OpeningHoursStatus,
+} from '@shared/types';
+
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  (import.meta.env.PROD ? "/api" : "http://localhost:8000/api");
+  (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
 /** Base URL for images (same origin as API, no /api suffix) */
-export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "") || (import.meta.env.PROD ? "" : "http://localhost:8000");
+export const API_ORIGIN =
+  API_BASE_URL.replace(/\/api\/?$/, '') ||
+  (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-type ApiError = { message?: string; errors?: Record<string, string[]> };
+// Re-export Item as MenuItem alias used internally
+export type { MenuItem };
+export type { Modifier };
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  });
+const client = createApiClient({ baseUrl: API_BASE_URL });
+const { request } = client;
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    let message = "Request failed";
-    try {
-      const errorBody = JSON.parse(text) as ApiError;
-      message =
-        errorBody.message ??
-        Object.values(errorBody.errors ?? {})[0]?.[0] ??
-        "Request failed";
-    } catch {
-      // Response was HTML (e.g. Laravel error page) — use status text
-      message = `Server error (${response.status})`;
-    }
-    throw new Error(message);
-  }
-
-  return (await response.json()) as T;
-}
-
-export type Category = {
-  id: number;
-  name: string;
-  name_dv?: string | null;
-  image_url?: string | null;
-  parent_id?: number | null;
-};
-
-export type Modifier = {
-  id: number;
-  name: string;
-  price: number;
-};
-
-export type Item = {
-  id: number;
-  name: string;
-  name_dv?: string | null;
-  description?: string | null;
-  base_price: number;
-  image_url?: string | null;
-  category_id: number;
-  modifiers?: Modifier[];
-};
-
-export type Customer = {
-  id: number;
-  phone: string;
-  name?: string | null;
-  email?: string | null;
-  loyalty_points?: number;
-  tier?: string | null;
-};
-
-export type Order = {
-  id: number;
-  order_number: string;
-  status: string;
-  total: number;
-  created_at: string;
-};
+// ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function requestOtp(phone: string): Promise<{ otp?: string }> {
-  return request<{ otp?: string }>("/auth/customer/otp/request", {
-    method: "POST",
+  return request<{ otp?: string }>(ENDPOINTS.CUSTOMER_OTP_REQUEST, {
+    method: 'POST',
     body: JSON.stringify({ phone }),
   });
 }
@@ -90,61 +59,51 @@ export async function verifyOtp(payload: {
   otp: string;
 }): Promise<{ token: string; customer: Customer }> {
   return request<{ token: string; customer: Customer }>(
-    "/auth/customer/otp/verify",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }
+    ENDPOINTS.CUSTOMER_OTP_VERIFY,
+    { method: 'POST', body: JSON.stringify(payload) },
   );
 }
 
-export type OpeningHoursStatus = { open: boolean; message: string | null };
+// ── Opening hours ─────────────────────────────────────────────────────────────
 
 export async function fetchOpeningHoursStatus(): Promise<OpeningHoursStatus> {
-  return request<OpeningHoursStatus>("/opening-hours/status");
+  return request<OpeningHoursStatus>(ENDPOINTS.OPENING_HOURS_STATUS);
 }
+
+// ── Menu ──────────────────────────────────────────────────────────────────────
 
 export async function fetchCategories(): Promise<{ data: Category[] }> {
-  return request<{ data: Category[] }>("/categories");
+  return request<{ data: Category[] }>(ENDPOINTS.CATEGORIES);
 }
 
-export async function fetchItems(): Promise<{ data: Item[] }> {
-  return request<{ data: Item[] }>("/items?available_only=1");
+export async function fetchItems(): Promise<{ data: MenuItem[] }> {
+  return request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?available_only=1`);
 }
 
-export async function getCustomerMe(token: string): Promise<{ customer: Customer }> {
-  return request<{ customer: Customer }>("/customer/me", {
+// ── Customer ─────────────────────────────────────────────────────────────────
+
+export async function getCustomerMe(
+  token: string,
+): Promise<{ customer: Customer }> {
+  return request<{ customer: Customer }>(ENDPOINTS.CUSTOMER_ME, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
 export async function fetchCustomerOrders(
-  token: string
+  token: string,
 ): Promise<{ data: Order[] }> {
-  return request<{ data: Order[] }>("/customer/orders", {
+  return request<{ data: Order[] }>(ENDPOINTS.CUSTOMER_ORDERS, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
-export async function createCustomerOrder(
-  token: string,
-  payload: {
-    items: Array<{
-      item_id: number;
-      quantity: number;
-      variant_id?: number;
-      modifiers?: Array<{ modifier_id: number; quantity?: number }>;
-    }>;
-    customer_notes?: string;
-    type?: string;
-  }
-): Promise<{ order: Order }> {
-  return request<{ order: Order }>("/customer/orders", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload),
-  });
-}
+// ── Orders ────────────────────────────────────────────────────────────────────
+
+export type OrderDetail = Order & {
+  items?: OrderItem[];
+  payments?: Array<{ method: string; amount: number; status: string }>;
+};
 
 export type DeliveryOrderPayload = {
   items: Array<{
@@ -162,36 +121,32 @@ export type DeliveryOrderPayload = {
   customer_notes?: string;
 };
 
-export type OrderDetailItem = {
-  id: number;
-  item_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  modifiers?: Array<{ name: string; price: number }>;
-};
-
-export type OrderDetail = Order & {
-  type: string;
-  total: number;
-  subtotal?: number;
-  delivery_fee?: number;
-  promo_discount_laar?: number;
-  loyalty_discount_laar?: number;
-  paid_at?: string | null;
-  delivery_address_line1?: string;
-  delivery_island?: string;
-  delivery_contact_name?: string;
-  delivery_contact_phone?: string;
-  items?: OrderDetailItem[];
-};
+export async function createCustomerOrder(
+  token: string,
+  payload: {
+    items: Array<{
+      item_id: number;
+      quantity: number;
+      variant_id?: number;
+      modifiers?: Array<{ modifier_id: number; quantity?: number }>;
+    }>;
+    customer_notes?: string;
+    type?: string;
+  },
+): Promise<{ order: Order }> {
+  return request<{ order: Order }>(ENDPOINTS.CUSTOMER_ORDERS, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
 
 export async function createDeliveryOrder(
   token: string,
-  payload: DeliveryOrderPayload
+  payload: DeliveryOrderPayload,
 ): Promise<{ order: OrderDetail }> {
-  return request<{ order: OrderDetail }>("/orders/delivery", {
-    method: "POST",
+  return request<{ order: OrderDetail }>(ENDPOINTS.DELIVERY_ORDER, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
@@ -199,50 +154,33 @@ export async function createDeliveryOrder(
 
 export async function getOrderDetail(
   token: string,
-  orderId: number
+  orderId: number,
 ): Promise<{ order: OrderDetail }> {
-  return request<{ order: OrderDetail }>(`/customer/orders/${orderId}`, {
+  return request<{ order: OrderDetail }>(`${ENDPOINTS.CUSTOMER_ORDERS}/${orderId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
-// ── BML Online Payment ──────────────────────────────────────────────────────
-
-export type InitiatePaymentResult = {
-  payment_url: string;
-  payment_id: number;
-};
+// ── BML Payment ───────────────────────────────────────────────────────────────
 
 export async function initiateOnlinePayment(
   token: string,
-  orderId: number
+  orderId: number,
 ): Promise<InitiatePaymentResult> {
-  return request<InitiatePaymentResult>(`/orders/${orderId}/pay/bml`, {
-    method: "POST",
+  return request<InitiatePaymentResult>(ENDPOINTS.ORDER_PAY_BML(orderId), {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
-// ── Promotions ──────────────────────────────────────────────────────────────
-
-export type PromoValidation = {
-  valid: boolean;
-  promotion?: {
-    id: number;
-    code: string;
-    discount_type: string;
-    discount_value: number;
-  };
-  estimated_discount_laar?: number;
-  message?: string;
-};
+// ── Promotions ────────────────────────────────────────────────────────────────
 
 export async function validatePromoCode(
   code: string,
-  token?: string
+  token?: string,
 ): Promise<PromoValidation> {
-  return request<PromoValidation>("/promotions/validate", {
-    method: "POST",
+  return request<PromoValidation>(ENDPOINTS.PROMOTIONS_VALIDATE, {
+    method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: JSON.stringify({ code }),
   });
@@ -251,61 +189,49 @@ export async function validatePromoCode(
 export async function applyPromoCode(
   token: string,
   orderId: number,
-  code: string
+  code: string,
 ): Promise<{ order: OrderDetail; discount_laar: number }> {
   return request<{ order: OrderDetail; discount_laar: number }>(
-    `/orders/${orderId}/apply-promo`,
+    ENDPOINTS.ORDER_APPLY_PROMO(orderId),
     {
-      method: "POST",
+      method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ code }),
-    }
+    },
   );
 }
 
 export async function removePromoCode(
   token: string,
   orderId: number,
-  promotionId: number
+  promotionId: number,
 ): Promise<{ order: OrderDetail }> {
   return request<{ order: OrderDetail }>(
-    `/orders/${orderId}/promo/${promotionId}`,
+    ENDPOINTS.ORDER_REMOVE_PROMO(orderId, promotionId),
     {
-      method: "DELETE",
+      method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
-    }
+    },
   );
 }
 
-// ── Loyalty ─────────────────────────────────────────────────────────────────
-
-export type LoyaltyAccount = {
-  id: number;
-  points_balance: number;
-  tier: string;
-};
+// ── Loyalty ───────────────────────────────────────────────────────────────────
 
 export async function getLoyaltyAccount(
-  token: string
+  token: string,
 ): Promise<{ account: LoyaltyAccount | null }> {
-  return request<{ account: LoyaltyAccount | null }>("/loyalty/me", {
+  return request<{ account: LoyaltyAccount | null }>(ENDPOINTS.LOYALTY_ME, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
-export type LoyaltyHoldPreview = {
-  points: number;
-  discount_laar: number;
-  discount_mvr: number;
-};
-
 export async function previewLoyaltyHold(
   token: string,
   orderId: number,
-  points: number
+  points: number,
 ): Promise<LoyaltyHoldPreview> {
-  return request<LoyaltyHoldPreview>("/loyalty/hold-preview", {
-    method: "POST",
+  return request<LoyaltyHoldPreview>(ENDPOINTS.LOYALTY_HOLD_PREVIEW, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ order_id: orderId, points }),
   });
@@ -314,24 +240,24 @@ export async function previewLoyaltyHold(
 export async function createLoyaltyHold(
   token: string,
   orderId: number,
-  points: number
+  points: number,
 ): Promise<{ hold: { points_held: number; discount_laar: number } }> {
   return request<{ hold: { points_held: number; discount_laar: number } }>(
-    "/loyalty/hold",
+    ENDPOINTS.LOYALTY_HOLD,
     {
-      method: "POST",
+      method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ order_id: orderId, points }),
-    }
+    },
   );
 }
 
 export async function releaseLoyaltyHold(
   token: string,
-  orderId: number
+  orderId: number,
 ): Promise<void> {
-  await request<void>(`/loyalty/hold/${orderId}`, {
-    method: "DELETE",
+  await request<void>(`${ENDPOINTS.LOYALTY_HOLD}/${orderId}`, {
+    method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
 }

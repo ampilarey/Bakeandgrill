@@ -1,12 +1,14 @@
-export interface MenuItem {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  image?: string;
-  category?: string;
-}
-
-export interface CartItem extends MenuItem {
-  quantity: number;
-}
+// All shared types live in packages/shared — re-export from there.
+export type {
+  MenuItem,
+  CartItem,
+  Category,
+  Modifier,
+  Customer,
+  Order,
+  OrderItem,
+  LoyaltyAccount,
+  OpeningHoursStatus,
+  InitiatePaymentResult,
+  PromoValidation,
+} from '@shared/types';

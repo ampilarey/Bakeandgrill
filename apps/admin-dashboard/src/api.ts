@@ -1,32 +1,19 @@
+import { createApiClient } from '@shared/api';
+import type { StaffUser, Order as SharedOrder, OrderItem as SharedOrderItem } from '@shared/types';
+
+// Re-export shared types consumed by admin pages
+export type { StaffUser, SharedOrder, SharedOrderItem };
+
 const BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
-type ApiError = { message?: string; errors?: Record<string, string[]> };
-
-async function req<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('admin_token');
-  const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-    ...options,
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as ApiError;
-    throw new Error(
-      body.message ?? Object.values(body.errors ?? {})[0]?.[0] ?? `HTTP ${res.status}`
-    );
-  }
-  return res.json() as Promise<T>;
-}
+const { request: req } = createApiClient({
+  baseUrl: BASE,
+  getToken: () => localStorage.getItem('admin_token'),
+});
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
-
-export type StaffUser = { id: number; name: string; email: string; role: string | null };
 
 export async function pinLogin(pin: string): Promise<{ token: string; user: StaffUser }> {
   return req('/auth/staff/pin-login', { method: 'POST', body: JSON.stringify({ pin }) });
