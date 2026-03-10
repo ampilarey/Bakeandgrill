@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchTables, staffLogin } from "./api";
+import { fetchTables, setAuthToken, staffLogin } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -19,7 +19,6 @@ type OrderType = (typeof orderTypes)[number];
 function App() {
   // ── Auth ────────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn]   = useState(false);
-  const [token, setToken]             = useState<string | null>(null);
   const [pin, setPin]                 = useState("");
   const [deviceId, setDeviceId]       = useState("POS-001");
   const [authError, setAuthError]     = useState("");
@@ -50,14 +49,14 @@ function App() {
 
   // ── Load tables after login ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!isLoggedIn || !token) return;
-    fetchTables(token)
+    if (!isLoggedIn) return;
+    fetchTables()
       .then((r) => {
         setTables(r.tables);
         setSelectedTableId(r.tables.find((t) => t.is_active)?.id ?? null);
       })
-      .catch(() => { setTables([]); setSelectedTableId(null); });
-  }, [isLoggedIn, token]);
+        .catch(() => { setTables([]); setSelectedTableId(null); });
+  }, [isLoggedIn]);
 
   // ── Hooks ───────────────────────────────────────────────────────────────────
   const menu = useMenu(isLoggedIn);
@@ -69,10 +68,9 @@ function App() {
     [menu.items, menu.selectedCategoryId],
   );
 
-  const ops = useOps(token, isLoggedIn, viewMode);
+  const ops = useOps(isLoggedIn, viewMode);
 
   const order = useOrderCreation({
-    token,
     isOnline,
     deviceId,
     orderType,
@@ -93,7 +91,7 @@ function App() {
     try {
       const response = await staffLogin(pin.trim(), deviceId.trim());
       localStorage.setItem("pos_token", response.token);
-      setToken(response.token);
+      setAuthToken(response.token);
       setIsLoggedIn(true);
       setPin("");
     } catch {

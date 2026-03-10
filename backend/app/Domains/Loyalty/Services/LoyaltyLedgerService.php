@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Loyalty\Services;
 
+use App\Domains\Loyalty\Repositories\LoyaltyAccountRepositoryInterface;
+use App\Domains\Loyalty\Repositories\LoyaltyHoldRepositoryInterface;
+use App\Domains\Loyalty\Repositories\LoyaltyLedgerRepositoryInterface;
 use App\Models\Customer;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyHold;
-use App\Models\LoyaltyLedger;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,20 +17,25 @@ use Illuminate\Support\Facades\Log;
 /**
  * Central service for all loyalty account operations.
  * All mutations are transactional and idempotent.
+ *
+ * Database access is fully delegated to injected repositories —
+ * this service contains only business logic and transaction boundaries.
  */
 class LoyaltyLedgerService
 {
-    public function __construct(private PointsCalculator $calculator) {}
+    public function __construct(
+        private PointsCalculator                 $calculator,
+        private LoyaltyAccountRepositoryInterface $accountRepo,
+        private LoyaltyHoldRepositoryInterface    $holdRepo,
+        private LoyaltyLedgerRepositoryInterface  $ledgerRepo,
+    ) {}
 
     /**
      * Get or create a loyalty account for a customer.
      */
     public function accountFor(Customer $customer): LoyaltyAccount
     {
-        return LoyaltyAccount::firstOrCreate(
-            ['customer_id' => $customer->id],
-            ['points_balance' => 0, 'points_held' => 0, 'lifetime_points' => 0, 'tier' => 'bronze'],
-        );
+        return $this->accountRepo->getOrCreateAccount($customer->id);
     }
 
     /**
@@ -62,10 +69,7 @@ class LoyaltyLedgerService
                 $pointsToRedeem = $this->calculator->pointsNeededForDiscountLaar($discountLaar);
             }
 
-            $existing = LoyaltyHold::where('order_id', $order->id)
-                ->whereIn('status', ['active'])
-                ->first();
-
+            $existing = $this->holdRepo->findActiveByOrderId($order->id);
             if ($existing) {
                 $this->releaseHold($existing, $account);
             }
@@ -73,29 +77,24 @@ class LoyaltyLedgerService
             $idempotencyKey = 'hold:' . $customer->id . ':' . $order->id . ':' . $pointsToRedeem;
             $ttlMinutes = (int) config('app.loyalty_hold_ttl', 30);
 
-            $hold = LoyaltyHold::updateOrCreate(
-                ['order_id' => $order->id],
-                [
-                    'idempotency_key' => $idempotencyKey,
-                    'customer_id' => $customer->id,
-                    'points_held' => $pointsToRedeem,
-                    'discount_laar' => $discountLaar,
-                    'status' => 'active',
-                    'expires_at' => now()->addMinutes($ttlMinutes),
-                    'consumed_at' => null,
-                    'released_at' => null,
-                ],
-            );
+            $hold = $this->holdRepo->upsertForOrder($order->id, [
+                'idempotency_key' => $idempotencyKey,
+                'customer_id'     => $customer->id,
+                'points_held'     => $pointsToRedeem,
+                'discount_laar'   => $discountLaar,
+                'status'          => 'active',
+                'expires_at'      => now()->addMinutes($ttlMinutes),
+                'consumed_at'     => null,
+                'released_at'     => null,
+            ]);
 
-            DB::table('loyalty_accounts')
-                ->where('customer_id', $customer->id)
-                ->increment('points_held', $pointsToRedeem);
+            $this->accountRepo->incrementPointsHeld($customer->id, $pointsToRedeem);
 
             Log::info('Loyalty hold created', [
-                'customer_id' => $customer->id,
-                'order_id' => $order->id,
-                'points_held' => $pointsToRedeem,
-                'discount_laar' => $discountLaar,
+                'customer_id'  => $customer->id,
+                'order_id'     => $order->id,
+                'points_held'  => $pointsToRedeem,
+                'discount_laar'=> $discountLaar,
             ]);
 
             return $hold;
@@ -116,13 +115,13 @@ class LoyaltyLedgerService
 
         if ($hold->isExpired() && $hold->status === 'active') {
             Log::warning('Loyalty hold expired but order was paid — honoring redemption', [
-                'hold_id' => $hold->id,
+                'hold_id'    => $hold->id,
                 'expired_at' => $hold->expires_at,
             ]);
         }
 
         DB::transaction(function () use ($hold): void {
-            $account = LoyaltyAccount::where('customer_id', $hold->customer_id)->lockForUpdate()->first();
+            $account = $this->accountRepo->lockAccount($hold->customer_id);
             if (!$account) {
                 Log::error('Loyalty account not found for hold consumption', ['hold_id' => $hold->id]);
 
@@ -133,7 +132,7 @@ class LoyaltyLedgerService
                 Log::warning('Insufficient points balance at hold consumption time', [
                     'hold_id' => $hold->id,
                     'balance' => $account->points_balance,
-                    'needed' => $hold->points_held,
+                    'needed'  => $hold->points_held,
                 ]);
                 // Never fail a confirmed payment over a discount — use what we can
                 $pointsToConsume = $account->points_balance;
@@ -142,30 +141,22 @@ class LoyaltyLedgerService
             }
 
             $idempotencyKey = 'loyalty:redeem:' . $hold->order_id . ':' . $hold->id;
+            $balanceAfter   = max(0, $account->points_balance - $pointsToConsume);
 
-            $balanceAfter = max(0, $account->points_balance - $pointsToConsume);
+            $this->ledgerRepo->firstOrCreateByIdempotencyKey($idempotencyKey, [
+                'customer_id'     => $hold->customer_id,
+                'order_id'        => $hold->order_id,
+                'type'            => 'redeem',
+                'points'          => -$pointsToConsume,
+                'balance_after'   => $balanceAfter,
+                'notes'           => 'Redeemed for order',
+                'occurred_at'     => now(),
+            ]);
 
-            LoyaltyLedger::firstOrCreate(
-                ['idempotency_key' => $idempotencyKey],
-                [
-                    'customer_id' => $hold->customer_id,
-                    'order_id' => $hold->order_id,
-                    'type' => 'redeem',
-                    'points' => -$pointsToConsume,
-                    'balance_after' => $balanceAfter,
-                    'notes' => 'Redeemed for order',
-                    'occurred_at' => now(),
-                ],
-            );
+            $this->accountRepo->updateBalance($hold->customer_id, $balanceAfter);
+            $this->accountRepo->decrementPointsHeld($hold->customer_id, (int) $hold->points_held);
 
-            DB::table('loyalty_accounts')
-                ->where('customer_id', $hold->customer_id)
-                ->update([
-                    'points_balance' => $balanceAfter,
-                    'points_held' => DB::raw('MAX(0, points_held - ' . (int) $hold->points_held . ')'),
-                ]);
-
-            $hold->update(['status' => 'consumed', 'consumed_at' => now()]);
+            $this->holdRepo->markConsumed($hold);
         });
     }
 
@@ -179,13 +170,8 @@ class LoyaltyLedgerService
         }
 
         DB::transaction(function () use ($hold): void {
-            $hold->update(['status' => 'released', 'released_at' => now()]);
-
-            DB::table('loyalty_accounts')
-                ->where('customer_id', $hold->customer_id)
-                ->update([
-                    'points_held' => DB::raw('MAX(0, points_held - ' . (int) $hold->points_held . ')'),
-                ]);
+            $this->holdRepo->markReleased($hold);
+            $this->accountRepo->decrementPointsHeld($hold->customer_id, (int) $hold->points_held);
         });
     }
 
@@ -195,7 +181,7 @@ class LoyaltyLedgerService
     public function earnPointsForOrder(Customer $customer, Order $order): void
     {
         $account = $this->accountFor($customer);
-        $points = $this->calculator->pointsForOrder($order, $account);
+        $points  = $this->calculator->pointsForOrder($order, $account);
 
         if ($points <= 0) {
             return;
@@ -204,8 +190,7 @@ class LoyaltyLedgerService
         $idempotencyKey = 'loyalty:earn:' . $order->id . ':' . $customer->id;
 
         DB::transaction(function () use ($customer, $order, $points, $idempotencyKey, $account): void {
-            $existing = LoyaltyLedger::where('idempotency_key', $idempotencyKey)->exists();
-            if ($existing) {
+            if ($this->ledgerRepo->existsByIdempotencyKey($idempotencyKey)) {
                 Log::info('Loyalty earn already recorded, skipping', ['key' => $idempotencyKey]);
 
                 return;
@@ -213,23 +198,18 @@ class LoyaltyLedgerService
 
             $balanceAfter = $account->points_balance + $points;
 
-            LoyaltyLedger::create([
+            $this->ledgerRepo->createEntry([
                 'idempotency_key' => $idempotencyKey,
-                'customer_id' => $customer->id,
-                'order_id' => $order->id,
-                'type' => 'earn',
-                'points' => $points,
-                'balance_after' => $balanceAfter,
-                'notes' => 'Earned from order ' . $order->order_number,
-                'occurred_at' => now(),
+                'customer_id'     => $customer->id,
+                'order_id'        => $order->id,
+                'type'            => 'earn',
+                'points'          => $points,
+                'balance_after'   => $balanceAfter,
+                'notes'           => 'Earned from order ' . $order->order_number,
+                'occurred_at'     => now(),
             ]);
 
-            DB::table('loyalty_accounts')
-                ->where('customer_id', $customer->id)
-                ->update([
-                    'points_balance' => $balanceAfter,
-                    'lifetime_points' => DB::raw('lifetime_points + ' . (int) $points),
-                ]);
+            $this->accountRepo->updateBalance($customer->id, $balanceAfter, $points);
         });
     }
 }

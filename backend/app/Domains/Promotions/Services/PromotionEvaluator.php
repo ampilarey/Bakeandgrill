@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Promotions\Services;
 
+use App\Domains\Promotions\Repositories\PromotionRedemptionRepositoryInterface;
+use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
 use App\Models\Order;
 use App\Models\Promotion;
-use App\Models\PromotionRedemption;
 
 /**
  * Evaluates whether a promo code is valid for an order and calculates the discount.
@@ -21,6 +22,11 @@ use App\Models\PromotionRedemption;
  */
 class PromotionEvaluator
 {
+    public function __construct(
+        private PromotionRepositoryInterface            $promotionRepo,
+        private PromotionRedemptionRepositoryInterface  $redemptionRepo,
+    ) {}
+
     /**
      * @return array{valid: bool, discount_laar: int, message: string, promotion: ?Promotion}
      */
@@ -28,9 +34,7 @@ class PromotionEvaluator
     {
         $normalizedCode = strtoupper(trim($code));
 
-        $promotion = Promotion::where('code', $normalizedCode)
-            ->with(['targets'])
-            ->first();
+        $promotion = $this->promotionRepo->findByCodeWithRelations($normalizedCode, ['targets']);
 
         if (!$promotion) {
             return $this->reject('Promo code not found.');
@@ -50,9 +54,7 @@ class PromotionEvaluator
         }
 
         if ($customerId && $promotion->max_uses_per_customer) {
-            $customerUsage = PromotionRedemption::where('promotion_id', $promotion->id)
-                ->where('customer_id', $customerId)
-                ->count();
+            $customerUsage = $this->redemptionRepo->countByPromotionAndCustomer($promotion->id, $customerId);
 
             if ($customerUsage >= $promotion->max_uses_per_customer) {
                 return $this->reject('You have already used this promo code the maximum number of times.');
@@ -66,10 +68,10 @@ class PromotionEvaluator
         }
 
         return [
-            'valid' => true,
+            'valid'         => true,
             'discount_laar' => $discountLaar,
-            'message' => 'Promo code applied successfully.',
-            'promotion' => $promotion,
+            'message'       => 'Promo code applied successfully.',
+            'promotion'     => $promotion,
         ];
     }
 
@@ -79,9 +81,9 @@ class PromotionEvaluator
 
         return match ($promo->type) {
             'percentage' => (int) floor($applicableAmount * $promo->discount_value / 10000),
-            'fixed' => min($promo->discount_value, $applicableAmount),
-            'free_item' => $this->freeItemDiscount($promo, $order),
-            default => 0,
+            'fixed'      => min($promo->discount_value, $applicableAmount),
+            'free_item'  => $this->freeItemDiscount($promo, $order),
+            default      => 0,
         };
     }
 
@@ -100,15 +102,15 @@ class PromotionEvaluator
         $inclusions = $promo->targets->where('is_exclusion', false);
         $exclusions = $promo->targets->where('is_exclusion', true);
 
-        $excludedItemIds = $exclusions->where('target_type', 'item')->pluck('target_id')->toArray();
+        $excludedItemIds     = $exclusions->where('target_type', 'item')->pluck('target_id')->toArray();
         $excludedCategoryIds = $exclusions->where('target_type', 'category')->pluck('target_id')->toArray();
 
-        $includedItemIds = $inclusions->where('target_type', 'item')->pluck('target_id')->toArray();
+        $includedItemIds     = $inclusions->where('target_type', 'item')->pluck('target_id')->toArray();
         $includedCategoryIds = $inclusions->where('target_type', 'category')->pluck('target_id')->toArray();
 
         $total = 0;
         foreach ($order->items as $orderItem) {
-            $itemId = $orderItem->item_id;
+            $itemId     = $orderItem->item_id;
             $categoryId = $orderItem->item?->category_id ?? null;
 
             if (in_array($itemId, $excludedItemIds) || in_array($categoryId, $excludedCategoryIds)) {
@@ -136,7 +138,7 @@ class PromotionEvaluator
         }
 
         $targetItemIds = $targets->pluck('target_id')->toArray();
-        $cheapestItem = $order->items
+        $cheapestItem  = $order->items
             ->filter(fn ($i) => in_array($i->item_id, $targetItemIds))
             ->sortBy('unit_price')
             ->first();
