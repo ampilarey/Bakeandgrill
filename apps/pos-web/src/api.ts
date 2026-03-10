@@ -289,10 +289,7 @@ export async function createCashMovement(
   return handleResponse(response);
 }
 
-export async function getSalesSummary(
-  token: string,
-  params: { from?: string; to?: string }
-): Promise<{
+export type SalesSummary = {
   totals: {
     orders_count: number;
     subtotal: number;
@@ -301,7 +298,12 @@ export async function getSalesSummary(
     total: number;
   };
   payments: Record<string, number>;
-}> {
+};
+
+export async function getSalesSummary(
+  token: string,
+  params: { from?: string; to?: string }
+): Promise<SalesSummary> {
   const query = new URLSearchParams();
   if (params.from) {
     query.set("from", params.from);
