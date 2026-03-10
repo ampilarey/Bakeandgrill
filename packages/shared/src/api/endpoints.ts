@@ -44,4 +44,33 @@ export const ENDPOINTS = {
 
   // Opening hours
   OPENING_HOURS_STATUS: '/opening-hours/status',
+
+  // Daily specials
+  SPECIALS:             '/specials',
+  ADMIN_SPECIALS:       '/admin/specials',
+  ADMIN_SPECIAL_BY_ID:  (id: number) => `/admin/specials/${id}`,
+
+  // Push notifications
+  PUSH_SUBSCRIBE:   '/push/subscribe',
+  PUSH_UNSUBSCRIBE: '/push/unsubscribe',
+
+  // Favorites
+  FAVORITES:               '/customer/favorites',
+  FAVORITE_TOGGLE:         (itemId: number) => `/customer/favorites/${itemId}/toggle`,
+  QUICK_REORDER:           (orderId: number) => `/customer/orders/${orderId}/reorder`,
+
+  // Reviews
+  REVIEWS:             '/reviews',
+  ITEM_REVIEWS:        (itemId: number) => `/items/${itemId}/reviews`,
+  CUSTOMER_REVIEWS:    '/customer/reviews',
+  ADMIN_REVIEWS:       '/admin/reviews',
+  ADMIN_REVIEW_MOD:    (id: number) => `/admin/reviews/${id}/moderate`,
+
+  // Reservations
+  RESERVATIONS:              '/reservations',
+  RESERVATIONS_AVAILABILITY: '/reservations/availability',
+  RESERVATION_CANCEL:        (id: number) => `/reservations/${id}`,
+  ADMIN_RESERVATIONS:        '/admin/reservations',
+  ADMIN_RESERVATION_STATUS:  (id: number) => `/admin/reservations/${id}/status`,
+  ADMIN_RESERVATION_SETTINGS: '/admin/reservations/settings',
 } as const;

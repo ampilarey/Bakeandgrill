@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\SmsPromotionController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\TableController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -337,6 +338,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus']);
 });
 
+// Public order-status stream (uses ?token= query param — customer Sanctum token)
+Route::get('/stream/order-status/{orderId}', [App\Http\Controllers\Api\StreamController::class, 'publicOrderStatus'])
+    ->middleware('throttle:30,1');
+
 // ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
 Route::middleware(['auth:sanctum'])->prefix('admin/sms')->group(function () {
     // Full SMS audit log (OTP + promo + campaign + transactional)
@@ -362,6 +367,137 @@ Route::middleware(['auth:sanctum'])->prefix('admin/staff')->group(function () {
     Route::patch('/{id}',   [App\Http\Controllers\Api\StaffController::class, 'update']);
     Route::post('/{id}/pin', [App\Http\Controllers\Api\StaffController::class, 'resetPin']);
     Route::delete('/{id}',  [App\Http\Controllers\Api\StaffController::class, 'destroy']);
+});
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+Route::middleware(['auth:sanctum'])->prefix('admin/analytics')->group(function () {
+    Route::get('/peak-hours',    [App\Http\Controllers\Api\AnalyticsController::class, 'peakHours']);
+    Route::get('/retention',     [App\Http\Controllers\Api\AnalyticsController::class, 'retention']);
+    Route::get('/profitability', [App\Http\Controllers\Api\AnalyticsController::class, 'profitability']);
+    Route::get('/forecast',      [App\Http\Controllers\Api\AnalyticsController::class, 'forecast']);
+    Route::get('/customer-ltv',  [App\Http\Controllers\Api\AnalyticsController::class, 'customerLtv']);
+});
+
+// ─── Marketing: Referrals & Gift Cards ───────────────────────────────────────
+
+// Public: validate referral code
+Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController::class, 'validate'])
+    ->middleware('throttle:20,1');
+
+// Public: gift card balance check
+Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
+    ->middleware('throttle:20,1');
+
+// Customer: referral management
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
+});
+
+// Admin: gift cards and referral overview
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/admin/gift-cards',  [App\Http\Controllers\Api\GiftCardController::class, 'index']);
+    Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
+    Route::get('/admin/referrals',   [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
+});
+
+// ─── Tips, Scheduling, Waste, Wait Time ──────────────────────────────────────
+
+// Public wait time estimate
+Route::get('/wait-time', [App\Http\Controllers\Api\WaitTimeController::class, 'estimate']);
+
+// Staff Scheduling (admin)
+Route::middleware(['auth:sanctum'])->prefix('admin/schedules')->group(function () {
+    Route::get('/',        [App\Http\Controllers\Api\ScheduleController::class, 'index']);
+    Route::post('/',       [App\Http\Controllers\Api\ScheduleController::class, 'store']);
+    Route::patch('/{id}',  [App\Http\Controllers\Api\ScheduleController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\Api\ScheduleController::class, 'destroy']);
+});
+
+// Waste Logs (staff)
+Route::middleware(['auth:sanctum'])->prefix('waste-logs')->group(function () {
+    Route::get('/',  [App\Http\Controllers\Api\WasteLogController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\Api\WasteLogController::class, 'store']);
+});
+
+// ─── Item Photo Gallery ───────────────────────────────────────────────────────
+
+// Public: list photos for an item
+Route::get('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'index']);
+
+// Admin: manage photos
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/items/{itemId}/photos',            [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
+    Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
+    Route::delete('/items/{itemId}/photos/{photoId}',[App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
+});
+
+// ─── Daily Specials ───────────────────────────────────────────────────────────
+
+// Public: currently active specials
+Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class, 'active']);
+
+// Admin: CRUD
+Route::middleware(['auth:sanctum'])->prefix('admin/specials')->group(function () {
+    Route::get('/',        [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
+    Route::post('/',       [App\Http\Controllers\Api\DailySpecialController::class, 'store']);
+    Route::patch('/{id}',  [App\Http\Controllers\Api\DailySpecialController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\Api\DailySpecialController::class, 'destroy']);
+});
+
+// ─── Push Notification Subscriptions ─────────────────────────────────────────
+
+Route::post('/push/subscribe',   [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
+    ->middleware('throttle:20,1');
+Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])
+    ->middleware('throttle:20,1');
+
+// ─── Favorites & Quick Reorder ───────────────────────────────────────────────
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/customer/favorites',               [App\Http\Controllers\Api\FavoritesController::class, 'index']);
+    Route::post('/customer/favorites/{itemId}/toggle', [App\Http\Controllers\Api\FavoritesController::class, 'toggle']);
+    Route::get('/customer/orders/{orderId}/reorder', [App\Http\Controllers\Api\FavoritesController::class, 'reorder']);
+});
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+// Public: item reviews
+Route::get('/items/{itemId}/reviews', [App\Http\Controllers\Api\ReviewController::class, 'itemReviews']);
+
+// Customer: submit + list own reviews
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/reviews',            [App\Http\Controllers\Api\ReviewController::class, 'store']);
+    Route::get('/customer/reviews',    [App\Http\Controllers\Api\ReviewController::class, 'myReviews']);
+});
+
+// Admin: moderate reviews
+Route::middleware(['auth:sanctum'])->prefix('admin/reviews')->group(function () {
+    Route::get('/',           [App\Http\Controllers\Api\ReviewController::class, 'adminIndex']);
+    Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
+});
+
+// ─── Reservations ────────────────────────────────────────────────────────────
+// Public: check slot availability
+Route::get('/reservations/availability', [ReservationController::class, 'availability'])
+    ->middleware('throttle:60,1');
+
+// Public/customer: create & cancel reservations
+Route::post('/reservations', [ReservationController::class, 'store'])
+    ->middleware('throttle:10,10');
+
+// Authenticated: list and cancel own reservations
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/reservations', [ReservationController::class, 'index']);
+    Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
+});
+
+// Staff: manage reservation status + settings
+Route::middleware(['auth:sanctum'])->prefix('admin/reservations')->group(function () {
+    Route::get('/',                  [ReservationController::class, 'index']);
+    Route::patch('/{id}/status',     [ReservationController::class, 'updateStatus']);
+    Route::get('/settings',          [ReservationController::class, 'getSettings']);
+    Route::patch('/settings',        [ReservationController::class, 'updateSettings']);
 });
 
 // ─── System Health ─────────────────────────────────────────────────────────

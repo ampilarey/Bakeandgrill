@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, type OrderDetail, type OrderDetailItem } from "../api";
+import { getOrderDetail, type OrderDetail, type OrderDetailItem, API_ORIGIN } from "../api";
+import { ReviewForm } from "../components/ReviewForm";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -29,8 +30,11 @@ export function OrderStatusPage() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [liveConnected, setLiveConnected] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
 
   const token = readToken();
+  const esRef = useRef<EventSource | null>(null);
 
   const loadOrder = async () => {
     if (!token || !orderId) return;
@@ -51,13 +55,54 @@ export function OrderStatusPage() {
     }
   }, [paymentState]);
 
-  // Initial load + polling every 10 seconds
+  // Initial load
   useEffect(() => {
     void loadOrder();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, token]);
+
+  // SSE real-time tracking — uses public token-in-URL endpoint (EventSource can't set headers)
+  useEffect(() => {
+    if (!orderId) return;
+
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+    const sseUrl = `${API_ORIGIN}/api/stream/order-status/${orderId}${tokenParam}`;
+    const es = new EventSource(sseUrl, { withCredentials: false });
+
+    const handleStatus = (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data) as { status: string; paid_at?: string; updated_at?: string };
+        setOrder(prev => prev ? { ...prev, status: payload.status, paid_at: payload.paid_at ?? prev.paid_at } : prev);
+        setLiveConnected(true);
+      } catch { /* ignore */ }
+    };
+
+    es.addEventListener("order.updated",   handleStatus);
+    es.addEventListener("order.paid",      handleStatus);
+    es.addEventListener("order.completed", handleStatus);
+    es.addEventListener("order.cancelled", handleStatus);
+
+    es.onerror = () => {
+      setLiveConnected(false);
+      es.close();
+      esRef.current = null;
+    };
+
+    esRef.current = es;
+
+    return () => {
+      es.close();
+      esRef.current = null;
+    };
+  }, [orderId, token]);
+
+  // Fallback polling if SSE not connected
+  useEffect(() => {
+    if (liveConnected) return;
     const interval = setInterval(() => void loadOrder(), 10_000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId, token]);
+  }, [liveConnected, orderId, token]);
 
   const statusInfo = order
     ? STATUS_LABELS[order.status] ?? { label: order.status, color: "#495057", icon: "📋" }
@@ -227,10 +272,21 @@ export function OrderStatusPage() {
               </div>
             )}
 
-            {/* Auto-refresh note */}
+            {/* Live status indicator */}
             <p style={styles.refreshNote}>
-              🔄 This page refreshes automatically every 10 seconds.
+              {liveConnected
+                ? "🟢 Live — updates in real time"
+                : "🔄 Refreshing every 10 seconds"}
             </p>
+
+            {/* Review form for completed/paid orders */}
+            {token && ["completed", "paid"].includes(order.status) && !reviewDone && (
+              <ReviewForm
+                orderId={order.id}
+                token={token}
+                onDone={() => setReviewDone(true)}
+              />
+            )}
 
             {/* CTA */}
             <button

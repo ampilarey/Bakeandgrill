@@ -13,4 +13,5 @@ return [
     App\Domains\Loyalty\Providers\LoyaltyServiceProvider::class,
     App\Domains\Inventory\Providers\InventoryServiceProvider::class,
     App\Domains\Promotions\Providers\PromotionsServiceProvider::class,
+    App\Domains\Reservations\Providers\ReservationServiceProvider::class,
 ];

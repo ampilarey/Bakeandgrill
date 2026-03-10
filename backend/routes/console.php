@@ -33,3 +33,6 @@ Artisan::command('menu:sync-item-images', function () {
 // Loyalty maintenance schedules
 Schedule::command('app:expire-loyalty-holds')->everyFifteenMinutes();
 Schedule::command('app:reconcile-loyalty-balances')->dailyAt('03:00');
+
+// Reservations: auto-mark no-shows every 15 minutes
+Schedule::job(App\Jobs\AutoCancelNoShowReservations::class)->everyFifteenMinutes();

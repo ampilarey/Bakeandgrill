@@ -4,6 +4,8 @@ export * from './product';
 export * from './order';
 export * from './customer';
 export * from './payment';
+export * from './reservation';
+export * from './review';
 
 // ── Generic API response wrappers ─────────────────────────────────────────────
 

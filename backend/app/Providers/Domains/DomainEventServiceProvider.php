@@ -17,6 +17,8 @@ use App\Domains\Printing\Listeners\DispatchKitchenPrintListener;
 use App\Domains\Printing\Listeners\DispatchReceiptPrintListener;
 use App\Domains\Promotions\Listeners\ConsumePromoRedemptionsListener;
 use App\Domains\Promotions\Listeners\ReleasePromoReservationListener;
+use App\Domains\Reservations\Events\ReservationCreated;
+use App\Domains\Reservations\Listeners\SendReservationConfirmationListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider;
 
 /**
@@ -53,6 +55,10 @@ class DomainEventServiceProvider extends EventServiceProvider
         PaymentConfirmed::class => [
             // PaymentConfirmedListener checks if order is fully paid → fires OrderPaid
             // Implemented in Phase 7
+        ],
+
+        ReservationCreated::class => [
+            SendReservationConfirmationListener::class,
         ],
     ];
 }

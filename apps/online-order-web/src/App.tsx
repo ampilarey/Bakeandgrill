@@ -671,6 +671,18 @@ function App() {
             {customerName && (
               <span style={{ fontSize: '0.9rem', color: '#636e72' }}>Hi, {customerName}</span>
             )}
+            <button onClick={() => navigate('/reservations')} style={{
+              background: 'transparent',
+              color: '#D97706',
+              border: '1px solid #D97706',
+              padding: '0.5rem 1.25rem',
+              borderRadius: '999px',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}>
+              📅 Reserve
+            </button>
             <button onClick={handleLogout} style={{
               background: 'transparent',
               color: '#1ba3b9',

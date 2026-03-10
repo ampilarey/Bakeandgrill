@@ -7,10 +7,57 @@
 :root {
   --teal: #1ba3b9;
   --teal-hover: #148a9d;
+  --amber: #D97706;
   --dark: #1c1e21;
   --gray: #f8f9fa;
   --text: #2d3436;
   --border: #e9ecef;
+  --bg: #f5f7f8;
+  --surface: #ffffff;
+  --surface-2: #f8f9fa;
+  --text-muted: #6c757d;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dark: #f8f9fa;
+    --gray: #1e2023;
+    --text: #e9ecef;
+    --border: #2d3436;
+    --bg: #121416;
+    --surface: #1e2023;
+    --surface-2: #2d3436;
+    --text-muted: #adb5bd;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+  }
+}
+
+/* Focus-visible for a11y */
+:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* Skip to content link for screen readers */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--teal);
+  color: white;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.skip-link:focus {
+  left: 8px;
 }
 
 body {
