@@ -1,4 +1,8 @@
-type KdsOrderItem = {
+import { createApiClient } from '@shared/api';
+import { ENDPOINTS } from '@shared/api';
+
+// KDS-specific order item shape (modifiers use different field names)
+export type KdsOrderItem = {
   id: number;
   item_name: string;
   quantity: number;
@@ -18,66 +22,50 @@ export type KdsOrder = {
 };
 
 const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+  (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || "Request failed");
-  }
-  return response.json() as Promise<T>;
-}
+// Token is stored after login; KDS re-reads it per request
+const { request } = createApiClient({
+  baseUrl: apiBaseUrl,
+  getToken: () => localStorage.getItem('kds_token'),
+});
 
-export async function staffLogin(pin: string, deviceIdentifier: string): Promise<string> {
-  const response = await fetch(`${apiBaseUrl}/auth/staff/pin-login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+export async function staffLogin(
+  pin: string,
+  deviceIdentifier: string,
+): Promise<string> {
+  const data = await request<{ token: string }>(ENDPOINTS.STAFF_PIN_LOGIN, {
+    method: 'POST',
     body: JSON.stringify({ pin, device_identifier: deviceIdentifier }),
   });
-  const data = await handleResponse<{ token: string }>(response);
   return data.token;
 }
 
 export async function fetchKdsOrders(token: string): Promise<KdsOrder[]> {
-  const response = await fetch(`${apiBaseUrl}/kds/orders`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+  const data = await request<{ orders: KdsOrder[] }>(ENDPOINTS.KDS_ORDERS, {
+    headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await handleResponse<{ orders: KdsOrder[] }>(response);
   return data.orders ?? [];
 }
 
 export async function startOrder(token: string, orderId: number): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/kds/orders/${orderId}/start`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+  await request<void>(ENDPOINTS.KDS_ORDER_START(orderId), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
   });
-  await handleResponse(response);
 }
 
 export async function bumpOrder(token: string, orderId: number): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/kds/orders/${orderId}/bump`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+  await request<void>(`/kds/orders/${orderId}/bump`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
   });
-  await handleResponse(response);
 }
 
 export async function recallOrder(token: string, orderId: number): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/kds/orders/${orderId}/recall`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+  await request<void>(`/kds/orders/${orderId}/recall`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
   });
-  await handleResponse(response);
 }

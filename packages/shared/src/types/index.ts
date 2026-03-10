@@ -1,11 +1,19 @@
-// Shared TypeScript types
-export interface ApiResponse<T> {
+// ── Shared types — single source of truth for all apps ───────────────────────
+
+export * from './product';
+export * from './order';
+export * from './customer';
+export * from './payment';
+
+// ── Generic API response wrappers ─────────────────────────────────────────────
+
+export type ApiResponse<T> = {
   data: T;
   message?: string;
   errors?: string[];
-}
+};
 
-export interface PaginatedResponse<T> {
+export type PaginatedResponse<T> = {
   data: T[];
   meta: {
     current_page: number;
@@ -13,4 +21,4 @@ export interface PaginatedResponse<T> {
     per_page: number;
     total: number;
   };
-}
+};
