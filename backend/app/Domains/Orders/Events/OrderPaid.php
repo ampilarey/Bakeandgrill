@@ -4,21 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Orders\Events;
 
-use App\Models\Order;
+use App\Domains\Orders\DTOs\OrderPaidData;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Fired when an order is fully paid (paidTotal >= order.total).
- *
- * This is the canonical "money received" event.
- * All side effects that depend on confirmed payment MUST listen here:
- *   - ConsumePromoRedemptionsListener
- *   - ConsumeLoyaltyHoldListener
- *   - DeductInventoryListener
- *   - DispatchReceiptPrintListener
- *
- * NOTE: This event is dispatched AFTER DB commit (afterCommit = true on all listeners).
+ * Fired when paidTotal >= order.total. Canonical "money received" event.
+ * Listeners: ConsumePromoRedemptionsListener, ConsumeLoyaltyHoldListener,
+ *            DeductInventoryListener, DispatchReceiptPrintListener
+ * Dispatched AFTER DB commit.
  */
 class OrderPaid
 {
@@ -26,7 +20,6 @@ class OrderPaid
     use SerializesModels;
 
     public function __construct(
-        public readonly Order $order,
-        public readonly bool $printReceipt = true,
+        public readonly OrderPaidData $data,
     ) {}
 }

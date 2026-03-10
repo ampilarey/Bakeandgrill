@@ -8,6 +8,7 @@ use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Models\LoyaltyHold;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Log;
 
 class ReleaseLoyaltyHoldListener implements ShouldQueue
 {
@@ -19,12 +20,24 @@ class ReleaseLoyaltyHoldListener implements ShouldQueue
 
     public function handle(OrderCancelled $event): void
     {
-        $hold = LoyaltyHold::where('order_id', $event->order->id)
+        $orderId = $event->data->orderId;
+
+        $hold = LoyaltyHold::where('order_id', $orderId)
             ->where('status', 'active')
             ->first();
 
-        if ($hold) {
+        if (!$hold) {
+            return;
+        }
+
+        try {
             $this->service->releaseHold($hold);
+        } catch (\Throwable $e) {
+            Log::error('ReleaseLoyaltyHoldListener: failed to release hold', [
+                'hold_id'  => $hold->id,
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
+            ]);
         }
     }
 }

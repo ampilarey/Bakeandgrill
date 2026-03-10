@@ -8,6 +8,7 @@ use App\Domains\Orders\Events\OrderCancelled;
 use App\Models\OrderPromotion;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Releases the draft OrderPromotion when an order is cancelled.
@@ -20,10 +21,19 @@ class ReleasePromoReservationListener implements ShouldQueue
 
     public function handle(OrderCancelled $event): void
     {
-        DB::transaction(function () use ($event): void {
-            OrderPromotion::where('order_id', $event->order->id)
-                ->where('status', 'draft')
-                ->update(['status' => 'released']);
-        });
+        $orderId = $event->data->orderId;
+
+        try {
+            DB::transaction(function () use ($orderId): void {
+                OrderPromotion::where('order_id', $orderId)
+                    ->where('status', 'draft')
+                    ->update(['status' => 'released']);
+            });
+        } catch (\Throwable $e) {
+            Log::error('ReleasePromoReservationListener: failed', [
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
+            ]);
+        }
     }
 }

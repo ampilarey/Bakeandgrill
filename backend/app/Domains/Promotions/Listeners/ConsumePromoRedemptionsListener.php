@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Promotions\Listeners;
 
 use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
 use App\Models\OrderPromotion;
 use App\Models\PromotionRedemption;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,47 +24,53 @@ class ConsumePromoRedemptionsListener implements ShouldQueue
 
     public string $queue = 'default';
 
+    public function __construct(private PromotionRepositoryInterface $promotions) {}
+
     public function handle(OrderPaid $event): void
     {
-        $order = $event->order;
+        $orderId = $event->data->orderId;
+        $customerId = $event->data->customerId;
 
-        $draftPromotions = OrderPromotion::where('order_id', $order->id)
+        $draftPromotions = OrderPromotion::where('order_id', $orderId)
             ->where('status', 'draft')
-            ->with('promotion')
             ->get();
 
         if ($draftPromotions->isEmpty()) {
             return;
         }
 
-        DB::transaction(function () use ($order, $draftPromotions): void {
-            foreach ($draftPromotions as $orderPromo) {
-                $idempotencyKey = 'promo:redeem:' . $order->id . ':' . $orderPromo->promotion_id;
+        try {
+            DB::transaction(function () use ($orderId, $customerId, $draftPromotions): void {
+                foreach ($draftPromotions as $orderPromo) {
+                    $idempotencyKey = 'promo:redeem:' . $orderId . ':' . $orderPromo->promotion_id;
 
-                PromotionRedemption::firstOrCreate(
-                    ['idempotency_key' => $idempotencyKey],
-                    [
-                        'promotion_id' => $orderPromo->promotion_id,
-                        'order_id' => $order->id,
-                        'customer_id' => $order->customer_id,
+                    PromotionRedemption::firstOrCreate(
+                        ['idempotency_key' => $idempotencyKey],
+                        [
+                            'promotion_id'  => $orderPromo->promotion_id,
+                            'order_id'      => $orderId,
+                            'customer_id'   => $customerId,
+                            'discount_laar' => $orderPromo->discount_laar,
+                            'redeemed_at'   => now(),
+                        ],
+                    );
+
+                    $orderPromo->update(['status' => 'consumed']);
+
+                    $this->promotions->incrementRedemptionsCount($orderPromo->promotion_id);
+
+                    Log::info('Promo redeemed', [
+                        'promotion_id'  => $orderPromo->promotion_id,
+                        'order_id'      => $orderId,
                         'discount_laar' => $orderPromo->discount_laar,
-                        'redeemed_at' => now(),
-                    ],
-                );
-
-                $orderPromo->update(['status' => 'consumed']);
-
-                // Atomically increment redemptions_count
-                DB::table('promotions')
-                    ->where('id', $orderPromo->promotion_id)
-                    ->increment('redemptions_count');
-
-                Log::info('Promo redeemed', [
-                    'promotion_id' => $orderPromo->promotion_id,
-                    'order_id' => $order->id,
-                    'discount_laar' => $orderPromo->discount_laar,
-                ]);
-            }
-        });
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('ConsumePromoRedemptionsListener: failed', [
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
+            ]);
+        }
     }
 }
