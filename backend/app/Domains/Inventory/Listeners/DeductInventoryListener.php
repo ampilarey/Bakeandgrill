@@ -7,21 +7,17 @@ namespace App\Domains\Inventory\Listeners;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Services\InventoryDeductionService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Deducts inventory for an order when fully paid.
  *
- * Runs after DB commit so the order is guaranteed to be visible.
+ * Runs synchronously (critical path) — inventory must be deducted before
+ * the order response is returned so stock counts stay accurate.
  * Idempotent: InventoryDeductionService checks for existing StockMovements.
  */
-class DeductInventoryListener implements ShouldQueue
+class DeductInventoryListener
 {
-    public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
     public function __construct(
         private OrderRepositoryInterface $orders,
         private InventoryDeductionService $deductionService,
@@ -47,6 +43,7 @@ class DeductInventoryListener implements ShouldQueue
                 'order_id' => $event->data->orderId,
                 'error'    => $e->getMessage(),
             ]);
+            // Do NOT re-throw — other listeners must still run
         }
     }
 }

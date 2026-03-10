@@ -19,6 +19,10 @@ class ReleasePromoReservationListener implements ShouldQueue
 
     public string $queue = 'default';
 
+    public int $tries = 3;
+
+    public int $backoff = 5;
+
     public function handle(OrderCancelled $event): void
     {
         $orderId = $event->data->orderId;
