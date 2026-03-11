@@ -204,7 +204,7 @@ export function ReservationPage() {
   );
 }
 
-const amber = "#D97706";
+const amber = "#D4813A";
 const amberLight = "#FEF3C7";
 
 const s: Record<string, React.CSSProperties> = {

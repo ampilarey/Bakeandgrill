@@ -29,7 +29,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="hours" element={<HoursPage />} />
               <Route path="reservations" element={<ReservationPage />} />
               <Route path="*" element={
-                <div style={{ textAlign: 'center', padding: '4rem 1.5rem', fontFamily: "'Poppins', sans-serif" }}>
+                <div style={{ textAlign: 'center', padding: '4rem 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#1c1e21', marginBottom: '0.5rem' }}>Page not found</h1>
                   <p style={{ color: '#636e72', marginBottom: '1.5rem' }}>The page you're looking for doesn't exist.</p>
                   <a href="/order/" style={{ color: '#1ba3b9', fontWeight: 600, textDecoration: 'none' }}>Back to home</a>

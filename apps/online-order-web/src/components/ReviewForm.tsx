@@ -95,7 +95,7 @@ export function ReviewForm({ orderId, token, onDone }: Props) {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  card:     { background: "#fff", borderRadius: 16, padding: "20px 24px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", border: "1px solid #e9ecef" },
+  card:     { background: "#fff", borderRadius: 16, padding: "20px 24px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", border: "1px solid #EDE4D4" },
   title:    { fontSize: 16, fontWeight: 700, margin: "0 0 14px", color: "#212529" },
   stars:    { display: "flex", gap: 6, marginBottom: 14 },
   star:     { fontSize: 36, background: "none", border: "none", cursor: "pointer", padding: 0, transition: "color 0.1s" },

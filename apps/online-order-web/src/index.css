@@ -1,27 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --teal: #1ba3b9;
-  --teal-hover: #148a9d;
-  --amber: #D97706;
-  --dark: #1c1e21;
-  --gray: #f8f9fa;
-  --text: #2d3436;
-  --border: #e9ecef;
-  --bg: #f5f7f8;
-  --surface: #ffffff;
-  --surface-2: #f8f9fa;
-  --text-muted: #6c757d;
+  --amber:        #D4813A;
+  --amber-hover:  #B86820;
+  --amber-light:  #FEF3E8;
+  --amber-glow:   rgba(212, 129, 58, 0.22);
+  --dark:         #1C1408;
+  --surface:      #FFFFFF;
+  --bg:           #FFFDF9;
+  --border:       #EDE4D4;
+  --text:         #2A1E0C;
+  --muted:        #8B7355;
+  --text-muted:   #8B7355;
 }
 
 
 /* Focus-visible for a11y */
 :focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--amber);
   outline-offset: 2px;
 }
 
@@ -32,7 +30,7 @@
   top: 8px;
   z-index: 9999;
   padding: 8px 16px;
-  background: var(--teal);
+  background: var(--amber);
   color: white;
   border-radius: 4px;
   text-decoration: none;
@@ -43,17 +41,18 @@
 }
 
 body {
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f5f7f8;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
   color: var(--text);
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Category Pills */
 .category-pill {
   padding: 0.65rem 1.5rem;
   background: white;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--border);
   border-radius: 50px;
   font-weight: 500;
   cursor: pointer;
@@ -62,15 +61,15 @@ body {
 }
 
 .category-pill:hover {
-  border-color: var(--teal);
+  border-color: var(--amber);
   transform: translateY(-2px);
 }
 
 .category-pill.active {
-  background: var(--teal);
+  background: var(--amber);
   color: white;
-  border-color: var(--teal);
-  box-shadow: 0 4px 12px rgba(27, 163, 185, 0.3);
+  border-color: var(--amber);
+  box-shadow: 0 4px 12px var(--amber-glow);
 }
 
 .cart-card {
@@ -82,21 +81,21 @@ body {
 }
 
 .btn-primary {
-  background: var(--teal);
+  background: var(--amber);
   color: white;
   padding: 1rem 2rem;
   border-radius: 999px;
   font-weight: 600;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(27, 163, 185, 0.25);
+  box-shadow: 0 4px 12px var(--amber-glow);
   border: none;
   cursor: pointer;
 }
 
 .btn-primary:hover {
-  background: var(--teal-hover);
+  background: var(--amber-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(27, 163, 185, 0.35);
+  box-shadow: 0 6px 20px var(--amber-glow);
 }
 
 .btn-primary:disabled {
@@ -116,10 +115,11 @@ body {
 .header {
   position: sticky;
   top: 0;
-  background: #ffffff;
+  background: rgba(255, 253, 249, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .header-content {
@@ -136,9 +136,10 @@ body {
   align-items: center;
   gap: 0.75rem;
   font-size: 1.4rem;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--dark);
   text-decoration: none;
+  letter-spacing: -0.02em;
 }
 
 .logo img {
@@ -161,15 +162,15 @@ body {
 }
 
 .nav a:hover {
-  color: var(--teal);
+  color: var(--amber);
 }
 
 .logout-btn {
   background: transparent;
-  color: var(--teal);
+  color: var(--muted);
   padding: 0.5rem 1.25rem;
   border-radius: 999px;
-  border: 1px solid var(--teal);
+  border: 1px solid var(--border);
   font-weight: 500;
   font-size: 0.9rem;
   cursor: pointer;
@@ -177,13 +178,14 @@ body {
 }
 
 .logout-btn:hover {
-  background: var(--teal);
+  background: var(--amber);
   color: white;
+  border-color: var(--amber);
 }
 
 /* Footer - matching main website exactly */
 .footer {
-  background: var(--dark);
+  background: #1C1408;
   color: white;
   padding: 3rem 2rem;
   margin-top: auto;
