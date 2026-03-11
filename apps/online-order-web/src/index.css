@@ -353,3 +353,30 @@ body {
     text-align: center;
   }
 }
+
+/* ── Layout responsive helpers ─────────────────────────────── */
+
+/* Desktop nav: show on large screens */
+.desktop-nav { display: flex !important; }
+.show-desktop { display: inline !important; }
+.mobile-menu-btn { display: none !important; }
+.menu-sidebar { display: block !important; }
+.cart-sidebar { display: block !important; }
+.mobile-category-pills { display: none !important; }
+.mobile-cart-fab { display: none !important; }
+
+@media (max-width: 900px) {
+  /* Hide desktop sidebar, show mobile category pills */
+  .menu-sidebar { display: none !important; }
+  .mobile-category-pills { display: flex !important; }
+  /* Hide desktop cart sidebar, show FAB */
+  .cart-sidebar { display: none !important; }
+  .mobile-cart-fab { display: flex !important; }
+}
+
+@media (max-width: 700px) {
+  /* Collapse main nav into hamburger */
+  .desktop-nav { display: none !important; }
+  .show-desktop { display: none !important; }
+  .mobile-menu-btn { display: flex !important; align-items: center; justify-content: center; }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Reservation, ReservationSlot } from "@shared/types";
 import { ENDPOINTS } from "@shared/api";

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, type OrderDetail, type OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
@@ -259,7 +259,7 @@ export function OrderStatusPage() {
                       <span style={{ fontWeight: 600, fontSize: 14 }}>{item.item_name}</span>
                       {item.modifiers && item.modifiers.length > 0 && (
                         <div style={{ fontSize: 12, color: "#6c757d", marginTop: 2 }}>
-                          + {item.modifiers.map((m) => m.name).join(", ")}
+                          + {item.modifiers.map((m) => m.name ?? '').join(", ")}
                         </div>
                       )}
                     </div>
