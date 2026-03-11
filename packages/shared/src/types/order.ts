@@ -73,6 +73,17 @@ export type Order = {
   desired_eta?: string | null;
 };
 
+export type SalesSummary = {
+  totals: {
+    orders_count: number;
+    subtotal: number;
+    tax_amount: number;
+    discount_amount: number;
+    total: number;
+  };
+  payments: Record<string, number>;
+};
+
 export type PaginatedOrders = {
   data: Order[];
   meta?: {

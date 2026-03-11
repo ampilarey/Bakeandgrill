@@ -2,12 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bake & Grill - Online Ordering</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- SEO -->
+    <title>Bake & Grill — Order Online | Male', Maldives</title>
+    <meta name="description" content="Order fresh grilled food, burgers, sandwiches and more online from Bake & Grill in Male', Maldives. Fast delivery and easy pickup." />
+    <meta name="keywords" content="Bake and Grill, food delivery Maldives, Male restaurant, online order" />
+    <meta name="author" content="Bake & Grill" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Bake & Grill" />
+    <meta property="og:title" content="Bake & Grill — Order Online" />
+    <meta property="og:description" content="Order food online from Bake & Grill, Male', Maldives." />
+    <meta property="og:image" content="/logo.svg" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/order/manifest.json" />
+    <meta name="theme-color" content="#D97706" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Bake & Grill" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register service worker for push notifications
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/order/sw.js').catch(console.error);
+        });
+      }
+    </script>
   </body>
 </html>

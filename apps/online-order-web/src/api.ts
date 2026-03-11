@@ -18,7 +18,6 @@ import { ENDPOINTS } from '@shared/api';
 import type {
   Category,
   MenuItem,
-  Modifier,
   Customer,
   Order,
   OrderItem,
@@ -38,9 +37,8 @@ export const API_ORIGIN =
   API_BASE_URL.replace(/\/api\/?$/, '') ||
   (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-// Re-export Item as MenuItem alias used internally
+// Re-export MenuItem so consumers can also import by its original name
 export type { MenuItem };
-export type { Modifier };
 
 const client = createApiClient({ baseUrl: API_BASE_URL });
 const { request } = client;

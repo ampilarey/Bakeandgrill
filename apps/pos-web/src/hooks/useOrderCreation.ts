@@ -11,7 +11,6 @@ import {
 import { enqueue, getQueue, getQueueCount, setQueue } from "../offlineQueue";
 import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
-import { makeCartKey } from "./useCart";
 
 type OrderType = "Dine-in" | "Takeaway" | "Online Pickup";
 
@@ -22,7 +21,6 @@ const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup"
 };
 
 type Params = {
-  token: string | null;
   isOnline: boolean;
   deviceId: string;
   orderType: OrderType;
@@ -71,8 +69,8 @@ export function useOrderCreation(params: Params) {
 
     const payload = buildPayload();
 
-    if (params.isOnline && params.token) {
-      createOrder(params.token, payload)
+    if (params.isOnline) {
+      createOrder(payload)
         .then((response) => {
           const parsedPayments = params.payments
             .map((p) => ({ method: p.method, amount: Number.parseFloat(p.amount) }))
@@ -88,7 +86,7 @@ export function useOrderCreation(params: Params) {
             finalPayments.push({ method: "cash", amount: totalDue - paidTotal });
           }
 
-          return createOrderPayments(params.token!, response.order.id, {
+          return createOrderPayments(response.order.id, {
             payments: finalPayments,
             print_receipt: true,
           });
@@ -114,7 +112,7 @@ export function useOrderCreation(params: Params) {
   };
 
   const handleHoldOrder = () => {
-    if (!params.isOnline || !params.token) {
+    if (!params.isOnline) {
       setStatusMessage("Go online and login to hold orders.");
       return;
     }
@@ -126,8 +124,8 @@ export function useOrderCreation(params: Params) {
 
     const payload = { ...buildPayload(), print: false };
 
-    createOrder(params.token, payload)
-      .then((response) => holdOrder(params.token!, response.order.id).then(() => response.order.id))
+    createOrder(payload)
+      .then((response) => holdOrder(response.order.id).then(() => response.order.id))
       .then((orderId) => {
         localStorage.setItem("pos_last_held_order", String(orderId));
         setLastHeldOrderId(orderId);
@@ -139,10 +137,10 @@ export function useOrderCreation(params: Params) {
   };
 
   const handleResumeLastHold = () => {
-    if (!params.isOnline || !params.token || !lastHeldOrderId) return;
+    if (!params.isOnline || !lastHeldOrderId) return;
 
-    resumeOrder(params.token, lastHeldOrderId)
-      .then(() => getOrder(params.token!, lastHeldOrderId))
+    resumeOrder(lastHeldOrderId)
+      .then(() => getOrder(lastHeldOrderId))
       .then((response) => {
         const restoredItems: CartItem[] = response.order.items.map((item) => ({
           id: item.item_id ?? 0,
@@ -155,7 +153,6 @@ export function useOrderCreation(params: Params) {
             price: m.modifier_price,
           })) ?? [],
         }));
-        // Parent App will need to setCartItems — return the items
         setStatusMessage("Held order resumed.");
         return restoredItems;
       })
@@ -190,7 +187,6 @@ export function useOrderCreation(params: Params) {
 
   const handleSyncQueue = () => {
     if (!params.isOnline) { setStatusMessage("You are offline. Sync paused."); return; }
-    if (!params.token)    { setStatusMessage("Login required to sync."); return; }
 
     const queue = getQueue();
     if (queue.length === 0) { setStatusMessage("No queued orders to sync."); return; }
@@ -209,7 +205,7 @@ export function useOrderCreation(params: Params) {
       }>;
     };
 
-    createOrderBatch(params.token, { orders: queue.map((e) => e.payload as QueuePayload) })
+    createOrderBatch({ orders: queue.map((e) => e.payload as QueuePayload) })
       .then((result) => {
         if (!result.failed || result.failed.length === 0) {
           setQueue([]);

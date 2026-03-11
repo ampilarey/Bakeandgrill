@@ -27,7 +27,7 @@ type Shift = {
   variance: number | null;
 };
 
-export function useOps(token: string | null, isLoggedIn: boolean, viewMode: "pos" | "ops") {
+export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const today = new Date().toISOString().slice(0, 10);
 
   const [shift, setShift] = useState<Shift | null>(null);
@@ -70,122 +70,119 @@ export function useOps(token: string | null, isLoggedIn: boolean, viewMode: "pos
   } | null>(null);
 
   useEffect(() => {
-    if (!isLoggedIn || viewMode !== "ops" || !token) return;
+    if (!isLoggedIn || viewMode !== "ops") return;
 
-    getCurrentShift(token)
+    getCurrentShift()
       .then((r) => setShift(r.shift))
       .catch(() => setOpsMessage("Unable to load shift."));
 
-    getSalesSummary(token, { from: reportFrom, to: reportTo })
+    getSalesSummary({ from: reportFrom, to: reportTo })
       .then((r) => setReportData(r))
       .catch(() => setOpsMessage("Unable to load sales summary."));
 
-    fetchInventory(token)
+    fetchInventory()
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to load inventory."));
 
-    fetchSuppliers(token)
+    fetchSuppliers()
       .then((r) => setSuppliers(r.suppliers.data))
       .catch(() => setOpsMessage("Unable to load suppliers."));
 
-    fetchRefunds(token)
+    fetchRefunds()
       .then((r) => setRefunds(r.refunds.data))
       .catch(() => setOpsMessage("Unable to load refunds."));
-  }, [isLoggedIn, viewMode, token, reportFrom, reportTo]);
+  }, [isLoggedIn, viewMode, reportFrom, reportTo]);
 
   const handleOpenShift = () => {
-    if (!token) return;
     const value = Number.parseFloat(openingCash);
     if (!Number.isFinite(value)) { setOpsMessage("Enter a valid opening cash amount."); return; }
-    openShift(token, { opening_cash: value })
-      .then(() => { setOpsMessage("Shift opened."); setOpeningCash(""); return getCurrentShift(token); })
+    openShift({ opening_cash: value })
+      .then(() => { setOpsMessage("Shift opened."); setOpeningCash(""); return getCurrentShift(); })
       .then((r) => setShift(r.shift))
       .catch(() => setOpsMessage("Unable to open shift."));
   };
 
   const handleCloseShift = () => {
-    if (!token || !shift) return;
+    if (!shift) return;
     const value = Number.parseFloat(closingCash);
     if (!Number.isFinite(value)) { setOpsMessage("Enter a valid closing cash amount."); return; }
-    closeShift(token, shift.id, { closing_cash: value })
+    closeShift(shift.id, { closing_cash: value })
       .then(() => { setOpsMessage("Shift closed."); setClosingCash(""); setShift(null); })
       .catch(() => setOpsMessage("Unable to close shift."));
   };
 
   const handleCashMovement = () => {
-    if (!token || !shift) return;
+    if (!shift) return;
     const amount = Number.parseFloat(cashMoveAmount);
     if (!Number.isFinite(amount) || amount <= 0) { setOpsMessage("Enter a valid cash movement amount."); return; }
     if (!cashMoveReason.trim()) { setOpsMessage("Add a reason for the cash movement."); return; }
-    createCashMovement(token, shift.id, { type: cashMoveType, amount, reason: cashMoveReason.trim() })
+    createCashMovement(shift.id, { type: cashMoveType, amount, reason: cashMoveReason.trim() })
       .then(() => { setOpsMessage("Cash movement recorded."); setCashMoveAmount(""); setCashMoveReason(""); })
       .catch(() => setOpsMessage("Unable to record cash movement."));
   };
 
   const handleLoadReport = () => {
-    if (!token) return;
-    getSalesSummary(token, { from: reportFrom, to: reportTo })
+    getSalesSummary({ from: reportFrom, to: reportTo })
       .then((r) => setReportData(r))
       .catch(() => setOpsMessage("Unable to load sales summary."));
   };
 
   const handleAdjustInventory = () => {
-    if (!token || !adjustItemId) return;
+    if (!adjustItemId) return;
     const quantity = Number.parseFloat(adjustQuantity);
     if (!Number.isFinite(quantity)) { setOpsMessage("Enter a valid adjustment quantity."); return; }
-    adjustInventory(token, adjustItemId, { quantity, type: adjustType, notes: adjustNotes || undefined })
-      .then(() => { setOpsMessage("Inventory updated."); setAdjustQuantity(""); setAdjustNotes(""); return fetchInventory(token); })
+    adjustInventory(adjustItemId, { quantity, type: adjustType, notes: adjustNotes || undefined })
+      .then(() => { setOpsMessage("Inventory updated."); setAdjustQuantity(""); setAdjustNotes(""); return fetchInventory(); })
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to adjust inventory."));
   };
 
   const handleCreateSupplier = () => {
-    if (!token || !newSupplierName.trim()) return;
-    createSupplier(token, { name: newSupplierName.trim(), phone: newSupplierPhone || undefined })
-      .then(() => { setNewSupplierName(""); setNewSupplierPhone(""); setOpsMessage("Supplier added."); return fetchSuppliers(token); })
+    if (!newSupplierName.trim()) return;
+    createSupplier({ name: newSupplierName.trim(), phone: newSupplierPhone || undefined })
+      .then(() => { setNewSupplierName(""); setNewSupplierPhone(""); setOpsMessage("Supplier added."); return fetchSuppliers(); })
       .then((r) => setSuppliers(r.suppliers.data))
       .catch(() => setOpsMessage("Unable to add supplier."));
   };
 
   const handleCreatePurchase = () => {
-    if (!token || !purchaseItemName.trim()) return;
+    if (!purchaseItemName.trim()) return;
     const quantity = Number.parseFloat(purchaseQuantity);
     const unitCost = Number.parseFloat(purchaseUnitCost);
     if (!Number.isFinite(quantity) || !Number.isFinite(unitCost)) { setOpsMessage("Enter valid purchase quantity and unit cost."); return; }
-    createPurchase(token, {
+    createPurchase({
       supplier_id: purchaseSupplierId ?? undefined,
       purchase_date: purchaseDate,
       items: [{ name: purchaseItemName.trim(), quantity, unit_cost: unitCost }],
     })
-      .then(() => { setPurchaseItemName(""); setPurchaseQuantity(""); setPurchaseUnitCost(""); setOpsMessage("Purchase recorded."); return fetchInventory(token); })
+      .then(() => { setPurchaseItemName(""); setPurchaseQuantity(""); setPurchaseUnitCost(""); setOpsMessage("Purchase recorded."); return fetchInventory(); })
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to record purchase."));
   };
 
   const handleCreateRefund = () => {
-    if (!token) return;
     const orderId = Number.parseInt(refundOrderId, 10);
     const amount = Number.parseFloat(refundAmount);
     if (!Number.isFinite(orderId) || orderId <= 0) { setOpsMessage("Enter a valid order ID."); return; }
     if (!Number.isFinite(amount) || amount <= 0) { setOpsMessage("Enter a valid refund amount."); return; }
-    createRefund(token, orderId, { amount, reason: refundReason || undefined })
-      .then(() => { setRefundOrderId(""); setRefundAmount(""); setRefundReason(""); setOpsMessage("Refund recorded."); return fetchRefunds(token); })
+    createRefund(orderId, { amount, reason: refundReason || undefined })
+      .then(() => { setRefundOrderId(""); setRefundAmount(""); setRefundReason(""); setOpsMessage("Refund recorded."); return fetchRefunds(); })
       .then((r) => setRefunds(r.refunds.data))
       .catch(() => setOpsMessage("Unable to record refund."));
   };
 
   const handlePreviewPromotion = () => {
-    if (!token || !promoMessage.trim()) { setOpsMessage("Enter a promotion message."); return; }
+    if (!promoMessage.trim()) { setOpsMessage("Enter a promotion message."); return; }
     const lastOrderDays = promoLastOrderDays ? Number.parseInt(promoLastOrderDays, 10) : undefined;
-    previewSmsPromotion(token, { message: promoMessage.trim(), filters: { last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined } })
+    previewSmsPromotion({ message: promoMessage.trim(), filters: { last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined } })
       .then((r) => setPromoEstimate({ recipient_count: r.estimate.recipient_count, segments: r.estimate.segments, total_cost_mvr: r.estimate.total_cost_mvr }))
       .catch(() => setOpsMessage("Unable to preview SMS promotion."));
   };
 
   const handleSendPromotion = () => {
-    if (!token || !promoMessage.trim()) { setOpsMessage("Enter a promotion message."); return; }
+    if (!promoMessage.trim()) { setOpsMessage("Enter a promotion message."); return; }
     const lastOrderDays = promoLastOrderDays ? Number.parseInt(promoLastOrderDays, 10) : undefined;
-    sendSmsPromotion(token, { name: "POS Promotion", message: promoMessage.trim(), filters: { last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined } })
+    sendSmsPromotion({ name: "POS Promotion", message: promoMessage.trim(), filters: { last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined } })
       .then(() => { setOpsMessage("Promotion SMS queued."); setPromoMessage(""); setPromoLastOrderDays(""); setPromoEstimate(null); })
       .catch(() => setOpsMessage("Unable to send promotion SMS."));
   };

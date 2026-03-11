@@ -34,6 +34,13 @@ class Item extends Model
         'availability_type',
         'allow_pre_order',
         'pre_order_lead_time_minutes',
+        'dietary_tags',
+        'allergens',
+        'calories',
+        'prep_time_minutes',
+        'spice_level',
+        'is_combo',
+        'combo_discount_pct',
     ];
 
     public function category(): BelongsTo
@@ -63,6 +70,16 @@ class Item extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function comboItems(): HasMany
+    {
+        return $this->hasMany(ComboItem::class, 'combo_id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(ItemPhoto::class)->orderBy('sort_order');
+    }
+
     /**
      * URL to use for display (direct local cafe image or original for external).
      */
@@ -90,5 +107,11 @@ class Item extends Model
         'stock_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'pre_order_lead_time_minutes' => 'integer',
+        'dietary_tags' => 'array',
+        'allergens'    => 'array',
+        'calories'     => 'integer',
+        'prep_time_minutes' => 'integer',
+        'is_combo'     => 'boolean',
+        'combo_discount_pct' => 'decimal:2',
     ];
 }

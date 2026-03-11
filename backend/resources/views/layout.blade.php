@@ -5,6 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Bake & Grill – Café & Online Orders')</title>
     <meta name="description" content="@yield('description', 'Fresh Dhivehi food, artisan baking, and premium grills in Malé.')">
+    <meta name="keywords" content="Bake and Grill, food delivery Maldives, Male restaurant, cafe, grills, online order">
+    <meta name="author" content="Bake &amp; Grill">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="restaurant">
+    <meta property="og:site_name" content="Bake &amp; Grill">
+    <meta property="og:title" content="@yield('title', 'Bake &amp; Grill – Café &amp; Online Orders')">
+    <meta property="og:description" content="@yield('description', 'Fresh Dhivehi food, artisan baking, and premium grills in Malé.')">
+    <meta property="og:image" content="{{ asset('logo.svg') }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta name="twitter:card" content="summary">
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org",
+      "@@type": "Restaurant",
+      "name": "Bake & Grill",
+      "description": "Fresh Dhivehi food, artisan baking, and premium grills in Malé, Maldives.",
+      "url": "{{ url('/') }}",
+      "logo": "{{ asset('logo.svg') }}",
+      "address": {
+        "@@type": "PostalAddress",
+        "addressLocality": "Malé",
+        "addressCountry": "MV"
+      },
+      "servesCuisine": ["Maldivian", "Grills", "Bakery"],
+      "hasMenu": "{{ url('/order') }}",
+      "acceptsReservations": true
+    }
+    </script>
 
     <link rel="icon" type="image/svg+xml" href="{{ asset('logo.svg') }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
@@ -13,6 +44,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+    @verbatim
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -363,9 +395,11 @@
         .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
         @media (max-width: 768px) { .container { padding: 0 1rem; } }
     </style>
+    @endverbatim
 
     @yield('styles')
 
+    @verbatim
     <script>
         let cart = [];
         try { cart = JSON.parse(localStorage.getItem('bakegrill_cart') || '[]'); } catch(e) {}
@@ -427,6 +461,7 @@
             });
         });
     </script>
+    @endverbatim
 </head>
 <body>
 

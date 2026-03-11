@@ -19,6 +19,8 @@ export type Category = {
   items?: MenuItem[];
 };
 
+export type SpiceLevel = 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot';
+
 export type MenuItem = {
   id: number;
   name: string;
@@ -33,6 +35,24 @@ export type MenuItem = {
   is_active?: boolean;
   is_available?: boolean;
   modifiers?: Modifier[];
+  // Dietary & nutritional info
+  dietary_tags?: string[] | null;
+  allergens?: string[] | null;
+  calories?: number | null;
+  prep_time_minutes?: number | null;
+  spice_level?: SpiceLevel | null;
+  // Combo / bundle
+  is_combo?: boolean;
+  combo_discount_pct?: number | null;
+  combo_items?: ComboItemEntry[];
+};
+
+export type ComboItemEntry = {
+  item_id: number;
+  item_name: string;
+  quantity: number;
+  is_optional: boolean;
+  unit_price: number;
 };
 
 export type CartItem = {

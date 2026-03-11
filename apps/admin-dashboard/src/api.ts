@@ -508,3 +508,30 @@ export async function uploadMenuImage(file: File): Promise<{ url: string }> {
   }
   return res.json() as Promise<{ url: string }>;
 }
+
+// ── Reservations ──────────────────────────────────────────────────────────────
+
+export type AdminReservation = {
+  id: number;
+  customer_name: string;
+  customer_phone: string;
+  party_size: number;
+  date: string;
+  time_slot: string;
+  status: 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no_show';
+  notes: string | null;
+  table: { id: number; name: string } | null;
+  created_at: string;
+};
+
+export async function getReservations(params: { date?: string; status?: string; page?: number } = {}): Promise<{ data: AdminReservation[]; meta: { total: number; current_page: number; last_page: number } }> {
+  const q = new URLSearchParams();
+  if (params.date)   q.set('date',     params.date);
+  if (params.status) q.set('status',   params.status);
+  if (params.page)   q.set('page',     String(params.page));
+  return req(`/admin/reservations?${q}`);
+}
+
+export async function updateReservationStatus(id: number, status: string): Promise<{ reservation: AdminReservation }> {
+  return req(`/admin/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+}

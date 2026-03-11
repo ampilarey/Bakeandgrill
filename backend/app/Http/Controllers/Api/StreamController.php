@@ -70,6 +70,38 @@ class StreamController extends Controller
     }
 
     /**
+     * GET /api/stream/order-status/{orderId}?token=...
+     *
+     * Public endpoint that accepts a Sanctum token via query param (needed
+     * because EventSource in browsers cannot set Authorization headers).
+     * The token is validated manually. Customers can only watch their own orders.
+     */
+    public function publicOrderStatus(Request $request, int $orderId): StreamedResponse
+    {
+        $tokenValue = $request->query('token', '');
+        $order = Order::find($orderId);
+
+        if (!$order) {
+            abort(404, 'Order not found');
+        }
+
+        // Authenticate via query token if provided
+        if ($tokenValue) {
+            /** @var \Laravel\Sanctum\PersonalAccessToken|null $accessToken */
+            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($tokenValue);
+            if ($accessToken) {
+                $tokenable = $accessToken->tokenable;
+                // Customers can only watch their own orders
+                if ($tokenable instanceof \App\Models\Customer && $order->customer_id !== $tokenable->id) {
+                    abort(403, 'Not your order');
+                }
+            }
+        }
+
+        return $this->streamSingleOrder($order, $request);
+    }
+
+    /**
      * GET /api/stream/orders/{order}/status
      *
      * Streams status changes for a single order.
@@ -84,6 +116,11 @@ class StreamController extends Controller
             abort(403, 'Not your order');
         }
 
+        return $this->streamSingleOrder($order, $request);
+    }
+
+    private function streamSingleOrder(Order $order, Request $request): StreamedResponse
+    {
         $cursor = $request->header('Last-Event-ID')
             ?? $request->query('since', '');
 
