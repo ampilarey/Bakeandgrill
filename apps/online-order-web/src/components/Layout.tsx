@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function Layout() {
   const navigate = useNavigate();
   const { cart } = useCart();
+  const { lang, setLang } = useLanguage();
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
 
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('online_token'));
@@ -48,7 +50,7 @@ export function Layout() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.5rem', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}>
-            <img src="/logo.svg" alt="Bake & Grill" style={{ width: '40px', height: '40px', borderRadius: '10px' }} />
+            <img src="/logo.png" alt="Bake & Grill" style={{ width: '40px', height: '40px', borderRadius: '10px' }} />
             <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1c1e21' }}>Bake &amp; Grill</span>
           </Link>
 
@@ -75,6 +77,15 @@ export function Layout() {
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            {/* Language toggle */}
+            <button
+              onClick={() => setLang(lang === 'en' ? 'dv' : 'en')}
+              style={{ padding: '0.35rem 0.75rem', background: '#f1f3f5', border: 'none', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', color: '#495057', fontFamily: 'inherit', lineHeight: 1 }}
+              title="Toggle language"
+            >
+              {lang === 'en' ? 'ދިވެހި' : 'EN'}
+            </button>
+
             {token ? (
               <>
                 {customerName && (
@@ -171,7 +182,7 @@ export function Layout() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '2rem', paddingBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div>
               <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', marginBottom: '0.75rem' }}>
-                <img src="/logo.svg" alt="" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
+                <img src="/logo.png" alt="" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
                 <span style={{ fontSize: '1rem', fontWeight: 700, color: 'white' }}>Bake &amp; Grill</span>
               </Link>
               <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.875rem', lineHeight: 1.6 }}>

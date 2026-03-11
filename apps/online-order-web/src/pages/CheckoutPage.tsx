@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
 import { AuthBlock } from "../components/AuthBlock";
@@ -49,6 +49,8 @@ function SummaryRow({ label, value, highlight }: { label: string; value: string;
 export function CheckoutPage() {
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
+
+  useEffect(() => { document.title = 'Checkout — Bake & Grill'; }, []);
 
   const {
     cart, token, customerName, loyaltyAccount, loyaltyPoints,
@@ -168,7 +170,7 @@ export function CheckoutPage() {
                   <h2 style={styles.sectionTitle}>Loyalty Points</h2>
                   <p style={{ fontSize: 14, color: "#495057", marginBottom: 12 }}>
                     You have <strong>{loyaltyAccount.points_balance} pts</strong> available (
-                    <span style={{ color: "#1ba3b9" }}>MVR {laarToMvr(loyaltyAccount.points_balance)}</span> value).
+                    <span style={{ color: "#D97706" }}>MVR {laarToMvr(loyaltyAccount.points_balance)}</span> value).
                   </p>
                   <label style={styles.checkboxLabel}>
                     <input type="checkbox" checked={useLoyalty} onChange={(e) => setUseLoyalty(e.target.checked)}
@@ -239,7 +241,7 @@ const styles = {
   typeRow:      { display: "flex", gap: 12 } as React.CSSProperties,
   typeBtn:      { flex: 1, padding: "12px 16px", border: "2px solid #dee2e6", borderRadius: 12, background: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#495057", transition: "all 0.15s" } as React.CSSProperties,
   typeBtnActive:{ borderColor: "#1ba3b9", background: "#e8f8fa", color: "#1ba3b9" } as React.CSSProperties,
-  primaryBtn:   { background: "linear-gradient(135deg, #1ba3b9, #0d7a8a)", color: "#fff", border: "none", borderRadius: 12, padding: "12px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", transition: "opacity 0.2s" } as React.CSSProperties,
+  primaryBtn:   { background: "linear-gradient(135deg, #D97706, #B45309)", color: "#fff", border: "none", borderRadius: 12, padding: "12px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", transition: "opacity 0.2s" } as React.CSSProperties,
   secondaryBtn: { background: "#fff", color: "#1ba3b9", border: "2px solid #1ba3b9", borderRadius: 10, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" as const } as React.CSSProperties,
   summaryRow:   { display: "flex", justifyContent: "space-between", fontSize: 14, marginBottom: 8 } as React.CSSProperties,
   totalRow:     { display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 18, color: "#212529", borderTop: "2px solid #e9ecef", paddingTop: 12, marginTop: 8 } as React.CSSProperties,

@@ -24,7 +24,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1c1e21', marginBottom: '0.25rem' }}>
               {item.name}
             </h3>
-            <p style={{ fontSize: '1rem', color: '#1ba3b9', fontWeight: 600 }}>
+            <p style={{ fontSize: '1.1rem', color: '#D97706', fontWeight: 700 }}>
               MVR {totalPrice.toFixed(2)}
             </p>
           </div>
@@ -69,7 +69,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
                   >
                     <span style={{ fontSize: '0.9rem', color: '#1c1e21' }}>
                       {modifier.name}
-                      <span style={{ color: '#1ba3b9', marginLeft: '0.5rem', fontWeight: 600 }}>
+                      <span style={{ color: '#D97706', marginLeft: '0.5rem', fontWeight: 600 }}>
                         +MVR {parseFloat(String(modifier.price)).toFixed(2)}
                       </span>
                     </span>
@@ -95,7 +95,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
           style={{
             width: '100%',
             padding: '0.9rem',
-            background: '#1ba3b9',
+            background: '#D97706',
             color: 'white',
             border: 'none',
             borderRadius: '12px',
@@ -104,8 +104,8 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
             cursor: 'pointer',
             transition: 'background 0.15s',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#1591a6'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = '#1ba3b9'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#B45309'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#D97706'; }}
         >
           Add to Cart — MVR {totalPrice.toFixed(2)}
         </button>

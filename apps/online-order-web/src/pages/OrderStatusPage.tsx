@@ -48,6 +48,13 @@ export function OrderStatusPage() {
     }
   };
 
+  // Page title
+  useEffect(() => {
+    document.title = order?.order_number
+      ? `Order #${order.order_number} — Bake & Grill`
+      : 'Order Status — Bake & Grill';
+  }, [order?.order_number]);
+
   // Clear cart only after BML confirms payment success
   useEffect(() => {
     if (paymentState === "CONFIRMED") {
@@ -264,7 +271,7 @@ export function OrderStatusPage() {
                       )}
                     </div>
                     <span style={{ color: "#6c757d", fontSize: 14, marginRight: 12 }}>×{item.quantity}</span>
-                    <span style={{ fontWeight: 600, color: "#1ba3b9", fontSize: 14 }}>
+                    <span style={{ fontWeight: 600, color: "#D97706", fontSize: 14 }}>
                       MVR {item.total_price.toFixed(2)}
                     </span>
                   </div>
