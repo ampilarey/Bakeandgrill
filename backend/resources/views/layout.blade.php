@@ -20,14 +20,14 @@
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
     {
-      "@context": "https://schema.org",
-      "@type": "Restaurant",
+      "@@context": "https://schema.org",
+      "@@type": "Restaurant",
       "name": "Bake & Grill",
       "description": "Fresh Dhivehi food, artisan baking, and premium grills in Malé, Maldives.",
       "url": "{{ url('/') }}",
       "logo": "{{ asset('logo.svg') }}",
       "address": {
-        "@type": "PostalAddress",
+        "@@type": "PostalAddress",
         "addressLocality": "Malé",
         "addressCountry": "MV"
       },
@@ -44,6 +44,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+    @verbatim
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -394,9 +395,11 @@
         .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
         @media (max-width: 768px) { .container { padding: 0 1rem; } }
     </style>
+    @endverbatim
 
     @yield('styles')
 
+    @verbatim
     <script>
         let cart = [];
         try { cart = JSON.parse(localStorage.getItem('bakegrill_cart') || '[]'); } catch(e) {}
@@ -458,6 +461,7 @@
             });
         });
     </script>
+    @endverbatim
 </head>
 <body>
 
