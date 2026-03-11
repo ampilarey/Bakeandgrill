@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function Layout() {
   const navigate = useNavigate();
   const { cart } = useCart();
+  const { lang, setLang } = useLanguage();
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
 
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('online_token'));
@@ -75,6 +77,15 @@ export function Layout() {
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            {/* Language toggle */}
+            <button
+              onClick={() => setLang(lang === 'en' ? 'dv' : 'en')}
+              style={{ padding: '0.35rem 0.75rem', background: '#f1f3f5', border: 'none', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', color: '#495057', fontFamily: 'inherit', lineHeight: 1 }}
+              title="Toggle language"
+            >
+              {lang === 'en' ? 'ދިވެހި' : 'EN'}
+            </button>
+
             {token ? (
               <>
                 {customerName && (

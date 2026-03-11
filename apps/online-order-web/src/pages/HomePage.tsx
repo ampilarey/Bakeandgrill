@@ -4,16 +4,20 @@ import { fetchItems, fetchOpeningHoursStatus, API_ORIGIN } from '../api';
 import type { Item } from '../api';
 
 const FEATURES = [
-  { icon: '🔥', title: 'Fresh Every Day', desc: 'Baked and grilled fresh each morning — no pre-made shortcuts.' },
-  { icon: '📱', title: 'Order Online', desc: 'Browse the menu and place your order in seconds, no app required.' },
-  { icon: '📅', title: 'Reserve a Table', desc: 'Book a spot ahead of time and arrive to a ready table.' },
-  { icon: '🏠', title: 'Dine-In & Takeaway', desc: 'Enjoy your meal with us or take it home — your choice.' },
+  { initial: 'F', color: '#D97706', title: 'Fresh Every Day', desc: 'Baked and grilled fresh each morning — no pre-made shortcuts.' },
+  { initial: 'O', color: '#1ba3b9', title: 'Order Online', desc: 'Browse the menu and place your order in seconds, no app required.' },
+  { initial: 'R', color: '#D97706', title: 'Reserve a Table', desc: 'Book a spot ahead of time and arrive to a ready table.' },
+  { initial: 'T', color: '#1ba3b9', title: 'Dine-In & Takeaway', desc: 'Enjoy your meal with us or take it home — your choice.' },
 ];
 
 export function HomePage() {
   const [featuredItems, setFeaturedItems] = useState<Item[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = 'Bake & Grill — Fresh Food in Malé';
+  }, []);
 
   useEffect(() => {
     fetchItems().then((res) => {
@@ -37,22 +41,22 @@ export function HomePage() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Background pattern */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.07) 0%, transparent 40%)', pointerEvents: 'none' }} />
 
         <div style={{ maxWidth: '760px', margin: '0 auto', position: 'relative' }}>
+          {/* Status badge */}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.12)', borderRadius: '999px', padding: '0.35rem 1rem', marginBottom: '1.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
             {isOpen === null ? (
-              <span>Loading…</span>
+              <span>Checking status…</span>
             ) : isOpen ? (
-              <><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4caf50', display: 'inline-block' }} /> Open Now</>
+              <><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4caf50', display: 'inline-block' }} />Open Now</>
             ) : (
-              <><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff7043', display: 'inline-block' }} /> {hoursMsg ?? 'Currently Closed'}</>
+              <><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff7043', display: 'inline-block' }} />{hoursMsg ?? 'Currently Closed'}</>
             )}
           </div>
 
           <h1 style={{ fontSize: 'clamp(2rem, 6vw, 3.5rem)', fontWeight: 800, lineHeight: 1.1, marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
-            Fresh Bakes &<br />
+            Fresh Bakes &amp;<br />
             <span style={{ color: '#fbbf24' }}>Grill Favourites</span>
           </h1>
           <p style={{ fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', opacity: 0.85, lineHeight: 1.65, maxWidth: '560px', margin: '0 auto 2.5rem' }}>
@@ -66,18 +70,18 @@ export function HomePage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                background: '#fbbf24',
-                color: '#1c1e21',
+                background: '#D97706',
+                color: 'white',
                 padding: '0.9rem 2rem',
                 borderRadius: '999px',
                 fontWeight: 700,
                 fontSize: '1rem',
                 textDecoration: 'none',
                 transition: 'transform 0.15s, box-shadow 0.15s',
-                boxShadow: '0 4px 16px rgba(251,191,36,0.35)',
+                boxShadow: '0 4px 16px rgba(217,119,6,0.35)',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(251,191,36,0.45)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(251,191,36,0.35)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#B45309'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#D97706'; }}
             >
               Order Now →
             </Link>
@@ -95,10 +99,9 @@ export function HomePage() {
                 fontSize: '1rem',
                 textDecoration: 'none',
                 border: '1px solid rgba(255,255,255,0.25)',
-                backdropFilter: 'blur(4px)',
               }}
             >
-              📅 Reserve a Table
+              Reserve a Table
             </Link>
           </div>
         </div>
@@ -122,7 +125,21 @@ export function HomePage() {
               onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#1ba3b9'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e9ecef'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              <div style={{ fontSize: '2.25rem', marginBottom: '0.875rem' }}>{f.icon}</div>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: `${f.color}18`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: f.color,
+                fontWeight: 800,
+                fontSize: '1.1rem',
+                marginBottom: '0.875rem',
+              }}>
+                {f.initial}
+              </div>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1c1e21', marginBottom: '0.5rem' }}>{f.title}</h3>
               <p style={{ fontSize: '0.875rem', color: '#636e72', lineHeight: 1.6 }}>{f.desc}</p>
             </div>
@@ -143,7 +160,7 @@ export function HomePage() {
               </div>
               <Link
                 to="/menu"
-                style={{ color: '#1ba3b9', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                style={{ color: '#1ba3b9', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
               >
                 See full menu →
               </Link>
@@ -165,7 +182,7 @@ export function HomePage() {
                   >
                     <div style={{
                       height: '140px',
-                      background: imgSrc ? undefined : `linear-gradient(${45 + item.id * 30}deg, rgba(27,163,185,0.25), rgba(118,75,162,0.2))`,
+                      background: imgSrc ? undefined : `linear-gradient(${45 + item.id * 30}deg, rgba(27,163,185,0.2), rgba(217,119,6,0.15))`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -175,12 +192,15 @@ export function HomePage() {
                       {imgSrc ? (
                         <img src={imgSrc} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                       ) : (
-                        <span style={{ fontSize: '2.5rem', opacity: 0.6 }}>☕</span>
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(27,163,185,0.4)" strokeWidth="1.5" aria-hidden="true">
+                          <path d="M3 6h18v2a6 6 0 01-6 6H9a6 6 0 01-6-6V6z" />
+                          <path d="M6 18h12" /><path d="M9 14v4" /><path d="M15 14v4" />
+                        </svg>
                       )}
                     </div>
                     <div style={{ padding: '0.875rem' }}>
                       <h3 style={{ fontSize: '0.925rem', fontWeight: 600, color: '#1c1e21', marginBottom: '0.25rem' }}>{item.name}</h3>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1ba3b9' }}>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#D97706' }}>
                         MVR {parseFloat(String(item.base_price)).toFixed(2)}
                       </p>
                     </div>
@@ -208,7 +228,7 @@ export function HomePage() {
               alignItems: 'center',
               gap: '0.5rem',
               background: 'white',
-              color: '#1ba3b9',
+              color: '#D97706',
               padding: '0.875rem 2.25rem',
               borderRadius: '999px',
               fontWeight: 700,

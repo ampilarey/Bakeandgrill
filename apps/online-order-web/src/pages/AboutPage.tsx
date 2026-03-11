@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 export function AboutPage() {
+  useEffect(() => { document.title = 'About — Bake & Grill'; }, []);
   return (
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '3rem 1.5rem' }}>
       {/* Header */}
@@ -28,10 +30,10 @@ export function AboutPage() {
       {/* Values grid */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '3rem' }}>
         {[
-          { icon: '🌿', title: 'Fresh Ingredients', desc: 'We source locally and prep daily. No shortcuts, no compromises.' },
-          { icon: '🤝', title: 'Community First', desc: 'We are part of Malé — we know our customers and they know us.' },
-          { icon: '✨', title: 'Quality Always', desc: 'Whether it\'s a cup of tea or a full grill, everything gets the same care.' },
-          { icon: '📱', title: 'Built for Today', desc: 'Online ordering, table reservations, loyalty rewards — all in one place.' },
+          { initial: 'F', color: '#1ba3b9', title: 'Fresh Ingredients', desc: 'We source locally and prep daily. No shortcuts, no compromises.' },
+          { initial: 'C', color: '#D97706', title: 'Community First', desc: 'We are part of Malé — we know our customers and they know us.' },
+          { initial: 'Q', color: '#1ba3b9', title: 'Quality Always', desc: 'Whether it\'s a cup of tea or a full grill, everything gets the same care.' },
+          { initial: 'B', color: '#D97706', title: 'Built for Today', desc: 'Online ordering, table reservations, loyalty rewards — all in one place.' },
         ].map((v) => (
           <div
             key={v.title}
@@ -39,7 +41,9 @@ export function AboutPage() {
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ba3b9'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.07)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e9ecef'; e.currentTarget.style.boxShadow = 'none'; }}
           >
-            <div style={{ fontSize: '1.75rem', marginBottom: '0.75rem' }}>{v.icon}</div>
+            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: `${v.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: v.color, fontWeight: 800, fontSize: '1rem', marginBottom: '0.75rem' }}>
+              {v.initial}
+            </div>
             <h3 style={{ fontSize: '0.975rem', fontWeight: 700, color: '#1c1e21', marginBottom: '0.4rem' }}>{v.title}</h3>
             <p style={{ fontSize: '0.85rem', color: '#636e72', lineHeight: 1.6 }}>{v.desc}</p>
           </div>

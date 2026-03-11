@@ -5,9 +5,11 @@ import { MenuCard } from '../components/MenuCard';
 import { ItemModal } from '../components/ItemModal';
 import { CartDrawer } from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function MenuPage() {
   const { addItem } = useCart();
+  const { t } = useLanguage();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -25,6 +27,8 @@ export function MenuPage() {
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
+
+  useEffect(() => { document.title = 'Menu — Bake & Grill'; }, []);
 
   useEffect(() => {
     Promise.all([fetchCategories(), fetchItems(), fetchOpeningHoursStatus()])
@@ -70,17 +74,6 @@ export function MenuPage() {
     setSelectedModifiers([]);
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#636e72' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🍽️</div>
-          <p>Loading menu…</p>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#dc3545' }}>
@@ -105,47 +98,30 @@ export function MenuPage() {
           Categories
         </h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-          <button
-            onClick={() => setActiveCategoryId(null)}
-            style={{
-              padding: '0.6rem 0.875rem',
-              borderRadius: '10px',
-              border: '1.5px solid',
-              borderColor: activeCategoryId === null ? '#1ba3b9' : '#e9ecef',
-              background: activeCategoryId === null ? '#1ba3b9' : 'white',
-              color: activeCategoryId === null ? 'white' : '#495057',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              transition: 'all 0.15s',
-              fontFamily: 'inherit',
-            }}
-          >
-            All Items
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategoryId(cat.id)}
-              style={{
-                padding: '0.6rem 0.875rem',
-                borderRadius: '10px',
-                border: '1.5px solid',
-                borderColor: activeCategoryId === cat.id ? '#1ba3b9' : '#e9ecef',
-                background: activeCategoryId === cat.id ? '#1ba3b9' : 'white',
-                color: activeCategoryId === cat.id ? 'white' : '#495057',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.15s',
-                fontFamily: 'inherit',
-              }}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {loading
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} style={{ height: '38px', borderRadius: '10px', background: '#f1f3f5', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              ))
+            : (
+              <>
+                <button
+                  onClick={() => setActiveCategoryId(null)}
+                  style={{ padding: '0.6rem 0.875rem', borderRadius: '10px', border: '1.5px solid', borderColor: activeCategoryId === null ? '#1ba3b9' : '#e9ecef', background: activeCategoryId === null ? '#1ba3b9' : 'white', color: activeCategoryId === null ? 'white' : '#495057', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit' }}
+                >
+                  All Items
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategoryId(cat.id)}
+                    style={{ padding: '0.6rem 0.875rem', borderRadius: '10px', border: '1.5px solid', borderColor: activeCategoryId === cat.id ? '#1ba3b9' : '#e9ecef', background: activeCategoryId === cat.id ? '#1ba3b9' : 'white', color: activeCategoryId === cat.id ? 'white' : '#495057', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit' }}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </>
+            )
+          }
         </div>
       </aside>
 
@@ -155,20 +131,7 @@ export function MenuPage() {
         <div className="mobile-category-pills" style={{ display: 'none', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
           <button
             onClick={() => setActiveCategoryId(null)}
-            style={{
-              padding: '0.4rem 1rem',
-              borderRadius: '999px',
-              border: '1.5px solid',
-              borderColor: activeCategoryId === null ? '#1ba3b9' : '#e9ecef',
-              background: activeCategoryId === null ? '#1ba3b9' : 'white',
-              color: activeCategoryId === null ? 'white' : '#495057',
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              fontFamily: 'inherit',
-            }}
+            style={{ padding: '0.4rem 1rem', borderRadius: '999px', border: '1.5px solid', borderColor: activeCategoryId === null ? '#1ba3b9' : '#e9ecef', background: activeCategoryId === null ? '#1ba3b9' : 'white', color: activeCategoryId === null ? 'white' : '#495057', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit' }}
           >
             All
           </button>
@@ -176,20 +139,7 @@ export function MenuPage() {
             <button
               key={cat.id}
               onClick={() => setActiveCategoryId(cat.id)}
-              style={{
-                padding: '0.4rem 1rem',
-                borderRadius: '999px',
-                border: '1.5px solid',
-                borderColor: activeCategoryId === cat.id ? '#1ba3b9' : '#e9ecef',
-                background: activeCategoryId === cat.id ? '#1ba3b9' : 'white',
-                color: activeCategoryId === cat.id ? 'white' : '#495057',
-                fontSize: '0.8rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                fontFamily: 'inherit',
-              }}
+              style={{ padding: '0.4rem 1rem', borderRadius: '999px', border: '1.5px solid', borderColor: activeCategoryId === cat.id ? '#1ba3b9' : '#e9ecef', background: activeCategoryId === cat.id ? '#1ba3b9' : 'white', color: activeCategoryId === cat.id ? 'white' : '#495057', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'inherit' }}
             >
               {cat.name}
             </button>
@@ -199,25 +149,12 @@ export function MenuPage() {
         {/* Search + Sort */}
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-            <span style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: '#adb5bd', fontSize: '0.9rem', pointerEvents: 'none' }}>
-              🔍
-            </span>
             <input
               type="text"
-              placeholder="Search items…"
+              placeholder={t('menu.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.65rem 0.875rem 0.65rem 2.25rem',
-                border: '1.5px solid #e9ecef',
-                borderRadius: '10px',
-                fontSize: '0.875rem',
-                outline: 'none',
-                fontFamily: 'inherit',
-                transition: 'border-color 0.15s',
-                boxSizing: 'border-box',
-              }}
+              style={{ width: '100%', padding: '0.65rem 0.875rem', border: '1.5px solid #e9ecef', borderRadius: '10px', fontSize: '0.875rem', outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s', boxSizing: 'border-box' }}
               onFocus={(e) => { e.target.style.borderColor = '#1ba3b9'; }}
               onBlur={(e) => { e.target.style.borderColor = '#e9ecef'; }}
             />
@@ -225,17 +162,7 @@ export function MenuPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            style={{
-              padding: '0.65rem 0.875rem',
-              border: '1.5px solid #e9ecef',
-              borderRadius: '10px',
-              fontSize: '0.875rem',
-              background: 'white',
-              color: '#495057',
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
+            style={{ padding: '0.65rem 0.875rem', border: '1.5px solid #e9ecef', borderRadius: '10px', fontSize: '0.875rem', background: 'white', color: '#495057', fontFamily: 'inherit', cursor: 'pointer', outline: 'none' }}
           >
             <option value="name">Sort: A–Z</option>
             <option value="price-low">Price: Low to High</option>
@@ -243,21 +170,31 @@ export function MenuPage() {
           </select>
         </div>
 
+        {/* Loading skeletons */}
+        {loading && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} style={{ background: '#f1f3f5', borderRadius: '16px', height: '300px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            ))}
+          </div>
+        )}
+
         {/* Items grid */}
-        {filteredItems.length === 0 ? (
+        {!loading && filteredItems.length === 0 && (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#adb5bd' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🤷</div>
-            <p style={{ fontSize: '1rem', fontWeight: 500 }}>No items found</p>
+            <p style={{ fontSize: '1rem', fontWeight: 500, marginBottom: '0.5rem' }}>No items found</p>
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                style={{ marginTop: '1rem', color: '#1ba3b9', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem' }}
+                style={{ color: '#1ba3b9', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem' }}
               >
                 Clear search
               </button>
             )}
           </div>
-        ) : (
+        )}
+
+        {!loading && filteredItems.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
             {filteredItems.map((item) => (
               <MenuCard
@@ -298,7 +235,7 @@ export function MenuPage() {
           fontFamily: 'inherit',
         }}
       >
-        🛒 Cart
+        Cart
       </button>
 
       {/* Mobile cart modal */}
@@ -309,7 +246,7 @@ export function MenuPage() {
         >
           <div style={{ width: '100%', background: 'white', borderRadius: '20px 20px 0 0', padding: '1.5rem', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '1rem', fontWeight: 700 }}>Your Cart</span>
+              <span style={{ fontSize: '1rem', fontWeight: 700 }}>{t('cart.title')}</span>
               <button onClick={() => setCartVisible(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', color: '#636e72' }}>✕</button>
             </div>
             <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />

@@ -16,6 +16,7 @@ const TODAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fri
 
 export function HoursPage() {
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
+  useEffect(() => { document.title = 'Hours — Bake & Grill'; }, []);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {

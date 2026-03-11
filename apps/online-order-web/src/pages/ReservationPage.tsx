@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Reservation, ReservationSlot } from "@shared/types";
 import { ENDPOINTS } from "@shared/api";
@@ -46,6 +46,8 @@ const today = () => new Date().toISOString().split("T")[0];
 
 export function ReservationPage() {
   const navigate = useNavigate();
+
+  useEffect(() => { document.title = 'Reserve a Table — Bake & Grill'; }, []);
 
   const [step, setStep] = useState<"form" | "slots" | "confirm" | "done">("form");
   const [loading, setLoading] = useState(false);

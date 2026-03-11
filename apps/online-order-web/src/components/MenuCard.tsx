@@ -51,7 +51,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
           height: '160px',
           background: imgSrc
             ? undefined
-            : `linear-gradient(${45 + item.id * 30}deg, rgba(27,163,185,0.25), rgba(118,75,162,0.2))`,
+            : `linear-gradient(${45 + item.id * 30}deg, rgba(27,163,185,0.2), rgba(217,119,6,0.15))`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -68,7 +68,12 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
             loading="lazy"
           />
         ) : (
-          <span style={{ fontSize: '3rem', opacity: 0.6 }}>☕</span>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(27,163,185,0.5)" strokeWidth="1.5" aria-hidden="true">
+            <path d="M3 6h18v2a6 6 0 01-6 6H9a6 6 0 01-6-6V6z" />
+            <path d="M6 18h12" />
+            <path d="M9 14v4" />
+            <path d="M15 14v4" />
+          </svg>
         )}
       </div>
 
@@ -85,7 +90,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
           )}
         </div>
 
-        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1ba3b9' }}>
+        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#D97706' }}>
           MVR {parseFloat(String(item.base_price)).toFixed(2)}
         </div>
 
@@ -95,7 +100,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.max(1, q - 1)); }}
-              style={{ width: '30px', height: '30px', background: '#f8f9fa', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: '#495057' }}
+              style={{ width: '32px', height: '32px', background: '#f8f9fa', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: '#495057' }}
               aria-label="Decrease quantity"
             >
               −
@@ -106,7 +111,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setQuantity((q) => q + 1); }}
-              style={{ width: '30px', height: '30px', background: '#f8f9fa', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: '#495057' }}
+              style={{ width: '32px', height: '32px', background: '#f8f9fa', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: '#495057' }}
               aria-label="Increase quantity"
             >
               +
@@ -117,8 +122,8 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
             onClick={(e) => { e.stopPropagation(); onAddToCart(item, quantity); setQuantity(1); }}
             style={{
               flex: 1,
-              padding: '0.5rem 0.5rem',
-              background: '#1ba3b9',
+              padding: '0.5rem',
+              background: '#D97706',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -127,8 +132,8 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
               cursor: 'pointer',
               transition: 'background 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#1591a6'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#1ba3b9'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#B45309'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#D97706'; }}
           >
             Add ({quantity})
           </button>

@@ -1,33 +1,40 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const CONTACT_ITEMS = [
   {
-    icon: '📞',
     label: 'Phone',
+    abbr: 'PH',
+    color: '#1ba3b9',
     value: '+960 9120011',
     action: { href: 'tel:+9609120011', text: 'Call us' },
   },
   {
-    icon: '✉️',
     label: 'Email',
+    abbr: 'EM',
+    color: '#D97706',
     value: 'hello@bakeandgrill.mv',
     action: { href: 'mailto:hello@bakeandgrill.mv', text: 'Send email' },
   },
   {
-    icon: '💬',
     label: 'WhatsApp',
+    abbr: 'WA',
+    color: '#25D366',
     value: '+960 9120011',
     action: { href: 'https://wa.me/9609120011', text: 'Message us', external: true },
   },
   {
-    icon: '📍',
     label: 'Address',
+    abbr: 'AD',
+    color: '#636e72',
     value: 'Majeedhee Magu, Malé, Maldives',
     action: null,
   },
 ];
 
 export function ContactPage() {
+  useEffect(() => { document.title = 'Contact — Bake & Grill'; }, []);
+
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem' }}>
       {/* Header */}
@@ -49,7 +56,22 @@ export function ContactPage() {
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ba3b9'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.07)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e9ecef'; e.currentTarget.style.boxShadow = 'none'; }}
           >
-            <div style={{ fontSize: '1.75rem', marginBottom: '0.875rem' }}>{item.icon}</div>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              background: `${item.color}18`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: item.color,
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              letterSpacing: '0.05em',
+              marginBottom: '0.875rem',
+            }}>
+              {item.abbr}
+            </div>
             <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#adb5bd', fontWeight: 700, marginBottom: '0.375rem' }}>
               {item.label}
             </div>
