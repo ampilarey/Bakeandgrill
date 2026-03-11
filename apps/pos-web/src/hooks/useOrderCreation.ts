@@ -162,7 +162,7 @@ export function useOrderCreation(params: Params) {
   const handleBarcodeSubmit = (
     event: React.FormEvent<HTMLFormElement>,
     items: CartItem[],
-    addToCart: (item: { id: number; name: string; base_price: number; barcode?: string | null; modifiers?: Array<{ id: number; name: string; price: number }> }) => void,
+    addToCart: (item: { id: number; name: string; base_price: number; category_id: number | null; barcode?: string | null; modifiers?: Array<{ id: number; name: string; price: number }> }) => void,
   ) => {
     event.preventDefault();
     const trimmed = barcode.trim();

@@ -36,7 +36,14 @@
                     "track_stock": false,
                     "availability_type": "always",
                     "allow_pre_order": false,
-                    "pre_order_lead_time_minutes": null
+                    "pre_order_lead_time_minutes": null,
+                    "dietary_tags": null,
+                    "allergens": null,
+                    "calories": null,
+                    "prep_time_minutes": null,
+                    "spice_level": null,
+                    "is_combo": false,
+                    "combo_discount_pct": null
                 }
             ]
         }

@@ -2,7 +2,7 @@
     "orders": [
         {
             "id": "__VOLATILE__",
-            "order_number": "BG-20260225-0001",
+            "order_number": "BG-20260311-0001",
             "type": "dine_in",
             "status": "pending",
             "restaurant_table_id": null,
@@ -38,6 +38,8 @@
             "delivery_fee": "0.00",
             "delivery_fee_laar": 0,
             "delivery_eta_at": null,
+            "tip_amount": 0,
+            "estimated_wait_minutes": null,
             "items": [
                 {
                     "id": "__VOLATILE__",
