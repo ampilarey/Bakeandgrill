@@ -13,7 +13,7 @@
     <meta property="og:site_name" content="Bake &amp; Grill">
     <meta property="og:title" content="@yield('title', 'Bake &amp; Grill – Café &amp; Online Orders')">
     <meta property="og:description" content="@yield('description', 'Fresh Dhivehi food, artisan baking, and premium grills in Malé.')">
-    <meta property="og:image" content="{{ asset('logo.svg') }}">
+    <meta property="og:image" content="{{ asset('logo.png') }}">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta name="twitter:card" content="summary">
 
@@ -25,7 +25,7 @@
       "name": "Bake & Grill",
       "description": "Fresh Dhivehi food, artisan baking, and premium grills in Malé, Maldives.",
       "url": "{{ url('/') }}",
-      "logo": "{{ asset('logo.svg') }}",
+      "logo": "{{ asset('logo.png') }}",
       "address": {
         "@@type": "PostalAddress",
         "addressLocality": "Malé",
@@ -37,9 +37,9 @@
     }
     </script>
 
-    <link rel="icon" type="image/svg+xml" href="{{ asset('logo.svg') }}">
+    <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" href="{{ asset('logo.svg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('logo.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -469,7 +469,7 @@
 <header class="site-header">
     <div class="header-inner">
         <a href="/" class="site-logo">
-            <img src="{{ asset('logo.svg') }}" alt="Bake & Grill">
+            <img src="{{ asset('logo.png') }}" alt="Bake & Grill">
             <span>Bake & Grill</span>
         </a>
         <nav class="header-nav">
@@ -500,7 +500,7 @@
 <div class="mobile-header">
     <div class="mob-hdr-row">
         <a href="/" class="mob-logo">
-            <img src="{{ asset('logo.svg') }}" alt="Bake & Grill">
+            <img src="{{ asset('logo.png') }}" alt="Bake & Grill">
             <span>Bake & Grill</span>
         </a>
         <div class="mob-hdr-btns">
@@ -524,7 +524,7 @@
     <div class="footer-grid">
         <div class="footer-brand">
             <a href="/" class="footer-brand-logo">
-                <img src="{{ asset('logo.svg') }}" alt="Bake & Grill">
+                <img src="{{ asset('logo.png') }}" alt="Bake & Grill">
                 Bake & Grill
             </a>
             <p>Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.</p>
