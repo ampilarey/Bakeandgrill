@@ -226,7 +226,7 @@ export function CheckoutPage() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 const styles = {
-  page:         { minHeight: "100vh", background: "#f8f9fa", fontFamily: "'Inter', sans-serif" } as React.CSSProperties,
+  page:         { minHeight: "100vh", background: "#f8f9fa", fontFamily: "'Poppins', sans-serif" } as React.CSSProperties,
   header:       { position: "sticky" as const, top: 0, background: "#fff", borderBottom: "1px solid #e9ecef", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, zIndex: 100, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" } as React.CSSProperties,
   backBtn:      { background: "none", border: "none", cursor: "pointer", color: "#1ba3b9", fontSize: 15, fontWeight: 600, padding: "4px 8px" } as React.CSSProperties,
   headerTitle:  { fontWeight: 700, fontSize: 18, color: "#212529", flex: 1 } as React.CSSProperties,

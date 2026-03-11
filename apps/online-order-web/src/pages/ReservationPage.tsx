@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Reservation, ReservationSlot } from "@shared/types";
 import { ENDPOINTS } from "@shared/api";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 async function getSlots(date: string, partySize: number): Promise<ReservationSlot[]> {
   const res = await fetch(

@@ -24,7 +24,7 @@ export function CartSummary({ cart }: Props) {
           </div>
           <span style={{ color: "#6c757d", marginRight: 8 }}>×{item.quantity}</span>
           <span style={{ fontWeight: 600, color: "#D97706" }}>
-            MVR {(item.price * item.quantity).toFixed(2)}
+            MVR {((item.price + (item.modifiers ?? []).reduce((s, m) => s + m.price, 0)) * item.quantity).toFixed(2)}
           </span>
         </div>
       ))}

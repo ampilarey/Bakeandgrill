@@ -49,68 +49,6 @@ body {
   line-height: 1.6;
 }
 
-/* Modern Product Cards */
-.product-card-modern {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid #e9ecef;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-
-.product-card-modern:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-  border-color: var(--teal);
-}
-
-.product-image {
-  width: 100%;
-  height: 160px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3.5rem;
-}
-
-.product-info {
-  padding: 1.25rem;
-}
-
-.product-name {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #2d3436;
-  margin-bottom: 0.5rem;
-}
-
-.product-price {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--teal);
-  margin-bottom: 1rem;
-}
-
-.add-button {
-  width: 100%;
-  padding: 0.85rem;
-  background: var(--teal);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.add-button:hover {
-  background: var(--teal-hover);
-  transform: scale(1.02);
-}
-
 /* Category Pills */
 .category-pill {
   padding: 0.65rem 1.5rem;
@@ -133,35 +71,6 @@ body {
   color: white;
   border-color: var(--teal);
   box-shadow: 0 4px 12px rgba(27, 163, 185, 0.3);
-}
-
-/* Beautiful menu cards */
-.menu-item-card {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.25rem;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.menu-item-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(27, 163, 185, 0.15);
-  border-color: var(--teal);
-}
-
-.category-btn {
-  width: 100%;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 500;
-  transition: all 0.2s;
-  text-align: left;
-}
-
-.category-btn:hover {
-  transform: translateX(4px);
 }
 
 .cart-card {

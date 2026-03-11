@@ -223,7 +223,7 @@ export function Layout() {
           </div>
           <div style={{ paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>
             <span>© {new Date().getFullYear()} Bake & Grill. All rights reserved.</span>
-            <Link to="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Privacy Policy</Link>
+            <span style={{ color: 'rgba(255,255,255,0.3)' }}>Privacy Policy</span>
           </div>
         </div>
       </footer>

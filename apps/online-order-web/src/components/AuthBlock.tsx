@@ -33,6 +33,8 @@ export function AuthBlock({ onSuccess }: Props) {
     try {
       const res = await verifyOtp({ phone, otp });
       localStorage.setItem("online_token", res.token);
+      localStorage.setItem("online_customer_name", res.customer.name ?? res.customer.phone);
+      window.dispatchEvent(new Event("auth_change"));
       onSuccess(res.token, res.customer.name ?? res.customer.phone);
     } catch (e) {
       setError((e as Error).message);

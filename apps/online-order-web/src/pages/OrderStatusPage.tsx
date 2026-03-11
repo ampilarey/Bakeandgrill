@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
+import { useCart } from "../context/CartContext";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -24,6 +25,7 @@ export function OrderStatusPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { clearCart } = useCart();
 
   const paymentState = searchParams.get("payment") as PaymentState;
 
@@ -58,9 +60,9 @@ export function OrderStatusPage() {
   // Clear cart only after BML confirms payment success
   useEffect(() => {
     if (paymentState === "CONFIRMED") {
-      localStorage.removeItem("bakegrill_cart");
+      clearCart();
     }
-  }, [paymentState]);
+  }, [paymentState, clearCart]);
 
   // Initial load
   useEffect(() => {
@@ -196,9 +198,10 @@ export function OrderStatusPage() {
                     key={s}
                     style={{
                       ...styles.progressStep,
-                      background: isStatusAtLeast(order.status, s)
-                        ? "#1ba3b9"
-                        : "#dee2e6",
+                      background: isStatusAtLeast(
+                        order.status === "paid" ? "preparing" : order.status,
+                        s
+                      ) ? "#1ba3b9" : "#dee2e6",
                     }}
                   />
                 ))}
@@ -259,7 +262,7 @@ export function OrderStatusPage() {
             {/* Items list */}
             {order.items && order.items.length > 0 && (
               <div style={styles.card}>
-                <h2 style={{ ...styles.sectionTitle, marginBottom: 16 }}>Items Ordered</h2>
+                <h2 style={styles.sectionTitle}>Items Ordered</h2>
                 {order.items.map((item: OrderDetailItem) => (
                   <div key={item.id} style={styles.itemRow}>
                     <div style={{ flex: 1 }}>
@@ -360,7 +363,7 @@ const styles = {
   page: {
     minHeight: "100vh",
     background: "#f8f9fa",
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'Poppins', sans-serif",
   } as React.CSSProperties,
 
   header: {
@@ -465,8 +468,8 @@ const styles = {
     color: "#212529",
     paddingBottom: 12,
     borderBottom: "1px solid #f0f0f0",
+    marginTop: 0,
     marginBottom: 16,
-    margin: 0,
   } as React.CSSProperties,
 
   detailRow: {

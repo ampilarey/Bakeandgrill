@@ -45,7 +45,7 @@ export function MenuPage() {
 
   const filteredItems = useMemo(() => {
     let list = items;
-    if (activeCategoryId) list = list.filter((i) => i.category_id === activeCategoryId);
+    if (activeCategoryId !== null) list = list.filter((i) => i.category_id === activeCategoryId);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));

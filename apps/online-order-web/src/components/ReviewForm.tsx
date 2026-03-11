@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ENDPOINTS } from "@shared/api";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 interface Props {
   orderId: number;

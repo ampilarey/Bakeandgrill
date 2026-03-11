@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 type Lang = "en" | "dv";
 
@@ -37,11 +37,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return saved ?? "en";
   });
 
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir  = lang === "dv" ? "rtl" : "ltr";
+  }, [lang]);
+
   const setLang = (l: Lang) => {
     setLangState(l);
     localStorage.setItem("bakegrill_lang", l);
-    document.documentElement.lang = l;
-    document.documentElement.dir  = l === "dv" ? "rtl" : "ltr";
   };
 
   const t = (key: string): string => {
