@@ -23,12 +23,22 @@ function ViberIcon() {
 export function Layout() {
   const navigate = useNavigate();
   const { cart } = useCart();
-  const { lang, setLang } = useLanguage();
+  useLanguage(); // keep provider active for t() calls in child pages
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
 
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('online_token'));
   const [customerName, setCustomerName] = useState<string | null>(() => localStorage.getItem('online_customer_name'));
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Validate token on mount — clear it if it's clearly stale (no customer name)
+  useEffect(() => {
+    const t = localStorage.getItem('online_token');
+    const name = localStorage.getItem('online_customer_name');
+    if (t && !name) {
+      localStorage.removeItem('online_token');
+      setToken(null);
+    }
+  }, []);
 
   useEffect(() => {
     const sync = () => {
@@ -122,36 +132,21 @@ export function Layout() {
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-            {/* Language toggle */}
-            <button
-              onClick={() => setLang(lang === 'en' ? 'dv' : 'en')}
-              style={{ padding: '0.35rem 0.7rem', background: 'var(--color-surface-alt)', border: 'none', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-primary)', fontFamily: 'inherit', lineHeight: 1, flexShrink: 0 }}
-              title="Toggle language"
-              aria-label="Toggle language"
-            >
-              {lang === 'en' ? 'ދިވެހި' : 'EN'}
-            </button>
 
-            {token ? (
-              <>
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500 }} className="show-desktop">
+            {/* Only show account info when the customer is actually logged in */}
+            {token && customerName && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="show-desktop">
                   Hi, {customerName}
                 </span>
                 <button
                   onClick={handleLogout}
-                  style={{ padding: '0.45rem 0.875rem', background: 'transparent', border: 'none', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}
+                  style={{ padding: '0.35rem 0.7rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' }}
                   aria-label="Log out"
                 >
-                  Logout
+                  Sign out
                 </button>
-              </>
-            ) : (
-              <Link
-                to="/menu"
-                style={{ padding: '0.45rem 0.875rem', fontSize: '0.875rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: 500, borderRadius: '8px' }}
-              >
-                Sign In
-              </Link>
+              </div>
             )}
 
             {/* Cart button */}
