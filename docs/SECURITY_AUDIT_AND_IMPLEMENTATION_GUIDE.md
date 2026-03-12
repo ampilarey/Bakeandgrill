@@ -3,6 +3,518 @@
 
 **Status:** Documented — Not yet implemented  
 **Created:** March 2026  
+
+---
+
+## Original Prompt (Source Brief)
+
+> The following is the original prompt that was used to generate this audit and implementation guide. Kept here for reference so you don't need to go back to ChatGPT.
+
+```
+You are Cursor acting as a principal Laravel 12 architect, security auditor, and full-stack refactor engineer.
+
+You have full access to this codebase. Your job is to perform a careful static audit and then implement the fixes and improvements described below WITHOUT breaking existing production flows.
+
+==================================================
+PROJECT CONTEXT
+==================================================
+
+This repository is a multi-app restaurant platform for Bake & Grill.
+
+It includes:
+- Laravel backend in /backend
+- customer online ordering frontend
+- POS frontend
+- KDS frontend
+- admin dashboard frontend
+- print proxy service
+
+This is NOT just a simple restaurant website. It is an operations platform handling:
+- public website
+- online ordering
+- checkout
+- customer auth
+- POS
+- KDS
+- reservations
+- loyalty
+- promotions
+- delivery
+- analytics
+- SMS
+- inventory
+- printing
+- BML payment integration
+
+==================================================
+PRIMARY OBJECTIVE
+==================================================
+
+Audit the codebase and implement bug fixes, security hardening, authorization cleanup, repo hygiene cleanup, and architecture improvements.
+
+DO NOT do random rewrites.
+DO NOT break any current route unless absolutely necessary.
+DO NOT change public API payload shapes unless required for security, and if changed, preserve backwards compatibility where possible.
+
+==================================================
+NON-NEGOTIABLE RULES
+==================================================
+
+1. Do NOT break current production ordering, payment, POS, KDS, or reservation flows.
+2. Preserve route paths unless change is required for security.
+3. Preserve BML webhook and return flow compatibility.
+4. Controllers must remain thin.
+5. Business logic should live in domain services/actions.
+6. Add or improve automated tests for all critical fixes.
+7. No secrets in repo.
+8. Improve security first, then cleanup, then architecture.
+9. Any fix that may affect frontend behavior must be traced through both backend and frontend usage before changing.
+10. When uncertain, prefer backward-compatible hardening over breaking redesigns.
+
+==================================================
+HIGH-PRIORITY FINDINGS TO FIX
+==================================================
+
+A) PUBLIC ORDER STATUS STREAM AUTHORIZATION BUG
+-----------------------------------------------
+Problem:
+The public order status stream currently appears to allow access when no token is supplied, because ownership validation only happens if a token exists. This may allow unauthorized order status viewing if someone guesses an order ID.
+
+Required action:
+1. Audit the order status/public SSE/stream endpoints.
+2. Confirm whether order stream access is possible without a valid token.
+3. Fix it so stream access always requires valid authorization.
+4. Reject missing token and invalid token explicitly.
+5. Do NOT rely on optional query param token behavior.
+
+Preferred implementation:
+- Replace current permissive behavior with a dedicated short-lived signed stream token for a specific order.
+- If full replacement is too invasive, then as minimum:
+  - require token
+  - validate token ownership against the target order
+  - return 401/403 properly when missing or invalid
+
+Security note:
+Do NOT leave stream access open by order ID alone.
+
+Also do:
+- audit any similar public order-status endpoints, not just SSE
+- audit polling endpoints too if they exist
+
+Tests required:
+- customer can view their own order stream with valid token
+- request without token fails
+- request with token for another user fails
+- invalid/expired token fails
+
+-----------------------------------------------
+
+B) QUERY STRING TOKEN LEAKAGE IN STREAMING
+-----------------------------------------------
+Problem:
+The current design appears to pass auth token via query string for SSE. Query-string tokens can leak through logs, browser history, referrers, proxy logs, and monitoring.
+
+Required action:
+1. Replace query-string bearer-like auth for streaming with a safer mechanism.
+2. Preferred:
+   - short-lived signed order stream token
+   - scoped to one order
+   - short expiry
+3. If frontend/EventSource limitations require query params, then:
+   - do NOT use general auth token
+   - use a narrowly scoped ephemeral stream ticket only
+   - include TTL and order binding
+   - ensure the server validates scope strictly
+
+Implement:
+- new ticket generation method
+- validation layer
+- expiry handling
+- clear error responses
+
+Tests required:
+- stream ticket only works for intended order
+- ticket expires correctly
+- ticket cannot access another order
+
+-----------------------------------------------
+
+C) ADMIN AUTHORIZATION IS TOO WEAK / INCONSISTENT
+-----------------------------------------------
+Problem:
+Many /admin routes appear to be protected only by auth:sanctum, without consistent admin/manager role enforcement at route level and/or policy level.
+
+Required action:
+1. Audit all admin routes and all admin-like controller actions.
+2. Identify endpoints that are currently protected only by authentication.
+3. Introduce explicit authorization strategy for all admin/staff-sensitive actions.
+
+Implement a clear role/ability model such as:
+- owner
+- admin
+- manager
+- cashier
+- kitchen
+- customer
+
+Then:
+- protect route groups with explicit middleware or gates
+- enforce policy checks where resource ownership/ability matters
+- ensure customer tokens cannot hit admin endpoints
+- ensure low-privilege staff cannot hit financial/configuration/admin actions
+
+At minimum, audit these areas:
+- promotions
+- loyalty admin actions
+- SMS/campaign tools
+- staff management
+- analytics
+- reviews moderation
+- reservation admin actions
+- inventory management
+- pricing overrides / discounts / refunds if applicable
+
+Deliverables:
+- add clear middleware and/or gates/policies
+- centralize permission names
+- document the authorization map in code comments or a small internal doc
+
+Tests required:
+- customer cannot access admin endpoints
+- cashier cannot access manager-only endpoints
+- kitchen cannot access finance/admin endpoints
+- manager/admin access works as intended
+
+-----------------------------------------------
+
+D) PUBLIC HEALTH ENDPOINT LEAKS TOO MUCH INFO
+-----------------------------------------------
+Problem:
+The public system health endpoint appears to expose environment and database connection details.
+
+Required action:
+1. Audit all public health/debug/system endpoints.
+2. Reduce public health response to minimal safe data such as:
+   - status: ok
+3. Move detailed health data behind auth or internal-only guard.
+
+Do NOT expose:
+- environment name
+- database connectivity details
+- infrastructure fingerprints
+- version details unless intentionally public
+
+Tests required:
+- public endpoint returns minimal safe payload only
+- privileged/internal endpoint returns detailed data if such endpoint is needed
+
+-----------------------------------------------
+
+E) BML RETURN URL / FRONTEND PATH FRAGILITY
+-----------------------------------------------
+Problem:
+BML return redirect path may be fragile due to frontend route base assumptions, especially around /order vs /orders path composition and APP_FRONTEND_URL usage.
+
+Required action:
+1. Audit the full BML flow:
+   - payment creation
+   - redirect to bank
+   - return URL
+   - webhook confirmation
+   - frontend status page
+2. Trace real frontend route structure.
+3. Ensure redirect target always matches actual frontend route base.
+4. Centralize frontend URL generation in one config/helper instead of ad hoc string concatenation.
+5. Preserve current successful production behavior.
+
+Tests required:
+- return redirect generates correct URL for SPA route
+- webhook and return flow remain compatible
+- misconfigured base URL fails safely / logs clearly
+
+-----------------------------------------------
+
+F) OVERLY FORGIVING OTP PHONE NORMALIZATION
+-----------------------------------------------
+Problem:
+Phone normalization appears too permissive and may convert malformed input into a valid-looking Maldivian number by taking last digits and prepending +960. This can send OTPs to the wrong person.
+
+Required action:
+1. Audit all phone normalization logic.
+2. Tighten validation for Maldivian numbers.
+3. Accept only approved formats, such as:
+   - XXXXXXX
+   - 960XXXXXXX
+   - +960XXXXXXX
+4. Reject malformed numbers instead of aggressively auto-correcting them.
+5. Ensure normalized storage format is consistent across auth, profile, checkout, and customer creation flows.
+
+Tests required:
+- valid Maldives numbers normalize correctly
+- malformed values are rejected
+- extra digits are not silently truncated into a different number
+
+==================================================
+MEDIUM-PRIORITY CLEANUP AND STABILITY TASKS
+==================================================
+
+G) EMPTY / NO-OP MIGRATION
+-----------------------------------------------
+Problem:
+There appears to be at least one empty migration file.
+
+Required action:
+1. Audit migrations for no-op/empty files.
+2. If a migration was never run anywhere and is useless, remove it safely.
+3. If already part of migration history in real environments, keep it but mark clearly as intentional no-op with comment.
+
+Do NOT break existing migration history.
+
+-----------------------------------------------
+
+H) REPO HYGIENE / COMMITTED ARTIFACTS
+-----------------------------------------------
+Problem:
+Repo appears to contain committed environment-specific or generated artifacts such as:
+- bootstrap/cache files
+- database.sqlite
+- .DS_Store files
+- possibly built frontend artifacts or stale generated files
+
+Required action:
+1. Remove generated/cache/noise files from repo where appropriate.
+2. Update .gitignore carefully.
+3. Ensure:
+   - framework caches are not committed
+   - local sqlite DB is not committed unless intentionally used as a fixture/demo
+   - OS junk files are removed
+4. Verify no secret or env leakage in repo.
+
+Be careful:
+If public assets in backend/public are intentionally deployed from the repo, do not delete them blindly. First determine whether they are source-of-truth or generated deployment artifacts.
+
+Deliverables:
+- cleaned .gitignore
+- cleaned repo artifacts
+- note any files intentionally retained
+
+-----------------------------------------------
+
+I) STREAM CONTROLLER / SERVICE INSTANTIATION CLEANUP
+-----------------------------------------------
+Problem:
+There appears to be direct new-ing of services inside controller stream methods instead of using dependency injection consistently.
+
+Required action:
+1. Audit controllers for service instantiation inside actions.
+2. Replace with constructor injection or method injection where appropriate.
+3. Keep changes minimal and safe.
+
+This is not the top priority, but improve where obvious.
+
+-----------------------------------------------
+
+J) ROUTE ORGANIZATION IMPROVEMENT
+-----------------------------------------------
+Problem:
+API routes have grown large and mixed.
+
+Required action:
+1. Audit current route organization.
+2. If safe, split routes into clear files such as:
+   - api_public.php
+   - api_customer.php
+   - api_staff.php
+   - api_admin.php
+3. Preserve exact route URLs and names unless absolutely necessary.
+4. Apply authorization middleware consistently by route group.
+
+Only do this if it can be done safely and cleanly.
+
+==================================================
+FULL SECURITY + PERMISSION AUDIT REQUIRED
+==================================================
+
+Perform a broad audit for:
+- public endpoints returning sensitive data
+- insecure direct object reference risk
+- customer-order ownership checks
+- reservation ownership checks
+- payment ownership checks
+- receipt access rules
+- refund permission rules
+- promo abuse vectors
+- loyalty ledger modification permissions
+- device registration abuse
+- POS privileged operations
+- admin analytics/report export permissions
+- webhook signature/verification logic
+- mass assignment risks
+- debug leakage
+- unsafe query params for secrets/tokens
+- missing validation on IDs and state transitions
+
+For each issue found:
+- fix it if safe
+- otherwise leave a clear TODO + inline explanation + test that exposes expected safe behavior
+
+==================================================
+PAYMENT FLOW HARDENING
+==================================================
+
+Audit and improve the payment domain carefully.
+
+Check:
+- payment initiation
+- payment attempts
+- idempotency
+- webhook verification
+- return URL behavior
+- order finalization after payment
+- partial payments
+- duplicate callback handling
+- retry safety
+- refund authorization
+- mismatch handling between return page and webhook truth
+
+Required:
+- webhook should be the source of truth for payment confirmation where applicable
+- return page should not be trusted as final confirmation
+- duplicate webhook should be idempotent
+- order/payment state transitions should be explicit and safe
+
+Tests required:
+- successful payment updates order correctly
+- duplicate webhook does not double-apply
+- failed payment does not mark order paid
+- return URL alone does not finalize payment incorrectly
+
+==================================================
+AUTHORIZATION MATRIX TO IMPLEMENT OR VERIFY
+==================================================
+
+Define and enforce a clear matrix similar to the following:
+
+Customer:
+- own account only
+- own orders only
+- own reservations only
+- own loyalty view only
+- no admin/staff access
+
+Cashier:
+- create/manage POS orders
+- accept payments as allowed
+- limited order operations
+- no admin settings
+- no staff management
+- no deep analytics exports unless explicitly allowed
+
+Kitchen:
+- KDS access only
+- order prep state transitions only
+- no payment/admin/customer data beyond need-to-know
+
+Manager:
+- menu/config limited admin
+- reservations management
+- operational reports
+- maybe limited promotions depending on business rule
+
+Admin/Owner:
+- full access
+
+Implement with:
+- middleware
+- gates/policies
+- resource checks
+- tests
+
+==================================================
+TESTING REQUIREMENTS
+==================================================
+
+Add or improve automated tests for all high-risk changes.
+
+Minimum required test groups:
+1. stream/order ownership tests
+2. admin authorization tests
+3. phone normalization tests
+4. health endpoint exposure tests
+5. BML redirect + webhook tests
+6. payment idempotency tests
+7. customer vs staff/admin boundary tests
+
+If tests already exist, expand them rather than duplicating unnecessarily.
+
+==================================================
+OUTPUT FORMAT / WORK STYLE
+==================================================
+
+Work in this order:
+
+PHASE 1: AUDIT
+- inspect current implementation carefully
+- list exact affected files
+- list exact risks
+- identify any frontend dependencies before changing backend behavior
+
+PHASE 2: SECURITY FIXES
+- implement stream auth fix
+- replace/generalize query token approach safely
+- harden admin permissions
+- harden public health endpoint
+- harden phone normalization
+- harden payment-related permission/state behavior where needed
+
+PHASE 3: CLEANUP
+- repo hygiene
+- empty migration handling
+- DI cleanup
+- route organization improvements if safe
+
+PHASE 4: TESTS
+- add/update tests for each critical area
+
+PHASE 5: FINAL REPORT
+Return a final report with these sections:
+
+1. WHAT WAS FOUND
+2. WHAT WAS CHANGED
+3. RISKS / BREAKING CHANGE CHECK
+4. TEST COVERAGE ADDED
+5. FOLLOW-UP RECOMMENDATIONS
+
+==================================================
+IMPORTANT IMPLEMENTATION NOTES
+==================================================
+
+- Do not blindly rename everything.
+- Do not over-engineer.
+- Keep current architecture style under app/Domains where appropriate.
+- Prefer minimal, secure, production-safe changes.
+- Preserve backward compatibility whenever possible.
+- Verify both backend and frontend route assumptions before changing payment redirect or stream access patterns.
+- Where security requires stronger behavior, choose secure behavior even if the frontend needs a small update.
+
+==================================================
+IF YOU FIND MORE ISSUES
+==================================================
+
+If during the audit you find additional bugs or vulnerabilities, fix them too if they are closely related to:
+- authorization
+- data exposure
+- payment safety
+- customer ownership
+- token leakage
+- repo hygiene
+- validation
+
+Document them in the final report.
+```
+
+---
+
 **Priority:** Implement Session 1 first, Session 2 separately after testing  
 
 ---
