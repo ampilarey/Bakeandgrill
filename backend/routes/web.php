@@ -29,6 +29,8 @@ Route::get('/menu', [HomeController::class, 'menu'])->name('menu');
 Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
 Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
 Route::get('/privacy', [HomeController::class, 'privacy'])->name('privacy');
+Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
+Route::get('/refund', [HomeController::class, 'refund'])->name('refund');
 
 // Customer Portal (Web Login)
 use App\Http\Controllers\CustomerPortalController;

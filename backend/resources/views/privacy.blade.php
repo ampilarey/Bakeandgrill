@@ -84,13 +84,17 @@
     </ul>
     <p><strong>Opt-Out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at +960 9120011.</p>
 
+    <h2>Card Payment Security</h2>
+    <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page. Bake &amp; Grill does <strong>not</strong> store, view, process, or retain any payment card details (card numbers, CVV, expiry) on our servers. Card data is handled entirely by BML using SSL/TLS encryption.</p>
+    <p>We strongly recommend you retain a copy of your order confirmation and payment receipt for your records.</p>
+
     <h2>Data Security</h2>
-    <p>We implement industry-standard security measures to protect your data, including:</p>
+    <p>We implement industry-standard security measures to protect your personal data, including:</p>
     <ul>
-        <li>Encrypted data transmission (HTTPS)</li>
-        <li>Secure OTP hashing</li>
-        <li>Access controls and authentication</li>
-        <li>Regular security audits</li>
+        <li>Encrypted data transmission (HTTPS / TLS)</li>
+        <li>Secure OTP hashing — OTP codes are never stored in plain text</li>
+        <li>Access controls and role-based authentication for staff</li>
+        <li>Regular security reviews to prevent unauthorised access to customer information</li>
     </ul>
 
     <h2>Data Sharing</h2>

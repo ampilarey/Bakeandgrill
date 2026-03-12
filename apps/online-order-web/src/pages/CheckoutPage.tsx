@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
 import { AuthBlock } from "../components/AuthBlock";
@@ -86,6 +86,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 export function CheckoutPage() {
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   useEffect(() => { document.title = 'Checkout — Bake & Grill'; }, []);
 
@@ -299,6 +300,64 @@ export function CheckoutPage() {
 
           {token && (
             <div style={isMobile ? S.stickyPayBar : {}}>
+
+              {/* ── BML Compliance block ─────────────────────── */}
+              <div style={S.complianceBox}>
+                {/* Req 1: Card brand marks in full colour */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
+                  {/* Visa — full colour */}
+                  <svg viewBox="0 0 48 16" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Visa" role="img">
+                    <rect width="48" height="16" rx="3" fill="#1A1F71"/>
+                    <text x="24" y="11.5" textAnchor="middle" fill="#FFF" fontFamily="Arial,sans-serif" fontSize="9" fontWeight="bold">VISA</text>
+                  </svg>
+                  {/* Mastercard — full colour */}
+                  <svg viewBox="0 0 38 24" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard" role="img">
+                    <circle cx="14" cy="12" r="10" fill="#EB001B"/>
+                    <circle cx="24" cy="12" r="10" fill="#F79E1B" fillOpacity="0.9"/>
+                    <path d="M19 4.8a10 10 0 0 1 0 14.4A10 10 0 0 1 19 4.8" fill="#FF5F00"/>
+                  </svg>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>+ other BML cards</span>
+                </div>
+
+                {/* Req 4+5: Currency + merchant country */}
+                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
+                  Amount charged in <strong>MVR (Maldivian Rufiyaa)</strong>. Merchant located in the <strong>Maldives</strong>.
+                </p>
+
+                {/* Req 6+8+12: Policy links before checkout */}
+                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                  Before completing your purchase, please read:
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.875rem' }}>
+                  {[
+                    { href: '/terms',   label: 'Terms & Conditions' },
+                    { href: '/refund',  label: 'Refund Policy' },
+                    { href: '/privacy', label: 'Privacy Policy' },
+                  ].map(({ href, label }) => (
+                    <a key={href} href={href} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+                      {label}
+                    </a>
+                  ))}
+                </div>
+
+                {/* Req 13: Affirmative acceptance checkbox */}
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    style={{ marginTop: '2px', width: 16, height: 16, accentColor: 'var(--color-primary)', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+                    I agree to the <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Terms &amp; Conditions</a>,{' '}
+                    <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Refund Policy</a>, and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
+                  </span>
+                </label>
+              </div>
+
               {globalError && (
                 <div className="banner banner-error" style={{ marginBottom: 12 }}>
                   <span className="banner-icon">⚠️</span>
@@ -308,23 +367,37 @@ export function CheckoutPage() {
                   </div>
                 </div>
               )}
+
               <button
                 style={{
                   ...S.primaryBtn,
                   width: '100%',
                   padding: '1rem 1.5rem',
                   fontSize: 16,
-                  opacity: isPlacing ? 0.7 : 1,
+                  opacity: (isPlacing || !acceptTerms) ? 0.55 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  cursor: !acceptTerms ? 'not-allowed' : 'pointer',
                 }}
                 onClick={handlePlaceAndPay}
-                disabled={isPlacing}
+                disabled={isPlacing || !acceptTerms}
                 aria-busy={isPlacing}
+                title={!acceptTerms ? 'Please agree to the terms to continue' : undefined}
               >
                 {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
                 {placeLabel}
               </button>
-              <p style={S.secureNote}>🔒 Secure payment via BML BankConnect · Free cancellation before kitchen confirms</p>
+
+              {/* Req 10+11: Security + retain records */}
+              <p style={S.secureNote}>
+                🔒 Payment processed securely by Bank of Maldives. We do not store your card details. We recommend retaining your order receipt.
+              </p>
+
+              {/* Req 3: Corporate info */}
+              <div style={S.corporateInfo}>
+                <strong>Bake &amp; Grill</strong> · Kalaafaanu Hingun, Malé, Maldives ·{' '}
+                <a href="tel:+9609120011" style={{ color: 'inherit' }}>+960 912 0011</a> ·{' '}
+                <a href="mailto:hello@bakeandgrill.mv" style={{ color: 'inherit' }}>hello@bakeandgrill.mv</a>
+              </div>
             </div>
           )}
         </div>
@@ -477,13 +550,6 @@ const S = {
     fontFamily: 'inherit', height: 'var(--input-height)',
   } as React.CSSProperties,
 
-  secureNote: {
-    textAlign: 'center' as const,
-    fontSize: 12,
-    color: 'var(--color-text-muted)',
-    marginTop: 8, lineHeight: 1.5,
-  } as React.CSSProperties,
-
   chatBtnWa: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '0.5rem 1rem',
@@ -510,5 +576,31 @@ const S = {
     borderTop: '1px solid var(--color-border)',
     padding: '12px 16px',
     zIndex: 50,
+  } as React.CSSProperties,
+
+  complianceBox: {
+    background: 'var(--color-surface-alt)',
+    border: '1px solid var(--color-border)',
+    borderRadius: '12px',
+    padding: '1rem 1.125rem',
+    marginBottom: '12px',
+  } as React.CSSProperties,
+
+  secureNote: {
+    fontSize: '0.72rem',
+    color: 'var(--color-text-muted)',
+    textAlign: 'center' as const,
+    marginTop: '0.625rem',
+    lineHeight: 1.5,
+  } as React.CSSProperties,
+
+  corporateInfo: {
+    fontSize: '0.68rem',
+    color: 'var(--color-text-muted)',
+    textAlign: 'center' as const,
+    marginTop: '0.375rem',
+    lineHeight: 1.6,
+    borderTop: '1px solid var(--color-border)',
+    paddingTop: '0.5rem',
   } as React.CSSProperties,
 } as const;

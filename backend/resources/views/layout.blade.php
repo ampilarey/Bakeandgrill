@@ -566,8 +566,12 @@
             <a href="https://wa.me/9609120011" target="_blank" rel="noopener">💬 WhatsApp</a>
             <a href="viber://chat?number=%2B9609120011">📱 Viber</a>
             <a href="mailto:hello@bakeandgrill.mv">✉ hello@bakeandgrill.mv</a>
-            <a href="/privacy" style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.3);font-size:0.8rem;">Privacy Policy</a>
-            <a href="/admin" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Staff Dashboard</a>
+            <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:0.35rem;">
+                <a href="/privacy" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Privacy Policy</a>
+                <a href="/terms" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Terms &amp; Conditions</a>
+                <a href="/refund" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Refund Policy</a>
+                <a href="/admin" style="color:rgba(255,255,255,0.15);font-size:0.75rem;margin-top:0.25rem;">Staff Dashboard</a>
+            </div>
         </div>
     </div>
     <div class="footer-bottom">

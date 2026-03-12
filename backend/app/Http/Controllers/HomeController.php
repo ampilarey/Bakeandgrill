@@ -94,6 +94,16 @@ class HomeController extends Controller
         return view('privacy');
     }
 
+    public function terms()
+    {
+        return view('terms');
+    }
+
+    public function refund()
+    {
+        return view('refund');
+    }
+
     public function checkout()
     {
         // Get cart items from localStorage (will be accessed via JavaScript)
