@@ -17,8 +17,8 @@ return new class extends Migration
                 $table->string('tenant_name');
                 $table->text('access_token');
                 $table->text('refresh_token');
-                $table->timestamp('token_expires_at');
-                $table->timestamp('connected_at');
+                $table->timestamp('token_expires_at')->nullable();
+                $table->timestamp('connected_at')->nullable();
                 $table->boolean('active')->default(true);
                 $table->timestamps();
             });
