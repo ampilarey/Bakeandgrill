@@ -5,14 +5,14 @@ const CONTACT_ITEMS = [
   {
     label: 'Phone',
     abbr: 'PH',
-    color: '#1ba3b9',
+    color: '#D4813A',
     value: '+960 9120011',
     action: { href: 'tel:+9609120011', text: 'Call us' },
   },
   {
     label: 'Email',
     abbr: 'EM',
-    color: '#D97706',
+    color: '#D4813A',
     value: 'hello@bakeandgrill.mv',
     action: { href: 'mailto:hello@bakeandgrill.mv', text: 'Send email' },
   },
@@ -26,7 +26,7 @@ const CONTACT_ITEMS = [
   {
     label: 'Address',
     abbr: 'AD',
-    color: '#636e72',
+    color: '#8B7355',
     value: 'Majeedhee Magu, Malé, Maldives',
     action: null,
   },
@@ -39,10 +39,10 @@ export function ContactPage() {
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: '#1c1e21', marginBottom: '0.875rem' }}>
+        <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: '#1C1408', marginBottom: '0.875rem' }}>
           Contact Us
         </h1>
-        <p style={{ fontSize: '1.05rem', color: '#636e72', lineHeight: 1.65 }}>
+        <p style={{ fontSize: '1.05rem', color: '#8B7355', lineHeight: 1.65 }}>
           Have a question or feedback? We'd love to hear from you.
         </p>
       </div>
@@ -52,9 +52,9 @@ export function ContactPage() {
         {CONTACT_ITEMS.map((item) => (
           <div
             key={item.label}
-            style={{ background: 'white', border: '1px solid #e9ecef', borderRadius: '16px', padding: '1.75rem', transition: 'all 0.2s' }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ba3b9'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.07)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e9ecef'; e.currentTarget.style.boxShadow = 'none'; }}
+            style={{ background: 'white', border: '1px solid #EDE4D4', borderRadius: '16px', padding: '1.75rem', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#D4813A'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.07)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#EDE4D4'; e.currentTarget.style.boxShadow = 'none'; }}
           >
             <div style={{
               width: '44px',
@@ -75,7 +75,7 @@ export function ContactPage() {
             <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#adb5bd', fontWeight: 700, marginBottom: '0.375rem' }}>
               {item.label}
             </div>
-            <p style={{ fontSize: '0.975rem', color: '#1c1e21', fontWeight: 500, marginBottom: item.action ? '0.875rem' : 0, lineHeight: 1.4 }}>
+            <p style={{ fontSize: '0.975rem', color: '#1C1408', fontWeight: 500, marginBottom: item.action ? '0.875rem' : 0, lineHeight: 1.4 }}>
               {item.value}
             </p>
             {item.action && (
@@ -87,7 +87,7 @@ export function ContactPage() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.375rem',
-                  background: '#1ba3b9',
+                  background: '#D4813A',
                   color: 'white',
                   padding: '0.45rem 1rem',
                   borderRadius: '999px',
@@ -96,8 +96,8 @@ export function ContactPage() {
                   textDecoration: 'none',
                   transition: 'background 0.15s',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#1591a6'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = '#1ba3b9'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#B86820'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#D4813A'; }}
               >
                 {item.action.text} →
               </a>
@@ -107,19 +107,19 @@ export function ContactPage() {
       </div>
 
       {/* Opening hours promo */}
-      <div style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '16px', padding: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+      <div style={{ background: '#FFFDF9', border: '1px solid #EDE4D4', borderRadius: '16px', padding: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1c1e21', marginBottom: '0.375rem' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1C1408', marginBottom: '0.375rem' }}>
             Want to visit in person?
           </h3>
-          <p style={{ fontSize: '0.875rem', color: '#636e72' }}>
+          <p style={{ fontSize: '0.875rem', color: '#8B7355' }}>
             Check our current opening hours before you head over.
           </p>
         </div>
         <Link
           to="/hours"
           style={{
-            background: '#1ba3b9',
+            background: '#D4813A',
             color: 'white',
             padding: '0.6rem 1.5rem',
             borderRadius: '999px',

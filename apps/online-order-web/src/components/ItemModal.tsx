@@ -21,16 +21,16 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1c1e21', marginBottom: '0.25rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1C1408', marginBottom: '0.25rem' }}>
               {item.name}
             </h3>
-            <p style={{ fontSize: '1.1rem', color: '#D97706', fontWeight: 700 }}>
+            <p style={{ fontSize: '1.1rem', color: '#D4813A', fontWeight: 700 }}>
               MVR {totalPrice.toFixed(2)}
             </p>
           </div>
           <button
             onClick={onClose}
-            style={{ background: '#f1f3f5', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1rem', color: '#636e72', flexShrink: 0 }}
+            style={{ background: '#FEF3E8', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1rem', color: '#8B7355', flexShrink: 0 }}
             aria-label="Close"
           >
             ×
@@ -38,7 +38,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
         </div>
 
         {item.description && (
-          <p style={{ fontSize: '0.9rem', color: '#636e72', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.9rem', color: '#8B7355', marginBottom: '1.25rem', lineHeight: 1.5 }}>
             {item.description}
           </p>
         )}
@@ -46,7 +46,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
         {/* Modifiers */}
         {item.modifiers && item.modifiers.length > 0 ? (
           <div style={{ marginBottom: '1.5rem' }}>
-            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1c1e21', marginBottom: '0.75rem' }}>
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1C1408', marginBottom: '0.75rem' }}>
               Add-ons
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -60,16 +60,16 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '0.75rem 1rem',
-                      border: `1.5px solid ${checked ? '#1ba3b9' : '#e9ecef'}`,
+                      border: `1.5px solid ${checked ? '#D4813A' : '#EDE4D4'}`,
                       borderRadius: '10px',
                       cursor: 'pointer',
-                      background: checked ? 'rgba(27,163,185,0.06)' : 'white',
+                      background: checked ? 'rgba(212,129,58,0.06)' : 'white',
                       transition: 'all 0.15s',
                     }}
                   >
-                    <span style={{ fontSize: '0.9rem', color: '#1c1e21' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#1C1408' }}>
                       {modifier.name}
-                      <span style={{ color: '#D97706', marginLeft: '0.5rem', fontWeight: 600 }}>
+                      <span style={{ color: '#D4813A', marginLeft: '0.5rem', fontWeight: 600 }}>
                         +MVR {parseFloat(String(modifier.price)).toFixed(2)}
                       </span>
                     </span>
@@ -77,7 +77,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
                       type="checkbox"
                       checked={checked}
                       onChange={() => onToggleModifier(modifier)}
-                      style={{ width: '18px', height: '18px', accentColor: '#1ba3b9' }}
+                      style={{ width: '18px', height: '18px', accentColor: '#D4813A' }}
                     />
                   </label>
                 );
@@ -85,7 +85,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
             </div>
           </div>
         ) : (
-          <p style={{ fontSize: '0.9rem', color: '#636e72', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '0.9rem', color: '#8B7355', marginBottom: '1.5rem' }}>
             No add-ons available for this item.
           </p>
         )}
@@ -95,7 +95,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
           style={{
             width: '100%',
             padding: '0.9rem',
-            background: '#D97706',
+            background: '#D4813A',
             color: 'white',
             border: 'none',
             borderRadius: '12px',
@@ -104,8 +104,8 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
             cursor: 'pointer',
             transition: 'background 0.15s',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#B45309'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = '#D97706'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#B86820'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#D4813A'; }}
         >
           Add to Cart — MVR {totalPrice.toFixed(2)}
         </button>

@@ -33,6 +33,8 @@ export function AuthBlock({ onSuccess }: Props) {
     try {
       const res = await verifyOtp({ phone, otp });
       localStorage.setItem("online_token", res.token);
+      localStorage.setItem("online_customer_name", res.customer.name ?? res.customer.phone);
+      window.dispatchEvent(new Event("auth_change"));
       onSuccess(res.token, res.customer.name ?? res.customer.phone);
     } catch (e) {
       setError((e as Error).message);
@@ -94,6 +96,6 @@ const authStyles = {
   errorText:    { color: "#dc3545", fontSize: 13, marginBottom: 8 },
   hintText:     { color: "#198754", fontSize: 13 },
   input:        { width: "100%", padding: "10px 12px", border: "1px solid #dee2e6", borderRadius: 8, fontSize: 14, marginBottom: 10, boxSizing: "border-box" as const },
-  primaryBtn:   { width: "100%", padding: "10px 0", background: "#1ba3b9", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 },
+  primaryBtn:   { width: "100%", padding: "10px 0", background: "#D4813A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 },
   ghostBtn:     { width: "100%", padding: "8px 0", background: "transparent", color: "#6c757d", border: "1px solid #dee2e6", borderRadius: 8, fontSize: 14, cursor: "pointer" },
 };

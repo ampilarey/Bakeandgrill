@@ -36,26 +36,26 @@ export function Layout() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#FFFDF9' }}>
       {/* Header */}
       <header style={{
         position: 'sticky',
         top: 0,
-        background: 'rgba(255,255,255,0.97)',
-        borderBottom: '1px solid #e9ecef',
+        background: 'rgba(255, 253, 249, 0.92)',
+        borderBottom: '1px solid #EDE4D4',
         zIndex: 100,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        backdropFilter: 'blur(8px)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.5rem', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem', height: '68px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem' }}>
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}>
-            <img src="/logo.png" alt="Bake & Grill" style={{ width: '40px', height: '40px', borderRadius: '10px' }} />
-            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1c1e21' }}>Bake &amp; Grill</span>
+            <img src="/logo.png" alt="Bake & Grill" style={{ width: '38px', height: '38px', borderRadius: '9px' }} />
+            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1C1408', letterSpacing: '-0.02em' }}>Bake &amp; Grill</span>
           </Link>
 
           {/* Desktop Nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: 1, marginLeft: '1rem' }} className="desktop-nav">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', flex: 1, marginLeft: '0.75rem' }} className="desktop-nav">
             {[
               { to: '/', label: 'Home' },
               { to: '/menu', label: 'Menu' },
@@ -66,9 +66,9 @@ export function Layout() {
               <Link
                 key={to}
                 to={to}
-                style={{ padding: '0.4rem 0.875rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 500, color: '#636e72', textDecoration: 'none', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f3f5'; e.currentTarget.style.color = '#1c1e21'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#636e72'; }}
+                style={{ padding: '0.5rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: '#8B7355', textDecoration: 'none', transition: 'all 0.15s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#FEF3E8'; e.currentTarget.style.color = '#D4813A'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8B7355'; }}
               >
                 {label}
               </Link>
@@ -76,11 +76,11 @@ export function Layout() {
           </nav>
 
           {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
             {/* Language toggle */}
             <button
               onClick={() => setLang(lang === 'en' ? 'dv' : 'en')}
-              style={{ padding: '0.35rem 0.75rem', background: '#f1f3f5', border: 'none', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', color: '#495057', fontFamily: 'inherit', lineHeight: 1 }}
+              style={{ padding: '0.35rem 0.75rem', background: '#FEF3E8', border: 'none', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', color: '#D4813A', fontFamily: 'inherit', lineHeight: 1 }}
               title="Toggle language"
             >
               {lang === 'en' ? 'ދިވެހި' : 'EN'}
@@ -89,13 +89,13 @@ export function Layout() {
             {token ? (
               <>
                 {customerName && (
-                  <span style={{ fontSize: '0.85rem', color: '#636e72', display: 'none' }} className="show-desktop">
+                  <span style={{ fontSize: '0.875rem', color: '#8B7355', fontWeight: 500, display: 'none' }} className="show-desktop">
                     Hi, {customerName}
                   </span>
                 )}
                 <button
                   onClick={handleLogout}
-                  style={{ padding: '0.4rem 0.875rem', background: 'transparent', border: '1px solid #dee2e6', borderRadius: '999px', fontSize: '0.85rem', color: '#636e72', cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ padding: '0.45rem 0.875rem', background: 'transparent', border: 'none', borderRadius: '8px', fontSize: '0.875rem', color: '#8B7355', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}
                 >
                   Logout
                 </button>
@@ -103,7 +103,7 @@ export function Layout() {
             ) : (
               <Link
                 to="/menu"
-                style={{ padding: '0.4rem 0.875rem', background: 'transparent', border: '1px solid #dee2e6', borderRadius: '999px', fontSize: '0.85rem', color: '#636e72', textDecoration: 'none' }}
+                style={{ padding: '0.45rem 0.875rem', background: 'transparent', border: 'none', borderRadius: '8px', fontSize: '0.875rem', color: '#8B7355', textDecoration: 'none', fontWeight: 500 }}
               >
                 Sign In
               </Link>
@@ -115,22 +115,23 @@ export function Layout() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.45rem 1rem',
-                background: '#1ba3b9',
-                color: 'white',
-                borderRadius: '999px',
+                gap: '0.35rem',
+                padding: '0.5rem 1rem',
+                background: '#FEF3E8',
+                color: '#D4813A',
+                border: '1.5px solid rgba(212,129,58,0.2)',
+                borderRadius: '10px',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 textDecoration: 'none',
-                transition: 'background 0.15s',
+                transition: 'all 0.15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#1591a6'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#1ba3b9'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#D4813A'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#FEF3E8'; e.currentTarget.style.color = '#D4813A'; }}
             >
-              <span>Cart</span>
+              <span>🛒 Cart</span>
               {cartCount > 0 && (
-                <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                <span style={{ background: 'rgba(212,129,58,0.2)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontSize: '0.75rem', fontWeight: 700 }}>
                   {cartCount}
                 </span>
               )}
@@ -140,7 +141,7 @@ export function Layout() {
             <button
               className="mobile-menu-btn"
               onClick={() => setMenuOpen((o) => !o)}
-              style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#1c1e21', fontSize: '1.4rem' }}
+              style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#1C1408', fontSize: '1.4rem' }}
               aria-label="Menu"
             >
               {menuOpen ? '✕' : '☰'}
@@ -150,7 +151,7 @@ export function Layout() {
 
         {/* Mobile dropdown nav */}
         {menuOpen && (
-          <div style={{ borderTop: '1px solid #e9ecef', background: 'white', padding: '0.75rem 1.5rem 1rem' }} className="mobile-nav-dropdown">
+          <div style={{ borderTop: '1px solid #EDE4D4', background: '#FFFDF9', padding: '0.75rem 1.5rem 1rem' }} className="mobile-nav-dropdown">
             {[
               { to: '/', label: 'Home' },
               { to: '/menu', label: 'Menu' },
@@ -162,7 +163,7 @@ export function Layout() {
                 key={to}
                 to={to}
                 onClick={() => setMenuOpen(false)}
-                style={{ display: 'block', padding: '0.6rem 0', fontSize: '0.95rem', fontWeight: 500, color: '#1c1e21', textDecoration: 'none', borderBottom: '1px solid #f1f3f5' }}
+                style={{ display: 'block', padding: '0.6rem 0', fontSize: '0.95rem', fontWeight: 500, color: '#1C1408', textDecoration: 'none', borderBottom: '1px solid #EDE4D4' }}
               >
                 {label}
               </Link>
@@ -177,7 +178,7 @@ export function Layout() {
       </main>
 
       {/* Footer */}
-      <footer style={{ background: '#1c1e21', color: 'white', padding: '3rem 1.5rem 2rem', marginTop: '4rem' }}>
+      <footer style={{ background: '#1C1408', color: 'white', padding: '4rem 1.5rem 2rem', marginTop: '5rem' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '2rem', paddingBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div>
@@ -223,7 +224,7 @@ export function Layout() {
           </div>
           <div style={{ paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>
             <span>© {new Date().getFullYear()} Bake & Grill. All rights reserved.</span>
-            <Link to="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Privacy Policy</Link>
+            <span style={{ color: 'rgba(255,255,255,0.3)' }}>Privacy Policy</span>
           </div>
         </div>
       </footer>

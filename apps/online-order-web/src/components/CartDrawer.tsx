@@ -21,11 +21,11 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ background: 'white', border: '1px solid #e9ecef', borderRadius: '16px', padding: '1.25rem' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#1c1e21', marginBottom: '1rem' }}>
+      <div style={{ background: 'white', border: '1px solid #EDE4D4', borderRadius: '16px', padding: '1.25rem' }}>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#1C1408', marginBottom: '1rem' }}>
           {t('cart.title')}
           {cart.length > 0 && (
-            <span style={{ marginLeft: '0.5rem', background: '#1ba3b9', color: 'white', borderRadius: '999px', padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}>
+            <span style={{ marginLeft: '0.5rem', background: '#D4813A', color: 'white', borderRadius: '999px', padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}>
               {cart.reduce((s, e) => s + e.quantity, 0)}
             </span>
           )}
@@ -40,17 +40,17 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
             {cart.map((entry, index) => (
               <div
                 key={`${entry.item.id}-${index}`}
-                style={{ border: '1px solid #f1f3f5', borderRadius: '10px', padding: '0.75rem' }}
+                style={{ border: '1px solid #FEF3E8', borderRadius: '10px', padding: '0.75rem' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1c1e21', flex: 1 }}>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1C1408', flex: 1 }}>
                     {entry.item.name}
                   </p>
                   {/* Qty controls — 32px minimum touch target */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
                     <button
                       onClick={() => updateQuantity(index, entry.quantity - 1)}
-                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #dee2e6', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: '#495057', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #EDE4D4', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: '#5C4A2A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       aria-label="Decrease quantity"
                     >
                       −
@@ -60,7 +60,7 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
                     </span>
                     <button
                       onClick={() => updateQuantity(index, entry.quantity + 1)}
-                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #dee2e6', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: '#495057', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #EDE4D4', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: '#5C4A2A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       aria-label="Increase quantity"
                     >
                       +
@@ -68,20 +68,20 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
                   </div>
                 </div>
                 {entry.modifiers.length > 0 && (
-                  <p style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: '#636e72' }}>
+                  <p style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: '#8B7355' }}>
                     + {entry.modifiers.map((m) => m.name).join(', ')}
                   </p>
                 )}
-                <p style={{ marginTop: '0.375rem', fontSize: '0.8rem', color: '#D97706', fontWeight: 600 }}>
+                <p style={{ marginTop: '0.375rem', fontSize: '0.8rem', color: '#D4813A', fontWeight: 600 }}>
                   MVR {((parseFloat(String(entry.item.base_price)) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
                 </p>
               </div>
             ))}
 
             {/* Total */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid #f1f3f5', fontWeight: 700, color: '#1c1e21' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid #FEF3E8', fontWeight: 700, color: '#1C1408' }}>
               <span>Total</span>
-              <span style={{ color: '#D97706', fontSize: '1.05rem' }}>MVR {cartTotal.toFixed(2)}</span>
+              <span style={{ color: '#D4813A', fontSize: '1.05rem' }}>MVR {cartTotal.toFixed(2)}</span>
             </div>
           </div>
         )}
@@ -99,7 +99,7 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
             marginTop: '1rem',
             width: '100%',
             padding: '0.875rem',
-            background: canCheckout ? '#1ba3b9' : '#8e9aab',
+            background: canCheckout ? '#D4813A' : '#8e9aab',
             color: 'white',
             border: 'none',
             borderRadius: '12px',
@@ -108,8 +108,8 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
             cursor: canCheckout ? 'pointer' : 'not-allowed',
             transition: 'background 0.15s',
           }}
-          onMouseEnter={(e) => { if (canCheckout) e.currentTarget.style.background = '#1591a6'; }}
-          onMouseLeave={(e) => { if (canCheckout) e.currentTarget.style.background = '#1ba3b9'; }}
+          onMouseEnter={(e) => { if (canCheckout) e.currentTarget.style.background = '#B86820'; }}
+          onMouseLeave={(e) => { if (canCheckout) e.currentTarget.style.background = '#D4813A'; }}
         >
           {!isOpen ? "We're Closed" : cart.length === 0 ? t('cart.empty') : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
         </button>

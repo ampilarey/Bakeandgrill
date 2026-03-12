@@ -535,3 +535,184 @@ export async function getReservations(params: { date?: string; status?: string; 
 export async function updateReservationStatus(id: number, status: string): Promise<{ reservation: AdminReservation }> {
   return req(`/admin/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }
+
+// ── Invoices ──────────────────────────────────────────────────────────────────
+
+export type InvoiceItem = {
+  id: number;
+  description: string;
+  quantity: number;
+  unit: string | null;
+  unit_price: number;
+  total: number;
+  tax_rate_bp: number;
+  item: { id: number; name: string } | null;
+  inventory_item: { id: number; name: string } | null;
+};
+
+export type Invoice = {
+  id: number;
+  invoice_number: string;
+  type: 'sale' | 'purchase' | 'credit_note';
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'void';
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  total: number;
+  tax_rate_bp: number;
+  issue_date: string;
+  due_date: string | null;
+  paid_at: string | null;
+  payment_method: string | null;
+  notes: string | null;
+  customer: { id: number; name: string; phone: string } | null;
+  supplier: { id: number; name: string } | null;
+  order_id: number | null;
+  purchase_id: number | null;
+  created_by: string | null;
+  items: InvoiceItem[];
+  created_at: string;
+};
+
+export async function getInvoices(params: { type?: string; status?: string; from?: string; to?: string; page?: number } = {}): Promise<{ data: Invoice[]; meta: { total: number; current_page: number; last_page: number } }> {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
+  return req(`/invoices?${q}`);
+}
+
+export async function getInvoice(id: number): Promise<{ invoice: Invoice }> {
+  return req(`/invoices/${id}`);
+}
+
+export async function markInvoiceSent(id: number): Promise<{ invoice: Invoice }> {
+  return req(`/invoices/${id}/mark-sent`, { method: 'POST' });
+}
+
+export async function markInvoicePaid(id: number, method: string, reference?: string): Promise<{ invoice: Invoice }> {
+  return req(`/invoices/${id}/mark-paid`, { method: 'POST', body: JSON.stringify({ payment_method: method, payment_reference: reference }) });
+}
+
+export async function voidInvoice(id: number): Promise<{ invoice: Invoice }> {
+  return req(`/invoices/${id}/void`, { method: 'POST' });
+}
+
+// ── Expenses ──────────────────────────────────────────────────────────────────
+
+export type ExpenseCategory = { id: number; name: string; icon: string; slug: string };
+
+export type Expense = {
+  id: number;
+  expense_number: string;
+  description: string;
+  amount: number;
+  tax_amount: number;
+  total: number;
+  payment_method: string | null;
+  reference_number: string | null;
+  expense_date: string;
+  status: 'pending' | 'approved' | 'rejected';
+  is_recurring: boolean;
+  recurrence_interval: string | null;
+  next_recurrence_date: string | null;
+  receipt_path: string | null;
+  notes: string | null;
+  category: { id: number; name: string; icon: string } | null;
+  supplier: { id: number; name: string } | null;
+  logged_by: string | null;
+  created_at: string;
+};
+
+export async function getExpenses(params: { category_id?: number; from?: string; to?: string; status?: string; page?: number } = {}): Promise<{ data: Expense[]; meta: { total: number; current_page: number; last_page: number }; total_amount: number }> {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
+  return req(`/expenses?${q}`);
+}
+
+export async function getExpenseCategories(): Promise<{ categories: ExpenseCategory[] }> {
+  return req('/expenses/categories');
+}
+
+export async function storeExpense(data: Record<string, unknown>): Promise<{ expense: Expense }> {
+  return req('/expenses', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteExpense(id: number): Promise<void> {
+  return req(`/expenses/${id}`, { method: 'DELETE' });
+}
+
+export async function getExpenseSummary(from: string, to: string): Promise<{ total: number; by_category: { category: string; icon: string; total: number; count: number; pct: number }[] }> {
+  return req(`/expenses/summary?from=${from}&to=${to}`);
+}
+
+// ── Finance Reports ───────────────────────────────────────────────────────────
+
+export type PnLReport = {
+  from: string; to: string;
+  revenue: { gross: number; tax: number; discounts: number; net: number; orders: number };
+  cogs: number;
+  gross_profit: number;
+  gross_margin_pct: number;
+  expenses: { total: number; by_category: { category: string; icon: string; total: number }[] };
+  waste_cost: number;
+  operating_profit: number;
+  net_profit_margin_pct: number;
+};
+
+export async function getProfitAndLoss(from: string, to: string): Promise<PnLReport> {
+  return req(`/reports/finance/profit-and-loss?from=${from}&to=${to}`);
+}
+
+export async function getCashFlow(from: string, to: string): Promise<{ total_inflow: number; total_outflow: number; net_cash_flow: number; days: { date: string; inflow: number; outflow: number; net: number; running_balance: number }[] }> {
+  return req(`/reports/finance/cash-flow?from=${from}&to=${to}`);
+}
+
+export async function getDailySummary(date: string): Promise<{ date: string; revenue: number; tax: number; orders: number; avg_order: number; expenses: number; purchases: number; waste_cost: number; net_profit: number; by_type: { type: string; count: number; revenue: number }[]; top_items: { name: string; qty: number; revenue: number }[] }> {
+  return req(`/reports/finance/daily-summary?date=${date}`);
+}
+
+// ── Supplier Intelligence ─────────────────────────────────────────────────────
+
+export type SupplierPerf = {
+  supplier_id: number; supplier_name: string; is_active: boolean;
+  purchase_count: number; total_spend: number; overall_rating: number | null;
+  avg_quality: number | null; avg_delivery: number | null;
+};
+
+export async function getSupplierPerformance(): Promise<{ suppliers: SupplierPerf[] }> {
+  return req('/suppliers/performance');
+}
+
+export async function rateSupplier(supplierId: number, data: Record<string, unknown>): Promise<{ rating: Record<string, unknown> }> {
+  return req(`/suppliers/${supplierId}/ratings`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function getPriceComparison(inventoryItemId: number): Promise<{ inventory_item_id: number; prices: { supplier_id: number; supplier_name: string; unit_price: number; unit: string; recorded_at: string }[]; cheapest: { supplier_id: number; supplier_name: string; unit_price: number } | null }> {
+  return req(`/suppliers/price-comparison/${inventoryItemId}`);
+}
+
+// ── Forecasts ─────────────────────────────────────────────────────────────────
+
+export async function getSalesTrends(params: { granularity?: string; from?: string; to?: string } = {}): Promise<{ total_revenue: number; total_orders: number; data: { period: string; revenue: number; orders: number; growth_pct: number | null }[] }> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/forecasts/trends?${q}`);
+}
+
+export async function getRevenueForecast(weeks = 8, horizon = 4): Promise<{ weighted_moving_avg: number; growth_rate_pct: number; forecast: { week_start: string; projected_revenue: number }[] }> {
+  return req(`/forecasts/revenue?weeks=${weeks}&horizon=${horizon}`);
+}
+
+export async function getInventoryForecast(): Promise<{ items: { id: number; name: string; unit: string; category: string; current_stock: number; daily_usage_rate: number; days_of_stock: number | null; status: string }[] }> {
+  return req('/forecasts/inventory');
+}
+
+// ── Purchase Workflow ─────────────────────────────────────────────────────────
+
+export async function approvePurchase(id: number): Promise<{ purchase: Record<string, unknown> }> {
+  return req(`/purchases/${id}/approve`, { method: 'POST' });
+}
+
+export async function getPurchaseSuggestions(): Promise<{ items: { inventory_item_id: number; name: string; unit: string; current_stock: number; reorder_point: number; suggested_quantity: number; suggested_supplier: { id: number; name: string; price: number } | null }[]; by_supplier: { supplier_id: number | null; supplier_name: string; items: unknown[]; estimated_total: number }[] }> {
+  return req('/purchases/suggest');
+}

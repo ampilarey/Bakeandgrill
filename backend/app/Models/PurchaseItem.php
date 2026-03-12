@@ -13,6 +13,8 @@ class PurchaseItem extends Model
         'purchase_id',
         'inventory_item_id',
         'quantity',
+        'received_quantity',
+        'receive_status',
         'unit_cost',
         'total_cost',
     ];

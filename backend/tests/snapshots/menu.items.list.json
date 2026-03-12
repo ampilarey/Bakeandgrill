@@ -11,6 +11,8 @@
             "base_price": "30.00",
             "tax_rate": "0.00",
             "is_available": true,
+            "is_active": true,
+            "sort_order": 0,
             "category_id": 1,
             "category": {
                 "id": "__VOLATILE__",
@@ -46,7 +48,7 @@
     ],
     "next_page_url": null,
     "path": "http://localhost:8000/api/items",
-    "per_page": 50,
+    "per_page": 100,
     "prev_page_url": null,
     "to": 1,
     "total": 1

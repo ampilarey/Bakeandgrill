@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
+import { useCart } from "../context/CartContext";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -14,7 +15,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: string
   pending: { label: "Order Received", color: "#856404", icon: "⏳" },
   preparing: { label: "Being Prepared", color: "#0d6efd", icon: "👨‍🍳" },
   ready: { label: "Ready for Pickup / Delivery", color: "#28a745", icon: "✅" },
-  out_for_delivery: { label: "Out for Delivery", color: "#1ba3b9", icon: "🛵" },
+  out_for_delivery: { label: "Out for Delivery", color: "#D4813A", icon: "🛵" },
   completed: { label: "Completed", color: "#6c757d", icon: "🎉" },
   cancelled: { label: "Cancelled", color: "#dc3545", icon: "❌" },
   paid: { label: "Paid — Preparing", color: "#28a745", icon: "✅" },
@@ -24,6 +25,7 @@ export function OrderStatusPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { clearCart } = useCart();
 
   const paymentState = searchParams.get("payment") as PaymentState;
 
@@ -58,9 +60,9 @@ export function OrderStatusPage() {
   // Clear cart only after BML confirms payment success
   useEffect(() => {
     if (paymentState === "CONFIRMED") {
-      localStorage.removeItem("bakegrill_cart");
+      clearCart();
     }
-  }, [paymentState]);
+  }, [paymentState, clearCart]);
 
   // Initial load
   useEffect(() => {
@@ -112,7 +114,7 @@ export function OrderStatusPage() {
   }, [liveConnected, orderId, token]);
 
   const statusInfo = order
-    ? STATUS_LABELS[order.status] ?? { label: order.status, color: "#495057", icon: "📋" }
+    ? STATUS_LABELS[order.status] ?? { label: order.status, color: "#5C4A2A", icon: "📋" }
     : null;
 
   return (
@@ -196,9 +198,10 @@ export function OrderStatusPage() {
                     key={s}
                     style={{
                       ...styles.progressStep,
-                      background: isStatusAtLeast(order.status, s)
-                        ? "#1ba3b9"
-                        : "#dee2e6",
+                      background: isStatusAtLeast(
+                        order.status === "paid" ? "preparing" : order.status,
+                        s
+                      ) ? "#D4813A" : "#EDE4D4",
                     }}
                   />
                 ))}
@@ -238,7 +241,7 @@ export function OrderStatusPage() {
             {order.type === "delivery" && order.delivery_address_line1 && (
               <div style={styles.card}>
                 <h2 style={styles.sectionTitle}>Delivery Address</h2>
-                <p style={{ margin: 0, fontSize: 14, color: "#212529" }}>
+                <p style={{ margin: 0, fontSize: 14, color: "#1C1408" }}>
                   {order.delivery_address_line1}
                 </p>
                 {order.delivery_island && (
@@ -247,7 +250,7 @@ export function OrderStatusPage() {
                   </p>
                 )}
                 {order.delivery_contact_name && (
-                  <p style={{ margin: "8px 0 0", fontSize: 14, color: "#495057" }}>
+                  <p style={{ margin: "8px 0 0", fontSize: 14, color: "#5C4A2A" }}>
                     Contact: {order.delivery_contact_name}
                     {order.delivery_contact_phone &&
                       ` · ${order.delivery_contact_phone}`}
@@ -259,7 +262,7 @@ export function OrderStatusPage() {
             {/* Items list */}
             {order.items && order.items.length > 0 && (
               <div style={styles.card}>
-                <h2 style={{ ...styles.sectionTitle, marginBottom: 16 }}>Items Ordered</h2>
+                <h2 style={styles.sectionTitle}>Items Ordered</h2>
                 {order.items.map((item: OrderDetailItem) => (
                   <div key={item.id} style={styles.itemRow}>
                     <div style={{ flex: 1 }}>
@@ -271,7 +274,7 @@ export function OrderStatusPage() {
                       )}
                     </div>
                     <span style={{ color: "#6c757d", fontSize: 14, marginRight: 12 }}>×{item.quantity}</span>
-                    <span style={{ fontWeight: 600, color: "#D97706", fontSize: 14 }}>
+                    <span style={{ fontWeight: 600, color: "#D4813A", fontSize: 14 }}>
                       MVR {item.total_price.toFixed(2)}
                     </span>
                   </div>
@@ -349,7 +352,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={styles.detailRow}>
       <span style={{ color: "#6c757d" }}>{label}</span>
-      <span style={{ fontWeight: 500, color: "#212529" }}>{value}</span>
+      <span style={{ fontWeight: 500, color: "#1C1408" }}>{value}</span>
     </div>
   );
 }
@@ -359,15 +362,15 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f8f9fa",
-    fontFamily: "'Inter', sans-serif",
+    background: "#FFFDF9",
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
   } as React.CSSProperties,
 
   header: {
     position: "sticky" as const,
     top: 0,
     background: "#fff",
-    borderBottom: "1px solid #e9ecef",
+    borderBottom: "1px solid #EDE4D4",
     padding: "12px 24px",
     display: "flex",
     alignItems: "center",
@@ -380,7 +383,7 @@ const styles = {
     background: "none",
     border: "none",
     cursor: "pointer",
-    color: "#1ba3b9",
+    color: "#D4813A",
     fontSize: 15,
     fontWeight: 600,
     padding: "4px 8px",
@@ -389,7 +392,7 @@ const styles = {
   headerTitle: {
     fontWeight: 700,
     fontSize: 18,
-    color: "#212529",
+    color: "#1C1408",
     flex: 1,
   } as React.CSSProperties,
 
@@ -427,7 +430,7 @@ const styles = {
     borderRadius: 16,
     padding: "20px 24px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-    border: "1px solid #e9ecef",
+    border: "1px solid #EDE4D4",
   } as React.CSSProperties,
 
   statusRow: {
@@ -462,11 +465,11 @@ const styles = {
   sectionTitle: {
     fontSize: 16,
     fontWeight: 700,
-    color: "#212529",
+    color: "#1C1408",
     paddingBottom: 12,
     borderBottom: "1px solid #f0f0f0",
+    marginTop: 0,
     marginBottom: 16,
-    margin: 0,
   } as React.CSSProperties,
 
   detailRow: {
@@ -481,14 +484,14 @@ const styles = {
     justifyContent: "space-between",
     fontWeight: 800,
     fontSize: 18,
-    color: "#212529",
-    borderTop: "2px solid #e9ecef",
+    color: "#1C1408",
+    borderTop: "2px solid #EDE4D4",
     paddingTop: 12,
     marginTop: 12,
   } as React.CSSProperties,
 
   primaryBtn: {
-    background: "linear-gradient(135deg, #1ba3b9, #0d7a8a)",
+    background: "linear-gradient(135deg, #D4813A, #0d7a8a)",
     color: "#fff",
     border: "none",
     borderRadius: 12,

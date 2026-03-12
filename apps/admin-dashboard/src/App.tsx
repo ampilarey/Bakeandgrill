@@ -14,6 +14,12 @@ import { MenuPage } from './pages/MenuPage';
 import { StaffPage } from './pages/StaffPage';
 import ReservationsPage from './pages/ReservationsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import { InvoicesPage } from './pages/InvoicesPage';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { ProfitLossPage } from './pages/ProfitLossPage';
+import { SupplierIntelligencePage } from './pages/SupplierIntelligencePage';
+import { ForecastPage } from './pages/ForecastPage';
+import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
 
 function AuthGuard({
   user,
@@ -79,9 +85,15 @@ export default function App() {
                 <Route path="reports"    element={<ReportsPage />} />
                 <Route path="menu"       element={<MenuPage />} />
                 <Route path="staff"        element={<StaffPage />} />
-                <Route path="reservations" element={<ReservationsPage />} />
-                <Route path="analytics"   element={<AnalyticsPage />} />
-                <Route path="*"            element={<Navigate to="/orders" replace />} />
+                <Route path="reservations"          element={<ReservationsPage />} />
+                <Route path="analytics"             element={<AnalyticsPage />} />
+                <Route path="invoices"              element={<InvoicesPage />} />
+                <Route path="expenses"              element={<ExpensesPage />} />
+                <Route path="profit-loss"           element={<ProfitLossPage />} />
+                <Route path="supplier-intelligence" element={<SupplierIntelligencePage />} />
+                <Route path="forecasts"             element={<ForecastPage />} />
+                <Route path="purchase-orders"       element={<PurchaseOrdersPage />} />
+                <Route path="*"                     element={<Navigate to="/orders" replace />} />
               </Routes>
             </Layout>
           </AuthGuard>

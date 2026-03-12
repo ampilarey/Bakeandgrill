@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\InventoryItem;
+use App\Models\StockMovement;
 use App\Models\WasteLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 
 class WasteLogController extends Controller
 {
@@ -44,6 +47,30 @@ class WasteLogController extends Controller
 
         $validated['user_id'] = $request->user()->id;
         $wasteLog = WasteLog::create($validated);
+
+        // Deduct from inventory stock and record movement
+        if ($wasteLog->inventory_item_id) {
+            $invItem = InventoryItem::find($wasteLog->inventory_item_id);
+            if ($invItem) {
+                DB::table('inventory_items')
+                    ->where('id', $invItem->id)
+                    ->decrement('current_stock', $validated['quantity']);
+
+                $invItem->refresh();
+
+                StockMovement::create([
+                    'inventory_item_id' => $invItem->id,
+                    'user_id'           => $validated['user_id'],
+                    'type'              => 'waste',
+                    'quantity'          => -$validated['quantity'],
+                    'balance_after'     => $invItem->current_stock,
+                    'unit_cost'         => $invItem->unit_cost ?? 0,
+                    'reference_type'    => 'waste_log',
+                    'reference_id'      => $wasteLog->id,
+                    'notes'             => "Waste: {$validated['reason']}",
+                ]);
+            }
+        }
 
         return response()->json(['waste_log' => $this->format($wasteLog)], 201);
     }

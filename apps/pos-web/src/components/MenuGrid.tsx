@@ -1,5 +1,4 @@
 import type { Category, Item, Modifier, RestaurantTable } from "../types";
-import { makeCartKey } from "../hooks/useCart";
 
 const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
