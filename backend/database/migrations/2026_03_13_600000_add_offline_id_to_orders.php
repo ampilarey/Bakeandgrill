@@ -11,7 +11,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->string('offline_id')->nullable()->unique()->after('order_number');
+            if (!Schema::hasColumn('orders', 'offline_id')) {
+                $table->string('offline_id')->nullable()->unique()->after('order_number');
+            }
         });
     }
 

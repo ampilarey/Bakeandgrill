@@ -16,25 +16,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('stores', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('slug')->unique();
-            $table->string('phone')->nullable();
-            $table->string('address')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->json('settings')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('stores')) {
+            Schema::create('stores', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('slug')->unique();
+                $table->string('phone')->nullable();
+                $table->string('address')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->json('settings')->nullable();
+                $table->timestamps();
+            });
 
-        // Seed default store so FK can be back-filled later
-        DB::table('stores')->insert([
-            'name'       => 'Bake & Grill Main',
-            'slug'       => 'main',
-            'is_active'  => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            // Seed default store so FK can be back-filled later
+            DB::table('stores')->insert([
+                'name'       => 'Bake & Grill Main',
+                'slug'       => 'main',
+                'is_active'  => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         // Add nullable store_id to operational tables
         $tables = ['orders', 'shifts', 'users', 'inventory_items', 'items'];
