@@ -3,17 +3,23 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, type StaffUser } from '../api';
 
 const NAV = [
-  { to: '/orders',     icon: '📋', label: 'Orders'     },
-  { to: '/kds',        icon: '👨‍🍳', label: 'Kitchen'    },
-  { to: '/delivery',   icon: '🛵', label: 'Delivery'   },
-  { to: '/menu',       icon: '🍽️', label: 'Menu'       },
-  { to: '/promotions', icon: '🏷️',  label: 'Promos'    },
-  { to: '/loyalty',    icon: '⭐', label: 'Loyalty'    },
-  { to: '/sms',        icon: '📱', label: 'SMS'        },
-  { to: '/reports',    icon: '📊', label: 'Reports'    },
-  { to: '/staff',        icon: '👥', label: 'Staff'        },
-  { to: '/reservations', icon: '📅', label: 'Reservations' },
-  { to: '/analytics',   icon: '📈', label: 'Analytics'    },
+  { to: '/orders',              icon: '📋', label: 'Orders'           },
+  { to: '/kds',                 icon: '👨‍🍳', label: 'Kitchen'          },
+  { to: '/delivery',            icon: '🛵', label: 'Delivery'         },
+  { to: '/menu',                icon: '🍽️', label: 'Menu'             },
+  { to: '/promotions',          icon: '🏷️', label: 'Promos'           },
+  { to: '/loyalty',             icon: '⭐', label: 'Loyalty'          },
+  { to: '/sms',                 icon: '📱', label: 'SMS'              },
+  { to: '/reservations',        icon: '📅', label: 'Reservations'     },
+  { to: '/staff',               icon: '👥', label: 'Staff'            },
+  { to: '/purchase-orders',     icon: '🛒', label: 'Purchases'        },
+  { to: '/invoices',            icon: '🧾', label: 'Invoices'         },
+  { to: '/expenses',            icon: '💸', label: 'Expenses'         },
+  { to: '/profit-loss',         icon: '💰', label: 'P&L'              },
+  { to: '/supplier-intelligence', icon: '🏭', label: 'Suppliers'      },
+  { to: '/forecasts',           icon: '📈', label: 'Forecasts'        },
+  { to: '/reports',             icon: '📊', label: 'Reports'          },
+  { to: '/analytics',           icon: '📉', label: 'Analytics'        },
 ];
 
 export function Layout({

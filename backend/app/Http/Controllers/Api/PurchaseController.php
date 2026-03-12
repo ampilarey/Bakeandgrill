@@ -14,6 +14,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\PurchaseReceipt;
 use App\Models\StockMovement;
+use App\Models\SupplierPriceHistory;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -206,10 +207,21 @@ class PurchaseController extends Controller
                 ]);
 
                 if ($inventoryItem) {
-                    $inventoryItem->current_stock = ($inventoryItem->current_stock ?? 0) + $itemPayload['quantity'];
-                    $inventoryItem->last_purchase_price = $itemPayload['unit_cost'];
-                    if (!$inventoryItem->unit_cost) {
-                        $inventoryItem->unit_cost = $itemPayload['unit_cost'];
+                    $oldStock = max(0, ($inventoryItem->current_stock ?? 0));
+                    $oldCost  = (float) ($inventoryItem->unit_cost ?? 0);
+                    $newQty   = (float) $itemPayload['quantity'];
+                    $newCost  = (float) $itemPayload['unit_cost'];
+
+                    $inventoryItem->current_stock = $oldStock + $newQty;
+                    $inventoryItem->last_purchase_price = $newCost;
+
+                    // Weighted average cost
+                    $totalStock = $oldStock + $newQty;
+                    if ($totalStock > 0) {
+                        $inventoryItem->unit_cost = round(
+                            ($oldStock * $oldCost + $newQty * $newCost) / $totalStock,
+                            4
+                        );
                     }
                     $inventoryItem->save();
 
@@ -224,6 +236,18 @@ class PurchaseController extends Controller
                         'reference_id' => $purchase->id,
                         'notes' => $validated['notes'] ?? null,
                     ]);
+
+                    // Record supplier price history for intelligence
+                    if ($purchase->supplier_id) {
+                        SupplierPriceHistory::create([
+                            'supplier_id'       => $purchase->supplier_id,
+                            'inventory_item_id' => $inventoryItem->id,
+                            'purchase_id'       => $purchase->id,
+                            'unit_price'        => $itemPayload['unit_cost'],
+                            'unit'              => $inventoryItem->unit,
+                            'recorded_at'       => $purchase->purchase_date ?? now()->toDateString(),
+                        ]);
+                    }
                 }
             }
 

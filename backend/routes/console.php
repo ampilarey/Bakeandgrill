@@ -36,3 +36,15 @@ Schedule::command('app:reconcile-loyalty-balances')->dailyAt('03:00');
 
 // Reservations: auto-mark no-shows every 15 minutes
 Schedule::job(App\Jobs\AutoCancelNoShowReservations::class)->everyFifteenMinutes();
+
+// Finance: generate recurring expenses daily at 06:00
+Schedule::command('expenses:generate-recurring')->dailyAt('06:00');
+
+// Finance: mark overdue invoices daily at 07:00
+Schedule::command('invoices:mark-overdue')->dailyAt('07:00');
+
+// Inventory: check reorder points daily at 08:00
+Schedule::command('inventory:check-reorder')->dailyAt('08:00');
+
+// Inventory: check expiring items daily at 08:05
+Schedule::command('inventory:check-expiry --days=7')->dailyAt('08:05');

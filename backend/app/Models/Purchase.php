@@ -14,16 +14,23 @@ class Purchase extends Model
         'purchase_number',
         'supplier_id',
         'user_id',
+        'approved_by',
+        'approved_at',
         'status',
         'subtotal',
         'tax_amount',
         'total',
         'notes',
         'purchase_date',
+        'expected_delivery_date',
+        'actual_delivery_date',
     ];
 
     protected $casts = [
-        'purchase_date' => 'date',
+        'purchase_date'          => 'date',
+        'expected_delivery_date' => 'date',
+        'actual_delivery_date'   => 'date',
+        'approved_at'            => 'datetime',
     ];
 
     public function supplier(): BelongsTo
