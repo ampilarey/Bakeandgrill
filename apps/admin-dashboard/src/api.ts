@@ -716,3 +716,55 @@ export async function approvePurchase(id: number): Promise<{ purchase: Record<st
 export async function getPurchaseSuggestions(): Promise<{ items: { inventory_item_id: number; name: string; unit: string; current_stock: number; reorder_point: number; suggested_quantity: number; suggested_supplier: { id: number; name: string; price: number } | null }[]; by_supplier: { supplier_id: number | null; supplier_name: string; items: unknown[]; estimated_total: number }[] }> {
   return req('/purchases/suggest');
 }
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+
+export type WebhookSubscription = {
+  id: number;
+  name: string;
+  url: string;
+  secret: string;
+  events: string[];
+  active: boolean;
+  failure_count: number;
+  last_triggered_at: string | null;
+  disabled_at: string | null;
+  created_at: string;
+};
+
+export type WebhookLog = {
+  id: number;
+  url: string;
+  event: string;
+  response_code: number | null;
+  status: 'delivered' | 'failed';
+  created_at: string;
+};
+
+export async function fetchWebhooks(): Promise<{ subscriptions: WebhookSubscription[] }> {
+  return req('/webhooks');
+}
+
+export async function createWebhook(data: { name: string; url: string; events: string[] }): Promise<{ subscription: WebhookSubscription }> {
+  return req('/webhooks', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateWebhook(id: number, data: Partial<{ name: string; url: string; events: string[]; active: boolean }>): Promise<{ subscription: WebhookSubscription }> {
+  return req(`/webhooks/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteWebhook(id: number): Promise<void> {
+  await req(`/webhooks/${id}`, { method: 'DELETE' });
+}
+
+export async function rotateWebhookSecret(id: number): Promise<{ secret: string }> {
+  return req(`/webhooks/${id}/rotate-secret`, { method: 'POST' });
+}
+
+export async function fetchWebhookLogs(id: number): Promise<{ data: WebhookLog[]; total: number }> {
+  return req(`/webhooks/${id}/logs`);
+}
+
+export async function fetchSupportedWebhookEvents(): Promise<{ events: string[] }> {
+  return req('/webhooks/events');
+}

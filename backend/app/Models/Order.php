@@ -15,6 +15,7 @@ class Order extends Model
     use SoftDeletes;
     protected $fillable = [
         'order_number',
+        'offline_id',
         'type',
         'status',
         'restaurant_table_id',

@@ -110,6 +110,22 @@ class CustomerController extends Controller
     }
 
     /**
+     * Update internal staff notes on a customer (staff-only).
+     */
+    public function updateNotes(Request $request, int $id)
+    {
+        $customer = Customer::findOrFail($id);
+
+        $validated = $request->validate([
+            'internal_notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $customer->update($validated);
+
+        return response()->json(['customer' => $customer]);
+    }
+
+    /**
      * Opt out of SMS promotions.
      */
     public function optOut(CustomerSmsOptOutRequest $request)

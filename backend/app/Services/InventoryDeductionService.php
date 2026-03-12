@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Inventory\DTOs\StockLevelChangedData;
+use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Models\Order;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +52,16 @@ class InventoryDeductionService
                         ->where('id', $inventoryItem->id)
                         ->decrement('current_stock', $neededQuantity);
 
+                    $oldStock = (float) ($inventoryItem->current_stock + $neededQuantity);
                     $inventoryItem->refresh();
+
+                    event(new StockLevelChanged(new StockLevelChangedData(
+                        itemId: $inventoryItem->id,
+                        itemName: $inventoryItem->name,
+                        oldQuantity: $oldStock,
+                        newQuantity: (float) $inventoryItem->current_stock,
+                        reason: 'sale',
+                    )));
 
                     StockMovement::create([
                         'idempotency_key' => $idempotencyKey,

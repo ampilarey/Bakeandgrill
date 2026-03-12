@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, type StaffUser } from '../api';
 
 const NAV = [
+  { to: '/dashboard',           icon: '🏠', label: 'Dashboard'        },
   { to: '/orders',              icon: '📋', label: 'Orders'           },
   { to: '/kds',                 icon: '👨‍🍳', label: 'Kitchen'          },
   { to: '/delivery',            icon: '🛵', label: 'Delivery'         },
@@ -20,6 +21,7 @@ const NAV = [
   { to: '/forecasts',           icon: '📈', label: 'Forecasts'        },
   { to: '/reports',             icon: '📊', label: 'Reports'          },
   { to: '/analytics',           icon: '📉', label: 'Analytics'        },
+  { to: '/webhooks',            icon: '🔔', label: 'Webhooks'          },
 ];
 
 export function Layout({

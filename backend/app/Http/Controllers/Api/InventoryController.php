@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Inventory\DTOs\StockLevelChangedData;
+use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdjustInventoryRequest;
 use App\Http\Requests\StockCountRequest;
@@ -74,8 +76,17 @@ class InventoryController extends Controller
         $quantity = (float) $validated['quantity'];
         $oldStock = $item->current_stock ?? 0;
 
-        $item->current_stock = ($item->current_stock ?? 0) + $quantity;
+        $oldStock = (float) ($item->current_stock ?? 0);
+        $item->current_stock = $oldStock + $quantity;
         $item->save();
+
+        event(new StockLevelChanged(new StockLevelChangedData(
+            itemId: $item->id,
+            itemName: $item->name,
+            oldQuantity: $oldStock,
+            newQuantity: (float) $item->current_stock,
+            reason: 'adjustment',
+        )));
 
         $movement = StockMovement::create([
             'inventory_item_id' => $item->id,

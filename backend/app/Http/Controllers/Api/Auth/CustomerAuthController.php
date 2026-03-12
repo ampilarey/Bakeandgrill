@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Domains\Notifications\DTOs\CustomerCreatedData;
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Events\CustomerCreated;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
@@ -135,7 +137,9 @@ class CustomerAuthController extends Controller
         // Mark OTP as used
         $otpRecord->update(['used_at' => now()]);
 
-        // Find or create customer
+        // Find or create customer — fire event only on first creation
+        $wasNew = !Customer::where('phone', $phone)->exists();
+
         $customer = Customer::firstOrCreate(
             ['phone' => $phone],
             [
@@ -145,6 +149,14 @@ class CustomerAuthController extends Controller
                 'tier' => 'bronze',
             ],
         );
+
+        if ($wasNew) {
+            event(new CustomerCreated(new CustomerCreatedData(
+                customerId: $customer->id,
+                phone: $customer->phone,
+                name: $customer->name,
+            )));
+        }
 
         $customer->update(['last_login_at' => now()]);
 

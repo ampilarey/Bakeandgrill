@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Inventory\DTOs\StockLevelChangedData;
+use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Models\InventoryItem;
 use App\Models\StockMovement;
 use App\Models\WasteLog;
@@ -52,11 +54,21 @@ class WasteLogController extends Controller
         if ($wasteLog->inventory_item_id) {
             $invItem = InventoryItem::find($wasteLog->inventory_item_id);
             if ($invItem) {
+                $oldStock = (float) $invItem->current_stock;
+
                 DB::table('inventory_items')
                     ->where('id', $invItem->id)
                     ->decrement('current_stock', $validated['quantity']);
 
                 $invItem->refresh();
+
+                event(new StockLevelChanged(new StockLevelChangedData(
+                    itemId: $invItem->id,
+                    itemName: $invItem->name,
+                    oldQuantity: $oldStock,
+                    newQuantity: (float) $invItem->current_stock,
+                    reason: 'waste',
+                )));
 
                 StockMovement::create([
                     'inventory_item_id' => $invItem->id,

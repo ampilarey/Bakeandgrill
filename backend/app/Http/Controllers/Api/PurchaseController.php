@@ -68,6 +68,77 @@ class PurchaseController extends Controller
         return response()->json(['purchase' => $purchase]);
     }
 
+    /**
+     * Partial receive: update received_quantity per item and auto-update inventory.
+     * Body: { "items": [{ "purchase_item_id": 1, "received_quantity": 5 }, …] }
+     */
+    public function receive(Request $request, $id)
+    {
+        $purchase = Purchase::with('items.inventoryItem')->findOrFail($id);
+
+        $validated = $request->validate([
+            'items'                       => ['required', 'array', 'min:1'],
+            'items.*.purchase_item_id'    => ['required', 'integer'],
+            'items.*.received_quantity'   => ['required', 'numeric', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($purchase, $validated, $request) {
+            $purchaseItemIds = $purchase->items->pluck('id')->all();
+            $allFullyReceived = true;
+
+            foreach ($validated['items'] as $row) {
+                $purchaseItem = $purchase->items->firstWhere('id', $row['purchase_item_id']);
+                if (!$purchaseItem || !in_array($purchaseItem->id, $purchaseItemIds)) {
+                    continue;
+                }
+
+                $oldReceived    = (float) ($purchaseItem->received_quantity ?? 0);
+                $newReceived    = (float) $row['received_quantity'];
+                $delta          = $newReceived - $oldReceived;
+
+                $purchaseItem->update([
+                    'received_quantity' => $newReceived,
+                    'received_at'       => now(),
+                ]);
+
+                // Adjust inventory stock for the delta
+                if ($delta != 0 && $purchaseItem->inventory_item_id) {
+                    $invItem = $purchaseItem->inventoryItem;
+                    if ($invItem) {
+                        DB::table('inventory_items')
+                            ->where('id', $invItem->id)
+                            ->increment('current_stock', $delta);
+
+                        $invItem->refresh();
+
+                        StockMovement::create([
+                            'inventory_item_id' => $invItem->id,
+                            'user_id'           => $request->user()?->id,
+                            'type'              => 'purchase',
+                            'quantity'          => $delta,
+                            'balance_after'     => $invItem->current_stock,
+                            'unit_cost'         => $purchaseItem->unit_price ?? null,
+                            'reference_type'    => 'purchase',
+                            'reference_id'      => $purchase->id,
+                            'notes'             => "Partial receive for PO #{$purchase->id}",
+                        ]);
+                    }
+                }
+
+                if ((float) $purchaseItem->quantity > $newReceived) {
+                    $allFullyReceived = false;
+                }
+            }
+
+            $status = $allFullyReceived ? 'received' : 'partially_received';
+            $purchase->update(['status' => $status]);
+        });
+
+        $purchase->load('items');
+
+        return response()->json(['purchase' => $purchase]);
+    }
+
     public function uploadReceipt(StorePurchaseReceiptRequest $request, $id)
     {
         $purchase = Purchase::findOrFail($id);

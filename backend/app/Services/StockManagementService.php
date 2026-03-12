@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Inventory\DTOs\LowStockReachedData;
+use App\Domains\Inventory\Events\LowStockReached;
 use App\Models\Item;
 use App\Models\LowStockAlert;
 use App\Models\User;
@@ -54,6 +56,13 @@ class StockManagementService
      */
     public function triggerLowStockAlert(Item $item): void
     {
+        event(new LowStockReached(new LowStockReachedData(
+            itemId: $item->id,
+            itemName: $item->name,
+            currentStock: (float) $item->stock_quantity,
+            threshold: (float) ($item->low_stock_threshold ?? 0),
+        )));
+
         // Check if alert already sent recently (within 24 hours)
         $recentAlert = LowStockAlert::where('item_id', $item->id)
             ->where('sent', true)

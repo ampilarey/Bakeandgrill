@@ -227,6 +227,11 @@ Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback']
 // Customer SMS opt-out
 Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut']);
 
+// Staff-only: update internal notes on a customer profile
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
+    Route::patch('/customers/{id}/notes', [CustomerController::class, 'updateNotes']);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Menu Management Routes (Public & Protected)
@@ -504,6 +509,64 @@ Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/r
 // ─── Finance & Inventory Routes ────────────────────────────────────────────
 // Invoices, Expenses, Reports, Suppliers, Purchases, Inventory, Forecasting
 require __DIR__ . '/api_finance.php';
+
+// ─── Time Clock ────────────────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/time-clock/status',  [App\Http\Controllers\Api\TimeClockController::class, 'status']);
+    Route::post('/time-clock/in',     [App\Http\Controllers\Api\TimeClockController::class, 'clockIn']);
+    Route::post('/time-clock/out',    [App\Http\Controllers\Api\TimeClockController::class, 'clockOut']);
+    Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history']);
+    Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary']);
+});
+
+// ─── Purchase Partial Receiving ─────────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
+    Route::post('/purchases/{id}/receive', [App\Http\Controllers\Api\PurchaseController::class, 'receive']);
+});
+
+// ─── Barcode Label Data ──────────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/items/{id}/barcode-label', [App\Http\Controllers\Api\ItemController::class, 'barcodeLabel']);
+});
+
+// ─── Customer Display (public — no auth) ────────────────────────────────────
+Route::get('/display/{orderNumber}', [App\Http\Controllers\Api\CustomerDisplayController::class, 'show'])
+    ->middleware('throttle:60,1');
+
+// ─── Offline POS Sync ────────────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/offline/sync', [App\Http\Controllers\Api\OfflineSyncController::class, 'sync']);
+});
+
+// ─── Stripe Payment Gateway ─────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/stripe/intent', [App\Http\Controllers\Api\StripeController::class, 'createIntent']);
+});
+// Stripe webhook — public, no auth, uses raw body
+Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class, 'webhook']);
+
+// ─── Xero OAuth ─────────────────────────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:admin,owner'])->group(function () {
+    Route::get('/xero/connect',      [App\Http\Controllers\Api\XeroController::class, 'connect']);
+    Route::get('/xero/callback',     [App\Http\Controllers\Api\XeroController::class, 'callback']);
+    Route::get('/xero/status',       [App\Http\Controllers\Api\XeroController::class, 'status']);
+    Route::post('/xero/disconnect',  [App\Http\Controllers\Api\XeroController::class, 'disconnect']);
+    Route::post('/xero/invoices/{id}/push', [App\Http\Controllers\Api\XeroController::class, 'pushInvoice']);
+    Route::post('/xero/expenses/{id}/push', [App\Http\Controllers\Api\XeroController::class, 'pushExpense']);
+    Route::get('/xero/logs',         [App\Http\Controllers\Api\XeroController::class, 'logs']);
+});
+
+// ─── Webhook Subscriptions (admin-only) ────────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:admin,owner'])->group(function () {
+    Route::get('/webhooks/events', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'supportedEvents']);
+    Route::get('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'index']);
+    Route::post('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'store']);
+    Route::get('/webhooks/{id}', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'show']);
+    Route::put('/webhooks/{id}', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'update']);
+    Route::delete('/webhooks/{id}', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'destroy']);
+    Route::post('/webhooks/{id}/rotate-secret', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'rotateSecret']);
+    Route::get('/webhooks/{id}/logs', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'logs']);
+});
 
 // ─── System Health ─────────────────────────────────────────────────────────
 Route::get('/system/health', function () {

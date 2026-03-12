@@ -25,6 +25,7 @@ class Customer extends Model
         'last_order_at',
         'sms_opt_out',
         'sms_opt_out_at',
+        'internal_notes',
     ];
 
     protected $casts = [

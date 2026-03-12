@@ -5,25 +5,21 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WebhookLog extends Model
 {
     protected $fillable = [
-        'idempotency_key',
-        'gateway',
-        'gateway_event_id',
-        'event_type',
-        'headers',
-        'raw_body',
-        'payload',
-        'status',
-        'error_message',
-        'processed_at',
+        'direction', 'webhook_subscription_id', 'url',
+        'event', 'payload', 'response_code', 'response_body', 'status',
     ];
 
     protected $casts = [
-        'headers' => 'array',
         'payload' => 'array',
-        'processed_at' => 'datetime',
     ];
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(WebhookSubscription::class, 'webhook_subscription_id');
+    }
 }

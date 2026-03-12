@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\DTOs\OrderRefundedData;
+use App\Domains\Orders\Events\OrderRefunded;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRefundRequest;
 use App\Models\Order;
@@ -67,6 +69,9 @@ class RefundController extends Controller
             ['order_id' => $order->id],
             $request,
         );
+
+        $refund->load('order');
+        event(new OrderRefunded(OrderRefundedData::fromRefund($refund)));
 
         return response()->json(['refund' => $refund], 201);
     }

@@ -185,17 +185,63 @@ class ItemController extends Controller
     }
 
     /**
-     * Lookup item by barcode
+     * Lookup item by barcode.
+     * Supports GS1 weight-embedded barcodes (prefix 2x, 13 digits):
+     *   2[item_code_5_digits][weight_5_digits_grams][check_digit]
+     * When detected, the decoded weight (in grams) is returned alongside the item.
      */
     public function lookupByBarcode($barcode)
     {
+        $weightGrams = null;
+        $lookupBarcode = $barcode;
+
+        // Detect GS1-128 weight barcode: starts with 2, 13 digits
+        if (preg_match('/^2(\d{5})(\d{5})\d$/', $barcode, $m)) {
+            $itemCode  = $m[1];           // 5-digit item reference
+            $weightGrams = (int) $m[2];   // grams encoded in the barcode
+            $lookupBarcode = $itemCode;   // look up item by the short code
+        }
+
         $item = Item::with(['category', 'variants', 'modifiers'])
-            ->where('barcode', $barcode)
+            ->where(function ($q) use ($lookupBarcode) {
+                $q->where('barcode', $lookupBarcode)
+                  ->orWhere('sku', $lookupBarcode);
+            })
             ->where('is_active', true)
             ->where('is_available', true)
             ->firstOrFail();
 
-        return response()->json(['item' => $item]);
+        $response = ['item' => $item];
+        if ($weightGrams !== null) {
+            $response['weight_grams'] = $weightGrams;
+            // Pre-calculate price for weight items: price stored per 100g
+            if ($item->price && $item->unit === 'kg') {
+                $response['weight_price'] = (int) round($item->price * $weightGrams / 1000);
+            }
+        }
+
+        return response()->json($response);
+    }
+
+    /**
+     * Return barcode label data for printing.
+     * The frontend/POS renders the label using this structured data.
+     */
+    public function barcodeLabel($id)
+    {
+        $item = Item::findOrFail($id);
+
+        return response()->json([
+            'label' => [
+                'item_id'   => $item->id,
+                'name'      => $item->name,
+                'barcode'   => $item->barcode,
+                'sku'       => $item->sku ?? null,
+                'price'     => $item->price,
+                'unit'      => $item->unit ?? null,
+                'generated_at' => now()->toIso8601String(),
+            ],
+        ]);
     }
 
     /**

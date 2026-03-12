@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Shifts\DTOs\ShiftClosedData;
+use App\Domains\Shifts\DTOs\ShiftOpenedData;
+use App\Domains\Shifts\Events\ShiftClosed;
+use App\Domains\Shifts\Events\ShiftOpened;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CloseShiftRequest;
 use App\Http\Requests\OpenShiftRequest;
 use App\Models\CashMovement;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Shift;
 use App\Services\AuditLogService;
@@ -53,6 +58,13 @@ class ShiftController extends Controller
             [],
             $request,
         );
+
+        event(new ShiftOpened(new ShiftOpenedData(
+            shiftId: $shift->id,
+            userId: $userId,
+            userName: $request->user()?->name ?? 'Unknown',
+            openingCash: (float) ($shift->opening_cash ?? 0),
+        )));
 
         return response()->json(['shift' => $shift], 201);
     }
@@ -115,6 +127,27 @@ class ShiftController extends Controller
             ],
             $request,
         );
+
+        $orderCount = Order::where('user_id', $shift->user_id)
+            ->whereBetween('created_at', [$shift->opened_at, $shift->closed_at])
+            ->whereNotIn('status', ['cancelled'])
+            ->count();
+
+        $totalRevenue = Order::where('user_id', $shift->user_id)
+            ->whereBetween('created_at', [$shift->opened_at, $shift->closed_at])
+            ->whereNotIn('status', ['cancelled'])
+            ->sum('total');
+
+        event(new ShiftClosed(new ShiftClosedData(
+            shiftId: $shift->id,
+            userId: $shift->user_id,
+            userName: $request->user()?->name ?? 'Unknown',
+            expectedCash: (float) $expectedCash,
+            actualCash: $closingCash,
+            variance: (float) $variance,
+            orderCount: $orderCount,
+            totalRevenue: (float) $totalRevenue,
+        )));
 
         return response()->json([
             'shift' => $shift,

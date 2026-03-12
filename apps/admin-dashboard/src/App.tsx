@@ -20,6 +20,8 @@ import { ProfitLossPage } from './pages/ProfitLossPage';
 import { SupplierIntelligencePage } from './pages/SupplierIntelligencePage';
 import { ForecastPage } from './pages/ForecastPage';
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
+import { WebhooksPage } from './pages/WebhooksPage';
+import { DashboardPage } from './pages/DashboardPage';
 
 function AuthGuard({
   user,
@@ -75,7 +77,8 @@ export default function App() {
           <AuthGuard user={user}>
             <Layout user={user!} onLogout={handleLogout}>
               <Routes>
-                <Route index element={<Navigate to="/orders" replace />} />
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard"  element={<DashboardPage />} />
                 <Route path="orders"     element={<OrdersPage />} />
                 <Route path="kds"        element={<KDSPage />} />
                 <Route path="delivery"   element={<DeliveryPage />} />
@@ -93,6 +96,7 @@ export default function App() {
                 <Route path="supplier-intelligence" element={<SupplierIntelligencePage />} />
                 <Route path="forecasts"             element={<ForecastPage />} />
                 <Route path="purchase-orders"       element={<PurchaseOrdersPage />} />
+                <Route path="webhooks"              element={<WebhooksPage />} />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />
               </Routes>
             </Layout>
