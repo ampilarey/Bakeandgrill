@@ -9,6 +9,7 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\OtpVerification;
+use App\Rules\MaldivesPhone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,18 +23,11 @@ class CustomerAuthController extends Controller
     public function requestOtp(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => ['required', 'string', new MaldivesPhone()],
         ]);
 
-        // Normalize phone number (accept with or without +960)
+        // Normalize phone number to canonical +960XXXXXXX format
         $phone = $this->normalizePhone($request->phone);
-
-        // Validate normalized format
-        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
-            throw ValidationException::withMessages([
-                'phone' => ['Please enter a valid Maldivian phone number (7 digits or +960XXXXXXX)'],
-            ]);
-        }
 
         // Rate limiting: 3 OTP requests per hour per phone
         $key = 'otp-request:' . $phone;
@@ -102,7 +96,7 @@ class CustomerAuthController extends Controller
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => ['required', 'string', new MaldivesPhone()],
             'otp' => 'required|string|size:6',
         ]);
 
@@ -172,32 +166,11 @@ class CustomerAuthController extends Controller
     }
 
     /**
-     * Normalize phone number to +960XXXXXXX format
+     * Normalize a phone number to +960XXXXXXX canonical format.
+     * Input must already pass MaldivesPhone validation before calling this.
      */
     private function normalizePhone(string $phone): string
     {
-        // Remove all non-numeric characters except +
-        $digits = preg_replace('/[^0-9+]/', '', $phone);
-
-        // Remove + sign for processing
-        $digitsOnly = str_replace('+', '', $digits);
-
-        // If already has 960 prefix
-        if (str_starts_with($digitsOnly, '960') && strlen($digitsOnly) === 10) {
-            return '+' . $digitsOnly;
-        }
-
-        // If 7 digits, add 960 prefix
-        if (strlen($digitsOnly) === 7) {
-            return '+960' . $digitsOnly;
-        }
-
-        // If 10 digits starting with 960
-        if (strlen($digitsOnly) === 10 && str_starts_with($digitsOnly, '960')) {
-            return '+' . $digitsOnly;
-        }
-
-        // Default: assume it's 7 digits and add prefix
-        return '+960' . substr($digitsOnly, -7);
+        return \App\Rules\MaldivesPhone::normalize($phone);
     }
 }

@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'device.active' => App\Http\Middleware\EnsureActiveDevice::class,
             'bml.signature' => App\Http\Middleware\VerifyBmlSignature::class,
+            'role'          => App\Http\Middleware\RequireRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

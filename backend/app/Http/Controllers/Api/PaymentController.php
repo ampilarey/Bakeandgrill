@@ -106,7 +106,7 @@ class PaymentController extends Controller
         $state = $request->query('state', 'UNKNOWN');
 
         return redirect(
-            rtrim(config('app.frontend_url', config('app.url')), '/') . "/orders/{$orderId}?payment={$state}",
+            config('frontend.order_status_url') . '/' . $orderId . '?payment=' . $state,
         );
     }
 }

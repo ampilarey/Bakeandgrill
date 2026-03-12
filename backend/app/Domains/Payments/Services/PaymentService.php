@@ -101,7 +101,7 @@ class PaymentService
             ]);
         }
 
-        $returnUrl = rtrim(config('bml.return_url'), '/') . '?orderId=' . $order->id;
+        $returnUrl = config('frontend.order_status_url') . '/' . $order->id . '?payment=pending';
 
         $result = $this->bml->createPayment(
             $payment->amount_laar,

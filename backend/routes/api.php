@@ -40,12 +40,7 @@ use Illuminate\Support\Facades\Route;
 
 // Health check endpoint
 Route::get('/health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'timestamp' => now()->toIso8601String(),
-        'version' => '1.0.0',
-        'service' => 'Bake & Grill API',
-    ]);
+    return response()->json(['status' => 'ok']);
 });
 
 // Opening hours status (public - for online order app)
@@ -294,8 +289,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/orders/{orderId}/promo/{promotionId}', [App\Http\Controllers\Api\PromotionController::class, 'removeFromOrder']);
 });
 
-// Admin — full CRUD (requires staff token + admin permission)
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+// Admin — full CRUD (requires staff token + manager/admin/owner role)
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin')->group(function () {
     Route::get('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminIndex']);
     Route::post('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminStore']);
     Route::patch('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminUpdate']);
@@ -312,7 +307,7 @@ Route::middleware('auth:sanctum')->prefix('loyalty')->group(function () {
     Route::delete('/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'releaseHold']);
 });
 
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin')->group(function () {
     Route::get('/loyalty/accounts', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAccountIndex']);
     Route::get('/loyalty/accounts/{customerId}/ledger', [App\Http\Controllers\Api\LoyaltyController::class, 'adminLedger']);
     Route::post('/loyalty/accounts/{customerId}/adjust', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAdjust']);
@@ -338,12 +333,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus']);
 });
 
-// Public order-status stream (uses ?token= query param — customer Sanctum token)
+// Issue a short-lived stream ticket (requires customer auth)
+Route::middleware('auth:sanctum')->post(
+    '/orders/{orderId}/stream-ticket',
+    [App\Http\Controllers\Api\StreamController::class, 'issueStreamTicket']
+);
+
+// Public order-status stream — uses short-lived ?ticket= (NOT the real auth token)
 Route::get('/stream/order-status/{orderId}', [App\Http\Controllers\Api\StreamController::class, 'publicOrderStatus'])
     ->middleware('throttle:30,1');
 
 // ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('admin/sms')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/sms')->group(function () {
     // Full SMS audit log (OTP + promo + campaign + transactional)
     Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
     Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
@@ -358,10 +359,10 @@ Route::middleware(['auth:sanctum'])->prefix('admin/sms')->group(function () {
 });
 
 // ─── Image Upload (Admin) ──────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
 
-// ─── Staff Management (Admin) ─────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('admin/staff')->group(function () {
+// ─── Staff Management (Admin/Owner only) ──────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:admin,owner'])->prefix('admin/staff')->group(function () {
     Route::get('/',         [App\Http\Controllers\Api\StaffController::class, 'index']);
     Route::post('/',        [App\Http\Controllers\Api\StaffController::class, 'store']);
     Route::patch('/{id}',   [App\Http\Controllers\Api\StaffController::class, 'update']);
@@ -371,7 +372,7 @@ Route::middleware(['auth:sanctum'])->prefix('admin/staff')->group(function () {
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
-Route::middleware(['auth:sanctum'])->prefix('admin/analytics')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/analytics')->group(function () {
     Route::get('/peak-hours',    [App\Http\Controllers\Api\AnalyticsController::class, 'peakHours']);
     Route::get('/retention',     [App\Http\Controllers\Api\AnalyticsController::class, 'retention']);
     Route::get('/profitability', [App\Http\Controllers\Api\AnalyticsController::class, 'profitability']);
@@ -395,7 +396,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Admin: gift cards and referral overview
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
     Route::get('/admin/gift-cards',  [App\Http\Controllers\Api\GiftCardController::class, 'index']);
     Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
     Route::get('/admin/referrals',   [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
@@ -407,7 +408,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::get('/wait-time', [App\Http\Controllers\Api\WaitTimeController::class, 'estimate']);
 
 // Staff Scheduling (admin)
-Route::middleware(['auth:sanctum'])->prefix('admin/schedules')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/schedules')->group(function () {
     Route::get('/',        [App\Http\Controllers\Api\ScheduleController::class, 'index']);
     Route::post('/',       [App\Http\Controllers\Api\ScheduleController::class, 'store']);
     Route::patch('/{id}',  [App\Http\Controllers\Api\ScheduleController::class, 'update']);
@@ -426,7 +427,7 @@ Route::middleware(['auth:sanctum'])->prefix('waste-logs')->group(function () {
 Route::get('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'index']);
 
 // Admin: manage photos
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
     Route::post('/items/{itemId}/photos',            [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
     Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
     Route::delete('/items/{itemId}/photos/{photoId}',[App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
@@ -438,7 +439,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class, 'active']);
 
 // Admin: CRUD
-Route::middleware(['auth:sanctum'])->prefix('admin/specials')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/specials')->group(function () {
     Route::get('/',        [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
     Route::post('/',       [App\Http\Controllers\Api\DailySpecialController::class, 'store']);
     Route::patch('/{id}',  [App\Http\Controllers\Api\DailySpecialController::class, 'update']);
@@ -472,7 +473,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Admin: moderate reviews
-Route::middleware(['auth:sanctum'])->prefix('admin/reviews')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/reviews')->group(function () {
     Route::get('/',           [App\Http\Controllers\Api\ReviewController::class, 'adminIndex']);
     Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
 });
@@ -493,7 +494,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Staff: manage reservation status + settings
-Route::middleware(['auth:sanctum'])->prefix('admin/reservations')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/reservations')->group(function () {
     Route::get('/',                  [ReservationController::class, 'index']);
     Route::patch('/{id}/status',     [ReservationController::class, 'updateStatus']);
     Route::get('/settings',          [ReservationController::class, 'getSettings']);
@@ -501,7 +502,7 @@ Route::middleware(['auth:sanctum'])->prefix('admin/reservations')->group(functio
 });
 
 // ─── Invoices ──────────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('invoices')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('invoices')->group(function () {
     Route::get('/',                           [App\Http\Controllers\Api\InvoiceController::class, 'index']);
     Route::post('/',                          [App\Http\Controllers\Api\InvoiceController::class, 'store']);
     Route::get('/{id}',                       [App\Http\Controllers\Api\InvoiceController::class, 'show']);
@@ -516,7 +517,7 @@ Route::middleware(['auth:sanctum'])->prefix('invoices')->group(function () {
 });
 
 // ─── Expenses ──────────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('expenses')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('expenses')->group(function () {
     Route::get('/',                [App\Http\Controllers\Api\ExpenseController::class, 'index']);
     Route::post('/',               [App\Http\Controllers\Api\ExpenseController::class, 'store']);
     Route::get('/categories',      [App\Http\Controllers\Api\ExpenseController::class, 'categories']);
@@ -529,7 +530,7 @@ Route::middleware(['auth:sanctum'])->prefix('expenses')->group(function () {
 });
 
 // ─── Finance Reports ───────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('reports/finance')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('reports/finance')->group(function () {
     Route::get('/profit-and-loss',    [App\Http\Controllers\Api\FinanceReportController::class, 'profitAndLoss']);
     Route::get('/cash-flow',          [App\Http\Controllers\Api\FinanceReportController::class, 'cashFlow']);
     Route::get('/tax',                [App\Http\Controllers\Api\FinanceReportController::class, 'taxReport']);
@@ -539,7 +540,7 @@ Route::middleware(['auth:sanctum'])->prefix('reports/finance')->group(function (
 });
 
 // ─── Supplier Intelligence ─────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('suppliers')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('suppliers')->group(function () {
     Route::post('/{id}/ratings',            [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'rate']);
     Route::get('/{id}/ratings',             [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'ratings']);
     Route::get('/{id}/performance',         [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'performance']);
@@ -550,7 +551,7 @@ Route::middleware(['auth:sanctum'])->prefix('suppliers')->group(function () {
 });
 
 // ─── Purchase Workflow ─────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('purchases')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('purchases')->group(function () {
     Route::post('/{id}/approve',         [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'approve']);
     Route::post('/{id}/reject',          [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject']);
     Route::post('/{id}/receive',         [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'receive']);
@@ -559,7 +560,7 @@ Route::middleware(['auth:sanctum'])->prefix('purchases')->group(function () {
 });
 
 // ─── Inventory Categories & Unit Conversions ───────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('inventory-categories')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('inventory-categories')->group(function () {
     Route::get('/',        fn() => response()->json(['categories' => \App\Models\InventoryCategory::orderBy('name')->get()]));
     Route::post('/',       function (Illuminate\Http\Request $req) {
         $validated = $req->validate(['name' => 'required|string|max:100', 'description' => 'nullable|string']);
@@ -573,7 +574,7 @@ Route::middleware(['auth:sanctum'])->prefix('inventory-categories')->group(funct
     });
 });
 
-Route::middleware(['auth:sanctum'])->prefix('unit-conversions')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('unit-conversions')->group(function () {
     Route::get('/', fn() => response()->json(['conversions' => \App\Models\UnitConversion::all()]));
     Route::post('/', function (Illuminate\Http\Request $req) {
         $v = $req->validate(['from_unit' => 'required|string|max:20', 'to_unit' => 'required|string|max:20', 'factor' => 'required|numeric|min:0.000001']);
@@ -583,7 +584,7 @@ Route::middleware(['auth:sanctum'])->prefix('unit-conversions')->group(function 
 });
 
 // ─── Forecasting ───────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->prefix('forecasts')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('forecasts')->group(function () {
     Route::get('/revenue',   [App\Http\Controllers\Api\ForecastController::class, 'revenueForecast']);
     Route::get('/items',     [App\Http\Controllers\Api\ForecastController::class, 'itemForecast']);
     Route::get('/trends',    [App\Http\Controllers\Api\ForecastController::class, 'salesTrends']);
@@ -592,10 +593,5 @@ Route::middleware(['auth:sanctum'])->prefix('forecasts')->group(function () {
 
 // ─── System Health ─────────────────────────────────────────────────────────
 Route::get('/system/health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'timestamp' => now()->toIso8601String(),
-        'environment' => app()->environment(),
-        'database' => 'connected',
-    ]);
+    return response()->json(['status' => 'ok']);
 });

@@ -70,38 +70,66 @@ export function OrderStatusPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, token]);
 
-  // SSE real-time tracking — uses public token-in-URL endpoint (EventSource can't set headers)
+  // SSE real-time tracking — requests a short-lived ticket first, then opens stream
   useEffect(() => {
     if (!orderId) return;
 
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-    const sseUrl = `${API_ORIGIN}/api/stream/order-status/${orderId}${tokenParam}`;
-    const es = new EventSource(sseUrl, { withCredentials: false });
+    let cancelled = false;
 
-    const handleStatus = (e: MessageEvent) => {
-      try {
-        const payload = JSON.parse(e.data) as { status: string; paid_at?: string; updated_at?: string };
-        setOrder(prev => prev ? { ...prev, status: payload.status, paid_at: payload.paid_at ?? prev.paid_at } : prev);
-        setLiveConnected(true);
-      } catch { /* ignore */ }
+    const startStream = async () => {
+      let ticketParam = "";
+
+      // Request a one-time stream ticket from the backend (token never goes in the URL)
+      if (token) {
+        try {
+          const res = await fetch(`${API_ORIGIN}/api/orders/${orderId}/stream-ticket`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          });
+          if (res.ok) {
+            const data = await res.json() as { ticket: string };
+            ticketParam = `?ticket=${encodeURIComponent(data.ticket)}`;
+          }
+        } catch {
+          // If ticket request fails, open stream without auth (public orders still visible)
+        }
+      }
+
+      if (cancelled) return;
+
+      const sseUrl = `${API_ORIGIN}/api/stream/order-status/${orderId}${ticketParam}`;
+      const es = new EventSource(sseUrl, { withCredentials: false });
+
+      const handleStatus = (e: MessageEvent) => {
+        try {
+          const payload = JSON.parse(e.data) as { status: string; paid_at?: string; updated_at?: string };
+          setOrder(prev => prev ? { ...prev, status: payload.status, paid_at: payload.paid_at ?? prev.paid_at } : prev);
+          setLiveConnected(true);
+        } catch { /* ignore */ }
+      };
+
+      es.addEventListener("order.updated",   handleStatus);
+      es.addEventListener("order.paid",      handleStatus);
+      es.addEventListener("order.completed", handleStatus);
+      es.addEventListener("order.cancelled", handleStatus);
+
+      es.onerror = () => {
+        setLiveConnected(false);
+        es.close();
+        esRef.current = null;
+      };
+
+      esRef.current = es;
     };
 
-    es.addEventListener("order.updated",   handleStatus);
-    es.addEventListener("order.paid",      handleStatus);
-    es.addEventListener("order.completed", handleStatus);
-    es.addEventListener("order.cancelled", handleStatus);
-
-    es.onerror = () => {
-      setLiveConnected(false);
-      es.close();
-      esRef.current = null;
-    };
-
-    esRef.current = es;
+    void startStream();
 
     return () => {
-      es.close();
-      esRef.current = null;
+      cancelled = true;
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
     };
   }, [orderId, token]);
 

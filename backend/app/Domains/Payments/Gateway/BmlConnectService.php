@@ -58,7 +58,7 @@ class BmlConnectService
             'merchantId'  => $this->merchantId,
             'amount'      => $amountLaar,
             'currency'    => $currency,
-            'redirectUrl' => $returnUrl ?? config('bml.return_url'),
+            'redirectUrl' => $returnUrl ?? config('frontend.order_status_url'),
             // 'logo' omitted — BML rejects null; only send if you have a URL
         ];
 

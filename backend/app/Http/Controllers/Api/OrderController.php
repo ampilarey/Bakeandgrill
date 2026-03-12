@@ -108,6 +108,12 @@ class OrderController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
+        // Only staff (User model) may use this endpoint.
+        // Customers must use the customer-scoped endpoint which enforces ownership.
+        if (!$request->user() instanceof \App\Models\User) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $order = Order::with(['items.modifiers', 'payments', 'customer', 'table'])
             ->findOrFail($id);
 

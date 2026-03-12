@@ -8,8 +8,12 @@ use App\Domains\Realtime\Services\KdsStreamProvider;
 use App\Domains\Realtime\Services\OrderStreamProvider;
 use App\Domains\Realtime\Services\SseStreamService;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Order;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -70,33 +74,65 @@ class StreamController extends Controller
     }
 
     /**
-     * GET /api/stream/order-status/{orderId}?token=...
+     * POST /api/orders/{orderId}/stream-ticket
      *
-     * Public endpoint that accepts a Sanctum token via query param (needed
-     * because EventSource in browsers cannot set Authorization headers).
-     * The token is validated manually. Customers can only watch their own orders.
+     * Issues a short-lived, one-time-use ticket for the public SSE stream.
+     * Requires auth:sanctum (customer token). The ticket is stored in cache
+     * for 60 seconds and deleted after first use, so the real auth token
+     * never appears in the URL or server logs.
+     */
+    public function issueStreamTicket(Request $request, int $orderId): JsonResponse
+    {
+        $order = Order::findOrFail($orderId);
+        $user  = $request->user();
+
+        // Customer must own the order
+        if ($user instanceof Customer && $order->customer_id !== $user->id) {
+            abort(403, 'Not your order.');
+        }
+
+        $ticket = Str::random(64);
+        $ttl    = 60; // seconds
+
+        Cache::put('stream_ticket:' . $ticket, [
+            'order_id'    => $orderId,
+            'customer_id' => $user instanceof Customer ? $user->id : null,
+        ], $ttl);
+
+        return response()->json(['ticket' => $ticket, 'expires_in' => $ttl]);
+    }
+
+    /**
+     * GET /api/stream/order-status/{orderId}?ticket=...
+     *
+     * Public SSE endpoint. Accepts a short-lived ticket (NOT the real auth
+     * token) to authenticate the connection. Ticket is one-time-use and
+     * expires in 60 seconds so it is safe in URLs and server logs.
      */
     public function publicOrderStatus(Request $request, int $orderId): StreamedResponse
     {
-        $tokenValue = $request->query('token', '');
-        $order = Order::find($orderId);
+        $ticketValue = $request->query('ticket', '');
 
-        if (!$order) {
-            abort(404, 'Order not found');
+        // Ticket is mandatory — no silent fall-through
+        if ($ticketValue === '') {
+            abort(401, 'Stream ticket required.');
         }
 
-        // Authenticate via query token if provided
-        if ($tokenValue) {
-            /** @var \Laravel\Sanctum\PersonalAccessToken|null $accessToken */
-            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($tokenValue);
-            if ($accessToken) {
-                $tokenable = $accessToken->tokenable;
-                // Customers can only watch their own orders
-                if ($tokenable instanceof \App\Models\Customer && $order->customer_id !== $tokenable->id) {
-                    abort(403, 'Not your order');
-                }
-            }
+        $cacheKey = 'stream_ticket:' . $ticketValue;
+        $payload  = Cache::get($cacheKey);
+
+        if ($payload === null) {
+            abort(401, 'Invalid or expired stream ticket.');
         }
+
+        if ((int) $payload['order_id'] !== $orderId) {
+            abort(403, 'Ticket does not match this order.');
+        }
+
+        // One-time use — delete immediately after validation
+        Cache::forget($cacheKey);
+
+        $order = Order::findOrFail($orderId);
 
         return $this->streamSingleOrder($order, $request);
     }
