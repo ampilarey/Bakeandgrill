@@ -155,10 +155,13 @@ Findings are classified into three categories:
 | F | Phone normalization too permissive | 🔴 Critical | **CONFIRMED** | `CustomerAuthController::normalizePhone()` line 177-202 | Line 201: `return '+960' . substr($digitsOnly, -7);` — the fallback takes the LAST 7 digits of ANY input. `99991234567` normalizes to `+9601234567`. This is an **account takeover vector**. However, line 32 adds a regex check AFTER normalization — so the damage is the wrong number gets the OTP, not a bypass. Still critical. |
 | F+ | OTP rate limiting exists but is per-phone only | 🟠 Medium | **NEW FINDING** | `CustomerAuthController::requestOtp()` line 39-46 | Rate limit is 3 OTP/hour per phone number. But there is NO per-IP rate limit. An attacker can spam OTPs to thousands of different numbers (SMS flooding / cost abuse). Route-level `throttle:5,10` exists but is too generous. |
 | G | Empty migration file | 🟡 Low | **CONFIRMED** | `2026_02_03_210622_add_delivery_address_to_customers_table.php` | This migration is a no-op (empty `up()` and `down()` with only `//` comments). A duplicate migration `2026_02_04_001000_add_delivery_address_to_customers_table.php` has the actual columns. The empty one was likely an abandoned first attempt. |
-| H | Junk files in repo | 🟢 Not an issue | `.gitignore` | `.gitignore` is comprehensive — covers `.env`, vendor, node_modules, build artifacts, IDE files, SQLite, OS files. No secrets found in repo. |
+| H | Junk files in repo | 🟡 Low | `.gitignore`, repo root | `.gitignore` covers secrets and dependencies well. **However**, there are 10+ development prompt/status files in the repo root (`CURSOR_*.md`, `DEPLOYMENT_READY.md`, `EVERYTHING_COMPLETE.md`, `FINAL_AUDIT_REPORT.md`, etc.) that should not be tracked. No secrets found — this is a hygiene issue only. |
 | I | Services manually instantiated in controllers | 🟡 Low | **CONFIRMED — minor** | `StreamController.php` line 131 | Only one instance: `(new OrderStreamProvider)->parseCursor($c)` inside `streamSingleOrder()`. The main constructor uses proper DI. This is a minor inconsistency, not a bug. |
 | J | Routes file too large | 🟡 Low | Design recommendation | `routes/api.php` (500+ lines) | Not a security issue — maintenance improvement only |
 | K | Customer/staff token isolation not enforced | 🟠 Medium | **NEW FINDING** | `routes/api.php` lines 92-205 | Staff routes use `auth:sanctum` which also accepts customer tokens. A customer token could potentially hit staff-only endpoints (orders, KDS, reports, refunds, SMS). Controllers may check abilities internally but this is not enforced at route level. |
+| L | IDOR on staff order endpoint | 🔴 Critical | **NEW FINDING** | `OrderController::show()` lines 109-115 | `GET /api/orders/{id}` has **NO ownership or role check**. Any authenticated user (including customers via Finding K) can view ANY order by ID — including other customers' orders with full payment and customer data. The secure pattern exists in `CustomerController::show()` which scopes via `$customer->orders()->findOrFail($id)`. |
+| M | Admin controllers lack internal authorization | 🟠 Medium | **NEW FINDING** | `PromotionController`, `StaffController`, and others | Admin controller methods (`adminStore`, `adminUpdate`, `adminDestroy`) do NOT perform any internal authorization checks. They rely entirely on route middleware — which is only `auth:sanctum` (see Finding C). This means Finding C has no safety net. |
+| N | New finance/inventory routes also lack role checks | 🟠 Medium | **NEW FINDING** | `routes/api.php` — invoices (line 504), expenses (line 519), finance reports (line 532), supplier intelligence (line 542), purchase workflow (line 553), inventory categories (line 562), forecasts (line 586) | Newly added financial route groups also use only `auth:sanctum` with no role middleware. Any authenticated user can access invoices, expense records, P&L reports, tax reports, and supplier data. |
 
 ---
 
@@ -983,6 +986,9 @@ Week 3-4 — Session 2 (Roles):
 | C — Roles | `routes/api.php` (10+ admin route groups), `app/Models/User.php`, `bootstrap/app.php` | None | `app/Http/Middleware/RequireRole.php` |
 | G — Empty Migration | `database/migrations/2026_02_03_210622_add_delivery_address_to_customers_table.php` | None | None (delete this file) |
 | K — Token Isolation | `routes/api.php` (lines 92-205) | None | Guard middleware or route-level guard specification |
+| L — IDOR Orders | `app/Http/Controllers/Api/OrderController.php` (lines 109-115) | None | None (fix in existing controller) |
+| M — Admin Controllers | `app/Http/Controllers/Api/PromotionController.php`, `StaffController.php`, others | None | None (add checks in existing controllers or fix via Finding C middleware) |
+| N — Finance Routes | `routes/api.php` (lines 504-591) | None | None (apply role middleware from Finding C) |
 
 ---
 
@@ -996,6 +1002,7 @@ Week 3-4 — Session 2 (Roles):
 | `tests/Feature/System/HealthEndpointTest.php` | Finding D |
 | `tests/Feature/Payment/BmlReturnUrlTest.php` | Finding E |
 | `tests/Feature/Stream/OrderStreamAuthTest.php` | Findings B + A |
+| `tests/Feature/Orders/OrderIdorTest.php` | Finding L (NEW) |
 
 ### Session 2 Tests
 
@@ -1014,14 +1021,15 @@ Week 3-4 — Session 2 (Roles):
 
 ## Additional Security Notes
 
-These should be verified during implementation. They are lower priority but should not be ignored.
+Items marked with verification status have been checked during the code audit.
 
-- **IDOR on order detail** — Verify `GET /api/orders/{id}` checks that the order belongs to the authenticated customer
-- **IDOR on reservations** — Verify customers can only cancel or view their own reservations
-- **Mass assignment** — Verify all models use `$fillable` (not `$guarded = []`)
-- **Webhook signature** — Verify BML webhook validates a signature or shared secret before processing
-- **Duplicate webhook** — Verify that receiving the same BML webhook twice does not double-process a payment
-- **Refund authorization** — Verify only admin or manager can issue refunds
+- **IDOR on order detail** — **CONFIRMED VULNERABLE (Finding L).** `GET /api/orders/{id}` in `OrderController::show()` (line 109-115) does **NOT** check ownership. Any authenticated user can read any order. The secure pattern exists in `CustomerController::show()` which scopes via `$customer->orders()->findOrFail($id)`. **This must be fixed in Session 1.**
+- **IDOR on reservations** — Not yet verified. Check `ReservationController::destroy()` for ownership validation.
+- **Mass assignment** — Not yet verified. Check all models for `$fillable` vs `$guarded = []`.
+- **Webhook signature** — **Verified: SECURE.** BML webhook route uses `->middleware('bml.signature')` (line 277 in `routes/api.php`). The `VerifyBmlSignature` middleware handles signature validation.
+- **Duplicate webhook** — Not yet verified at code level. The `BmlWebhookController` delegates to `PaymentService::handleBmlWebhook()` — check that method for idempotency.
+- **Refund authorization** — **NOT ENFORCED at route level.** Refund routes (`/orders/{orderId}/refunds`) are under the main `auth:sanctum` group (line 196) with no role middleware. Any authenticated user (including customers via Finding K) could potentially create refunds. Must verify `RefundController::store()` for internal checks.
+- **Admin controller authorization** — **CONFIRMED MISSING (Finding M).** Checked `PromotionController` and `StaffController` admin methods — they perform NO internal authorization checks. Combined with Finding C (no role middleware), this means there is zero authorization layer on admin operations.
 
 ---
 
@@ -1098,16 +1106,17 @@ For each finding, state:
 
 ### Overall Assessment
 
-This document has been **verified against the actual codebase**. All "Suspected" findings have been confirmed or ruled out with exact file paths and line numbers. Two new findings were discovered during verification (F+ SMS cost abuse, K customer/staff token isolation).
+This document has been **verified against the actual codebase**. All "Suspected" findings have been confirmed or ruled out with exact file paths and line numbers. Multiple new findings were discovered during verification.
 
 **Key verification outcomes:**
-- **7 of 10 original findings CONFIRMED** (A, B, C, D, E, F, G)
-- **1 finding ruled out** (H — repo hygiene is clean)
+- **8 of 10 original findings CONFIRMED** (A, B, C, D, E, F, G, H-partial)
 - **2 findings confirmed as minor/low-priority** (I, J)
-- **2 new findings discovered** (F+, K)
+- **6 new findings discovered** (F+, K, L, M, N, and the second health endpoint)
 - **Finding A is worse than originally described** — stream has zero auth, not just weak auth
-- **Finding C is worse than originally described** — zero role checks on ALL admin routes, not just some
+- **Finding C is worse than originally described** — zero role checks on ALL admin routes, not just some, AND admin controllers have no internal authorization checks either (Finding M)
 - **Finding D had a missed second endpoint** — `/api/health` also leaks info
+- **Finding L (IDOR) is critical** — any authenticated user can read any order including customer PII and payment data
+- **Finding N** — newly added finance routes (invoices, expenses, P&L, tax reports) also have no role enforcement
 
 **Final classification: Verified, code-referenced, and ready for implementation.**
 
@@ -1145,6 +1154,9 @@ The deliverables section lists what a final report must contain. It does not spe
 **5. New findings discovered during verification** *(NEW)*
 - **F+ (SMS cost abuse):** No per-IP rate limit on OTP endpoint at application level. Route throttle is `5,10` (5 per 10 min) which is reasonable but could still be used for targeted SMS flooding.
 - **K (Customer/staff token isolation):** Customer tokens could potentially hit staff routes since both use `auth:sanctum`. Must verify controller-level ability checks.
+- **L (IDOR on orders — CRITICAL):** `OrderController::show()` has NO ownership check. Any authenticated user can read any order by guessing IDs. This exposes customer PII, payment details, and order contents.
+- **M (Admin controllers have no internal auth):** Admin controller methods like `PromotionController::adminStore()` and `StaffController::store()` perform zero authorization checks internally. Combined with Finding C, there is no authorization layer at all on admin operations.
+- **N (New finance routes unprotected):** Newly added routes for invoices, expenses, finance reports, supplier intelligence, purchase workflows, and forecasting all use only `auth:sanctum` with no role checks.
 - **Two health endpoints:** The original audit only identified `/api/system/health`. There is also `/api/health` which leaks version and service name.
 - **Duplicate migration file:** `2026_02_03_210622_add_delivery_address_to_customers_table.php` is a no-op. The real migration is `2026_02_04_001000_add_delivery_address_to_customers_table.php`.
 - **`new OrderStreamProvider` in StreamController line 131:** Minor DI inconsistency — the provider is injected via constructor but also manually instantiated inside `streamSingleOrder()`.
@@ -1168,12 +1180,12 @@ All findings have been **verified against the actual codebase**. The document is
 
 **Recommended priority order (updated after verification):**
 
-1. **Finding A (stream open without auth)** — This is worse than originally suspected. The stream has ZERO auth when no token is provided, AND silently continues with invalid tokens. Fix this FIRST or together with B.
-2. **Finding F (phone normalization)** — Confirmed account-affecting bug. The fallback `substr($digitsOnly, -7)` on line 201 must be removed.
-3. **Finding B (token in URL)** — Confirmed. Implement stream ticket mechanism. Deploy with Finding A.
-4. **Finding C (no role checks)** — Confirmed across ALL admin routes. This is Session 2 but is worse than suspected — zero role enforcement anywhere.
-5. **Finding D (health endpoints)** — Quick win. Fix both endpoints.
-6. **Finding E (BML URL)** — Confirmed. 3 locations, 2 config keys. Centralize.
+1. **Finding A+B (stream auth + ticket)** — Stream has ZERO auth when no token provided, AND silently continues with invalid tokens. Fix both together. Deploy frontend + backend simultaneously.
+2. **Finding L (IDOR on orders)** — Any authenticated user can read any order. Quick fix: add ownership check in `OrderController::show()`. **Can be fixed in minutes.**
+3. **Finding F (phone normalization)** — Confirmed account-affecting bug. The fallback `substr($digitsOnly, -7)` on line 201 must be removed.
+4. **Finding D (health endpoints)** — Quick win. Fix both endpoints. **Can be fixed in minutes.**
+5. **Finding E (BML URL)** — 3 locations, 2 config keys. Centralize.
+6. **Finding C+K+M+N (role enforcement — Session 2)** — Zero role checks on ALL admin routes, no internal controller auth, customer tokens can hit staff routes. This is the biggest systemic issue but requires the most careful rollout.
 
 **Remaining blockers before implementation:**
 - Answer Question 2 (Redis availability)
