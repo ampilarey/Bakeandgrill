@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,19 @@ use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
+    // ─── Internal authorization guard (defense-in-depth) ─────────────────────
+    private function authorizeAdminRole(Request $request, string ...$roles): void
+    {
+        $user = $request->user();
+        if (!$user || $user instanceof Customer) {
+            abort(403, 'Forbidden.');
+        }
+        $user->loadMissing('role');
+        if (!in_array($user->role?->slug, $roles, true)) {
+            abort(403, 'Insufficient role.');
+        }
+    }
+
     private function formatUser(User $user): array
     {
         return [
@@ -44,6 +58,8 @@ class StaffController extends Controller
     /** POST /api/admin/staff */
     public function store(Request $request): JsonResponse
     {
+        $this->authorizeAdminRole($request, 'admin', 'owner');
+
         $validated = $request->validate([
             'name'    => 'required|string|max:255',
             'email'   => 'required|email|unique:users,email',
@@ -68,6 +84,8 @@ class StaffController extends Controller
     /** PATCH /api/admin/staff/{id} */
     public function update(Request $request, int $id): JsonResponse
     {
+        $this->authorizeAdminRole($request, 'admin', 'owner');
+
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
@@ -86,6 +104,8 @@ class StaffController extends Controller
     /** POST /api/admin/staff/{id}/pin  — reset PIN */
     public function resetPin(Request $request, int $id): JsonResponse
     {
+        $this->authorizeAdminRole($request, 'admin', 'owner');
+
         $validated = $request->validate([
             'pin' => 'required|string|min:4|max:8',
         ]);
@@ -97,8 +117,10 @@ class StaffController extends Controller
     }
 
     /** DELETE /api/admin/staff/{id} */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
+        $this->authorizeAdminRole($request, 'admin', 'owner');
+
         $user = User::findOrFail($id);
 
         // Prevent deleting the last active admin/owner

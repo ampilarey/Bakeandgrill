@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
@@ -148,8 +149,23 @@ class PromotionController extends Controller
         return response()->json($promotions);
     }
 
+    // ─── Internal authorization guard (defense-in-depth) ─────────────────────
+    private function authorizeAdminRole(Request $request, string ...$roles): void
+    {
+        $user = $request->user();
+        if (!$user || $user instanceof Customer) {
+            abort(403, 'Forbidden.');
+        }
+        $user->loadMissing('role');
+        if (!in_array($user->role?->slug, $roles, true)) {
+            abort(403, 'Insufficient role.');
+        }
+    }
+
     public function adminStore(Request $request): JsonResponse
     {
+        $this->authorizeAdminRole($request, 'manager', 'admin', 'owner');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:promotions,code',
@@ -172,6 +188,8 @@ class PromotionController extends Controller
 
     public function adminUpdate(Request $request, int $id): JsonResponse
     {
+        $this->authorizeAdminRole($request, 'manager', 'admin', 'owner');
+
         $promotion = Promotion::withTrashed()->findOrFail($id);
 
         $validated = $request->validate([
@@ -187,8 +205,10 @@ class PromotionController extends Controller
         return response()->json(['promotion' => $promotion]);
     }
 
-    public function adminDestroy(int $id): JsonResponse
+    public function adminDestroy(Request $request, int $id): JsonResponse
     {
+        $this->authorizeAdminRole($request, 'manager', 'admin', 'owner');
+
         $promotion = Promotion::findOrFail($id);
         $promotion->delete();
 

@@ -164,7 +164,7 @@ class StreamController extends Controller
             function (string $c) use ($order): array {
                 // Refresh the order and check if it changed since cursor
                 $order->refresh();
-                [$since, $sinceId] = (new OrderStreamProvider)->parseCursor($c);
+                [$since, $sinceId] = $this->orderProvider->parseCursor($c);
 
                 if ($order->updated_at > $since || ($order->updated_at == $since && $order->id > $sinceId)) {
                     $eventType = match ($order->status) {
