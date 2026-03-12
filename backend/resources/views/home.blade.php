@@ -1,23 +1,26 @@
 @extends('layout')
 
-@section('title', 'Bake & Grill – Fresh Dhivehi Food & Artisan Baking')
-@section('description', 'Order fresh Dhivehi food, artisan pastries, and premium grills online. Fast delivery across Malé.')
+@section('title', 'Bake & Grill – Dhivehi Breakfast & Artisan Baking in Malé')
+@section('description', 'Real food, proper char, baked fresh at 5am daily. Order Dhivehi hedhikaa, artisan pastries and grills online. Fast delivery across Malé.')
 
 @section('styles')
 <style>
-/* ─── Banner/Carousel ──────────────────────────────────────────── */
+
+/* ══════════════════════════════════════════════════════════
+   HERO CAROUSEL
+══════════════════════════════════════════════════════════ */
 .hero-banner {
     position: relative;
-    height: 500px;
+    height: 600px;
     overflow: hidden;
     background: var(--dark);
 }
-@media (max-width: 768px) { .hero-banner { height: 300px; } }
+@media (max-width: 768px) { .hero-banner { height: 420px; } }
 
 .banner-track {
     display: flex;
     height: 100%;
-    transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .banner-slide {
     min-width: 100%;
@@ -30,8 +33,11 @@
     inset: 0;
     width: 100%; height: 100%;
     object-fit: cover;
-    opacity: 0.4;
+    opacity: 0.45;
+    transform: scale(1.05);
+    transition: transform 8s linear;
 }
+.banner-slide.active img { transform: scale(1); }
 .banner-overlay {
     position: absolute;
     inset: 0;
@@ -41,326 +47,692 @@
     justify-content: center;
     padding: 3rem 10%;
     z-index: 2;
-    background: linear-gradient(90deg, rgba(28,20,8,0.85) 0%, rgba(28,20,8,0.2) 100%);
+    background: linear-gradient(
+        90deg,
+        rgba(28,20,8,0.88) 0%,
+        rgba(28,20,8,0.55) 60%,
+        rgba(28,20,8,0.12) 100%
+    );
 }
 @media (max-width: 768px) {
-    .banner-overlay { align-items: center; text-align: center; padding: 2rem 1.5rem; }
+    .banner-overlay {
+        align-items: center;
+        text-align: center;
+        padding: 2rem 1.5rem;
+        background: linear-gradient(180deg, rgba(28,20,8,0.3) 0%, rgba(28,20,8,0.88) 100%);
+        justify-content: flex-end;
+        padding-bottom: 3rem;
+    }
 }
-.banner-tag {
-    display: inline-block;
-    background: var(--amber);
-    color: white;
-    padding: 0.3rem 0.875rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 1rem;
-}
-.banner-title {
-    font-size: 3.25rem;
-    font-weight: 800;
-    letter-spacing: -0.04em;
-    line-height: 1.1;
-    color: white;
-    margin-bottom: 0.875rem;
-    text-shadow: 0 2px 16px rgba(0,0,0,0.3);
-}
-.banner-sub {
-    font-size: 1.1rem;
-    color: rgba(255,255,255,0.8);
-    margin-bottom: 1.75rem;
-    font-weight: 400;
-}
-.banner-cta {
+
+.banner-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.75rem;
+    gap: 0.4rem;
+    background: rgba(212,129,58,0.22);
+    border: 1px solid rgba(212,129,58,0.4);
+    color: #F0A96A;
+    padding: 0.3rem 0.875rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.125rem;
+}
+.banner-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.08;
+    color: white;
+    margin-bottom: 0.875rem;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.4);
+    max-width: 600px;
+}
+.banner-title em { font-style: normal; color: #F0A96A; }
+.banner-sub {
+    font-size: 1.05rem;
+    color: rgba(255,255,255,0.72);
+    margin-bottom: 2rem;
+    font-weight: 400;
+    max-width: 480px;
+    line-height: 1.6;
+}
+.banner-ctas {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.banner-cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.85rem 1.75rem;
     background: var(--amber);
     color: white;
-    border-radius: 10px;
+    border-radius: 11px;
     font-weight: 700;
     font-size: 0.975rem;
     transition: all 0.2s;
+    box-shadow: 0 4px 18px rgba(212,129,58,0.4);
 }
-.banner-cta:hover { background: var(--amber-hover); transform: translateY(-2px); }
+.banner-cta-primary:hover {
+    background: var(--amber-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(212,129,58,0.5);
+}
+.banner-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.85rem 1.5rem;
+    background: rgba(255,255,255,0.1);
+    border: 1.5px solid rgba(255,255,255,0.28);
+    backdrop-filter: blur(6px);
+    color: white;
+    border-radius: 11px;
+    font-weight: 600;
+    font-size: 0.975rem;
+    transition: all 0.2s;
+}
+.banner-cta-secondary:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.5);
+}
 
+/* Status badge inside hero */
+.hero-status {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.hero-status.open {
+    background: rgba(29,94,56,0.85);
+    color: #6EE7A0;
+    border: 1px solid rgba(110,231,160,0.25);
+}
+.hero-status.closed {
+    background: rgba(120,20,15,0.85);
+    color: #FCA5A5;
+    border: 1px solid rgba(252,165,165,0.25);
+}
+.hero-status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+}
+.open .hero-status-dot { background: #4ADE80; box-shadow: 0 0 6px #4ADE80; animation: pulse-dot 2s infinite; }
+.closed .hero-status-dot { background: #FCA5A5; }
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+@media (max-width: 768px) {
+    .hero-status { top: 1rem; right: 1rem; font-size: 0.72rem; padding: 0.35rem 0.75rem; }
+}
+
+/* Carousel nav */
 .banner-btn {
     position: absolute;
     top: 50%; transform: translateY(-50%);
     z-index: 10;
-    background: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.1);
     backdrop-filter: blur(4px);
-    border: 1.5px solid rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.2);
     color: white;
-    width: 46px; height: 46px;
+    width: 48px; height: 48px;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.2s;
     -webkit-tap-highlight-color: transparent;
 }
-.banner-btn:hover { background: rgba(255,255,255,0.28); }
+.banner-btn:hover { background: rgba(255,255,255,0.22); }
 .banner-btn.prev { left: 1.5rem; }
 .banner-btn.next { right: 1.5rem; }
 @media (max-width: 768px) { .banner-btn { display: none; } }
 
 .banner-dots {
     position: absolute;
-    bottom: 1.25rem;
+    bottom: 1.5rem;
     left: 50%; transform: translateX(-50%);
     display: flex; gap: 6px; z-index: 10;
 }
 .banner-dot {
     width: 6px; height: 6px; border-radius: 99px;
-    background: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.3);
     transition: all 0.3s; cursor: pointer;
 }
-.banner-dot.active { width: 22px; background: var(--amber); }
+.banner-dot.active { width: 24px; background: var(--amber); }
 
+/* Mobile hero adjustments */
 @media (max-width: 768px) {
-    .banner-title { font-size: 1.85rem; }
-    .banner-sub   { font-size: 0.9rem; }
+    .banner-title { font-size: 2rem; max-width: 100%; }
+    .banner-sub   { font-size: 0.9rem; max-width: 100%; }
+    .banner-cta-primary, .banner-cta-secondary { width: 100%; justify-content: center; }
 }
 
-/* ─── Hero ──────────────────────────────────────────────────────── */
-.hero {
-    padding: 5rem 2rem;
-    background: linear-gradient(160deg, var(--amber-light) 0%, var(--bg) 55%);
-    text-align: center;
-    border-bottom: 1px solid var(--border);
-}
-.hero-inner { max-width: 640px; margin: 0 auto; }
-.hero h1 {
-    font-size: 3.25rem;
-    font-weight: 800;
-    letter-spacing: -0.04em;
-    line-height: 1.12;
-    color: var(--dark);
-    margin: 1rem 0 1.25rem;
-}
-.hero h1 em { font-style: normal; color: var(--amber); }
-.hero p {
-    font-size: 1.125rem;
-    color: var(--muted);
-    margin-bottom: 2.25rem;
-    line-height: 1.75;
-}
-.hero-btns { display: flex; gap: 0.875rem; justify-content: center; flex-wrap: wrap; }
-.hero-hours { margin-top: 2rem; font-size: 0.875rem; color: var(--muted); }
-
-.btn-primary {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.9rem 2rem;
-    background: var(--amber); color: white;
-    border-radius: 12px; font-weight: 700; font-size: 1rem;
-    transition: all 0.2s;
-    box-shadow: 0 4px 16px var(--amber-glow);
-}
-.btn-primary:hover { background: var(--amber-hover); transform: translateY(-2px); box-shadow: 0 6px 22px var(--amber-glow); }
-
-.btn-outline {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.9rem 2rem;
-    border: 2px solid var(--border); color: var(--text);
-    border-radius: 12px; font-weight: 600; font-size: 1rem;
-    transition: all 0.2s; background: var(--surface);
-}
-.btn-outline:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
-
-@media (max-width: 600px) {
-    .hero h1  { font-size: 2.1rem; }
-    .hero p   { font-size: 1rem; }
-    .btn-primary, .btn-outline { width: 100%; justify-content: center; }
-}
-
-/* ─── Section ───────────────────────────────────────────────────── */
-.section { padding: 5rem 2rem; }
-.section-inner { max-width: 1280px; margin: 0 auto; }
-.section-eyebrow {
-    display: inline-block;
-    font-size: 0.72rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--amber); margin-bottom: 0.5rem;
-}
-.section-title {
-    font-size: 2rem; font-weight: 800; letter-spacing: -0.03em;
-    color: var(--dark); margin-bottom: 2.5rem;
-}
-
-/* ─── Product Cards ─────────────────────────────────────────────── */
-.products-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
-}
-.product-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    transition: all 0.25s;
-}
-.product-card:hover {
-    border-color: rgba(212,129,58,0.4);
-    box-shadow: 0 12px 36px rgba(28,20,8,0.1);
-    transform: translateY(-4px);
-}
-.product-img {
-    position: relative;
-    height: 196px;
-    background: var(--amber-light);
-    overflow: hidden;
-}
-.product-img img {
-    width: 100%; height: 100%; object-fit: cover;
-    transition: transform 0.4s;
-}
-.product-card:hover .product-img img { transform: scale(1.06); }
-.product-img-placeholder {
-    width: 100%; height: 100%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 3.5rem;
-    background: linear-gradient(145deg, var(--amber-light), #F7E4C8);
-}
-.product-badge {
-    position: absolute; top: 0.75rem; left: 0.75rem;
-    padding: 0.28rem 0.75rem;
-    border-radius: 999px;
-    font-size: 0.7rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.05em;
-    backdrop-filter: blur(6px);
-}
-.badge-hot { background: rgba(212,129,58,0.92); color: white; }
-.badge-mto { background: rgba(45,122,79,0.9); color: white; }
-
-.product-body { padding: 1.125rem 1.25rem 1.375rem; }
-.product-cat {
-    font-size: 0.7rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--amber); margin-bottom: 0.375rem;
-}
-.product-name {
-    font-size: 1.1rem; font-weight: 700;
-    color: var(--dark); line-height: 1.3; margin-bottom: 0.875rem;
-}
-.product-price {
-    font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
-    color: var(--dark); margin-bottom: 0.875rem;
-}
-.product-price small { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
-
-.add-btn {
-    width: 100%; padding: 0.7rem;
-    background: var(--amber); color: white;
-    border: none; border-radius: 10px;
-    font-weight: 700; font-size: 0.9rem;
-    cursor: pointer; transition: all 0.15s; font-family: inherit;
-    letter-spacing: 0.01em;
-}
-.add-btn:hover { background: var(--amber-hover); }
-.add-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
-.add-btn.preorder { background: #A07030; }
-.add-btn.preorder:hover { background: #875C22; }
-
-.view-all { text-align: center; margin-top: 2.5rem; }
-
-/* ─── Trust Badges ──────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   TRUST MICRO-STRIP
+══════════════════════════════════════════════════════════ */
 .trust-strip {
     background: var(--surface);
-    border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    padding: 2rem;
+    padding: 0;
 }
 .trust-inner {
     max-width: 1280px; margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
+    divide-x: 1px solid var(--border);
 }
 .trust-item {
-    display: flex; align-items: center; gap: 0.75rem;
-    padding: 1rem 1.25rem;
-    border-radius: 12px;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1.375rem 1.5rem;
+    border-right: 1px solid var(--border);
+    transition: background 0.15s;
 }
-.trust-icon { font-size: 1.75rem; flex-shrink: 0; }
-.trust-text strong { display: block; font-size: 0.875rem; font-weight: 700; color: var(--dark); }
-.trust-text span   { font-size: 0.775rem; color: var(--muted); }
+.trust-item:last-child { border-right: none; }
+.trust-item:hover { background: var(--amber-light); }
+.trust-icon-wrap {
+    width: 40px; height: 40px;
+    background: var(--amber-light);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.trust-text strong { display: block; font-size: 0.875rem; font-weight: 700; color: var(--dark); line-height: 1.3; }
+.trust-text span   { font-size: 0.75rem; color: var(--muted); }
+@media (max-width: 900px) {
+    .trust-inner { grid-template-columns: repeat(2, 1fr); }
+    .trust-item:nth-child(2) { border-right: none; }
+}
+@media (max-width: 480px) {
+    .trust-inner { grid-template-columns: 1fr 1fr; }
+    .trust-item  { padding: 1rem 1rem; }
+}
 
-@media (max-width: 900px)  { .trust-inner { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px)  { .trust-inner { grid-template-columns: 1fr; } }
+/* ══════════════════════════════════════════════════════════
+   SECTION BASE
+══════════════════════════════════════════════════════════ */
+.section { padding: 5rem 2rem; }
+.section.alt { background: #FDFAF5; }
+.section-inner { max-width: 1280px; margin: 0 auto; }
+.section-header { margin-bottom: 2.75rem; }
+.section-eyebrow {
+    display: inline-block;
+    font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--amber); margin-bottom: 0.5rem;
+}
+.section-title {
+    font-size: 2.25rem; font-weight: 800;
+    letter-spacing: -0.035em; color: var(--dark);
+    line-height: 1.15;
+}
+.section-sub {
+    font-size: 1rem; color: var(--muted);
+    margin-top: 0.625rem; max-width: 540px; line-height: 1.7;
+}
+@media (max-width: 600px) {
+    .section { padding: 3.5rem 1.25rem; }
+    .section-title { font-size: 1.75rem; }
+}
 
-/* ─── Features Dark Strip ───────────────────────────────────────── */
-.features-strip {
+/* ══════════════════════════════════════════════════════════
+   SIGNATURE CATEGORIES
+══════════════════════════════════════════════════════════ */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+}
+@media (max-width: 900px) { .categories-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .categories-grid { grid-template-columns: 1fr 1fr; gap: 0.875rem; } }
+
+.cat-card {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: all 0.25s;
+    cursor: pointer;
+    display: block;
+    text-decoration: none;
+}
+.cat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 40px rgba(28,20,8,0.12);
+    border-color: rgba(212,129,58,0.4);
+}
+.cat-img {
+    height: 180px;
+    overflow: hidden;
+    background: var(--amber-light);
+    position: relative;
+}
+.cat-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s;
+}
+.cat-card:hover .cat-img img { transform: scale(1.08); }
+.cat-img-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem;
+}
+.cat-img-placeholder.hedhikaa { background: linear-gradient(145deg, #FEF3E8, #FDDDB4); }
+.cat-img-placeholder.pastry   { background: linear-gradient(145deg, #FFF8EE, #FEEBD0); }
+.cat-img-placeholder.grill    { background: linear-gradient(145deg, #1C1408, #3D2610); }
+.cat-img-placeholder.cake     { background: linear-gradient(145deg, #FFF0F5, #FFDCE8); }
+.cat-img-placeholder.grill span { font-size: 2.5rem; }
+
+.cat-body { padding: 1.25rem 1.375rem 1.5rem; }
+.cat-label {
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--amber); margin-bottom: 0.35rem;
+}
+.cat-name {
+    font-size: 1.15rem; font-weight: 800;
+    color: var(--dark); margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+.cat-hook {
+    font-size: 0.85rem; color: var(--muted);
+    line-height: 1.5; margin-bottom: 0.875rem;
+}
+.cat-link {
+    font-size: 0.8rem; font-weight: 700;
+    color: var(--amber);
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    transition: gap 0.15s;
+}
+.cat-card:hover .cat-link { gap: 0.5rem; }
+@media (max-width: 480px) {
+    .cat-img  { height: 130px; }
+    .cat-name { font-size: 1rem; }
+    .cat-hook { font-size: 0.78rem; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRODUCT CARDS
+══════════════════════════════════════════════════════════ */
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 1.375rem;
+}
+.product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    transition: all 0.25s;
+}
+.product-card:hover {
+    border-color: rgba(212,129,58,0.35);
+    box-shadow: 0 14px 42px rgba(28,20,8,0.1);
+    transform: translateY(-4px);
+}
+.product-img {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+    background: linear-gradient(145deg, var(--amber-light), #F7E4C8);
+}
+.product-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.45s;
+}
+.product-card:hover .product-img img { transform: scale(1.07); }
+.product-img-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3.5rem;
+}
+
+/* Copper badge accent */
+.product-badge {
+    position: absolute; top: 0.75rem; left: 0.75rem;
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+}
+.badge-bestseller { background: rgba(168,88,28,0.9); color: #FDDDB4; }
+.badge-fresh      { background: rgba(20,90,50,0.88); color: #BBF7D0; }
+.badge-mto        { background: rgba(45,122,79,0.9); color: white; }
+.badge-new        { background: rgba(79,70,229,0.88); color: #E0E7FF; }
+
+.product-body { padding: 1.25rem 1.375rem 1.5rem; }
+.product-cat {
+    font-size: 0.68rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--amber); margin-bottom: 0.4rem;
+}
+.product-name {
+    font-size: 1.1rem; font-weight: 700;
+    color: var(--dark); line-height: 1.3;
+    margin-bottom: 0.25rem;
+}
+.product-desc {
+    font-size: 0.8rem; color: var(--muted);
+    line-height: 1.5; margin-bottom: 0.875rem;
+}
+.product-price-row {
+    display: flex; align-items: baseline;
+    gap: 0.3rem; margin-bottom: 1rem;
+}
+.product-price {
+    font-size: 1.45rem; font-weight: 800;
+    letter-spacing: -0.03em; color: var(--dark);
+}
+.product-currency {
+    font-size: 0.82rem; font-weight: 600;
+    color: var(--muted);
+}
+.add-btn {
+    width: 100%; padding: 0.725rem;
+    background: var(--amber); color: white;
+    border: none; border-radius: 11px;
+    font-weight: 700; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+    letter-spacing: 0.01em;
+}
+.add-btn:hover { background: var(--amber-hover); transform: translateY(-1px); }
+.add-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+.add-btn.preorder { background: #92611E; }
+.add-btn.preorder:hover { background: #7A4E18; }
+.view-all { text-align: center; margin-top: 3rem; }
+
+/* ══════════════════════════════════════════════════════════
+   SOCIAL PROOF / STAT
+══════════════════════════════════════════════════════════ */
+.proof-strip {
     background: var(--dark);
     padding: 5rem 2rem;
-}
-.features-inner {
-    max-width: 1280px; margin: 0 auto;
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
-}
-.feat-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.09);
-    border-radius: 16px;
-    padding: 2rem 1.5rem;
     text-align: center;
+}
+.proof-inner { max-width: 780px; margin: 0 auto; }
+.proof-eyebrow {
+    display: inline-block;
+    font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: rgba(240,169,106,0.8);
+    margin-bottom: 1.5rem;
+}
+.proof-stat {
+    font-size: 5.5rem; font-weight: 800;
+    letter-spacing: -0.05em;
+    color: white;
+    line-height: 1;
+    margin-bottom: 0.75rem;
+}
+.proof-stat span { color: var(--amber); }
+@media (max-width: 600px) { .proof-stat { font-size: 3.5rem; } }
+.proof-label {
+    font-size: 1.2rem; color: rgba(255,255,255,0.65);
+    font-weight: 400; line-height: 1.6;
+    margin-bottom: 2rem;
+}
+.proof-details {
+    display: flex; justify-content: center;
+    gap: 2.5rem; flex-wrap: wrap;
+}
+.proof-detail {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 0.25rem;
+}
+.proof-detail strong {
+    font-size: 1.5rem; font-weight: 800;
+    color: white; letter-spacing: -0.03em;
+}
+.proof-detail span { font-size: 0.8rem; color: rgba(255,255,255,0.45); }
+
+/* ══════════════════════════════════════════════════════════
+   LOCATION & CONVENIENCE
+══════════════════════════════════════════════════════════ */
+.location-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+@media (max-width: 700px) { .location-grid { grid-template-columns: 1fr; } }
+
+.loc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.25rem 2rem;
+    position: relative;
+    overflow: hidden;
     transition: all 0.2s;
 }
-.feat-card:hover { background: rgba(212,129,58,0.12); border-color: rgba(212,129,58,0.4); }
-.feat-icon { font-size: 2.25rem; margin-bottom: 1rem; }
-.feat-card h3 { font-size: 1.05rem; font-weight: 700; color: white; margin-bottom: 0.5rem; }
-.feat-card p  { font-size: 0.875rem; color: rgba(255,255,255,0.5); line-height: 1.65; }
+.loc-card:hover {
+    border-color: rgba(212,129,58,0.3);
+    box-shadow: 0 12px 40px rgba(28,20,8,0.08);
+    transform: translateY(-3px);
+}
+.loc-card-accent {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--amber), #E9953B);
+    border-radius: 20px 20px 0 0;
+}
+.loc-card-icon {
+    width: 48px; height: 48px;
+    background: var(--amber-light);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 1.25rem;
+}
+.loc-card h3 {
+    font-size: 1.25rem; font-weight: 800;
+    color: var(--dark); letter-spacing: -0.025em;
+    margin-bottom: 1.25rem;
+}
+.loc-detail-row {
+    display: flex; align-items: flex-start;
+    gap: 0.75rem; margin-bottom: 0.875rem;
+}
+.loc-detail-dot {
+    width: 6px; height: 6px;
+    background: var(--amber); border-radius: 50%;
+    flex-shrink: 0; margin-top: 0.55rem;
+}
+.loc-detail-text { font-size: 0.9rem; color: var(--text); line-height: 1.5; }
+.loc-detail-text small { color: var(--muted); font-size: 0.8rem; display: block; }
+.loc-divider {
+    border: none; border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+}
+.loc-ctas { display: flex; gap: 0.625rem; flex-wrap: wrap; }
+.loc-cta-primary {
+    flex: 1; min-width: 120px;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.375rem;
+    padding: 0.75rem 1rem;
+    background: var(--amber); color: white;
+    border-radius: 10px; font-weight: 700; font-size: 0.875rem;
+    transition: all 0.15s;
+}
+.loc-cta-primary:hover { background: var(--amber-hover); transform: translateY(-1px); }
+.loc-cta-outline {
+    flex: 1; min-width: 120px;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.375rem;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--border); color: var(--text);
+    border-radius: 10px; font-weight: 600; font-size: 0.875rem;
+    transition: all 0.15s; background: transparent;
+}
+.loc-cta-outline:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
 
-@media (max-width: 900px) { .features-inner { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 560px) { .features-inner { grid-template-columns: 1fr; } }
+/* Chat with us component */
+.chat-block {
+    display: flex; gap: 0.625rem; flex-wrap: wrap;
+    margin-top: 0.875rem;
+}
+.chat-btn {
+    flex: 1; min-width: 110px;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.4rem;
+    padding: 0.65rem 0.875rem;
+    border-radius: 9px; font-weight: 700; font-size: 0.8rem;
+    transition: all 0.15s;
+}
+.chat-btn-wa {
+    background: #25D366; color: white;
+}
+.chat-btn-wa:hover { background: #1bba58; transform: translateY(-1px); }
+.chat-btn-viber {
+    background: #7360F2; color: white;
+}
+.chat-btn-viber:hover { background: #5E4CD6; transform: translateY(-1px); }
+.chat-label {
+    font-size: 0.72rem; color: var(--muted);
+    margin-bottom: 0.5rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   FINAL CTA BAND
+══════════════════════════════════════════════════════════ */
+.cta-band {
+    background: linear-gradient(135deg, #FDFAF5 0%, #FEF3E8 100%);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 5rem 2rem;
+    text-align: center;
+}
+.cta-band-inner { max-width: 600px; margin: 0 auto; }
+.cta-band h2 {
+    font-size: 2.5rem; font-weight: 800;
+    letter-spacing: -0.04em; color: var(--dark);
+    line-height: 1.15; margin-bottom: 0.875rem;
+}
+.cta-band h2 em { font-style: normal; color: var(--amber); }
+.cta-band p {
+    font-size: 1.05rem; color: var(--muted);
+    line-height: 1.7; margin-bottom: 2rem;
+}
+.cta-band-btns {
+    display: flex; gap: 0.875rem;
+    justify-content: center; flex-wrap: wrap;
+}
+.btn-primary {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.95rem 2.25rem;
+    background: var(--amber); color: white;
+    border-radius: 12px; font-weight: 700; font-size: 1rem;
+    transition: all 0.2s;
+    box-shadow: 0 4px 18px var(--amber-glow);
+}
+.btn-primary:hover { background: var(--amber-hover); transform: translateY(-2px); box-shadow: 0 6px 24px var(--amber-glow); }
+.btn-outline {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.95rem 2.25rem;
+    border: 2px solid var(--border); color: var(--text);
+    border-radius: 12px; font-weight: 600; font-size: 1rem;
+    transition: all 0.2s; background: transparent;
+}
+.btn-outline:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
+@media (max-width: 600px) {
+    .cta-band h2 { font-size: 1.875rem; }
+    .btn-primary, .btn-outline { width: 100%; justify-content: center; }
+}
+
 </style>
 @endsection
 
 @section('content')
 
-{{-- ─── Banner Carousel ─────────────────────────────────────────── --}}
+{{-- ══════════════════════════════════════════════════════════
+     HERO CAROUSEL
+══════════════════════════════════════════════════════════ --}}
 <div class="hero-banner">
+
+    {{-- Open/Closed status badge --}}
+    @if($isOpen)
+        <div class="hero-status open">
+            <span class="hero-status-dot"></span>
+            We're open
+            @if($todayHours) · Closes {{ $todayHours['close'] }}@endif
+        </div>
+    @else
+        <div class="hero-status closed">
+            <span class="hero-status-dot"></span>
+            Closed now
+            @if($todayHours) · Opens {{ $todayHours['open'] }}@endif
+        </div>
+    @endif
+
     <div class="banner-track" id="bannerTrack">
 
-        <div class="banner-slide" style="background:#1C1408;">
-            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.49-ffb9abd7-f645-48ef-a78b-f1b36191f0b3.png')) }}" loading="eager" alt="Bake & Grill">
+        <div class="banner-slide active" style="background:#1C1408;">
+            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.49-ffb9abd7-f645-48ef-a78b-f1b36191f0b3.png')) }}" loading="eager" alt="Bake & Grill food">
             <div class="banner-overlay">
-                <span class="banner-tag">🎉 Grand Opening Special</span>
-                <h2 class="banner-title">20% off<br>all items this week</h2>
-                <p class="banner-sub">Limited time — order now before it ends</p>
-                <a href="/order/" class="banner-cta">Order Now →</a>
+                <span class="banner-eyebrow">Malé's neighbourhood café</span>
+                <h2 class="banner-title">Where Dhivehi breakfast<br>meets <em>artisan baking</em></h2>
+                <p class="banner-sub">Real food. Proper char. Baked fresh every morning at 5am.</p>
+                <div class="banner-ctas">
+                    <a href="/order/" class="banner-cta-primary">Order Now →</a>
+                    <a href="/menu"   class="banner-cta-secondary">View Menu</a>
+                </div>
             </div>
         </div>
 
         <div class="banner-slide" style="background:#160E06;">
-            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.57-1d4f7fc3-8bca-4e81-bdb4-12a8dceb7dc0.png')) }}" loading="lazy" alt="Best Sellers">
+            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.57-1d4f7fc3-8bca-4e81-bdb4-12a8dceb7dc0.png')) }}" loading="lazy" alt="Hedhikaa platter">
             <div class="banner-overlay">
-                <span class="banner-tag">🔥 Best Sellers</span>
-                <h2 class="banner-title">Signature<br>Hedhikaa Platter</h2>
-                <p class="banner-sub">Our most loved dish — try it today</p>
-                <a href="/menu" class="banner-cta">Browse Menu →</a>
+                <span class="banner-eyebrow">Signature Hedhikaa</span>
+                <h2 class="banner-title">The breakfast your<br>grandmother <em>made</em></h2>
+                <p class="banner-sub">Bajiya, gulha, mas roshi — ready by 7am, made the right way.</p>
+                <div class="banner-ctas">
+                    <a href="/order/" class="banner-cta-primary">Order Hedhikaa →</a>
+                    <a href="/menu"   class="banner-cta-secondary">Browse Menu</a>
+                </div>
             </div>
         </div>
 
-        <div class="banner-slide" style="background:#0E1810;">
-            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.55__1_-a88c997c-ebaa-4efc-a50d-11b8b178fd36.png')) }}" loading="lazy" alt="Free Delivery">
+        <div class="banner-slide" style="background:#0E1005;">
+            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.55__1_-a88c997c-ebaa-4efc-a50d-11b8b178fd36.png')) }}" loading="lazy" alt="Grills">
             <div class="banner-overlay">
-                <span class="banner-tag">📦 Free Delivery</span>
-                <h2 class="banner-title">Free delivery on<br>orders over MVR 200</h2>
-                <p class="banner-sub">Delivered hot across all of Malé</p>
-                <a href="/order/" class="banner-cta">Start Ordering →</a>
+                <span class="banner-eyebrow">Fresh Pastries & Bakes</span>
+                <h2 class="banner-title">Croissants that crackle.<br><em>Baked at dawn.</em></h2>
+                <p class="banner-sub">Free delivery on orders over MVR 200. Delivered hot across all of Malé.</p>
+                <div class="banner-ctas">
+                    <a href="/order/" class="banner-cta-primary">Start Your Order →</a>
+                    <a href="/menu"   class="banner-cta-secondary">View Pastries</a>
+                </div>
             </div>
         </div>
 
     </div>
-    <button class="banner-btn prev" onclick="moveBanner(-1)" aria-label="Previous">‹</button>
-    <button class="banner-btn next" onclick="moveBanner(1)"  aria-label="Next">›</button>
+
+    <button class="banner-btn prev" onclick="moveBanner(-1)" aria-label="Previous slide">‹</button>
+    <button class="banner-btn next" onclick="moveBanner(1)"  aria-label="Next slide">›</button>
+
     <div class="banner-dots" id="bannerDots">
         <div class="banner-dot active" onclick="goBanner(0)"></div>
         <div class="banner-dot"        onclick="goBanner(1)"></div>
@@ -370,76 +742,141 @@
 
 <script>
 (function() {
-    let idx = 0, total = 3;
-    let timer = setInterval(() => move(1), 5500);
+    var idx = 0, total = 3;
+    var slides = document.querySelectorAll('.banner-slide');
+    var timer = setInterval(function() { move(1); }, 6000);
+
     function move(d) { idx = (idx + d + total) % total; apply(); }
     window.moveBanner = move;
-    window.goBanner   = function(i) { idx = i; clearInterval(timer); timer = setInterval(() => move(1), 5500); apply(); };
+    window.goBanner = function(i) {
+        idx = i;
+        clearInterval(timer);
+        timer = setInterval(function() { move(1); }, 6000);
+        apply();
+    };
     function apply() {
         document.getElementById('bannerTrack').style.transform = 'translateX(-' + (idx * 100) + '%)';
         document.querySelectorAll('.banner-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+        slides.forEach(function(s, i) { s.classList.toggle('active', i === idx); });
     }
 })();
 </script>
 
-{{-- ─── Hero ────────────────────────────────────────────────────── --}}
-<section class="hero">
-    <div class="hero-inner">
-        @if($isOpen)
-            <span class="status-badge open">● We're open now</span>
-        @else
-            <span class="status-badge closed">● Currently closed</span>
-        @endif
-        <h1>Fresh Food,<br><em>Delivered Fast</em></h1>
-        <p>Authentic Dhivehi cuisine, fresh-baked pastries, and expertly grilled specialties — delivered hot to your door.</p>
-        <div class="hero-btns">
-            <a href="/order/" class="btn-primary">🛒 Order Online Now</a>
-            <a href="/menu"   class="btn-outline">View Full Menu</a>
-        </div>
-        @if($todayHours)
-            <p class="hero-hours">Today's hours: {{ $todayHours['open'] }} – {{ $todayHours['close'] }}</p>
-        @endif
-    </div>
-</section>
 
-{{-- ─── Trust Strip ─────────────────────────────────────────────── --}}
+{{-- ══════════════════════════════════════════════════════════
+     TRUST MICRO-STRIP
+══════════════════════════════════════════════════════════ --}}
 <div class="trust-strip">
     <div class="trust-inner">
         <div class="trust-item">
-            <span class="trust-icon">⚡</span>
+            <div class="trust-icon-wrap">🌅</div>
             <div class="trust-text">
-                <strong>30-45 min delivery</strong>
-                <span>Hot & fresh, every time</span>
+                <strong>Baked fresh at 5am daily</strong>
+                <span>Never yesterday's pastry</span>
             </div>
         </div>
         <div class="trust-item">
-            <span class="trust-icon">🥐</span>
+            <div class="trust-icon-wrap">🏠</div>
             <div class="trust-text">
-                <strong>Baked fresh daily</strong>
-                <span>Pastries made every morning</span>
+                <strong>Family-owned</strong>
+                <span>Neighbourhood kitchen, Malé</span>
             </div>
         </div>
         <div class="trust-item">
-            <span class="trust-icon">💳</span>
+            <div class="trust-icon-wrap">⚡</div>
             <div class="trust-text">
-                <strong>Online payment</strong>
-                <span>BML or cash on delivery</span>
+                <strong>30–45 min delivery</strong>
+                <span>Anywhere in Malé</span>
             </div>
         </div>
         <div class="trust-item">
-            <span class="trust-icon">📞</span>
+            <div class="trust-icon-wrap">💬</div>
             <div class="trust-text">
-                <strong>Call us anytime</strong>
+                <strong>WhatsApp & Viber</strong>
                 <span>+960 9120011</span>
             </div>
         </div>
     </div>
 </div>
 
-{{-- ─── Featured Items ──────────────────────────────────────────── --}}
+
+{{-- ══════════════════════════════════════════════════════════
+     SIGNATURE CATEGORIES
+══════════════════════════════════════════════════════════ --}}
+<section class="section alt">
+    <div class="section-inner">
+        <div class="section-header">
+            <span class="section-eyebrow">What we're known for</span>
+            <h2 class="section-title">Made for Malé</h2>
+            <p class="section-sub">Four things we do properly, every single day.</p>
+        </div>
+        <div class="categories-grid">
+
+            <a href="/menu" class="cat-card">
+                <div class="cat-img">
+                    <img src="{{ asset('images/cafe/Bajiya.png') }}"
+                         alt="Dhivehi Hedhikaa"
+                         onerror="this.parentElement.innerHTML='<div class=\'cat-img-placeholder hedhikaa\'>🥐</div>'">
+                </div>
+                <div class="cat-body">
+                    <div class="cat-label">Hedhikaa</div>
+                    <div class="cat-name">Dhivehi Breakfast</div>
+                    <p class="cat-hook">The breakfast your grandmother made, ready by 7am.</p>
+                    <span class="cat-link">Order now →</span>
+                </div>
+            </a>
+
+            <a href="/menu" class="cat-card">
+                <div class="cat-img">
+                    <img src="{{ asset('images/cafe/Cream-bun.png') }}"
+                         alt="Fresh pastries"
+                         onerror="this.parentElement.innerHTML='<div class=\'cat-img-placeholder pastry\'>🥐</div>'">
+                </div>
+                <div class="cat-body">
+                    <div class="cat-label">Pastries & Bakes</div>
+                    <div class="cat-name">Fresh Bakes</div>
+                    <p class="cat-hook">Croissants that crackle. Cream buns that melt. Baked at dawn.</p>
+                    <span class="cat-link">Browse →</span>
+                </div>
+            </a>
+
+            <a href="/menu" class="cat-card">
+                <div class="cat-img">
+                    <div class="cat-img-placeholder grill"><span>🔥</span></div>
+                </div>
+                <div class="cat-body">
+                    <div class="cat-label">Grills</div>
+                    <div class="cat-name">Char & Grill</div>
+                    <p class="cat-hook">Proper char. Proper flavor. Made to order, never pre-cooked.</p>
+                    <span class="cat-link">Order →</span>
+                </div>
+            </a>
+
+            <a href="/menu" class="cat-card">
+                <div class="cat-img">
+                    <img src="{{ asset('images/cafe/G-cake.png') }}"
+                         alt="Celebration cakes"
+                         onerror="this.parentElement.innerHTML='<div class=\'cat-img-placeholder cake\'>🎂</div>'">
+                </div>
+                <div class="cat-body">
+                    <div class="cat-label">Cakes & Special Orders</div>
+                    <div class="cat-name">Celebration Cakes</div>
+                    <p class="cat-hook">Celebration-worthy. Made to order. Call ahead to reserve yours.</p>
+                    <span class="cat-link">Order →</span>
+                </div>
+            </a>
+
+        </div>
+    </div>
+</section>
+
+
+{{-- ══════════════════════════════════════════════════════════
+     FEATURED ITEMS
+══════════════════════════════════════════════════════════ --}}
 <section class="section">
     <div class="section-inner">
-        <div>
+        <div class="section-header">
             <span class="section-eyebrow">
                 @if($bestSellers->count() > 0 && $bestSellers->max('order_items_count') > 0)
                     🔥 Most Ordered
@@ -447,13 +884,14 @@
                     ⭐ Handpicked
                 @endif
             </span>
-            <div class="section-title">
+            <h2 class="section-title">
                 @if($bestSellers->count() > 0 && $bestSellers->max('order_items_count') > 0)
                     Best Sellers
                 @else
                     Featured Items
                 @endif
-            </div>
+            </h2>
+            <p class="section-sub">The dishes our regulars order on repeat.</p>
         </div>
 
         <div class="products-grid">
@@ -476,22 +914,30 @@
                             <img src="{{ $imgUrl }}" alt="{{ $item->name }}" loading="lazy"
                                  onerror="this.parentElement.innerHTML='<div class=\'product-img-placeholder\'>🍽️</div>'">
                         @else
-                            <div class="product-img-placeholder">
-                                {{ ['🍔','🍟','🥤','🍰','☕','🥗','🍕','🥙'][array_rand(['🍔','🍟','🥤','🍰','☕','🥗','🍕','🥙'])] }}
-                            </div>
+                            <div class="product-img-placeholder">🍽️</div>
                         @endif
 
                         @if($isBestSeller)
-                            <span class="product-badge badge-hot">🔥 Best Seller</span>
+                            <span class="product-badge badge-bestseller">🔥 Best Seller</span>
                         @elseif($isMTO)
                             <span class="product-badge badge-mto">Made to Order</span>
+                        @else
+                            <span class="product-badge badge-fresh">Fresh Daily</span>
                         @endif
                     </div>
 
                     <div class="product-body">
-                        <div class="product-cat">{{ $item->category?->name }}</div>
+                        @if($item->category?->name)
+                            <div class="product-cat">{{ $item->category->name }}</div>
+                        @endif
                         <div class="product-name">{{ $item->name }}</div>
-                        <div class="product-price"><small>MVR</small> {{ number_format($item->base_price, 2) }}</div>
+                        @if($item->description ?? null)
+                            <div class="product-desc">{{ Str::limit($item->description, 60) }}</div>
+                        @endif
+                        <div class="product-price-row">
+                            <span class="product-currency">MVR</span>
+                            <span class="product-price">{{ number_format($item->base_price, 2) }}</span>
+                        </div>
 
                         @if($stockStatus['available'])
                             <button class="add-btn"
@@ -517,23 +963,174 @@
     </div>
 </section>
 
-{{-- ─── Features ────────────────────────────────────────────────── --}}
-<section class="features-strip">
-    <div class="features-inner">
-        <div class="feat-card">
-            <div class="feat-icon">⚡</div>
-            <h3>Fast Delivery</h3>
-            <p>Hot food at your door in 30–45 minutes, anywhere in Malé</p>
+
+{{-- ══════════════════════════════════════════════════════════
+     SOCIAL PROOF
+══════════════════════════════════════════════════════════ --}}
+<section class="proof-strip">
+    <div class="proof-inner">
+        <div class="proof-eyebrow">Loved by Malé</div>
+        <div class="proof-stat">500<span>+</span></div>
+        <p class="proof-label">orders delivered in Malé every week —<br>and counting.</p>
+        <div class="proof-details">
+            <div class="proof-detail">
+                <strong>5am</strong>
+                <span>Baking starts</span>
+            </div>
+            <div class="proof-detail">
+                <strong>30–45 min</strong>
+                <span>Average delivery</span>
+            </div>
+            <div class="proof-detail">
+                <strong>MVR 200</strong>
+                <span>Free delivery above</span>
+            </div>
         </div>
-        <div class="feat-card">
-            <div class="feat-icon">🥐</div>
-            <h3>Fresh Every Day</h3>
-            <p>Pastries baked fresh every morning, grills made to order</p>
+    </div>
+</section>
+
+
+{{-- ══════════════════════════════════════════════════════════
+     LOCATION & CONVENIENCE
+══════════════════════════════════════════════════════════ --}}
+<section class="section alt">
+    <div class="section-inner">
+        <div class="section-header">
+            <span class="section-eyebrow">Find us</span>
+            <h2 class="section-title">Visit or Order</h2>
+            <p class="section-sub">Come in or stay in — we've got you covered either way.</p>
         </div>
-        <div class="feat-card">
-            <div class="feat-icon">💳</div>
-            <h3>Easy Payment</h3>
-            <p>Pay online via BML or choose cash on delivery</p>
+        <div class="location-grid">
+
+            {{-- Visit Us card --}}
+            <div class="loc-card">
+                <div class="loc-card-accent"></div>
+                <div class="loc-card-icon">📍</div>
+                <h3>Visit Us</h3>
+
+                <div class="loc-detail-row">
+                    <div class="loc-detail-dot"></div>
+                    <div class="loc-detail-text">
+                        Kalaafaanu Hingun, Malé
+                        <small>Near H. Sahara — easy to find</small>
+                    </div>
+                </div>
+
+                <div class="loc-detail-row">
+                    <div class="loc-detail-dot"></div>
+                    <div class="loc-detail-text">
+                        @if($isOpen)
+                            <span style="color:#195C36;font-weight:700;">Open now</span>
+                            @if($todayHours) · Closes {{ $todayHours['close'] }} @endif
+                        @else
+                            <span style="color:#8C1C0E;font-weight:700;">Closed now</span>
+                            @if($todayHours) · Opens {{ $todayHours['open'] }} @endif
+                        @endif
+                        <small><a href="/hours" style="color:var(--amber);">See full schedule →</a></small>
+                    </div>
+                </div>
+
+                <div class="loc-detail-row">
+                    <div class="loc-detail-dot"></div>
+                    <div class="loc-detail-text">
+                        +960 9120011
+                        <small>Call to reserve or ask about custom orders</small>
+                    </div>
+                </div>
+
+                <hr class="loc-divider">
+
+                <p class="chat-label">Chat with us</p>
+                <div class="chat-block">
+                    <a href="https://wa.me/9609120011" target="_blank" rel="noopener" class="chat-btn chat-btn-wa">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        WhatsApp
+                    </a>
+                    <a href="viber://chat?number=%2B9609120011" class="chat-btn chat-btn-viber">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/></svg>
+                        Viber
+                    </a>
+                </div>
+
+                <div class="loc-ctas" style="margin-top:1rem;">
+                    <a href="https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives" target="_blank" rel="noopener" class="loc-cta-outline">
+                        📍 Get Directions
+                    </a>
+                    <a href="tel:+9609120011" class="loc-cta-outline">
+                        📞 Call Us
+                    </a>
+                </div>
+            </div>
+
+            {{-- Order Delivery card --}}
+            <div class="loc-card">
+                <div class="loc-card-accent"></div>
+                <div class="loc-card-icon">🛵</div>
+                <h3>Order Delivery</h3>
+
+                <div class="loc-detail-row">
+                    <div class="loc-detail-dot"></div>
+                    <div class="loc-detail-text">
+                        Delivery across all of Malé
+                        <small>We come to you — no exceptions within the city</small>
+                    </div>
+                </div>
+
+                <div class="loc-detail-row">
+                    <div class="loc-detail-dot"></div>
+                    <div class="loc-detail-text">
+                        30–45 minutes average delivery time
+                        <small>Hot food at your door, not a cold box</small>
+                    </div>
+                </div>
+
+                <div class="loc-detail-row">
+                    <div class="loc-detail-dot"></div>
+                    <div class="loc-detail-text">
+                        Free delivery on orders over MVR 200
+                        <small>BML online payment or cash on delivery</small>
+                    </div>
+                </div>
+
+                <hr class="loc-divider">
+
+                <p class="chat-label">Order via app or chat</p>
+                <div class="chat-block">
+                    <a href="https://wa.me/9609120011?text=Hi%2C+I'd+like+to+place+an+order" target="_blank" rel="noopener" class="chat-btn chat-btn-wa">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        Order via WhatsApp
+                    </a>
+                    <a href="viber://chat?number=%2B9609120011" class="chat-btn chat-btn-viber">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/></svg>
+                        Order via Viber
+                    </a>
+                </div>
+
+                <div class="loc-ctas" style="margin-top:1rem;">
+                    <a href="/order/" class="loc-cta-primary">
+                        🛒 Order Online Now
+                    </a>
+                    <a href="/menu" class="loc-cta-outline">
+                        🍽️ View Menu
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+{{-- ══════════════════════════════════════════════════════════
+     FINAL CTA BAND
+══════════════════════════════════════════════════════════ --}}
+<section class="cta-band">
+    <div class="cta-band-inner">
+        <h2>Hungry? <em>Order now.</em></h2>
+        <p>Fresh from our kitchen to your door in 30–45 minutes. No fuss, no wait — just real food.</p>
+        <div class="cta-band-btns">
+            <a href="/order/" class="btn-primary">🛒 Order Now</a>
+            <a href="/menu"   class="btn-outline">Browse Menu</a>
         </div>
     </div>
 </section>

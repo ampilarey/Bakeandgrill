@@ -89,6 +89,15 @@
     margin-top: 0.75rem; transition: all 0.15s;
 }
 .contact-link-wa:hover { background: #1bba58; }
+.contact-link-viber {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: #7360F2; color: white;
+    border-radius: 8px; font-weight: 700; font-size: 0.85rem;
+    margin-top: 0.5rem; transition: all 0.15s;
+}
+.contact-link-viber:hover { background: #5E4CD6; }
+.contact-msg-btns { display: flex; flex-direction: column; }
 
 /* ─── Map ────────────────────────────────────────────────────────── */
 .map-section {
@@ -142,9 +151,14 @@
         <a href="tel:+9609120011">+960 9120011</a>
         <p style="margin-top:0.75rem;"><strong>Email</strong></p>
         <a href="mailto:hello@bakeandgrill.mv">hello@bakeandgrill.mv</a>
-        <a href="https://wa.me/9609120011" target="_blank" class="contact-link-wa">
-            💬 WhatsApp Us
-        </a>
+        <div class="contact-msg-btns">
+            <a href="https://wa.me/9609120011" target="_blank" rel="noopener" class="contact-link-wa">
+                💬 WhatsApp
+            </a>
+            <a href="viber://chat?number=%2B9609120011" class="contact-link-viber">
+                📱 Viber
+            </a>
+        </div>
     </div>
 
     <div class="contact-card">
