@@ -3,6 +3,7 @@
 
 **Status:** Documented — Not yet implemented  
 **Created:** March 2026  
+**Priority:** Implement Session 1 first, Session 2 separately after testing
 
 ---
 
@@ -76,464 +77,38 @@ HIGH-PRIORITY FINDINGS TO FIX
 ==================================================
 
 A) PUBLIC ORDER STATUS STREAM AUTHORIZATION BUG
------------------------------------------------
-Problem:
-The public order status stream currently appears to allow access when no token is supplied, because ownership validation only happens if a token exists. This may allow unauthorized order status viewing if someone guesses an order ID.
-
-Required action:
-1. Audit the order status/public SSE/stream endpoints.
-2. Confirm whether order stream access is possible without a valid token.
-3. Fix it so stream access always requires valid authorization.
-4. Reject missing token and invalid token explicitly.
-5. Do NOT rely on optional query param token behavior.
-
-Preferred implementation:
-- Replace current permissive behavior with a dedicated short-lived signed stream token for a specific order.
-- If full replacement is too invasive, then as minimum:
-  - require token
-  - validate token ownership against the target order
-  - return 401/403 properly when missing or invalid
-
-Security note:
-Do NOT leave stream access open by order ID alone.
-
-Also do:
-- audit any similar public order-status endpoints, not just SSE
-- audit polling endpoints too if they exist
-
-Tests required:
-- customer can view their own order stream with valid token
-- request without token fails
-- request with token for another user fails
-- invalid/expired token fails
-
------------------------------------------------
-
 B) QUERY STRING TOKEN LEAKAGE IN STREAMING
------------------------------------------------
-Problem:
-The current design appears to pass auth token via query string for SSE. Query-string tokens can leak through logs, browser history, referrers, proxy logs, and monitoring.
-
-Required action:
-1. Replace query-string bearer-like auth for streaming with a safer mechanism.
-2. Preferred:
-   - short-lived signed order stream token
-   - scoped to one order
-   - short expiry
-3. If frontend/EventSource limitations require query params, then:
-   - do NOT use general auth token
-   - use a narrowly scoped ephemeral stream ticket only
-   - include TTL and order binding
-   - ensure the server validates scope strictly
-
-Implement:
-- new ticket generation method
-- validation layer
-- expiry handling
-- clear error responses
-
-Tests required:
-- stream ticket only works for intended order
-- ticket expires correctly
-- ticket cannot access another order
-
------------------------------------------------
-
 C) ADMIN AUTHORIZATION IS TOO WEAK / INCONSISTENT
------------------------------------------------
-Problem:
-Many /admin routes appear to be protected only by auth:sanctum, without consistent admin/manager role enforcement at route level and/or policy level.
-
-Required action:
-1. Audit all admin routes and all admin-like controller actions.
-2. Identify endpoints that are currently protected only by authentication.
-3. Introduce explicit authorization strategy for all admin/staff-sensitive actions.
-
-Implement a clear role/ability model such as:
-- owner
-- admin
-- manager
-- cashier
-- kitchen
-- customer
-
-Then:
-- protect route groups with explicit middleware or gates
-- enforce policy checks where resource ownership/ability matters
-- ensure customer tokens cannot hit admin endpoints
-- ensure low-privilege staff cannot hit financial/configuration/admin actions
-
-At minimum, audit these areas:
-- promotions
-- loyalty admin actions
-- SMS/campaign tools
-- staff management
-- analytics
-- reviews moderation
-- reservation admin actions
-- inventory management
-- pricing overrides / discounts / refunds if applicable
-
-Deliverables:
-- add clear middleware and/or gates/policies
-- centralize permission names
-- document the authorization map in code comments or a small internal doc
-
-Tests required:
-- customer cannot access admin endpoints
-- cashier cannot access manager-only endpoints
-- kitchen cannot access finance/admin endpoints
-- manager/admin access works as intended
-
------------------------------------------------
-
 D) PUBLIC HEALTH ENDPOINT LEAKS TOO MUCH INFO
------------------------------------------------
-Problem:
-The public system health endpoint appears to expose environment and database connection details.
-
-Required action:
-1. Audit all public health/debug/system endpoints.
-2. Reduce public health response to minimal safe data such as:
-   - status: ok
-3. Move detailed health data behind auth or internal-only guard.
-
-Do NOT expose:
-- environment name
-- database connectivity details
-- infrastructure fingerprints
-- version details unless intentionally public
-
-Tests required:
-- public endpoint returns minimal safe payload only
-- privileged/internal endpoint returns detailed data if such endpoint is needed
-
------------------------------------------------
-
 E) BML RETURN URL / FRONTEND PATH FRAGILITY
------------------------------------------------
-Problem:
-BML return redirect path may be fragile due to frontend route base assumptions, especially around /order vs /orders path composition and APP_FRONTEND_URL usage.
-
-Required action:
-1. Audit the full BML flow:
-   - payment creation
-   - redirect to bank
-   - return URL
-   - webhook confirmation
-   - frontend status page
-2. Trace real frontend route structure.
-3. Ensure redirect target always matches actual frontend route base.
-4. Centralize frontend URL generation in one config/helper instead of ad hoc string concatenation.
-5. Preserve current successful production behavior.
-
-Tests required:
-- return redirect generates correct URL for SPA route
-- webhook and return flow remain compatible
-- misconfigured base URL fails safely / logs clearly
-
------------------------------------------------
-
 F) OVERLY FORGIVING OTP PHONE NORMALIZATION
------------------------------------------------
-Problem:
-Phone normalization appears too permissive and may convert malformed input into a valid-looking Maldivian number by taking last digits and prepending +960. This can send OTPs to the wrong person.
-
-Required action:
-1. Audit all phone normalization logic.
-2. Tighten validation for Maldivian numbers.
-3. Accept only approved formats, such as:
-   - XXXXXXX
-   - 960XXXXXXX
-   - +960XXXXXXX
-4. Reject malformed numbers instead of aggressively auto-correcting them.
-5. Ensure normalized storage format is consistent across auth, profile, checkout, and customer creation flows.
-
-Tests required:
-- valid Maldives numbers normalize correctly
-- malformed values are rejected
-- extra digits are not silently truncated into a different number
-
-==================================================
-MEDIUM-PRIORITY CLEANUP AND STABILITY TASKS
-==================================================
-
 G) EMPTY / NO-OP MIGRATION
------------------------------------------------
-Problem:
-There appears to be at least one empty migration file.
-
-Required action:
-1. Audit migrations for no-op/empty files.
-2. If a migration was never run anywhere and is useless, remove it safely.
-3. If already part of migration history in real environments, keep it but mark clearly as intentional no-op with comment.
-
-Do NOT break existing migration history.
-
------------------------------------------------
-
 H) REPO HYGIENE / COMMITTED ARTIFACTS
------------------------------------------------
-Problem:
-Repo appears to contain committed environment-specific or generated artifacts such as:
-- bootstrap/cache files
-- database.sqlite
-- .DS_Store files
-- possibly built frontend artifacts or stale generated files
-
-Required action:
-1. Remove generated/cache/noise files from repo where appropriate.
-2. Update .gitignore carefully.
-3. Ensure:
-   - framework caches are not committed
-   - local sqlite DB is not committed unless intentionally used as a fixture/demo
-   - OS junk files are removed
-4. Verify no secret or env leakage in repo.
-
-Be careful:
-If public assets in backend/public are intentionally deployed from the repo, do not delete them blindly. First determine whether they are source-of-truth or generated deployment artifacts.
-
-Deliverables:
-- cleaned .gitignore
-- cleaned repo artifacts
-- note any files intentionally retained
-
------------------------------------------------
-
 I) STREAM CONTROLLER / SERVICE INSTANTIATION CLEANUP
------------------------------------------------
-Problem:
-There appears to be direct new-ing of services inside controller stream methods instead of using dependency injection consistently.
-
-Required action:
-1. Audit controllers for service instantiation inside actions.
-2. Replace with constructor injection or method injection where appropriate.
-3. Keep changes minimal and safe.
-
-This is not the top priority, but improve where obvious.
-
------------------------------------------------
-
 J) ROUTE ORGANIZATION IMPROVEMENT
------------------------------------------------
-Problem:
-API routes have grown large and mixed.
 
-Required action:
-1. Audit current route organization.
-2. If safe, split routes into clear files such as:
-   - api_public.php
-   - api_customer.php
-   - api_staff.php
-   - api_admin.php
-3. Preserve exact route URLs and names unless absolutely necessary.
-4. Apply authorization middleware consistently by route group.
-
-Only do this if it can be done safely and cleanly.
-
-==================================================
-FULL SECURITY + PERMISSION AUDIT REQUIRED
-==================================================
-
-Perform a broad audit for:
-- public endpoints returning sensitive data
-- insecure direct object reference risk
-- customer-order ownership checks
-- reservation ownership checks
-- payment ownership checks
-- receipt access rules
-- refund permission rules
-- promo abuse vectors
-- loyalty ledger modification permissions
-- device registration abuse
-- POS privileged operations
-- admin analytics/report export permissions
-- webhook signature/verification logic
-- mass assignment risks
-- debug leakage
-- unsafe query params for secrets/tokens
-- missing validation on IDs and state transitions
-
-For each issue found:
-- fix it if safe
-- otherwise leave a clear TODO + inline explanation + test that exposes expected safe behavior
-
-==================================================
-PAYMENT FLOW HARDENING
-==================================================
-
-Audit and improve the payment domain carefully.
-
-Check:
-- payment initiation
-- payment attempts
-- idempotency
-- webhook verification
-- return URL behavior
-- order finalization after payment
-- partial payments
-- duplicate callback handling
-- retry safety
-- refund authorization
-- mismatch handling between return page and webhook truth
-
-Required:
-- webhook should be the source of truth for payment confirmation where applicable
-- return page should not be trusted as final confirmation
-- duplicate webhook should be idempotent
-- order/payment state transitions should be explicit and safe
-
-Tests required:
-- successful payment updates order correctly
-- duplicate webhook does not double-apply
-- failed payment does not mark order paid
-- return URL alone does not finalize payment incorrectly
-
-==================================================
-AUTHORIZATION MATRIX TO IMPLEMENT OR VERIFY
-==================================================
-
-Define and enforce a clear matrix similar to the following:
-
-Customer:
-- own account only
-- own orders only
-- own reservations only
-- own loyalty view only
-- no admin/staff access
-
-Cashier:
-- create/manage POS orders
-- accept payments as allowed
-- limited order operations
-- no admin settings
-- no staff management
-- no deep analytics exports unless explicitly allowed
-
-Kitchen:
-- KDS access only
-- order prep state transitions only
-- no payment/admin/customer data beyond need-to-know
-
-Manager:
-- menu/config limited admin
-- reservations management
-- operational reports
-- maybe limited promotions depending on business rule
-
-Admin/Owner:
-- full access
-
-Implement with:
-- middleware
-- gates/policies
-- resource checks
-- tests
-
-==================================================
-TESTING REQUIREMENTS
-==================================================
-
-Add or improve automated tests for all high-risk changes.
-
-Minimum required test groups:
-1. stream/order ownership tests
-2. admin authorization tests
-3. phone normalization tests
-4. health endpoint exposure tests
-5. BML redirect + webhook tests
-6. payment idempotency tests
-7. customer vs staff/admin boundary tests
-
-If tests already exist, expand them rather than duplicating unnecessarily.
-
-==================================================
-OUTPUT FORMAT / WORK STYLE
-==================================================
-
-Work in this order:
-
-PHASE 1: AUDIT
-- inspect current implementation carefully
-- list exact affected files
-- list exact risks
-- identify any frontend dependencies before changing backend behavior
-
-PHASE 2: SECURITY FIXES
-- implement stream auth fix
-- replace/generalize query token approach safely
-- harden admin permissions
-- harden public health endpoint
-- harden phone normalization
-- harden payment-related permission/state behavior where needed
-
-PHASE 3: CLEANUP
-- repo hygiene
-- empty migration handling
-- DI cleanup
-- route organization improvements if safe
-
-PHASE 4: TESTS
-- add/update tests for each critical area
-
-PHASE 5: FINAL REPORT
-Return a final report with these sections:
-
-1. WHAT WAS FOUND
-2. WHAT WAS CHANGED
-3. RISKS / BREAKING CHANGE CHECK
-4. TEST COVERAGE ADDED
-5. FOLLOW-UP RECOMMENDATIONS
-
-==================================================
-IMPORTANT IMPLEMENTATION NOTES
-==================================================
-
-- Do not blindly rename everything.
-- Do not over-engineer.
-- Keep current architecture style under app/Domains where appropriate.
-- Prefer minimal, secure, production-safe changes.
-- Preserve backward compatibility whenever possible.
-- Verify both backend and frontend route assumptions before changing payment redirect or stream access patterns.
-- Where security requires stronger behavior, choose secure behavior even if the frontend needs a small update.
-
-==================================================
-IF YOU FIND MORE ISSUES
-==================================================
-
-If during the audit you find additional bugs or vulnerabilities, fix them too if they are closely related to:
-- authorization
-- data exposure
-- payment safety
-- customer ownership
-- token leakage
-- repo hygiene
-- validation
-
-Document them in the final report.
+Full details for each finding are in the sections below.
 ```
-
----
-
-**Priority:** Implement Session 1 first, Session 2 separately after testing  
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Findings Summary](#findings-summary)
-3. [Session 1 — Security Fixes](#session-1--security-fixes)
-   - [F — Phone Number Validation](#f--phone-number-validation-too-loose)
-   - [D — Health Endpoint Exposure](#d--health-endpoint-leaks-too-much)
-   - [B — Token in URL](#b--auth-token-passed-in-url-for-streaming)
-   - [A — Stream Open Without Auth](#a--order-stream-open-without-auth)
-   - [E — BML Return URL Fragility](#e--bml-return-url-fragility)
-4. [Session 2 — Authorization & Roles](#session-2--authorization--role-enforcement)
-   - [C — No Role Checks on Admin Routes](#c--no-role-checks-on-admin-routes)
-5. [Deployment Order](#deployment-order)
-6. [Files Impact Reference](#files-impact-reference)
-7. [Testing Requirements](#testing-requirements)
+2. [Verification Status / Finding Confidence](#verification-status--finding-confidence)
+3. [Recommended Engineering Workflow](#recommended-engineering-workflow)
+4. [Frontend Dependency Map](#frontend-dependency-map)
+5. [Authorization Matrix](#authorization-matrix)
+6. [Idempotency and State Transition Checklist](#idempotency-and-state-transition-checklist)
+7. [Session 1 — Security Fixes](#session-1--security-fixes)
+8. [Session 2 — Authorization & Role Enforcement](#session-2--authorization--role-enforcement)
+9. [Rollback / Safe Deployment Plan](#rollback--safe-deployment-plan)
+10. [Deployment Order](#deployment-order)
+11. [Files Impact Reference](#files-impact-reference)
+12. [Testing Requirements](#testing-requirements)
+13. [Additional Security Notes](#additional-security-notes)
+14. [Questions to Answer Before Starting](#questions-to-answer-before-starting)
+15. [Final Deliverables Expected](#final-deliverables-expected)
 
 ---
 
@@ -557,37 +132,151 @@ The platform is NOT just a restaurant website. It is a full operations system ha
 4. Test after every individual fix before moving to the next
 5. Deploy Session 1 fully and confirm stable before starting Session 2
 
+> **Rule:** Do not patch a suspected issue as if it were confirmed without first verifying the affected files and all frontend dependencies.
+
 ---
 
-## Findings Summary
+## Verification Status / Finding Confidence
 
-| ID | Finding | Risk | Affects Users? | Session |
-|----|---------|------|---------------|---------|
-| F  | Phone OTP sent to wrong person | 🔴 Critical | Yes — auth bypass risk | 1 |
-| A  | Anyone can watch any order's stream | 🔴 High | Yes — data privacy | 1 |
-| B  | Real auth token exposed in browser URL | 🔴 High | Yes — token theft | 1 |
-| D  | Health endpoint leaks environment info | 🟠 Medium | Indirect — helps attackers | 1 |
-| E  | BML redirect URL fragile | 🟠 Medium | Yes — broken post-payment UX | 1 |
-| C  | No role checks on admin routes | 🟠 Medium | Staff only | 2 |
-| G  | Empty migration file in repo | 🟡 Low | No | 2 |
-| H  | Junk files committed to repo | 🟡 Low | No | 2 |
-| I  | Services manually instantiated in controllers | 🟡 Low | No | 2 |
-| J  | Routes file too large and mixed | 🟡 Low | No | 2 |
+Findings are classified into three categories:
+
+- **Confirmed** — Verified directly in the current codebase. Safe to implement the fix.
+- **Suspected / Needs verification** — Likely based on audit signals but must be confirmed in code before patching.
+- **Design recommendation** — No confirmed exploit, but improvement reduces risk or improves maintainability.
+
+| ID | Finding | Severity | Status | Affected Area | Notes |
+|----|---------|----------|--------|---------------|-------|
+| A | Order stream open without auth | 🔴 High | Suspected / Needs verification | StreamController, SSE endpoint | Must audit conditional token check before patching |
+| B | Auth token in query string (URL) | 🔴 High | Confirmed | StreamController, EventSource in frontend | Current design passes token as `?token=` param — confirmed behavior |
+| C | Admin routes lack role enforcement | 🟠 Medium | Suspected / Needs verification | All `/admin` route groups | Must audit each group; some may already have role checks |
+| D | Health endpoint exposes environment info | 🟠 Medium | Confirmed | `routes/api.php` `/system/health` | Current response includes `environment` and `database` fields |
+| E | BML return URL fragility | 🟠 Medium | Suspected / Needs verification | BmlWebhookController, payment flow | Must count how many places build the URL before centralizing |
+| F | Phone normalization too permissive | 🔴 Critical | Suspected / Needs verification | CustomerAuthController | Logic appears to take last 7 digits — must verify exact code path |
+| G | Empty migration file | 🟡 Low | Suspected / Needs verification | `database/migrations/` | Must confirm which file is empty and whether it was ever run |
+| H | Junk files in repo | 🟡 Low | Suspected / Needs verification | `.gitignore`, repo root | Must audit before removing anything |
+| I | Services manually instantiated in controllers | 🟡 Low | Suspected / Needs verification | StreamController and others | Must audit before refactoring |
+| J | Routes file too large | 🟡 Low | Design recommendation | `routes/api.php` | Not a security issue — maintenance improvement only |
+
+---
+
+## Recommended Engineering Workflow
+
+Follow this sequence for every individual finding, without skipping steps:
+
+1. **Verify the finding in current code** — open the affected file(s), confirm the issue exists exactly as described. Do not assume the audit description is 100% accurate.
+2. **Identify all affected routes, controllers, services, and frontend consumers** — use the Frontend Dependency Map below.
+3. **Design a backward-compatible patch** — prefer the smallest change that fixes the issue without changing public API shapes.
+4. **Write or update tests first where feasible** — define expected behavior before changing code.
+5. **Implement the smallest secure change** — do not over-engineer.
+6. **Validate frontend behavior** — manually test the affected user-facing flow on `test.bakeandgrill.mv`.
+7. **Deploy with rollback awareness** — know exactly how to revert if something breaks.
+8. **Document the confirmed outcome** — update the finding status in this document to Confirmed + Fixed after implementation.
+
+---
+
+## Frontend Dependency Map
+
+Before changing any backend behavior, trace which frontend apps are affected. No backend auth or URL change should be implemented without checking this table first.
+
+| Change Area | Backend Concern | Frontend / Service Impacted | What Must Be Checked |
+|------------|-----------------|----------------------------|----------------------|
+| Stream ticket (Finding B) | Replace `?token=` with `?ticket=` on stream endpoint | **Online ordering frontend** (`apps/online-order-web`) | Find exact file where `EventSource` is created. Frontend must request ticket first, then open stream. Both must deploy together. |
+| Stream auth hardening (Finding A) | Reject requests with no valid auth | **Online ordering frontend** | If any path opens stream without a token today, it will break. Audit all EventSource usages. |
+| BML return URL (Finding E) | Centralize URL building | **Online ordering frontend** — `OrderStatusPage` | Verify the frontend SPA route path matches the centralized backend config value exactly. |
+| Phone validation (Finding F) | Reject previously-tolerated phone formats | **Online ordering frontend** — login/OTP screens | If frontend does its own phone formatting before sending to API, check for mismatches. |
+| Admin authorization (Finding C) | Add role middleware to admin routes | **Admin dashboard** (`apps/admin-dashboard`) | Any route that gets a new role restriction could break a manager or cashier workflow. Test every dashboard page. |
+| Health endpoint (Finding D) | Reduce public response | No frontend currently uses this endpoint | Verify no internal monitoring tool or uptime checker depends on the `environment` field. |
+| Print proxy auth | If auth changes affect print jobs | **Print proxy service** (`print-proxy/`) | Verify print job auth flow is not broken by staff auth changes. |
+| KDS auth | Role restriction on KDS routes | **KDS frontend** (`apps/kds-web`) | Verify kitchen staff role can still access all KDS endpoints after role enforcement. |
+| POS auth | Role restriction on POS routes | **POS frontend** (`apps/pos-web`) | Verify cashier role can still access all POS endpoints after role enforcement. |
+
+---
+
+## Authorization Matrix
+
+This matrix defines what each role should be able to access. Implement this during Session 2 (Finding C).
+
+> `auth:sanctum` alone is not sufficient for admin areas. Route naming alone is not authorization. Middleware, gates, or policies must enforce this matrix.
+
+| Area | Customer | Cashier | Kitchen | Manager | Admin / Owner |
+|------|----------|---------|---------|---------|---------------|
+| Own profile / account | Own only | — | — | — | Full |
+| Own orders | Own only | — | — | — | Full |
+| Own reservations | Own only | — | — | — | Full |
+| Own loyalty balance | Own only | — | — | — | Full |
+| POS order creation | No | Yes | No | Yes | Full |
+| POS payment acceptance | No | Yes | No | Yes | Full |
+| KDS / order prep updates | No | No | Yes | Yes | Full |
+| Reservation management | No | No | No | Yes | Full |
+| Menu management | No | No | No | Yes | Full |
+| Promotions management | No | No | No | Yes | Full |
+| Loyalty administration | No | No | No | Yes | Full |
+| SMS / campaign tools | No | No | No | Yes | Full |
+| Analytics & reports | No | No | No | Yes | Full |
+| Inventory & purchasing | No | No | No | Yes | Full |
+| Supplier management | No | No | No | Yes | Full |
+| Invoices & expenses | No | No | No | Yes | Full |
+| Refunds & financial actions | No | No | No | Limited | Full |
+| Staff management | No | No | No | No | Full |
+| System configuration | No | No | No | No | Full |
+| Any admin route | No | No | No | No | Full |
+
+**Customer token isolation:**  
+Customer tokens (issued by `CustomerAuthController`, authenticated via `customers` guard) must never be accepted by any staff or admin route. This is a hard boundary — not just a role check.
+
+---
+
+## Idempotency and State Transition Checklist
+
+Use this checklist when implementing or auditing the payment and order flows.
+
+### Payment Safety
+- [ ] Duplicate BML webhook call does not create a duplicate payment effect
+- [ ] Webhook is the source of truth for payment confirmation — return URL alone cannot finalize a payment
+- [ ] Return URL page shows status by reading order state from the DB, not from URL params
+- [ ] A failed or cancelled payment does not mark the order as paid
+- [ ] A retried payment attempt on the same order does not cause double-charging
+- [ ] Payment state transitions are validated — an order cannot move from `pending` to `completed` without a confirmed payment event
+
+### Order State Safety
+- [ ] Order status transitions are explicit and validated (no jumping from `pending` to `delivered` in one step)
+- [ ] Cancelling an already-paid order triggers a refund process, not a silent state change
+- [ ] POS order creation is idempotent — duplicate requests with the same data do not create duplicate orders
+
+### Loyalty & Promotions Safety
+- [ ] Loyalty points are awarded once per order — not once per webhook or return URL hit
+- [ ] Promotion codes cannot be applied twice to the same order
+- [ ] Loyalty holds cannot be double-released or double-applied
+- [ ] Referral bonuses are awarded once per qualifying event
+
+### Refund Safety
+- [ ] Refunds require an explicit role check (manager or admin only)
+- [ ] A refund cannot be issued twice for the same order/payment
+- [ ] Partial refunds track cumulative amount to prevent over-refunding
+
+### Webhook Replay Protection
+- [ ] BML webhook validates a signature or secret header before processing
+- [ ] Webhook processor checks if the order is already in the target state before applying changes (idempotent check)
+- [ ] Webhook failures are logged clearly with enough detail to debug without re-triggering
 
 ---
 
 ## Session 1 — Security Fixes
 
 **Goal:** Fix the 5 highest-risk security issues with minimal risk of breaking production.  
-**Recommended order:** F → D → E → B → A  
+**Recommended order:** F → D → E → B → A
 
 ---
 
 ### F — Phone Number Validation Too Loose
 
+**Status:** Suspected / Needs verification — verify `normalizePhone()` logic in `CustomerAuthController` before patching.
+
 #### What is happening
 
-The OTP auth flow accepts any string as a phone number and tries to "fix" it by taking the last 7 digits and prepending `+960`. This means if someone enters `99991234567`, the system strips it to `4567` and sends an OTP to `+9604567` — a completely different person's number. That person could then log in as the original customer.
+The OTP auth flow appears to accept any string as a phone number and attempts to "fix" it by taking the last 7 digits and prepending `+960`. If confirmed, this means entering `99991234567` would strip to `4567` and send an OTP to `+9604567` — a completely different person's number. That person could then log in as the original customer.
+
+**Verify in code first:** Open `CustomerAuthController` and locate `normalizePhone()`. Confirm whether this behavior exists before implementing the fix.
 
 #### Files to Change
 
@@ -600,38 +289,34 @@ backend/app/Rules/MaldivesPhone.php                                ← CREATE TH
 
 **Step 1 — Create `app/Rules/MaldivesPhone.php`**
 
-This is a new Laravel custom validation rule. It should:
-- Accept only these formats:
+A new Laravel custom validation rule that:
+- Accepts only these formats:
   - `7XXXXXX` — 7 digits starting with 7 (local mobile)
   - `9XXXXXX` — 7 digits starting with 9 (local mobile)
   - `3XXXXXX` — 7 digits starting with 3
   - `960XXXXXXX` — 10 digits with country code (no +)
   - `+960XXXXXXX` — 11 chars with + prefix
-- Strip spaces, dashes, and parentheses before checking
-- Return a clear, user-friendly error message on rejection
-- **Never auto-correct. Always reject bad input.**
+- Strips spaces, dashes, and parentheses before checking
+- Returns a clear, user-friendly error message on rejection
+- **Never auto-corrects. Always rejects bad input.**
 
 **Step 2 — Update `normalizePhone()` in `CustomerAuthController`**
 
-Replace current permissive logic with:
 ```
 1. Strip spaces, dashes, parentheses
 2. If starts with +960 → validate the next 7 digits are numeric
-3. If starts with 960 → validate the next 7 digits are numeric → prepend +
+3. If starts with 960  → validate the next 7 digits are numeric → prepend +
 4. If exactly 7 digits starting with 3, 7, or 9 → prepend +960
-5. Anything else → throw ValidationException with message "Invalid Maldivian phone number"
+5. Anything else → throw ValidationException: "Invalid Maldivian phone number"
 ```
 
 **Step 3 — Apply `MaldivesPhone` rule everywhere phone is accepted**
 
-Search the codebase for all places that accept a phone number as input:
 - `CustomerAuthController::sendOtp()`
 - `CustomerAuthController::verifyOtp()`
-- Checkout/order creation flows
+- Checkout / order creation flows
 - Reservation store flow
 - Any customer profile update flow
-
-Apply the rule to all of them consistently.
 
 #### Tests Required
 
@@ -651,15 +336,17 @@ File: `tests/Feature/Auth/PhoneNormalizationTest.php`
 
 #### Risk Assessment
 
-**Low.** Only affects the OTP login flow. Worst case: a user with a currently-accepted malformed number gets a validation error and must re-enter their number correctly. That is the correct and safe behavior.
+**Low.** Only affects OTP login. Worst case: a user with a currently-tolerated malformed number gets a validation error and must re-enter correctly. That is the safe and correct behavior.
 
 ---
 
 ### D — Health Endpoint Leaks Too Much
 
+**Status:** Confirmed — current response includes `environment` and `database` fields.
+
 #### What is happening
 
-There is a public URL — no login required — that returns:
+There is a public URL — no login required — that currently returns:
 ```json
 {
   "status": "ok",
@@ -669,24 +356,24 @@ There is a public URL — no login required — that returns:
 }
 ```
 
-Attackers use this to fingerprint your infrastructure. Knowing you are on "production" with a live database connection tells them the system is active and what to target.
+Attackers use this to fingerprint infrastructure and confirm the system is live and actively connected to a database.
 
 #### Files to Change
 
 ```
-backend/routes/api.php   ← find the /system/health route and reduce its response
+backend/routes/api.php   ← find the /system/health route
 ```
 
 #### Implementation Steps
 
-**Step 1 — Change the public health route response to only:**
+**Step 1 — Change the public health response to only:**
 ```json
 { "status": "ok" }
 ```
 
-Remove: `environment`, `database`, `timestamp` (or keep timestamp if your uptime monitoring needs it, but nothing else).
+Remove `environment`, `database`. Optionally keep `timestamp` if an uptime monitoring tool depends on it, but nothing else.
 
-**Step 2 (Optional but recommended) — Add an internal health endpoint:**
+**Step 2 (Optional) — Add an internal health endpoint:**
 ```
 GET /api/admin/system/health  → protected by auth:sanctum + admin role
                               → returns full details for internal monitoring
@@ -702,64 +389,54 @@ File: `tests/Feature/System/HealthEndpointTest.php`
 ✓ Response does NOT contain "environment" key
 ✓ Response does NOT contain "database" key
 ✓ Response does NOT contain version or infrastructure info
-✓ Admin health endpoint (if created) returns 401 without token
+✓ Admin health endpoint returns 401 without token
 ✓ Admin health endpoint returns full details with valid admin token
 ```
 
 #### Risk Assessment
 
-**Very low.** This is a response content change only. No route change, no frontend dependency. Nothing in the frontend calls this endpoint.
+**Very low.** Response content change only. No route change. No frontend dependency.
 
 ---
 
 ### E — BML Return URL Fragility
 
+**Status:** Suspected / Needs verification — must audit how many places build the return URL before centralizing.
+
 #### What is happening
 
-After a customer pays via BML bank, the bank redirects the customer back to the site. The URL for that redirect is built by string concatenation in multiple places across the codebase. If the `APP_FRONTEND_URL` config value is slightly wrong (trailing slash, wrong domain, etc.), the customer gets redirected to a broken page after successfully paying — and may try to pay again.
+After a customer pays via BML, the bank redirects back to the site using a URL built by string concatenation in the backend. If `APP_FRONTEND_URL` has a trailing slash, wrong domain, or incorrect path, the customer lands on a broken page after a successful payment and may attempt to pay again.
+
+**Verify in code first:** Search for `APP_FRONTEND_URL`, `frontend_url`, `/order/status`, `return_url`, `redirect_url` across the backend. Count every place a return URL is assembled.
 
 #### Files to Change
 
 ```
 backend/app/Http/Controllers/Api/BmlWebhookController.php   ← centralize URL building
-backend/config/frontend.php                                  ← CREATE THIS (new config file)
+backend/config/frontend.php                                  ← CREATE THIS
 backend/.env.example                                         ← add FRONTEND_ORDER_STATUS_URL
 ```
 
 #### Implementation Steps
 
-**Step 1 — Audit the BML flow first**
-
-Search the codebase for all of these:
-- `APP_FRONTEND_URL`
-- `frontend_url`
-- `/order/status`
-- `return_url`
-- `redirect_url`
-
-List every place a URL string is built by concatenation. Count how many places exist.
-
-**Step 2 — Create `config/frontend.php`**
-
+**Step 1 — Create `config/frontend.php`**
 ```php
 return [
     'order_status_url' => rtrim(env('FRONTEND_ORDER_STATUS_URL', ''), '/'),
 ];
 ```
 
-**Step 3 — Replace all ad-hoc URL building with:**
+**Step 2 — Replace all ad-hoc URL building with one pattern:**
 ```php
 config('frontend.order_status_url') . '/' . $orderId . '?payment=CONFIRMED'
 ```
 
-Use this single line everywhere instead of multiple different string concatenations.
-
-**Step 4 — Add to `.env.example`**
+**Step 3 — Add to `.env.example`:**
 ```
 FRONTEND_ORDER_STATUS_URL=https://test.bakeandgrill.mv/order/status
 ```
 
-**Step 5 — Add to production `.env` on the server**
+**Step 4 — Add to server `.env`:**
 ```
 FRONTEND_ORDER_STATUS_URL=https://app.bakeandgrill.mv/order/status
 ```
@@ -770,205 +447,205 @@ File: `tests/Feature/Payment/BmlReturnUrlTest.php`
 
 ```
 ✓ Return URL is correctly formed with order ID appended
-✓ Return URL matches the actual frontend SPA route structure
+✓ Return URL matches actual frontend SPA route structure
 ✓ No double slashes in the generated URL
 ✓ Missing config value falls back safely and logs a clear warning
-✓ Webhook and return URL both reference the same order correctly
+✓ Webhook and return URL both reference the same order
 ```
 
 #### Risk Assessment
 
-**Low** if you only centralize — the URL value stays the same, you just move where it is defined. Do not change the URL structure itself, only how it is assembled.
+**Low** if only centralizing — the URL value stays the same, only where it is defined changes. Do not change the URL structure itself.
 
 ---
 
 ### B — Auth Token Passed in URL for Streaming
 
+**Status:** Confirmed — current design passes `?token=` on the stream endpoint.
+
 #### What is happening
 
-To authenticate the live order status stream (SSE / EventSource), the customer's real auth token is passed in the URL:
+To authenticate the live order status stream, the customer's real auth token is passed in the URL:
 ```
 GET /api/stream/order/123?token=abc123xyz
 ```
 
-This URL — including the real token — is saved in:
-- Browser history
-- Server access logs
-- CDN and proxy logs
-- HTTP Referer headers
-
-A support person reading server logs, or an attacker who gains log access, gets real customer tokens for free.
+This URL — including the real token — is saved in browser history, server access logs, CDN logs, and HTTP Referer headers. Anyone with log access gets real customer tokens.
 
 #### Files to Change
 
 ```
-backend/app/Http/Controllers/Api/StreamController.php          ← update to validate ticket
+backend/app/Http/Controllers/Api/StreamController.php          ← validate ticket instead of token
 backend/routes/api.php                                          ← add stream-ticket endpoint
-apps/online-order-web/src/pages/OrderStatusPage.tsx            ← update to request ticket first
-  (or wherever EventSource is created — audit this file first)
+apps/online-order-web/src/pages/OrderStatusPage.tsx            ← request ticket before opening stream
+  (verify exact file first — see Frontend Dependency Map)
 ```
 
 #### Implementation Steps
 
 **Step 1 — Audit the frontend first**
 
-Find the exact file and line where `EventSource` is created. It will look something like:
+Find the exact file and line where `EventSource` is created:
 ```js
 new EventSource(`/api/stream/order/${orderId}?token=${token}`)
 ```
-Note the file name and line number. You cannot update backend until you know the frontend dependency.
+Note the file name and line number. Do not change the backend until the frontend dependency is confirmed.
 
-**Step 2 — Create a stream ticket endpoint in the backend**
+**Step 2 — Create a stream ticket endpoint**
 
 ```
 POST /api/orders/{orderId}/stream-ticket
   Auth required: yes (auth:sanctum, customer token)
-  Validates: the authenticated customer owns this order
-  Returns:
-    { "ticket": "signed-string-here", "expires_in": 60 }
-  
-  Ticket is:
-    - Signed with app key (HMAC or Laravel's Str::signedUrl equivalent)
-    - Contains: order_id, customer_id, expires_at (60 seconds from now)
+  Validates: authenticated customer owns this order
+  Returns: { "ticket": "signed-string", "expires_in": 60 }
+
+  Ticket properties:
+    - Signed with app key (HMAC)
+    - Contains: order_id, customer_id, expires_at (now + 60s)
     - Stored in cache with 60-second TTL
     - One-time use only (deleted from cache after first use)
 ```
 
-**Step 3 — Update StreamController to validate ticket instead of token**
+**Step 3 — Update StreamController validation**
 
 ```
 Current: GET /api/stream/order/{orderId}?token={real_auth_token}
 New:     GET /api/stream/order/{orderId}?ticket={short_lived_ticket}
 
-Validation sequence (all must pass, any failure = abort immediately):
-  1. ticket param must be present          → else abort(401, "No stream ticket")
-  2. Decode and verify ticket signature    → else abort(401, "Invalid ticket")
-  3. Check ticket is not expired           → else abort(401, "Ticket expired")
-  4. Check ticket.order_id == route {orderId} → else abort(403, "Ticket mismatch")
-  5. Check ticket.customer_id owns order  → else abort(403, "Unauthorized")
-  6. Delete ticket from cache (one-time use)
+Validation sequence (all must pass — any failure aborts immediately):
+  1. ticket param present            → else abort(401, "No stream ticket")
+  2. Ticket signature valid          → else abort(401, "Invalid ticket")
+  3. Ticket not expired              → else abort(401, "Ticket expired")
+  4. ticket.order_id == {orderId}    → else abort(403, "Ticket mismatch")
+  5. ticket.customer_id owns order   → else abort(403, "Unauthorized")
+  6. Delete ticket from cache
   7. Begin streaming
 ```
 
-**Step 4 — Update frontend**
+**Step 4 — Update frontend (deploy together with backend)**
 
-Replace the direct EventSource creation with a two-step process:
 ```
 1. POST /api/orders/{orderId}/stream-ticket → get { ticket }
 2. new EventSource(`/api/stream/order/${orderId}?ticket=${ticket}`)
 ```
 
-The frontend change and backend change must be deployed at the same time.
+The frontend and backend changes must be deployed in a single coordinated deploy.
 
 #### Tests Required
 
 File: `tests/Feature/Stream/OrderStreamAuthTest.php`
 
 ```
-✓ Customer can get a stream ticket for their own order
-✓ Customer cannot get a stream ticket for another customer's order (403)
-✓ Unauthenticated request to get ticket fails (401)
+✓ Customer gets a stream ticket for their own order
+✓ Customer cannot get a ticket for another customer's order (403)
+✓ Unauthenticated ticket request fails (401)
 ✓ Stream connection works with valid ticket
 ✓ Stream connection fails with no ticket (401)
 ✓ Stream connection fails with expired ticket (401)
 ✓ Stream connection fails with ticket for a different order (403)
-✓ Ticket cannot be reused after first successful connection (one-time use)
-✓ Real auth token in URL is no longer accepted by stream endpoint
+✓ Ticket cannot be reused after first use
+✓ Real auth token in URL is no longer accepted
 ```
 
 #### Risk Assessment
 
-**Medium.** This is the most complex change in Session 1. It touches both backend and frontend. Key rule: **deploy backend and frontend together**. If you deploy backend only first, the stream breaks until frontend is also deployed. Plan a single coordinated deploy for this change.
+**Medium.** Most complex change in Session 1. Touches backend and frontend. Must deploy both together. If backend is deployed first without frontend, the stream breaks until frontend catches up.
 
 ---
 
 ### A — Order Stream Open Without Auth
 
+**Status:** Suspected / Needs verification — must audit StreamController for conditional token checks before patching.
+
 #### What is happening
 
-The stream endpoint may allow access when no token is provided, because ownership validation appears to be conditional (only runs `if token exists`). This means someone who knows an order ID could potentially watch that order's live status updates without being the customer.
+The stream endpoint appears to allow access when no token is supplied, because ownership validation may only run inside an `if ($token)` conditional. This would allow anyone who knows an order ID to watch that order's live status updates.
+
+**Verify in code first:** Open `StreamController`, look for any `if ($token)`, try/catch, or default/fallback that allows the stream to begin without valid credentials.
+
+#### Note
+
+This finding is largely resolved by implementing **Finding B**. If B is implemented correctly, A is automatically fixed. This step is verification and explicit hardening.
 
 #### Files to Change
 
 ```
-backend/app/Http/Controllers/Api/StreamController.php   ← harden validation
+backend/app/Http/Controllers/Api/StreamController.php
 ```
-
-#### Note
-
-This finding is largely resolved by implementing **Finding B** above. If B is implemented correctly — where the stream requires a valid scoped ticket — then A is automatically fixed. However, an explicit audit should still be done.
 
 #### Implementation Steps
 
-**Step 1 — Audit StreamController carefully**
+**Step 1 — Audit StreamController**
 
 Look for:
-- Any `if ($token)` conditional that skips validation when token is absent
-- Any `try/catch` blocks that silently catch auth failures and continue
-- Any default/fallback behavior that allows the stream to start without valid auth
+- Any `if ($token)` that skips validation when token is absent
+- Any `try/catch` blocks that silently swallow auth failures
+- Any fallback that lets the stream start without valid auth
 
 **Step 2 — Harden regardless**
 
-At the very top of the stream action method, add unconditional checks:
+At the very top of the stream action, before any other logic:
 ```
-if no ticket/token present   → immediately abort(401) — no fallthrough
-if ticket/token invalid      → immediately abort(401) — no fallthrough
+if no ticket/token present   → immediately abort(401)
+if ticket/token invalid      → immediately abort(401)
 No optional paths. No soft failures.
 ```
 
-**Step 3 — Audit related endpoints**
+**Step 3 — Audit related order endpoints for IDOR**
 
-Check these routes for similar ownership issues:
 ```
-GET /api/orders/{id}          → does it verify order belongs to auth'd customer?
+GET /api/orders/{id}          → must verify order belongs to auth'd customer
 GET /api/orders/{id}/status   → same check
 Any polling alternative to SSE
 ```
 
-For each: verify that a customer cannot access another customer's order even if they guess the ID. This is called an Insecure Direct Object Reference (IDOR) vulnerability.
+A customer must not be able to access another customer's order by guessing the ID.
 
 #### Tests Required
 
 ```
-✓ GET stream with no credentials → 401
-✓ GET stream with valid token for own order → 200
-✓ GET stream with valid token for another customer's order → 403
-✓ GET /api/orders/{id} with another customer's order ID → 403
+✓ Stream request with no credentials → 401
+✓ Stream request for own order with valid credentials → 200
+✓ Stream request for another customer's order → 403
+✓ GET /api/orders/{id} for another customer's order → 403
 ✓ Unauthenticated order detail request → 401
 ```
 
 #### Risk Assessment
 
-**Low** once Finding B is implemented. If B is done first, this is just a verification + hardening step.
+**Low** once Finding B is implemented. Largely a verification and hardening step.
 
 ---
 
 ## Session 2 — Authorization & Role Enforcement
 
-**Do this separately — only after Session 1 is deployed, tested, and confirmed stable on the server.**
+**Do this separately — only after Session 1 is deployed, tested, and confirmed stable.**
 
 ---
 
 ### C — No Role Checks on Admin Routes
 
+**Status:** Suspected / Needs verification — must audit each route group before adding middleware.
+
 #### What is happening
 
-Most admin routes check only `auth:sanctum` — meaning "is this person logged in?" — but do not check what role that person has. So a kitchen staff member with a valid token could technically access financial reports, SMS campaign tools, staff management, or anything else.
+Most admin routes appear to check only `auth:sanctum` — "is this person logged in?" — without checking the person's role. A kitchen staff member with a valid token may be able to access financial reports, SMS campaigns, or staff management.
+
+**Verify in code first:** Go through `routes/api.php` and list every admin route group. Note which ones already have role-based middleware and which do not. Do not assume all are unprotected.
 
 #### Files to Change
 
 ```
-backend/app/Http/Middleware/RequireRole.php      ← CREATE THIS (new middleware)
-backend/bootstrap/app.php                        ← register new middleware alias
+backend/app/Http/Middleware/RequireRole.php      ← CREATE THIS
+backend/bootstrap/app.php                        ← register middleware alias
 backend/routes/api.php                           ← apply middleware to route groups
-backend/app/Models/User.php                      ← add role constants + helper methods
+backend/app/Models/User.php                      ← add role constants and helpers
 ```
 
 #### Implementation Steps
 
-**Step 1 — Define the role system in `User.php`**
+**Step 1 — Add role constants and helpers to `User.php`**
 
-Add constants:
 ```php
 const ROLE_OWNER   = 'owner';
 const ROLE_ADMIN   = 'admin';
@@ -987,27 +664,24 @@ public function isAdmin(): bool
 }
 ```
 
-**Step 2 — Create `app/Http/Middleware/RequireRole.php`**
+**Step 2 — Create `RequireRole` middleware**
 
 ```
-Takes allowed roles as parameter in route definition
-Checks auth()->user()->role is in the allowed list
-Returns 403 with clear message if role is not allowed
-Returns 401 if user is not authenticated at all
+- Takes allowed roles as parameter
+- Checks auth()->user()->role is in the allowed list
+- Returns 403 if role is not allowed
+- Returns 401 if user is unauthenticated
 ```
 
-**Step 3 — Register middleware alias**
+**Step 3 — Register alias in `bootstrap/app.php`**
 
-In `bootstrap/app.php` (Laravel 11 style):
 ```php
 ->withMiddleware(function (Middleware $middleware) {
     $middleware->alias(['role' => \App\Http\Middleware\RequireRole::class]);
 })
 ```
 
-**Step 4 — Apply to route groups**
-
-Authorization matrix to enforce:
+**Step 4 — Apply to route groups (see Authorization Matrix above)**
 
 | Route Group | Allowed Roles |
 |-------------|--------------|
@@ -1017,62 +691,17 @@ Authorization matrix to enforce:
 | Reports & analytics | owner, admin, manager |
 | Promotions management | owner, admin, manager |
 | SMS campaigns | owner, admin, manager |
-| Loyalty admin actions | owner, admin, manager |
-| Menu & pricing management | owner, admin, manager |
+| Loyalty admin | owner, admin, manager |
+| Menu & pricing | owner, admin, manager |
+| Inventory & finance | owner, admin, manager |
 | Staff management | owner, admin |
 | System configuration | owner, admin |
-| Inventory & finance | owner, admin, manager |
-| Supplier management | owner, admin, manager |
 
-**Step 5 — Ensure customer token isolation**
+**Step 5 — Enforce customer token isolation**
 
-Customer tokens come from `CustomerAuthController` and authenticate against the `customers` table (or guard). Staff tokens authenticate against the `users` table. Verify at middleware level that customer tokens cannot reach ANY staff/admin route.
+Customer tokens (from `CustomerAuthController`, `customers` guard) must never pass through to staff or admin routes. Verify this at middleware level, not just at role check level.
 
-#### Authorization Matrix (Full)
-
-```
-Customer:
-  ✓ Own account only
-  ✓ Own orders only
-  ✓ Own reservations only
-  ✓ Own loyalty view only
-  ✗ No staff or admin access whatsoever
-
-Kitchen Staff:
-  ✓ KDS view and order status updates
-  ✓ Order prep state transitions
-  ✗ No payment data
-  ✗ No customer personal data
-  ✗ No admin or finance access
-
-Cashier:
-  ✓ Create and manage POS orders
-  ✓ Accept payments
-  ✓ Basic order operations
-  ✗ No staff management
-  ✗ No system configuration
-  ✗ No analytics exports
-  ✗ No finance reports
-
-Manager:
-  ✓ Everything Cashier can do
-  ✓ Menu management
-  ✓ Reservations management
-  ✓ Operational reports
-  ✓ Promotions management
-  ✓ Inventory management
-  ✗ No staff management
-  ✗ No system configuration
-
-Admin:
-  ✓ Everything Manager can do
-  ✓ Staff management
-  ✓ System configuration
-  ✗ Cannot change owner settings
-
-Owner:
-  ✓ Full access to everything
-```
+**Critical pre-condition:** Before deploying, verify that all existing staff accounts in the production database have a valid role value set. Any account with a null or unrecognized role will be locked out immediately after deployment.
 
 #### Tests Required
 
@@ -1095,7 +724,86 @@ File: `tests/Feature/Auth/RoleAuthorizationTest.php`
 
 #### Risk Assessment
 
-**Medium-High.** This touches every admin route. Any mistake — wrong role in middleware, missing route group — breaks a staff workflow. Must be done with thorough testing on the test server before deploying to production. Plan at least one full day of testing.
+**Medium-High.** Touches every admin route. A wrong role or missing route group breaks a staff workflow. Requires thorough testing on `test.bakeandgrill.mv` before deploying to production.
+
+---
+
+## Rollback / Safe Deployment Plan
+
+### A. Order Stream Auth / Ticketing (Findings B + A)
+
+**What could break:**
+- The customer order tracking page stops updating live status
+- Any frontend that opens an EventSource with the old `?token=` param breaks immediately
+
+**What to monitor:**
+- Customer complaints about order status page not updating
+- 401/403 errors in server logs for the `/api/stream/` path
+
+**How to roll back:**
+- If frontend and backend were deployed together: revert both to previous commit and redeploy
+- Keep the previous working version tagged in git before deploying this change
+
+**Temporary compatibility mode (if needed):**
+- During transition only, the stream endpoint could accept either `?token=` (old) or `?ticket=` (new) simultaneously
+- Remove the old `?token=` path as soon as the new ticket flow is confirmed working
+- Do not leave the dual-mode running longer than one deploy cycle
+
+---
+
+### B. Admin Authorization Tightening (Finding C)
+
+**What could break:**
+- A manager or cashier is blocked from a route they legitimately use
+- A staff member with a null `role` in the database gets locked out entirely
+
+**What to monitor:**
+- Staff reports of "403 Forbidden" on pages they previously accessed
+- Admin dashboard page errors in the browser console
+
+**How to roll back:**
+- Revert `routes/api.php` changes — remove the `role:` middleware from route groups
+- Redeploy backend only (no frontend changes needed for rollback)
+
+**Before deploying:**
+- Run a query on the production database: `SELECT id, name, role FROM users WHERE role IS NULL OR role NOT IN ('owner','admin','manager','cashier','kitchen')`
+- Assign correct roles to any accounts returned by that query before the deployment
+
+---
+
+### C. Payment Redirect / BML Return Logic (Finding E)
+
+**What could break:**
+- Post-payment redirect lands on a 404 page if `FRONTEND_ORDER_STATUS_URL` is misconfigured on the server
+- Customer sees a broken page after a successful payment
+
+**What to monitor:**
+- Check server `.env` has `FRONTEND_ORDER_STATUS_URL` set correctly before deploying
+- After deploying, do a test payment on `test.bakeandgrill.mv` and confirm the redirect lands on the correct page
+
+**How to roll back:**
+- Revert `config/frontend.php` and `BmlWebhookController.php` to previous version
+- The URL value itself is not changing — only where it is defined — so rollback is low risk
+
+---
+
+### D. Phone Validation Tightening (Finding F)
+
+**What could break:**
+- A customer whose phone number was previously accepted in a non-standard format now gets a validation error and cannot log in
+- This is a very edge case but possible for customers who entered numbers like `00960XXXXXXX` in the past
+
+**What to monitor:**
+- OTP login error rates after deployment
+- Customer support reports of "cannot log in"
+
+**How to roll back:**
+- Revert `CustomerAuthController::normalizePhone()` to previous version
+- The `MaldivesPhone` rule can be left in place as it does not affect existing data
+
+**Mitigation:**
+- Before deploying, check the `customers` table for any stored phone numbers in non-standard formats: `SELECT phone FROM customers WHERE phone NOT REGEXP '^\\+960[0-9]{7}$'`
+- Normalize any found records to `+960XXXXXXX` format in a one-time migration before enforcing strict validation
 
 ---
 
@@ -1107,43 +815,50 @@ File: `tests/Feature/Auth/RoleAuthorizationTest.php`
 Week 1 — Session 1 (Security Fixes):
 
   Day 1: Fix F (Phone Validation)
+    → Verify normalizePhone() behavior in code
+    → Audit customer table for non-standard phone numbers
     → Implement MaldivesPhone rule
     → Update CustomerAuthController
-    → Test all phone formats manually
+    → Test all phone formats manually on test server
     → Deploy to test.bakeandgrill.mv
     → Verify OTP login still works
 
   Day 2: Fix D (Health Endpoint)
+    → Confirm current response fields
     → Change response to { "status": "ok" } only
     → Deploy to test.bakeandgrill.mv
-    → Verify health URL returns correct response
+    → Verify endpoint returns correct response
 
   Day 3: Fix E (BML URL Centralization)
+    → Audit all places that build the return URL
     → Create config/frontend.php
     → Update all URL building to use config
-    → Add FRONTEND_ORDER_STATUS_URL to .env on server
-    → Test a full payment flow on test environment
+    → Add FRONTEND_ORDER_STATUS_URL to server .env
+    → Do a test payment on test environment
+    → Confirm redirect lands on correct page
     → Deploy
 
   Day 4-5: Fix B + A (Stream Ticket)
+    → Audit frontend to find EventSource usage
     → Implement backend stream ticket endpoint
     → Update StreamController validation
     → Update frontend to request ticket first
-    → Test stream connection manually in browser
-    → Deploy BOTH backend and frontend together in one deploy
+    → Test stream manually in browser on test server
+    → Deploy BOTH backend and frontend together
     → Verify live order status updates still work
 
 Week 2 — Verify Session 1:
   → Run all Session 1 tests
-  → Test all critical user flows end to end on test server
+  → Test all critical user flows end-to-end on test server
   → Deploy to production only after all tests pass
 
 Week 3-4 — Session 2 (Roles):
-  → Plan role assignments for existing staff accounts
-  → Implement middleware and role system
-  → Test every role thoroughly
-  → Deploy to test server
-  → Test again
+  → Audit all admin route groups — list which have role checks and which do not
+  → Query production DB for users with null or invalid role values
+  → Assign correct roles to all staff accounts
+  → Implement RequireRole middleware
+  → Apply to route groups incrementally (one group at a time)
+  → Test every role on test server
   → Deploy to production with rollback plan ready
 ```
 
@@ -1156,9 +871,9 @@ Week 3-4 — Session 2 (Roles):
 | F — Phone | `CustomerAuthController.php` | None | `app/Rules/MaldivesPhone.php` |
 | D — Health | `routes/api.php` | None | None |
 | E — BML URL | `BmlWebhookController.php` | None | `config/frontend.php` |
-| B — Stream Token | `StreamController.php`, `routes/api.php` | `OrderStatusPage.tsx` | None |
+| B — Stream Token | `StreamController.php`, `routes/api.php` | `OrderStatusPage.tsx` (verify exact file) | None |
 | A — Stream Auth | `StreamController.php` | None | None |
-| C — Roles | `routes/api.php`, `User.php` | None | `Middleware/RequireRole.php` |
+| C — Roles | `routes/api.php`, `User.php`, `bootstrap/app.php` | None | `Middleware/RequireRole.php` |
 
 ---
 
@@ -1179,40 +894,92 @@ Week 3-4 — Session 2 (Roles):
 |-----------|--------|
 | `tests/Feature/Auth/RoleAuthorizationTest.php` | Finding C |
 
+### Payment & Idempotency Tests
+
+| Test File | Covers |
+|-----------|--------|
+| `tests/Feature/Payment/WebhookIdempotencyTest.php` | Duplicate webhook, state transitions |
+| `tests/Feature/Payment/ReturnUrlSafetyTest.php` | Return URL cannot finalize payment alone |
+
 ---
 
-## Additional Security Notes (Found During Audit Planning)
+## Additional Security Notes
 
-These should be verified during implementation but are lower priority:
+These should be verified during implementation. They are lower priority but should not be ignored.
 
 - **IDOR on order detail** — Verify `GET /api/orders/{id}` checks that the order belongs to the authenticated customer
-- **IDOR on reservations** — Verify customers can only cancel/view their own reservations
+- **IDOR on reservations** — Verify customers can only cancel or view their own reservations
 - **Mass assignment** — Verify all models use `$fillable` (not `$guarded = []`)
-- **Webhook signature** — Verify BML webhook validates a signature or secret before processing
+- **Webhook signature** — Verify BML webhook validates a signature or shared secret before processing
 - **Duplicate webhook** — Verify that receiving the same BML webhook twice does not double-process a payment
-- **Refund authorization** — Verify only admin/manager can issue refunds, not cashier or customer
+- **Refund authorization** — Verify only admin or manager can issue refunds
 
 ---
 
-## Questions to Answer Before Starting Implementation
+## Questions to Answer Before Starting
+
+Answer these before beginning implementation. Some findings cannot be safely patched without these answers.
 
 1. **Does the current stream use SSE (EventSource) or WebSocket?**  
-   Answer before implementing Finding B.
+   Required before implementing Finding B. The ticket mechanism differs slightly for each.
 
 2. **Is there a Redis instance available on the server?**  
-   Stream tickets need a fast cache store. If only file cache is available, that still works but is slower.
+   Stream tickets need a fast, reliable cache store. File cache works but is slower and has edge cases under load.
 
 3. **What is the exact URL of the BML return page in production?**  
-   Needed for Finding E — to make sure the centralized URL matches the actual frontend route.
+   Required for Finding E. The centralized config value must match the real frontend SPA route exactly.
 
 4. **What roles do existing staff accounts currently have in the database?**  
-   Needed for Finding C — before adding role enforcement, all existing users must have a valid role assigned or they will be locked out.
+   Required for Finding C. Run `SELECT id, name, role FROM users` before adding role enforcement. Any account with a null or missing role will be locked out after deployment.
 
 5. **Is `test.bakeandgrill.mv` running the same code as `app.bakeandgrill.mv`?**  
-   All Session 1 fixes should be tested on test environment before touching production.
+   All Session 1 fixes must be tested on the test server before touching production.
+
+6. **Does any external monitoring tool (e.g. UptimeRobot) depend on the current health endpoint response fields?**  
+   Required before removing `environment` and `database` fields from the health endpoint (Finding D).
+
+---
+
+## Final Deliverables Expected
+
+When implementation is complete, a report or PR should contain the following:
+
+### 1. Confirmed Findings List
+For each finding, state:
+- Was it confirmed in code or not found?
+- What exactly was the issue?
+
+### 2. Affected Files
+- Full list of files changed
+- Files created
+- Files deleted
+
+### 3. What Changed
+- Summary of each code change
+- Any API payload or route changes
+- Frontend changes made
+
+### 4. Backward Compatibility Notes
+- Any change that affects existing client behavior
+- Any change that requires a server config update (e.g. new `.env` variable)
+- Any database migration or data fix required
+
+### 5. Tests Added or Updated
+- List of new test files
+- List of test cases added to existing files
+- Confirmation that all new tests pass
+
+### 6. Rollout Risks
+- Any change that required extra care during deployment
+- Any issue encountered and how it was resolved
+
+### 7. Follow-Up Items Not Addressed
+- Anything discovered during implementation that needs a separate task
+- Any finding that turned out to be a false positive — document why
 
 ---
 
 *Document created: March 2026*  
 *Implementation: Pending — start with Session 1 when ready*  
-*Review this document before starting each finding to refresh context*
+*Review this document before starting each finding to refresh context*  
+*Update finding status in the Verification Status table after each fix is confirmed*
