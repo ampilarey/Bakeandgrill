@@ -1,204 +1,551 @@
 /**
  * Live Testing Checklist
- * Interactive step-by-step verification for all Bake & Grill features.
+ * Comprehensive step-by-step verification for every Bake & Grill feature.
  * State is persisted in localStorage so progress survives page reloads.
  */
 import { useState, useEffect } from 'react';
 
 const SECTIONS = [
+  // ── 1. Infrastructure ──────────────────────────────────────────────────────
   {
-    title: 'Staff Auth',
-    icon: '🔐',
+    title: 'Infrastructure',
+    icon: '🏗️',
     items: [
-      'Staff can log in to POS with PIN',
-      'Wrong PIN is rejected with an error message',
-      'Staff can log in to Admin dashboard',
-      'Admin dashboard requires a valid staff token to access pages',
-      'KDS login works with PIN + device ID',
-      'KDS token persists after page refresh (no re-login needed)',
+      'GET /api/health returns {"status":"ok"}',
+      'Main website (/) loads with no console errors',
+      '/admin/ loads the admin dashboard login page',
+      '/kds/ loads the KDS login page',
+      '/pos/ loads the POS login page',
+      '/order/ loads the React ordering app',
+      'SSL certificate is valid (green padlock in browser)',
+      'All static assets (CSS, JS, images) load — no 404s in console',
     ],
   },
+
+  // ── 2. Staff Auth ──────────────────────────────────────────────────────────
   {
-    title: 'POS — Order Flow',
+    title: 'Staff Auth (PIN Login)',
+    icon: '🔐',
+    items: [
+      'Staff can log in to Admin dashboard with correct PIN',
+      'Wrong PIN is rejected with error message',
+      'Admin token is stored in localStorage after login',
+      'Refreshing admin dashboard keeps you logged in',
+      'Logout clears token and redirects to login page',
+      'Staff can log in to KDS with PIN + device identifier',
+      'KDS token persists after browser refresh (no re-login)',
+      'KDS logout button clears token and returns to login',
+      'Staff can log in to POS with PIN',
+      'POS session persists after page refresh',
+    ],
+  },
+
+  // ── 3. POS — Order Creation ────────────────────────────────────────────────
+  {
+    title: 'POS — Order Creation',
     icon: '🖥️',
     items: [
       'Menu categories load in POS',
-      'Items appear under the correct category',
-      'Adding an item to the cart works',
-      'Quantity increase/decrease works in cart',
-      'Cash payment completes the order',
+      'Items appear under their correct category',
+      'Item can be added to the cart',
+      'Item quantity can be increased and decreased in cart',
+      'Item can be removed from cart',
+      'Order type can be selected (takeaway / dine-in)',
+      'Notes can be added to an order',
+      'Order is created and gets an order number (BG-YYYYMMDD-XXXX)',
+      'Cash payment completes the order (status → paid)',
       'Card payment completes the order',
-      'Split payment (cash + card) works',
-      'Order number is generated (format: BG-YYYYMMDD-XXXX)',
-      'Dine-in order can be held and resumed',
-      'Discount amount can be applied to an order',
+      'BML online payment can be initiated from POS',
+      'Split payment (e.g. partial cash + partial card) works',
+      'Discount amount can be applied before payment',
+      'Promo code can be applied and discount is reflected in total',
+      'Promo code can be removed from an order',
+      'Order appears immediately in Admin → Orders list',
     ],
   },
+
+  // ── 4. POS — Hold, Tables & Sync ──────────────────────────────────────────
+  {
+    title: 'POS — Hold, Tables & Offline',
+    icon: '🗂️',
+    items: [
+      'Dine-in order can be put on hold',
+      'Held order appears in the held orders list',
+      'Held order can be resumed and paid',
+      'Table can be opened and an order assigned to it',
+      'Items can be added to an open table',
+      'Table can be closed after payment',
+      'Two tables can be merged into one',
+      'Table order can be split',
+      'Offline order sync endpoint accepts orders (/api/offline/sync)',
+      'Barcode scanner lookup works (/api/items/barcode/:barcode)',
+    ],
+  },
+
+  // ── 5. KDS ────────────────────────────────────────────────────────────────
   {
     title: 'KDS — Kitchen Display',
     icon: '👨‍🍳',
     items: [
-      'New order appears on KDS within seconds of being placed',
-      'Order can be started (status → in_progress)',
-      'Order can be bumped (marked complete)',
+      'New order appears on KDS within seconds of being placed in POS',
+      'Order shows correct type (dine-in / takeaway / delivery)',
+      'Order shows notes if any were added',
+      'Order shows all items and quantities',
+      '"Start" button moves order to in_progress',
+      '"Bump" button marks order as complete and removes it from view',
       'Recalled orders reappear on KDS',
-      'KDS shows order type (dine-in / takeaway / delivery)',
-      'KDS shows notes if any were added',
+      'KDS auto-refreshes without manual reload',
     ],
   },
+
+  // ── 6. Customer Online Ordering ───────────────────────────────────────────
   {
-    title: 'Online Order — Customer',
+    title: 'Customer — Online Ordering',
     icon: '📱',
     items: [
-      'Customer can request OTP via phone number',
-      'OTP SMS is received and can be verified',
+      'Customer can request OTP via phone number at /order/checkout',
+      'OTP SMS is received on the phone',
+      'Correct OTP verifies and logs the customer in',
+      'Wrong OTP is rejected with error message',
       'Customer can browse the menu at /order/menu',
-      'Customer can add items to cart',
-      'Customer can apply a promo code',
+      'Items can be filtered by category',
+      'Item modal opens with description and options',
+      'Items can be added to cart',
+      'Cart total updates correctly',
       'Customer can place a takeaway order',
-      'Order confirmation page loads with order number',
-      'Order status page shows live status (/order/orders/:id)',
-      'Customer can view their past orders',
+      'Customer can place a dine-in order',
+      'Order confirmation screen shows order number and estimated wait',
+      'Order status page (/order/orders/:id) shows live status via SSE',
+      'Customer can view their past orders after login',
+      'Customer can update their profile name',
     ],
   },
+
+  // ── 7. BML Payment ────────────────────────────────────────────────────────
   {
-    title: 'BML Payment',
+    title: 'BML Online Payment',
     icon: '💳',
     items: [
-      'BML payment button appears at checkout',
-      'Clicking BML payment redirects to BML page',
-      'Successful payment marks order as paid',
-      'Failed/cancelled payment returns user to order page',
-      'BML webhook is received and processed (check orders list)',
+      'BML "Pay Online" button appears at checkout',
+      'Clicking it redirects to the BML payment page',
+      'Successful test payment marks the order as paid',
+      'Failed / cancelled payment returns to order page without marking paid',
+      'BML webhook is received and processed (verify in Admin → Orders)',
+      'Partial BML payment can be initiated (/api/payments/online/initiate-partial)',
+      'Order becomes paid when all partial payments cover the total',
     ],
   },
+
+  // ── 8. Delivery ────────────────────────────────────────────────────────────
   {
-    title: 'Delivery',
+    title: 'Delivery Orders',
     icon: '🛵',
     items: [
-      'Customer can select delivery order type',
-      'Delivery address fields appear (island, address, contact)',
-      'Delivery fee is added to the order total',
-      'Delivery orders appear in admin Delivery tab',
-      'Delivery status can be updated by staff',
+      'Customer can select Delivery as order type',
+      'Delivery address fields appear (island, street, contact name, phone)',
+      'Missing island/address is rejected with 422',
+      'Delivery fee is added to order total',
+      'Delivery order appears in Admin → Delivery tab',
+      'Delivery status can be updated by staff (e.g. out for delivery → delivered)',
+      'Delivery order appears on KDS with delivery type label',
     ],
   },
+
+  // ── 9. Pre-Orders ─────────────────────────────────────────────────────────
   {
-    title: 'Pre-Orders',
+    title: 'Pre-Orders (Event Orders)',
     icon: '📅',
     items: [
+      '/pre-order 301-redirects to /order/pre-order',
       '/order/pre-order page loads correctly',
       'Customer can browse and add items with quantities',
-      'Fulfillment date picker enforces 24h minimum',
+      'Running total updates as items are added',
+      'Fulfillment date picker enforces minimum 24-hour window',
+      'Customer notes field accepts text',
       'OTP login is required before submitting',
-      'Pre-order is submitted and confirmation is shown',
-      'Pre-order appears in admin panel',
+      'Pre-order submits and shows confirmation with order number',
+      'Pre-order appears in Admin panel (check Orders or Pre-Orders section)',
     ],
   },
+
+  // ── 10. Loyalty ───────────────────────────────────────────────────────────
   {
-    title: 'Loyalty & Promotions',
+    title: 'Loyalty Programme',
     icon: '⭐',
     items: [
-      'Loyalty points are awarded after a completed order',
-      'Customer can view their loyalty balance at /order/checkout',
-      'Promo code validation works (valid code accepted)',
-      'Invalid/expired promo code is rejected with message',
+      'Loyalty account is created automatically on first customer login',
+      'Points are awarded after a completed paid order',
+      'Customer can view their loyalty balance at checkout',
+      'Loyalty hold preview shows points to be redeemed',
+      'Loyalty points can be held (reserved) during checkout',
+      'Held points are consumed when order is paid',
+      'Held points are released if order is cancelled',
+      'Admin can view all loyalty accounts in Admin → Loyalty',
+      'Admin can manually adjust a customer\'s points balance',
+      'Loyalty report loads in Admin → Loyalty',
+    ],
+  },
+
+  // ── 11. Referrals & Gift Cards ────────────────────────────────────────────
+  {
+    title: 'Referrals & Gift Cards',
+    icon: '🎁',
+    items: [
+      'Logged-in customer can generate their referral code',
+      'Referral code can be validated (/api/referrals/validate)',
+      'Referrer reward and referee discount values come from config (not hardcoded)',
+      'Admin can view all referrals in Admin → Loyalty → Referrals',
+      'Gift card balance can be checked by code (/api/gift-cards/:code/balance)',
+      'Admin can issue a new gift card',
+      'Admin can list all gift cards',
+    ],
+  },
+
+  // ── 12. Promotions ────────────────────────────────────────────────────────
+  {
+    title: 'Promotions',
+    icon: '🏷️',
+    items: [
+      'Admin can create a new promo code in Admin → Promotions',
+      'Admin can set promo type: percentage or fixed amount',
+      'Admin can set max uses and expiry date',
+      'Admin can disable/enable a promo',
+      'Admin can delete a promo',
+      'Valid promo code is accepted at checkout',
+      'Invalid promo code is rejected with clear message',
+      'Expired promo is rejected',
+      'Max-uses promo is rejected after limit reached',
       'Promo discount is applied correctly to order total',
-      'Referral code is generated for logged-in customer',
+      'Promo redemption count increments after payment',
+      'Promo report loads in Admin → Promotions',
     ],
   },
+
+  // ── 13. Favorites & Reorder ───────────────────────────────────────────────
   {
-    title: 'Reviews & Reservations',
+    title: 'Favorites & Quick Reorder',
+    icon: '❤️',
+    items: [
+      'Logged-in customer can toggle favorites on menu items',
+      'Favorites list is visible to the customer',
+      'Customer can quick-reorder from a previous order',
+      'Reorder adds previous items to cart correctly',
+    ],
+  },
+
+  // ── 14. Reviews ───────────────────────────────────────────────────────────
+  {
+    title: 'Reviews',
     icon: '⭐',
     items: [
-      'Customer can submit a review for an item',
-      'Review appears in admin Reviews section for moderation',
-      'Approved review shows on the item page',
-      'Reservation form at /order/reservations submits successfully',
-      'Reservation appears in admin Reservations tab',
+      'Logged-in customer can submit a review with a rating (1-5)',
+      'Review is created in pending/unapproved state',
+      'Review appears in Admin → Reviews for moderation',
+      'Admin can approve a review',
+      'Admin can reject a review',
+      'Approved review appears on the item (visible via /api/items/:id/reviews)',
+      'Average rating and count are computed at DB level (not from limited list)',
+      'Customer can view their own submitted reviews',
     ],
   },
+
+  // ── 15. Reservations ─────────────────────────────────────────────────────
   {
-    title: 'Receipts & SMS',
-    icon: '📄',
+    title: 'Reservations',
+    icon: '🪑',
     items: [
-      'Staff can send SMS receipt after payment',
+      '/order/reservations page loads',
+      'Availability check returns open slots',
+      'Customer can submit a reservation request',
+      'Reservation appears in Admin → Reservations',
+      'Admin can approve or decline a reservation',
+      'Admin can delete a reservation',
+      'Admin can update reservation settings (party size, advance notice, etc.)',
+    ],
+  },
+
+  // ── 16. Receipts ─────────────────────────────────────────────────────────
+  {
+    title: 'Receipts',
+    icon: '🧾',
+    items: [
+      'Staff can send an SMS receipt after payment',
       'SMS receipt is received on the customer\'s phone',
-      'Email receipt can be sent (if configured)',
-      'Receipt PDF can be generated and opened',
-      'SMS logs appear in Admin → SMS page',
+      'Staff can send an email receipt (if configured)',
+      'Receipt page is accessible via /receipts/:token',
+      'Receipt PDF can be generated at /receipts/:token/pdf',
+      'Customer can submit feedback on a receipt',
+      'Receipt can be resent',
+      'Receipt sending is logged in SMS logs',
     ],
   },
+
+  // ── 17. SMS & Campaigns ───────────────────────────────────────────────────
   {
-    title: 'Admin — Menu Management',
-    icon: '🍽️',
+    title: 'SMS & Campaigns',
+    icon: '📨',
     items: [
-      'Can create a new menu category',
-      'Can create a new menu item with price and image',
-      'Item availability can be toggled on/off',
-      'Changes to items appear immediately in the online order app',
-      'Daily specials can be created and published',
+      'Admin → SMS page loads',
+      'SMS logs show sent messages with status',
+      'SMS log stats (total, cost, by type) load',
+      'Admin can preview a bulk SMS campaign (audience + cost estimate)',
+      'Admin can create and send a campaign',
+      'Admin can cancel a sent campaign',
+      'Customer can opt out of promotional SMS (/api/customer/sms/opt-out)',
+      'OTP SMS is logged as type "otp" in SMS logs',
     ],
   },
+
+  // ── 18. Inventory ─────────────────────────────────────────────────────────
   {
-    title: 'Admin — Reports & Analytics',
+    title: 'Inventory',
+    icon: '📦',
+    items: [
+      'Inventory list loads in Admin',
+      'New inventory item can be created',
+      'Inventory item can be updated',
+      'Stock adjustment (add/remove) works',
+      'Stock count can be submitted',
+      'Low-stock items appear in low-stock alert list',
+      'Price history for an item loads (eager-loaded, no N+1)',
+      'Cheapest supplier for an item is calculated correctly',
+      'Waste log entry can be created',
+      'Waste log list loads',
+    ],
+  },
+
+  // ── 19. Suppliers & Purchases ─────────────────────────────────────────────
+  {
+    title: 'Suppliers & Purchases',
+    icon: '🏭',
+    items: [
+      'Customer OTP token cannot access /api/suppliers (403 expected)',
+      'Staff can create a new supplier',
+      'Staff can update a supplier',
+      'Staff can delete a supplier',
+      'Staff can create a purchase order',
+      'Staff can receive a purchase (mark as received)',
+      'Purchase receipt/document can be uploaded',
+      'Purchase orders page loads in Admin',
+      'Supplier Intelligence page loads with cheapest supplier data',
+    ],
+  },
+
+  // ── 20. Shifts & Cash Drawer ─────────────────────────────────────────────
+  {
+    title: 'Shifts & Cash Drawer',
+    icon: '💰',
+    items: [
+      'Staff can open a shift',
+      'Current shift status is returned from /api/shifts/current',
+      'Cash-in movement can be recorded with type, amount, reason',
+      'Cash-out movement can be recorded',
+      'Invalid cash movement (missing amount, bad type) is rejected with 422',
+      'X-Report (end of shift summary) loads',
+      'Z-Report (daily close report) loads',
+      'Shift can be closed',
+      'CSV export works for X and Z reports',
+    ],
+  },
+
+  // ── 21. Reports ───────────────────────────────────────────────────────────
+  {
+    title: 'Reports',
     icon: '📊',
     items: [
-      'Reports page loads sales summary for today',
-      'Sales breakdown shows items and categories',
-      'Analytics peak hours chart renders',
-      'Analytics retention and LTV tables load',
-      'Date range filter updates report data',
+      'Sales summary loads for today\'s date range',
+      'Sales breakdown shows items sorted by revenue (with limit)',
+      'Sales breakdown shows categories',
+      'Inventory valuation report loads',
+      'Promotion usage report loads',
+      'Loyalty report loads',
+      'CSV export works for sales summary',
+      'CSV export works for sales breakdown',
+      'Date range filter updates all report data',
     ],
   },
+
+  // ── 22. Analytics ─────────────────────────────────────────────────────────
   {
-    title: 'Admin — Staff & Devices',
+    title: 'Analytics',
+    icon: '📈',
+    items: [
+      'Admin → Analytics page loads without errors',
+      'Peak hours bar chart renders',
+      'Customer retention table renders',
+      'Item profitability table renders with margin %',
+      '7-day demand forecast renders',
+      'Top customers by revenue (LTV) table renders',
+      'Analytics data is fetched via shared api.ts (not raw fetch)',
+    ],
+  },
+
+  // ── 23. Menu Management ───────────────────────────────────────────────────
+  {
+    title: 'Menu Management',
+    icon: '🍽️',
+    items: [
+      'Admin can create a new category',
+      'Admin can update a category name/slug',
+      'Admin can delete a category',
+      'Admin can create a new menu item with price, SKU, image',
+      'Admin can update an item',
+      'Admin can delete an item',
+      'Item availability can be toggled on/off',
+      'Toggle is reflected immediately in the customer-facing menu',
+      'Item photos can be uploaded',
+      'Item photo order can be updated',
+      'Item photo can be deleted',
+      'Barcode label can be generated for an item',
+      'Daily special can be created and published',
+      'Daily special appears at /api/specials',
+      'Daily special can be updated and deleted',
+    ],
+  },
+
+  // ── 24. Staff Management & Time Clock ─────────────────────────────────────
+  {
+    title: 'Staff Management & Time Clock',
     icon: '👤',
     items: [
+      'Admin can create a new staff member',
+      'Admin can update staff details',
+      'Admin can reset a staff PIN',
+      'Admin can delete a staff member',
       'Staff list loads in Admin → Staff',
-      'New staff member can be created with a PIN',
-      'Device can be registered with an identifier',
-      'Inactive device is rejected when trying to place an order',
+      'Staff member can clock in (/api/time-clock/in)',
+      'Staff member can clock out (/api/time-clock/out)',
+      'Time clock history loads',
+      'Time clock summary (hours worked) loads',
+      'Staff can check current clock status',
     ],
   },
+
+  // ── 25. Invoices & Expenses ───────────────────────────────────────────────
+  {
+    title: 'Invoices & Expenses',
+    icon: '🧾',
+    items: [
+      'Admin → Invoices page loads',
+      'Invoice PDF can be generated (check template uses config(\'business.*\'))',
+      'Admin → Expenses page loads',
+      'Admin → Profit & Loss page loads',
+      'Xero integration status can be checked (/api/xero/status)',
+    ],
+  },
+
+  // ── 26. Webhooks ─────────────────────────────────────────────────────────
+  {
+    title: 'Webhooks',
+    icon: '🔔',
+    items: [
+      'Admin → Webhooks page loads',
+      'Supported event types list loads',
+      'New webhook subscription can be created',
+      'Webhook can be updated',
+      'Webhook can be deleted',
+      'Webhook secret can be rotated',
+      'Webhook logs load for a subscription',
+    ],
+  },
+
+  // ── 27. Opening Hours ─────────────────────────────────────────────────────
   {
     title: 'Opening Hours',
     icon: '🕐',
     items: [
-      '/hours page shows correct opening times',
-      '/order/hours shows the same data (from API)',
-      'Closed status shows correctly outside opening hours',
-      'Special closure reason appears if configured',
+      '/hours Blade page shows correct schedule',
+      '/order/hours React page shows same schedule (fetched from API)',
+      'API /api/opening-hours returns full week schedule',
+      'API /api/opening-hours/status returns open/closed + reason',
+      'Closed status shows correctly if outside opening hours',
+      'Wait time estimate loads (/api/wait-time)',
     ],
   },
+
+  // ── 28. Notifications & Push ─────────────────────────────────────────────
   {
-    title: 'Redirects & Navigation',
+    title: 'Push Notifications',
+    icon: '🔔',
+    items: [
+      'Browser push notification permission prompt appears at /order/',
+      'Customer can subscribe to push notifications',
+      'Customer can unsubscribe from push notifications',
+    ],
+  },
+
+  // ── 29. Customer Display ─────────────────────────────────────────────────
+  {
+    title: 'Customer Display',
+    icon: '📺',
+    items: [
+      'Customer-facing display endpoint loads (/api/display/:orderNumber)',
+      'Display shows correct order number and status',
+    ],
+  },
+
+  // ── 30. Blade Website ────────────────────────────────────────────────────
+  {
+    title: 'Main Blade Website',
+    icon: '🌐',
+    items: [
+      'Home page (/) loads with no cart buttons (marketing only)',
+      '"Order Now" buttons on home page link to /order/menu',
+      '"Browse Full Menu" links to /order/menu',
+      '/contact page loads with correct contact form',
+      '/hours page loads with correct opening times',
+      '/terms page loads',
+      '/refund page loads',
+      '/contact page loads',
+      'Footer phone, address, email come from config (not hardcoded)',
+      'Footer WhatsApp and Viber buttons work',
+      'Footer "Privacy Policy" link goes to /order/privacy',
+      'Business name, phone, address in config/business.php match actual details',
+    ],
+  },
+
+  // ── 31. Redirects ─────────────────────────────────────────────────────────
+  {
+    title: 'Redirects (301)',
     icon: '🔗',
     items: [
-      '/menu redirects to /order/menu (301)',
-      '/privacy redirects to /order/privacy (301)',
-      '/pre-order redirects to /order/pre-order (301)',
-      '/checkout redirects to /order/ (301)',
+      '/menu → /order/menu (301 redirect)',
+      '/privacy → /order/privacy (301 redirect)',
+      '/pre-order → /order/pre-order (301 redirect)',
+      '/checkout → /order/ (301 redirect)',
+      '/order-type → /order/ (301 redirect)',
+      '/order (no slash) → /order/ (redirect)',
+      '/admin (no slash) → /admin/ (redirect)',
+      '/kds (no slash) → /kds/ (redirect)',
+      '/pos (no slash) → /pos/ (redirect)',
       '/order/privacy shows the React privacy page',
-      '/kds/ loads the KDS app',
-      '/pos/ loads the POS app',
-      '/admin/ loads the admin dashboard',
+      '/order/pre-order shows the React pre-order page',
     ],
   },
+
+  // ── 32. Security ─────────────────────────────────────────────────────────
   {
     title: 'Security',
     icon: '🛡️',
     items: [
-      'Customer OTP token cannot access /api/orders (staff list)',
-      'Customer OTP token cannot access /api/suppliers',
-      'Unauthenticated requests return 401',
-      'X-Device-Identifier header is required for POS orders',
-      'Demo PINs are NOT visible on KDS/POS login in production',
+      'Customer OTP token cannot access GET /api/orders (403)',
+      'Customer OTP token cannot access /api/suppliers (403)',
+      'Customer OTP token cannot access /api/purchases (403)',
+      'Customer OTP token cannot access /api/inventory (403)',
+      'Staff token cannot access /api/customer/me (403)',
+      'Unauthenticated request to protected route returns 401',
+      '401 response fires auth_expired event in browser (user redirected to login)',
+      'X-Device-Identifier header is required for POS order creation (422 without it)',
+      'Body-only device_identifier is rejected (header required)',
+      'Demo PINs are NOT visible on KDS login page in production',
+      'Demo PINs are NOT visible on POS login page in production',
+      'Print proxy only accepts requests with correct PRINT_PROXY_KEY',
+      'No .env file is committed to git (check git log)',
     ],
   },
 ];
 
-const STORAGE_KEY = 'bg_test_checklist_v1';
+const STORAGE_KEY = 'bg_test_checklist_v2';
 
 function loadState(): Record<string, boolean> {
   try {
@@ -220,7 +567,7 @@ export default function TestChecklistPage() {
   }
 
   function resetAll() {
-    if (window.confirm('Reset all checkboxes?')) setChecked({});
+    if (window.confirm('Reset all checkboxes? This cannot be undone.')) setChecked({});
   }
 
   const total = SECTIONS.reduce((s, sec) => s + sec.items.length, 0);
@@ -228,10 +575,10 @@ export default function TestChecklistPage() {
   const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
 
   const pctColor =
-    pct === 100 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444';
+    pct === 100 ? '#10B981' : pct >= 70 ? '#F59E0B' : pct >= 40 ? '#F97316' : '#EF4444';
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 16px 80px' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px 80px' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
@@ -239,27 +586,52 @@ export default function TestChecklistPage() {
           🧪 Live Testing Checklist
         </h1>
         <p style={{ color: '#6B7280', fontSize: 13, marginTop: 4 }}>
-          Verify every feature before going live. Progress is saved automatically.
+          {SECTIONS.length} sections · {total} checks · Verify everything before going live. Progress saves automatically.
         </p>
       </div>
 
-      {/* Progress */}
+      {/* Progress bar */}
       <div style={{ background: 'white', borderRadius: 14, padding: '16px 20px', border: '1px solid #E5E7EB', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
         <div style={{ flex: 1 }}>
           <div style={{ height: 10, background: '#F3F4F6', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 999, transition: 'width 0.4s ease' }} />
+            <div style={{
+              height: '100%', width: `${pct}%`, background: pctColor,
+              borderRadius: 999, transition: 'width 0.4s ease',
+            }} />
           </div>
           <p style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>{done} of {total} checks passed</p>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ textAlign: 'right', minWidth: 60 }}>
           <div style={{ fontSize: 28, fontWeight: 800, color: pctColor, lineHeight: 1 }}>{pct}%</div>
         </div>
         <button
           onClick={resetAll}
-          style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}
+          style={{ background: '#FEE2E2', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: '#DC2626', cursor: 'pointer' }}
         >
-          Reset
+          Reset all
         </button>
+      </div>
+
+      {/* Section summary */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+        {SECTIONS.map(section => {
+          const secDone = section.items.filter(item => checked[`${section.title}::${item}`]).length;
+          const all     = secDone === section.items.length;
+          return (
+            <span
+              key={section.title}
+              title={`${section.title}: ${secDone}/${section.items.length}`}
+              style={{
+                fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999,
+                background: all ? '#D1FAE5' : '#F3F4F6',
+                color:      all ? '#065F46' : '#6B7280',
+                border: `1px solid ${all ? '#6EE7B7' : '#E5E7EB'}`,
+              }}
+            >
+              {section.icon} {section.title} {secDone}/{section.items.length}
+            </span>
+          );
+        })}
       </div>
 
       {/* Filter */}
@@ -269,12 +641,13 @@ export default function TestChecklistPage() {
             key={f}
             onClick={() => setFilter(f)}
             style={{
-              padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+              padding: '5px 16px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+              border: 'none', cursor: 'pointer',
               background: filter === f ? '#111827' : '#F3F4F6',
               color:      filter === f ? 'white'    : '#6B7280',
             }}
           >
-            {f === 'all' ? 'All' : f === 'pending' ? 'Pending' : 'Passed'}
+            {f === 'all' ? `All (${total})` : f === 'pending' ? `Pending (${total - done})` : `Passed (${done})`}
           </button>
         ))}
       </div>
@@ -295,9 +668,18 @@ export default function TestChecklistPage() {
           const allDone  = secDone === secTotal;
 
           return (
-            <div key={section.title} style={{ background: 'white', border: `1px solid ${allDone ? '#6EE7B7' : '#E5E7EB'}`, borderRadius: 14, overflow: 'hidden' }}>
+            <div key={section.title} style={{
+              background: 'white',
+              border: `1px solid ${allDone ? '#6EE7B7' : '#E5E7EB'}`,
+              borderRadius: 14, overflow: 'hidden',
+            }}>
               {/* Section header */}
-              <div style={{ padding: '12px 16px', background: allDone ? '#ECFDF5' : '#F9FAFB', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{
+                padding: '12px 16px',
+                background: allDone ? '#ECFDF5' : '#F9FAFB',
+                borderBottom: '1px solid #E5E7EB',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 18 }}>{section.icon}</span>
                   <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{section.title}</span>
@@ -319,18 +701,24 @@ export default function TestChecklistPage() {
                   <label
                     key={item}
                     style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 16px',
-                      cursor: 'pointer', borderTop: i === 0 ? 'none' : '1px solid #F3F4F6',
+                      display: 'flex', alignItems: 'flex-start', gap: 12,
+                      padding: '11px 16px', cursor: 'pointer',
+                      borderTop: i === 0 ? 'none' : '1px solid #F3F4F6',
                       background: isDone ? '#F0FDF4' : 'white',
+                      transition: 'background 0.15s',
                     }}
                   >
                     <input
                       type="checkbox"
                       checked={isDone}
                       onChange={() => toggle(key)}
-                      style={{ marginTop: 2, width: 16, height: 16, accentColor: '#10B981', flexShrink: 0 }}
+                      style={{ marginTop: 2, width: 16, height: 16, accentColor: '#10B981', flexShrink: 0, cursor: 'pointer' }}
                     />
-                    <span style={{ fontSize: 13, color: isDone ? '#9CA3AF' : '#374151', textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.5 }}>
+                    <span style={{
+                      fontSize: 13, lineHeight: 1.5,
+                      color: isDone ? '#9CA3AF' : '#374151',
+                      textDecoration: isDone ? 'line-through' : 'none',
+                    }}>
                       {item}
                     </span>
                   </label>
@@ -343,10 +731,10 @@ export default function TestChecklistPage() {
 
       {/* All done banner */}
       {pct === 100 && (
-        <div style={{ marginTop: 24, background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: 14, padding: '24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🎉</div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#065F46', margin: 0 }}>All checks passed!</h3>
-          <p style={{ fontSize: 13, color: '#047857', marginTop: 6 }}>Bake &amp; Grill is ready to go live.</p>
+        <div style={{ marginTop: 24, background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: 14, padding: '32px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#065F46', margin: 0 }}>All {total} checks passed!</h3>
+          <p style={{ fontSize: 13, color: '#047857', marginTop: 8 }}>Bake &amp; Grill is fully verified and ready to go live.</p>
         </div>
       )}
     </div>
