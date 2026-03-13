@@ -37,6 +37,7 @@ class PromotionTest extends TestCase
             'pin_hash' => Hash::make('1234'), 'is_active' => true,
         ]);
         $this->device = Device::create(['name' => 'POS', 'identifier' => 'T-001', 'type' => 'pos', 'is_active' => true]);
+        $this->withHeader('X-Device-Identifier', $this->device->identifier);
         $category = Category::create(['name' => 'Food', 'slug' => 'food', 'is_active' => true]);
         $this->item = Item::create([
             'category_id' => $category->id, 'name' => 'Burger', 'base_price' => 25.00,

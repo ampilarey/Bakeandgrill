@@ -43,7 +43,8 @@
                     "prep_time_minutes": null,
                     "spice_level": null,
                     "is_combo": false,
-                    "combo_discount_pct": null
+                    "combo_discount_pct": null,
+                    "store_id": null
                 }
             ]
         }

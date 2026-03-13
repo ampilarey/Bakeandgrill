@@ -51,6 +51,9 @@ class OrderContractTest extends ContractTestCase
             'is_active' => true,
         ]);
 
+        // EnsureActiveDevice now only accepts the identifier via header (not body)
+        $this->withHeader('X-Device-Identifier', $this->device->identifier);
+
         $category = Category::create([
             'name' => 'Burgers',
             'slug' => 'burgers',
