@@ -74,6 +74,8 @@ class ReportsController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
+        $limit = min((int) $request->input('limit', 100), 500);
+
         $items = OrderItem::select(
             'item_id',
             'item_name',
@@ -86,6 +88,7 @@ class ReportsController extends Controller
             })
             ->groupBy('item_id', 'item_name')
             ->orderByDesc('total')
+            ->limit($limit)
             ->get();
 
         $categories = OrderItem::select(
@@ -102,6 +105,7 @@ class ReportsController extends Controller
             })
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('total')
+            ->limit(50)
             ->get();
 
         $employees = Order::leftJoin('users', 'users.id', '=', 'orders.user_id')

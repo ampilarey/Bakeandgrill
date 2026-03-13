@@ -11,8 +11,9 @@ use App\Mail\ReceiptMail;
 use App\Models\Order;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Services\AuditLogService;
-use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -154,8 +155,13 @@ class ReceiptController extends Controller
         }
 
         if ($receipt->channel === 'sms') {
-            $message = 'Thanks for visiting Bake & Grill! View your receipt: ' . $this->receiptLink($receipt);
-            $sent = app(SmsService::class)->send($receipt->recipient, $message);
+            $body = 'Thanks for visiting Bake & Grill! View your receipt: ' . $this->receiptLink($receipt);
+            $log  = app(SmsService::class)->send(new SmsMessage(
+                to:      $receipt->recipient,
+                message: $body,
+                type:    'transactional',
+            ));
+            $sent = in_array($log->status, ['sent', 'demo'], true);
         } else {
             Mail::to($receipt->recipient)->send(new ReceiptMail($receipt));
             $sent = true;

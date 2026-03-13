@@ -82,7 +82,7 @@
         <li>Order confirmation messages</li>
         <li>Promotional offers (you can opt out anytime)</li>
     </ul>
-    <p><strong>Opt-Out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at +960 9120011.</p>
+    <p><strong>Opt-Out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at {{ config('business.phone') }}.</p>
 
     <h2>Card Payment Security</h2>
     <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page. Bake &amp; Grill does <strong>not</strong> store, view, process, or retain any payment card details (card numbers, CVV, expiry) on our servers. Card data is handled entirely by BML using SSL/TLS encryption.</p>
@@ -117,7 +117,7 @@
     <h2>Contact Us</h2>
     <p>For privacy-related questions or requests, contact us:</p>
     <p><strong>Email:</strong> privacy@bakeandgrill.mv</p>
-    <p><strong>Phone:</strong> +960 9120011</p>
-    <p><strong>Address:</strong> Kalaafaanu hingun, Male, Maldives (Near H. Sahara)</p>
+    <p><strong>Phone:</strong> {{ config('business.phone') }}</p>
+    <p><strong>Address:</strong> {{ config('business.address.full') }}</p>
 </div>
 @endsection

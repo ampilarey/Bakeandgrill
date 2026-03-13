@@ -1,19 +1,5 @@
 import { useEffect, useState } from 'react';
-
-const BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
-
-function authHeaders(): HeadersInit {
-  const t = localStorage.getItem('admin_token');
-  return t ? { Authorization: `Bearer ${t}`, Accept: 'application/json' } : { Accept: 'application/json' };
-}
-
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  return res.json() as Promise<T>;
-}
+import { getAnalytics } from '../api';
 
 type PeakHour     = { hour: number; label: string; count: number; avg_total: number };
 type RetentionRow = { week: string; new: number; returning: number; total_customers: number };
@@ -34,11 +20,11 @@ export default function AnalyticsPage() {
       setLoading(true);
       try {
         const [ph, rt, pr, fc, ltv] = await Promise.all([
-          get<{ peak_hours: PeakHour[] }>('/admin/analytics/peak-hours'),
-          get<{ retention: RetentionRow[] }>('/admin/analytics/retention'),
-          get<{ items: ProfitItem[] }>('/admin/analytics/profitability'),
-          get<{ forecast: ForecastRow[] }>('/admin/analytics/forecast'),
-          get<{ top_customers: LtvCustomer[] }>('/admin/analytics/customer-ltv'),
+          getAnalytics<{ peak_hours: PeakHour[] }>('/admin/analytics/peak-hours'),
+          getAnalytics<{ retention: RetentionRow[] }>('/admin/analytics/retention'),
+          getAnalytics<{ items: ProfitItem[] }>('/admin/analytics/profitability'),
+          getAnalytics<{ forecast: ForecastRow[] }>('/admin/analytics/forecast'),
+          getAnalytics<{ top_customers: LtvCustomer[] }>('/admin/analytics/customer-ltv'),
         ]);
         setPeakHours(ph.peak_hours);
         setRetention(rt.retention);

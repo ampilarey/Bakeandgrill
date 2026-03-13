@@ -20,6 +20,12 @@ class ReviewController extends Controller
     {
         $item = Item::findOrFail($itemId);
 
+        // Compute avg + count at the DB level — not on an already-limited PHP collection
+        $stats = Review::where('item_id', $item->id)
+            ->where('status', 'approved')
+            ->selectRaw('COUNT(*) as review_count, ROUND(AVG(rating), 1) as average_rating')
+            ->first();
+
         $reviews = Review::where('item_id', $item->id)
             ->where('status', 'approved')
             ->with('customer:id,name')
@@ -27,12 +33,9 @@ class ReviewController extends Controller
             ->limit(50)
             ->get();
 
-        $avg = $reviews->avg('rating');
-        $count = $reviews->count();
-
         return response()->json([
-            'average_rating' => $avg ? round($avg, 1) : null,
-            'review_count'   => $count,
+            'average_rating' => $stats->average_rating ? (float) $stats->average_rating : null,
+            'review_count'   => (int) $stats->review_count,
             'reviews'        => $reviews->map(fn(Review $r) => $this->format($r)),
         ]);
     }

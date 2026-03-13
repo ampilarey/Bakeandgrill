@@ -25,8 +25,8 @@ class ReferralController extends Controller
             ['customer_id' => $customer->id],
             [
                 'code'                 => strtoupper(Str::random(8)),
-                'referrer_reward_mvr'  => 10.00,
-                'referee_discount_mvr' => 5.00,
+                'referrer_reward_mvr'  => config('loyalty.referral.referrer_reward_mvr'),
+                'referee_discount_mvr' => config('loyalty.referral.referee_discount_mvr'),
                 'is_active'            => true,
             ],
         );

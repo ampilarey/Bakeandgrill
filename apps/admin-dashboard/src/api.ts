@@ -768,3 +768,8 @@ export async function fetchWebhookLogs(id: number): Promise<{ data: WebhookLog[]
 export async function fetchSupportedWebhookEvents(): Promise<{ events: string[] }> {
   return req('/webhooks/events');
 }
+
+// ── Analytics (generic passthrough — AnalyticsPage uses this instead of raw fetch) ──
+export async function getAnalytics<T>(path: string): Promise<T> {
+  return req(path);
+}

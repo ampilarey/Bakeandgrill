@@ -78,4 +78,38 @@ export const ENDPOINTS = {
   ADMIN_RESERVATIONS:        '/admin/reservations',
   ADMIN_RESERVATION_STATUS:  (id: number) => `/admin/reservations/${id}/status`,
   ADMIN_RESERVATION_SETTINGS: '/admin/reservations/settings',
+
+  // Streams (SSE)
+  STREAM_ORDERS:           '/stream/orders',
+  STREAM_KDS:              '/stream/kds',
+  STREAM_ORDER_STATUS:     (orderId: number) => `/stream/orders/${orderId}/status`,
+  STREAM_PUBLIC_STATUS:    (orderId: number) => `/stream/order-status/${orderId}`,
+  STREAM_TICKET:           (orderId: number) => `/orders/${orderId}/stream-ticket`,
+
+  // Customer
+  CUSTOMER_PROFILE:        '/customer/profile',
+  CUSTOMER_ORDER_BY_ID:    (id: number) => `/customer/orders/${id}`,
+
+  // Delivery
+  DELIVERY_ORDER_UPDATE:   (id: number) => `/orders/${id}/delivery`,
+
+  // Payments
+  PARTIAL_PAYMENT:         '/payments/online/initiate-partial',
+
+  // Operations
+  WAIT_TIME:               '/wait-time',
+
+  // Item photos
+  ITEM_PHOTOS:             (itemId: number) => `/items/${itemId}/photos`,
+  ITEM_PHOTO_DELETE:       (itemId: number, photoId: number) => `/items/${itemId}/photos/${photoId}`,
+
+  // Admin utilities
+  ADMIN_UPLOAD_IMAGE:      '/admin/upload-image',
+
+  // Analytics
+  ADMIN_ANALYTICS_PEAK_HOURS:   '/admin/analytics/peak-hours',
+  ADMIN_ANALYTICS_RETENTION:    '/admin/analytics/retention',
+  ADMIN_ANALYTICS_PROFITABILITY: '/admin/analytics/profitability',
+  ADMIN_ANALYTICS_FORECAST:     '/admin/analytics/forecast',
+  ADMIN_ANALYTICS_CUSTOMER_LTV: '/admin/analytics/customer-ltv',
 } as const;

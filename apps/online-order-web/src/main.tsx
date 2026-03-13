@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { LanguageProvider } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
 import { Layout } from './components/Layout';
@@ -18,6 +19,7 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
+    <ErrorBoundary>
     <LanguageProvider>
       <CartProvider>
         <BrowserRouter basename="/order">
@@ -48,5 +50,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </CartProvider>
     </LanguageProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

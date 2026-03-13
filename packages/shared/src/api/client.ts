@@ -31,6 +31,14 @@ export function createApiClient(config: ApiClientConfig) {
     });
 
     if (!response.ok) {
+      // Token expired or revoked — notify the app so it can redirect to login
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth_expired'));
+        }
+        throw new Error('Session expired. Please log in again.');
+      }
+
       const text = await response.text().catch(() => '');
       let message = 'Request failed';
       try {

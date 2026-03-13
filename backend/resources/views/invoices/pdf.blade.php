@@ -42,9 +42,9 @@
 
   <div class="header">
     <div>
-      <div class="brand-name">Bake &amp; Grill</div>
-      <div class="brand-sub">Majeedhee Magu, Malé, Maldives</div>
-      <div class="brand-sub">+960 9120011 · hello@bakeandgrill.mv</div>
+      <div class="brand-name">{{ config('business.name') }}</div>
+      <div class="brand-sub">{{ config('business.address.full') }}</div>
+      <div class="brand-sub">{{ config('business.phone') }} · {{ config('business.email') }}</div>
     </div>
     <div class="invoice-meta">
       <div class="invoice-number">{{ $invoice->invoice_number }}</div>
@@ -62,8 +62,8 @@
   <div class="parties">
     <div class="party">
       <div class="party-label">From</div>
-      <div class="party-name">Bake &amp; Grill</div>
-      <div class="party-sub">Majeedhee Magu, Malé</div>
+      <div class="party-name">{{ config('business.name') }}</div>
+      <div class="party-sub">{{ config('business.address.line1') }}, {{ config('business.address.city') }}</div>
     </div>
     <div class="party">
       <div class="party-label">{{ $invoice->type === 'purchase' ? 'Supplier' : 'Bill To' }}</div>
@@ -122,7 +122,7 @@
   @endif
 
   <div class="footer">
-    Thank you for your business · Bake &amp; Grill, Malé, Maldives
+    Thank you for your business · {{ config('business.name') }}, {{ config('business.address.city') }}, {{ config('business.address.country') }}
   </div>
 
 </div>

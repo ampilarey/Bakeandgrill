@@ -70,7 +70,7 @@
 
     <h2>Cancellation</h2>
     <ul>
-        <li><strong>Before kitchen confirmation:</strong> You may cancel your order at no charge. Contact us immediately via WhatsApp or Viber at <a href="https://wa.me/9609120011">+960 912 0011</a>.</li>
+        <li><strong>Before kitchen confirmation:</strong> You may cancel your order at no charge. Contact us immediately via WhatsApp or Viber at <a href="{{ config('business.social.whatsapp') }}">{{ config('business.phone') }}</a>.</li>
         <li><strong>After kitchen confirmation:</strong> The order cannot be cancelled, as food preparation has already begun. No refund will be issued.</li>
         <li>Orders placed outside operating hours will be held pending and may be cancelled before the opening time.</li>
     </ul>
@@ -93,10 +93,10 @@
     <h2>How to Request a Refund</h2>
     <p>Contact us through any of the following channels with your order number:</p>
     <ul>
-        <li>WhatsApp / Viber: <a href="https://wa.me/9609120011">+960 912 0011</a></li>
-        <li>Phone: <a href="tel:+9609120011">+960 912 0011</a></li>
-        <li>Email: <a href="mailto:hello@bakeandgrill.mv">hello@bakeandgrill.mv</a></li>
-        <li>In person: Kalaafaanu Hingun, Malé</li>
+        <li>WhatsApp / Viber: <a href="{{ config('business.social.whatsapp') }}">{{ config('business.phone') }}</a></li>
+        <li>Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('business.phone')) }}">{{ config('business.phone') }}</a></li>
+        <li>Email: <a href="mailto:{{ config('business.email') }}">{{ config('business.email') }}</a></li>
+        <li>In person: {{ config('business.address.line1') }}, {{ config('business.address.city') }}</li>
     </ul>
 
     <h2>Payment Disputes</h2>

@@ -67,10 +67,10 @@
 
     {{-- BML Req 3: Corporate info --}}
     <div class="corporate-box">
-        <strong>Bake &amp; Grill</strong><br>
-        Kalaafaanu Hingun, Malé 20026, Republic of Maldives<br>
-        Phone: <a href="tel:+9609120011">+960 912 0011</a> &nbsp;|&nbsp;
-        Email: <a href="mailto:hello@bakeandgrill.mv">hello@bakeandgrill.mv</a><br>
+        <strong>{{ config('business.name') }}</strong><br>
+        {{ config('business.address.full') }}<br>
+        Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('business.phone')) }}">{{ config('business.phone') }}</a> &nbsp;|&nbsp;
+        Email: <a href="mailto:{{ config('business.email') }}">{{ config('business.email') }}</a><br>
         Customer service: Available via WhatsApp, Viber, or the contact details above.
     </div>
 
