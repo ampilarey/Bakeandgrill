@@ -22,6 +22,7 @@ import { ForecastPage } from './pages/ForecastPage';
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
 import { WebhooksPage } from './pages/WebhooksPage';
 import { DashboardPage } from './pages/DashboardPage';
+import TestChecklistPage from './pages/TestChecklistPage';
 
 function AuthGuard({
   user,
@@ -97,6 +98,7 @@ export default function App() {
                 <Route path="forecasts"             element={<ForecastPage />} />
                 <Route path="purchase-orders"       element={<PurchaseOrdersPage />} />
                 <Route path="webhooks"              element={<WebhooksPage />} />
+                <Route path="checklist"             element={<TestChecklistPage />} />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />
               </Routes>
             </Layout>

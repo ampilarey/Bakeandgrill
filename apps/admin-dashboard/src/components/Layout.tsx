@@ -22,6 +22,7 @@ const NAV = [
   { to: '/reports',             icon: '📊', label: 'Reports'          },
   { to: '/analytics',           icon: '📉', label: 'Analytics'        },
   { to: '/webhooks',            icon: '🔔', label: 'Webhooks'          },
+  { to: '/checklist',           icon: '✅', label: 'Test Checklist'     },
 ];
 
 export function Layout({
