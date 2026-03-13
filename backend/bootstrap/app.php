@@ -15,9 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'device.active' => App\Http\Middleware\EnsureActiveDevice::class,
-            'bml.signature' => App\Http\Middleware\VerifyBmlSignature::class,
-            'role'          => App\Http\Middleware\RequireRole::class,
+            'device.active'  => App\Http\Middleware\EnsureActiveDevice::class,
+            'bml.signature'  => App\Http\Middleware\VerifyBmlSignature::class,
+            'role'           => App\Http\Middleware\RequireRole::class,
+            'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

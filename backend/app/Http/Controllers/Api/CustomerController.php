@@ -44,6 +44,11 @@ class CustomerController extends Controller
     {
         $customer = $request->user();
 
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
         $orders = $customer->orders()
             ->with(['items', 'payments'])
             ->orderBy('created_at', 'desc')
@@ -59,6 +64,11 @@ class CustomerController extends Controller
     public function show(Request $request, int $id)
     {
         $customer = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
 
         $order = $customer->orders()
             ->with(['items.item', 'payments'])
@@ -94,6 +104,11 @@ class CustomerController extends Controller
     public function update(Request $request)
     {
         $customer = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',

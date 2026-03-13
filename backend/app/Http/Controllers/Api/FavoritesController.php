@@ -18,8 +18,13 @@ class FavoritesController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        /** @var Customer $customer */
-        $customer   = $request->user();
+        $customer = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
         $favoriteIds = DB::table('customer_favorites')
             ->where('customer_id', $customer->id)
             ->pluck('item_id')
@@ -37,8 +42,12 @@ class FavoritesController extends Controller
 
     public function toggle(Request $request, int $itemId): JsonResponse
     {
-        /** @var Customer $customer */
         $customer = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
 
         $item = Item::findOrFail($itemId);
 
@@ -71,8 +80,13 @@ class FavoritesController extends Controller
 
     public function reorder(Request $request, int $orderId): JsonResponse
     {
-        /** @var Customer $customer */
         $customer = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        // Also explicitly scopes order lookup to this customer's orders.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
 
         $order = Order::where('id', $orderId)
             ->where('customer_id', $customer->id)

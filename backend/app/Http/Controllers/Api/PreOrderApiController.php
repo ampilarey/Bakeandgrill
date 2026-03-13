@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Item;
 use App\Models\PreOrder;
 use Illuminate\Http\JsonResponse;
@@ -23,8 +24,12 @@ class PreOrderApiController extends Controller
             'customer_notes'   => 'nullable|string|max:1000',
         ]);
 
-        /** @var \App\Models\Customer $customer */
         $customer = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
 
         $itemsData = [];
         $subtotal  = 0;
@@ -70,8 +75,12 @@ class PreOrderApiController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        /** @var \App\Models\Customer $customer */
         $customer = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
 
         $preOrders = PreOrder::where('customer_id', $customer->id)
             ->orderByDesc('created_at')

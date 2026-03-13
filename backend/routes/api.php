@@ -217,7 +217,7 @@ Route::middleware('auth:sanctum')->group(function () {
 |--------------------------------------------------------------------------
 | Customer ability checked in controllers
 */
-Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group(function () {
     Route::get('/me', [CustomerController::class, 'me']);
     Route::get('/orders', [CustomerController::class, 'orders']);
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
@@ -351,7 +351,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Issue a short-lived stream ticket (requires customer auth)
-Route::middleware('auth:sanctum')->post(
+Route::middleware(['auth:sanctum', 'customer.token'])->post(
     '/orders/{orderId}/stream-ticket',
     [App\Http\Controllers\Api\StreamController::class, 'issueStreamTicket']
 );
@@ -408,7 +408,7 @@ Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardContr
     ->middleware('throttle:20,1');
 
 // Customer: referral management
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
 });
 
@@ -472,7 +472,7 @@ Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionContr
 
 // ─── Favorites & Quick Reorder ───────────────────────────────────────────────
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::get('/customer/favorites',               [App\Http\Controllers\Api\FavoritesController::class, 'index']);
     Route::post('/customer/favorites/{itemId}/toggle', [App\Http\Controllers\Api\FavoritesController::class, 'toggle']);
     Route::get('/customer/orders/{orderId}/reorder', [App\Http\Controllers\Api\FavoritesController::class, 'reorder']);
@@ -480,7 +480,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // ─── Pre-Orders (Event / Catering orders) ────────────────────────────────────
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::get('/customer/pre-orders',  [App\Http\Controllers\Api\PreOrderApiController::class, 'index']);
     Route::post('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'store']);
 });
@@ -491,7 +491,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/items/{itemId}/reviews', [App\Http\Controllers\Api\ReviewController::class, 'itemReviews']);
 
 // Customer: submit + list own reviews
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::post('/reviews',            [App\Http\Controllers\Api\ReviewController::class, 'store']);
     Route::get('/customer/reviews',    [App\Http\Controllers\Api\ReviewController::class, 'myReviews']);
 });

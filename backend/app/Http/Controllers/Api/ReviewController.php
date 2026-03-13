@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Review;
@@ -49,7 +50,14 @@ class ReviewController extends Controller
             'is_anonymous' => ['sometimes', 'boolean'],
         ]);
 
-        $customerId = $request->user()->id;
+        $user = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $user instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        $customerId = $user->id;
 
         // Only allow reviewing completed/paid orders the customer owns
         $order = Order::findOrFail($validated['order_id']);
@@ -83,7 +91,14 @@ class ReviewController extends Controller
 
     public function myReviews(Request $request): JsonResponse
     {
-        $reviews = Review::where('customer_id', $request->user()->id)
+        $user = $request->user();
+
+        // Defensive: EnsureCustomerToken middleware already enforces this.
+        if (! $user instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        $reviews = Review::where('customer_id', $user->id)
             ->with('item:id,name', 'order:id,order_number')
             ->orderByDesc('created_at')
             ->get();
