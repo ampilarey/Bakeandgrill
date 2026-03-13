@@ -25,7 +25,7 @@ Route::get('/admin', function () {
 
 // Public Website Pages (Customer-facing only)
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/menu', [HomeController::class, 'menu'])->name('menu');
+Route::redirect('/menu', '/order/menu', 301)->name('menu');
 Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
 Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
 Route::get('/privacy', [HomeController::class, 'privacy'])->name('privacy');
@@ -40,18 +40,16 @@ Route::post('/customer/request-otp', [CustomerPortalController::class, 'requestO
 Route::post('/customer/verify-otp', [CustomerPortalController::class, 'verifyOtp'])->name('customer.verify-otp');
 Route::post('/customer/logout', [CustomerPortalController::class, 'logout'])->name('customer.logout');
 
-// Order Type Selection (Gateway)
-Route::get('/order-type', function () {
-    return view('order-type-select');
-})->name('order.type');
-
-// Checkout (from main menu)
-Route::get('/checkout', [HomeController::class, 'checkout'])->name('checkout');
+// Legacy redirects — these pages now live in the React order app
+Route::redirect('/order-type', '/order/', 301);
+Route::redirect('/checkout', '/order/', 301);
 
 // Pre-Orders (Event Orders)
 use App\Http\Controllers\PreOrderController;
 
-Route::get('/pre-order', [PreOrderController::class, 'create'])->name('pre-order.create');
+// Pre-order now lives in the React app — redirect Blade route
+Route::redirect('/pre-order', '/order/pre-order', 301)->name('pre-order.create');
+// Keep POST fallback during transition
 Route::post('/pre-order', [PreOrderController::class, 'store'])->name('pre-order.store');
 Route::get('/pre-order/{id}/confirmation', [PreOrderController::class, 'confirmation'])->name('pre-order.confirmation');
 

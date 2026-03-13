@@ -46,14 +46,26 @@ Route::get('/health', function () {
 // Opening hours status (public - for online order app)
 Route::get('/opening-hours/status', function () {
     $service = app(App\Services\OpeningHoursService::class);
-    $open = $service->isOpenNow();
+    $open    = $service->isOpenNow();
     $message = null;
-    if (!$open) {
+    if (! $open) {
         $message = $service->getClosureReason()
             ?? config('opening_hours.closed_message', 'We are currently closed. Please check our opening hours.');
     }
 
     return response()->json(['open' => $open, 'message' => $message]);
+});
+
+// Full weekly schedule (public - for HoursPage in React app)
+Route::get('/opening-hours', function () {
+    $service  = app(App\Services\OpeningHoursService::class);
+    $schedule = config('opening_hours.hours', []);
+
+    return response()->json([
+        'schedule'       => $schedule,
+        'open'           => $service->isOpenNow(),
+        'closure_reason' => $service->getClosureReason(),
+    ]);
 });
 
 /*
@@ -464,6 +476,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customer/favorites',               [App\Http\Controllers\Api\FavoritesController::class, 'index']);
     Route::post('/customer/favorites/{itemId}/toggle', [App\Http\Controllers\Api\FavoritesController::class, 'toggle']);
     Route::get('/customer/orders/{orderId}/reorder', [App\Http\Controllers\Api\FavoritesController::class, 'reorder']);
+});
+
+// ─── Pre-Orders (Event / Catering orders) ────────────────────────────────────
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/customer/pre-orders',  [App\Http\Controllers\Api\PreOrderApiController::class, 'index']);
+    Route::post('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'store']);
 });
 
 // ─── Reviews ─────────────────────────────────────────────────────────────────

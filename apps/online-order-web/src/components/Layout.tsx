@@ -104,14 +104,20 @@ export function Layout() {
             </a>
 
             {/* Order app nav (React Router) */}
-            <Link
-              to="/menu"
-              style={{ padding: '0.45rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', textDecoration: 'none', transition: 'all 0.15s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-light)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
-            >
-              Menu
-            </Link>
+            {[
+              { to: '/menu',      label: 'Menu' },
+              { to: '/pre-order', label: 'Pre-Order' },
+            ].map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                style={{ padding: '0.45rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', textDecoration: 'none', transition: 'all 0.15s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-light)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+              >
+                {label}
+              </Link>
+            ))}
 
             {/* Main site links — regular anchor tags */}
             {[
@@ -198,14 +204,20 @@ export function Layout() {
             >
               ← Back to main website
             </a>
-            {/* Menu (React Router) */}
-            <Link
-              to="/menu"
-              onClick={() => setMenuOpen(false)}
-              style={{ display: 'block', padding: '0.625rem 0', fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
-            >
-              Order Menu
-            </Link>
+            {/* Menu + Pre-Order (React Router) */}
+            {[
+              { to: '/menu',      label: 'Order Menu' },
+              { to: '/pre-order', label: 'Pre-Order (Events)' },
+            ].map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setMenuOpen(false)}
+                style={{ display: 'block', padding: '0.625rem 0', fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
+              >
+                {label}
+              </Link>
+            ))}
             {/* Main site links */}
             {[
               { href: '/hours',   label: 'Opening Hours' },
@@ -274,27 +286,29 @@ export function Layout() {
               <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
                 Quick Links
               </h4>
-              {/* React Router link for Menu */}
-              <Link
-                to="/menu"
-                style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-              >
-                Order Online
-              </Link>
+              {/* React Router links (stay in SPA) */}
+              {[
+                { to: '/menu',      label: 'Order Online' },
+                { to: '/pre-order', label: 'Pre-Order (Events)' },
+                { to: '/privacy',   label: 'Privacy Policy' },
+              ].map(({ to, label }) => (
+                <Link key={to} to={to}
+                  style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
+                >
+                  {label}
+                </Link>
+              ))}
               {/* Main website links */}
               {[
-                { href: '/',        label: 'Main Website' },
-                { href: '/hours',   label: 'Opening Hours' },
-                { href: '/contact', label: 'Contact Us' },
-                { href: '/terms',   label: 'Terms & Conditions' },
-                { href: '/refund',  label: 'Refund Policy' },
-                { href: '/privacy', label: 'Privacy Policy' },
+                { href: '/',       label: 'Main Website' },
+                { href: '/hours',  label: 'Opening Hours' },
+                { href: '/contact',label: 'Contact Us' },
+                { href: '/terms',  label: 'Terms & Conditions' },
+                { href: '/refund', label: 'Refund Policy' },
               ].map(({ href, label }) => (
-                <a
-                  key={href}
-                  href={href}
+                <a key={href} href={href}
                   style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
@@ -366,18 +380,18 @@ export function Layout() {
           <div style={{ paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', alignItems: 'center' }}>
             <span>© {new Date().getFullYear()} Bake &amp; Grill. All rights reserved.</span>
             <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
-              {[
-                { href: '/terms',   label: 'Terms & Conditions' },
-                { href: '/refund',  label: 'Refund Policy' },
-                { href: '/privacy', label: 'Privacy Policy' },
-              ].map(({ href, label }) => (
-                <a key={href} href={href} style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
-                >
-                  {label}
-                </a>
-              ))}
+              <a href="/terms" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+              >Terms &amp; Conditions</a>
+              <a href="/refund" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+              >Refund Policy</a>
+              <Link to="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+              >Privacy Policy</Link>
               <a href="/admin" style={{ color: 'rgba(255,255,255,0.15)', textDecoration: 'none', fontSize: '0.75rem' }}>
                 Staff
               </a>

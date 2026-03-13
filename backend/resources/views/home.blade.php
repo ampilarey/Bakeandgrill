@@ -896,12 +896,9 @@
 
         <div class="products-grid">
             @foreach($featuredItems as $item)
-                @php
-                    $stockService = app(\App\Services\StockManagementService::class);
-                    $stockStatus  = $stockService->getAvailabilityStatus($item);
+                    @php
                     $isBestSeller = isset($item->order_items_count) && $item->order_items_count > 0;
-                    $isMTO        = $item->availability_type === 'made_to_order';
-                @endphp
+                    @endphp
                 <div class="product-card">
                     <div class="product-img">
                         @if($item->image_url ?? null)
@@ -919,8 +916,6 @@
 
                         @if($isBestSeller)
                             <span class="product-badge badge-bestseller">🔥 Best Seller</span>
-                        @elseif($isMTO)
-                            <span class="product-badge badge-mto">Made to Order</span>
                         @else
                             <span class="product-badge badge-fresh">Fresh Daily</span>
                         @endif
@@ -939,26 +934,14 @@
                             <span class="product-price">{{ number_format($item->base_price, 2) }}</span>
                         </div>
 
-                        @if($stockStatus['available'])
-                            <button class="add-btn"
-                                    onclick="addToCart({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->base_price }})">
-                                Add to Cart
-                            </button>
-                        @elseif($stockStatus['can_pre_order'])
-                            <button class="add-btn preorder"
-                                    onclick="addToCart({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->base_price }})">
-                                Pre-Order
-                            </button>
-                        @else
-                            <button class="add-btn" disabled>Out of Stock</button>
-                        @endif
+                        <a href="/order/menu" class="add-btn">Order Now →</a>
                     </div>
                 </div>
             @endforeach
         </div>
 
         <div class="view-all">
-            <a href="/menu" class="btn-primary">Browse Full Menu →</a>
+            <a href="/order/menu" class="btn-primary">Browse Full Menu →</a>
         </div>
     </div>
 </section>

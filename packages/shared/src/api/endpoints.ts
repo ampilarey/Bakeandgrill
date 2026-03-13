@@ -43,7 +43,11 @@ export const ENDPOINTS = {
   KDS_ORDER_COMPLETE: (id: number) => `/kds/orders/${id}/complete`,
 
   // Opening hours
-  OPENING_HOURS_STATUS: '/opening-hours/status',
+  OPENING_HOURS_STATUS:    '/opening-hours/status',
+  OPENING_HOURS_SCHEDULE:  '/opening-hours',
+
+  // Pre-orders
+  CUSTOMER_PRE_ORDERS: '/customer/pre-orders',
 
   // Daily specials
   SPECIALS:             '/specials',

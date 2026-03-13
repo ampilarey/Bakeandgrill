@@ -160,22 +160,6 @@
         }
         .hdr-logout-btn:hover { color: var(--text); }
 
-        .hdr-cart {
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.5rem 1rem;
-            background: var(--amber-light);
-            color: var(--amber);
-            border: 1.5px solid rgba(212,129,58,0.2);
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        .hdr-cart:hover { background: var(--amber); color: white; }
-
         .hdr-order {
             padding: 0.55rem 1.25rem;
             background: var(--amber);
@@ -233,19 +217,6 @@
         }
         .mob-logo img { width: 32px; height: 32px; border-radius: 7px; }
         .mob-hdr-btns { display: flex; align-items: center; gap: 0.5rem; }
-        .mob-cart-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-            padding: 0.45rem 0.875rem;
-            background: var(--amber-light);
-            color: var(--amber);
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.8rem;
-            cursor: pointer;
-            border: 1px solid rgba(212,129,58,0.2);
-        }
         .mob-order-btn {
             padding: 0.45rem 0.875rem;
             background: var(--amber);
@@ -406,59 +377,8 @@
 
     @yield('styles')
 
-    @verbatim
     <script>
-        let cart = [];
-        try { cart = JSON.parse(localStorage.getItem('bakegrill_cart') || '[]'); } catch(e) {}
-
-        function updateCartDisplay() {
-            const count = cart.reduce((s, i) => s + (i.quantity || 0), 0);
-            const label = count > 0 ? `🛒 Cart (${count})` : '🛒 Cart';
-            document.querySelectorAll('.cart-display').forEach(el => el.textContent = label);
-        }
-
-        function addToCart(id, name, price) {
-            const found = cart.find(i => i.id === id);
-            if (found) found.quantity++;
-            else cart.push({ id, name, price: parseFloat(price), quantity: 1 });
-            try { localStorage.setItem('bakegrill_cart', JSON.stringify(cart)); } catch(e) {}
-            updateCartDisplay();
-            showToast('✓ ' + name + ' added to cart');
-        }
-
-        function goToCheckout() {
-            if (!cart.length) { showToast('Your cart is empty! Add some items first.', true); return; }
-            window.location.href = '/order/';
-        }
-
-        function showToast(msg, warn) {
-            const el = document.createElement('div');
-            el.textContent = msg;
-            el.style.cssText = [
-                'position:fixed',
-                'bottom:calc(84px + env(safe-area-inset-bottom))',
-                'right:16px',
-                'padding:0.875rem 1.25rem',
-                'border-radius:12px',
-                'font-weight:600',
-                'font-size:0.875rem',
-                'z-index:9999',
-                'box-shadow:0 8px 24px rgba(0,0,0,0.15)',
-                'transition:opacity 0.3s,transform 0.3s',
-                'max-width:280px',
-                'background:' + (warn ? '#D4813A' : '#2D7A4F'),
-                'color:white',
-            ].join(';');
-            document.body.appendChild(el);
-            setTimeout(() => {
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(8px)';
-                setTimeout(() => el.remove(), 300);
-            }, 2800);
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
-            updateCartDisplay();
             const hdr = document.querySelector('.site-header');
             if (hdr) window.addEventListener('scroll', () => hdr.classList.toggle('scrolled', scrollY > 10), { passive: true });
             const path = location.pathname;
@@ -468,7 +388,6 @@
             });
         });
     </script>
-    @endverbatim
 </head>
 <body>
 
@@ -481,7 +400,6 @@
         </a>
         <nav class="header-nav">
             <a href="/">Home</a>
-            <a href="/menu">Menu</a>
             <a href="/hours">Hours</a>
             <a href="/contact">Contact</a>
         </nav>
@@ -495,9 +413,6 @@
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
             @endif
-            <button class="hdr-cart" onclick="goToCheckout()">
-                <span class="cart-display">🛒 Cart</span>
-            </button>
             <a href="/order/" class="hdr-order">Order Now →</a>
         </div>
     </div>
@@ -516,10 +431,7 @@
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endif
-            <button class="mob-cart-btn" onclick="goToCheckout()">
-                <span class="cart-display">🛒 Cart</span>
-            </button>
-            <a href="/order/" class="mob-order-btn">Order</a>
+            <a href="/order/" class="mob-order-btn">Order Now</a>
         </div>
     </div>
 </div>
@@ -549,7 +461,7 @@
         <div class="footer-col">
             <h4>Quick Links</h4>
             <a href="/">Home</a>
-            <a href="/menu">Menu</a>
+            <a href="/order/menu">Menu</a>
             <a href="/order/">Order Online</a>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
@@ -586,7 +498,7 @@
         <a href="/" class="mob-nav-item">
             <span class="mob-nav-icon">🏠</span>Home
         </a>
-        <a href="/menu" class="mob-nav-item">
+        <a href="/order/menu" class="mob-nav-item">
             <span class="mob-nav-icon">🍽️</span>Menu
         </a>
         <div class="mob-nav-item mob-nav-order" onclick="window.location.href='/order/'">

@@ -68,6 +68,49 @@ export async function fetchOpeningHoursStatus(): Promise<OpeningHoursStatus> {
   return request<OpeningHoursStatus>(ENDPOINTS.OPENING_HOURS_STATUS);
 }
 
+export type DaySchedule = {
+  open: string;   // e.g. "07:00"
+  close: string;  // e.g. "22:00"
+  closed?: boolean;
+};
+
+export async function fetchOpeningHoursSchedule(): Promise<{
+  schedule: Record<string, DaySchedule>;
+  open: boolean;
+  closure_reason: string | null;
+}> {
+  return request(ENDPOINTS.OPENING_HOURS_SCHEDULE);
+}
+
+// ── Pre-orders ────────────────────────────────────────────────────────────────
+
+export type PreOrderPayload = {
+  items: Array<{ item_id: number; quantity: number }>;
+  fulfillment_date: string;
+  customer_notes?: string;
+};
+
+export type PreOrderResult = {
+  id: number;
+  order_number: string;
+  items: Array<{ item_id: number; name: string; quantity: number; price: number; total: number }>;
+  subtotal: number;
+  total: number;
+  fulfillment_date: string;
+  status: string;
+};
+
+export async function createPreOrder(
+  token: string,
+  payload: PreOrderPayload,
+): Promise<{ pre_order: PreOrderResult }> {
+  return request<{ pre_order: PreOrderResult }>(ENDPOINTS.CUSTOMER_PRE_ORDERS, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
 // ── Menu ──────────────────────────────────────────────────────────────────────
 
 export async function fetchCategories(): Promise<{ data: Category[] }> {

@@ -12,6 +12,8 @@ import { HoursPage } from './pages/HoursPage';
 import { ReservationPage } from './pages/ReservationPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderStatusPage } from './pages/OrderStatusPage';
+import { PreOrderPage } from './pages/PreOrderPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -28,6 +30,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="contact" element={<ContactPage />} />
               <Route path="hours" element={<HoursPage />} />
               <Route path="reservations" element={<ReservationPage />} />
+              <Route path="pre-order" element={<PreOrderPage />} />
+              <Route path="privacy" element={<PrivacyPage />} />
               <Route path="*" element={
                 <div style={{ textAlign: 'center', padding: '4rem 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#1c1e21', marginBottom: '0.5rem' }}>Page not found</h1>
