@@ -463,6 +463,7 @@
             <a href="/">Home</a>
             <a href="/order/menu">Menu</a>
             <a href="/order/">Order Online</a>
+            <a href="/order/pre-order">Pre-Order (Events)</a>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
         </div>
@@ -475,8 +476,6 @@
         <div class="footer-col">
             <h4>Contact</h4>
             <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('business.phone')) }}">📞 {{ config('business.phone') }}</a>
-            <a href="{{ config('business.social.whatsapp') }}" target="_blank" rel="noopener">💬 WhatsApp</a>
-            <a href="{{ config('business.social.viber') }}">📱 Viber</a>
             <a href="mailto:{{ config('business.email') }}">✉ {{ config('business.email') }}</a>
             <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:0.35rem;">
                 <a href="/order/privacy" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Privacy Policy</a>

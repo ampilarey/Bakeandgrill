@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+
+// ── Business contact constants (single source of truth for the footer) ─────────
+const BIZ = {
+  phone:    '+960 912 0011',
+  phoneTel: '+9609120011',
+  email:    'hello@bakeandgrill.mv',
+  address:  'Kalaafaanu Hingun, Malé, Maldives',
+  whatsapp: 'https://wa.me/9609120011',
+  viber:    'viber://chat?number=9609120011',
+  maps:     'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives',
+};
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 function WhatsAppIcon() {
@@ -22,6 +33,7 @@ function ViberIcon() {
 
 export function Layout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { cart } = useCart();
   useLanguage(); // keep provider active for t() calls in child pages
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
@@ -241,17 +253,17 @@ export function Layout() {
       </main>
 
       {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer style={{ background: 'var(--color-dark)', color: 'white', padding: '4rem 1.5rem 2rem', marginTop: '5rem' }}>
+      <footer className="order-footer" style={{ background: 'var(--color-dark)', color: 'white', padding: '4rem 1.5rem 2rem', marginTop: '5rem' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
             gap: '2.5rem',
             paddingBottom: '2.5rem',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
           }}>
 
-            {/* Brand */}
+            {/* ── Brand ── */}
             <div>
               <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', marginBottom: '0.875rem' }}>
                 <img src="/logo.png" alt="" style={{ width: '34px', height: '34px', borderRadius: '8px' }} />
@@ -260,37 +272,30 @@ export function Layout() {
               <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.875rem', lineHeight: 1.65, marginBottom: '1.25rem' }}>
                 Authentic Dhivehi cuisine, artisan pastries, and premium grills. Freshly made every day in Malé.
               </p>
-              {/* WhatsApp + Viber */}
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <a
-                  href="https://wa.me/9609120011"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', background: '#25D366', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none', transition: 'all 0.15s' }}
-                  aria-label="WhatsApp"
+                <a href={BIZ.whatsapp} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', background: '#25D366', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none' }}
+                  aria-label="Chat on WhatsApp"
                 >
                   <WhatsAppIcon /> WhatsApp
                 </a>
-                <a
-                  href="viber://chat?number=%2B9609120011"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', background: '#7360F2', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none', transition: 'all 0.15s' }}
-                  aria-label="Viber"
+                <a href={BIZ.viber}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', background: '#7360F2', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none' }}
+                  aria-label="Chat on Viber"
                 >
                   <ViberIcon /> Viber
                 </a>
               </div>
             </div>
 
-            {/* Quick links — mix of order app + main site */}
+            {/* ── Order (SPA links) ── */}
             <div>
               <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
-                Quick Links
+                Order
               </h4>
-              {/* React Router links (stay in SPA) */}
               {[
-                { to: '/menu',      label: 'Order Online' },
-                { to: '/pre-order', label: 'Pre-Order (Events)' },
-                { to: '/privacy',   label: 'Privacy Policy' },
+                { to: '/menu',      label: '🍽️ Order Online' },
+                { to: '/pre-order', label: '📅 Pre-Order (Events)' },
               ].map(({ to, label }) => (
                 <Link key={to} to={to}
                   style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
@@ -300,13 +305,17 @@ export function Layout() {
                   {label}
                 </Link>
               ))}
-              {/* Main website links */}
+            </div>
+
+            {/* ── Info (main site links) ── */}
+            <div>
+              <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
+                Info
+              </h4>
               {[
-                { href: '/',       label: 'Main Website' },
-                { href: '/hours',  label: 'Opening Hours' },
-                { href: '/contact',label: 'Contact Us' },
-                { href: '/terms',  label: 'Terms & Conditions' },
-                { href: '/refund', label: 'Refund Policy' },
+                { href: '/',        label: '🏠 Main Website' },
+                { href: '/hours',   label: '🕐 Opening Hours' },
+                { href: '/contact', label: '📞 Contact Us' },
               ].map(({ href, label }) => (
                 <a key={href} href={href}
                   style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
@@ -318,60 +327,34 @@ export function Layout() {
               ))}
             </div>
 
-            {/* Location */}
+            {/* ── Location & Contact ── */}
             <div>
               <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
-                Location
+                Find Us
               </h4>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.375rem' }}>Kalaafaanu Hingun</p>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.375rem' }}>Malé, Maldives</p>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '1rem' }}>Near H. Sahara</p>
-              <a
-                href="https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none' }}
+              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Kalaafaanu Hingun</p>
+              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Malé, Maldives</p>
+              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.875rem' }}>Near H. Sahara</p>
+              <a href={BIZ.maps} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none', marginBottom: '1rem' }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
               >
                 📍 Get directions
               </a>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
-                Contact
-              </h4>
-              <a href="tel:+9609120011" style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
+              <a href={`tel:${BIZ.phoneTel}`}
+                style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.4rem', textDecoration: 'none' }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
               >
-                📞 +960 9120011
+                📞 {BIZ.phone}
               </a>
-              <a href="mailto:hello@bakeandgrill.mv" style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-              >
-                ✉ hello@bakeandgrill.mv
-              </a>
-              <a
-                href="https://wa.me/9609120011"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-              >
-                💬 WhatsApp
-              </a>
-              <a
-                href="viber://chat?number=%2B9609120011"
+              <a href={`mailto:${BIZ.email}`}
                 style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', textDecoration: 'none' }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
               >
-                📱 Viber
+                ✉ {BIZ.email}
               </a>
             </div>
           </div>
@@ -392,13 +375,42 @@ export function Layout() {
                 onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
               >Privacy Policy</Link>
-              <a href="/admin" style={{ color: 'rgba(255,255,255,0.15)', textDecoration: 'none', fontSize: '0.75rem' }}>
-                Staff
-              </a>
+              <a href="/admin" style={{ color: 'rgba(255,255,255,0.15)', textDecoration: 'none', fontSize: '0.75rem' }}>Staff</a>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* ── Mobile Bottom Navigation (visible ≤700 px) ─────────── */}
+      <nav className="order-mobile-nav" aria-label="Mobile navigation">
+        <a href="/" className="order-mob-item">
+          <span className="order-mob-icon">🏠</span>
+          <span>Home</span>
+        </a>
+        <Link
+          to="/menu"
+          className={`order-mob-item${location.pathname === '/menu' ? ' order-mob-active' : ''}`}
+        >
+          <span className="order-mob-icon">🍽️</span>
+          <span>Menu</span>
+        </Link>
+        <Link
+          to="/menu"
+          className="order-mob-item order-mob-cart"
+          aria-label={`Cart — ${cartCount} item${cartCount !== 1 ? 's' : ''}`}
+        >
+          <span className="order-mob-icon">🛒</span>
+          <span>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</span>
+        </Link>
+        <a href="/hours" className="order-mob-item">
+          <span className="order-mob-icon">🕐</span>
+          <span>Hours</span>
+        </a>
+        <a href="/contact" className="order-mob-item">
+          <span className="order-mob-icon">📞</span>
+          <span>Contact</span>
+        </a>
+      </nav>
     </div>
   );
 }

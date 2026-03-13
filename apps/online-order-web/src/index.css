@@ -594,6 +594,57 @@ textarea.field-input {
 }
 
 /* ════════════════════════════════════════════════════════════
+   ORDER APP — MOBILE BOTTOM NAVIGATION
+════════════════════════════════════════════════════════════ */
+.order-mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: #fff;
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.order-mob-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+.order-mob-item:hover,
+.order-mob-active { color: var(--color-primary) !important; }
+.order-mob-icon { font-size: 1.3rem; line-height: 1; }
+.order-mob-cart {
+  background: var(--color-primary);
+  color: white !important;
+  border-radius: 14px;
+  margin: 4px 0;
+  padding: 0.35rem 0.75rem;
+}
+.order-mob-cart:hover { background: var(--color-primary-hover, #b45309); }
+
+/* Show mobile nav + add footer bottom padding on small screens */
+@media (max-width: 700px) {
+  .order-mobile-nav { display: flex; }
+  .order-footer { padding-bottom: calc(2rem + 72px) !important; }
+}
+
+/* ════════════════════════════════════════════════════════════
    MOBILE STICKY CATEGORY BAR
 ════════════════════════════════════════════════════════════ */
 .sticky-cat-bar {
