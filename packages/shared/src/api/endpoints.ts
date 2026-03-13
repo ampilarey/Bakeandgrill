@@ -40,7 +40,8 @@ export const ENDPOINTS = {
   // KDS
   KDS_ORDERS:         '/kds/orders',
   KDS_ORDER_START:    (id: number) => `/kds/orders/${id}/start`,
-  KDS_ORDER_COMPLETE: (id: number) => `/kds/orders/${id}/complete`,
+  KDS_ORDER_BUMP:     (id: number) => `/kds/orders/${id}/bump`,
+  KDS_ORDER_RECALL:   (id: number) => `/kds/orders/${id}/recall`,
 
   // Opening hours
   OPENING_HOURS_STATUS:    '/opening-hours/status',

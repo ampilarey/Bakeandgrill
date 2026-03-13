@@ -20,12 +20,14 @@ class CashMovementController extends Controller
             return response()->json(['message' => 'Shift is closed.'], 422);
         }
 
+        $validated = $request->validated();
+
         $movement = CashMovement::create([
             'shift_id' => $shift->id,
-            'user_id' => $request->user()?->id,
-            'type' => $request->input('type'),
-            'amount' => $request->input('amount'),
-            'reason' => $request->input('reason'),
+            'user_id'  => $request->user()?->id,
+            'type'     => $validated['type'],
+            'amount'   => $validated['amount'],
+            'reason'   => $validated['reason'],
         ]);
 
         app(AuditLogService::class)->log(

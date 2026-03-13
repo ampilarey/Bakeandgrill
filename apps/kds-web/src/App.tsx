@@ -26,6 +26,15 @@ function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Restore session from localStorage on mount so refresh doesn't log staff out
+  useEffect(() => {
+    const saved = localStorage.getItem("kds_token");
+    if (saved) {
+      setToken(saved);
+      setIsLoggedIn(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!token) {
       return;
@@ -80,6 +89,7 @@ function App() {
 
     try {
       const tokenValue = await staffLogin(pin.trim(), deviceId.trim());
+      localStorage.setItem("kds_token", tokenValue);
       setToken(tokenValue);
       setIsLoggedIn(true);
       setPin("");
@@ -112,6 +122,13 @@ function App() {
         )
       );
     });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("kds_token");
+    setToken(null);
+    setIsLoggedIn(false);
+    setOrders([]);
   };
 
   const handleRecall = (orderId: number) => {
@@ -161,7 +178,9 @@ function App() {
               <p className="text-sm text-rose-600">{errorMessage}</p>
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-6">Demo PIN: 1234</p>
+          {import.meta.env.DEV && (
+            <p className="text-xs text-slate-400 mt-6">Dev PIN: 1234</p>
+          )}
         </div>
       </div>
     );
@@ -229,8 +248,16 @@ function App() {
           <h1 className="text-xl font-semibold">Bake & Grill KDS</h1>
           <p className="text-sm text-slate-500">Device {deviceId}</p>
         </div>
-        <div className="text-sm text-slate-500">
-          {isLoading ? "Refreshing..." : "Live"}
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-slate-500">
+            {isLoading ? "Refreshing..." : "Live"}
+          </span>
+          <button
+            className="text-xs text-slate-400 hover:text-slate-600 underline"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
         </div>
       </header>
 

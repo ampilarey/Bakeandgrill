@@ -57,14 +57,14 @@ export async function startOrder(token: string, orderId: number): Promise<void> 
 }
 
 export async function bumpOrder(token: string, orderId: number): Promise<void> {
-  await request<void>(`/kds/orders/${orderId}/bump`, {
+  await request<void>(ENDPOINTS.KDS_ORDER_BUMP(orderId), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
 export async function recallOrder(token: string, orderId: number): Promise<void> {
-  await request<void>(`/kds/orders/${orderId}/recall`, {
+  await request<void>(ENDPOINTS.KDS_ORDER_RECALL(orderId), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });

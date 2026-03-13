@@ -36,10 +36,12 @@ export function LoginPage({ pin, setPin, deviceId, setDeviceId, authError, onLog
           </button>
           {authError && <p className="text-sm text-rose-600">{authError}</p>}
         </div>
-        <p className="text-xs text-slate-400 mt-6">
-          Demo PINs: Owner(1111), Admin(2222), Manager(3333), Cashier(4444)<br />
-          Device ID: Use "POS-001" or any identifier
-        </p>
+        {import.meta.env.DEV && (
+          <p className="text-xs text-slate-400 mt-6">
+            Dev PINs: Owner(1111), Admin(2222), Manager(3333), Cashier(4444)<br />
+            Device ID: Use "POS-001" or any identifier
+          </p>
+        )}
       </div>
     </div>
   );

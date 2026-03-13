@@ -17,6 +17,10 @@ class CashMovement extends Model
         'reason',
     ];
 
+    protected $casts = [
+        'amount' => 'decimal:2',
+    ];
+
     public function shift(): BelongsTo
     {
         return $this->belongsTo(Shift::class);

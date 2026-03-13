@@ -74,3 +74,19 @@ Route::get('/order/{any}', function () {
 Route::get('/admin/{any}', function () {
     return response()->file(public_path('admin/index.html'));
 })->where('any', '.*')->name('admin.spa');
+
+// KDS SPA — catch-all for /kds/* sub-paths
+Route::get('/kds', function () {
+    return redirect('/kds/');
+})->name('kds.redirect');
+Route::get('/kds/{any}', function () {
+    return response()->file(public_path('kds/index.html'));
+})->where('any', '.*')->name('kds.spa');
+
+// POS SPA — catch-all for /pos/* sub-paths
+Route::get('/pos', function () {
+    return redirect('/pos/');
+})->name('pos.redirect');
+Route::get('/pos/{any}', function () {
+    return response()->file(public_path('pos/index.html'));
+})->where('any', '.*')->name('pos.spa');

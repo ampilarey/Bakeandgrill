@@ -3,8 +3,7 @@
 export type OrderStatus =
   | 'pending'
   | 'held'
-  | 'preparing'
-  | 'ready'
+  | 'in_progress'
   | 'partial'
   | 'paid'
   | 'completed'
