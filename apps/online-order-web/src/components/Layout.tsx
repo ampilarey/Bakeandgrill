@@ -253,163 +253,97 @@ export function Layout() {
       </main>
 
       {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer className="order-footer" style={{ background: 'var(--color-dark)', color: 'white', padding: '4rem 1.5rem 2rem', marginTop: '5rem' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
-            gap: '2.5rem',
-            paddingBottom: '2.5rem',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-          }}>
+      <footer className="order-footer">
+        <div className="order-footer-grid">
 
-            {/* ── Brand ── */}
-            <div>
-              <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', marginBottom: '0.875rem' }}>
-                <img src="/logo.png" alt="" style={{ width: '34px', height: '34px', borderRadius: '8px' }} />
-                <span style={{ fontSize: '1rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Bake &amp; Grill</span>
+          {/* ── Brand (double width on desktop) ── */}
+          <div className="order-footer-brand">
+            <a href="/" className="order-footer-logo">
+              <img src="/logo.png" alt="" />
+              Bake &amp; Grill
+            </a>
+            <p>Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.</p>
+            <div className="order-footer-btns">
+              <a href={BIZ.whatsapp} target="_blank" rel="noopener noreferrer" className="order-footer-wa" aria-label="Chat on WhatsApp">
+                <WhatsAppIcon /> WhatsApp
               </a>
-              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.875rem', lineHeight: 1.65, marginBottom: '1.25rem' }}>
-                Authentic Dhivehi cuisine, artisan pastries, and premium grills. Freshly made every day in Malé.
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <a href={BIZ.whatsapp} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', background: '#25D366', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none' }}
-                  aria-label="Chat on WhatsApp"
-                >
-                  <WhatsAppIcon /> WhatsApp
-                </a>
-                <a href={BIZ.viber}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', background: '#7360F2', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none' }}
-                  aria-label="Chat on Viber"
-                >
-                  <ViberIcon /> Viber
-                </a>
-              </div>
-            </div>
-
-            {/* ── Order (SPA links) ── */}
-            <div>
-              <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
-                Order
-              </h4>
-              {[
-                { to: '/menu',      label: '🍽️ Order Online' },
-                { to: '/pre-order', label: '📅 Pre-Order (Events)' },
-              ].map(({ to, label }) => (
-                <Link key={to} to={to}
-                  style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-
-            {/* ── Info (main site links) ── */}
-            <div>
-              <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
-                Info
-              </h4>
-              {[
-                { href: '/',        label: '🏠 Main Website' },
-                { href: '/hours',   label: '🕐 Opening Hours' },
-                { href: '/contact', label: '📞 Contact Us' },
-              ].map(({ href, label }) => (
-                <a key={href} href={href}
-                  style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.5rem', textDecoration: 'none' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-                >
-                  {label}
-                </a>
-              ))}
-            </div>
-
-            {/* ── Location & Contact ── */}
-            <div>
-              <h4 style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', marginBottom: '1rem', fontWeight: 700 }}>
-                Find Us
-              </h4>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Kalaafaanu Hingun</p>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Malé, Maldives</p>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.875rem' }}>Near H. Sahara</p>
-              <a href={BIZ.maps} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none', marginBottom: '1rem' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
-              >
-                📍 Get directions
-              </a>
-              <a href={`tel:${BIZ.phoneTel}`}
-                style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', marginBottom: '0.4rem', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-              >
-                📞 {BIZ.phone}
-              </a>
-              <a href={`mailto:${BIZ.email}`}
-                style={{ display: 'block', color: 'rgba(255,255,255,0.65)', fontSize: '0.875rem', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}
-              >
-                ✉ {BIZ.email}
+              <a href={BIZ.viber} className="order-footer-viber" aria-label="Chat on Viber">
+                <ViberIcon /> Viber
               </a>
             </div>
           </div>
 
-          {/* Bottom bar */}
-          <div style={{ paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', alignItems: 'center' }}>
-            <span>© {new Date().getFullYear()} Bake &amp; Grill. All rights reserved.</span>
-            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
-              <a href="/terms" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
-              >Terms &amp; Conditions</a>
-              <a href="/refund" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
-              >Refund Policy</a>
-              <Link to="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
-              >Privacy Policy</Link>
-              <a href="/admin" style={{ color: 'rgba(255,255,255,0.15)', textDecoration: 'none', fontSize: '0.75rem' }}>Staff</a>
+          {/* ── Quick Links ── */}
+          <div className="order-footer-col">
+            <h4>Quick Links</h4>
+            <a href="/">Home</a>
+            <Link to="/menu">Order Online</Link>
+            <Link to="/pre-order">Pre-Order (Events)</Link>
+            <a href="/hours">Opening Hours</a>
+            <a href="/contact">Contact Us</a>
+          </div>
+
+          {/* ── Location ── */}
+          <div className="order-footer-col">
+            <h4>Location</h4>
+            <p>Kalaafaanu Hingun</p>
+            <p>Malé, Maldives</p>
+            <p>Near H. Sahara</p>
+            <a href={BIZ.maps} target="_blank" rel="noopener noreferrer">📍 Get directions</a>
+          </div>
+
+          {/* ── Contact ── */}
+          <div className="order-footer-col">
+            <h4>Contact</h4>
+            <a href={`tel:${BIZ.phoneTel}`}>📞 {BIZ.phone}</a>
+            <a href={`mailto:${BIZ.email}`}>✉ {BIZ.email}</a>
+            <div className="order-footer-legal">
+              <Link to="/privacy">Privacy Policy</Link>
+              <a href="/terms">Terms &amp; Conditions</a>
+              <a href="/refund">Refund Policy</a>
+              <a href="/admin" className="order-footer-staff">Staff Dashboard</a>
             </div>
           </div>
         </div>
+
+        {/* ── Bottom bar ── */}
+        <div className="order-footer-bottom">
+          <span>© {new Date().getFullYear()} Bake &amp; Grill. All rights reserved.</span>
+          <span>Malé, Maldives</span>
+        </div>
       </footer>
 
-      {/* ── Mobile Bottom Navigation (visible ≤700 px) ─────────── */}
+      {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
-        <a href="/" className="order-mob-item">
-          <span className="order-mob-icon">🏠</span>
-          <span>Home</span>
-        </a>
-        <Link
-          to="/menu"
-          className={`order-mob-item${location.pathname === '/menu' ? ' order-mob-active' : ''}`}
-        >
-          <span className="order-mob-icon">🍽️</span>
-          <span>Menu</span>
-        </Link>
-        <Link
-          to="/menu"
-          className="order-mob-item order-mob-cart"
-          aria-label={`Cart — ${cartCount} item${cartCount !== 1 ? 's' : ''}`}
-        >
-          <span className="order-mob-icon">🛒</span>
-          <span>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</span>
-        </Link>
-        <a href="/hours" className="order-mob-item">
-          <span className="order-mob-icon">🕐</span>
-          <span>Hours</span>
-        </a>
-        <a href="/contact" className="order-mob-item">
-          <span className="order-mob-icon">📞</span>
-          <span>Contact</span>
-        </a>
+        <div className="order-mob-grid">
+          <a href="/" className="order-mob-item">
+            <span className="order-mob-icon">🏠</span>
+            Home
+          </a>
+          <Link
+            to="/menu"
+            className={`order-mob-item${location.pathname === '/menu' ? ' order-mob-active' : ''}`}
+          >
+            <span className="order-mob-icon">🍽️</span>
+            Menu
+          </Link>
+          <Link
+            to="/menu"
+            className="order-mob-item order-mob-order"
+            aria-label={`Cart${cartCount > 0 ? ` — ${cartCount}` : ''}`}
+          >
+            <span className="order-mob-icon">🛒</span>
+            {cartCount > 0 ? `Cart (${cartCount})` : 'Order'}
+          </Link>
+          <a href="/hours" className="order-mob-item">
+            <span className="order-mob-icon">🕐</span>
+            Hours
+          </a>
+          <a href="/contact" className="order-mob-item">
+            <span className="order-mob-icon">📞</span>
+            Contact
+          </a>
+        </div>
       </nav>
     </div>
   );

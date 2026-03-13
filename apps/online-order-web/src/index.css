@@ -594,6 +594,111 @@ textarea.field-input {
 }
 
 /* ════════════════════════════════════════════════════════════
+   ORDER APP — FOOTER
+════════════════════════════════════════════════════════════ */
+.order-footer {
+  background: var(--color-dark);
+  color: white;
+  padding: 4rem 2rem 2rem;
+  margin-top: 5rem;
+}
+.order-footer-grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 3rem;
+  padding-bottom: 3rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.order-footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  margin-bottom: 1rem;
+}
+.order-footer-logo img { width: 36px; height: 36px; border-radius: 8px; }
+.order-footer-brand p {
+  color: rgba(255,255,255,0.55);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+  max-width: 280px;
+}
+.order-footer-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.order-footer-wa,
+.order-footer-viber {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.125rem;
+  color: white;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.825rem;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.order-footer-wa    { background: #25D366; }
+.order-footer-wa:hover  { background: #1bba58; transform: translateY(-1px); }
+.order-footer-viber { background: #7360F2; }
+.order-footer-viber:hover { background: #5E4CD6; transform: translateY(-1px); }
+.order-footer-col h4 {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 1.25rem;
+}
+.order-footer-col a,
+.order-footer-col p {
+  display: block;
+  color: rgba(255,255,255,0.65);
+  font-size: 0.875rem;
+  margin-bottom: 0.625rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.order-footer-col a:hover { color: white; }
+.order-footer-legal {
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.order-footer-legal a {
+  color: rgba(255,255,255,0.3) !important;
+  font-size: 0.8rem !important;
+  margin-bottom: 0 !important;
+}
+.order-footer-legal a:hover { color: white !important; }
+.order-footer-staff {
+  color: rgba(255,255,255,0.15) !important;
+  font-size: 0.75rem !important;
+  margin-top: 0.25rem !important;
+}
+.order-footer-bottom {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* ════════════════════════════════════════════════════════════
    ORDER APP — MOBILE BOTTOM NAVIGATION
 ════════════════════════════════════════════════════════════ */
 .order-mobile-nav {
@@ -602,46 +707,58 @@ textarea.field-input {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 200;
-  background: #fff;
+  z-index: 300;
+  background: rgba(255, 253, 249, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--color-border);
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+  padding: 0.5rem;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.order-mob-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
 }
 .order-mob-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  flex: 1;
-  padding: 0.5rem 0.25rem;
-  font-size: 0.68rem;
-  font-weight: 600;
+  gap: 0.2rem;
+  padding: 0.4rem 0.2rem;
+  border-radius: 10px;
   color: var(--color-text-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   text-decoration: none;
-  transition: color 0.15s;
   cursor: pointer;
-  background: none;
-  border: none;
-  font-family: inherit;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .order-mob-item:hover,
 .order-mob-active { color: var(--color-primary) !important; }
 .order-mob-icon { font-size: 1.3rem; line-height: 1; }
-.order-mob-cart {
+.order-mob-order {
   background: var(--color-primary);
   color: white !important;
-  border-radius: 14px;
-  margin: 4px 0;
-  padding: 0.35rem 0.75rem;
+  border-radius: 12px;
 }
-.order-mob-cart:hover { background: var(--color-primary-hover, #b45309); }
+.order-mob-order:hover { background: var(--color-primary-dark, #b45309); }
 
 /* Show mobile nav + add footer bottom padding on small screens */
-@media (max-width: 700px) {
-  .order-mobile-nav { display: flex; }
-  .order-footer { padding-bottom: calc(2rem + 72px) !important; }
+@media (max-width: 768px) {
+  .order-mobile-nav { display: block; }
+  .order-footer { padding-bottom: calc(2rem + 72px); margin-top: 3rem; }
+  .order-footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .order-footer-brand { grid-column: 1 / -1; }
+  .order-footer-brand p { max-width: 100%; }
+  .order-footer-bottom { flex-direction: column; text-align: center; }
+}
+@media (max-width: 480px) {
+  .order-footer-grid { grid-template-columns: 1fr; }
 }
 
 /* ════════════════════════════════════════════════════════════
