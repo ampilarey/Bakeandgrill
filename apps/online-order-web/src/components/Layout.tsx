@@ -288,6 +288,8 @@ export function Layout() {
                 { href: '/',        label: 'Main Website' },
                 { href: '/hours',   label: 'Opening Hours' },
                 { href: '/contact', label: 'Contact Us' },
+                { href: '/terms',   label: 'Terms & Conditions' },
+                { href: '/refund',  label: 'Refund Policy' },
                 { href: '/privacy', label: 'Privacy Policy' },
               ].map(({ href, label }) => (
                 <a
@@ -363,13 +365,19 @@ export function Layout() {
           {/* Bottom bar */}
           <div style={{ paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', alignItems: 'center' }}>
             <span>© {new Date().getFullYear()} Bake &amp; Grill. All rights reserved.</span>
-            <div style={{ display: 'flex', gap: '1.25rem' }}>
-              <a href="/privacy" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
-              >
-                Privacy Policy
-              </a>
+            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+              {[
+                { href: '/terms',   label: 'Terms & Conditions' },
+                { href: '/refund',  label: 'Refund Policy' },
+                { href: '/privacy', label: 'Privacy Policy' },
+              ].map(({ href, label }) => (
+                <a key={href} href={href} style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+                >
+                  {label}
+                </a>
+              ))}
               <a href="/admin" style={{ color: 'rgba(255,255,255,0.15)', textDecoration: 'none', fontSize: '0.75rem' }}>
                 Staff
               </a>
