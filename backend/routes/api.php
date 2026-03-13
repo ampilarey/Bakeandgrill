@@ -144,20 +144,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory']);
     Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier']);
 
-    // Suppliers
-    Route::get('/suppliers', [SupplierController::class, 'index']);
-    Route::post('/suppliers', [SupplierController::class, 'store']);
-    Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
-    Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
-    Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
+    // Suppliers + Purchases — staff-only (customer tokens blocked by RequireRole)
+    Route::middleware('role:cashier,manager,admin,owner')->group(function () {
+        Route::get('/suppliers', [SupplierController::class, 'index']);
+        Route::post('/suppliers', [SupplierController::class, 'store']);
+        Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
+        Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
+        Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
 
-    // Purchases
-    Route::get('/purchases', [PurchaseController::class, 'index']);
-    Route::post('/purchases', [PurchaseController::class, 'store']);
-    Route::get('/purchases/{id}', [PurchaseController::class, 'show']);
-    Route::patch('/purchases/{id}', [PurchaseController::class, 'update']);
-    Route::post('/purchases/{id}/receipts', [PurchaseController::class, 'uploadReceipt']);
-    Route::post('/purchases/import', [PurchaseController::class, 'import']);
+        Route::get('/purchases', [PurchaseController::class, 'index']);
+        Route::post('/purchases', [PurchaseController::class, 'store']);
+        Route::get('/purchases/{id}', [PurchaseController::class, 'show']);
+        Route::patch('/purchases/{id}', [PurchaseController::class, 'update']);
+        Route::post('/purchases/{id}/receipts', [PurchaseController::class, 'uploadReceipt']);
+        Route::post('/purchases/import', [PurchaseController::class, 'import']);
+    });
 
     // Shifts + cash drawer
     Route::get('/shifts/current', [ShiftController::class, 'current']);

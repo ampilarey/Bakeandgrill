@@ -479,7 +479,7 @@
             <a href="{{ config('business.social.viber') }}">📱 Viber</a>
             <a href="mailto:{{ config('business.email') }}">✉ {{ config('business.email') }}</a>
             <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:0.35rem;">
-                <a href="/privacy" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Privacy Policy</a>
+                <a href="/order/privacy" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Privacy Policy</a>
                 <a href="/terms" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Terms &amp; Conditions</a>
                 <a href="/refund" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Refund Policy</a>
                 <a href="/admin" style="color:rgba(255,255,255,0.15);font-size:0.75rem;margin-top:0.25rem;">Staff Dashboard</a>
