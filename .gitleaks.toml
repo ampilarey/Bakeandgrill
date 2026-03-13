@@ -1,0 +1,52 @@
+# Gitleaks configuration for Bake & Grill
+# Scans commits for accidentally committed secrets.
+# Docs: https://github.com/gitleaks/gitleaks
+
+title = "Bake & Grill Gitleaks Config"
+
+[extend]
+# Use the official default ruleset as a base, then add our overrides below.
+useDefault = true
+
+# ── Allowlist ─────────────────────────────────────────────────────────────────
+# These are known-safe patterns that gitleaks would otherwise flag as secrets.
+# Keep this list minimal — only add entries with a clear justification.
+
+[[rules.allowlist]]
+description = "CHANGE_ME placeholder tokens in .env.example files are intentional documentation"
+regexes = [
+    "CHANGE_ME_[A-Z0-9_]+",
+]
+
+[[rules.allowlist]]
+description = "Test tokens generated in PHPUnit tests are not real credentials"
+paths = [
+    "backend/tests/**",
+]
+
+[[rules.allowlist]]
+description = "Example printer IPs in documentation are illustrative, not real infrastructure"
+paths = [
+    "docs/**",
+    "*.md",
+    "**/*.md",
+]
+regexes = [
+    # Private IP ranges used as examples
+    "192\\.168\\.\\d+\\.\\d+",
+    "10\\.\\d+\\.\\d+\\.\\d+",
+]
+
+[[rules.allowlist]]
+description = "Laravel APP_KEY placeholder in .env.example is empty by design"
+regexes = [
+    "APP_KEY=$",
+    "APP_KEY=base64:[A-Za-z0-9+/]{43}=",
+]
+
+[[rules.allowlist]]
+description = "Stripe/Xero keys in .env.example are empty placeholders"
+regexes = [
+    "STRIPE_[A-Z_]+=\\s*$",
+    "XERO_[A-Z_]+=\\s*$",
+]
