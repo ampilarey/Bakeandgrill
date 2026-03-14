@@ -161,9 +161,9 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 
     // Shifts + cash drawer
     Route::get('/shifts/current', [ShiftController::class, 'current']);
-    Route::post('/shifts/open', [ShiftController::class, 'open']);
-    Route::post('/shifts/{id}/close', [ShiftController::class, 'close']);
-    Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store']);
+    Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('throttle:5,1');
+    Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
+    Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])->middleware('throttle:30,1');
 
     // Reports
     Route::get('/reports/sales-summary', [ReportsController::class, 'salesSummary']);
@@ -200,7 +200,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // Refunds
     Route::get('/refunds', [RefundController::class, 'index']);
     Route::get('/refunds/{id}', [RefundController::class, 'show']);
-    Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store']);
+    Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store'])->middleware('throttle:10,1');
 
     // SMS promotions
     Route::get('/sms/promotions', [SmsPromotionController::class, 'index']);
@@ -259,13 +259,18 @@ Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode'
 
 // Get stock info for multiple items
 Route::post('/items/stock-check', function (Request $request) {
-    $itemIds = $request->input('item_ids', []);
-    $items = App\Models\Item::whereIn('id', $itemIds)
-        ->select('id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold')
+    $request->validate(['item_ids' => 'required|array|max:50', 'item_ids.*' => 'integer']);
+    $isStaff = $request->user()?->tokenCan('staff');
+    $columns = $isStaff
+        ? ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold']
+        : ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type'];
+
+    $items = App\Models\Item::whereIn('id', $request->input('item_ids', []))
+        ->select($columns)
         ->get();
 
     return response()->json(['items' => $items]);
-});
+})->middleware('throttle:60,1');
 
 // Protected menu management (staff only)
 Route::middleware('auth:sanctum')->group(function () {
@@ -298,7 +303,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public/customer — validate a code
 Route::post('/promotions/validate', [App\Http\Controllers\Api\PromotionController::class, 'validate'])
-    ->middleware('throttle:30,1');
+    ->middleware('throttle:5,1');
 
 // Authenticated customer/staff — apply/remove promo
 Route::middleware('auth:sanctum')->group(function () {
@@ -562,7 +567,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/stripe/intent', [App\Http\Controllers\Api\StripeController::class, 'createIntent']);
 });
 // Stripe webhook — public, no auth, uses raw body
-Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class, 'webhook']);
+Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class, 'webhook'])
+    ->middleware('throttle:100,1');
 
 // ─── Xero OAuth ─────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'role:admin,owner'])->group(function () {

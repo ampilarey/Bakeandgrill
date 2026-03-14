@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { BIZ } from '../constants/biz';
 
 export function PrivacyPage() {
   useEffect(() => { document.title = 'Privacy Policy — Bake & Grill'; }, []);
@@ -43,7 +44,7 @@ export function PrivacyPage() {
           <li>Order confirmation and status messages</li>
           <li>Promotional offers (if opted in)</li>
         </ul>
-        <p><strong>Opt-out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at <a href="tel:+9609120011" style={{ color: 'var(--color-primary, #d97706)' }}>+960 912 0011</a>.</p>
+        <p><strong>Opt-out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at <a href={`tel:${BIZ.phoneTel}`} style={{ color: 'var(--color-primary, #d97706)' }}>{BIZ.phone}</a>.</p>
       </Section>
 
       <Section title="Card Payment Security">
@@ -84,8 +85,8 @@ export function PrivacyPage() {
       <Section title="Contact Us">
         <p>For privacy-related questions or requests:</p>
         <ul>
-          <li><strong>Email:</strong> <a href="mailto:hello@bakeandgrill.mv" style={{ color: 'var(--color-primary, #d97706)' }}>hello@bakeandgrill.mv</a></li>
-          <li><strong>Phone:</strong> <a href="tel:+9609120011" style={{ color: 'var(--color-primary, #d97706)' }}>+960 912 0011</a></li>
+          <li><strong>Email:</strong> <a href={`mailto:${BIZ.email}`} style={{ color: 'var(--color-primary, #d97706)' }}>{BIZ.email}</a></li>
+          <li><strong>Phone:</strong> <a href={`tel:${BIZ.phoneTel}`} style={{ color: 'var(--color-primary, #d97706)' }}>{BIZ.phone}</a></li>
           <li><strong>Address:</strong> Kalaafaanu Hingun, Malé 20026, Republic of Maldives</li>
         </ul>
       </Section>

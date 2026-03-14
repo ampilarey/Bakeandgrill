@@ -153,6 +153,15 @@ class TableController extends Controller
     public function close(CloseTableRequest $request, $id)
     {
         $table = RestaurantTable::findOrFail($id);
+
+        $activeOrder = $this->findActiveOrder($table->id);
+        if ($activeOrder) {
+            return response()->json([
+                'message'  => 'Cannot close table — unpaid order exists.',
+                'order_id' => $activeOrder->id,
+            ], 422);
+        }
+
         $oldStatus = $table->status;
         $table->update(['status' => 'available']);
 

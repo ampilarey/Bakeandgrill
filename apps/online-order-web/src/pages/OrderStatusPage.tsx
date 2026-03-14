@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { BIZ } from "../constants/biz";
 import { ReviewForm } from "../components/ReviewForm";
 import { useCart } from "../context/CartContext";
 
@@ -437,7 +438,7 @@ export function OrderStatusPage() {
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <a
-                  href={`https://wa.me/9609120011?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
+                  href={`${BIZ.whatsapp}?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0.625rem 1.125rem', background: '#25d366', color: 'white', borderRadius: '10px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}
@@ -446,7 +447,7 @@ export function OrderStatusPage() {
                   <WhatsAppIcon /> WhatsApp
                 </a>
                 <a
-                  href="viber://chat?number=%2B9609120011"
+                  href={BIZ.viber}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0.625rem 1.125rem', background: '#7360f2', color: 'white', borderRadius: '10px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}
                   aria-label="Contact us on Viber"
                 >

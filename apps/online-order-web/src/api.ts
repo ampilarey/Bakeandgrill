@@ -302,3 +302,46 @@ export async function releaseLoyaltyHold(
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+// ── Reservations ─────────────────────────────────────────────────────────────
+
+export type ReservationSlot = { time: string; available: boolean };
+export type Reservation = { id: number; customer_name: string; date: string; time_slot: string };
+
+export async function fetchReservationSlots(
+  date: string,
+  partySize: number,
+): Promise<ReservationSlot[]> {
+  const data = await request<{ slots: ReservationSlot[] }>(
+    `${ENDPOINTS.RESERVATIONS_AVAILABILITY}?date=${date}&party_size=${partySize}`,
+  );
+  return data.slots;
+}
+
+export async function createReservation(payload: {
+  customer_name: string;
+  customer_phone: string;
+  party_size: number;
+  date: string;
+  time_slot: string;
+  notes?: string;
+}): Promise<Reservation> {
+  const data = await request<{ reservation: Reservation }>(ENDPOINTS.RESERVATIONS, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data.reservation;
+}
+
+// ── Reviews ───────────────────────────────────────────────────────────────────
+
+export async function submitReview(
+  token: string,
+  payload: { order_id: number; rating: number; comment: string; is_anonymous: boolean },
+): Promise<void> {
+  await request<void>(ENDPOINTS.REVIEWS, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}

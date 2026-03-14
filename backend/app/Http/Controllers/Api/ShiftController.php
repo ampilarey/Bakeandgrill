@@ -86,9 +86,7 @@ class ShiftController extends Controller
             ->sum('amount');
 
         $cashSales = Payment::where('method', 'cash')
-            ->whereHas('order', function ($query) use ($shift) {
-                $query->where('user_id', $shift->user_id);
-            })
+            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
             ->whereBetween('processed_at', [$shift->opened_at, now()])
             ->sum('amount');
 

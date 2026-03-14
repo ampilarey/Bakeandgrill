@@ -889,7 +889,7 @@ database.
 ---
 
 ### M-1 · Rate limiting gaps on sensitive operations
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `routes/api.php`
 
 Add `->middleware('throttle:X,1')` to:
@@ -904,7 +904,7 @@ Add `->middleware('throttle:X,1')` to:
 ---
 
 ### M-2 · Promotion code rate limit too permissive
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `routes/api.php:289`
 
 `throttle:30,1` allows 30 promo code guesses per minute.
@@ -914,7 +914,7 @@ Add `->middleware('throttle:X,1')` to:
 ---
 
 ### M-3 · No upper bounds on order quantities or refund amounts
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** `app/Http/Requests/StoreOrderRequest.php`, `app/Http/Requests/StoreRefundRequest.php`
 
 **Fix:**
@@ -928,7 +928,7 @@ Add `->middleware('throttle:X,1')` to:
 ---
 
 ### M-4 · Analytics `$days` / `$lookback` have no upper bound
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/AnalyticsController.php:23, 141`
 
 `?days=999999` triggers a full-table scan.
@@ -942,7 +942,7 @@ $lookbackDays = min((int) ($request->query('lookback', 90)), 365);
 ---
 
 ### M-5 · Unbounded date range in `salesTrends` / ForecastController
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/ForecastController.php:111–126`
 
 **Fix:** Cap range at 12 months maximum:
@@ -956,7 +956,7 @@ if ($to->diffInDays($from) > 366) {
 ---
 
 ### M-6 · Unauthenticated bulk stock-check exposes inventory data
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `routes/api.php:249–256`
 
 **Fix:**
@@ -969,7 +969,7 @@ $request->validate(['item_ids' => 'required|array|max:50|each:integer']);
 ---
 
 ### M-7 · Search parameter not length-validated
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/ItemController.php:35`
 
 `$request->search` used in LIKE query with no length limit — can be a 100KB
@@ -983,7 +983,7 @@ $search = Str::limit(strip_tags($request->query('search', '')), 100);
 ---
 
 ### M-8 · Missing database indexes for reporting queries
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `database/migrations/`
 
 Create a new migration:
@@ -1005,7 +1005,7 @@ Schema::table('order_items', function (Blueprint $table) {
 ---
 
 ### M-9 · File upload lacks dimension and quota limits
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/ImageUploadController.php`
 
 **Fix:**
@@ -1020,7 +1020,7 @@ Schema::table('order_items', function (Blueprint $table) {
 ---
 
 ### M-10 · `SESSION_SECURE_COOKIE` not configured for HTTPS
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `config/session.php:174`
 
 **Fix:**
@@ -1035,7 +1035,7 @@ SESSION_SECURE_COOKIE=true   # Required for HTTPS deployments
 ---
 
 ### M-11 · Phone numbers hardcoded in 6+ order-app page files
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** `OrderStatusPage.tsx`, `CheckoutPage.tsx`, `PreOrderPage.tsx`, `PrivacyPage.tsx`, `HoursPage.tsx`
 
 **Fix:** Export `BIZ` from `Layout.tsx` (or create `src/constants/biz.ts`) and
@@ -1055,7 +1055,7 @@ export const BIZ = {
 ---
 
 ### M-12 · `VITE_DELIVERY_FEE_MVR` not validated — produces `NaN` at checkout
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/online-order-web/src/hooks/useCheckout.ts:80`
 
 **Fix:**
@@ -1070,7 +1070,7 @@ setDeliveryFee(rawFee * 100);
 ---
 
 ### M-13 · `ReservationPage` and `ReviewForm` use raw `fetch`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** `apps/online-order-web/src/pages/ReservationPage.tsx`, `ReviewForm.tsx`
 
 Both bypass the shared API client — no centralised auth or error handling.
@@ -1081,7 +1081,7 @@ page-level API functions already defined in `api.ts`.
 ---
 
 ### M-14 · `CustomerController::optOut` leaks phone number registration status
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/CustomerController.php:148–159`
 
 Returns 404 for unknown numbers — enables phone enumeration.
@@ -1101,7 +1101,7 @@ public function optOut(Request $request): JsonResponse
 ---
 
 ### M-15 · Shift cash calculation scoped to user, not shift
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/ShiftController.php:88–93`
 
 Two-shift days inflate cash sales reports.
@@ -1117,7 +1117,7 @@ $cashSales = Payment::where('method', 'cash')
 ---
 
 ### M-16 · `Table::close()` allows closing tables with unpaid orders
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/TableController.php:153–169`
 
 **Fix:**
@@ -1140,7 +1140,7 @@ public function close(Request $request, int $id): JsonResponse
 ---
 
 ### M-17 · `tip_amount` and `estimated_wait_minutes` missing from `Order::$fillable`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Models/Order.php`
 
 **Fix:**
@@ -1161,7 +1161,7 @@ protected $casts = [
 ---
 
 ### M-18 · PIN auth loads all staff into memory (O(N) scan)
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/Auth/StaffAuthController.php:36–40`
 
 **Short-term fix** (add a safety limit):
@@ -1178,7 +1178,7 @@ then verify only that single user's PIN hash.
 ---
 
 ### M-19 · `XeroController` — sessions on stateless API route (OAuth broken)
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/XeroController.php:29, 41`
 
 API routes don't start sessions — `session()->pull()` always returns `null`;
@@ -1200,7 +1200,7 @@ if (! $expected || ! hash_equals($expected, $request->state)) {
 ---
 
 ### M-20 · No `.env.example` files in individual app directories
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** All four `apps/*/`
 
 **Fix:** Create `apps/online-order-web/.env.example`:
@@ -1215,7 +1215,7 @@ Create `apps/admin-dashboard/.env.example`, `apps/kds-web/.env.example`,
 ---
 
 ### M-21 · `admin-dashboard` has no test suite
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/admin-dashboard/package.json`
 
 The most security-sensitive app has zero automated tests.
@@ -1229,7 +1229,7 @@ The most security-sensitive app has zero automated tests.
 ---
 
 ### M-22 · `InventoryController::adjust` — duplicate variable + no transaction
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/InventoryController.php:77–116`
 
 **Fix:**
@@ -1256,7 +1256,7 @@ public function adjust(Request $request, int $id): JsonResponse
 ---
 
 ### M-23 · MySQL-only SQL functions break PostgreSQL production AND SQLite tests
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** `AnalyticsController.php`, `ForecastController.php`, `FinanceReportController.php`
 
 `HOUR()`, `DAYOFWEEK()`, `YEARWEEK()`, `DATE_FORMAT()` are MySQL-specific functions
@@ -1297,7 +1297,7 @@ $monthExpr = match(DB::getDriverName()) {
 ---
 
 ### M-24 · `SECURITY.md` documents wrong OTP endpoint URLs
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `SECURITY.md:64–65`
 
 Documents `/api/auth/customer/send-otp` but actual route is
@@ -1308,7 +1308,7 @@ Documents `/api/auth/customer/send-otp` but actual route is
 ---
 
 ### M-25 · Entire `docs/` directory contains inaccurate AI session artifacts
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** `docs/FINAL_AUDIT_REPORT.md`, `docs/DEPLOYMENT_READY.md`,
 `docs/EVERYTHING_COMPLETE.md`, `docs/FINAL_IMPLEMENTATION_STATUS.md`,
 `docs/PRODUCTION_HARDENING_COMPLETE.md`, `docs/CHATGPT_IMPLEMENTATION_PLAN.md`,
@@ -1333,7 +1333,7 @@ rm FINAL_AUDIT_REPORT.md DEPLOYMENT_READY.md EVERYTHING_COMPLETE.md \
 ---
 
 ### M-26 · `gitleaks.toml` uses wrong section syntax
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `.gitleaks.toml`
 
 `[[rules.allowlist]]` is not valid gitleaks v8 syntax — global allowlists use
@@ -1727,10 +1727,10 @@ npm install -D terser --workspace=apps/online-order-web
 | Priority | Total Items | ✅ Done | 🟡 Partial | 🔴 Not Done |
 |----------|------------|---------|-----------|------------|
 | CRITICAL | 15 | 14 | 0 | 1 |
-| HIGH | 25 | 1 | 0 | 24 |
-| MEDIUM | 26 | 0 | 0 | 26 |
+| HIGH | 25 | 21 | 0 | 4 |
+| MEDIUM | 26 | 26 | 0 | 0 |
 | LOW | 28 | 2 | 0 | 26 |
-| **Total** | **94** | **17** | **0** | **77** |
+| **Total** | **94** | **63** | **0** | **31** |
 
 ---
 

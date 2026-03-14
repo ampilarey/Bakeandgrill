@@ -77,8 +77,13 @@ export function useCheckout() {
   const hasMounted = useRef(false);
 
   useEffect(() => {
-    const fee = parseInt(import.meta.env.VITE_DELIVERY_FEE_MVR ?? "20", 10);
-    setDeliveryFee(fee * 100);
+    const rawFee = parseInt(import.meta.env.VITE_DELIVERY_FEE_MVR ?? '20', 10);
+    if (isNaN(rawFee) || rawFee < 0) {
+      console.error('VITE_DELIVERY_FEE_MVR must be a non-negative integer — falling back to 20 MVR');
+      setDeliveryFee(20 * 100);
+    } else {
+      setDeliveryFee(rawFee * 100);
+    }
   }, []);
 
   useEffect(() => {

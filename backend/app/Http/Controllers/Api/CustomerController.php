@@ -145,17 +145,10 @@ class CustomerController extends Controller
      */
     public function optOut(CustomerSmsOptOutRequest $request)
     {
-        $customer = Customer::where('phone', $request->validated()['phone'])->first();
+        // Always return 200 regardless of whether the phone is registered — prevents phone enumeration
+        Customer::where('phone', $request->validated()['phone'])
+            ->update(['sms_opt_out' => true, 'sms_opt_out_at' => now()]);
 
-        if (!$customer) {
-            return response()->json(['message' => 'Customer not found.'], 404);
-        }
-
-        $customer->update([
-            'sms_opt_out' => true,
-            'sms_opt_out_at' => now(),
-        ]);
-
-        return response()->json(['message' => 'SMS opt-out confirmed.']);
+        return response()->json(['message' => 'If this number is registered, you have been opted out.']);
     }
 }

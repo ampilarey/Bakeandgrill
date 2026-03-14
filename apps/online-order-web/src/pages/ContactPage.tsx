@@ -1,27 +1,28 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { BIZ } from '../constants/biz';
 
 const CONTACT_ITEMS = [
   {
     label: 'Phone',
     abbr: 'PH',
     color: '#D4813A',
-    value: '+960 9120011',
-    action: { href: 'tel:+9609120011', text: 'Call us' },
+    value: BIZ.phone,
+    action: { href: `tel:${BIZ.phoneTel}`, text: 'Call us' },
   },
   {
     label: 'Email',
     abbr: 'EM',
     color: '#D4813A',
-    value: 'hello@bakeandgrill.mv',
-    action: { href: 'mailto:hello@bakeandgrill.mv', text: 'Send email' },
+    value: BIZ.email,
+    action: { href: `mailto:${BIZ.email}`, text: 'Send email' },
   },
   {
     label: 'WhatsApp',
     abbr: 'WA',
     color: '#25D366',
-    value: '+960 9120011',
-    action: { href: 'https://wa.me/9609120011', text: 'Message us', external: true },
+    value: BIZ.phone,
+    action: { href: BIZ.whatsapp, text: 'Message us', external: true },
   },
   {
     label: 'Address',

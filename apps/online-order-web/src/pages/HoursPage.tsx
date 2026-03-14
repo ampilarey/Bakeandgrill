@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOpeningHoursStatus, fetchOpeningHoursSchedule } from '../api';
+import { BIZ } from '../constants/biz';
 import type { DaySchedule } from '../api';
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -130,7 +131,7 @@ export function HoursPage() {
           Order Now →
         </Link>
         <a
-          href="https://wa.me/9609120011"
+          href={BIZ.whatsapp}
           target="_blank"
           rel="noopener noreferrer"
           style={{

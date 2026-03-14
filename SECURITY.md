@@ -61,8 +61,8 @@ We ask that you:
 ### Rate Limiting
 
 OTP endpoints are protected by Laravel's `throttle` middleware:
-- `/api/auth/customer/send-otp` — 3 requests per 5 minutes per IP
-- `/api/auth/customer/verify-otp` — 5 requests per 10 minutes per IP
+- `/api/auth/customer/otp/request` — 3 requests per 5 minutes per IP
+- `/api/auth/customer/otp/verify` — 5 requests per 10 minutes per IP
 
 ### Secrets Management
 

@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class XeroController extends Controller
@@ -26,8 +27,9 @@ class XeroController extends Controller
      */
     public function connect(Request $request): RedirectResponse
     {
-        $state = Str::random(32);
-        $request->session()->put('xero_oauth_state', $state);
+        $state = Str::random(40);
+        // Store in cache (API routes don't start sessions — session()->put() silently fails)
+        Cache::put('xero_oauth_state_' . $request->user()->id, $state, 300);
 
         return redirect($this->oauth->getAuthorizationUrl($state));
     }
@@ -37,8 +39,8 @@ class XeroController extends Controller
      */
     public function callback(Request $request): JsonResponse
     {
-        $state = $request->query('state');
-        if ($state !== $request->session()->pull('xero_oauth_state')) {
+        $expected = Cache::pull('xero_oauth_state_' . $request->user()->id);
+        if (! $expected || ! hash_equals($expected, (string) $request->query('state'))) {
             return response()->json(['message' => 'Invalid OAuth state.'], 422);
         }
 

@@ -39,6 +39,8 @@ class Order extends Model
         'held_at',
         'paid_at',
         'completed_at',
+        'tip_amount',
+        'estimated_wait_minutes',
         // Delivery fields
         'delivery_address_line1',
         'delivery_address_line2',
@@ -59,6 +61,8 @@ class Order extends Model
         'tax_inclusive' => 'boolean',
         'delivery_fee' => 'decimal:2',
         'delivery_fee_laar' => 'integer',
+        'tip_amount' => 'decimal:2',
+        'estimated_wait_minutes' => 'integer',
     ];
 
     public function items(): HasMany

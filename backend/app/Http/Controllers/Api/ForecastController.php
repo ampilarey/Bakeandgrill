@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Models\InventoryItem;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -23,12 +24,18 @@ class ForecastController extends Controller
         $horizon = (int) $request->query('horizon', 4); // weeks to forecast ahead
 
         // Collect weekly revenue totals from last $weeks * 2 weeks
+        $ywExpr = match(DB::getDriverName()) {
+            'sqlite'  => "strftime('%Y', created_at) || strftime('%W', created_at)",
+            'pgsql'   => "TO_CHAR(created_at, 'IYYYIW')",
+            default   => 'YEARWEEK(created_at, 1)',
+        };
+
         $history = DB::table('orders')
             ->where('status', 'completed')
             ->where('created_at', '>=', now()->subWeeks($weeks * 2))
-            ->selectRaw("YEARWEEK(created_at, 1) as yw, SUM(total) as revenue, COUNT(*) as orders")
-            ->groupBy('yw')
-            ->orderBy('yw')
+            ->selectRaw("{$ywExpr} as yw, SUM(total) as revenue, COUNT(*) as orders")
+            ->groupByRaw($ywExpr)
+            ->orderByRaw($ywExpr)
             ->get();
 
         if ($history->count() < 2) {
@@ -108,21 +115,43 @@ class ForecastController extends Controller
     public function salesTrends(Request $request): JsonResponse
     {
         $granularity = $request->query('granularity', 'daily'); // daily|weekly|monthly
-        $from = $request->query('from', now()->subDays(29)->toDateString());
-        $to   = $request->query('to',   now()->toDateString());
+        $from = Carbon::parse($request->query('from', now()->subDays(29)->toDateString()));
+        $to   = Carbon::parse($request->query('to',   now()->toDateString()));
 
-        $format = match ($granularity) {
-            'weekly'  => '%x-W%v',
-            'monthly' => '%Y-%m',
-            default   => '%Y-%m-%d',
+        // Never go beyond 1 year back; cap the range at 12 months
+        $from = max($from, now()->subYear());
+        if ($to->diffInDays($from) > 366) {
+            return response()->json(['message' => 'Date range cannot exceed 1 year.'], 422);
+        }
+
+        $from = $from->toDateString();
+        $to   = $to->toDateString();
+
+        $driver = DB::getDriverName();
+        $periodExpr = match ($granularity) {
+            'weekly' => match ($driver) {
+                'sqlite'  => "strftime('%Y-W', created_at) || strftime('%W', created_at)",
+                'pgsql'   => "TO_CHAR(created_at, 'IYYY-\"W\"IW')",
+                default   => "DATE_FORMAT(created_at, '%x-W%v')",
+            },
+            'monthly' => match ($driver) {
+                'sqlite'  => "strftime('%Y-%m', created_at)",
+                'pgsql'   => "TO_CHAR(created_at, 'YYYY-MM')",
+                default   => "DATE_FORMAT(created_at, '%Y-%m')",
+            },
+            default => match ($driver) {
+                'sqlite'  => "strftime('%Y-%m-%d', created_at)",
+                'pgsql'   => "TO_CHAR(created_at, 'YYYY-MM-DD')",
+                default   => "DATE_FORMAT(created_at, '%Y-%m-%d')",
+            },
         };
 
         $data = DB::table('orders')
             ->where('status', 'completed')
             ->whereBetween('created_at', ["{$from} 00:00:00", "{$to} 23:59:59"])
-            ->selectRaw("DATE_FORMAT(created_at, '{$format}') as period, SUM(total) as revenue, COUNT(*) as orders, AVG(total) as avg_order")
-            ->groupBy('period')
-            ->orderBy('period')
+            ->selectRaw("{$periodExpr} as period, SUM(total) as revenue, COUNT(*) as orders, AVG(total) as avg_order")
+            ->groupByRaw($periodExpr)
+            ->orderByRaw($periodExpr)
             ->get();
 
         // Compute period-on-period growth

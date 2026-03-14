@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { ENDPOINTS } from "@shared/api";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+import { submitReview } from "../api";
 
 interface Props {
   orderId: number;
@@ -23,19 +21,7 @@ export function ReviewForm({ orderId, token, onDone }: Props) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE}${ENDPOINTS.REVIEWS}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ order_id: orderId, rating, comment, is_anonymous: anon }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(data.message ?? "Could not submit review.");
-      }
+      await submitReview(token, { order_id: orderId, rating, comment, is_anonymous: anon });
       setDone(true);
       setTimeout(onDone, 2000);
     } catch (e) {

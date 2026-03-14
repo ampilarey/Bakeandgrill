@@ -11,8 +11,8 @@ use Illuminate\Support\Str;
 
 class ImageUploadController extends Controller
 {
-    private const MAX_SIZE_KB = 4096; // 4 MB
-    private const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    private const MAX_SIZE_KB = 5120; // 5 MB
+    private const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
     /**
      * POST /api/admin/upload-image
@@ -23,9 +23,10 @@ class ImageUploadController extends Controller
         $request->validate([
             'image' => [
                 'required',
-                'file',
-                'mimes:jpeg,jpg,png,webp,gif',
+                'image',
+                'mimes:jpeg,png,webp',
                 'max:' . self::MAX_SIZE_KB,
+                'dimensions:max_width=4096,max_height=4096',
             ],
         ]);
 

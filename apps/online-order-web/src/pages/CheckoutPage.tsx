@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
+import { BIZ } from "../constants/biz";
 import { AuthBlock } from "../components/AuthBlock";
 import { CartSummary } from "../components/CartSummary";
 
@@ -255,7 +256,7 @@ export function CheckoutPage() {
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                   <a
-                    href="https://wa.me/9609120011?text=Hi%2C+I+need+help+with+my+order"
+                    href={`${BIZ.whatsapp}?text=Hi%2C+I+need+help+with+my+order`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={S.chatBtnWa}
@@ -264,7 +265,7 @@ export function CheckoutPage() {
                     <WhatsAppIcon /> WhatsApp
                   </a>
                   <a
-                    href="viber://chat?number=%2B9609120011"
+                    href={BIZ.viber}
                     style={S.chatBtnViber}
                     aria-label="Contact us on Viber"
                   >
@@ -395,8 +396,8 @@ export function CheckoutPage() {
               {/* Req 3: Corporate info */}
               <div style={S.corporateInfo}>
                 <strong>Bake &amp; Grill</strong> · Kalaafaanu Hingun, Malé, Maldives ·{' '}
-                <a href="tel:+9609120011" style={{ color: 'inherit' }}>+960 912 0011</a> ·{' '}
-                <a href="mailto:hello@bakeandgrill.mv" style={{ color: 'inherit' }}>hello@bakeandgrill.mv</a>
+                <a href={`tel:${BIZ.phoneTel}`} style={{ color: 'inherit' }}>{BIZ.phone}</a> ·{' '}
+                <a href={`mailto:${BIZ.email}`} style={{ color: 'inherit' }}>{BIZ.email}</a>
               </div>
             </div>
           )}

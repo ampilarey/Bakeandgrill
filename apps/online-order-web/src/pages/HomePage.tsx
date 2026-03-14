@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchItems, fetchOpeningHoursStatus, API_ORIGIN } from '../api';
+import { BIZ } from '../constants/biz';
 import type { Item } from '../api';
 
 // ─── WhatsApp + Viber SVG icons ───────────────────────────────────────────────
@@ -285,7 +286,7 @@ export function HomePage() {
           </p>
           <div className="chat-btns">
             <a
-              href="https://wa.me/9609120011"
+              href={BIZ.whatsapp}
               target="_blank"
               rel="noopener noreferrer"
               className="chat-btn chat-btn-wa"
@@ -294,7 +295,7 @@ export function HomePage() {
               <WhatsAppIcon /> WhatsApp
             </a>
             <a
-              href="viber://chat?number=%2B9609120011"
+              href={BIZ.viber}
               className="chat-btn chat-btn-viber"
               aria-label="Chat on Viber"
             >

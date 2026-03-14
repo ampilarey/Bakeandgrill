@@ -35,10 +35,9 @@ class StaffAuthController extends Controller
 
         $user = User::where('is_active', true)
             ->whereNotNull('pin_hash')
+            ->limit(500) // safety net until PIN login requires a username
             ->get()
-            ->first(function (User $user) use ($pin) {
-                return Hash::check($pin, $user->pin_hash);
-            });
+            ->first(fn (User $user) => Hash::check($pin, $user->pin_hash));
 
         if (!$user) {
             RateLimiter::hit($rateKey, 900); // 15 minutes

@@ -8,45 +8,50 @@ title = "Bake & Grill Gitleaks Config"
 # Use the official default ruleset as a base, then add our overrides below.
 useDefault = true
 
-# ── Allowlist ─────────────────────────────────────────────────────────────────
+# ── Allowlists ────────────────────────────────────────────────────────────────
 # These are known-safe patterns that gitleaks would otherwise flag as secrets.
 # Keep this list minimal — only add entries with a clear justification.
+# NOTE: Global allowlists use [[allowlists]] (not [[rules.allowlist]]) in gitleaks v8+.
 
-[[rules.allowlist]]
+[[allowlists]]
+id = "placeholders"
 description = "CHANGE_ME placeholder tokens in .env.example files are intentional documentation"
 regexes = [
-    "CHANGE_ME_[A-Z0-9_]+",
+    'CHANGE_ME_[A-Z0-9_]+',
 ]
+paths = ['\.env\.example$']
 
-[[rules.allowlist]]
+[[allowlists]]
+id = "test-tokens"
 description = "Test tokens generated in PHPUnit tests are not real credentials"
 paths = [
-    "backend/tests/**",
+    'backend/tests/',
 ]
 
-[[rules.allowlist]]
+[[allowlists]]
+id = "example-ips"
 description = "Example printer IPs in documentation are illustrative, not real infrastructure"
 paths = [
-    "docs/**",
-    "*.md",
-    "**/*.md",
+    'docs/',
+    '\.md$',
 ]
 regexes = [
-    # Private IP ranges used as examples
-    "192\\.168\\.\\d+\\.\\d+",
-    "10\\.\\d+\\.\\d+\\.\\d+",
+    '192\.168\.\d+\.\d+',
+    '10\.\d+\.\d+\.\d+',
 ]
 
-[[rules.allowlist]]
+[[allowlists]]
+id = "laravel-app-key"
 description = "Laravel APP_KEY placeholder in .env.example is empty by design"
 regexes = [
-    "APP_KEY=$",
-    "APP_KEY=base64:[A-Za-z0-9+/]{43}=",
+    'APP_KEY=$',
+    'APP_KEY=base64:[A-Za-z0-9+/]{43}=',
 ]
 
-[[rules.allowlist]]
+[[allowlists]]
+id = "empty-api-keys"
 description = "Stripe/Xero keys in .env.example are empty placeholders"
 regexes = [
-    "STRIPE_[A-Z_]+=\\s*$",
-    "XERO_[A-Z_]+=\\s*$",
+    'STRIPE_[A-Z_]+=\s*$',
+    'XERO_[A-Z_]+=\s*$',
 ]

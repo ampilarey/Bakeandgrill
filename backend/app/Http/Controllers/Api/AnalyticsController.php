@@ -20,13 +20,19 @@ class AnalyticsController extends Controller
      */
     public function peakHours(Request $request): JsonResponse
     {
-        $days = (int) ($request->query('days', 30));
+        $days = min((int) ($request->query('days', 30)), 365);
+
+        $hourExpr = match(DB::getDriverName()) {
+            'sqlite'  => "CAST(strftime('%H', created_at) AS INTEGER)",
+            'pgsql'   => 'EXTRACT(HOUR FROM created_at)::INTEGER',
+            default   => 'HOUR(created_at)',
+        };
 
         $rows = DB::table('orders')
             ->where('created_at', '>=', now()->subDays($days))
             ->whereNotIn('status', ['cancelled'])
-            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count, AVG(total) as avg_total')
-            ->groupByRaw('HOUR(created_at)')
+            ->selectRaw("{$hourExpr} as hour, COUNT(*) as count, AVG(total) as avg_total")
+            ->groupByRaw($hourExpr)
             ->orderBy('hour')
             ->get();
 
@@ -143,13 +149,20 @@ class AnalyticsController extends Controller
      */
     public function forecast(Request $request): JsonResponse
     {
-        $lookbackDays = (int) ($request->query('lookback', 90));
+        $lookbackDays = min((int) ($request->query('lookback', 90)), 365);
+
+        // DAYOFWEEK: MySQL returns 1=Sun; normalise pgsql/sqlite to the same convention
+        $dowExpr = match(DB::getDriverName()) {
+            'sqlite'  => "CAST(strftime('%w', created_at) AS INTEGER) + 1",
+            'pgsql'   => 'EXTRACT(DOW FROM created_at)::INTEGER + 1',
+            default   => 'DAYOFWEEK(created_at)',
+        };
 
         $avgByDow = DB::table('orders')
             ->where('created_at', '>=', now()->subDays($lookbackDays))
             ->whereNotIn('status', ['cancelled'])
-            ->selectRaw('DAYOFWEEK(created_at) as dow, COUNT(*) as total, COUNT(DISTINCT DATE(created_at)) as day_count')
-            ->groupByRaw('DAYOFWEEK(created_at)')
+            ->selectRaw("{$dowExpr} as dow, COUNT(*) as total, COUNT(DISTINCT DATE(created_at)) as day_count")
+            ->groupByRaw($dowExpr)
             ->get()
             ->keyBy('dow');
 

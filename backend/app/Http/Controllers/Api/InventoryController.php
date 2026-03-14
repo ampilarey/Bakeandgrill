@@ -71,47 +71,51 @@ class InventoryController extends Controller
 
     public function adjust(AdjustInventoryRequest $request, $id)
     {
-        $item = InventoryItem::findOrFail($id);
         $validated = $request->validated();
-        $quantity = (float) $validated['quantity'];
-        $oldStock = $item->current_stock ?? 0;
 
-        $oldStock = (float) ($item->current_stock ?? 0);
-        $item->current_stock = $oldStock + $quantity;
-        $item->save();
+        [$item, $movement] = DB::transaction(function () use ($validated, $id, $request) {
+            $item     = InventoryItem::lockForUpdate()->findOrFail($id);
+            $oldStock = (float) ($item->current_stock ?? 0);
+            $quantity = (float) $validated['quantity'];
 
-        event(new StockLevelChanged(new StockLevelChangedData(
-            itemId: $item->id,
-            itemName: $item->name,
-            oldQuantity: $oldStock,
-            newQuantity: (float) $item->current_stock,
-            reason: 'adjustment',
-        )));
+            $item->current_stock = $oldStock + $quantity;
+            $item->save();
 
-        $movement = StockMovement::create([
-            'inventory_item_id' => $item->id,
-            'user_id' => $request->user()?->id,
-            'type' => $validated['type'],
-            'quantity' => $quantity,
-            'balance_after' => $item->current_stock,
-            'unit_cost' => $validated['unit_cost'] ?? null,
-            'reference_type' => 'manual',
-            'reference_id' => null,
-            'notes' => $validated['notes'] ?? null,
-        ]);
+            event(new StockLevelChanged(new StockLevelChangedData(
+                itemId: $item->id,
+                itemName: $item->name,
+                oldQuantity: $oldStock,
+                newQuantity: (float) $item->current_stock,
+                reason: 'adjustment',
+            )));
 
-        app(AuditLogService::class)->log(
-            'inventory.adjusted',
-            'InventoryItem',
-            $item->id,
-            ['current_stock' => $oldStock],
-            ['current_stock' => $item->current_stock],
-            ['movement_id' => $movement->id, 'type' => $validated['type']],
-            $request,
-        );
+            $movement = StockMovement::create([
+                'inventory_item_id' => $item->id,
+                'user_id'           => $request->user()?->id,
+                'type'              => $validated['type'],
+                'quantity'          => $quantity,
+                'balance_after'     => $item->current_stock,
+                'unit_cost'         => $validated['unit_cost'] ?? null,
+                'reference_type'    => 'manual',
+                'reference_id'      => null,
+                'notes'             => $validated['notes'] ?? null,
+            ]);
+
+            app(AuditLogService::class)->log(
+                'inventory.adjusted',
+                'InventoryItem',
+                $item->id,
+                ['current_stock' => $oldStock],
+                ['current_stock' => $item->current_stock],
+                ['movement_id' => $movement->id, 'type' => $validated['type']],
+                $request,
+            );
+
+            return [$item, $movement];
+        });
 
         return response()->json([
-            'item' => $item,
+            'item'     => $item,
             'movement' => $movement,
         ]);
     }

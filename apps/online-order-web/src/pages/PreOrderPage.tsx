@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchItems, createPreOrder } from '../api';
+import { BIZ } from '../constants/biz';
 import type { Item, PreOrderResult } from '../api';
 import { AuthBlock } from '../components/AuthBlock';
 
@@ -289,7 +290,7 @@ export function PreOrderPage() {
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/menu" style={S.primaryBtn}>Browse Menu</Link>
-              <a href="https://wa.me/9609120011" target="_blank" rel="noopener noreferrer" style={{ ...S.ghostBtn, textDecoration: 'none' }}>
+              <a href={BIZ.whatsapp} target="_blank" rel="noopener noreferrer" style={{ ...S.ghostBtn, textDecoration: 'none' }}>
                 💬 WhatsApp Us
               </a>
             </div>

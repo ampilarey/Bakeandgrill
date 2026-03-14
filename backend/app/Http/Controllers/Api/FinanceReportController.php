@@ -159,12 +159,18 @@ class FinanceReportController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
+        $monthExpr = match(DB::getDriverName()) {
+            'sqlite'  => "strftime('%Y-%m', created_at)",
+            'pgsql'   => "TO_CHAR(created_at, 'YYYY-MM')",
+            default   => 'DATE_FORMAT(created_at, "%Y-%m")',
+        };
+
         $taxable = Order::whereBetween('created_at', [$from, $to])
             ->where('status', 'completed')
             ->where('tax_amount', '>', 0)
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as period, SUM(subtotal) as taxable_amount, SUM(tax_amount) as tax_collected, COUNT(*) as transactions')
-            ->groupBy('period')
-            ->orderBy('period')
+            ->selectRaw("{$monthExpr} as period, SUM(subtotal) as taxable_amount, SUM(tax_amount) as tax_collected, COUNT(*) as transactions")
+            ->groupByRaw($monthExpr)
+            ->orderByRaw($monthExpr)
             ->get();
 
         $totalTaxable   = $taxable->sum('taxable_amount');

@@ -1,40 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Reservation, ReservationSlot } from "@shared/types";
-import { ENDPOINTS } from "@shared/api";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
-
-async function getSlots(date: string, partySize: number): Promise<ReservationSlot[]> {
-  const res = await fetch(
-    `${API_BASE}${ENDPOINTS.RESERVATIONS_AVAILABILITY}?date=${date}&party_size=${partySize}`,
-    { headers: { Accept: "application/json" } },
-  );
-  if (!res.ok) throw new Error("Could not load availability.");
-  const data = await res.json();
-  return data.slots as ReservationSlot[];
-}
-
-async function createReservation(payload: {
-  customer_name: string;
-  customer_phone: string;
-  party_size: number;
-  date: string;
-  time_slot: string;
-  notes?: string;
-}): Promise<Reservation> {
-  const res = await fetch(`${API_BASE}${ENDPOINTS.RESERVATIONS}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    const msg = data.message ?? data.errors?.[Object.keys(data.errors ?? {})[0]]?.[0] ?? "Could not make reservation.";
-    throw new Error(msg);
-  }
-  return data.reservation as Reservation;
-}
+import { fetchReservationSlots, createReservation } from "../api";
+import type { ReservationSlot, Reservation } from "../api";
 
 const tomorrow = () => {
   const d = new Date();
@@ -68,7 +35,7 @@ export function ReservationPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await getSlots(date, partySize);
+      const data = await fetchReservationSlots(date, partySize);
       setSlots(data);
       setStep("slots");
     } catch (e) {

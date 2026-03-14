@@ -9,6 +9,7 @@ use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ItemController extends Controller
 {
@@ -31,9 +32,9 @@ class ItemController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        // Search by name or SKU
+        // Search by name or SKU (capped at 100 characters to prevent LIKE abuse)
         if ($request->has('search')) {
-            $search = $request->search;
+            $search = Str::limit(strip_tags($request->query('search', '')), 100, '');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('name_dv', 'like', "%{$search}%")
