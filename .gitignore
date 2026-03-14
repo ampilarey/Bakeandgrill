@@ -25,6 +25,8 @@ apps/**/.env.*
 # Dependencies
 /node_modules
 /apps/**/node_modules
+/print-proxy/node_modules
+/packages/**/node_modules
 /vendor
 /backend/vendor
 /auth.json

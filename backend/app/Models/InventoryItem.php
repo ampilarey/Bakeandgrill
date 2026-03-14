@@ -17,8 +17,11 @@ class InventoryItem extends Model
     ];
 
     protected $casts = [
-        'expiry_date' => 'date',
-        'is_active'   => 'boolean',
+        'expiry_date'   => 'date',
+        'is_active'     => 'boolean',
+        'current_stock' => 'float',
+        'unit_cost'     => 'decimal:4',
+        'reorder_level' => 'float',
     ];
 
     public function stockMovements(): HasMany

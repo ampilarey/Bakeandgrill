@@ -258,4 +258,23 @@ class ItemController extends Controller
             'item' => $item,
         ]);
     }
+
+    /**
+     * POST /api/items/stock-check
+     * Bulk stock availability check for multiple items.
+     */
+    public function bulkStockCheck(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['item_ids' => 'required|array|max:50', 'item_ids.*' => 'integer']);
+        $isStaff = $request->user()?->tokenCan('staff');
+        $columns = $isStaff
+            ? ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold']
+            : ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type'];
+
+        $items = Item::whereIn('id', $request->input('item_ids', []))
+            ->select($columns)
+            ->get();
+
+        return response()->json(['items' => $items]);
+    }
 }

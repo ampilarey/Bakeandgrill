@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSupplierPerformance, rateSupplier, type SupplierPerf } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
   if (rating === null) return <span style={{ color: '#94a3b8', fontSize: 12 }}>Not rated</span>;
@@ -13,6 +14,7 @@ function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
 }
 
 export function SupplierIntelligencePage() {
+    usePageTitle('Supplier Intelligence');
   const [perfs, setPerfs]       = useState<SupplierPerf[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');

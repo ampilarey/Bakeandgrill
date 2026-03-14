@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getProfitAndLoss, getCashFlow, getDailySummary, type PnLReport } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function today() { return new Date().toISOString().slice(0, 10); }
 function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); }
@@ -25,6 +26,7 @@ function ProgressBar({ pct, color = '#0ea5e9' }: { pct: number; color?: string }
 }
 
 export function ProfitLossPage() {
+    usePageTitle('Profit & Loss');
   const [pnl, setPnl]             = useState<PnLReport | null>(null);
   const [cashFlow, setCashFlow]   = useState<{ total_inflow: number; total_outflow: number; net_cash_flow: number; days: { date: string; inflow: number; outflow: number; net: number; running_balance: number }[] } | null>(null);
   const [daily, setDaily]         = useState<{ revenue: number; orders: number; avg_order: number; net_profit: number; top_items: { name: string; qty: number; revenue: number }[] } | null>(null);

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { getExpenses, getExpenseCategories, storeExpense, deleteExpense, getExpenseSummary, type Expense, type ExpenseCategory } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function today() { return new Date().toISOString().slice(0, 10); }
 function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); }
 
 export function ExpensesPage() {
+    usePageTitle('Expenses');
   const [expenses, setExpenses]   = useState<Expense[]>([]);
   const [cats, setCats]           = useState<ExpenseCategory[]>([]);
   const [summary, setSummary]     = useState<{ total: number; by_category: { category: string; icon: string; total: number; count: number; pct: number }[] } | null>(null);

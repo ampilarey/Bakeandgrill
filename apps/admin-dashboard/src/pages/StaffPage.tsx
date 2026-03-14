@@ -4,6 +4,7 @@ import {
   type StaffMember, type StaffRole,
 } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -225,6 +226,7 @@ function PinModal({ member, onSave, onClose }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function StaffPage() {
+    usePageTitle('Staff');
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [loading, setLoading] = useState(true);

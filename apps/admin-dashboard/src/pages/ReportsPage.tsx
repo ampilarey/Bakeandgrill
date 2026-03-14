@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchSalesSummary, type SalesSummary } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -25,6 +26,7 @@ function StatCard({ label, value, sub, color = '#0ea5e9' }: {
 }
 
 export function ReportsPage() {
+    usePageTitle('Reports');
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

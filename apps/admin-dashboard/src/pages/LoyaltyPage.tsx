@@ -4,6 +4,7 @@ import {
   type LoyaltyAccountAdmin,
 } from '../api';
 import {
+import { usePageTitle } from '../hooks/usePageTitle';
   Badge, Btn, Card, EmptyState, ErrorMsg, Input,
   PageHeader, Spinner,
 } from '../components/Layout';
@@ -114,6 +115,7 @@ function AdjustModal({ account, onClose, onDone }: {
 }
 
 export function LoyaltyPage() {
+    usePageTitle('Loyalty');
   const [accounts, setAccounts] = useState<LoyaltyAccountAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

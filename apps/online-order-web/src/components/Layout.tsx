@@ -259,7 +259,7 @@ export function Layout() {
           {/* ── Brand (double width on desktop) ── */}
           <div className="order-footer-brand">
             <a href="/" className="order-footer-logo">
-              <img src="/logo.png" alt="" />
+              <img src="/logo.png" alt="Bake & Grill" />
               Bake &amp; Grill
             </a>
             <p>Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.</p>

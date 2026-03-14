@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchOrders, type Order } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, Spinner, statColor } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function timeAgo(iso: string) {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -10,6 +11,7 @@ function timeAgo(iso: string) {
 }
 
 export function DeliveryPage() {
+    usePageTitle('Delivery');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

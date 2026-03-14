@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAnalytics } from '../api';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 type PeakHour     = { hour: number; label: string; count: number; avg_total: number };
 type RetentionRow = { week: string; new: number; returning: number; total_customers: number };
@@ -8,6 +9,7 @@ type ForecastRow  = { date: string; day: string; avg_orders: number };
 type LtvCustomer  = { id: number; name: string; total_spent: number; order_count: number; last_order: string };
 
 export default function AnalyticsPage() {
+    usePageTitle('Analytics');
   const [peakHours,    setPeakHours]    = useState<PeakHour[]>([]);
   const [retention,    setRetention]    = useState<RetentionRow[]>([]);
   const [profitItems,  setProfitItems]  = useState<ProfitItem[]>([]);

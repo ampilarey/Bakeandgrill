@@ -35,6 +35,19 @@ function AuthGuard({
   return <>{children}</>;
 }
 
+function RoleGuard({
+  user,
+  allowed,
+  children,
+}: {
+  user: StaffUser | null;
+  allowed: string[];
+  children: React.ReactNode;
+}) {
+  if (!user || !allowed.includes(user.role)) return <Navigate to="/orders" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   const [user, setUser] = useState<StaffUser | null>(null);
   const [checking, setChecking] = useState(true);
@@ -101,7 +114,11 @@ export default function App() {
                 <Route path="forecasts"             element={<ForecastPage />} />
                 <Route path="purchase-orders"       element={<PurchaseOrdersPage />} />
                 <Route path="webhooks"              element={<WebhooksPage />} />
-                <Route path="checklist"             element={<TestChecklistPage />} />
+                <Route path="checklist" element={
+                  <RoleGuard user={user} allowed={['owner', 'admin']}>
+                    <TestChecklistPage />
+                  </RoleGuard>
+                } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />
               </Routes>
             </Layout>

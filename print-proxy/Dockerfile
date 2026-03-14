@@ -2,6 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Create a non-root user to run the application
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 # Copy package files
 COPY package*.json ./
 
@@ -13,6 +16,10 @@ COPY . .
 
 # Build TypeScript (fail loudly if it breaks)
 RUN npm run build
+
+# Hand off ownership and drop privileges
+RUN chown -R appuser:appgroup /app
+USER appuser
 
 # Expose port
 EXPOSE 3000

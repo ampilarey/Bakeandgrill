@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchOrders, fetchOrder, type Order } from '../api';
 import {
+import { usePageTitle } from '../hooks/usePageTitle';
   Badge, Btn, Card, EmptyState, ErrorMsg,
   PageHeader, Select, Spinner, statColor,
 } from '../components/Layout';
@@ -140,6 +141,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export function OrdersPage() {
+    usePageTitle('Orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall } from '../api';
 import type { KdsTicket } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, statColor } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function elapsed(iso: string): string {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -19,6 +20,7 @@ function urgencyColor(iso: string): string {
 }
 
 export function KDSPage() {
+    usePageTitle('Kitchen Display');
   const [tickets, setTickets] = useState<KdsTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { approvePurchase, getPurchaseSuggestions, apiRequest as req } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 type Purchase = {
   id: number;
@@ -25,6 +26,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function PurchaseOrdersPage() {
+    usePageTitle('Purchase Orders');
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');

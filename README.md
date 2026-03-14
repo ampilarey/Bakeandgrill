@@ -16,7 +16,7 @@ Full café management system replacing Loyverse POS and Excel-based inventory.
 
 ## Technology Stack
 
-- **Backend**: Laravel 12 + PHP 8.5
+- **Backend**: Laravel 12 + PHP 8.2+ (CI runs on PHP 8.4)
 - **Database**: PostgreSQL 15+
 - **Cache/Queue**: Redis 7+
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS

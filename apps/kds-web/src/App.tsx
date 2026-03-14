@@ -275,7 +275,7 @@ function App() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm" style={{ color: '#8B7355' }}>
-            {isLoading ? "Refreshing..." : "● Live"}
+            {isLoading ? "Refreshing..." : "● Auto-refresh (5s)"}
           </span>
           <a href="/" className="text-xs" style={{ color: '#8B7355', textDecoration: 'none' }}>← Site</a>
           <button

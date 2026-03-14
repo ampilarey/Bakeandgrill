@@ -6,6 +6,7 @@ import {
   type SmsLog, type SmsCampaign,
 } from '../api';
 import {
+import { usePageTitle } from '../hooks/usePageTitle';
   Badge, Btn, Card, EmptyState, ErrorMsg, Input,
   PageHeader, Select, Spinner, statColor,
 } from '../components/Layout';
@@ -292,6 +293,7 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 }
 
 export function SmsPage() {
+    usePageTitle('SMS');
   const [tab, setTab] = useState<Tab>('logs');
 
   return (

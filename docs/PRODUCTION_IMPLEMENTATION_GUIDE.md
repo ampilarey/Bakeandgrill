@@ -1354,7 +1354,7 @@ paths = ['\.env\.example$']
 ---
 
 ### L-1 · `otp_verifications` table grows unbounded
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** No pruning job exists
 
 **Fix:** Add a daily scheduled command:
@@ -1369,7 +1369,7 @@ $schedule->command('otp:prune')->daily();
 ---
 
 ### L-2 · `InventoryItem` missing numeric casts
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Models/InventoryItem.php`
 
 **Fix:**
@@ -1384,7 +1384,7 @@ protected $casts = [
 ---
 
 ### L-3 · `StaffController::index` returns all users with no pagination
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/StaffController.php:50`
 
 **Fix:**
@@ -1395,7 +1395,7 @@ $users = User::with('role')->orderByDesc('created_at')->paginate(100);
 ---
 
 ### L-4 · Push subscribe/unsubscribe routes are fully public
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `routes/api.php:469–472`
 
 **Fix:** Move inside the `auth:sanctum` middleware group, or add at minimum
@@ -1404,7 +1404,7 @@ $users = User::with('role')->orderByDesc('created_at')->paginate(100);
 ---
 
 ### L-5 · `TestChecklistPage` accessible in production
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/admin-dashboard/src/App.tsx:101`
 
 **Fix:** Wrap the route in a role check (owner only) or remove in production:
@@ -1419,8 +1419,7 @@ $users = User::with('role')->orderByDesc('created_at')->paginate(100);
 ---
 
 ### L-6 · No CSP (Content Security Policy) on any app
-**Status:** 🔴  
-
+**Status:** ✅ Fixed  
 **Fix:** Add to each `apps/*/index.html`:
 ```html
 <meta http-equiv="Content-Security-Policy"
@@ -1431,7 +1430,7 @@ Or configure at the Nginx/server level.
 ---
 
 ### L-7 · KDS "● Live" label is misleading
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/kds-web/src/App.tsx:266`
 
 **Fix:** Change to `"● Auto-refresh (5s)"` or implement real SSE.
@@ -1439,8 +1438,7 @@ Or configure at the Nginx/server level.
 ---
 
 ### L-8 · No `document.title` updates in admin, KDS, and POS
-**Status:** 🔴  
-
+**Status:** ✅ Fixed  
 **Fix:** Add to each page component:
 ```ts
 useEffect(() => { document.title = 'Orders — Bake & Grill Admin'; }, []);
@@ -1450,7 +1448,7 @@ Or use a small `usePageTitle(title: string)` hook shared across pages.
 ---
 
 ### L-9 · `print-proxy` — `axios` installed but never used
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `print-proxy/package.json`
 
 **Fix:** `npm uninstall axios` in the `print-proxy` directory.
@@ -1458,7 +1456,7 @@ Or use a small `usePageTitle(title: string)` hook shared across pages.
 ---
 
 ### L-10 · `print-proxy` runs as root in Docker
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `print-proxy/Dockerfile`
 
 **Fix:**
@@ -1470,7 +1468,7 @@ USER appuser
 ---
 
 ### L-11 · Print ticket timestamp uses server locale (UTC, not Maldives)
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `print-proxy/src/index.ts:163–167`
 
 **Fix:**
@@ -1486,7 +1484,7 @@ const timeStr = new Date(order.created_at).toLocaleTimeString('en-US', {
 ---
 
 ### L-12 · Docker Compose — no restart policies or resource limits
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `docker-compose.yml`
 
 **Fix:**
@@ -1505,7 +1503,7 @@ services:
 ---
 
 ### L-13 · `composer.json` has `platform-check: false`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `backend/composer.json`
 
 **Fix:** Remove `"platform-check": false` so Composer validates runtime PHP
@@ -1514,7 +1512,7 @@ version against requirements.
 ---
 
 ### L-14 · README claims "PHP 8.5" — `composer.json` requires `^8.2`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `README.md:19`
 
 **Fix:** Update README: `PHP 8.2+` and note CI runs on PHP 8.4.
@@ -1522,7 +1520,7 @@ version against requirements.
 ---
 
 ### L-15 · Business logic in route closures
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `routes/api.php:249–256, 563–583`
 
 Inline closures for stock-check and inventory routes — not testable.
@@ -1533,7 +1531,7 @@ Inline closures for stock-check and inventory routes — not testable.
 ---
 
 ### L-16 · All npm packages are 1–2 major versions outdated
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** All `apps/*/package.json`
 
 React 18→19, Vite 5→6, TypeScript 5.3→5.7, react-router 6.20→6.30.
@@ -1544,7 +1542,7 @@ major version bump.
 ---
 
 ### L-17 · `console.warn` / `console.error` in production code paths
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** Multiple across all four apps
 
 **Fix:** Add to each app's `.eslintrc.json`:
@@ -1557,8 +1555,7 @@ needed.
 ---
 
 ### L-18 · Non-null assertion `getElementById('root')!` in all `main.tsx` files
-**Status:** 🔴  
-
+**Status:** ✅ Fixed  
 **Fix:**
 ```ts
 const rootEl = document.getElementById('root');
@@ -1569,8 +1566,7 @@ ReactDOM.createRoot(rootEl).render(<App />);
 ---
 
 ### L-19 · No root `package.json` workspace or `turbo.json`
-**Status:** 🔴  
-
+**Status:** ✅ Fixed  
 **Fix (minimum):** Create root `package.json`:
 ```json
 {
@@ -1594,7 +1590,7 @@ Create `turbo.json` for build ordering:
 ---
 
 ### L-20 · `REDIS_PASSWORD=null` string in `.env.example`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `backend/.env.example:28`
 
 Sets the literal string `"null"` — can cause Redis connection failures.
@@ -1607,7 +1603,7 @@ REDIS_PASSWORD=    # Set a strong random password for production
 ---
 
 ### L-21 · Xero `redirect_uri` default is a relative path
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `config/services.php:57`
 
 Xero OAuth requires an absolute URI — relative paths will fail.
@@ -1620,7 +1616,7 @@ Xero OAuth requires an absolute URI — relative paths will fail.
 ---
 
 ### L-22 · `DemoUserSeeder` — no production guard on trivial PINs
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `database/seeders/DemoUserSeeder.php`
 
 `php artisan db:seed` in production creates owner/admin/manager/cashier with
@@ -1641,7 +1637,7 @@ public function run(): void
 ---
 
 ### L-23 · `packages/shared` — React listed as production dependency
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `packages/shared/package.json:12`
 
 React should be a `peerDependency` to avoid duplicate React instances.
@@ -1656,7 +1652,7 @@ Remove from `"dependencies"`.
 ---
 
 ### L-24 · Footer logo has empty `alt` on a navigation link
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/online-order-web/src/components/Layout.tsx:262`
 
 **Fix:** `<img src="/logo.png" alt="Bake & Grill" />`
@@ -1672,7 +1668,7 @@ Remove from `"dependencies"`.
 ---
 
 ### L-26 · `restore.sh` — storage archive extracted to current working directory
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `scripts/restore.sh:24`
 
 ```bash
@@ -1688,7 +1684,7 @@ tar -xzf "${STORAGE_TAR}" -C "$(dirname "$0")/../backend/storage"
 ---
 
 ### L-27 · `print-proxy` Docker image has no `.dockerignore`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `print-proxy/` (file missing)
 
 Without a `.dockerignore`, `docker build` bundles `node_modules/`, any local `.env`, and source test files into the image layer, inflating size and leaking local secrets.
@@ -1705,7 +1701,7 @@ coverage
 ---
 
 ### L-28 · `online-order-web` uses `terser` minifier but it is not a direct devDependency
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/online-order-web/vite.config.ts:27`, `apps/online-order-web/package.json`
 
 ```ts
@@ -1729,8 +1725,8 @@ npm install -D terser --workspace=apps/online-order-web
 | CRITICAL | 15 | 14 | 0 | 1 |
 | HIGH | 25 | 21 | 0 | 4 |
 | MEDIUM | 26 | 26 | 0 | 0 |
-| LOW | 28 | 2 | 0 | 26 |
-| **Total** | **94** | **63** | **0** | **31** |
+| LOW | 28 | 27 | 0 | 1 |
+| **Total** | **94** | **89** | **0** | **5** |
 
 ---
 

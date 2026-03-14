@@ -48,3 +48,6 @@ Schedule::command('inventory:check-reorder')->dailyAt('08:00');
 
 // Inventory: check expiring items daily at 08:05
 Schedule::command('inventory:check-expiry --days=7')->dailyAt('08:05');
+
+// Housekeeping: prune expired OTP records daily
+Schedule::command('otp:prune')->dailyAt('02:00');

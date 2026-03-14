@@ -47,7 +47,7 @@ class StaffController extends Controller
     /** GET /api/admin/staff */
     public function index(): JsonResponse
     {
-        $users = User::with('role')->orderByDesc('created_at')->get();
+        $users = User::with('role')->orderByDesc('created_at')->paginate(100);
 
         return response()->json([
             'staff' => $users->map(fn (User $u) => $this->formatUser($u)),

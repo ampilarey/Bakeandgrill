@@ -20,7 +20,7 @@ pg_restore --no-owner --no-acl \
   "${BACKUP_FILE}"
 
 if [ -n "${STORAGE_TAR}" ]; then
-  tar -xzf "${STORAGE_TAR}" -C .
+  tar -xzf "${STORAGE_TAR}" -C "$(dirname "$0")/../backend/storage"
 fi
 
 echo "Restore complete."

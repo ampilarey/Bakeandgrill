@@ -5,6 +5,7 @@ import {
   type WebhookSubscription, type WebhookLog,
 } from '../api';
 import {
+import { usePageTitle } from '../hooks/usePageTitle';
   Badge, Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner,
 } from '../components/Layout';
 
@@ -143,6 +144,7 @@ function LogsDrawer({
 }
 
 export function WebhooksPage() {
+    usePageTitle('Webhooks');
   const [subs, setSubs] = useState<WebhookSubscription[]>([]);
   const [allEvents, setAllEvents] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

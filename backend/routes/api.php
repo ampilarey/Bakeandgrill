@@ -258,19 +258,8 @@ Route::get('/items/{id}', [ItemController::class, 'show']);
 Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode']);
 
 // Get stock info for multiple items
-Route::post('/items/stock-check', function (Request $request) {
-    $request->validate(['item_ids' => 'required|array|max:50', 'item_ids.*' => 'integer']);
-    $isStaff = $request->user()?->tokenCan('staff');
-    $columns = $isStaff
-        ? ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold']
-        : ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type'];
-
-    $items = App\Models\Item::whereIn('id', $request->input('item_ids', []))
-        ->select($columns)
-        ->get();
-
-    return response()->json(['items' => $items]);
-})->middleware('throttle:60,1');
+Route::post('/items/stock-check', [ItemController::class, 'bulkStockCheck'])
+    ->middleware('throttle:60,1');
 
 // Protected menu management (staff only)
 Route::middleware('auth:sanctum')->group(function () {
@@ -470,10 +459,12 @@ Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/s
 
 // ─── Push Notification Subscriptions ─────────────────────────────────────────
 
-Route::post('/push/subscribe',   [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
-    ->middleware('throttle:20,1');
-Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])
-    ->middleware('throttle:20,1');
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/push/subscribe',   [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
+        ->middleware('throttle:20,1');
+    Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])
+        ->middleware('throttle:20,1');
+});
 
 // ─── Favorites & Quick Reorder ───────────────────────────────────────────────
 

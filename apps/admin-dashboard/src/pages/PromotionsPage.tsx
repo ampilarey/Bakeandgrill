@@ -4,6 +4,7 @@ import {
   type Promotion, type PromotionPayload,
 } from '../api';
 import {
+import { usePageTitle } from '../hooks/usePageTitle';
   Badge, Btn, Card, EmptyState, ErrorMsg, Input,
   PageHeader, Select, Spinner,
 } from '../components/Layout';
@@ -140,6 +141,7 @@ function formatDiscount(p: Promotion): string {
 }
 
 export function PromotionsPage() {
+    usePageTitle('Promotions');
   const [promos, setPromos] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

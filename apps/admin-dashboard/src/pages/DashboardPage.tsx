@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getDailySummary } from '../api';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 type DailySummary = {
   date: string;
@@ -51,6 +52,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function DashboardPage() {
+    usePageTitle('Dashboard');
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
   const [data, setData] = useState<DailySummary | null>(null);

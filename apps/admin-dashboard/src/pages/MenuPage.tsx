@@ -6,6 +6,7 @@ import {
   type MenuCategory, type MenuItem, type MenuItemPayload,
 } from '../api';
 import {
+import { usePageTitle } from '../hooks/usePageTitle';
   Badge, Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner,
 } from '../components/Layout';
 
@@ -334,6 +335,7 @@ function Modal({ children, onClose, wide }: {
 type View = 'categories' | 'items';
 
 export function MenuPage() {
+    usePageTitle('Menu');
   const [view, setView] = useState<View>('categories');
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);

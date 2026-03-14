@@ -8,10 +8,11 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "dependencies": {
-    "react": "^18.2.0"
+  "peerDependencies": {
+    "react": ">=18"
   },
   "devDependencies": {
+    "react": "^18.2.0",
     "@types/react": "^18.2.43",
     "typescript": "^5.3.3"
   }

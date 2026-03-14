@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, type Invoice } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const STATUS_COLORS: Record<string, string> = {
   draft:     '#64748b',
@@ -12,6 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function InvoicesPage() {
+    usePageTitle('Invoices');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');

@@ -16,6 +16,11 @@ class DemoUserSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->command->warn('DemoUserSeeder: skipped in production — would create trivial PINs (1111–4444).');
+            return;
+        }
+
         $users = [
             ['name' => 'Owner', 'email' => 'owner@bakegrill.local', 'role' => 'owner', 'pin' => '1111'],
             ['name' => 'Admin', 'email' => 'admin@bakegrill.local', 'role' => 'admin', 'pin' => '2222'],

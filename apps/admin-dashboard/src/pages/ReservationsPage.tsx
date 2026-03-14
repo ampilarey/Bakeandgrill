@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getReservations, updateReservationStatus, type AdminReservation } from '../api';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const STATUS_COLORS: Record<string, string> = {
   pending:   '#FEF3C7',
@@ -28,6 +29,7 @@ const NEXT_STATUSES: Record<string, string[]> = {
 };
 
 export default function ReservationsPage() {
+    usePageTitle('Reservations');
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

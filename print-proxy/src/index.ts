@@ -161,7 +161,13 @@ const buildKitchenTicket = (payload: PrintPayload): string => {
   lines.push(`Order: ${payload.order.order_number}\n`);
   lines.push(`Type: ${payload.order.type}\n`);
   if (payload.order.created_at) {
-    lines.push(`Time: ${new Date(payload.order.created_at).toLocaleTimeString()}\n`);
+    const timeStr = new Date(payload.order.created_at).toLocaleTimeString('en-US', {
+      timeZone: 'Indian/Maldives',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    lines.push(`Time: ${timeStr}\n`);
   }
   lines.push('-----------------------------\n');
   payload.order.items.forEach(item => {
