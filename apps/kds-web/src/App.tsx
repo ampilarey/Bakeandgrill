@@ -180,9 +180,8 @@ function App() {
         }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>👨‍🍳</div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2A1E0C', margin: 0 }}>Bake & Grill KDS</h1>
-            <p style={{ color: '#8B7355', fontSize: 14, marginTop: 4 }}>Kitchen Display — Enter your PIN</p>
+            <img src="/logo.svg" alt="Bake & Grill" style={{ height: 64, marginBottom: 10, display: 'inline-block' }} />
+            <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>Kitchen Display — Enter your PIN</p>
           </div>
 
           {/* Device ID */}

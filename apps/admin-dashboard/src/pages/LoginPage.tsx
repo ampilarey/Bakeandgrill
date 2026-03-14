@@ -45,9 +45,8 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🍞</div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2A1E0C', margin: 0 }}>Bake & Grill</h1>
-          <p style={{ color: '#8B7355', fontSize: 14, marginTop: 4 }}>Admin — Enter your PIN</p>
+          <img src="/logo.svg" alt="Bake & Grill" style={{ height: 64, marginBottom: 10, display: 'inline-block' }} />
+          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>Admin — Enter your PIN</p>
         </div>
 
         {/* PIN dots */}
@@ -118,8 +117,12 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
           </button>
         </div>
 
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <a href="/" style={{ fontSize: 12, color: '#C4A882', textDecoration: 'none' }}>← Main Website</a>
+        </div>
+
         {import.meta.env.DEV && (
-          <p style={{ fontSize: 11, color: '#C4A882', marginTop: 16, textAlign: 'center', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 11, color: '#C4A882', marginTop: 12, textAlign: 'center', lineHeight: 1.6 }}>
             Dev PINs: Owner (1111) · Admin (2222) · Manager (3333) · Cashier (4444)
           </p>
         )}
