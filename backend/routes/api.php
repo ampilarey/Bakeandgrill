@@ -143,6 +143,12 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory']);
     Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier']);
 
+    // Finance & Inventory Routes (invoices, expenses, reports, supplier intelligence,
+    // purchase workflow, forecasting) — required HERE so static paths like
+    // /suppliers/performance and /purchases/suggest are registered BEFORE the
+    // {id} wildcard routes below, preventing route shadowing.
+    require __DIR__ . '/api_finance.php';
+
     // Suppliers + Purchases — staff-only (customer tokens blocked by RequireRole)
     Route::middleware('role:cashier,manager,admin,owner')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index']);
@@ -521,10 +527,6 @@ Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/r
     Route::patch('/settings',        [ReservationController::class, 'updateSettings']);
 });
 
-// ─── Finance & Inventory Routes ────────────────────────────────────────────
-// Invoices, Expenses, Reports, Suppliers, Purchases, Inventory, Forecasting
-require __DIR__ . '/api_finance.php';
-
 // ─── Time Clock ────────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/time-clock/status',  [App\Http\Controllers\Api\TimeClockController::class, 'status']);
@@ -532,11 +534,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/time-clock/out',    [App\Http\Controllers\Api\TimeClockController::class, 'clockOut']);
     Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history']);
     Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary']);
-});
-
-// ─── Purchase Partial Receiving ─────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
-    Route::post('/purchases/{id}/receive', [App\Http\Controllers\Api\PurchaseController::class, 'receive']);
 });
 
 // ─── Barcode Label Data ──────────────────────────────────────────────────────
@@ -549,7 +546,7 @@ Route::get('/display/{orderNumber}', [App\Http\Controllers\Api\CustomerDisplayCo
     ->middleware('throttle:60,1');
 
 // ─── Offline POS Sync ────────────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'device.active'])->group(function () {
     Route::post('/offline/sync', [App\Http\Controllers\Api\OfflineSyncController::class, 'sync']);
 });
 

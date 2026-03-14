@@ -777,7 +777,7 @@ export async function fetchPurchases(params?: { status?: string }): Promise<{ da
 }
 
 export async function approvePurchase(id: number): Promise<void> {
-  await req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'ordered' }) });
+  await req(`/purchases/${id}/approve`, { method: 'POST' });
 }
 
 export type PurchaseSuggestions = {

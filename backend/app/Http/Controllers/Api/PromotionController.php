@@ -105,7 +105,13 @@ class PromotionController extends Controller
             $order->update([
                 'promo_discount_laar' => $totalPromoDiscount,
                 'discount_amount' => round(($order->manual_discount_laar + $totalPromoDiscount) / 100, 2),
-                'total' => max(0, round(($order->subtotal_laar ?? (int) round($order->subtotal * 100) - $totalPromoDiscount - ($order->loyalty_discount_laar ?? 0) - ($order->manual_discount_laar ?? 0) + ($order->tax_laar ?? (int) round($order->tax_amount * 100))) / 100, 2)),
+                'total' => max(0, round((
+                    ($order->subtotal_laar ?? (int) round($order->subtotal * 100))
+                    - $totalPromoDiscount
+                    - ($order->loyalty_discount_laar ?? 0)
+                    - ($order->manual_discount_laar ?? 0)
+                    + ($order->tax_laar ?? (int) round($order->tax_amount * 100))
+                ) / 100, 2)),
             ]);
         });
 
