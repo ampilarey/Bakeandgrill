@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\Refund;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class RefundController extends Controller
@@ -40,31 +41,34 @@ class RefundController extends Controller
     {
         Gate::authorize('refund.process');
 
-        $order = Order::findOrFail($orderId);
         $validated = $request->validated();
         $amount = (float) $validated['amount'];
 
-        $alreadyRefunded = $order->refunds()
-            ->where('status', '!=', 'rejected')
-            ->sum('amount');
+        [$refund, $order] = DB::transaction(function () use ($validated, $amount, $orderId, $request) {
+            $order = Order::lockForUpdate()->findOrFail($orderId);
 
-        if ($amount + $alreadyRefunded > ($order->total ?? 0)) {
-            return response()->json([
-                'message' => 'Refund would exceed order total. Already refunded: ' . number_format($alreadyRefunded, 2),
-            ], 422);
-        }
+            $alreadyRefunded = $order->refunds()
+                ->where('status', '!=', 'rejected')
+                ->sum('amount');
 
-        $refund = Refund::create([
-            'order_id' => $order->id,
-            'user_id' => $request->user()?->id,
-            'amount' => $amount,
-            'status' => $validated['status'] ?? 'approved',
-            'reason' => $validated['reason'] ?? null,
-        ]);
+            if ($amount + $alreadyRefunded > ($order->total ?? 0)) {
+                abort(422, 'Refund would exceed order total. Already refunded: ' . number_format($alreadyRefunded, 2));
+            }
 
-        if ($amount >= ($order->total ?? 0)) {
-            $order->update(['status' => 'refunded']);
-        }
+            $refund = Refund::create([
+                'order_id' => $order->id,
+                'user_id' => $request->user()?->id,
+                'amount' => $amount,
+                'status' => $validated['status'] ?? 'approved',
+                'reason' => $validated['reason'] ?? null,
+            ]);
+
+            if ($amount >= ($order->total ?? 0)) {
+                $order->update(['status' => 'refunded']);
+            }
+
+            return [$refund, $order];
+        });
 
         app(AuditLogService::class)->log(
             'refund.created',

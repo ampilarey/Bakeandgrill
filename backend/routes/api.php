@@ -118,9 +118,9 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/orders/sync', [OrderController::class, 'sync'])
         ->middleware('device.active');
     Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::post('/orders/{id}/hold', [OrderController::class, 'hold']);
-    Route::post('/orders/{id}/resume', [OrderController::class, 'resume']);
-    Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments']);
+    Route::post('/orders/{id}/hold', [OrderController::class, 'hold'])->middleware('throttle:20,1');
+    Route::post('/orders/{id}/resume', [OrderController::class, 'resume'])->middleware('throttle:20,1');
+    Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])->middleware('throttle:20,1');
 
     // KDS
     Route::get('/kds/orders', [KdsController::class, 'index']);

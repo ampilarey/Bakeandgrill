@@ -20,7 +20,15 @@ function App() {
   // ── Auth ────────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn]   = useState(false);
   const [pin, setPin]                 = useState("");
-  const [deviceId, setDeviceId]       = useState("POS-001");
+  const [deviceId, setDeviceId]       = useState(
+    () => {
+      const stored = localStorage.getItem("pos_device_id");
+      if (stored) return stored;
+      const generated = `POS-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      localStorage.setItem("pos_device_id", generated);
+      return generated;
+    },
+  );
   const [authError, setAuthError]     = useState("");
 
   // ── View + connectivity ─────────────────────────────────────────────────────
