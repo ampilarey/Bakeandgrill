@@ -61,6 +61,11 @@ class PromotionController extends Controller
         $order = Order::findOrFail($orderId);
         $customerId = $request->user()?->id;
 
+        $user = $request->user();
+        if ($user->tokenCan('customer') && $order->customer_id !== $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
             return response()->json(['message' => 'Cannot apply promo to this order.'], 422);
         }
@@ -118,8 +123,13 @@ class PromotionController extends Controller
     {
         $order = Order::findOrFail($orderId);
 
-        if (in_array($order->status, ['paid', 'completed'], true)) {
-            return response()->json(['message' => 'Cannot modify promo on a paid order.'], 422);
+        $user = $request->user();
+        if ($user->tokenCan('customer') && $order->customer_id !== $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+            return response()->json(['message' => 'Cannot modify promo on this order.'], 422);
         }
 
         DB::transaction(function () use ($order, $promotionId): void {

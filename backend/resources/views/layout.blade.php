@@ -256,6 +256,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
+            text-decoration: none;
             cursor: pointer;
             transition: all 0.15s;
             -webkit-tap-highlight-color: transparent;
@@ -319,6 +320,7 @@
             border-radius: 10px;
             font-weight: 700;
             font-size: 0.825rem;
+            text-decoration: none;
             transition: all 0.15s;
         }
         .footer-wa    { background: #25D366; }

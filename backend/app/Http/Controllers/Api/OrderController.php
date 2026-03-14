@@ -103,7 +103,12 @@ class OrderController extends Controller
                 app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'sync', 'index' => $index], $request);
                 $processed++;
             } catch (\Throwable $error) {
-                $failed[] = ['index' => $index, 'error' => $error->getMessage()];
+                logger()->error('Order sync failed', [
+                    'index' => $index,
+                    'error' => $error->getMessage(),
+                    'trace' => $error->getTraceAsString(),
+                ]);
+                $failed[] = ['index' => $index, 'error' => 'Order could not be processed.'];
             }
         }
 
