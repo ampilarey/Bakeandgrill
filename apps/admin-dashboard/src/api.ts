@@ -8,6 +8,11 @@ const BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
+if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
+  // eslint-disable-next-line no-console
+  console.warn('[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api');
+}
+
 const { request: req } = createApiClient({
   baseUrl: BASE,
   getToken: () => localStorage.getItem('admin_token'),

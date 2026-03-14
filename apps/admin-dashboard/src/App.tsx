@@ -104,16 +104,51 @@ export default function App() {
                 <Route path="sms"        element={<SmsPage />} />
                 <Route path="reports"    element={<ReportsPage />} />
                 <Route path="menu"       element={<MenuPage />} />
-                <Route path="staff"        element={<StaffPage />} />
-                <Route path="reservations"          element={<ReservationsPage />} />
-                <Route path="analytics"             element={<AnalyticsPage />} />
-                <Route path="invoices"              element={<InvoicesPage />} />
-                <Route path="expenses"              element={<ExpensesPage />} />
-                <Route path="profit-loss"           element={<ProfitLossPage />} />
-                <Route path="supplier-intelligence" element={<SupplierIntelligencePage />} />
-                <Route path="forecasts"             element={<ForecastPage />} />
-                <Route path="purchase-orders"       element={<PurchaseOrdersPage />} />
-                <Route path="webhooks"              element={<WebhooksPage />} />
+                {/* Staff management — owner/admin only */}
+                <Route path="staff" element={
+                  <RoleGuard user={user} allowed={['owner', 'admin']}>
+                    <StaffPage />
+                  </RoleGuard>
+                } />
+                <Route path="reservations" element={<ReservationsPage />} />
+                <Route path="analytics"   element={<AnalyticsPage />} />
+                {/* Finance — manager, admin, owner */}
+                <Route path="invoices" element={
+                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                    <InvoicesPage />
+                  </RoleGuard>
+                } />
+                <Route path="expenses" element={
+                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                    <ExpensesPage />
+                  </RoleGuard>
+                } />
+                <Route path="profit-loss" element={
+                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                    <ProfitLossPage />
+                  </RoleGuard>
+                } />
+                <Route path="supplier-intelligence" element={
+                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                    <SupplierIntelligencePage />
+                  </RoleGuard>
+                } />
+                <Route path="forecasts" element={
+                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                    <ForecastPage />
+                  </RoleGuard>
+                } />
+                <Route path="purchase-orders" element={
+                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                    <PurchaseOrdersPage />
+                  </RoleGuard>
+                } />
+                {/* Webhooks — owner only */}
+                <Route path="webhooks" element={
+                  <RoleGuard user={user} allowed={['owner', 'admin']}>
+                    <WebhooksPage />
+                  </RoleGuard>
+                } />
                 <Route path="checklist" element={
                   <RoleGuard user={user} allowed={['owner', 'admin']}>
                     <TestChecklistPage />

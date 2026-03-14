@@ -390,7 +390,7 @@ DB::transaction(function () use ($order, $request) {
 ---
 
 ### H-4 · Missing security headers
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** No security headers middleware exists
 
 **Fix — create middleware:**
@@ -468,7 +468,7 @@ Route::get('/order/{any}', function () {
 ---
 
 ### H-8 · Hardcoded localhost fallback in frontend API clients
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** `apps/*/src/api.ts`
 
 Falls back to `http://localhost:8000` if env var is not set in production.
@@ -508,7 +508,7 @@ const handleBump = (orderId: number) => {
 ---
 
 ### H-10 · No role-based route protection in admin dashboard
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/admin-dashboard/src/App.tsx:27–36`
 
 Any staff member can access all admin pages. Cashier should not see Finance,
@@ -1723,10 +1723,10 @@ npm install -D terser --workspace=apps/online-order-web
 | Priority | Total Items | ✅ Done | 🟡 Partial | 🔴 Not Done |
 |----------|------------|---------|-----------|------------|
 | CRITICAL | 15 | 14 | 0 | 1 |
-| HIGH | 25 | 21 | 0 | 4 |
+| HIGH | 25 | 24 | 0 | 1 |
 | MEDIUM | 26 | 26 | 0 | 0 |
 | LOW | 28 | 27 | 0 | 1 |
-| **Total** | **94** | **89** | **0** | **5** |
+| **Total** | **94** | **92** | **0** | **2** |
 
 ---
 
