@@ -358,22 +358,10 @@ Unhandled exceptions may leak stack traces to clients in production.
 ---
 
 ### H-2 · No webhook idempotency for BML payments
-**Status:** 🔴  
-**File:** `app/Http/Controllers/Api/BmlWebhookController.php:21–42`
+**Status:** ✅ Already fixed  
+**File:** `app/Domains/Payments/Services/PaymentService.php`
 
-Duplicate webhook deliveries could double-process a payment.
-
-**Fix:**
-```php
-// In the webhook handler, check for duplicates first:
-$alreadyProcessed = Payment::where('reference_number', $payload['reference_number'])
-    ->exists();
-if ($alreadyProcessed) {
-    return response()->json(['message' => 'Already processed.'], 200);
-}
-// Also add unique constraint via migration:
-$table->unique('reference_number');
-```
+`WebhookLog::firstOrCreate(['idempotency_key' => $key])` is already in place — duplicate webhook deliveries are correctly deduplicated. No action needed.
 
 ---
 
@@ -1683,6 +1671,55 @@ Remove from `"dependencies"`.
 
 ---
 
+### L-26 · `restore.sh` — storage archive extracted to current working directory
+**Status:** 🔴  
+**File:** `scripts/restore.sh:24`
+
+```bash
+tar -xzf "${STORAGE_TAR}" -C .
+```
+`-C .` means "current directory at the time the script is run." If called from the repo root instead of from `backend/`, the storage files land in the wrong place (or overwrite unintended files).
+
+**Fix:** Pin the target to the Laravel storage path:
+```bash
+tar -xzf "${STORAGE_TAR}" -C "$(dirname "$0")/../backend/storage"
+```
+
+---
+
+### L-27 · `print-proxy` Docker image has no `.dockerignore`
+**Status:** 🔴  
+**File:** `print-proxy/` (file missing)
+
+Without a `.dockerignore`, `docker build` bundles `node_modules/`, any local `.env`, and source test files into the image layer, inflating size and leaking local secrets.
+
+**Fix:** Create `print-proxy/.dockerignore`:
+```
+node_modules
+.env
+.env.*
+*.log
+coverage
+```
+
+---
+
+### L-28 · `online-order-web` uses `terser` minifier but it is not a direct devDependency
+**Status:** 🔴  
+**File:** `apps/online-order-web/vite.config.ts:27`, `apps/online-order-web/package.json`
+
+```ts
+build: { minify: 'terser' }
+```
+`terser` is not listed in `package.json` — it is present today only as a transitive dependency of another package. If that chain changes, production builds will silently fall back to `esbuild` or error.
+
+**Fix:** Add terser explicitly:
+```bash
+npm install -D terser --workspace=apps/online-order-web
+```
+
+---
+
 ---
 
 ## Quick Reference — Status Summary
@@ -1690,10 +1727,10 @@ Remove from `"dependencies"`.
 | Priority | Total Items | ✅ Done | 🟡 Partial | 🔴 Not Done |
 |----------|------------|---------|-----------|------------|
 | CRITICAL | 15 | 3 | 0 | 12 |
-| HIGH | 25 | 0 | 0 | 25 |
+| HIGH | 25 | 1 | 0 | 24 |
 | MEDIUM | 26 | 0 | 0 | 26 |
-| LOW | 25 | 1 | 0 | 24 |
-| **Total** | **91** | **4** | **0** | **87** |
+| LOW | 28 | 2 | 0 | 26 |
+| **Total** | **94** | **6** | **0** | **88** |
 
 ---
 
@@ -1709,7 +1746,7 @@ Fix H-1 through H-25 (all Highs). These prevent crashes and data loss.
 Fix M-1 through M-26 (all Mediums). Rate limiting, bounds, transactions.
 
 ### Phase 4 — Polish (Ongoing)
-Fix L-1 through L-25 (all Lows). CI, Docker, documentation, accessibility.
+Fix L-1 through L-28 (all Lows). CI, Docker, documentation, accessibility.
 
 ---
 
