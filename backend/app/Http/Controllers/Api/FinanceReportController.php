@@ -226,8 +226,8 @@ class FinanceReportController extends Controller
         // Orders by type / channel
         $byType = Order::whereBetween('created_at', [$from, $to])
             ->where('status', 'completed')
-            ->selectRaw('order_type, COUNT(*) as count, SUM(total) as revenue')
-            ->groupBy('order_type')
+            ->selectRaw('`type` as order_type, COUNT(*) as count, SUM(total) as revenue')
+            ->groupBy('type')
             ->get();
 
         // Top items
