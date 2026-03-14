@@ -523,7 +523,74 @@ const SECTIONS = [
     ],
   },
 
-  // ── 32. Security ─────────────────────────────────────────────────────────
+  // ── 32. Print Proxy & Thermal Printing ───────────────────────────────────
+  {
+    title: 'Print Proxy & Thermal Printing',
+    icon: '🖨️',
+    items: [
+      'Print proxy container is running (docker ps shows print-proxy)',
+      'GET /health on print proxy returns {"status":"ok"}',
+      'Print proxy rejects requests without correct PRINT_PROXY_KEY (401)',
+      'Order placed on POS triggers a print job',
+      'Thermal printer receives and prints the ticket',
+      'Printed ticket shows correct order number, items, quantities, prices',
+      'Printed ticket shows correct time in Maldives timezone (MVT UTC+5)',
+      'Printed ticket shows order type (Dine-in / Takeaway / Delivery)',
+      'Order notes appear on the printed ticket',
+      'Staff can manually retry a failed print job (Admin → Print Jobs)',
+      'Print proxy reconnects after temporary network drop',
+    ],
+  },
+
+  // ── 33. Staff Scheduling ──────────────────────────────────────────────────
+  {
+    title: 'Staff Scheduling',
+    icon: '📅',
+    items: [
+      'Admin → Schedules page loads',
+      'Admin can create a new shift schedule for a staff member',
+      'Admin can update an existing schedule entry',
+      'Admin can delete a schedule entry',
+      'Schedule list shows all entries correctly',
+      'Staff time-clock in/out is visible in schedule context',
+    ],
+  },
+
+  // ── 34. Rate Limiting ────────────────────────────────────────────────────
+  {
+    title: 'Rate Limiting',
+    icon: '🚦',
+    items: [
+      'OTP request: 4th request within 5 min returns 429 Too Many Requests',
+      'OTP verify: 6th attempt within 10 min returns 429',
+      'PIN login: 11th attempt within 1 min returns 429',
+      'Promo code validate: 6th attempt within 1 min returns 429',
+      'Refund endpoint: 11th attempt within 1 min returns 429',
+      'Shift open/close: 6th attempt within 1 min returns 429',
+      '429 response includes Retry-After header',
+    ],
+  },
+
+  // ── 35. Mobile Responsiveness ────────────────────────────────────────────
+  {
+    title: 'Mobile Responsiveness',
+    icon: '📱',
+    items: [
+      '/order/ loads and is usable on a 375px wide screen (iPhone SE)',
+      'Menu categories scroll horizontally on mobile',
+      'Item cards stack vertically on mobile',
+      'Cart is accessible on mobile (no overflow hidden)',
+      'Checkout form fields are large enough to tap on mobile',
+      'OTP input is easy to use on mobile keyboard',
+      '/order/reservations is usable on mobile',
+      '/order/pre-order is usable on mobile',
+      'Main Blade website (/) is responsive on mobile',
+      '/contact form is usable on mobile',
+      'No horizontal scroll on any page at 375px width',
+    ],
+  },
+
+  // ── 36. Security ─────────────────────────────────────────────────────────
   {
     title: 'Security',
     icon: '🛡️',
