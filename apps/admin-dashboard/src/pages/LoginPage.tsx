@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { pinLogin, type StaffUser } from '../api';
 
 export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUser) => void }) {
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState('');
+  const [pin, setPin]       = useState('');
+  const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
@@ -22,16 +22,14 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
     }
   };
 
-  const append = (d: string) => {
-    if (pin.length < 8) setPin((p) => p + d);
-  };
-
-  const clear = () => setPin('');
+  const append = (d: string) => { if (pin.length < 8) setPin((p) => p + d); };
+  const clear  = ()          => setPin('');
+  const back   = ()          => setPin((p) => p.slice(0, -1));
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+      background: '#1C1408',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -43,33 +41,27 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
         padding: '40px 36px',
         width: '100%',
         maxWidth: 380,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
       }}>
+        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🍞</div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>Bake & Grill</h1>
-          <p style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>Staff Admin — Enter your PIN</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2A1E0C', margin: 0 }}>Bake & Grill</h1>
+          <p style={{ color: '#8B7355', fontSize: 14, marginTop: 4 }}>Admin — Enter your PIN</p>
         </div>
 
-        {/* PIN display — shows dots as you type */}
+        {/* PIN dots */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 10,
-          marginBottom: 24,
-          minHeight: 54,
-          alignItems: 'center',
+          display: 'flex', justifyContent: 'center', gap: 10,
+          marginBottom: 24, minHeight: 54, alignItems: 'center',
         }}>
           {pin.length === 0 ? (
-            <span style={{ color: '#94a3b8', fontSize: 14 }}>Enter your PIN below</span>
+            <span style={{ color: '#C4A882', fontSize: 14 }}>Enter your PIN below</span>
           ) : (
             Array.from({ length: pin.length }).map((_, i) => (
               <div key={i} style={{
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                background: '#0ea5e9',
-                transition: 'all 0.1s',
+                width: 16, height: 16, borderRadius: '50%',
+                background: '#D4813A', transition: 'all 0.1s',
               }} />
             ))
           )}
@@ -77,13 +69,8 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
 
         {error && (
           <div style={{
-            background: '#fee2e2',
-            color: '#991b1b',
-            borderRadius: 10,
-            padding: '10px 14px',
-            fontSize: 13,
-            marginBottom: 16,
-            textAlign: 'center',
+            background: '#fee2e2', color: '#991b1b', borderRadius: 10,
+            padding: '10px 14px', fontSize: 13, marginBottom: 16, textAlign: 'center',
           }}>
             {error}
           </div>
@@ -95,18 +82,15 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
             <button
               key={d}
               onClick={() => {
-                if (d === '⌫') { setPin((p) => p.slice(0, -1)); }
+                if (d === '⌫') back();
                 else if (d !== '') append(d);
               }}
               disabled={d === ''}
               style={{
-                height: 56,
-                borderRadius: 12,
-                border: '1px solid #e2e8f0',
-                background: d === '⌫' ? '#fee2e2' : d === '' ? 'transparent' : '#f8fafc',
-                fontSize: 18,
-                fontWeight: 700,
-                color: d === '⌫' ? '#991b1b' : '#0f172a',
+                height: 56, borderRadius: 12, border: '1px solid #EDE4D4',
+                background: d === '⌫' ? '#FFF3E8' : d === '' ? 'transparent' : '#FFFDF9',
+                fontSize: 18, fontWeight: 700,
+                color: d === '⌫' ? '#D4813A' : '#2A1E0C',
                 cursor: d === '' ? 'default' : 'pointer',
                 transition: 'background 0.1s',
               }}
@@ -119,20 +103,26 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <button onClick={clear} style={{
             flex: 1, height: 48, borderRadius: 12,
-            border: '1px solid #e2e8f0', background: '#f1f5f9',
-            fontSize: 14, fontWeight: 600, color: '#64748b', cursor: 'pointer',
+            border: '1px solid #EDE4D4', background: '#FFFDF9',
+            fontSize: 14, fontWeight: 600, color: '#8B7355', cursor: 'pointer',
           }}>
             Clear
           </button>
           <button onClick={submit} disabled={pin.length < 4 || loading} style={{
-            flex: 2, height: 48, borderRadius: 12,
-            border: 'none', background: loading || pin.length < 4 ? '#bae6fd' : '#0ea5e9',
-            fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer',
+            flex: 2, height: 48, borderRadius: 12, border: 'none',
+            background: loading || pin.length < 4 ? '#F5C99A' : '#D4813A',
+            fontSize: 14, fontWeight: 700, color: '#fff', cursor: pin.length < 4 ? 'default' : 'pointer',
             transition: 'background 0.15s',
           }}>
             {loading ? 'Signing in…' : 'Sign In →'}
           </button>
         </div>
+
+        {import.meta.env.DEV && (
+          <p style={{ fontSize: 11, color: '#C4A882', marginTop: 16, textAlign: 'center', lineHeight: 1.6 }}>
+            Dev PINs: Owner (1111) · Admin (2222) · Manager (3333) · Cashier (4444)
+          </p>
+        )}
       </div>
     </div>
   );
