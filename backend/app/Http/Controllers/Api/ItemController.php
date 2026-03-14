@@ -215,9 +215,9 @@ class ItemController extends Controller
         $response = ['item' => $item];
         if ($weightGrams !== null) {
             $response['weight_grams'] = $weightGrams;
-            // Pre-calculate price for weight items: price stored per 100g
-            if ($item->price && $item->unit === 'kg') {
-                $response['weight_price'] = (int) round($item->price * $weightGrams / 1000);
+            // Pre-calculate price for weight items using base_price (per 100g → convert from grams)
+            if ($item->base_price) {
+                $response['weight_price'] = (int) round($item->base_price * $weightGrams / 1000);
             }
         }
 
@@ -234,12 +234,11 @@ class ItemController extends Controller
 
         return response()->json([
             'label' => [
-                'item_id'   => $item->id,
-                'name'      => $item->name,
-                'barcode'   => $item->barcode,
-                'sku'       => $item->sku ?? null,
-                'price'     => $item->price,
-                'unit'      => $item->unit ?? null,
+                'item_id'      => $item->id,
+                'name'         => $item->name,
+                'barcode'      => $item->barcode,
+                'sku'          => $item->sku ?? null,
+                'price'        => $item->base_price,
                 'generated_at' => now()->toIso8601String(),
             ],
         ]);

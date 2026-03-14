@@ -48,41 +48,48 @@ class WasteLogController extends Controller
         ]);
 
         $validated['user_id'] = $request->user()->id;
-        $wasteLog = WasteLog::create($validated);
 
-        // Deduct from inventory stock and record movement
-        if ($wasteLog->inventory_item_id) {
-            $invItem = InventoryItem::find($wasteLog->inventory_item_id);
-            if ($invItem) {
-                $oldStock = (float) $invItem->current_stock;
+        $wasteLog = DB::transaction(function () use ($validated): WasteLog {
+            $wasteLog = WasteLog::create($validated);
 
-                DB::table('inventory_items')
-                    ->where('id', $invItem->id)
-                    ->decrement('current_stock', $validated['quantity']);
+            // Deduct from inventory stock and record movement
+            if ($wasteLog->inventory_item_id) {
+                $invItem = InventoryItem::lockForUpdate()->find($wasteLog->inventory_item_id);
+                if ($invItem) {
+                    $oldStock = (float) $invItem->current_stock;
 
-                $invItem->refresh();
+                    DB::table('inventory_items')
+                        ->where('id', $invItem->id)
+                        ->decrement('current_stock', $validated['quantity']);
 
-                event(new StockLevelChanged(new StockLevelChangedData(
-                    itemId: $invItem->id,
-                    itemName: $invItem->name,
-                    oldQuantity: $oldStock,
-                    newQuantity: (float) $invItem->current_stock,
-                    reason: 'waste',
-                )));
+                    $invItem->refresh();
 
-                StockMovement::create([
-                    'inventory_item_id' => $invItem->id,
-                    'user_id'           => $validated['user_id'],
-                    'type'              => 'waste',
-                    'quantity'          => -$validated['quantity'],
-                    'balance_after'     => $invItem->current_stock,
-                    'unit_cost'         => $invItem->unit_cost ?? 0,
-                    'reference_type'    => 'waste_log',
-                    'reference_id'      => $wasteLog->id,
-                    'notes'             => "Waste: {$validated['reason']}",
-                ]);
+                    StockMovement::create([
+                        'inventory_item_id' => $invItem->id,
+                        'user_id'           => $validated['user_id'],
+                        'type'              => 'waste',
+                        'quantity'          => -$validated['quantity'],
+                        'balance_after'     => $invItem->current_stock,
+                        'unit_cost'         => $invItem->unit_cost ?? 0,
+                        'reference_type'    => 'waste_log',
+                        'reference_id'      => $wasteLog->id,
+                        'notes'             => "Waste: {$validated['reason']}",
+                    ]);
+
+                    DB::afterCommit(function () use ($invItem, $oldStock): void {
+                        event(new StockLevelChanged(new StockLevelChangedData(
+                            itemId: $invItem->id,
+                            itemName: $invItem->name,
+                            oldQuantity: $oldStock,
+                            newQuantity: (float) $invItem->current_stock,
+                            reason: 'waste',
+                        )));
+                    });
+                }
             }
-        }
+
+            return $wasteLog;
+        });
 
         return response()->json(['waste_log' => $this->format($wasteLog)], 201);
     }

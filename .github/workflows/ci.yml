@@ -20,7 +20,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Treat as non-blocking warning on PRs; change to 'block' to fail the build
           GITLEAKS_ENABLE_COMMENTS: true
 
   lint:
@@ -99,6 +98,31 @@ jobs:
           QUEUE_CONNECTION: sync
           MAIL_MAILER: array
         run: php artisan test --parallel --stop-on-failure
+
+  frontend:
+    name: Frontend type-check & build
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Type-check all apps
+        run: npx tsc --noEmit -p apps/online-order-web/tsconfig.json && npx tsc --noEmit -p apps/admin-dashboard/tsconfig.json && npx tsc --noEmit -p apps/pos-web/tsconfig.json && npx tsc --noEmit -p apps/kds-web/tsconfig.json
+
+      - name: Build online-order-web
+        run: npm run build --workspace=apps/online-order-web
+
+      - name: Build admin-dashboard
+        run: npm run build --workspace=apps/admin-dashboard
 
   contract:
     name: API contract tests (snapshot)

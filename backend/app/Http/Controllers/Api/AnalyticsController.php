@@ -61,17 +61,22 @@ class AnalyticsController extends Controller
                 ->whereNotNull('customer_id')
                 ->whereNotIn('status', ['cancelled'])
                 ->pluck('customer_id')
-                ->unique();
+                ->unique()
+                ->values();
+
+            // Single query for first-order dates — avoids N+1
+            $firstOrderDates = DB::table('orders')
+                ->whereIn('customer_id', $customerIds)
+                ->whereNotIn('status', ['cancelled'])
+                ->groupBy('customer_id')
+                ->selectRaw('customer_id, MIN(created_at) as first_order_at')
+                ->pluck('first_order_at', 'customer_id');
 
             $newCount = 0;
             $returningCount = 0;
 
             foreach ($customerIds as $customerId) {
-                $firstOrder = DB::table('orders')
-                    ->where('customer_id', $customerId)
-                    ->whereNotIn('status', ['cancelled'])
-                    ->min('created_at');
-
+                $firstOrder = $firstOrderDates[$customerId] ?? null;
                 if ($firstOrder && Carbon::parse($firstOrder)->between($start, $end)) {
                     $newCount++;
                 } else {

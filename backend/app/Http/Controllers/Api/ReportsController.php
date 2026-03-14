@@ -357,12 +357,18 @@ class ReportsController extends Controller
 
     private function parseRange(Request $request): array
     {
-        $from = $request->query('from')
-            ? Carbon::parse($request->query('from'))->startOfDay()
-            : now()->startOfDay();
-        $to = $request->query('to')
-            ? Carbon::parse($request->query('to'))->endOfDay()
-            : now()->endOfDay();
+        try {
+            $from = $request->query('from')
+                ? Carbon::createFromFormat('Y-m-d', $request->query('from'))->startOfDay()
+                : now()->startOfDay();
+            $to = $request->query('to')
+                ? Carbon::createFromFormat('Y-m-d', $request->query('to'))->endOfDay()
+                : now()->endOfDay();
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'from' => ['Invalid date format. Use YYYY-MM-DD.'],
+            ]);
+        }
 
         if ($to->lessThan($from)) {
             throw ValidationException::withMessages([

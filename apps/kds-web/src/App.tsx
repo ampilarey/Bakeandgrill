@@ -20,7 +20,9 @@ const formatTime = (iso: string) =>
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [pin, setPin] = useState("");
-  const [deviceId, setDeviceId] = useState("KDS-001");
+  const [deviceId, setDeviceId] = useState(
+    () => localStorage.getItem("kds_device_id") ?? `KDS-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
+  );
   const [token, setToken] = useState<string | null>(null);
   const [orders, setOrders] = useState<KdsOrder[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
@@ -36,34 +38,43 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
+    if (!token) return;
     let isMounted = true;
+    let consecutiveErrors = 0;
+    let timerId: number;
 
-    const loadOrders = async () => {
-      setIsLoading(true);
+    const scheduleNext = () => {
+      if (!isMounted) return;
+      // Back off to 15s after 3 consecutive failures, otherwise 5s
+      const delay = consecutiveErrors >= 3 ? 15000 : 5000;
+      timerId = window.setTimeout(poll, delay);
+    };
+
+    const poll = async () => {
       try {
         const data = await fetchKdsOrders(token);
-        if (isMounted) {
-          setOrders(data);
-        }
-      } catch (error) {
-        if (isMounted) {
-          setErrorMessage("Unable to load tickets.");
-        }
+        if (!isMounted) return;
+        setOrders(data);
+        setErrorMessage("");
+        consecutiveErrors = 0;
+      } catch (error: unknown) {
+        if (!isMounted) return;
+        const status = (error as { status?: number })?.status;
+        if (status === 401) { handleLogout(); return; }
+        consecutiveErrors++;
+        if (consecutiveErrors >= 3) setErrorMessage("Connection lost. Retrying…");
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
+        scheduleNext();
       }
     };
 
-    loadOrders();
-    const timer = window.setInterval(loadOrders, 5000);
+    setIsLoading(true);
+    poll();
+
     return () => {
       isMounted = false;
-      window.clearInterval(timer);
+      window.clearTimeout(timerId);
     };
   }, [token]);
 
@@ -90,6 +101,7 @@ function App() {
     try {
       const tokenValue = await staffLogin(pin.trim(), deviceId.trim());
       localStorage.setItem("kds_token", tokenValue);
+      localStorage.setItem("kds_device_id", deviceId.trim());
       setToken(tokenValue);
       setIsLoggedIn(true);
       setPin("");
@@ -99,29 +111,29 @@ function App() {
   };
 
   const handleStart = (orderId: number) => {
-    if (!token) {
-      return;
-    }
-    startOrder(token, orderId).then(() => {
-      setOrders((current) =>
-        current.map((order) =>
-          order.id === orderId ? { ...order, status: "in_progress" } : order
-        )
-      );
-    });
+    if (!token) return;
+    startOrder(token, orderId)
+      .then(() => {
+        setOrders((current) =>
+          current.map((order) =>
+            order.id === orderId ? { ...order, status: "in_progress" } : order
+          )
+        );
+      })
+      .catch(() => setErrorMessage(`Failed to start order #${orderId}. Please retry.`));
   };
 
   const handleBump = (orderId: number) => {
-    if (!token) {
-      return;
-    }
-    bumpOrder(token, orderId).then(() => {
-      setOrders((current) =>
-        current.map((order) =>
-          order.id === orderId ? { ...order, status: "completed" } : order
-        )
-      );
-    });
+    if (!token) return;
+    bumpOrder(token, orderId)
+      .then(() => {
+        setOrders((current) =>
+          current.map((order) =>
+            order.id === orderId ? { ...order, status: "completed" } : order
+          )
+        );
+      })
+      .catch(() => setErrorMessage(`Failed to complete order #${orderId}. Please retry.`));
   };
 
   const handleLogout = () => {
@@ -132,16 +144,16 @@ function App() {
   };
 
   const handleRecall = (orderId: number) => {
-    if (!token) {
-      return;
-    }
-    recallOrder(token, orderId).then(() => {
-      setOrders((current) =>
-        current.map((order) =>
-          order.id === orderId ? { ...order, status: "pending" } : order
-        )
-      );
-    });
+    if (!token) return;
+    recallOrder(token, orderId)
+      .then(() => {
+        setOrders((current) =>
+          current.map((order) =>
+            order.id === orderId ? { ...order, status: "pending" } : order
+          )
+        );
+      })
+      .catch(() => setErrorMessage(`Failed to recall order #${orderId}. Please retry.`));
   };
 
   if (!isLoggedIn) {

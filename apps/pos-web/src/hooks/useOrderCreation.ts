@@ -97,7 +97,12 @@ export function useOrderCreation(params: Params) {
           params.setSelectedItem(null);
           setStatusMessage("Order paid and sent to kitchen.");
         })
-        .catch(() => {
+        .catch((err: unknown) => {
+          const status = (err as { status?: number })?.status;
+          if (status && status >= 400 && status < 500) {
+            setStatusMessage(`Order failed: ${(err as Error).message}`);
+            return;
+          }
           enqueue(payload);
           params.setOfflineQueueCount(getQueueCount());
           setStatusMessage("Network error. Order queued for sync.");

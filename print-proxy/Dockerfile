@@ -5,14 +5,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install exact locked dependencies
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY . .
 
-# Build TypeScript (if needed)
-RUN npm run build || true
+# Build TypeScript (fail loudly if it breaks)
+RUN npm run build
 
 # Expose port
 EXPOSE 3000

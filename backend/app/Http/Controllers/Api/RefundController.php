@@ -44,8 +44,14 @@ class RefundController extends Controller
         $validated = $request->validated();
         $amount = (float) $validated['amount'];
 
-        if ($amount > ($order->total ?? 0)) {
-            return response()->json(['message' => 'Refund exceeds order total.'], 422);
+        $alreadyRefunded = $order->refunds()
+            ->where('status', '!=', 'rejected')
+            ->sum('amount');
+
+        if ($amount + $alreadyRefunded > ($order->total ?? 0)) {
+            return response()->json([
+                'message' => 'Refund would exceed order total. Already refunded: ' . number_format($alreadyRefunded, 2),
+            ], 422);
         }
 
         $refund = Refund::create([

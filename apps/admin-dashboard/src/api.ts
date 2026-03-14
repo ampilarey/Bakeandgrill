@@ -773,3 +773,23 @@ export async function fetchSupportedWebhookEvents(): Promise<{ events: string[] 
 export async function getAnalytics<T>(path: string): Promise<T> {
   return req(path);
 }
+
+// ── Purchase Orders ───────────────────────────────────────────────────────────
+
+export async function fetchPurchases(params?: { status?: string }): Promise<{ data: unknown[] }> {
+  const qs = params?.status ? `?status=${params.status}` : '';
+  return req(`/purchases${qs}`);
+}
+
+export async function approvePurchase(id: number): Promise<void> {
+  await req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'ordered' }) });
+}
+
+export async function getPurchaseSuggestions(): Promise<unknown> {
+  return req('/inventory/low-stock?suggestions=true');
+}
+
+// ── Generic request passthrough (for pages that need dynamic paths) ──────────
+export async function apiRequest<T>(path: string, opts?: RequestInit): Promise<T> {
+  return req(path, opts);
+}

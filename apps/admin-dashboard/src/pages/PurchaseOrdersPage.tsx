@@ -1,20 +1,6 @@
 import { useEffect, useState } from 'react';
-import { approvePurchase, getPurchaseSuggestions } from '../api';
+import { approvePurchase, getPurchaseSuggestions, apiRequest as req } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
-
-const BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
-
-async function req<T>(path: string, opts?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('admin_token');
-  const res = await fetch(`${BASE}${path}`, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts?.headers },
-  });
-  if (!res.ok) { const b = await res.json().catch(() => ({})) as { message?: string }; throw new Error(b.message ?? `Error ${res.status}`); }
-  return res.json() as Promise<T>;
-}
 
 type Purchase = {
   id: number;

@@ -14,10 +14,12 @@ export default function AnalyticsPage() {
   const [forecast,     setForecast]     = useState<ForecastRow[]>([]);
   const [ltvCustomers, setLtvCustomers] = useState<LtvCustomer[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState('');
 
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
+      setError('');
       try {
         const [ph, rt, pr, fc, ltv] = await Promise.all([
           getAnalytics<{ peak_hours: PeakHour[] }>('/admin/analytics/peak-hours'),
@@ -32,7 +34,7 @@ export default function AnalyticsPage() {
         setForecast(fc.forecast);
         setLtvCustomers(ltv.top_customers);
       } catch (e) {
-        console.error(e);
+        setError((e as Error).message ?? 'Failed to load analytics. Please refresh.');
       } finally {
         setLoading(false);
       }
@@ -43,6 +45,7 @@ export default function AnalyticsPage() {
   const maxCount = Math.max(...peakHours.map(h => h.count), 1);
 
   if (loading) return <div style={{ padding: 40, color: '#9CA3AF', textAlign: 'center' }}>Loading analytics…</div>;
+  if (error) return <div style={{ padding: 40, color: '#ef4444', textAlign: 'center', background: '#fef2f2', borderRadius: 12, margin: 24 }}>{error}</div>;
 
   return (
     <div>

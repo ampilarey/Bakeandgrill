@@ -67,11 +67,13 @@ Route::get('/order', function () {
     return redirect('/order/');
 })->name('order.redirect');
 Route::get('/order/{any}', function () {
+    abort_if(! file_exists(public_path('order/index.html')), 503, 'Order app not deployed.');
     return response()->file(public_path('order/index.html'));
 })->where('any', '.*')->name('order.spa');
 
 // Admin Dashboard SPA — catch-all for /admin/* sub-paths
 Route::get('/admin/{any}', function () {
+    abort_if(! file_exists(public_path('admin/index.html')), 503, 'Admin app not deployed.');
     return response()->file(public_path('admin/index.html'));
 })->where('any', '.*')->name('admin.spa');
 
@@ -80,6 +82,7 @@ Route::get('/kds', function () {
     return redirect('/kds/');
 })->name('kds.redirect');
 Route::get('/kds/{any}', function () {
+    abort_if(! file_exists(public_path('kds/index.html')), 503, 'KDS app not deployed.');
     return response()->file(public_path('kds/index.html'));
 })->where('any', '.*')->name('kds.spa');
 
@@ -88,5 +91,6 @@ Route::get('/pos', function () {
     return redirect('/pos/');
 })->name('pos.redirect');
 Route::get('/pos/{any}', function () {
+    abort_if(! file_exists(public_path('pos/index.html')), 503, 'POS app not deployed.');
     return response()->file(public_path('pos/index.html'));
 })->where('any', '.*')->name('pos.spa');
