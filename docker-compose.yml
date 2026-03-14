@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: bakegrill-postgres
+    restart: unless-stopped
+    mem_limit: 512m
     environment:
       POSTGRES_DB: bakegrill
       POSTGRES_USER: bakegrill
@@ -21,6 +23,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: bakegrill-redis
+    restart: unless-stopped
+    mem_limit: 256m
     ports:
       - "6379:6379"
     volumes:
