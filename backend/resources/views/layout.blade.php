@@ -236,6 +236,7 @@
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border-top: 1px solid var(--border);
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
             padding: 0.5rem 0.5rem;
             padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
         }
@@ -358,7 +359,7 @@
             font-size: 0.8rem !important;
             margin-bottom: 0 !important;
         }
-        .footer-legal a:hover { color: rgba(255,255,255,0.7) !important; }
+        .footer-legal a:hover { color: white !important; }
         .footer-legal-staff {
             color: rgba(255,255,255,0.15) !important;
             font-size: 0.75rem !important;
@@ -484,8 +485,7 @@
         <div class="footer-col">
             <h4>Quick Links</h4>
             <a href="/">Home</a>
-            <a href="/order/menu">Menu</a>
-            <a href="/order/">Order Online</a>
+            <a href="/order/menu">Order Online</a>
             <a href="/order/pre-order">Pre-Order (Events)</a>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
