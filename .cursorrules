@@ -1,0 +1,479 @@
+# Bake & Grill — Production Hardening Prompt
+
+You are tasked with fixing security, authorization, and operational issues in the
+Bake & Grill monorepo (Laravel 12 backend + React/Vite frontend apps). Two
+independent audits have been performed. The findings below are validated against
+the actual codebase. Fix them in priority order.
+
+> **Important**: Do not add unnecessary abstractions, comments, or refactors
+> beyond what each fix requires. Keep changes minimal and focused.
+
+---
+
+## CRITICAL — Must fix before production
+
+### C1 · Missing authorization on admin routes
+**File:** `backend/routes/api.php` (lines 298+)
+
+Admin routes only check `auth:sanctum` — no role or permission middleware.
+Any authenticated user (including customers) can hit promotions, staff
+management, SMS, reports, reservations, invoices, expenses, suppliers, and
+schedule endpoints.
+
+**Fix:** Add `can:admin` or role-based middleware (`middleware('can:admin.access')`)
+to every admin route group. Alternatively, create an `EnsureUserIsAdmin`
+middleware that checks `$request->user() instanceof \App\Models\User` and
+verifies the role, then apply it to the admin prefix group.
+
+---
+
+### C2 · No authorization in StaffController
+**File:** `backend/app/Http/Controllers/Api/StaffController.php` (lines 45–100)
+
+`store()`, `update()`, `resetPin()`, and `destroy()` perform zero authorization
+checks. Any authenticated user can create, modify, or delete staff members.
+
+**Fix:** Add a policy or gate check at the top of each method:
+```php
+$this->authorize('manage-staff');
+```
+Or add middleware at the route level: `->middleware('can:staff.manage')`.
+
+---
+
+### C3 · Client-side admin bypass in ItemController
+**File:** `backend/app/Http/Controllers/Api/ItemController.php` (line 20)
+
+```php
+$isAdmin = (bool) $request->query('admin');
+if (!$isAdmin) {
+    $query->where('is_active', true);
+}
+```
+Anyone can add `?admin=true` to see hidden/inactive items.
+
+**Fix:** Replace the query-param check with a server-side auth check:
+```php
+$isAdmin = $request->user() instanceof \App\Models\User;
+```
+
+---
+
+### C4 · Hardcoded demo PINs in POS login page
+**File:** `apps/pos-web/src/pages/LoginPage.tsx` (lines 39–41)
+
+Owner:1111, Admin:2222, Manager:3333, Cashier:4444 are visible in production
+source code.
+
+**Fix:** Remove the demo PIN hints entirely, or gate them behind
+`import.meta.env.DEV` so they are tree-shaken out of production builds.
+
+---
+
+### C5 · OTP exposed as hint in online ordering app
+**File:** `apps/online-order-web/src/components/AuthBlock.tsx` (lines 20–22)
+
+The dev OTP returned in the API response is displayed as a hint to the user.
+
+**Fix:** Remove the OTP hint display, or gate it behind `import.meta.env.DEV`.
+
+---
+
+### C6 · hold/resume/addPayments missing staff authorization
+**Files:**
+- `backend/routes/api.php` (lines 115–117)
+- `backend/app/Http/Controllers/Api/OrderController.php` — `hold()`, `resume()`, `addPayments()`
+
+These endpoints sit in the broad `auth:sanctum` group. Unlike `store()` which
+checks `tokenCan('staff')`, these three methods do not. A customer token can
+mutate orders.
+
+**Fix:** Add `tokenCan('staff')` checks in each method (matching the pattern
+already used in `store()`), or add `->middleware('ability:staff')` to these
+routes.
+
+---
+
+### C7 · Promo apply/remove missing order ownership check
+**Files:**
+- `backend/routes/api.php` (lines 292–295)
+- `backend/app/Http/Controllers/Api/PromotionController.php` — `applyToOrder()` (line 60), `removeFromOrder()` (line 118)
+
+Both methods load the order via `Order::findOrFail($orderId)` with no ownership
+verification. Any authenticated user can apply or remove promos on any order.
+
+**Fix:** After loading the order, verify ownership:
+```php
+if ($request->user()->currentAccessToken()->can('customer')) {
+    abort_unless($order->customer_id === $request->user()->id, 403);
+}
+```
+For staff callers, verify `tokenCan('staff')`.
+
+Also fix the **status-check inconsistency**: `applyToOrder()` blocks `paid`,
+`completed`, `cancelled` but `removeFromOrder()` only blocks `paid`, `completed`.
+Add `cancelled` to `removeFromOrder()` as well.
+
+---
+
+### C8 · /auth/me accessible with customer tokens
+**Files:**
+- `backend/routes/api.php` (line 97)
+- `backend/app/Http/Controllers/Api/Auth/StaffAuthController.php` — `me()` (lines 83–95)
+
+The route is under `auth:sanctum` only. A customer token can call `GET /api/auth/me`
+and receive staff user data.
+
+**Fix:** Add `->middleware('ability:staff')` to the route, or add a
+`tokenCan('staff')` check in the controller method.
+
+---
+
+### C9 · APP_DEBUG=true and missing APP_KEY in .env.example
+**File:** `backend/.env.example` (lines 3–4)
+
+```
+APP_KEY=
+APP_DEBUG=true
+```
+
+**Fix:** Set `APP_DEBUG=false` in the example. Add a comment:
+```
+# IMPORTANT: Generate with `php artisan key:generate`
+APP_KEY=
+APP_DEBUG=false
+```
+
+---
+
+### C10 · Default passwords in docker-compose.yml
+**File:** `docker-compose.yml` (lines 8, 50, 73)
+
+- `DB_PASSWORD:-secret`
+- `PRINT_PROXY_KEY` defaults to `dev-key-change-in-production-12345`
+
+**Fix:** Remove default fallback values so the containers fail to start if
+secrets are not explicitly set. Use `${DB_PASSWORD:?DB_PASSWORD must be set}`
+syntax.
+
+---
+
+## HIGH — Fix before or immediately after launch
+
+### H1 · Empty exception handler
+**File:** `backend/bootstrap/app.php` (lines 22–24)
+
+The exception handler callback is empty. In production, unhandled exceptions may
+leak stack traces.
+
+**Fix:** Configure the handler to return JSON error responses without stack
+traces in production:
+```php
+->withExceptions(function (Exceptions $exceptions): void {
+    $exceptions->shouldRenderJsonWhen(fn () => true);
+})
+```
+
+---
+
+### H2 · No webhook idempotency for BML payments
+**File:** `backend/app/Http/Controllers/Api/BmlWebhookController.php` (lines 21–42)
+
+Duplicate webhook deliveries could double-process a payment.
+
+**Fix:** Check if the payment `reference_number` has already been processed
+before creating a new payment record. Use a unique constraint on
+`reference_number` in the payments table as a safety net.
+
+---
+
+### H3 · Sanctum token expiration is null (unlimited lifetime)
+**File:** `backend/config/sanctum.php` (line 52)
+
+```php
+'expiration' => null,
+```
+
+**Fix:** Set a reasonable expiration:
+```php
+'expiration' => 60 * 24 * 7, // 7 days in minutes
+```
+
+---
+
+### H4 · Auth token stored in localStorage (XSS risk)
+**Files:**
+- `apps/online-order-web/src/components/AuthBlock.tsx` (line 35)
+- `apps/online-order-web/src/components/Layout.tsx` (line 12)
+- `apps/online-order-web/src/hooks/useCheckout.ts` (line 46)
+- `apps/online-order-web/src/pages/OrderStatusPage.tsx` (line 10)
+
+The Sanctum bearer token is stored in `localStorage` as `online_token`.
+
+**Fix (short-term):** This is acceptable for MVP if CSP headers are added (see
+H6). Document as a known hardening item.
+**Fix (long-term):** Switch to httpOnly cookie-based Sanctum SPA authentication.
+
+---
+
+### H5 · Missing security headers
+**Location:** No security headers middleware exists.
+
+**Fix:** Create `SecurityHeaders` middleware:
+```php
+$response->headers->set('X-Frame-Options', 'DENY');
+$response->headers->set('X-Content-Type-Options', 'nosniff');
+$response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+$response->headers->set('X-XSS-Protection', '0');
+$response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+```
+Register it globally in `bootstrap/app.php`.
+
+---
+
+### H6 · CORS wildcard methods and headers
+**File:** `backend/config/cors.php` (lines 19, 33)
+
+```php
+'allowed_methods' => ['*'],
+'allowed_headers' => ['*'],
+```
+
+**Fix:** Restrict to the methods and headers actually used:
+```php
+'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Device-Token'],
+```
+
+---
+
+### H7 · Hardcoded localhost fallback in frontend API clients
+**Files:** `apps/*/src/api.ts`
+
+API base URL falls back to `http://localhost:8000` if env var is not set.
+
+**Fix:** Throw an error if the env var is missing in production:
+```ts
+const baseURL = import.meta.env.VITE_API_URL;
+if (!baseURL && import.meta.env.PROD) {
+  throw new Error('VITE_API_URL is required in production');
+}
+```
+
+---
+
+### H8 · SPA catch-all routes serve files without existence check
+**File:** `backend/routes/web.php` (lines 69–76)
+
+```php
+Route::get('/order/{any}', function () {
+    return response()->file(public_path('order/index.html'));
+})->where('any', '.*');
+```
+
+If the SPA build artifacts are missing, this throws an unhandled exception.
+
+**Fix:** Add a file existence guard:
+```php
+$path = public_path('order/index.html');
+return file_exists($path)
+    ? response()->file($path)
+    : abort(404, 'Application not deployed');
+```
+
+---
+
+## MEDIUM — Fix in the first sprint after launch
+
+### M1 · Rate limiting gaps on sensitive operations
+**File:** `backend/routes/api.php`
+
+Missing throttle middleware on:
+- `POST /orders/{id}/hold` (line 115)
+- `POST /orders/{id}/resume` (line 116)
+- `POST /orders/{id}/payments` (line 117)
+- `POST /shifts/{id}/close` (line 158)
+- `POST /shifts/{id}/cash-movements` (line 159)
+- `POST /orders/{orderId}/refunds` (line 196)
+
+**Fix:** Add `->middleware('throttle:10,1')` to payment/refund routes and
+`throttle:20,1` to order-state mutation routes.
+
+---
+
+### M2 · Promotion code rate limit too high
+**File:** `backend/routes/api.php` (line 289)
+
+`throttle:30,1` allows 30 guesses per minute for promo code validation.
+
+**Fix:** Reduce to `throttle:5,1`.
+
+---
+
+### M3 · No upper bounds on order quantities / refund amounts
+**Files:**
+- `backend/app/Http/Requests/StoreOrderRequest.php` — `items.*.quantity` has no max
+- `backend/app/Http/Requests/StoreRefundRequest.php` (line 19) — `amount` has `min:0.01` but no max
+
+**Fix:** Add `max:999` to quantity. Validate refund amount against order total
+in the controller/service.
+
+---
+
+### M4 · Unauthenticated bulk stock-check leaks inventory data
+**File:** `backend/routes/api.php` (lines 249–256)
+
+No validation on `item_ids` array size. Exposes `low_stock_threshold` to
+unauthenticated users.
+
+**Fix:** Add `'item_ids' => 'required|array|max:50'` validation. Remove
+`low_stock_threshold` from the selected columns (or move behind auth).
+
+---
+
+### M5 · Search parameter not validated for length
+**File:** `backend/app/Http/Controllers/Api/ItemController.php` (line 35)
+
+The `search` query parameter is used in LIKE queries without length validation.
+
+**Fix:** Add validation: `$search = Str::limit($request->search, 100)`.
+
+---
+
+### M6 · PIN auth loads all users into memory
+**File:** `backend/app/Http/Controllers/Api/Auth/StaffAuthController.php` (lines 36–40)
+
+```php
+$user = User::where('is_active', true)
+    ->whereNotNull('pin_hash')
+    ->get()
+    ->first(fn (User $user) => Hash::check($pin, $user->pin_hash));
+```
+
+**Fix:** This is a known limitation of bcrypt (can't query by hash). For now,
+add `->limit(500)` as a safety net. Long-term, consider a PIN index table
+with HMAC-based lookup.
+
+---
+
+### M7 · Missing database indexes for reporting queries
+**File:** `backend/database/migrations/*_create_payments_table.php`
+
+Missing indexes on `processed_at`, `reference_number`, `created_at`.
+
+**Fix:** Create a migration adding these indexes.
+
+---
+
+### M8 · OrderController::sync() leaks raw exception messages
+**File:** `backend/app/Http/Controllers/Api/OrderController.php` — `sync()` (lines 89–107)
+
+Failed sync items return `$error->getMessage()` to the client.
+
+**Fix:** Return a generic "Failed to sync order" message in production. Log the
+actual exception server-side.
+
+---
+
+### M9 · File upload lacks dimension/quota limits
+**File:** `backend/app/Http/Controllers/Api/ImageUploadController.php`
+
+No image dimension limits (could upload 10,000×10,000 px). No per-user storage
+quota.
+
+**Fix:** Add `dimensions:max_width=4096,max_height=4096` to the validation
+rules.
+
+---
+
+### M10 · SESSION_SECURE_COOKIE not configured for production
+**File:** `backend/config/session.php` (line 174)
+
+**Fix:** Set `'secure' => env('SESSION_SECURE_COOKIE', true)` and ensure the env
+var is set in production.
+
+---
+
+## LOW — Hardening and code quality
+
+### L1 · README version mismatch
+**File:** `README.md` (line 19)
+
+Claims "PHP 8.5" — composer.json requires `^8.2`, CI runs PHP 8.4.
+
+**Fix:** Update README to match reality.
+
+---
+
+### L2 · No frontend build/test steps in CI
+**File:** `.github/workflows/ci.yml`
+
+CI only runs PHP Pint, PHPUnit, and contract tests. No frontend build or vitest.
+
+**Fix:** Add a `frontend` job that runs `npm ci && npm run build && npm test`
+for each app that has a test script.
+
+---
+
+### L3 · No secret scanning in CI
+**File:** `.github/workflows/ci.yml`
+
+Gitleaks or equivalent is not present.
+
+**Fix:** Add a Gitleaks step that runs as a blocking check (not
+`continue-on-error`).
+
+---
+
+### L4 · Business logic in route closures
+**File:** `backend/routes/api.php` (lines 249–256, 563–583)
+
+Stock-check and inventory routes use inline closures instead of controllers.
+
+**Fix:** Extract to dedicated controller methods for testability.
+
+---
+
+### L5 · Console.log statements in frontend production code
+**Files:** Multiple files across `apps/`
+
+**Fix:** Add an ESLint rule (`no-console`) to CI and remove existing statements.
+
+---
+
+### L6 · print-proxy runs as root and uses npm install
+**File:** `print-proxy/Dockerfile`
+
+**Fix:** Add a non-root user. Use `npm ci --omit=dev` instead of `npm install`.
+
+---
+
+### L7 · No container resource limits or restart policies
+**File:** `docker-compose.yml`
+
+**Fix:** Add `restart: unless-stopped` and `mem_limit` / `cpus` to services.
+
+---
+
+### L8 · composer.json has platform-check disabled
+**File:** `backend/composer.json`
+
+```json
+"platform-check": false
+```
+
+**Fix:** Remove this so Composer validates the runtime PHP version matches
+requirements.
+
+---
+
+## Fix order recommendation
+
+1. **C1–C10** (Critical) — All authorization and secrets issues. These are
+   exploitable today.
+2. **H1–H8** (High) — Exception handling, idempotency, security headers, token
+   expiry. These protect against operational failures and harden the surface.
+3. **M1–M10** (Medium) — Rate limiting, validation bounds, performance. These
+   prevent abuse and improve reliability.
+4. **L1–L8** (Low) — CI, documentation, Docker hardening. These improve
+   maintainability and operational safety.
