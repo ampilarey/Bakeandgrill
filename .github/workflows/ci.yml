@@ -124,6 +124,29 @@ jobs:
       - name: Build admin-dashboard
         run: npm run build --workspace=apps/admin-dashboard
 
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [frontend, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /home/bakeandgrill/test.bakeandgrill.mv \
+            && git pull origin main \
+            && cd backend \
+            && composer install --no-dev --optimize-autoloader \
+            && php artisan migrate --force \
+            && php artisan config:cache \
+            && php artisan route:cache \
+            && php artisan view:clear \
+            && echo "Deploy complete."
+
   contract:
     name: API contract tests (snapshot)
     runs-on: ubuntu-latest

@@ -310,7 +310,7 @@ added to `removeFromOrder` blocked-status list. *(Done — verify in code.)*
 ---
 
 ### CR-15 · No deploy step in CI
-**Status:** 🔴  
+**Status:** ✅ Fixed — deploy job added to ci.yml; requires DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER GitHub secrets.  
 **File:** `.github/workflows/ci.yml`
 
 Merges to `main` are never automatically delivered anywhere.
@@ -1722,11 +1722,11 @@ npm install -D terser --workspace=apps/online-order-web
 
 | Priority | Total Items | ✅ Done | 🟡 Partial | 🔴 Not Done |
 |----------|------------|---------|-----------|------------|
-| CRITICAL | 15 | 14 | 0 | 1 |
+| CRITICAL | 15 | 15 | 0 | 0 |
 | HIGH | 25 | 24 | 0 | 1 |
 | MEDIUM | 26 | 26 | 0 | 0 |
 | LOW | 28 | 27 | 0 | 1 |
-| **Total** | **94** | **92** | **0** | **2** |
+| **Total** | **94** | **93** | **0** | **1** |
 
 ---
 
