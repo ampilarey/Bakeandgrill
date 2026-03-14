@@ -8,8 +8,8 @@
     .admin-card { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
     .admin-card h2 { font-size: 1.25rem; margin-bottom: 1rem; color: var(--dark); }
     .admin-login input { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; }
-    .admin-login button { width: 100%; padding: 0.75rem; background: var(--teal); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
-    .admin-login button:hover { background: var(--teal-hover); }
+    .admin-login button { width: 100%; padding: 0.75rem; background: var(--amber); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .admin-login button:hover { background: var(--amber-hover); }
     .admin-logout { margin-bottom: 1rem; }
     .admin-logout button { padding: 0.5rem 1rem; background: #f8f9fa; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
     .item-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0; gap: 1rem; }
@@ -20,8 +20,8 @@
     .item-delete:hover { background: #fecaca; }
     .add-form label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
     .add-form input, .add-form select { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; }
-    .add-form button { padding: 0.75rem 1.5rem; background: var(--teal); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
-    .add-form button:hover { background: var(--teal-hover); }
+    .add-form button { padding: 0.75rem 1.5rem; background: var(--amber); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .add-form button:hover { background: var(--amber-hover); }
     .msg { padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; }
     .msg.success { background: #d1fae5; color: #065f46; }
     .msg.error { background: #fee2e2; color: #b91c1c; }

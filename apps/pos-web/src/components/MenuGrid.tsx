@@ -42,17 +42,16 @@ export function MenuGrid({
     <>
       {/* Left: Order type + categories */}
       <section className="col-span-2 space-y-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-sm font-semibold text-slate-700">Order Type</p>
+        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #EDE4D4' }}>
+          <p className="text-sm font-semibold" style={{ color: '#2A1E0C' }}>Order Type</p>
           <div className="mt-3 space-y-2">
             {orderTypes.map((type) => (
               <button
                 key={type}
-                className={`w-full rounded-lg px-3 py-2 text-sm font-medium ${
-                  orderType === type
-                    ? "bg-orange-100 text-orange-700 border border-orange-200"
-                    : "bg-slate-50 text-slate-600 border border-slate-200"
-                }`}
+                className="w-full rounded-lg px-3 py-2 text-sm font-medium"
+                style={orderType === type
+                  ? { background: '#FEF3E8', color: '#B86820', border: '1px solid rgba(212,129,58,0.3)' }
+                  : { background: '#FFFDF9', color: '#8B7355', border: '1px solid #EDE4D4' }}
                 onClick={() => setOrderType(type)}
               >
                 {type}
@@ -61,9 +60,10 @@ export function MenuGrid({
           </div>
           {orderType === "Dine-in" && (
             <div className="mt-4 space-y-2">
-              <label className="block text-xs text-slate-500">Table</label>
+              <label className="block text-xs" style={{ color: '#8B7355' }}>Table</label>
               <select
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ border: '1px solid #EDE4D4' }}
                 value={selectedTableId ?? ""}
                 onChange={(e) => setSelectedTableId(e.target.value ? Number(e.target.value) : null)}
               >
@@ -76,17 +76,16 @@ export function MenuGrid({
           )}
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-sm font-semibold text-slate-700">Categories</p>
+        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #EDE4D4' }}>
+          <p className="text-sm font-semibold" style={{ color: '#2A1E0C' }}>Categories</p>
           <div className="mt-3 space-y-2">
             {categories.map((cat) => (
               <button
                 key={cat.id}
-                className={`w-full rounded-lg px-3 py-2 text-sm font-medium ${
-                  selectedCategoryId === cat.id
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-50 text-slate-700"
-                }`}
+                className="w-full rounded-lg px-3 py-2 text-sm font-medium"
+                style={selectedCategoryId === cat.id
+                  ? { background: '#1C1408', color: 'white' }
+                  : { background: '#FFFDF9', color: '#8B7355' }}
                 onClick={() => setSelectedCategoryId(cat.id)}
               >
                 {cat.name}
@@ -98,15 +97,16 @@ export function MenuGrid({
 
       {/* Center: Barcode + items grid + modifier picker */}
       <section className="col-span-7 space-y-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #EDE4D4' }}>
           <form onSubmit={onBarcodeSubmit} className="flex gap-2">
             <input
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-2"
+              className="flex-1 rounded-lg px-3 py-2"
+              style={{ border: '1px solid #EDE4D4' }}
               placeholder="Scan barcode or type SKU"
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
             />
-            <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm">Add</button>
+            <button className="rounded-lg text-white px-4 py-2 text-sm" style={{ background: '#1C1408' }}>Add</button>
           </form>
         </div>
 
@@ -116,7 +116,7 @@ export function MenuGrid({
           </div>
         )}
         {isLoading && (
-          <div className="bg-white rounded-xl px-4 py-3 text-sm text-slate-500 shadow-sm">
+          <div className="bg-white rounded-xl px-4 py-3 text-sm shadow-sm" style={{ color: '#8B7355' }}>
             Loading menu…
           </div>
         )}
@@ -126,23 +126,27 @@ export function MenuGrid({
             <button
               key={item.id}
               className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition text-left"
+              style={{ border: '1px solid #EDE4D4' }}
               onClick={() => handleSelectItem(item)}
             >
-              <p className="font-semibold">{item.name}</p>
-              <p className="text-sm text-slate-500">MVR {item.base_price.toFixed(2)}</p>
+              <p className="font-semibold" style={{ color: '#2A1E0C' }}>{item.name}</p>
+              <p className="text-sm" style={{ color: '#8B7355' }}>MVR {item.base_price.toFixed(2)}</p>
             </button>
           ))}
         </div>
 
         {selectedItem && (
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 shadow-sm" style={{ border: '1px solid #EDE4D4' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold">{selectedItem.name}</p>
-                <p className="text-sm text-slate-500">MVR {selectedItem.base_price.toFixed(2)}</p>
+                <p className="font-semibold" style={{ color: '#2A1E0C' }}>{selectedItem.name}</p>
+                <p className="text-sm" style={{ color: '#8B7355' }}>MVR {selectedItem.base_price.toFixed(2)}</p>
               </div>
               <button
-                className="rounded-lg bg-orange-600 text-white px-4 py-2 text-sm"
+                className="rounded-lg text-white px-4 py-2 text-sm"
+                style={{ background: '#D4813A' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#B86820'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#D4813A'; }}
                 onClick={() => addToCart(selectedItem)}
               >
                 Add to cart
@@ -150,18 +154,17 @@ export function MenuGrid({
             </div>
             {selectedItem.modifiers && selectedItem.modifiers.length > 0 && (
               <div className="mt-4">
-                <p className="text-sm font-semibold text-slate-700">Modifiers</p>
+                <p className="text-sm font-semibold" style={{ color: '#2A1E0C' }}>Modifiers</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedItem.modifiers.map((mod) => {
                     const active = selectedModifiers.some((m) => m.id === mod.id);
                     return (
                       <button
                         key={mod.id}
-                        className={`rounded-full px-3 py-1 text-sm border ${
-                          active
-                            ? "bg-slate-900 text-white border-slate-900"
-                            : "bg-slate-50 text-slate-700 border-slate-200"
-                        }`}
+                        className="rounded-full px-3 py-1 text-sm"
+                        style={active
+                          ? { background: '#1C1408', color: 'white', border: '1px solid #1C1408' }
+                          : { background: '#FFFDF9', color: '#8B7355', border: '1px solid #EDE4D4' }}
                         onClick={() => toggleModifier(mod)}
                       >
                         {mod.name}{mod.price > 0 ? ` +${mod.price}` : ""}

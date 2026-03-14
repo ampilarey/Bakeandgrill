@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, type StaffUser } from '../api';
 
@@ -44,12 +44,33 @@ export function Layout({
     navigate('/login');
   };
 
+  // UX-2: 30-minute idle timeout — clear token and redirect to login
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const IDLE_MS = 30 * 60 * 1000;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        localStorage.removeItem('admin_token');
+        onLogout();
+        navigate('/login');
+      }, IDLE_MS);
+    };
+    const events = ['click', 'keydown', 'mousemove', 'touchstart'] as const;
+    events.forEach((e) => window.addEventListener(e, reset));
+    reset();
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, [navigate, onLogout]);
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#FFFDF9' }}>
       {/* Sidebar */}
       <aside style={{
         width: collapsed ? 64 : 220,
-        background: '#0f172a',
+        background: '#1C1408',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width 0.2s',
@@ -63,7 +84,7 @@ export function Layout({
         {/* Logo */}
         <div style={{
           padding: collapsed ? '20px 12px' : '20px 20px',
-          borderBottom: '1px solid #1e293b',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
@@ -73,7 +94,7 @@ export function Layout({
           {!collapsed && (
             <div>
               <div style={{ color: '#f8fafc', fontWeight: 800, fontSize: 14 }}>Bake & Grill</div>
-              <div style={{ color: '#64748b', fontSize: 11 }}>Admin</div>
+              <div style={{ color: '#8B7355', fontSize: 11 }}>Admin</div>
             </div>
           )}
         </div>
@@ -86,12 +107,12 @@ export function Layout({
               alignItems: 'center',
               gap: 12,
               padding: collapsed ? '12px 20px' : '11px 20px',
-              color: isActive ? '#38bdf8' : '#94a3b8',
+              color: isActive ? '#D4813A' : '#94a3b8',
               textDecoration: 'none',
               fontWeight: isActive ? 700 : 400,
               fontSize: 14,
-              background: isActive ? 'rgba(56,189,248,0.08)' : 'transparent',
-              borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent',
+              background: isActive ? 'rgba(212,129,58,0.12)' : 'transparent',
+              borderLeft: isActive ? '3px solid #D4813A' : '3px solid transparent',
               transition: 'all 0.15s',
               whiteSpace: 'nowrap',
             })}>
@@ -101,17 +122,38 @@ export function Layout({
           ))}
         </nav>
 
-        {/* User */}
-        <div style={{
-          padding: '16px',
-          borderTop: '1px solid #1e293b',
-        }}>
+        {/* Footer: back-to-site + user + logout */}
+        <div style={{ padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          {/* UX-1: back to main website */}
+          <a
+            href="/"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: collapsed ? '10px 20px' : '10px 20px',
+              color: '#8B7355',
+              textDecoration: 'none',
+              fontSize: 13,
+              fontWeight: 500,
+              transition: 'color 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#D4813A'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#8B7355'; }}
+          >
+            <span style={{ fontSize: 16, flexShrink: 0 }}>🌐</span>
+            {!collapsed && <span>← Main Website</span>}
+          </a>
+        </div>
+
+        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           {!collapsed && (
             <div style={{ marginBottom: 10 }}>
               <div style={{ color: '#f8fafc', fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user.name}
               </div>
-              <div style={{ color: '#64748b', fontSize: 11 }}>{user.role ?? 'Staff'}</div>
+              <div style={{ color: '#8B7355', fontSize: 11 }}>{user.role ?? 'Staff'}</div>
             </div>
           )}
           <button onClick={handleLogout} style={{
@@ -148,8 +190,8 @@ export function PageHeader({ title, subtitle, action }: {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>{title}</h1>
-        {subtitle && <p style={{ color: '#64748b', fontSize: 14, marginTop: 2 }}>{subtitle}</p>}
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2A1E0C' }}>{title}</h1>
+        {subtitle && <p style={{ color: '#8B7355', fontSize: 14, marginTop: 2 }}>{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>
@@ -161,7 +203,7 @@ export function Card({ children, style }: { children: React.ReactNode; style?: R
     <div style={{
       background: '#fff',
       borderRadius: 14,
-      border: '1px solid #e2e8f0',
+      border: '1px solid #EDE4D4',
       padding: '20px 24px',
       boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
       ...style,
@@ -208,10 +250,10 @@ export function Btn({
   style?: React.CSSProperties;
 }) {
   const variants = {
-    primary:   { background: '#0ea5e9', color: '#fff', border: 'none' },
-    secondary: { background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0' },
+    primary:   { background: '#D4813A', color: '#fff', border: 'none' },
+    secondary: { background: '#FEF3E8', color: '#2A1E0C', border: '1px solid #EDE4D4' },
     danger:    { background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' },
-    ghost:     { background: 'transparent', color: '#64748b', border: '1px solid #e2e8f0' },
+    ghost:     { background: 'transparent', color: '#8B7355', border: '1px solid #EDE4D4' },
   };
   return (
     <button
@@ -250,11 +292,11 @@ export function Input({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       style={{
-        border: '1px solid #e2e8f0',
+        border: '1px solid #EDE4D4',
         borderRadius: 9,
         padding: '9px 12px',
         fontSize: 14,
-        color: '#0f172a',
+        color: '#2A1E0C',
         outline: 'none',
         width: '100%',
         background: '#fff',
@@ -277,11 +319,11 @@ export function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       style={{
-        border: '1px solid #e2e8f0',
+        border: '1px solid #EDE4D4',
         borderRadius: 9,
         padding: '9px 12px',
         fontSize: 14,
-        color: '#0f172a',
+        color: '#2A1E0C',
         background: '#fff',
         cursor: 'pointer',
         ...style,
@@ -296,7 +338,7 @@ export function Select({
 
 export function Spinner() {
   return (
-    <div style={{ textAlign: 'center', padding: '48px', color: '#94a3b8' }}>
+    <div style={{ textAlign: 'center', padding: '48px', color: '#8B7355' }}>
       Loading…
     </div>
   );
@@ -304,7 +346,7 @@ export function Spinner() {
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '48px', color: '#94a3b8', fontSize: 14 }}>
+    <div style={{ textAlign: 'center', padding: '48px', color: '#8B7355', fontSize: 14 }}>
       {message}
     </div>
   );

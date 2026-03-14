@@ -10,7 +10,7 @@
         align-items: center;
         justify-content: center;
         padding: 3rem 2rem;
-        background: linear-gradient(135deg, rgba(27, 163, 185, 0.08), rgba(184, 168, 144, 0.08));
+        background: linear-gradient(135deg, rgba(212, 129, 58, 0.08), rgba(184, 168, 144, 0.08));
     }
 
     .login-card {
@@ -26,7 +26,7 @@
     .login-card h1 {
         font-size: 2.25rem;
         margin-bottom: 0.75rem;
-        color: var(--teal);
+        color: var(--dark);
         text-align: center;
     }
 
@@ -60,8 +60,8 @@
 
     .form-group input:focus {
         outline: none;
-        border-color: var(--teal);
-        box-shadow: 0 0 0 4px rgba(27, 163, 185, 0.1);
+        border-color: var(--amber);
+        box-shadow: 0 0 0 4px rgba(212, 129, 58, 0.12);
     }
 
     .form-group input[type="password"] {
@@ -74,7 +74,7 @@
     .btn-submit {
         width: 100%;
         padding: 1.25rem;
-        background: var(--teal);
+        background: var(--amber);
         color: white;
         border: none;
         border-radius: 999px;
@@ -82,13 +82,13 @@
         font-size: 1.15rem;
         cursor: pointer;
         transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(27, 163, 185, 0.3);
+        box-shadow: 0 4px 12px rgba(212, 129, 58, 0.3);
     }
 
     .btn-submit:hover {
-        background: var(--teal-hover);
+        background: var(--amber-hover);
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(27, 163, 185, 0.4);
+        box-shadow: 0 6px 20px rgba(212, 129, 58, 0.4);
     }
 
     .alert {
@@ -207,13 +207,13 @@
                 </button>
                 
                 <p style="text-align: center; margin-top: 1.5rem;">
-                    <a href="{{ route('customer.login') }}" style="color: var(--teal); font-weight: 500;">← Use different number</a>
+                    <a href="{{ route('customer.login') }}" style="color: var(--amber); font-weight: 500;">← Use different number</a>
                 </p>
             </form>
         @endif
 
         <p style="margin-top: 2rem; font-size: 0.85rem; text-align: center; color: #95a5a6;">
-            <a href="/" style="color: var(--teal);">← Back to Home</a>
+            <a href="/" style="color: var(--amber);">← Back to Home</a>
         </p>
     </div>
 </div>

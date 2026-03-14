@@ -111,21 +111,22 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen" style={{ background: '#FFFDF9', color: '#2A1E0C' }}>
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm">
+      <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm" style={{ borderBottom: '1px solid #EDE4D4' }}>
         <div>
-          <h1 className="text-xl font-semibold">Bake & Grill POS</h1>
-          <p className="text-sm text-slate-500">Device {deviceId}</p>
+          <h1 className="text-xl font-semibold" style={{ color: '#2A1E0C' }}>Bake & Grill POS</h1>
+          <p className="text-sm" style={{ color: '#8B7355' }}>Device {deviceId}</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
+          <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: '#EDE4D4' }}>
             {(["pos", "ops"] as const).map((mode) => (
               <button
                 key={mode}
-                className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                  viewMode === mode ? "bg-white text-slate-900 shadow" : "text-slate-500"
-                }`}
+                className={`rounded-md px-3 py-1 text-xs font-semibold`}
+                style={viewMode === mode
+                  ? { background: 'white', color: '#2A1E0C', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
+                  : { color: '#8B7355' }}
                 onClick={() => setViewMode(mode)}
               >
                 {mode.toUpperCase()}
@@ -135,24 +136,25 @@ function App() {
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isOnline ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
             {isOnline ? "Online" : "Offline"}
           </span>
-          <span className="text-xs text-slate-500">Offline queue: {offlineQueueCount}</span>
-          <button className="text-xs font-semibold text-slate-600 hover:text-slate-900" onClick={order.handleSyncQueue}>
+          <span className="text-xs" style={{ color: '#8B7355' }}>Queue: {offlineQueueCount}</span>
+          <button className="text-xs font-semibold" style={{ color: '#8B7355', background: 'none', border: 'none', cursor: 'pointer' }} onClick={order.handleSyncQueue}>
             Sync
           </button>
+          <a href="/" className="text-xs" style={{ color: '#8B7355', textDecoration: 'none' }}>← Site</a>
         </div>
       </header>
 
       <main className="grid grid-cols-12 gap-4 p-6">
         {order.statusMessage && (
           <div className="col-span-12">
-            <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-600">
+            <div className="bg-white rounded-xl px-4 py-3 text-sm" style={{ border: '1px solid #EDE4D4', color: '#8B7355' }}>
               {order.statusMessage}
             </div>
           </div>
         )}
         {ops.opsMessage && (
           <div className="col-span-12">
-            <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-600">
+            <div className="bg-white rounded-xl px-4 py-3 text-sm" style={{ border: '1px solid #EDE4D4', color: '#8B7355' }}>
               {ops.opsMessage}
             </div>
           </div>
