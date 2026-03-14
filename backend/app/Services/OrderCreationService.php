@@ -160,7 +160,7 @@ class OrderCreationService
                     $modifierId = $modifierPayload['modifier_id'];
 
                     if (!in_array($modifierId, $validModifierIds)) {
-                        throw new \InvalidArgumentException("Modifier {$modifierId} not valid for item {$itemId}");
+                        abort(422, "Modifier {$modifierId} not valid for item {$itemId}");
                     }
 
                     $modifierModel = $itemModel->modifiers()->where('modifiers.id', $modifierId)->first();

@@ -73,7 +73,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3000
       - BIND_HOST=0.0.0.0
       - PRINT_PROXY_KEY=${PRINT_PROXY_KEY:?PRINT_PROXY_KEY must be set — generate with: openssl rand -hex 32}

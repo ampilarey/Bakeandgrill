@@ -21,7 +21,7 @@ class InventoryItem extends Model
         'is_active'     => 'boolean',
         'current_stock' => 'float',
         'unit_cost'     => 'decimal:4',
-        'reorder_level' => 'float',
+        'reorder_point' => 'float',
     ];
 
     public function stockMovements(): HasMany

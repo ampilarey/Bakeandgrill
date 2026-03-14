@@ -11,11 +11,14 @@ RUN apk add --no-cache \
     postgresql-dev \
     oniguruma-dev
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+# Install PHP extensions (including OPcache for production performance)
+RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd opcache
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Configure OPcache for production
+RUN echo "opcache.enable=1\nopcache.memory_consumption=128\nopcache.max_accelerated_files=10000\nopcache.validate_timestamps=0" > /usr/local/etc/php/conf.d/opcache-prod.ini
 
 # Set working directory
 WORKDIR /var/www/html

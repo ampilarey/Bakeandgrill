@@ -152,7 +152,7 @@ class CustomerOrderSecurityTest extends TestCase
             'Authorization' => "Bearer {$token}",
         ]);
 
-        $response->assertStatus(500); // Should throw InvalidArgumentException
+        $response->assertStatus(422);
         $this->assertStringContainsString('not valid for item', $response->json('message') ?? '');
     }
 
