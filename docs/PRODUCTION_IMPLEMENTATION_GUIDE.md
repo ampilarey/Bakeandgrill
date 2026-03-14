@@ -244,19 +244,11 @@ if (import.meta.env.DEV && res.otp) setHint(`Dev OTP: ${res.otp}`);
 ---
 
 ### CR-10 · Hardcoded demo PINs visible in POS production build
-**Status:** 🟡 (partially — behind DEV check but verify)  
-**File:** `apps/pos-web/src/pages/LoginPage.tsx:39–41`
+**Status:** ✅ Already fixed  
+**File:** `apps/pos-web/src/pages/LoginPage.tsx:49–51`, `apps/kds-web/src/App.tsx:191`
 
-**Fix:** Verify the PIN hint is wrapped in `{import.meta.env.DEV && (...)}`. If
-it is not, add the guard:
-```tsx
-{import.meta.env.DEV && (
-    <p className="text-xs text-gray-400">
-        Owner: 1111 | Admin: 2222 | Manager: 3333 | Cashier: 4444
-    </p>
-)}
-```
-Also add the same guard in `apps/kds-web/src/App.tsx`.
+Both POS and KDS PIN hints are correctly wrapped in `{import.meta.env.DEV && (...)}` 
+and are tree-shaken out of production builds. No action needed.
 
 ---
 
@@ -874,16 +866,22 @@ const [error, setError] = useState<string | null>(null);
 
 ---
 
-### H-25 · `backup.sh` uses `pg_dump` on a MySQL deployment
+### H-25 · `backup.sh` and `DB_CONNECTION` are inconsistent with `docker-compose.yml`
 **Status:** 🔴  
-**File:** `scripts/backup.sh:12–17`
+**File:** `scripts/backup.sh:12–17`, `backend/.env.example`, `docker-compose.yml`
 
-If production is MySQL (likely on cPanel/shared hosting), `pg_dump` does not
-exist — backups fail silently.
+There is a conflict between configs:
+- `docker-compose.yml` uses **PostgreSQL 15** (`image: postgres:15-alpine`)
+- `backend/.env.example` says `DB_CONNECTION=mysql`
+- `scripts/backup.sh` hardcodes `pg_dump`
 
-**Fix:**
+`pg_dump` is correct for Docker deployments but will fail for any non-Docker
+deployment that follows `.env.example` and uses MySQL. The project needs to
+pick one database engine and be consistent, OR `backup.sh` must auto-detect.
+
+**Fix — make backup.sh auto-detect:**
 ```bash
-DB_CONN=$(grep DB_CONNECTION backend/.env | cut -d= -f2)
+DB_CONN=$(grep "^DB_CONNECTION" backend/.env | cut -d= -f2 | tr -d '[:space:]')
 if [[ "$DB_CONN" == "mysql" ]]; then
     mysqldump -u"$DB_USERNAME" -p"$DB_PASSWORD" -h"$DB_HOST" "$DB_DATABASE" > "$BACKUP_DIR/db.sql"
 elif [[ "$DB_CONN" == "pgsql" ]]; then
@@ -892,6 +890,9 @@ else
     echo "Unknown DB_CONNECTION: $DB_CONN"; exit 1
 fi
 ```
+**Also fix the inconsistency:** update `backend/.env.example` to say
+`DB_CONNECTION=pgsql` if PostgreSQL (docker-compose) is the intended production
+database.
 
 ---
 
@@ -1318,17 +1319,27 @@ Documents `/api/auth/customer/send-otp` but actual route is
 
 ---
 
-### M-25 · `FINAL_AUDIT_REPORT.md` incorrectly states "production ready"
+### M-25 · Entire `docs/` directory contains inaccurate AI session artifacts
 **Status:** 🔴  
-**File:** `docs/FINAL_AUDIT_REPORT.md`
+**Files:** `docs/FINAL_AUDIT_REPORT.md`, `docs/DEPLOYMENT_READY.md`,
+`docs/EVERYTHING_COMPLETE.md`, `docs/FINAL_IMPLEMENTATION_STATUS.md`,
+`docs/PRODUCTION_HARDENING_COMPLETE.md`, `docs/CHATGPT_IMPLEMENTATION_PLAN.md`,
+`docs/SIMPLIFIED_ORDERING_PLAN.md`
 
-An AI-generated doc that says "No issues found" — dangerous if trusted by any
-reviewer.
+All of the above are AI-generated session logs that state variants of "all
+systems verified", "production ready", or "no issues found." If any developer
+or reviewer reads these before this guide, they will have a completely false
+picture of the system's readiness.
 
-**Fix:** Delete the file, or add a prominent disclaimer at the top:
-```markdown
-> ⚠️ THIS DOCUMENT IS AN AI SESSION ARTIFACT AND IS NOT ACCURATE.
-> See PRODUCTION_IMPLEMENTATION_GUIDE.md for the current status.
+**Fix:** Delete all of the above files. The only docs worth keeping are:
+- `docs/PRODUCTION_IMPLEMENTATION_GUIDE.md` ← this file
+- `docs/SECURITY_AUDIT_AND_IMPLEMENTATION_GUIDE.md`
+
+```bash
+cd docs
+rm FINAL_AUDIT_REPORT.md DEPLOYMENT_READY.md EVERYTHING_COMPLETE.md \
+   FINAL_IMPLEMENTATION_STATUS.md PRODUCTION_HARDENING_COMPLETE.md \
+   CHATGPT_IMPLEMENTATION_PLAN.md SIMPLIFIED_ORDERING_PLAN.md
 ```
 
 ---
@@ -1678,11 +1689,11 @@ Remove from `"dependencies"`.
 
 | Priority | Total Items | ✅ Done | 🟡 Partial | 🔴 Not Done |
 |----------|------------|---------|-----------|------------|
-| CRITICAL | 15 | 2 | 1 | 12 |
+| CRITICAL | 15 | 3 | 0 | 12 |
 | HIGH | 25 | 0 | 0 | 25 |
 | MEDIUM | 26 | 0 | 0 | 26 |
 | LOW | 25 | 1 | 0 | 24 |
-| **Total** | **91** | **3** | **1** | **87** |
+| **Total** | **91** | **4** | **0** | **87** |
 
 ---
 
