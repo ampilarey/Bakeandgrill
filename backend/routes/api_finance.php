@@ -52,12 +52,13 @@ Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('reports
 
 // ─── Supplier Intelligence ─────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('suppliers')->group(function () {
+    // Static routes MUST come before parameterised /{id} routes
+    Route::get('/performance',                 [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'allPerformance']);
+    Route::get('/price-comparison/{itemId}',   [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'priceComparison']);
     Route::post('/{id}/ratings',               [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'rate']);
     Route::get('/{id}/ratings',                [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'ratings']);
     Route::get('/{id}/performance',            [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'performance']);
     Route::post('/{id}/performance/refresh',   [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'refreshCache']);
-    Route::get('/performance',                 [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'allPerformance']);
-    Route::get('/price-comparison/{itemId}',   [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'priceComparison']);
     Route::get('/{id}/price-history/{itemId}', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'priceHistory']);
 });
 
