@@ -34,11 +34,13 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
         $update = ['points_balance' => $balance];
 
         if ($addLifetime !== null) {
+            // SAFE: $addLifetime is int-typed parameter; cast is defensive
+            $lifetime = (int) $addLifetime;
             DB::table('loyalty_accounts')
                 ->where('customer_id', $customerId)
                 ->update([
                     'points_balance' => $balance,
-                    'lifetime_points' => DB::raw('lifetime_points + ' . (int) $addLifetime),
+                    'lifetime_points' => DB::raw("lifetime_points + {$lifetime}"),
                 ]);
 
             return;
@@ -49,10 +51,12 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
 
     public function decrementPointsHeld(int $customerId, int $points): void
     {
+        // SAFE: $points is int-typed parameter; cast is defensive
+        $safePoints = (int) $points;
         DB::table('loyalty_accounts')
             ->where('customer_id', $customerId)
             ->update([
-                'points_held' => DB::raw('MAX(0, points_held - ' . (int) $points . ')'),
+                'points_held' => DB::raw("MAX(0, points_held - {$safePoints})"),
             ]);
     }
 }
