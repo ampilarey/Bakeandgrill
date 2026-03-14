@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { approvePurchase, getPurchaseSuggestions, apiRequest as req } from '../api';
+import { approvePurchase, getPurchaseSuggestions, apiRequest as req, type PurchaseSuggestions } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -30,7 +30,7 @@ export function PurchaseOrdersPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
-  const [suggestions, setSuggestions] = useState<{ items: { inventory_item_id: number; name: string; unit: string; current_stock: number; reorder_point: number; suggested_quantity: number; suggested_supplier: { id: number; name: string; price: number } | null }[]; by_supplier: { supplier_id: number | null; supplier_name: string; items: unknown[]; estimated_total: number }[] } | null>(null);
+  const [suggestions, setSuggestions] = useState<PurchaseSuggestions | null>(null);
   const [sugLoading, setSugLoading] = useState(false);
   const [statusFilter, setStatus]   = useState('');
   const [detail, setDetail]         = useState<Purchase | null>(null);

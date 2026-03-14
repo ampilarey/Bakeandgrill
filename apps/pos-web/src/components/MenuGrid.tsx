@@ -13,7 +13,7 @@ type Props = {
 
   // Menu
   categories: Category[];
-  selectedCategoryId: number;
+  selectedCategoryId: number | null;
   setSelectedCategoryId: (id: number) => void;
   filteredItems: Item[];
   isLoading: boolean;

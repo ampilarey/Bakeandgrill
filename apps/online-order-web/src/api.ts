@@ -310,8 +310,15 @@ export async function releaseLoyaltyHold(
 
 // ── Reservations ─────────────────────────────────────────────────────────────
 
-export type ReservationSlot = { time: string; available: boolean };
-export type Reservation = { id: number; customer_name: string; date: string; time_slot: string };
+export type ReservationSlot = { time_slot: string; available: boolean };
+export type Reservation = {
+  id: number;
+  customer_name: string;
+  date: string;
+  time_slot: string;
+  party_size: number;
+  table?: { id: number; name: string };
+};
 
 export async function fetchReservationSlots(
   date: string,

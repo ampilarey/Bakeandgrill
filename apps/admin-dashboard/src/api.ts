@@ -712,16 +712,6 @@ export async function getInventoryForecast(): Promise<{ items: { id: number; nam
   return req('/forecasts/inventory');
 }
 
-// ── Purchase Workflow ─────────────────────────────────────────────────────────
-
-export async function approvePurchase(id: number): Promise<{ purchase: Record<string, unknown> }> {
-  return req(`/purchases/${id}/approve`, { method: 'POST' });
-}
-
-export async function getPurchaseSuggestions(): Promise<{ items: { inventory_item_id: number; name: string; unit: string; current_stock: number; reorder_point: number; suggested_quantity: number; suggested_supplier: { id: number; name: string; price: number } | null }[]; by_supplier: { supplier_id: number | null; supplier_name: string; items: unknown[]; estimated_total: number }[] }> {
-  return req('/purchases/suggest');
-}
-
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
 export type WebhookSubscription = {
@@ -790,7 +780,25 @@ export async function approvePurchase(id: number): Promise<void> {
   await req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'ordered' }) });
 }
 
-export async function getPurchaseSuggestions(): Promise<unknown> {
+export type PurchaseSuggestions = {
+  items: {
+    inventory_item_id: number;
+    name: string;
+    unit: string;
+    current_stock: number;
+    reorder_point: number;
+    suggested_quantity: number;
+    suggested_supplier: { id: number; name: string; price: number } | null;
+  }[];
+  by_supplier: {
+    supplier_id: number | null;
+    supplier_name: string;
+    items: unknown[];
+    estimated_total: number;
+  }[];
+};
+
+export async function getPurchaseSuggestions(): Promise<PurchaseSuggestions> {
   return req('/inventory/low-stock?suggestions=true');
 }
 

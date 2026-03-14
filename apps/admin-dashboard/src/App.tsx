@@ -44,7 +44,7 @@ function RoleGuard({
   allowed: string[];
   children: React.ReactNode;
 }) {
-  if (!user || !allowed.includes(user.role)) return <Navigate to="/orders" replace />;
+  if (!user || !allowed.includes(user.role ?? '')) return <Navigate to="/orders" replace />;
   return <>{children}</>;
 }
 
