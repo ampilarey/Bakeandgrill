@@ -90,16 +90,15 @@ Route::prefix('auth/customer')->group(function () {
         ->middleware('throttle:5,10');  // 5 verify attempts per 10 min per IP
 });
 
+// Logout is available to both staff and customer tokens
+Route::middleware('auth:sanctum')->post('/auth/logout', [StaffAuthController::class, 'logout']);
+
 /*
 |--------------------------------------------------------------------------
 | Protected Staff Routes
 |--------------------------------------------------------------------------
-| Staff ability checked in controllers
 */
-Route::middleware('auth:sanctum')->group(function () {
-    // Logout (for both staff and customers)
-    Route::post('/auth/logout', [StaffAuthController::class, 'logout']);
-
+Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // Get current user (staff)
     Route::get('/auth/me', [StaffAuthController::class, 'me']);
 
@@ -133,14 +132,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/print-jobs', [PrintJobController::class, 'index']);
     Route::post('/print-jobs/{id}/retry', [PrintJobController::class, 'retry']);
 
-    // Inventory
+    // Inventory — static paths MUST come before {id} wildcard to avoid shadowing
     Route::get('/inventory', [InventoryController::class, 'index']);
     Route::post('/inventory', [InventoryController::class, 'store']);
+    Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
+    Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount']);
     Route::get('/inventory/{id}', [InventoryController::class, 'show']);
     Route::patch('/inventory/{id}', [InventoryController::class, 'update']);
     Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust']);
-    Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount']);
-    Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
     Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory']);
     Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier']);
 

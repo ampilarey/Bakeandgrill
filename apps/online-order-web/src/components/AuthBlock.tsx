@@ -18,7 +18,7 @@ export function AuthBlock({ onSuccess }: Props) {
     setLoading(true);
     try {
       const res = await requestOtp(phone);
-      if (res.otp) setHint(`Dev OTP: ${res.otp}`);
+      if (import.meta.env.DEV && res.otp) setHint(`Dev OTP: ${res.otp}`);
       setStep("otp");
     } catch (e) {
       setError((e as Error).message);

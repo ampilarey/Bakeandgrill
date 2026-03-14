@@ -79,8 +79,9 @@ function App() {
     cartTotal:     cart.cartTotal,
     payments:      cart.payments,
     discountAmount: cart.discountAmount,
-    clearCart:     cart.clearCart,
-    setSelectedItem: cart.setSelectedItem,
+    clearCart:        cart.clearCart,
+    setCartItems:     cart.setCartItems,
+    setSelectedItem:  cart.setSelectedItem,
     setOfflineQueueCount,
   });
 

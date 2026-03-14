@@ -17,7 +17,8 @@ class ItemController extends Controller
      */
     public function index(Request $request)
     {
-        $isAdmin = (bool) $request->query('admin');
+        $isAdmin = $request->user() instanceof \App\Models\User
+                   && $request->user()->tokenCan('staff');
 
         $query = Item::with(['category', 'variants', 'modifiers']);
 

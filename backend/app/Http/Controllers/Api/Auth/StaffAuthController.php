@@ -82,6 +82,10 @@ class StaffAuthController extends Controller
      */
     public function me(Request $request)
     {
+        if (! $request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
         $user = $request->user();
 
         return response()->json([

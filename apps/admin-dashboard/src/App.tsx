@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { getMe, type StaffUser } from './api';
+import { getMe, logout as apiLogout, type StaffUser } from './api';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { OrdersPage } from './pages/OrdersPage';
@@ -57,8 +57,11 @@ export default function App() {
     navigate('/orders');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await apiLogout(); } catch (_) { /* token already expired — still clear locally */ }
+    localStorage.removeItem('admin_token');
     setUser(null);
+    navigate('/login');
   };
 
   if (checking) {

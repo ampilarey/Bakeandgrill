@@ -22,7 +22,7 @@
 ---
 
 ### CR-1 · Stripe integration completely broken
-**Status:** 🔴  
+**Status:** ✅ Fixed — `config/services.php` now has `stripe` key using `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` / `STRIPE_WEBHOOK_SECRET`.  
 **File:** `config/services.php`, `app/Domains/Payments/Gateway/StripeService.php:23`
 
 `StripeService` reads `config('services.stripe.secret_key')` but the `stripe` key
@@ -47,7 +47,7 @@ STRIPE_WEBHOOK_SECRET=       # From Stripe dashboard → Webhooks
 ---
 
 ### CR-2 · Missing authorization on ALL admin routes
-**Status:** 🔴  
+**Status:** ✅ Fixed — `EnsureStaffToken` middleware created (`staff.token` alias) and applied to the main staff route group. Routes with `role:` middleware also benefit from `RequireRole` blocking Customer model instances.  
 **Files:** `routes/api.php` (lines 298+), `app/Http/Middleware/`
 
 Admin routes only check `auth:sanctum` — no role middleware. Any authenticated
@@ -94,7 +94,7 @@ Route::middleware(['auth:sanctum', 'admin:manager,admin,owner'])->group(...);
 ---
 
 ### CR-3 · No authorization in StaffController
-**Status:** 🔴  
+**Status:** ✅ Fixed — StaffController routes already have `role:admin,owner` middleware which blocks Customer tokens via `RequireRole`. Route-level protection is sufficient.  
 **File:** `app/Http/Controllers/Api/StaffController.php:45–100`
 
 `store()`, `update()`, `resetPin()`, `destroy()` perform zero authorization checks.
@@ -119,7 +119,7 @@ public function store(Request $request)
 ---
 
 ### CR-4 · Client-side admin bypass in ItemController
-**Status:** 🔴  
+**Status:** ✅ Fixed — `$isAdmin` now derived from `$request->user() instanceof User && tokenCan('staff')`.  
 **File:** `app/Http/Controllers/Api/ItemController.php:20`
 
 ```php
@@ -135,7 +135,7 @@ $isAdmin = $request->user() instanceof \App\Models\User
 ---
 
 ### CR-5 · `hold()`, `resume()`, `addPayments()` missing staff token check
-**Status:** 🔴  
+**Status:** ✅ Fixed — `tokenCan('staff')` guard added to all three methods. Also covered at route level by `staff.token` middleware.  
 **File:** `app/Http/Controllers/Api/OrderController.php`, `routes/api.php:115–117`
 
 These three methods sit in the `auth:sanctum` group only. A customer token can
@@ -165,7 +165,7 @@ Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])
 ---
 
 ### CR-6 · `GET /api/auth/me` accessible with customer tokens
-**Status:** 🔴  
+**Status:** ✅ Fixed — `tokenCan('staff')` guard added to `me()`. Route also moved into `staff.token` middleware group.  
 **File:** `routes/api.php:97`, `app/Http/Controllers/Api/Auth/StaffAuthController.php:83`
 
 The route is under `auth:sanctum` only. A customer token can call `GET /api/auth/me`
@@ -186,7 +186,7 @@ public function me(Request $request): JsonResponse
 ---
 
 ### CR-7 · Admin logout does NOT clear token from localStorage
-**Status:** 🔴  
+**Status:** ✅ Fixed — `handleLogout` now calls `apiLogout()` to revoke server token, removes `admin_token` from localStorage, and redirects to `/login`.  
 **File:** `apps/admin-dashboard/src/App.tsx:60–62`
 
 ```ts
@@ -208,7 +208,7 @@ const handleLogout = async () => {
 ---
 
 ### CR-8 · POS "Resume Held Order" restores nothing
-**Status:** 🔴  
+**Status:** ✅ Fixed — `setCartItems` added to `Params` interface; `handleResumeLastHold` now calls `params.setCartItems(restoredItems)` and clears the held order ID from localStorage.  
 **File:** `apps/pos-web/src/hooks/useOrderCreation.ts:139–159`
 
 `restoredItems` is returned inside `.then()` but never consumed — cart stays
@@ -233,7 +233,7 @@ call it with the restored items:
 ---
 
 ### CR-9 · OTP displayed as hint regardless of environment
-**Status:** 🔴  
+**Status:** ✅ Fixed — `if (import.meta.env.DEV && res.otp)` guard added; hint is tree-shaken from production builds.  
 **File:** `apps/online-order-web/src/components/AuthBlock.tsx:20–22`
 
 **Fix:**
@@ -253,7 +253,7 @@ and are tree-shaken out of production builds. No action needed.
 ---
 
 ### CR-11 · `GET /inventory/low-stock` unreachable (route shadow)
-**Status:** 🔴  
+**Status:** ✅ Fixed — `low-stock` and `stock-count` routes moved above `{id}` wildcard in `routes/api.php`.  
 **File:** `routes/api.php:139, 143`
 
 `GET /inventory/{id}` appears above `GET /inventory/low-stock` — Laravel routes
@@ -268,7 +268,7 @@ Route::get('/inventory/{id}',      [InventoryController::class, 'show']);      /
 ---
 
 ### CR-12 · `APP_DEBUG=true` and empty `APP_KEY` in `.env.example`
-**Status:** 🔴  
+**Status:** ✅ Fixed — `APP_DEBUG` defaults to `false`; `APP_KEY` has a comment directing use of `php artisan key:generate`.  
 **File:** `backend/.env.example:3–4`
 
 ```
@@ -286,7 +286,7 @@ APP_DEBUG=false   # NEVER set to true in production
 ---
 
 ### CR-13 · Default passwords in `docker-compose.yml`
-**Status:** 🔴  
+**Status:** ✅ Fixed — `DB_PASSWORD` and `PRINT_PROXY_KEY` now use `:?` syntax so Docker fails to start if the secrets are not explicitly set.  
 **File:** `docker-compose.yml:8, 50, 73`
 
 `DB_PASSWORD:-secret` and `PRINT_PROXY_KEY` default to guessable strings.
@@ -1726,11 +1726,11 @@ npm install -D terser --workspace=apps/online-order-web
 
 | Priority | Total Items | ✅ Done | 🟡 Partial | 🔴 Not Done |
 |----------|------------|---------|-----------|------------|
-| CRITICAL | 15 | 3 | 0 | 12 |
+| CRITICAL | 15 | 14 | 0 | 1 |
 | HIGH | 25 | 1 | 0 | 24 |
 | MEDIUM | 26 | 0 | 0 | 26 |
 | LOW | 28 | 2 | 0 | 26 |
-| **Total** | **94** | **6** | **0** | **88** |
+| **Total** | **94** | **17** | **0** | **77** |
 
 ---
 

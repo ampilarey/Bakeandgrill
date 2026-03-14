@@ -30,6 +30,7 @@ type Params = {
   payments: PaymentRow[];
   discountAmount: string;
   clearCart: () => void;
+  setCartItems: (items: CartItem[]) => void;
   setSelectedItem: (item: Item | null) => void;
   setOfflineQueueCount: (n: number) => void;
 };
@@ -153,8 +154,10 @@ export function useOrderCreation(params: Params) {
             price: m.modifier_price,
           })) ?? [],
         }));
+        params.setCartItems(restoredItems);
+        localStorage.removeItem("pos_last_held_order");
+        setLastHeldOrderId(null);
         setStatusMessage("Held order resumed.");
-        return restoredItems;
       })
       .catch(() => setStatusMessage("Unable to resume held order."));
   };

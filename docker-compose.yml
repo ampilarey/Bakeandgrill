@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: bakegrill
       POSTGRES_USER: bakegrill
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set — generate with: openssl rand -base64 32}
     ports:
       - "5432:5432"
     volumes:
@@ -47,7 +47,7 @@ services:
       - DB_HOST=postgres
       - DB_DATABASE=bakegrill
       - DB_USERNAME=bakegrill
-      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     depends_on:
@@ -70,7 +70,7 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - BIND_HOST=0.0.0.0
-      - PRINT_PROXY_KEY=${PRINT_PROXY_KEY:-dev-key-change-in-production-12345}
+      - PRINT_PROXY_KEY=${PRINT_PROXY_KEY:?PRINT_PROXY_KEY must be set — generate with: openssl rand -hex 32}
       - PRINTERS_JSON=${PRINTERS_JSON:-[{"name":"kitchen","host":"192.168.1.50","port":9100}]}
     depends_on:
       - backend

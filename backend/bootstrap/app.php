@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'bml.signature'  => App\Http\Middleware\VerifyBmlSignature::class,
             'role'           => App\Http\Middleware\RequireRole::class,
             'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
+            'staff.token'    => App\Http\Middleware\EnsureStaffToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

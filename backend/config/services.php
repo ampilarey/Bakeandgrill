@@ -49,6 +49,12 @@ return [
         'timeout' => env('DHIRAAGU_SMS_TIMEOUT', 30),
     ],
 
+    'stripe' => [
+        'publishable_key' => env('STRIPE_PUBLISHABLE_KEY'),
+        'secret_key'      => env('STRIPE_SECRET_KEY'),
+        'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
     'xero' => [
         'client_id'       => env('XERO_CLIENT_ID'),
         'client_secret'   => env('XERO_CLIENT_SECRET'),

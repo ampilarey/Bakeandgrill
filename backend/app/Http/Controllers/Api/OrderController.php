@@ -131,6 +131,10 @@ class OrderController extends Controller
 
     public function hold(Request $request, int $id): JsonResponse
     {
+        if (! $request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
         $order = Order::findOrFail($id);
         if ($order->status === 'completed') {
             return response()->json(['message' => 'Completed orders cannot be held.'], 422);
@@ -146,6 +150,10 @@ class OrderController extends Controller
 
     public function resume(Request $request, int $id): JsonResponse
     {
+        if (! $request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
         $order = Order::findOrFail($id);
         if ($order->status !== 'held') {
             return response()->json(['message' => 'Only held orders can be resumed.'], 422);
@@ -161,6 +169,10 @@ class OrderController extends Controller
 
     public function addPayments(StoreOrderPaymentsRequest $request, int $id): JsonResponse
     {
+        if (! $request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
         $order = Order::with('payments')->findOrFail($id);
         $validated = $request->validated();
         $oldStatus = $order->status;
