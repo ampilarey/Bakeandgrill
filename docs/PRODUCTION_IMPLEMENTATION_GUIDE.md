@@ -1266,18 +1266,43 @@ public function adjust(Request $request, int $id): JsonResponse
 
 ---
 
-### M-23 · MySQL-only SQL functions break SQLite test suite
+### M-23 · MySQL-only SQL functions break PostgreSQL production AND SQLite tests
 **Status:** 🔴  
 **Files:** `AnalyticsController.php`, `ForecastController.php`, `FinanceReportController.php`
 
-`HOUR()`, `DAYOFWEEK()`, `YEARWEEK()`, `DATE_FORMAT()` fail on SQLite.
+`HOUR()`, `DAYOFWEEK()`, `YEARWEEK()`, `DATE_FORMAT()` are MySQL-specific functions
+used across all three files. These fail on both **PostgreSQL** (which
+`docker-compose.yml` uses in production — `image: postgres:15-alpine`) and
+**SQLite** (used in tests). This is not just a test issue — it will cause 500
+errors in production for analytics, forecasting, and finance report endpoints.
 
-**Fix:** For the test environment, configure `phpunit.xml` to use MySQL (or
-MariaDB via Docker), or add SQLite-compatible alternatives:
+> Note: `DAYOFWEEK()` in MySQL returns 1=Sunday; PostgreSQL's
+> `EXTRACT(DOW FROM ...)` returns 0=Sunday — there is an off-by-one difference
+> that must be handled when porting.
+
+**Fix:** Use database-agnostic alternatives that work across MySQL, PostgreSQL,
+and SQLite, or use Eloquent/Carbon equivalents instead of raw SQL date functions:
 ```php
-$hourExpr = DB::getDriverName() === 'sqlite'
-    ? DB::raw("CAST(strftime('%H', created_at) AS INTEGER)")
-    : DB::raw('HOUR(created_at)');
+// Instead of DB::raw('HOUR(created_at)'), use:
+$hourExpr = match(DB::getDriverName()) {
+    'sqlite' => DB::raw("CAST(strftime('%H', created_at) AS INTEGER)"),
+    'pgsql'  => DB::raw("EXTRACT(HOUR FROM created_at)"),
+    default  => DB::raw('HOUR(created_at)'),
+};
+
+// Instead of DB::raw('DAYOFWEEK(created_at)') [MySQL: 1=Sun], use:
+$dowExpr = match(DB::getDriverName()) {
+    'sqlite' => DB::raw("CAST(strftime('%w', created_at) AS INTEGER) + 1"), // 0=Sun → 1=Sun
+    'pgsql'  => DB::raw("EXTRACT(DOW FROM created_at) + 1"),                // 0=Sun → 1=Sun
+    default  => DB::raw('DAYOFWEEK(created_at)'),
+};
+
+// Instead of DB::raw("DATE_FORMAT(created_at, '%Y-%m')"), use:
+$monthExpr = match(DB::getDriverName()) {
+    'sqlite' => DB::raw("strftime('%Y-%m', created_at)"),
+    'pgsql'  => DB::raw("TO_CHAR(created_at, 'YYYY-MM')"),
+    default  => DB::raw("DATE_FORMAT(created_at, '%Y-%m')"),
+};
 ```
 
 ---
