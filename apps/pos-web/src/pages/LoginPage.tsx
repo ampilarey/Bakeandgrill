@@ -31,7 +31,7 @@ export function LoginPage({ pin, setPin, deviceId, setDeviceId, authError, onLog
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img src="/logo.svg" alt="Bake & Grill" style={{ height: 64, marginBottom: 10, display: 'inline-block' }} />
+          <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
           <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>POS — Enter your PIN to sign in</p>
         </div>
 

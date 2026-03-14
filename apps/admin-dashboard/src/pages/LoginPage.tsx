@@ -45,7 +45,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <img src="/logo.svg" alt="Bake & Grill" style={{ height: 64, marginBottom: 10, display: 'inline-block' }} />
+          <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
           <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>Admin — Enter your PIN</p>
         </div>
 
