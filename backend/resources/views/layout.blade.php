@@ -295,6 +295,7 @@
             color: white;
             letter-spacing: -0.02em;
             margin-bottom: 1rem;
+            text-decoration: none;
         }
         .footer-brand-logo img { width: 36px; height: 36px; border-radius: 8px; }
         .footer-brand p {
@@ -338,9 +339,29 @@
             color: rgba(255,255,255,0.65);
             font-size: 0.875rem;
             margin-bottom: 0.625rem;
+            text-decoration: none;
             transition: color 0.15s;
         }
         .footer-col a:hover { color: white; }
+        .footer-legal {
+            margin-top: 0.875rem;
+            padding-top: 0.875rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .footer-legal a {
+            color: rgba(255,255,255,0.3) !important;
+            font-size: 0.8rem !important;
+            margin-bottom: 0 !important;
+        }
+        .footer-legal a:hover { color: rgba(255,255,255,0.7) !important; }
+        .footer-legal-staff {
+            color: rgba(255,255,255,0.15) !important;
+            font-size: 0.75rem !important;
+            margin-top: 0.25rem !important;
+        }
         .footer-bottom {
             max-width: 1280px;
             margin: 0 auto;
@@ -472,16 +493,17 @@
             <p>{{ config('business.address.line1') }}</p>
             <p>{{ config('business.address.city') }}, {{ config('business.address.country') }}</p>
             <p>Near H. Sahara</p>
+            <a href="https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives" target="_blank" rel="noopener">📍 Get directions</a>
         </div>
         <div class="footer-col">
             <h4>Contact</h4>
             <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('business.phone')) }}">📞 {{ config('business.phone') }}</a>
             <a href="mailto:{{ config('business.email') }}">✉ {{ config('business.email') }}</a>
-            <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:0.35rem;">
-                <a href="/order/privacy" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Privacy Policy</a>
-                <a href="/terms" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Terms &amp; Conditions</a>
-                <a href="/refund" style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Refund Policy</a>
-                <a href="/admin" style="color:rgba(255,255,255,0.15);font-size:0.75rem;margin-top:0.25rem;">Staff Dashboard</a>
+            <div class="footer-legal">
+                <a href="/order/privacy">Privacy Policy</a>
+                <a href="/terms">Terms &amp; Conditions</a>
+                <a href="/refund">Refund Policy</a>
+                <a href="/admin" class="footer-legal-staff">Staff Dashboard</a>
             </div>
         </div>
     </div>
@@ -500,9 +522,9 @@
         <a href="/order/menu" class="mob-nav-item">
             <span class="mob-nav-icon">🍽️</span>Menu
         </a>
-        <div class="mob-nav-item mob-nav-order" onclick="window.location.href='/order/'">
+        <a href="/order/" class="mob-nav-item mob-nav-order">
             <span class="mob-nav-icon">🛒</span>Order
-        </div>
+        </a>
         <a href="/hours" class="mob-nav-item">
             <span class="mob-nav-icon">🕐</span>Hours
         </a>
