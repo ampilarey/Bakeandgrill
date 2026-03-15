@@ -52,7 +52,7 @@ class ReceiptTest extends TestCase
             'total' => 10,
         ]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['staff']);
 
         $response = $this->postJson("/api/receipts/{$order->id}/send", [
             'channel' => 'email',

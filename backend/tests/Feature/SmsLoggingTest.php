@@ -32,7 +32,12 @@ class SmsLoggingTest extends TestCase
         parent::setUp();
         $this->smsService = app(SmsService::class);
 
-        $role = Role::create(['name' => 'Admin', 'slug' => 'admin', 'description' => '', 'is_active' => true]);
+        // Use 'owner' role — owner bypasses all permission checks, so it can
+        // always access admin SMS routes regardless of permission assignments.
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => '', 'is_active' => true],
+        );
         $this->staff = User::create([
             'name' => 'Admin', 'email' => 'admin@test.com',
             'password' => Hash::make('password'), 'role_id' => $role->id,
