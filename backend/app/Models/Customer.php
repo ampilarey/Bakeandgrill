@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Sanctum\HasApiTokens;
 
-class Customer extends Model
+class Customer extends Model implements AuthenticatableContract
 {
-    use HasApiTokens, SoftDeletes;
+    use Authenticatable, HasApiTokens, SoftDeletes;
     protected $fillable = [
         'name',
         'phone',

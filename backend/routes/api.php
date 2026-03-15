@@ -617,3 +617,13 @@ Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
 Route::get('/system/health', function () {
     return response()->json(['status' => 'ok']);
 });
+
+// Protected admin health — returns full details for internal monitoring
+Route::middleware(['auth:sanctum', 'permission:website.manage'])->get('/admin/system/health', function () {
+    return response()->json([
+        'status'      => 'ok',
+        'environment' => config('app.env'),
+        'database'    => 'connected',
+        'timestamp'   => now()->toIso8601String(),
+    ]);
+});

@@ -10,8 +10,26 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class WebhookLog extends Model
 {
     protected $fillable = [
-        'direction', 'webhook_subscription_id', 'url',
-        'event', 'payload', 'response_code', 'response_body', 'status',
+        // BML incoming webhook fields (2026_02_09 migration)
+        'idempotency_key',
+        'gateway',
+        'gateway_event_id',
+        'event_type',
+        'headers',
+        'raw_body',
+        'payload',
+        'status',
+        'error_message',
+        'processed_at',
+        // Outgoing webhook subscription log fields
+        'direction',
+        'webhook_subscription_id',
+        'url',
+        'event',
+        'response_code',
+        'response_body',
+        'source',
+        'processed',
     ];
 
     protected $casts = [

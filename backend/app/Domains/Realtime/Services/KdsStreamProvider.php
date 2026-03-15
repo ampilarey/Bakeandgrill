@@ -14,12 +14,14 @@ class KdsStreamProvider
 {
     private const KDS_STATUSES = ['pending', 'in_progress', 'paid'];
 
+    public function __construct(private OrderStreamProvider $orderStreamProvider) {}
+
     /**
      * @return StreamEvent[]
      */
     public function fetchSince(string $cursor): array
     {
-        [$since, $sinceId] = (new OrderStreamProvider)->parseCursor($cursor);
+        [$since, $sinceId] = $this->orderStreamProvider->parseCursor($cursor);
 
         $orders = Order::with(['items.modifiers'])
             ->whereIn('status', self::KDS_STATUSES)

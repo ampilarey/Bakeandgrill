@@ -129,13 +129,37 @@ es.addEventListener('order.paid',    e => console.log(JSON.parse(e.data)));
 
 ---
 
-## Remaining / Future
+---
+
+## Phase 8 — Push Notifications, Delivery Drivers, Redis SSE ✅  *(NEW)*
 
 | Feature | Status | Notes |
 |---|---|---|
-| Delivery driver assignment | ⏳ | Future: `delivery_driver_id` + driver auth |
-| Real-time via Redis pub/sub | ⏳ | Optional upgrade for SseStreamProvider |
-| Push notifications (FCM) | ⏳ | Customer order status push |
-| Frontend: promo + loyalty checkout | ⏳ | Online order web app |
-| Frontend: BML payment button | ⏳ | Online order web app |
-| Frontend: delivery address form | ⏳ | Online order web app |
+| Web Push Notifications (VAPID) | ✅ | `PushNotificationService`, `OrderObserver`, `GenerateVapidKeys` artisan command |
+| Push opt-in UI in online-order-web | ✅ | `usePushNotifications` hook, opt-in banner on `OrderStatusPage` |
+| Delivery Driver Assignment | ✅ | `delivery_drivers` table, `DeliveryDriverController`, assign UI in admin `DeliveryPage` |
+| Redis Pub/Sub for SSE | ✅ | `RedisEventPublisher`, `SseStreamService.streamOrderViaRedis()`, `REALTIME_USE_REDIS` env flag |
+| Frontend: promo + loyalty checkout | ✅ | Implemented in `CheckoutPage` — `useCheckout` hook handles promo/loyalty totals |
+| Frontend: BML payment button | ✅ | `placeOrder` → `initiatePayment` → BML redirect in `CheckoutPage` |
+| Frontend: delivery address form | ✅ | Full delivery form in `CheckoutPage` with address/island/contact fields |
+
+---
+
+## Phase 9 — Security Tests & Code Quality ✅  *(NEW)*
+
+| Feature | Status | Notes |
+|---|---|---|
+| `PhoneNormalizationTest` | ✅ | Tests `MaldivesPhone` rule — valid/invalid formats + OTP integration |
+| `HealthEndpointTest` | ✅ | Tests health endpoints don't leak environment/version info |
+| `BmlReturnUrlTest` | ✅ | Tests BML return URL is centralized via `config/frontend.php` |
+| `OrderStreamAuthTest` | ✅ | Tests SSE stream ticket issuance, one-time use, ownership, expiry |
+| `OrderIdorTest` | ✅ | Tests IDOR protection — customers can only view own orders |
+| `RoleAuthorizationTest` | ✅ | Tests customer token isolation + permission enforcement on admin routes |
+| `WebhookIdempotencyTest` | ✅ | Tests BML webhook deduplication via idempotency keys |
+| KdsStreamProvider DI fix | ✅ | Replaced `(new OrderStreamProvider)` manual instantiation with constructor injection |
+
+---
+
+## All Items Complete
+
+All planned features, security hardening, and production-readiness items are implemented. See `SECURITY_AUDIT_AND_IMPLEMENTATION_GUIDE.md` and `PRODUCTION_IMPLEMENTATION_GUIDE.md` for full details.
