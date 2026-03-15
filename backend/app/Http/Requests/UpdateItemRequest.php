@@ -18,6 +18,14 @@ class UpdateItemRequest extends FormRequest
         if ($this->image_url === '') {
             $this->merge(['image_url' => null]);
         }
+
+        // MySQL NOT NULL DEFAULT 0 columns: replace null with 0 so the update succeeds
+        $defaults = ['sort_order' => 0, 'cost' => 0, 'tax_rate' => 0];
+        foreach ($defaults as $field => $default) {
+            if ($this->has($field) && $this->input($field) === null) {
+                $this->merge([$field => $default]);
+            }
+        }
     }
 
     public function rules(): array
