@@ -15,41 +15,41 @@ const NAV_GROUPS = [
   {
     label: 'OPERATIONS',
     items: [
-      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'        },
-      { to: '/orders',     icon: ClipboardList,   label: 'Orders'           },
-      { to: '/kds',        icon: ChefHat,         label: 'Kitchen'          },
-      { to: '/delivery',   icon: Truck,           label: 'Delivery'         },
+      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'                          },
+      { to: '/orders',     icon: ClipboardList,   label: 'Orders',     permission: 'orders.view'   },
+      { to: '/kds',        icon: ChefHat,         label: 'Kitchen',    permission: 'orders.view'   },
+      { to: '/delivery',   icon: Truck,           label: 'Delivery',   permission: 'delivery.view' },
     ],
   },
   {
     label: 'BUSINESS',
     items: [
-      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu'         },
-      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs'  },
-      { to: '/promotions',      icon: Target,          label: 'Promotions'   },
-      { to: '/loyalty',         icon: Heart,           label: 'Loyalty'      },
-      { to: '/sms',             icon: MessageSquare,   label: 'SMS'          },
-      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations' },
+      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu',         permission: 'menu.view'             },
+      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs',  permission: 'suppliers.purchases'   },
+      { to: '/promotions',      icon: Target,          label: 'Promotions',   permission: 'promotions.view'       },
+      { to: '/loyalty',         icon: Heart,           label: 'Loyalty',      permission: 'loyalty.view'          },
+      { to: '/sms',             icon: MessageSquare,   label: 'SMS',          permission: 'integrations.sms'      },
+      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations', permission: 'reservations.view'     },
     ],
   },
   {
     label: 'FINANCE',
     items: [
-      { to: '/reports',                icon: BarChart3,    label: 'Reports'             },
-      { to: '/invoices',               icon: DollarSign,   label: 'Invoices'            },
-      { to: '/expenses',               icon: Receipt,      label: 'Expenses'            },
-      { to: '/profit-loss',            icon: PieChart,     label: 'Profit & Loss'       },
-      { to: '/forecasts',              icon: TrendingDown, label: 'Forecasts'           },
-      { to: '/supplier-intelligence',  icon: Factory,      label: 'Suppliers'           },
+      { to: '/reports',                icon: BarChart3,    label: 'Reports',       permission: 'reports.view'       },
+      { to: '/invoices',               icon: DollarSign,   label: 'Invoices',       permission: 'finance.invoices'   },
+      { to: '/expenses',               icon: Receipt,      label: 'Expenses',       permission: 'finance.expenses'   },
+      { to: '/profit-loss',            icon: PieChart,     label: 'Profit & Loss',  permission: 'finance.profit_loss'},
+      { to: '/forecasts',              icon: TrendingDown, label: 'Forecasts',      permission: 'reports.financial'  },
+      { to: '/supplier-intelligence',  icon: Factory,      label: 'Suppliers',      permission: 'suppliers.view'     },
     ],
   },
   {
     label: 'MANAGEMENT',
     items: [
-      { to: '/staff',     icon: Users,    label: 'Staff'     },
-      { to: '/analytics', icon: BarChart2, label: 'Analytics' },
-      { to: '/settings',  icon: Settings, label: 'Settings'  },
-      { to: '/webhooks',  icon: Webhook,  label: 'Webhooks'  },
+      { to: '/staff',     icon: Users,    label: 'Staff',     permission: 'staff.view'              },
+      { to: '/analytics', icon: BarChart2, label: 'Analytics', permission: 'customers.analytics'     },
+      { to: '/settings',  icon: Settings, label: 'Settings',  permission: 'website.manage'           },
+      { to: '/webhooks',  icon: Webhook,  label: 'Webhooks',  permission: 'integrations.webhooks'   },
     ],
   },
 ];
@@ -63,6 +63,13 @@ const BOTTOM_TABS = [
   { to: '/reports',   icon: PieChart,        label: 'Money'  },
   { to: '#more',      icon: Menu,            label: 'More'   },
 ];
+
+// ── Permission helper ─────────────────────────────────────────────────────────
+function can(user: StaffUser, permission?: string): boolean {
+  if (!permission) return true;
+  if (user.role === 'owner') return true;
+  return user.permissions?.includes(permission) ?? false;
+}
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
 function useWindowWidth() {
@@ -294,36 +301,40 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
 
               {/* Nav grid */}
               <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {NAV_GROUPS.map((group) => (
-                  <div key={group.label}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.08em', marginBottom: 8, margin: '0 0 8px' }}>
-                      {group.label}
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                      {group.items.map(({ to, icon: Icon, label }) => {
-                        const isActive = location.pathname.startsWith(to);
-                        return (
-                          <NavLink
-                            key={to}
-                            to={to}
-                            style={{
-                              textDecoration: 'none',
-                              display: 'flex', flexDirection: 'column',
-                              alignItems: 'center', gap: 6,
-                              padding: 12, borderRadius: 12,
-                              border: `1px solid ${isActive ? 'rgba(212,129,58,0.3)' : '#E8E0D8'}`,
-                              background: isActive ? 'rgba(212,129,58,0.08)' : '#fff',
-                              color: isActive ? '#D4813A' : '#6B5D4F',
-                            }}
-                          >
-                            <Icon size={22} />
-                            <span style={{ fontSize: 11, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>{label}</span>
-                          </NavLink>
-                        );
-                      })}
+                {NAV_GROUPS.map((group) => {
+                  const visibleItems = group.items.filter((item) => can(user, item.permission));
+                  if (visibleItems.length === 0) return null;
+                  return (
+                    <div key={group.label}>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.08em', marginBottom: 8, margin: '0 0 8px' }}>
+                        {group.label}
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                        {visibleItems.map(({ to, icon: Icon, label }) => {
+                          const isActive = location.pathname.startsWith(to);
+                          return (
+                            <NavLink
+                              key={to}
+                              to={to}
+                              style={{
+                                textDecoration: 'none',
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', gap: 6,
+                                padding: 12, borderRadius: 12,
+                                border: `1px solid ${isActive ? 'rgba(212,129,58,0.3)' : '#E8E0D8'}`,
+                                background: isActive ? 'rgba(212,129,58,0.08)' : '#fff',
+                                color: isActive ? '#D4813A' : '#6B5D4F',
+                              }}
+                            >
+                              <Icon size={22} />
+                              <span style={{ fontSize: 11, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>{label}</span>
+                            </NavLink>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Logout */}
                 <button
@@ -385,23 +396,27 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
 
         {/* Nav */}
         <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label}>
-              {!collapsed && (
-                <p style={{
-                  fontSize: 10, fontWeight: 700, color: '#4a3d2e',
-                  letterSpacing: '0.1em', padding: '0 12px', marginBottom: 4, margin: '0 0 4px',
-                }}>
-                  {group.label}
-                </p>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {group.items.map(({ to, icon, label }) => (
-                  <SideNavItem key={to} to={to} icon={icon} label={label} collapsed={collapsed} />
-                ))}
+          {NAV_GROUPS.map((group) => {
+            const visibleItems = group.items.filter((item) => can(user, item.permission));
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={group.label}>
+                {!collapsed && (
+                  <p style={{
+                    fontSize: 10, fontWeight: 700, color: '#4a3d2e',
+                    letterSpacing: '0.1em', padding: '0 12px', marginBottom: 4, margin: '0 0 4px',
+                  }}>
+                    {group.label}
+                  </p>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {visibleItems.map(({ to, icon, label }) => (
+                    <SideNavItem key={to} to={to} icon={icon} label={label} collapsed={collapsed} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* User + Logout */}

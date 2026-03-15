@@ -4,23 +4,22 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Services;
 
+use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Models\SmsLog;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Core SMS sending service.
  *
- * - Sends via Dhiraagu API (Maldivian carrier).
+ * - Delegates transport to SmsProviderInterface (default: DhiraaguSmsProvider).
  * - Logs EVERY send attempt to sms_logs (OTP, promo, campaign, transactional).
- * - Falls back to demo mode (logs only) when credentials missing or in local/testing env.
  * - Phone normalisation: accepts 7654321, 9607654321, +9607654321.
- *
- * Ported and enhanced from Akuru SMS Manager (battle-tested in production).
  */
 class SmsService
 {
+    public function __construct(private readonly SmsProviderInterface $provider) {}
+
     public function send(SmsMessage $sms): SmsLog
     {
         $estimate = $this->estimate($sms->message);
@@ -52,18 +51,8 @@ class SmsService
         ]);
 
         $normalized = $this->normalizePhone($sms->to);
-        $credentials = $this->credentials();
 
-        if ($credentials && $this->isValidMaldivianNumber($normalized)) {
-            [$success, $response, $error] = $this->sendViaDhiraagu(
-                $normalized,
-                $sms->message,
-                $credentials,
-            );
-        } else {
-            // Demo / missing credentials
-            [$success, $response, $error] = $this->demoSend($normalized, $sms->message);
-        }
+        [$success, $response, $error] = $this->provider->send($normalized, $sms->message);
 
         $log->update([
             'status' => $success ? 'sent' : ($response === 'demo' ? 'demo' : 'failed'),
@@ -107,7 +96,7 @@ class SmsService
         ];
     }
 
-    // ── Phone Normalisation ───────────────────────────────────────────────────
+    // ── Public helpers (used by callers for estimation/display) ──────────────
 
     public function normalizePhone(string $phone): string
     {
@@ -134,72 +123,6 @@ class SmsService
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────
-
-    private function sendViaDhiraagu(string $phone, string $message, array $creds): array
-    {
-        $authorizationKey = base64_encode($creds['username'] . ':' . $creds['password']);
-
-        try {
-            $response = Http::timeout($creds['timeout'])
-                ->withHeaders(['Content-Type' => 'application/json'])
-                ->post($creds['api_url'], [
-                    'destination' => [$phone],
-                    'content' => $message,
-                    'authorizationKey' => $authorizationKey,
-                ]);
-
-            $data = $response->json() ?? [];
-
-            Log::info('SMS: Dhiraagu response', [
-                'to' => $phone,
-                'status' => $response->status(),
-                'transaction_id' => $data['transactionId'] ?? null,
-            ]);
-
-            if ($response->successful() && ($data['transactionStatus'] ?? '') === 'true') {
-                return [true, $data, null];
-            }
-
-            $errorMsg = $data['errorMessage'] ?? $data['message'] ?? "HTTP {$response->status()}";
-
-            return [false, $data, $errorMsg];
-        } catch (\Throwable $e) {
-            Log::error('SMS: Dhiraagu exception', ['to' => $phone, 'error' => $e->getMessage()]);
-
-            return [false, [], $e->getMessage()];
-        }
-    }
-
-    private function demoSend(string $phone, string $message): array
-    {
-        Log::info('SMS: Demo mode — not sent', ['to' => $phone, 'message' => $message]);
-
-        return [true, 'demo', null];
-    }
-
-    private function credentials(): ?array
-    {
-        $config = config('services.dhiraagu');
-        $username = $config['username'] ?? null;
-        $password = $config['password'] ?? null;
-        $apiUrl = $config['api_url'] ?? null;
-
-        if (!$username || !$password || !$apiUrl) {
-            return null;
-        }
-
-        // In local/testing, always use demo mode to avoid sending real SMS
-        if (app()->environment(['local', 'testing'])) {
-            return null;
-        }
-
-        return [
-            'api_url' => $apiUrl,
-            'username' => $username,
-            'password' => $password,
-            'timeout' => (int) ($config['timeout'] ?? 30),
-        ];
-    }
 
     private function detectEncoding(string $text): string
     {

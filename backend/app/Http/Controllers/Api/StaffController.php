@@ -16,15 +16,14 @@ use Illuminate\Validation\Rule;
 class StaffController extends Controller
 {
     // ─── Internal authorization guard (defense-in-depth) ─────────────────────
-    private function authorizeAdminRole(Request $request, string ...$roles): void
+    private function authorizePermission(Request $request, string $permission): void
     {
         $user = $request->user();
         if (!$user || $user instanceof Customer) {
             abort(403, 'Forbidden.');
         }
-        $user->loadMissing('role');
-        if (!in_array($user->role?->slug, $roles, true)) {
-            abort(403, 'Insufficient role.');
+        if (!$user->hasPermission($permission)) {
+            abort(403, 'You do not have permission to perform this action.');
         }
     }
 
@@ -58,7 +57,7 @@ class StaffController extends Controller
     /** POST /api/admin/staff */
     public function store(Request $request): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'owner');
+        $this->authorizePermission($request, 'staff.create');
 
         $validated = $request->validate([
             'name'    => 'required|string|max:255',
@@ -84,7 +83,7 @@ class StaffController extends Controller
     /** PATCH /api/admin/staff/{id} */
     public function update(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'owner');
+        $this->authorizePermission($request, 'staff.update');
 
         $user = User::findOrFail($id);
 
@@ -104,7 +103,7 @@ class StaffController extends Controller
     /** POST /api/admin/staff/{id}/pin  — reset PIN */
     public function resetPin(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'owner');
+        $this->authorizePermission($request, 'staff.update');
 
         $validated = $request->validate([
             'pin' => 'required|string|min:4|max:8',
@@ -119,7 +118,7 @@ class StaffController extends Controller
     /** DELETE /api/admin/staff/{id} */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'owner');
+        $this->authorizePermission($request, 'staff.delete');
 
         $user = User::findOrFail($id);
 

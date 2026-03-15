@@ -77,6 +77,31 @@ class StaffAuthController extends Controller
     }
 
     /**
+     * Returns the granted permission slugs for a user (all for owner, else filtered).
+     */
+    private function resolvePermissionSlugs(\App\Models\User $user): array
+    {
+        if ($user->role?->slug === 'owner') {
+            return \App\Models\Permission::pluck('slug')->toArray();
+        }
+
+        $allPermissions = \App\Models\Permission::orderBy('slug')->get();
+        $userOverrides  = $user->permissions()->get()->keyBy('slug');
+        $rolePerms      = $user->role
+            ? $user->role->permissions()->pluck('slug')->flip()
+            : collect();
+
+        return $allPermissions->filter(function (\App\Models\Permission $p) use ($userOverrides, $rolePerms) {
+            $override = $userOverrides->get($p->slug);
+            if ($override !== null) {
+                return (bool) $override->pivot->granted;
+            }
+
+            return $rolePerms->has($p->slug);
+        })->pluck('slug')->toArray();
+    }
+
+    /**
      * Get current staff user.
      */
     public function me(Request $request)
@@ -86,13 +111,15 @@ class StaffAuthController extends Controller
         }
 
         $user = $request->user();
+        $user->loadMissing('role');
 
         return response()->json([
             'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role?->slug,
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'role'        => $user->role?->slug,
+                'permissions' => $this->resolvePermissionSlugs($user),
             ],
         ]);
     }

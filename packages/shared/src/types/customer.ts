@@ -16,6 +16,7 @@ export type StaffUser = {
   name: string;
   email: string;
   role: string | null;
+  permissions?: string[];
 };
 
 export type StaffLoginResponse = {

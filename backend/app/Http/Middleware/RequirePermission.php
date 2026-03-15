@@ -18,6 +18,11 @@ class RequirePermission
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
+        // Customer tokens must never access admin/staff endpoints
+        if ($user instanceof \App\Models\Customer) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
         foreach ($permissions as $permission) {
             if (!$user->hasPermission($permission)) {
                 return response()->json([

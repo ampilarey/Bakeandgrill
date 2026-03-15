@@ -37,16 +37,19 @@ function AuthGuard({
   return <>{children}</>;
 }
 
-function RoleGuard({
+function PermissionGuard({
   user,
-  allowed,
+  permission,
   children,
 }: {
   user: StaffUser | null;
-  allowed: string[];
+  permission: string;
   children: React.ReactNode;
 }) {
-  if (!user || !allowed.includes(user.role ?? '')) return <Navigate to="/orders" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  // Owner bypasses all permission checks
+  if (user.role === 'owner') return <>{children}</>;
+  if (!user.permissions?.includes(permission)) return <Navigate to="/orders" replace />;
   return <>{children}</>;
 }
 
@@ -107,61 +110,65 @@ export default function App() {
                 <Route path="sms"        element={<SmsPage />} />
                 <Route path="reports"    element={<ReportsPage />} />
                 <Route path="menu"       element={<MenuPage />} />
-                {/* Staff management — owner only */}
+                {/* Staff management */}
                 <Route path="staff" element={
-                  <RoleGuard user={user} allowed={['owner', 'manager']}>
+                  <PermissionGuard user={user} permission="staff.view">
                     <StaffPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="reservations" element={<ReservationsPage />} />
-                <Route path="analytics"   element={<AnalyticsPage />} />
-                {/* Finance — manager, owner */}
+                <Route path="analytics" element={
+                  <PermissionGuard user={user} permission="customers.analytics">
+                    <AnalyticsPage />
+                  </PermissionGuard>
+                } />
+                {/* Finance */}
                 <Route path="invoices" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
+                  <PermissionGuard user={user} permission="finance.invoices">
                     <InvoicesPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="expenses" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
+                  <PermissionGuard user={user} permission="finance.expenses">
                     <ExpensesPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="profit-loss" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
+                  <PermissionGuard user={user} permission="finance.profit_loss">
                     <ProfitLossPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="supplier-intelligence" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
+                  <PermissionGuard user={user} permission="suppliers.view">
                     <SupplierIntelligencePage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="forecasts" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
+                  <PermissionGuard user={user} permission="reports.financial">
                     <ForecastPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="purchase-orders" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
+                  <PermissionGuard user={user} permission="suppliers.purchases">
                     <PurchaseOrdersPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
-                {/* Webhooks — owner only */}
+                {/* Webhooks */}
                 <Route path="webhooks" element={
-                  <RoleGuard user={user} allowed={['owner']}>
+                  <PermissionGuard user={user} permission="integrations.webhooks">
                     <WebhooksPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="checklist" element={
-                  <RoleGuard user={user} allowed={['owner']}>
+                  <PermissionGuard user={user} permission="website.manage">
                     <TestChecklistPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
-                {/* Settings hub — owner + manager */}
+                {/* Settings hub */}
                 <Route path="settings/*" element={
-                  <RoleGuard user={user} allowed={['owner', 'manager']}>
+                  <PermissionGuard user={user} permission="website.manage">
                     <SettingsPage />
-                  </RoleGuard>
+                  </PermissionGuard>
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />
               </Routes>
