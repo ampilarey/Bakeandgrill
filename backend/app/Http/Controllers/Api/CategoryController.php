@@ -51,6 +51,11 @@ class CategoryController extends Controller
             'image_url'  => 'nullable|url',
         ])->validate();
 
+        // MySQL: column is NOT NULL DEFAULT 0; omit null so the DB default applies
+        if (array_key_exists('sort_order', $validated) && $validated['sort_order'] === null) {
+            unset($validated['sort_order']);
+        }
+
         $category = Category::create($validated);
 
         return response()->json([
@@ -90,6 +95,11 @@ class CategoryController extends Controller
             'is_active'   => 'sometimes|boolean',
             'image_url'   => 'nullable|url',
         ])->validate();
+
+        // MySQL: column is NOT NULL DEFAULT 0; omit null so existing value is preserved
+        if (array_key_exists('sort_order', $validated) && $validated['sort_order'] === null) {
+            unset($validated['sort_order']);
+        }
 
         $category = Category::findOrFail($id);
         $category->update($validated);
