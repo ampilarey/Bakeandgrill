@@ -20,9 +20,13 @@ const formatTime = (iso: string) =>
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [pin, setPin] = useState("");
-  const [deviceId, setDeviceId] = useState(
-    () => localStorage.getItem("kds_device_id") ?? `KDS-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
-  );
+  const [deviceId, setDeviceId] = useState(() => {
+    const stored = localStorage.getItem("kds_device_id");
+    if (stored) return stored;
+    const id = `KDS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    localStorage.setItem("kds_device_id", id);
+    return id;
+  });
   const [token, setToken] = useState<string | null>(null);
   const [orders, setOrders] = useState<KdsOrder[]>([]);
   const [errorMessage, setErrorMessage] = useState("");

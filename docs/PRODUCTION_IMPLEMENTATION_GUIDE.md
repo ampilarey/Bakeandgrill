@@ -336,7 +336,7 @@ deploy:
 ---
 
 ### H-1 · Empty exception handler in `bootstrap/app.php`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `backend/bootstrap/app.php:22–24`
 
 Unhandled exceptions may leak stack traces to clients in production.
@@ -366,7 +366,7 @@ Unhandled exceptions may leak stack traces to clients in production.
 ---
 
 ### H-3 · No double-refund protection
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/RefundController.php:47–60`
 
 Only checks `$amount > $order->total`. Multiple partial refunds can exceed total.
@@ -421,7 +421,7 @@ $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 ---
 
 ### H-5 · CORS wildcard methods and headers
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `config/cors.php:19, 33`
 
 **Fix:**
@@ -436,7 +436,7 @@ $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 ---
 
 ### H-6 · Sanctum token expiration — currently 30 days, should be 7
-**Status:** 🟡 (set to 43200 = 30 days; cursorrules recommends 7 days)  
+**Status:** ✅ Fixed — 10080 min (7 days), overrideable via SANCTUM_TOKEN_EXPIRATION env
 **File:** `config/sanctum.php`
 
 **Fix:**
@@ -449,7 +449,7 @@ per-ability expiry if Laravel Sanctum supports it in your version.
 ---
 
 ### H-7 · SPA catch-all routes serve files without existence check
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `backend/routes/web.php:69–76`
 
 If built assets are missing, throws an unhandled exception.
@@ -484,7 +484,7 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
 ---
 
 ### H-9 · KDS `handleStart`, `handleBump`, `handleRecall` — no error handling
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/kds-web/src/App.tsx:101–145`
 
 Silent failures in the kitchen — orders can appear unchanged while the API
@@ -546,7 +546,7 @@ function RoleGuard({
 ---
 
 ### H-11 · POS silently enqueues ALL API errors as offline orders
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/pos-web/src/hooks/useOrderCreation.ts:99–103`
 
 422/403/500 errors are queued for offline sync — they will fail again on retry.
@@ -571,7 +571,7 @@ function RoleGuard({
 ---
 
 ### H-12 · KDS polling has no backoff or 401 detection
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/kds-web/src/App.tsx:63–67`
 
 720 failed requests/hour when server is down. Expired sessions never redirect.
@@ -603,7 +603,7 @@ const timer = window.setTimeout(loadOrders, interval);
 ---
 
 ### H-13 · POS hardcoded fallback menu items shipped to production
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/pos-web/src/hooks/useMenu.ts:5–18`
 
 Items with IDs 101/102/201/301 can be sent to the kitchen when the API fails.
@@ -626,7 +626,7 @@ if (!isLoading && error) {
 ---
 
 ### H-14 · `AnalyticsController::retention` — N+1 query bomb
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/AnalyticsController.php:59–78`
 
 Up to 1,200+ queries per request. No cap on `$weeks`.
@@ -647,7 +647,7 @@ $firstOrders = DB::table('orders')
 ---
 
 ### H-15 · `lookupByBarcode` references non-existent Item properties
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/ItemController.php:218–220`
 
 `$item->price` and `$item->unit` don't exist on the `Item` model — weight-priced
@@ -667,7 +667,7 @@ if ($item->base_price && ($item->price_type ?? '') === 'by_weight') {
 ---
 
 ### H-16 · `ReportsController::parseRange` — unvalidated Carbon::parse
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/ReportsController.php:361–364`
 
 Malformed `?from=not-a-date` → uncaught 500.
@@ -689,7 +689,7 @@ protected function parseRange(Request $request): array
 ---
 
 ### H-17 · `WasteLogController::store` — no DB transaction
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `app/Http/Controllers/Api/WasteLogController.php:51–84`
 
 WasteLog create, inventory decrement, and StockMovement create are not wrapped in
@@ -713,7 +713,7 @@ public function store(Request $request): JsonResponse
 ---
 
 ### H-18 · Gitleaks non-blocking in CI
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `.github/workflows/ci.yml`
 
 Gitleaks posts a PR comment but does NOT fail the build — secrets can be merged.
@@ -730,7 +730,7 @@ Gitleaks posts a PR comment but does NOT fail the build — secrets can be merge
 ---
 
 ### H-19 · No frontend CI jobs
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `.github/workflows/ci.yml`
 
 No TypeScript type-checking or build validation for any of the 4 React apps or
@@ -766,7 +766,7 @@ frontend:
 ---
 
 ### H-20 · `PurchaseOrdersPage` has its own duplicate API client
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/admin-dashboard/src/pages/PurchaseOrdersPage.tsx:5–17`
 
 Defines a local `req()` and `BASE` URL, bypassing all shared auth/error logic.
@@ -780,7 +780,7 @@ import { req } from '../api'; // or whichever shared function is appropriate
 ---
 
 ### H-21 · Static default deviceId causes terminal collisions
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **Files:** `apps/kds-web/src/App.tsx:23`, `apps/pos-web/src/App.tsx:22`
 
 Default `"KDS-001"` / `"POS-001"` — two terminals sharing an ID causes order
@@ -803,7 +803,7 @@ const [deviceId, setDeviceId] = useState(() => getOrCreateDeviceId('kds_device_i
 ---
 
 ### H-22 · `print-proxy/Dockerfile` — `|| true` swallows build errors
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `print-proxy/Dockerfile:13`
 
 `RUN npm run build || true` — TypeScript errors are ignored; container can ship
@@ -818,7 +818,7 @@ Remove `|| true`. A failed build must fail the Docker image build.
 ---
 
 ### H-23 · `print-proxy/Dockerfile` — `npm install` instead of `npm ci`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `print-proxy/Dockerfile:10`
 
 **Fix:**
@@ -829,7 +829,7 @@ RUN npm ci --omit=dev
 ---
 
 ### H-24 · `AnalyticsPage` swallows all errors silently
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `apps/admin-dashboard/src/pages/AnalyticsPage.tsx:35`
 
 **Fix:**
@@ -855,7 +855,7 @@ const [error, setError] = useState<string | null>(null);
 ---
 
 ### H-25 · `backup.sh` and `DB_CONNECTION` are inconsistent with `docker-compose.yml`
-**Status:** 🔴  
+**Status:** ✅ Fixed  
 **File:** `scripts/backup.sh:12–17`, `backend/.env.example`, `docker-compose.yml`
 
 There is a conflict between configs:
