@@ -50,9 +50,10 @@ class BmlConnectService
     public function createPayment(
         int $amountLaar,
         string $localId,
-        string $currency = 'MVR',
+        ?string $currency = null,
         ?string $returnUrl = null,
     ): array {
+        $currency = $currency ?? config('bml.default_currency', 'MVR');
         $payload = [
             'localId'     => $this->normalizeLocalId($localId),
             'merchantId'  => $this->merchantId,
@@ -71,10 +72,11 @@ class BmlConnectService
         $response = Http::withHeaders([
             'Content-Type'  => 'application/json',
             'Accept'        => 'application/json',
-            'Authorization' => $this->apiKey,
+            'Authorization' => "Bearer {$this->apiKey}",
+            'AppId'         => $this->appId,
         ])
             ->timeout(30)
-            ->post("{$this->baseUrl}/v1/transactions", $payload);
+            ->post("{$this->baseUrl}/v1/transaction", $payload);
 
         if (!$response->successful()) {
             Log::error('BML: Payment creation failed', [
@@ -127,10 +129,11 @@ class BmlConnectService
     {
         $response = Http::withHeaders([
             'Accept'        => 'application/json',
-            'Authorization' => $this->apiKey,
+            'Authorization' => "Bearer {$this->apiKey}",
+            'AppId'         => $this->appId,
         ])
             ->timeout(15)
-            ->get("{$this->baseUrl}/v1/transactions/{$transactionId}");
+            ->get("{$this->baseUrl}/v1/transaction/{$transactionId}");
 
         if (!$response->successful()) {
             throw new \RuntimeException("BML status check failed: {$response->status()}");
