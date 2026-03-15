@@ -91,7 +91,7 @@ export function InvoicesPage() {
                     <Badge label={inv.status} color={statColor(inv.status)} />
                   </td>
                   <td style={{ ...TD, color: '#6B5D4F' }}>{inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'}</td>
-                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {inv.total.toFixed(2)}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(inv.total ?? 0)).toFixed(2)}</td>
                   <td style={{ ...TD, color: '#9C8E7E', whiteSpace: 'nowrap' }}>{inv.issue_date}</td>
                   <td style={{ ...TD, color: inv.status === 'overdue' ? '#ef4444' : '#9C8E7E', whiteSpace: 'nowrap' }}>
                     {inv.due_date ?? '—'}
@@ -127,7 +127,7 @@ export function InvoicesPage() {
       {paying && selected && (
         <Modal title="Mark Invoice Paid" onClose={() => { setPaying(false); setSelected(null); }} maxWidth={380}>
           <p style={{ color: '#6B5D4F', fontSize: 14, marginBottom: 20 }}>
-            {selected.invoice_number} · <strong style={{ color: '#D4813A' }}>MVR {selected.total.toFixed(2)}</strong>
+            {selected.invoice_number} · <strong style={{ color: '#D4813A' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</strong>
           </p>
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Payment Method</label>

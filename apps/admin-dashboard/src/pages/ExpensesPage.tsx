@@ -92,7 +92,7 @@ export function ExpensesPage() {
 
           {/* Left: total + table */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <StatCard label="Total Expenses" value={`MVR ${totalAmount.toFixed(2)}`} accent="#ef4444" />
+            <StatCard label="Total Expenses" value={`MVR ${parseFloat(String(totalAmount ?? 0)).toFixed(2)}`} accent="#ef4444" />
 
             <TableCard>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -109,7 +109,7 @@ export function ExpensesPage() {
                       <td style={{ ...TD, whiteSpace: 'nowrap', color: '#9C8E7E' }}>{exp.expense_date}</td>
                       <td style={TD}>{exp.category?.icon} {exp.category?.name}</td>
                       <td style={{ ...TD, color: '#1C1408' }}>{exp.description}</td>
-                      <td style={{ ...TD, fontWeight: 700, color: '#D4813A', whiteSpace: 'nowrap' }}>MVR {exp.amount.toFixed(2)}</td>
+                      <td style={{ ...TD, fontWeight: 700, color: '#D4813A', whiteSpace: 'nowrap' }}>MVR {parseFloat(String(exp.amount ?? 0)).toFixed(2)}</td>
                       <td style={{ ...TD, color: '#6B5D4F' }}>{exp.payment_method?.replace('_', ' ') ?? '—'}</td>
                       <td style={TD}>
                         <Badge label={exp.status} color={STATUS_COLOR[exp.status] ?? 'gray'} />
@@ -137,7 +137,7 @@ export function ExpensesPage() {
               <div key={cat.category} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
                   <span style={{ color: '#1C1408', fontWeight: 600 }}>{cat.icon} {cat.category}</span>
-                  <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {cat.total.toFixed(2)}</span>
+                  <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(cat.total ?? 0)).toFixed(2)}</span>
                 </div>
                 <div style={{ height: 6, background: '#F0EBE5', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${cat.pct}%`, background: '#D4813A', borderRadius: 3 }} />

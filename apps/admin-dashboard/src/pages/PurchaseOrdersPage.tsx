@@ -102,13 +102,13 @@ export function PurchaseOrdersPage() {
             suggestions.by_supplier.map((group) => (
               <div key={group.supplier_id ?? 'unknown'} style={{ marginBottom: 16 }}>
                 <p style={{ fontWeight: 700, marginBottom: 8, color: '#1C1408', fontSize: 13, margin: '0 0 8px' }}>
-                  {group.supplier_name} — Est. MVR {group.estimated_total.toFixed(2)}
+                  {group.supplier_name} — Est. MVR {parseFloat(String(group.estimated_total ?? 0)).toFixed(2)}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {(group.items as { name: string; current_stock: number; unit: string; suggested_quantity: number }[]).map((item) => (
                     <div key={item.name} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
                       <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.name}</span>
-                      <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {item.current_stock.toFixed(2)}</span>
+                      <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
                       <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
                     </div>
                   ))}
@@ -147,7 +147,7 @@ export function PurchaseOrdersPage() {
                   <td style={TD}>
                     <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
                   </td>
-                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {(po.total ?? po.subtotal ?? 0).toFixed(2)}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(po.total ?? po.subtotal ?? 0)).toFixed(2)}</td>
                   <td style={{ ...TD, color: '#6B5D4F', whiteSpace: 'nowrap' }}>{po.purchase_date}</td>
                   <td style={{ ...TD, color: po.expected_delivery_date ? '#6B5D4F' : '#9C8E7E', whiteSpace: 'nowrap' }}>
                     {po.expected_delivery_date ?? '—'}
@@ -171,7 +171,7 @@ export function PurchaseOrdersPage() {
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
             Supplier: <strong style={{ color: '#1C1408' }}>{detail.supplier?.name ?? '—'}</strong>
             {' · '}Status: <strong style={{ color: '#1C1408' }}>{detail.status}</strong>
-            {' · '}Total: <strong style={{ color: '#D4813A' }}>MVR {(detail.total ?? 0).toFixed(2)}</strong>
+            {' · '}Total: <strong style={{ color: '#D4813A' }}>MVR {parseFloat(String(detail.total ?? 0)).toFixed(2)}</strong>
           </p>
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

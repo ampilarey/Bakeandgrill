@@ -59,7 +59,7 @@ export function ReportsPage() {
             />
             <StatCard
               label="Avg Order Value"
-              value={`MVR ${summary.average_order_value.toFixed(2)}`}
+              value={`MVR ${parseFloat(String(summary.average_order_value ?? 0)).toFixed(2)}`}
               accent="#8b5cf6"
             />
           </div>

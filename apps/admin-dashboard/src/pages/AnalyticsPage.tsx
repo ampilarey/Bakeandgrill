@@ -142,7 +142,7 @@ export default function AnalyticsPage() {
                   <tr key={c.id}>
                     <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{c.name}</td>
                     <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{c.order_count}</td>
-                    <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {c.total_spent.toFixed(2)}</td>
+                    <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(c.total_spent ?? 0)).toFixed(2)}</td>
                   </tr>
                 ))}
                 {ltvCustomers.length === 0 && (
@@ -171,9 +171,9 @@ export default function AnalyticsPage() {
                 <tr key={item.id}>
                   <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{item.name}</td>
                   <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{item.total_qty}</td>
-                  <td style={{ ...TD, color: '#1C1408' }}>MVR {item.total_revenue.toFixed(2)}</td>
+                  <td style={{ ...TD, color: '#1C1408' }}>MVR {parseFloat(String(item.total_revenue ?? 0)).toFixed(2)}</td>
                   <td style={{ ...TD, fontWeight: 700, color: item.gross_profit >= 0 ? '#22c55e' : '#ef4444' }}>
-                    MVR {item.gross_profit.toFixed(2)}
+                    MVR {parseFloat(String(item.gross_profit ?? 0)).toFixed(2)}
                   </td>
                   <td style={{ ...TD, fontWeight: 700, color: item.margin_pct >= 50 ? '#22c55e' : item.margin_pct >= 20 ? '#D4813A' : '#ef4444' }}>
                     {item.margin_pct}%
@@ -193,7 +193,7 @@ export default function AnalyticsPage() {
         <div style={{ marginTop: 24 }}>
           <SectionLabel>Summary</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-            <StatCard label="Top Customer Spend" value={`MVR ${ltvCustomers[0]?.total_spent.toFixed(2) ?? '0'}`} accent="#D4813A" />
+            <StatCard label="Top Customer Spend" value={`MVR ${parseFloat(String(ltvCustomers[0]?.total_spent ?? 0)).toFixed(2) ?? '0'}`} accent="#D4813A" />
             <StatCard label="Unique Customers" value={String(ltvCustomers.length)} accent="#8b5cf6" />
             <StatCard label="Menu Items Tracked" value={String(profitItems.length)} accent="#22c55e" />
           </div>

@@ -65,9 +65,9 @@ export function ProfitLossPage() {
                 Today's Snapshot
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-                <StatCard label="Today Revenue" value={`MVR ${daily.revenue.toFixed(2)}`} accent="#D4813A" />
-                <StatCard label="Orders" value={String(daily.orders)} sub={`Avg MVR ${daily.avg_order.toFixed(2)}`} accent="#8b5cf6" />
-                <StatCard label="Net Profit" value={`MVR ${daily.net_profit.toFixed(2)}`} accent={daily.net_profit >= 0 ? '#22c55e' : '#ef4444'} />
+                <StatCard label="Today Revenue" value={`MVR ${parseFloat(String(daily.revenue ?? 0)).toFixed(2)}`} accent="#D4813A" />
+                <StatCard label="Orders" value={String(daily.orders)} sub={`Avg MVR ${parseFloat(String(daily.avg_order ?? 0)).toFixed(2)}`} accent="#8b5cf6" />
+                <StatCard label="Net Profit" value={`MVR ${parseFloat(String(daily.net_profit ?? 0)).toFixed(2)}`} accent={daily.net_profit >= 0 ? '#22c55e' : '#ef4444'} />
               </div>
             </div>
           )}
@@ -76,10 +76,10 @@ export function ProfitLossPage() {
           {pnl && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-                <StatCard label="Gross Revenue" value={`MVR ${pnl.revenue.gross.toFixed(2)}`} sub={`${pnl.revenue.orders} orders`} accent="#D4813A" />
-                <StatCard label="Gross Profit"  value={`MVR ${pnl.gross_profit.toFixed(2)}`} sub={`Margin: ${pnl.gross_margin_pct}%`} accent={pnl.gross_profit >= 0 ? '#22c55e' : '#ef4444'} />
-                <StatCard label="Operating Expenses" value={`MVR ${pnl.expenses.total.toFixed(2)}`} accent="#f97316" />
-                <StatCard label="Net Profit"    value={`MVR ${pnl.operating_profit.toFixed(2)}`} sub={`Margin: ${pnl.net_profit_margin_pct}%`} accent={pnl.operating_profit >= 0 ? '#22c55e' : '#ef4444'} />
+                <StatCard label="Gross Revenue" value={`MVR ${parseFloat(String(pnl.revenue.gross ?? 0)).toFixed(2)}`} sub={`${pnl.revenue.orders} orders`} accent="#D4813A" />
+                <StatCard label="Gross Profit"  value={`MVR ${parseFloat(String(pnl.gross_profit ?? 0)).toFixed(2)}`} sub={`Margin: ${pnl.gross_margin_pct}%`} accent={pnl.gross_profit >= 0 ? '#22c55e' : '#ef4444'} />
+                <StatCard label="Operating Expenses" value={`MVR ${parseFloat(String(pnl.expenses.total ?? 0)).toFixed(2)}`} accent="#f97316" />
+                <StatCard label="Net Profit"    value={`MVR ${parseFloat(String(pnl.operating_profit ?? 0)).toFixed(2)}`} sub={`Margin: ${pnl.net_profit_margin_pct}%`} accent={pnl.operating_profit >= 0 ? '#22c55e' : '#ef4444'} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -97,7 +97,7 @@ export function ProfitLossPage() {
                       <div style={{ width: 150, fontSize: 12, color: '#6B5D4F', flexShrink: 0 }}>{row.label}</div>
                       <ProgressBar pct={pnl.revenue.gross !== 0 ? Math.abs(row.value) / pnl.revenue.gross * 100 : 0} color={row.color} />
                       <div style={{ width: 100, textAlign: 'right', fontWeight: 700, color: row.value >= 0 ? '#16a34a' : '#dc2626', fontSize: 13, flexShrink: 0 }}>
-                        {row.value < 0 ? '−' : ''}MVR {Math.abs(row.value).toFixed(2)}
+                        {row.value < 0 ? '−' : ''}MVR {parseFloat(String(Math.abs(row.value) ?? 0)).toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -112,7 +112,7 @@ export function ProfitLossPage() {
                   {pnl.expenses.by_category.map((cat) => (
                     <div key={cat.category} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <span style={{ fontSize: 13, color: '#6B5D4F' }}>{cat.icon} {cat.category}</span>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>MVR {(cat.total as number).toFixed(2)}</span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>MVR {parseFloat(String(cat.total ?? 0)).toFixed(2)}</span>
                     </div>
                   ))}
                 </Card>
@@ -125,9 +125,9 @@ export function ProfitLossPage() {
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 16, margin: '0 0 16px' }}>Cash Flow Summary</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-                <StatCard label="Total Inflow"   value={`MVR ${cashFlow.total_inflow.toFixed(2)}`}   accent="#22c55e" />
-                <StatCard label="Total Outflow"  value={`MVR ${cashFlow.total_outflow.toFixed(2)}`}  accent="#ef4444" />
-                <StatCard label="Net Cash Flow"  value={`MVR ${cashFlow.net_cash_flow.toFixed(2)}`}  accent={cashFlow.net_cash_flow >= 0 ? '#22c55e' : '#ef4444'} />
+                <StatCard label="Total Inflow"   value={`MVR ${parseFloat(String(cashFlow.total_inflow ?? 0)).toFixed(2)}`}   accent="#22c55e" />
+                <StatCard label="Total Outflow"  value={`MVR ${parseFloat(String(cashFlow.total_outflow ?? 0)).toFixed(2)}`}  accent="#ef4444" />
+                <StatCard label="Net Cash Flow"  value={`MVR ${parseFloat(String(cashFlow.net_cash_flow ?? 0)).toFixed(2)}`}  accent={cashFlow.net_cash_flow >= 0 ? '#22c55e' : '#ef4444'} />
               </div>
               <TableCard>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -142,10 +142,10 @@ export function ProfitLossPage() {
                     {cashFlow.days.filter((d) => d.inflow > 0 || d.outflow > 0).slice(-14).map((d) => (
                       <tr key={d.date}>
                         <td style={{ ...TD, textAlign: 'left', color: '#6B5D4F' }}>{d.date}</td>
-                        <td style={{ ...TD, textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>+{d.inflow.toFixed(2)}</td>
-                        <td style={{ ...TD, textAlign: 'right', color: '#dc2626', fontWeight: 600 }}>-{d.outflow.toFixed(2)}</td>
-                        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: d.net >= 0 ? '#16a34a' : '#dc2626' }}>{d.net.toFixed(2)}</td>
-                        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: '#1C1408' }}>{d.running_balance.toFixed(2)}</td>
+                        <td style={{ ...TD, textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>+{parseFloat(String(d.inflow ?? 0)).toFixed(2)}</td>
+                        <td style={{ ...TD, textAlign: 'right', color: '#dc2626', fontWeight: 600 }}>-{parseFloat(String(d.outflow ?? 0)).toFixed(2)}</td>
+                        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: d.net >= 0 ? '#16a34a' : '#dc2626' }}>{parseFloat(String(d.net ?? 0)).toFixed(2)}</td>
+                        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: '#1C1408' }}>{parseFloat(String(d.running_balance ?? 0)).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>

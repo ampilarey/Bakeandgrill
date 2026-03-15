@@ -86,7 +86,7 @@ export function ForecastPage() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>Sales Trends</div>
                   <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
-                    MVR {trends.total_revenue.toFixed(2)} · {trends.total_orders} orders
+                    MVR {parseFloat(String(trends.total_revenue ?? 0)).toFixed(2)} · {trends.total_orders} orders
                   </div>
                 </div>
               </div>
@@ -94,7 +94,7 @@ export function ForecastPage() {
                 {trends.data.map(d => (
                   <div key={d.period} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, minWidth: 40 }}>
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4 }}>
-                      {d.growth_pct !== null ? (d.growth_pct >= 0 ? '+' : '') + d.growth_pct.toFixed(0) + '%' : ''}
+                      {d.growth_pct !== null ? (d.growth_pct >= 0 ? '+' : '') + parseFloat(String(d.growth_pct ?? 0)).toFixed(0) + '%' : ''}
                     </div>
                     <div
                       style={{
@@ -104,7 +104,7 @@ export function ForecastPage() {
                         borderRadius: '4px 4px 0 0',
                         transition: 'height 0.4s ease',
                       }}
-                      title={`${d.period}: MVR ${d.revenue.toFixed(2)} (${d.orders} orders)`}
+                      title={`${d.period}: MVR ${parseFloat(String(d.revenue ?? 0)).toFixed(2)} (${d.orders} orders)`}
                     />
                     <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 4, textAlign: 'center', lineHeight: 1.2, maxWidth: 40 }}>
                       {d.period.slice(-5)}
@@ -128,9 +128,9 @@ export function ForecastPage() {
             <Card>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Revenue Forecast (Next 4 Weeks)</div>
               <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-                Weighted Moving Avg: MVR {forecast.weighted_moving_avg.toFixed(2)}/wk ·
+                Weighted Moving Avg: MVR {parseFloat(String(forecast.weighted_moving_avg ?? 0)).toFixed(2)}/wk ·
                 Growth Rate: <span style={{ color: forecast.growth_rate_pct >= 0 ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
-                  {forecast.growth_rate_pct >= 0 ? '+' : ''}{forecast.growth_rate_pct.toFixed(2)}%/wk
+                  {forecast.growth_rate_pct >= 0 ? '+' : ''}{parseFloat(String(forecast.growth_rate_pct ?? 0)).toFixed(2)}%/wk
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
@@ -138,7 +138,7 @@ export function ForecastPage() {
                   <div key={wk.week_start} style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                     <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Week {i + 1}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{wk.week_start}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#D4813A' }}>MVR {wk.projected_revenue.toFixed(2)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#D4813A' }}>MVR {parseFloat(String(wk.projected_revenue ?? 0)).toFixed(2)}</div>
                   </div>
                 ))}
               </div>
@@ -163,8 +163,8 @@ export function ForecastPage() {
                       <tr key={item.id} style={{ borderBottom: '1px solid #f8fafc' }}>
                         <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1e293b' }}>{item.name}</td>
                         <td style={{ padding: '8px 12px', color: '#64748b' }}>{item.category ?? '—'}</td>
-                        <td style={{ padding: '8px 12px' }}>{item.current_stock.toFixed(2)} {item.unit}</td>
-                        <td style={{ padding: '8px 12px', color: '#64748b' }}>{item.daily_usage_rate.toFixed(3)}/day</td>
+                        <td style={{ padding: '8px 12px' }}>{parseFloat(String(item.current_stock ?? 0)).toFixed(2)} {item.unit}</td>
+                        <td style={{ padding: '8px 12px', color: '#64748b' }}>{parseFloat(String(item.daily_usage_rate ?? 0)).toFixed(3)}/day</td>
                         <td style={{ padding: '8px 12px', fontWeight: 700 }}>
                           {item.days_of_stock === null ? '∞' : item.days_of_stock === 0 ? 'OUT' : `${item.days_of_stock}d`}
                         </td>

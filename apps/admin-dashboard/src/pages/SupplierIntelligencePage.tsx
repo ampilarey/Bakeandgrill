@@ -9,7 +9,7 @@ function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
     <span style={{ fontSize: 13 }}>
       <span style={{ color: '#f59e0b' }}>{'★'.repeat(Math.round(rating))}</span>
       <span style={{ color: '#E8E0D8' }}>{'★'.repeat(max - Math.round(rating))}</span>
-      <span style={{ color: '#9C8E7E', marginLeft: 6, fontSize: 12 }}>{rating.toFixed(1)}</span>
+      <span style={{ color: '#9C8E7E', marginLeft: 6, fontSize: 12 }}>{parseFloat(String(rating ?? 0)).toFixed(1)}</span>
     </span>
   );
 }
@@ -100,7 +100,7 @@ export function SupplierIntelligencePage() {
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Spend</div>
-                    <div style={{ fontWeight: 700, color: '#D4813A' }}>MVR {sup.total_spend.toFixed(2)}</div>
+                    <div style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(sup.total_spend ?? 0)).toFixed(2)}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Overall</div>
@@ -109,9 +109,9 @@ export function SupplierIntelligencePage() {
                   <div>
                     <div style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Scores</div>
                     <div style={{ fontSize: 12, color: '#6B5D4F' }}>
-                      <span title="Quality">Q:{sup.avg_quality?.toFixed(1) ?? '—'}</span>
+                      <span title="Quality">Q:{parseFloat(String(sup.avg_quality? ?? 0)).toFixed(1) ?? '—'}</span>
                       {' · '}
-                      <span title="Delivery">D:{sup.avg_delivery?.toFixed(1) ?? '—'}</span>
+                      <span title="Delivery">D:{parseFloat(String(sup.avg_delivery? ?? 0)).toFixed(1) ?? '—'}</span>
                     </div>
                   </div>
                 </div>

@@ -109,12 +109,12 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
                 {order.items.map((item) => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
                     <span>{item.quantity}× {item.item_name}</span>
-                    <span style={{ color: '#D4813A', fontWeight: 600 }}>MVR {(item.total_price ?? 0).toFixed(2)}</span>
+                    <span style={{ color: '#D4813A', fontWeight: 600 }}>MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}</span>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, paddingTop: 8 }}>
                   <span>Total</span>
-                  <span>MVR {order.total.toFixed(2)}</span>
+                  <span>MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}</span>
                 </div>
               </div>
             )}
@@ -222,7 +222,7 @@ export function OrdersPage() {
                     {o.customer_name ?? o.table_number ?? '—'}
                   </td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>
-                    MVR {o.total.toFixed(2)}
+                    MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#94a3b8', fontSize: 12 }}>
                     {timeAgo(o.created_at)}
