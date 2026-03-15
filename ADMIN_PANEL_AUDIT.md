@@ -28,11 +28,15 @@ The mobile experience has **critical issues** — fixed-width drawers, non-respo
 
 | Metric | Count |
 |--------|-------|
+| Total backend API endpoints | **~213** |
+| Admin API functions used | **~77** |
 | Total admin pages | 22 |
 | Pages in sidebar navigation | 16 |
 | **Hidden pages (no nav link)** | **7** |
-| Backend features with NO admin page | **10+** |
+| **Backend features with NO admin page** | **22 feature areas** |
+| **Missing API functions (backend exists)** | **27+** |
 | Critical bugs found | 7 |
+| Medium bugs found | 8 |
 | Mobile/responsive issues | 18 |
 
 ---
@@ -74,36 +78,57 @@ MANAGEMENT group:
 
 ## 3. Missing Features (Not Connected to Panel)
 
-These features have **full backend API endpoints** but **NO admin dashboard page**:
+The backend has **~213+ API endpoints** but admin dashboard only uses **~77 API functions**. These features have **full backend API endpoints** but **NO admin dashboard page**:
 
 ### HIGH Priority — Revenue & Customer Impact
 
 | Feature | Backend Endpoints | What's Missing |
 |---------|-------------------|----------------|
-| **Gift Cards** | `GET/POST /admin/gift-cards`, `POST /admin/gift-cards/issue` | No page to create, view, or manage gift cards |
+| **Gift Cards** | `GET/POST /admin/gift-cards`, `POST /admin/gift-cards/issue`, `GET /gift-cards/{code}/balance` | No page to create, view, or manage gift cards |
 | **Reviews/Ratings** | `GET/POST/DELETE /admin/reviews`, `PATCH /admin/reviews/{id}/moderate` | No page to view/moderate customer reviews |
-| **Daily Specials** | `GET/POST/DELETE /admin/specials` | No page to manage daily specials |
-| **Inventory Management** | `GET/POST /inventory-categories`, `GET/POST /unit-conversions` | No dedicated inventory page (only purchase orders) |
+| **Daily Specials** | `GET/POST/PATCH/DELETE /admin/specials` | No page to manage daily specials |
+| **Refund Management** | `GET /refunds`, `GET /refunds/{id}`, `POST /orders/{orderId}/refunds` | No refund processing/history page |
+| **Inventory Management** | `GET/POST /inventory-categories`, `GET/POST /unit-conversions`, plus recipes | No dedicated inventory page (only purchase orders) |
 | **Waste Logging** | `POST /waste-logs`, `GET /waste-logs/summary` | No waste tracking page |
 
 ### MEDIUM Priority — Operations
 
 | Feature | Backend Endpoints | What's Missing |
 |---------|-------------------|----------------|
-| **Staff Scheduling** | `GET/POST/DELETE /admin/schedules` | No scheduling UI (sidebar says "Staff & Schedules" but page only has staff CRUD) |
-| **Table Management** | `GET/POST /tables`, `PATCH /tables/{id}` | No table layout management page |
-| **Referral Program** | `GET /admin/referrals` | No referral tracking page |
-| **Xero Integration** | `GET /xero/connect`, `/status`, `/disconnect`, `/logs` | No Xero management UI (Settings redirects but no actual page) |
-| **Permission Management** | `GET /permissions`, `GET/PUT /users/{user}/permissions` | No fine-grained permission editor |
+| **Staff Scheduling** | `GET/POST/PATCH/DELETE /admin/schedules` (4 endpoints) | No scheduling UI (sidebar says "Staff & Schedules" but page only has staff CRUD) |
+| **Table Management** | `GET/POST/PATCH /tables`, `POST /tables/{id}/open`, `/close`, `/merge`, `/split` (8 endpoints!) | No table layout management page — backend supports open/close/merge/split |
+| **Shift & Cash Drawer** | `GET /shifts/current`, `POST /shifts/open`, `POST /shifts/{id}/close`, `POST /shifts/{id}/cash-movements` | No shift management or cash drawer tracking UI |
+| **Time Clock** | `GET /time-clock/status`, `POST /time-clock/in`, `POST /time-clock/out`, `GET /time-clock/history`, `GET /time-clock/summary` (5 endpoints) | No time punch UI or staff hours tracking |
+| **Referral Program** | `GET /admin/referrals`, `POST /referrals/validate` | No referral tracking page |
+| **Device Management** | `POST /devices/register`, `GET /devices`, `PATCH /devices/{id}/disable`, `PATCH /devices/{id}/enable` | No POS/KDS device management page |
+| **Item Photo Gallery** | `GET/POST /items/{itemId}/photos`, `PATCH/DELETE /items/{itemId}/photos/{photoId}` | Menu page only supports single image, not gallery |
 
-### LOW Priority — Operational
+### LOW Priority — System/Integration
 
 | Feature | Backend Endpoints | What's Missing |
 |---------|-------------------|----------------|
-| **Cash Movements** | `POST /shifts/{id}/cash-movements` | No cash drawer tracking UI |
-| **Time Clock** | `POST /time-clock/punch` | No time punch UI |
+| **Xero Integration** | `GET /xero/connect`, `/callback`, `/status`, `POST /xero/disconnect`, `/invoices/{id}/push`, `/expenses/{id}/push`, `GET /xero/logs` (7 endpoints) | No Xero management UI |
+| **Permission Management** | `GET /permissions`, `GET/PUT /users/{user}/permissions` | No fine-grained permission editor |
+| **Print Jobs** | `GET /print-jobs`, `POST /print-jobs/{id}/retry` | No print queue management |
+| **SMS Promotions** | `GET/POST /sms/promotions`, `POST /sms/promotions/preview`, `POST /sms/promotions/send` | SmsPage only uses Campaigns, not Promotions endpoints |
 | **Low Stock Alerts** | `GET /low-stock-alerts` | No alerts dashboard |
-| **Receipt Feedback** | `GET /receipts/{id}/feedback` | No customer feedback view |
+| **Receipt Feedback** | `POST /receipts/{token}/feedback`, `GET` receipts | No customer feedback view |
+
+### Missing API Functions (Backend Exists, api.ts Has No Function)
+
+These backend endpoints have no corresponding function in the admin API layer:
+
+| Category | Missing Functions | Count |
+|----------|-------------------|-------|
+| **Reports** | `sales-breakdown`, `x-report`, `z-report`, `inventory-valuation`, `tax`, `accounts-payable`, `accounts-receivable` | 7 |
+| **Invoices** | `updateInvoice`, `createCreditNote`, `generatePdf`, `createFromOrder`, `createFromPurchase` | 5 |
+| **Expenses** | `uploadReceipt`, `approveExpense` | 2 |
+| **Purchases** | `rejectPurchase`, `receivePurchase`, `createFromSuggest` | 3 |
+| **Suppliers** | `getSupplierRatings`, individual `getSupplierPerformance`, `refreshCache`, `priceHistory` | 4 |
+| **Reservations** | `getReservationSettings`, `updateReservationSettings` | 2 |
+| **Orders** | `holdOrder`, `resumeOrder`, `addOrderPayments` | 3 |
+| **Forecasts** | `getItemForecast` | 1 |
+| **Total** | | **27+** |
 
 ---
 
@@ -381,15 +406,22 @@ SYSTEM (Owner only)
 
 ### Phase 2: Missing Features (High Impact)
 
-- [ ] Build **Gift Cards** management page
+- [ ] Build **Gift Cards** management page (create, view balance, issue)
 - [ ] Build **Reviews & Ratings** moderation page
 - [ ] Build **Daily Specials** management page
+- [ ] Build **Refund Management** page (view history, process refunds)
 - [ ] Build **Staff Scheduling** page (add tab to StaffPage)
-- [ ] Build **Inventory Management** page (categories, conversions, waste logs)
-- [ ] Build **Table Management** page
+- [ ] Build **Inventory Management** page (categories, conversions, recipes, waste logs)
+- [ ] Build **Table Management** page (open/close/merge/split — 8 endpoints ready)
+- [ ] Build **Shift & Cash Drawer** management page
+- [ ] Build **Time Clock** page (staff hours tracking, punch in/out)
+- [ ] Build **Device Management** page (POS/KDS device registration)
 - [ ] Build **Referral Program** tracking page
-- [ ] Complete **Settings** sub-pages (Devices, Integrations/Xero)
-- [ ] Complete **Reports** page (detailed breakdowns by item/category/staff)
+- [ ] Add **Item Photo Gallery** to Menu page (multi-image support)
+- [ ] Complete **Settings** sub-pages (Devices, Xero integration, Permissions editor)
+- [ ] Complete **Reports** page (add X/Z reports, sales breakdown, inventory valuation, tax report, AP/AR)
+- [ ] Add **27+ missing API functions** to api.ts (invoices, expenses, suppliers, etc.)
+- [ ] Wire **SMS Promotions** endpoints into SmsPage (currently only campaigns)
 
 ### Phase 3: Mobile Responsiveness
 
