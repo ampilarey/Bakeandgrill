@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
-  type StaffMember, type StaffRole,
+  getUserPermissions, updateUserPermissions,
+  type StaffMember, type StaffRole, type PermissionItem,
 } from '../api';
 import { Badge, Btn, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
+import { Toggle, useToast } from '../components/ui';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -202,6 +204,158 @@ function PinModal({ member, onSave, onClose }: {
   );
 }
 
+// ── Permissions modal ─────────────────────────────────────────────────────────
+
+function groupPermissions(perms: PermissionItem[]): Record<string, PermissionItem[]> {
+  const groups: Record<string, PermissionItem[]> = {};
+  for (const p of perms) {
+    const label = p.group
+      ? p.group.charAt(0).toUpperCase() + p.group.slice(1).replace(/_/g, ' ')
+      : 'Other';
+    (groups[label] ??= []).push(p);
+  }
+  return groups;
+}
+
+function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
+  const toast = useToast();
+  const [perms, setPerms] = useState<PermissionItem[]>([]);
+  const [overrides, setOverrides] = useState<Record<string, boolean | null>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getUserPermissions(member.id)
+      .then((res) => {
+        setPerms(res.permissions);
+        const initial: Record<string, boolean | null> = {};
+        for (const p of res.permissions) {
+          if (p.source === 'override') initial[p.slug] = p.granted;
+        }
+        setOverrides(initial);
+      })
+      .catch(() => toast.error('Failed to load permissions.'))
+      .finally(() => setLoading(false));
+  }, [member.id]);
+
+  const toggle = (slug: string) => {
+    setOverrides((prev) => {
+      const perm = perms.find((p) => p.slug === slug)!;
+      const current = prev[slug] !== undefined && prev[slug] !== null ? prev[slug] : perm.granted;
+      return { ...prev, [slug]: !current };
+    });
+  };
+
+  const reset = (slug: string) => {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      next[slug] = null;
+      return next;
+    });
+  };
+
+  const resetAll = () => setOverrides({});
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateUserPermissions(member.id, overrides);
+      toast.success('Permissions saved.');
+      onClose();
+    } catch {
+      toast.error('Failed to save permissions.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const effectiveGranted = (p: PermissionItem): boolean => {
+    const ov = overrides[p.slug];
+    if (ov === null || ov === undefined) return p.granted;
+    return ov;
+  };
+
+  const isModified = (p: PermissionItem): boolean => {
+    const ov = overrides[p.slug];
+    return ov !== null && ov !== undefined;
+  };
+
+  const groups = groupPermissions(perms);
+  const hasChanges = Object.values(overrides).some((v) => v !== null && v !== undefined);
+
+  return (
+    <Modal title={`Permissions — ${member.name}`} onClose={onClose}>
+      {loading ? (
+        <Spinner />
+      ) : (
+        <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+          {Object.entries(groups).map(([category, items]) => (
+            <div key={category} style={{ marginBottom: 20 }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                color: '#9C8E7E', textTransform: 'uppercase', marginBottom: 8,
+                paddingBottom: 4, borderBottom: '1px solid #f1ece6',
+              }}>
+                {category}
+              </div>
+              {items.map((p) => {
+                const granted = effectiveGranted(p);
+                const modified = isModified(p);
+                return (
+                  <div key={p.slug} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '6px 0', borderBottom: '1px solid #faf8f6',
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 14, color: '#1C1408', fontWeight: 500 }}>{p.name}</span>
+                      {' '}
+                      <span style={{
+                        fontSize: 11, padding: '1px 6px', borderRadius: 99,
+                        background: modified ? '#fef3c7' : '#f1ece6',
+                        color: modified ? '#92400e' : '#9C8E7E',
+                        fontWeight: 600,
+                      }}>
+                        {modified ? 'override' : p.source}
+                      </span>
+                    </div>
+                    {modified && (
+                      <button
+                        onClick={() => reset(p.slug)}
+                        style={{
+                          fontSize: 11, color: '#B45309', background: 'none',
+                          border: 'none', cursor: 'pointer', padding: '2px 4px',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        reset
+                      </button>
+                    )}
+                    <Toggle
+                      checked={granted}
+                      onChange={() => toggle(p.slug)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+      <ModalActions>
+        {hasChanges && (
+          <Btn variant="ghost" onClick={resetAll} style={{ marginRight: 'auto' }}>
+            Reset all changes
+          </Btn>
+        )}
+        <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+        <Btn onClick={save} disabled={saving || loading}>
+          {saving ? 'Saving…' : 'Save Permissions'}
+        </Btn>
+      </ModalActions>
+    </Modal>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function StaffPage() {
@@ -214,6 +368,7 @@ export function StaffPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
   const [changingPin, setChangingPin] = useState<StaffMember | null>(null);
+  const [permissionsUser, setPermissionsUser] = useState<StaffMember | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -307,6 +462,9 @@ export function StaffPage() {
                       <Btn small variant="ghost" onClick={() => handleToggleActive(m)}>
                         {m.is_active ? 'Disable' : 'Enable'}
                       </Btn>
+                      {m.role !== 'owner' && (
+                        <Btn small variant="ghost" onClick={() => setPermissionsUser(m)}>Permissions</Btn>
+                      )}
                       <Btn small variant="danger" onClick={() => handleDelete(m)}>Remove</Btn>
                     </div>
                   </td>
@@ -325,6 +483,9 @@ export function StaffPage() {
       )}
       {changingPin && (
         <PinModal member={changingPin} onSave={handlePinChange} onClose={() => setChangingPin(null)} />
+      )}
+      {permissionsUser && (
+        <PermissionsModal member={permissionsUser} onClose={() => setPermissionsUser(null)} />
       )}
     </>
   );
