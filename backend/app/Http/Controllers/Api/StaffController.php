@@ -58,7 +58,7 @@ class StaffController extends Controller
     /** POST /api/admin/staff */
     public function store(Request $request): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'admin', 'owner');
+        $this->authorizeAdminRole($request, 'owner');
 
         $validated = $request->validate([
             'name'    => 'required|string|max:255',
@@ -84,7 +84,7 @@ class StaffController extends Controller
     /** PATCH /api/admin/staff/{id} */
     public function update(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'admin', 'owner');
+        $this->authorizeAdminRole($request, 'owner');
 
         $user = User::findOrFail($id);
 
@@ -104,7 +104,7 @@ class StaffController extends Controller
     /** POST /api/admin/staff/{id}/pin  — reset PIN */
     public function resetPin(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'admin', 'owner');
+        $this->authorizeAdminRole($request, 'owner');
 
         $validated = $request->validate([
             'pin' => 'required|string|min:4|max:8',
@@ -119,17 +119,17 @@ class StaffController extends Controller
     /** DELETE /api/admin/staff/{id} */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'admin', 'owner');
+        $this->authorizeAdminRole($request, 'owner');
 
         $user = User::findOrFail($id);
 
         // Prevent deleting the last active admin/owner
-        $activeAdmins = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['admin', 'owner']))
+        $activeAdmins = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['owner']))
             ->where('is_active', true)
             ->count();
 
         if ($activeAdmins <= 1 && $user->is_active) {
-            return response()->json(['message' => 'Cannot delete the last active admin.'], 422);
+            return response()->json(['message' => 'Cannot delete the last active owner.'], 422);
         }
 
         $user->delete();

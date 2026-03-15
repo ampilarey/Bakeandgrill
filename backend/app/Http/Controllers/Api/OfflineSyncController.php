@@ -71,10 +71,15 @@ class OfflineSyncController extends Controller
                     'order_id'   => $data['order']['id'] ?? null,
                 ];
             } catch (\Throwable $e) {
+                logger()->error('Offline sync failed', [
+                    'offline_id' => $offlineId,
+                    'error'      => $e->getMessage(),
+                    'trace'      => $e->getTraceAsString(),
+                ]);
                 $results[] = [
                     'offline_id' => $offlineId,
                     'status'     => 'error',
-                    'message'    => $e->getMessage(),
+                    'message'    => 'Order could not be synced. Please retry or contact support.',
                 ];
             }
         }

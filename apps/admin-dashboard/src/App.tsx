@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { getMe, logout as apiLogout, type StaffUser } from './api';
+import { ToastProvider } from './components/ui';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { OrdersPage } from './pages/OrdersPage';
@@ -23,6 +24,7 @@ import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
 import { WebhooksPage } from './pages/WebhooksPage';
 import { DashboardPage } from './pages/DashboardPage';
 import TestChecklistPage from './pages/TestChecklistPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function AuthGuard({
   user,
@@ -86,6 +88,7 @@ export default function App() {
   }
 
   return (
+    <ToastProvider>
     <Routes>
       <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
       <Route
@@ -104,54 +107,60 @@ export default function App() {
                 <Route path="sms"        element={<SmsPage />} />
                 <Route path="reports"    element={<ReportsPage />} />
                 <Route path="menu"       element={<MenuPage />} />
-                {/* Staff management — owner/admin only */}
+                {/* Staff management — owner only */}
                 <Route path="staff" element={
-                  <RoleGuard user={user} allowed={['owner', 'admin']}>
+                  <RoleGuard user={user} allowed={['owner', 'manager']}>
                     <StaffPage />
                   </RoleGuard>
                 } />
                 <Route path="reservations" element={<ReservationsPage />} />
                 <Route path="analytics"   element={<AnalyticsPage />} />
-                {/* Finance — manager, admin, owner */}
+                {/* Finance — manager, owner */}
                 <Route path="invoices" element={
-                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                  <RoleGuard user={user} allowed={['manager', 'owner']}>
                     <InvoicesPage />
                   </RoleGuard>
                 } />
                 <Route path="expenses" element={
-                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                  <RoleGuard user={user} allowed={['manager', 'owner']}>
                     <ExpensesPage />
                   </RoleGuard>
                 } />
                 <Route path="profit-loss" element={
-                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                  <RoleGuard user={user} allowed={['manager', 'owner']}>
                     <ProfitLossPage />
                   </RoleGuard>
                 } />
                 <Route path="supplier-intelligence" element={
-                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                  <RoleGuard user={user} allowed={['manager', 'owner']}>
                     <SupplierIntelligencePage />
                   </RoleGuard>
                 } />
                 <Route path="forecasts" element={
-                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                  <RoleGuard user={user} allowed={['manager', 'owner']}>
                     <ForecastPage />
                   </RoleGuard>
                 } />
                 <Route path="purchase-orders" element={
-                  <RoleGuard user={user} allowed={['manager', 'admin', 'owner']}>
+                  <RoleGuard user={user} allowed={['manager', 'owner']}>
                     <PurchaseOrdersPage />
                   </RoleGuard>
                 } />
                 {/* Webhooks — owner only */}
                 <Route path="webhooks" element={
-                  <RoleGuard user={user} allowed={['owner', 'admin']}>
+                  <RoleGuard user={user} allowed={['owner']}>
                     <WebhooksPage />
                   </RoleGuard>
                 } />
                 <Route path="checklist" element={
-                  <RoleGuard user={user} allowed={['owner', 'admin']}>
+                  <RoleGuard user={user} allowed={['owner']}>
                     <TestChecklistPage />
+                  </RoleGuard>
+                } />
+                {/* Settings hub — owner + manager */}
+                <Route path="settings/*" element={
+                  <RoleGuard user={user} allowed={['owner', 'manager']}>
+                    <SettingsPage />
                   </RoleGuard>
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />
@@ -161,5 +170,6 @@ export default function App() {
         }
       />
     </Routes>
+    </ToastProvider>
   );
 }

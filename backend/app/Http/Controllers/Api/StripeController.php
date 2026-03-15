@@ -31,13 +31,15 @@ class StripeController extends Controller
 
         $order = Order::findOrFail($validated['order_id']);
 
-        // Ensure the requester is allowed to pay this order
+        // Customer tokens may only pay their own orders.
+        // Staff tokens may initiate payment on any order.
         $user = $request->user();
-        if ($order->customer_id && $user?->id !== $order->customer_id) {
-            // Staff may always initiate
-            if (!($user instanceof \App\Models\User)) {
+        if ($user?->tokenCan('customer')) {
+            if ($order->customer_id !== $user->id) {
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
+        } elseif (! $user?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         $currency = $validated['currency'] ?? 'mvr';

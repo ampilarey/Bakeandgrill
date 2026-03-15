@@ -10,6 +10,6 @@ class DevicePolicy
 {
     public function manage(User $user): bool
     {
-        return in_array($user->role?->slug, ['owner', 'admin'], true);
+        return in_array($user->role?->slug, ['owner'], true);
     }
 }

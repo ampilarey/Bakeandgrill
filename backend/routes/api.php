@@ -150,7 +150,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     require __DIR__ . '/api_finance.php';
 
     // Suppliers + Purchases — staff-only (customer tokens blocked by RequireRole)
-    Route::middleware('role:cashier,manager,admin,owner')->group(function () {
+    Route::middleware('role:staff,manager,owner')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index']);
         Route::post('/suppliers', [SupplierController::class, 'store']);
         Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
@@ -246,7 +246,7 @@ Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback']
 Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut']);
 
 // Staff-only: update internal notes on a customer profile
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
     Route::patch('/customers/{id}/notes', [CustomerController::class, 'updateNotes']);
 });
 
@@ -307,7 +307,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Admin — full CRUD (requires staff token + manager/admin/owner role)
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin')->group(function () {
     Route::get('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminIndex']);
     Route::post('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminStore']);
     Route::patch('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminUpdate']);
@@ -324,7 +324,7 @@ Route::middleware('auth:sanctum')->prefix('loyalty')->group(function () {
     Route::delete('/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'releaseHold']);
 });
 
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin')->group(function () {
     Route::get('/loyalty/accounts', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAccountIndex']);
     Route::get('/loyalty/accounts/{customerId}/ledger', [App\Http\Controllers\Api\LoyaltyController::class, 'adminLedger']);
     Route::post('/loyalty/accounts/{customerId}/adjust', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAdjust']);
@@ -361,7 +361,7 @@ Route::get('/stream/order-status/{orderId}', [App\Http\Controllers\Api\StreamCon
     ->middleware('throttle:30,1');
 
 // ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/sms')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/sms')->group(function () {
     // Full SMS audit log (OTP + promo + campaign + transactional)
     Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
     Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
@@ -376,10 +376,10 @@ Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/s
 });
 
 // ─── Image Upload (Admin) ──────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
 
 // ─── Staff Management (Admin/Owner only) ──────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:admin,owner'])->prefix('admin/staff')->group(function () {
+Route::middleware(['auth:sanctum', 'role:owner'])->prefix('admin/staff')->group(function () {
     Route::get('/',         [App\Http\Controllers\Api\StaffController::class, 'index']);
     Route::post('/',        [App\Http\Controllers\Api\StaffController::class, 'store']);
     Route::patch('/{id}',   [App\Http\Controllers\Api\StaffController::class, 'update']);
@@ -389,7 +389,7 @@ Route::middleware(['auth:sanctum', 'role:admin,owner'])->prefix('admin/staff')->
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/analytics')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/analytics')->group(function () {
     Route::get('/peak-hours',    [App\Http\Controllers\Api\AnalyticsController::class, 'peakHours']);
     Route::get('/retention',     [App\Http\Controllers\Api\AnalyticsController::class, 'retention']);
     Route::get('/profitability', [App\Http\Controllers\Api\AnalyticsController::class, 'profitability']);
@@ -413,7 +413,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 });
 
 // Admin: gift cards and referral overview
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
     Route::get('/admin/gift-cards',  [App\Http\Controllers\Api\GiftCardController::class, 'index']);
     Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
     Route::get('/admin/referrals',   [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
@@ -425,7 +425,7 @@ Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function 
 Route::get('/wait-time', [App\Http\Controllers\Api\WaitTimeController::class, 'estimate']);
 
 // Staff Scheduling (admin)
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/schedules')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/schedules')->group(function () {
     Route::get('/',        [App\Http\Controllers\Api\ScheduleController::class, 'index']);
     Route::post('/',       [App\Http\Controllers\Api\ScheduleController::class, 'store']);
     Route::patch('/{id}',  [App\Http\Controllers\Api\ScheduleController::class, 'update']);
@@ -444,7 +444,7 @@ Route::middleware(['auth:sanctum'])->prefix('waste-logs')->group(function () {
 Route::get('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'index']);
 
 // Admin: manage photos
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
     Route::post('/items/{itemId}/photos',            [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
     Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
     Route::delete('/items/{itemId}/photos/{photoId}',[App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
@@ -456,7 +456,7 @@ Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->group(function 
 Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class, 'active']);
 
 // Admin: CRUD
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/specials')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/specials')->group(function () {
     Route::get('/',        [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
     Route::post('/',       [App\Http\Controllers\Api\DailySpecialController::class, 'store']);
     Route::patch('/{id}',  [App\Http\Controllers\Api\DailySpecialController::class, 'update']);
@@ -499,7 +499,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 });
 
 // Admin: moderate reviews
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/reviews')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/reviews')->group(function () {
     Route::get('/',           [App\Http\Controllers\Api\ReviewController::class, 'adminIndex']);
     Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
 });
@@ -520,7 +520,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Staff: manage reservation status + settings
-Route::middleware(['auth:sanctum', 'role:manager,admin,owner'])->prefix('admin/reservations')->group(function () {
+Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/reservations')->group(function () {
     Route::get('/',                  [ReservationController::class, 'index']);
     Route::patch('/{id}/status',     [ReservationController::class, 'updateStatus']);
     Route::get('/settings',          [ReservationController::class, 'getSettings']);
@@ -559,7 +559,7 @@ Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class
     ->middleware('throttle:100,1');
 
 // ─── Xero OAuth ─────────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:admin,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
     Route::get('/xero/connect',      [App\Http\Controllers\Api\XeroController::class, 'connect']);
     Route::get('/xero/callback',     [App\Http\Controllers\Api\XeroController::class, 'callback']);
     Route::get('/xero/status',       [App\Http\Controllers\Api\XeroController::class, 'status']);
@@ -570,7 +570,7 @@ Route::middleware(['auth:sanctum', 'role:admin,owner'])->group(function () {
 });
 
 // ─── Webhook Subscriptions (admin-only) ────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:admin,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
     Route::get('/webhooks/events', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'supportedEvents']);
     Route::get('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'index']);
     Route::post('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'store']);
@@ -579,6 +579,21 @@ Route::middleware(['auth:sanctum', 'role:admin,owner'])->group(function () {
     Route::delete('/webhooks/{id}', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'destroy']);
     Route::post('/webhooks/{id}/rotate-secret', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'rotateSecret']);
     Route::get('/webhooks/{id}/logs', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'logs']);
+});
+
+// ─── Site Settings ──────────────────────────────────────────────────────────
+Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public']);
+Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
+    Route::get('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
+    Route::put('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
+    Route::post('/site-settings/upload',  [App\Http\Controllers\Api\SiteSettingsController::class, 'upload']);
+});
+
+// ─── Permissions Management (Owner only) ───────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
+    Route::get('/permissions', [App\Http\Controllers\Api\PermissionController::class, 'index']);
+    Route::get('/users/{user}/permissions', [App\Http\Controllers\Api\PermissionController::class, 'show']);
+    Route::put('/users/{user}/permissions', [App\Http\Controllers\Api\PermissionController::class, 'update']);
 });
 
 // ─── System Health ─────────────────────────────────────────────────────────

@@ -454,7 +454,7 @@ export type StaffMember = {
   id: number;
   name: string;
   email: string;
-  role: string | null;       // slug e.g. 'admin'
+  role: string | null;       // slug: 'owner' | 'manager' | 'staff'
   role_name: string | null;  // display name e.g. 'Admin'
   role_id: number | null;
   is_active: boolean;
@@ -805,4 +805,41 @@ export async function getPurchaseSuggestions(): Promise<PurchaseSuggestions> {
 // ── Generic request passthrough (for pages that need dynamic paths) ──────────
 export async function apiRequest<T>(path: string, opts?: RequestInit): Promise<T> {
   return req(path, opts);
+}
+
+// ── Site Settings ─────────────────────────────────────────────────────────────
+export interface SiteSettingsGroup {
+  [group: string]: { key: string; value: string | null; type: string; label: string; description: string | null }[];
+}
+
+export async function getSiteSettings(): Promise<{ settings: SiteSettingsGroup }> {
+  return req('/site-settings');
+}
+
+export async function updateSiteSettings(settings: Record<string, string | null>): Promise<void> {
+  await req('/site-settings', { method: 'PUT', body: JSON.stringify({ settings }) });
+}
+
+export async function uploadSiteLogo(key: string, file: File): Promise<{ url: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('key', key);
+  return req('/site-settings/upload', { method: 'POST', body: form });
+}
+
+// ── Permissions ───────────────────────────────────────────────────────────────
+export interface PermissionItem {
+  slug: string; name: string; group: string; granted: boolean; source: 'owner' | 'role' | 'override';
+}
+
+export async function getAllPermissions(): Promise<{ permissions: Record<string, { id: number; slug: string; name: string }[]> }> {
+  return req('/permissions');
+}
+
+export async function getUserPermissions(userId: number): Promise<{ user_id: number; name: string; role: string; permissions: PermissionItem[] }> {
+  return req(`/users/${userId}/permissions`);
+}
+
+export async function updateUserPermissions(userId: number, permissions: Record<string, boolean | null>): Promise<void> {
+  await req(`/users/${userId}/permissions`, { method: 'PUT', body: JSON.stringify({ permissions }) });
 }

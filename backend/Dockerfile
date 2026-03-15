@@ -12,7 +12,17 @@ RUN apk add --no-cache \
     oniguruma-dev
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd opcache
+
+# OPcache production config
+RUN { \
+    echo 'opcache.enable=1'; \
+    echo 'opcache.memory_consumption=128'; \
+    echo 'opcache.interned_strings_buffer=8'; \
+    echo 'opcache.max_accelerated_files=10000'; \
+    echo 'opcache.revalidate_freq=60'; \
+    echo 'opcache.fast_shutdown=1'; \
+} > /usr/local/etc/php/conf.d/opcache.ini
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

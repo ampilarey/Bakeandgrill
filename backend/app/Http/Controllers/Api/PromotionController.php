@@ -180,7 +180,7 @@ class PromotionController extends Controller
 
     public function adminStore(Request $request): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'manager', 'admin', 'owner');
+        $this->authorizeAdminRole($request, 'manager', 'owner');
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -204,7 +204,7 @@ class PromotionController extends Controller
 
     public function adminUpdate(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'manager', 'admin', 'owner');
+        $this->authorizeAdminRole($request, 'manager', 'owner');
 
         $promotion = Promotion::withTrashed()->findOrFail($id);
 
@@ -223,7 +223,7 @@ class PromotionController extends Controller
 
     public function adminDestroy(Request $request, int $id): JsonResponse
     {
-        $this->authorizeAdminRole($request, 'manager', 'admin', 'owner');
+        $this->authorizeAdminRole($request, 'manager', 'owner');
 
         $promotion = Promotion::findOrFail($id);
         $promotion->delete();

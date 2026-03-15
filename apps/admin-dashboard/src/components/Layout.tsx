@@ -1,480 +1,369 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { logout, type StaffUser } from '../api';
+import { NavLink, useLocation } from 'react-router-dom';
+import type { StaffUser } from '../api';
+import {
+  LayoutDashboard, ClipboardList, ChefHat, Truck,
+  UtensilsCrossed, Package, Target, CalendarDays,
+  BarChart3, DollarSign, Receipt, TrendingDown,
+  Users, Settings, LogOut, Menu, X,
+  ChevronLeft, ChevronRight, PieChart,
+} from 'lucide-react';
 
-// ── Nav groups ────────────────────────────────────────────────────────────────
+// ── Navigation structure (14 items in 4 groups) ──────────────────────────────
 const NAV_GROUPS = [
   {
-    label: 'Operations',
+    label: 'OPERATIONS',
     items: [
-      { to: '/dashboard',   icon: '🏠', label: 'Dashboard'    },
-      { to: '/orders',      icon: '📋', label: 'Orders'       },
-      { to: '/kds',         icon: '👨‍🍳', label: 'Kitchen'      },
-      { to: '/delivery',    icon: '🛵', label: 'Delivery'     },
+      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'   },
+      { to: '/orders',     icon: ClipboardList,   label: 'Orders'      },
+      { to: '/kds',        icon: ChefHat,         label: 'Kitchen'     },
+      { to: '/delivery',   icon: Truck,           label: 'Delivery'    },
     ],
   },
   {
-    label: 'Sales & Marketing',
+    label: 'BUSINESS',
     items: [
-      { to: '/menu',         icon: '🍽️', label: 'Menu'        },
-      { to: '/promotions',   icon: '🏷️', label: 'Promos'      },
-      { to: '/loyalty',      icon: '⭐', label: 'Loyalty'     },
-      { to: '/sms',          icon: '📱', label: 'SMS'         },
-      { to: '/reservations', icon: '📅', label: 'Reservations'},
+      { to: '/menu',             icon: UtensilsCrossed, label: 'Menu'              },
+      { to: '/purchase-orders',  icon: Package,         label: 'Inventory & Stock' },
+      { to: '/promotions',       icon: Target,          label: 'Marketing'         },
+      { to: '/reservations',     icon: CalendarDays,    label: 'Reservations'      },
     ],
   },
   {
-    label: 'Finance',
+    label: 'FINANCE',
     items: [
-      { to: '/purchase-orders',      icon: '🛒', label: 'Purchases' },
-      { to: '/invoices',             icon: '🧾', label: 'Invoices'  },
-      { to: '/expenses',             icon: '💸', label: 'Expenses'  },
-      { to: '/profit-loss',          icon: '💰', label: 'P&L'       },
-      { to: '/supplier-intelligence',icon: '🏭', label: 'Suppliers' },
-      { to: '/forecasts',            icon: '📈', label: 'Forecasts' },
-      { to: '/reports',              icon: '📊', label: 'Reports'   },
-      { to: '/analytics',            icon: '📉', label: 'Analytics' },
+      { to: '/reports',   icon: BarChart3,    label: 'Reports'         },
+      { to: '/invoices',  icon: DollarSign,   label: 'Revenue'         },
+      { to: '/expenses',  icon: Receipt,      label: 'Expenses'        },
+      { to: '/forecasts', icon: TrendingDown, label: 'Forecasts'       },
     ],
   },
   {
-    label: 'Team',
+    label: 'MANAGEMENT',
     items: [
-      { to: '/staff', icon: '👥', label: 'Staff' },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { to: '/webhooks',  icon: '🔔', label: 'Webhooks'      },
-      { to: '/checklist', icon: '✅', label: 'Test Checklist' },
+      { to: '/staff',    icon: Users,    label: 'Staff & Schedules' },
+      { to: '/settings', icon: Settings, label: 'Settings'          },
     ],
   },
 ];
 
-// All items flat (for mobile bottom bar title lookup)
-const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
+const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
+
+// Bottom tab bar items (mobile)
+const BOTTOM_TABS = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dash'   },
+  { to: '/orders',    icon: ClipboardList,   label: 'Orders' },
+  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu'   },
+  { to: '/reports',   icon: PieChart,        label: 'Money'  },
+  { to: '#more',      icon: Menu,            label: 'More'   },
+];
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
   }, []);
   return isMobile;
 }
 
-// ── Layout ────────────────────────────────────────────────────────────────────
-export function Layout({
-  user,
-  children,
-  onLogout,
-}: {
-  user: StaffUser;
-  children: React.ReactNode;
-  onLogout: () => void;
-}) {
-  const navigate    = useNavigate();
-  const location    = useLocation();
-  const isMobile    = useIsMobile();
-  const [collapsed, setCollapsed]       = useState(false);
-  const [drawerOpen, setDrawerOpen]     = useState(false);
-  const drawerRef   = useRef<HTMLDivElement>(null);
-
-  // Current page label for mobile header
-  const currentPage = ALL_NAV.find((n) => location.pathname.startsWith(n.to))?.label ?? 'Admin';
-
-  const handleLogout = async () => {
-    try { await logout(); } catch { /* ignore */ }
-    localStorage.removeItem('admin_token');
-    onLogout();
-    navigate('/login');
-  };
-
-  // Close drawer on navigation
-  useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
-
-  // Close drawer on outside click
+function useIsTablet() {
+  const [isTablet, setIsTablet] = useState(() => window.innerWidth >= 768 && window.innerWidth < 1024);
   useEffect(() => {
-    if (!drawerOpen) return;
+    const handler = () => setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isTablet;
+}
+
+// ── Sidebar nav item ──────────────────────────────────────────────────────────
+function SideNavItem({
+  to, icon: Icon, label, collapsed,
+}: { to: string; icon: React.ElementType; label: string; collapsed: boolean }) {
+  return (
+    <NavLink
+      to={to}
+      title={collapsed ? label : undefined}
+      className={({ isActive }) => [
+        'flex items-center gap-3 px-3 py-2.5 rounded-[10px] transition-all duration-150 group relative',
+        isActive
+          ? 'bg-[#D4813A]/15 text-[#D4813A] font-semibold'
+          : 'text-[#C4B5A3] hover:bg-[#D4813A]/10 hover:text-[#E8A66A]',
+        collapsed ? 'justify-center' : '',
+      ].join(' ')}
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#D4813A] rounded-r-full" />
+          )}
+          <Icon size={18} className="flex-shrink-0" />
+          {!collapsed && <span className="text-sm truncate">{label}</span>}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+// ── Main Layout ───────────────────────────────────────────────────────────────
+interface LayoutProps {
+  user: StaffUser;
+  onLogout: () => void;
+  children: React.ReactNode;
+}
+
+export function Layout({ user, onLogout, children }: LayoutProps) {
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const [collapsed, setCollapsed] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const location = useLocation();
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-collapse on tablet
+  useEffect(() => {
+    if (isTablet) setCollapsed(true);
+    else if (!isMobile) setCollapsed(false);
+  }, [isTablet, isMobile]);
+
+  // Close "More" drawer on navigation
+  useEffect(() => { setMoreOpen(false); }, [location.pathname]);
+
+  // Close More drawer on outside click
+  useEffect(() => {
+    if (!moreOpen) return;
     const handler = (e: MouseEvent) => {
       if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) {
-        setDrawerOpen(false);
+        setMoreOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [drawerOpen]);
+  }, [moreOpen]);
 
-  // 30-minute idle timeout
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const IDLE_MS = 30 * 60 * 1000;
-    const reset = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        localStorage.removeItem('admin_token');
-        onLogout();
-        navigate('/login');
-      }, IDLE_MS);
-    };
-    const events = ['click', 'keydown', 'mousemove', 'touchstart'] as const;
-    events.forEach((e) => window.addEventListener(e, reset));
-    reset();
-    return () => {
-      clearTimeout(timer);
-      events.forEach((e) => window.removeEventListener(e, reset));
-    };
-  }, [navigate, onLogout]);
+  // Current page label
+  const currentPage = ALL_ITEMS.find((i) => location.pathname.startsWith(i.to))?.label ?? 'Admin';
 
-  // ── Nav content (shared between sidebar and drawer) ───────────────────────
-  const NavContent = ({ onClose }: { onClose?: () => void }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Logo header */}
-      <div style={{
-        padding: '18px 20px',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-        display: 'flex', alignItems: 'center', gap: 10,
-      }}>
-        <img src="/logo.png" alt="Bake & Grill" style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }} />
-        {(!collapsed || isMobile) && (
-          <div>
-            <div style={{ color: '#f8fafc', fontWeight: 800, fontSize: 13 }}>Bake & Grill</div>
-            <div style={{ color: '#8B7355', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin</div>
-          </div>
-        )}
-        {onClose && (
-          <button onClick={onClose} style={{
-            marginLeft: 'auto', background: 'none', border: 'none',
-            color: '#8B7355', cursor: 'pointer', fontSize: 18, padding: 4,
-          }}>✕</button>
-        )}
-      </div>
+  const sidebarWidth = collapsed ? 64 : 240;
 
-      {/* Grouped nav */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
-            {/* Group label — hide when collapsed on desktop */}
-            {(!collapsed || isMobile) && (
-              <div style={{
-                padding: '12px 20px 4px',
-                fontSize: 10, fontWeight: 700,
-                color: '#5C4A30',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-              }}>
-                {group.label}
-              </div>
-            )}
-            {collapsed && !isMobile && <div style={{ height: 8 }} />}
-
-            {group.items.map(({ to, icon, label }) => (
-              <NavLink key={to} to={to} style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center',
-                gap: 10,
-                padding: collapsed && !isMobile ? '10px 0' : '9px 20px',
-                justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
-                color: isActive ? '#D4813A' : '#94a3b8',
-                textDecoration: 'none',
-                fontWeight: isActive ? 700 : 400,
-                fontSize: 13,
-                background: isActive ? 'rgba(212,129,58,0.12)' : 'transparent',
-                borderLeft: collapsed && !isMobile ? 'none' : (isActive ? '3px solid #D4813A' : '3px solid transparent'),
-                borderRight: collapsed && !isMobile && isActive ? '3px solid #D4813A' : 'none',
-                transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-              })}>
-                <span style={{ fontSize: 17, flexShrink: 0 }}>{icon}</span>
-                {(!collapsed || isMobile) && <span>{label}</span>}
-              </NavLink>
-            ))}
-          </div>
-        ))}
-      </nav>
-
-      {/* Footer */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '10px 0 0' }}>
-        <a href="/" style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: collapsed && !isMobile ? '10px 0' : '10px 20px',
-          justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
-          color: '#8B7355', textDecoration: 'none', fontSize: 12, whiteSpace: 'nowrap',
-        }}>
-          <span style={{ fontSize: 15, flexShrink: 0 }}>🌐</span>
-          {(!collapsed || isMobile) && <span>← Main Website</span>}
-        </a>
-      </div>
-
-      <div style={{ padding: '10px 14px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        {(!collapsed || isMobile) && (
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ color: '#f8fafc', fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user.name}
-            </div>
-            <div style={{ color: '#8B7355', fontSize: 10, textTransform: 'capitalize' }}>{user.role ?? 'Staff'}</div>
-          </div>
-        )}
-        <button onClick={handleLogout} style={{
-          background: 'rgba(239,68,68,0.12)',
-          border: '1px solid rgba(239,68,68,0.2)',
-          color: '#f87171',
-          borderRadius: 8,
-          padding: collapsed && !isMobile ? '7px' : '7px 12px',
-          fontSize: 11, fontWeight: 600, width: '100%', cursor: 'pointer',
-        }}>
-          {collapsed && !isMobile ? '⇥' : 'Logout'}
-        </button>
-      </div>
-    </div>
-  );
-
-  // ── Mobile layout ─────────────────────────────────────────────────────────
+  // ── MOBILE LAYOUT ───────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#FFFDF9' }}>
-
-        {/* Mobile top header */}
-        <header style={{
-          background: '#1C1408',
-          display: 'flex', alignItems: 'center',
-          padding: '0 16px', height: 52, flexShrink: 0,
-          position: 'sticky', top: 0, zIndex: 100,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-        }}>
+      <div className="min-h-screen bg-[#F8F6F3] flex flex-col">
+        {/* Sticky top bar */}
+        <header className="sticky top-0 z-40 h-14 bg-white border-b border-[#E8E0D8] flex items-center px-4 gap-3">
           <button
-            onClick={() => setDrawerOpen(true)}
-            style={{ background: 'none', border: 'none', color: '#D4813A', fontSize: 22, cursor: 'pointer', padding: '4px 8px 4px 0', lineHeight: 1 }}
+            onClick={() => setMoreOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-[10px] text-[#6B5D4F] hover:bg-[#F8F6F3] transition-colors"
+            aria-label="Open menu"
           >
-            ☰
+            <Menu size={20} />
           </button>
-          <img src="/logo.png" alt="" style={{ width: 26, height: 26, borderRadius: 6, marginRight: 8 }} />
-          <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: 15, flex: 1 }}>{currentPage}</span>
-          <span style={{ color: '#8B7355', fontSize: 11 }}>{user.name}</span>
-        </header>
-
-        {/* Drawer overlay */}
-        {drawerOpen && (
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.5)',
-          }}>
-            <div ref={drawerRef} style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0,
-              width: 260,
-              background: '#1C1408',
-              display: 'flex', flexDirection: 'column',
-              boxShadow: '4px 0 20px rgba(0,0,0,0.4)',
-              animation: 'slideIn 0.2s ease',
-            }}>
-              <NavContent onClose={() => setDrawerOpen(false)} />
+          <img src="/logo.png" alt="Bake & Grill" className="w-8 h-8 rounded-[8px] object-cover" />
+          <span className="flex-1 font-bold text-[#1C1408] text-sm truncate">{currentPage}</span>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[#D4813A]/15 flex items-center justify-center text-[#D4813A] font-bold text-xs">
+              {user.name?.charAt(0).toUpperCase()}
             </div>
           </div>
-        )}
+        </header>
 
-        {/* Page content */}
-        <main style={{ flex: 1, padding: '16px', minWidth: 0, overflowX: 'hidden' }}>
+        {/* Main content */}
+        <main className="flex-1 p-4 pb-20 overflow-x-hidden">
           {children}
         </main>
 
-        <style>{`
-          @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-        `}</style>
+        {/* Bottom tab bar */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E8E0D8] h-14 flex items-stretch">
+          {BOTTOM_TABS.map(({ to, icon: Icon, label }) => {
+            if (to === '#more') {
+              return (
+                <button
+                  key="more"
+                  onClick={() => setMoreOpen(true)}
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[#9C8E7E] hover:text-[#D4813A] transition-colors"
+                >
+                  <Icon size={20} />
+                  <span className="text-[10px] font-semibold">{label}</span>
+                </button>
+              );
+            }
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) => [
+                  'flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors',
+                  isActive ? 'text-[#D4813A]' : 'text-[#9C8E7E] hover:text-[#D4813A]',
+                ].join(' ')}
+              >
+                <Icon size={20} />
+                <span className="text-[10px] font-semibold">{label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* "More" full-screen overlay */}
+        {moreOpen && (
+          <div className="fixed inset-0 z-50 overlay-enter">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
+            <div ref={drawerRef} className="absolute inset-x-0 bottom-0 bg-white rounded-t-[20px] max-h-[85vh] overflow-y-auto animate-fade-in">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E0D8]">
+                <div className="flex items-center gap-2">
+                  <img src="/logo.png" alt="Bake & Grill" className="w-8 h-8 rounded-[8px]" />
+                  <div>
+                    <p className="font-bold text-sm text-[#1C1408]">{user.name}</p>
+                    <p className="text-xs text-[#9C8E7E] capitalize">{user.role}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setMoreOpen(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[#9C8E7E] hover:bg-[#F8F6F3]"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Nav groups as icon grids */}
+              <div className="p-4 space-y-5">
+                {NAV_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-[10px] font-bold text-[#9C8E7E] tracking-wider mb-2">{group.label}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {group.items.map(({ to, icon: Icon, label }) => (
+                        <NavLink
+                          key={to}
+                          to={to}
+                          className={({ isActive }) => [
+                            'flex flex-col items-center gap-1.5 p-3 rounded-[12px] border transition-all',
+                            isActive
+                              ? 'bg-[#D4813A]/10 border-[#D4813A]/30 text-[#D4813A]'
+                              : 'border-[#E8E0D8] text-[#6B5D4F] hover:border-[#D4813A]/30 hover:bg-[#FDF8F4]',
+                          ].join(' ')}
+                        >
+                          <Icon size={22} />
+                          <span className="text-[11px] font-semibold text-center leading-tight">{label}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Logout */}
+                <button
+                  onClick={() => { setMoreOpen(false); onLogout(); }}
+                  className="w-full flex items-center gap-3 p-4 rounded-[12px] border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={18} />
+                  <span className="text-sm font-semibold">Log Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // ── Desktop layout ────────────────────────────────────────────────────────
+  // ── DESKTOP / TABLET LAYOUT ──────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#FFFDF9' }}>
-      <aside style={{
-        width: collapsed ? 56 : 220,
-        background: '#1C1408',
-        flexShrink: 0,
-        position: 'sticky', top: 0,
-        height: '100vh',
-        transition: 'width 0.2s',
-        overflowY: 'auto', overflowX: 'hidden',
-      }}>
+    <div className="min-h-screen bg-[#F8F6F3] flex">
+
+      {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
+      <aside
+        className="fixed left-0 top-0 bottom-0 z-30 flex flex-col bg-[#1C1408] sidebar-transition overflow-hidden"
+        style={{ width: sidebarWidth }}
+      >
+        {/* Logo */}
+        <div className={['flex items-center gap-3 px-4 py-4 border-b border-white/10 flex-shrink-0', collapsed ? 'justify-center' : ''].join(' ')}>
+          <img src="/logo.png" alt="Bake & Grill" className="w-9 h-9 rounded-[8px] object-cover flex-shrink-0" />
+          {!collapsed && (
+            <div>
+              <p className="font-bold text-white text-sm leading-tight">Bake & Grill</p>
+              <p className="text-[#C4B5A3] text-[10px]">Admin Panel</p>
+            </div>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              {!collapsed && (
+                <p className="text-[10px] font-bold text-[#6B5D4F] tracking-widest px-3 mb-1">{group.label}</p>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map(({ to, icon, label }) => (
+                  <SideNavItem key={to} to={to} icon={icon} label={label} collapsed={collapsed} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* User + Logout */}
+        <div className="flex-shrink-0 border-t border-white/10 p-2">
+          {!collapsed && (
+            <div className="flex items-center gap-2 px-3 py-2 mb-1">
+              <div className="w-7 h-7 rounded-full bg-[#D4813A]/20 flex items-center justify-center text-[#D4813A] font-bold text-xs flex-shrink-0">
+                {user.name?.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-white text-xs font-semibold truncate">{user.name}</p>
+                <p className="text-[#C4B5A3] text-[10px] capitalize">{user.role}</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={onLogout}
+            title={collapsed ? 'Log out' : undefined}
+            className={['flex items-center gap-3 w-full px-3 py-2.5 rounded-[10px] text-[#C4B5A3] hover:bg-red-900/30 hover:text-red-400 transition-colors text-sm', collapsed ? 'justify-center' : ''].join(' ')}
+          >
+            <LogOut size={16} className="flex-shrink-0" />
+            {!collapsed && 'Log out'}
+          </button>
+        </div>
+
         {/* Collapse toggle */}
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          style={{
-            position: 'absolute', top: 14, right: collapsed ? 6 : 10,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-            color: '#8B7355', borderRadius: 6, width: 22, height: 22,
-            fontSize: 10, cursor: 'pointer', zIndex: 10,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-          title={collapsed ? 'Expand' : 'Collapse'}
+          onClick={() => setCollapsed((c) => !c)}
+          className="absolute -right-3 top-16 w-6 h-6 bg-[#D4813A] rounded-full flex items-center justify-center text-white shadow-md hover:bg-[#B5692E] transition-colors z-10"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed ? '›' : '‹'}
+          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
-        <NavContent />
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, padding: '24px', overflowY: 'auto' }}>
-        {children}
-      </main>
-    </div>
-  );
-}
+      {/* ── Content area ─────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 sidebar-transition" style={{ marginLeft: sidebarWidth }}>
 
-// ── Shared UI primitives ──────────────────────────────────────────────────────
+        {/* Header bar */}
+        <header className="sticky top-0 z-20 h-14 bg-white border-b border-[#E8E0D8] flex items-center px-6 gap-4">
+          <div className="flex-1" />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-[#F8F6F3] border border-[#E8E0D8]">
+              <div className="w-6 h-6 rounded-full bg-[#D4813A]/15 flex items-center justify-center text-[#D4813A] font-bold text-xs">
+                {user.name?.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm font-semibold text-[#1C1408]">{user.name}</span>
+              <span className="text-xs text-[#9C8E7E] capitalize">· {user.role}</span>
+            </div>
+          </div>
+        </header>
 
-export function PageHeader({ title, subtitle, action }: {
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2A1E0C', margin: 0 }}>{title}</h1>
-        {subtitle && <p style={{ color: '#8B7355', fontSize: 14, marginTop: 2 }}>{subtitle}</p>}
+        {/* Page content */}
+        <main className="flex-1 p-6 overflow-x-hidden">
+          {children}
+        </main>
       </div>
-      {action && <div>{action}</div>}
     </div>
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{
-      background: '#fff',
-      borderRadius: 14,
-      border: '1px solid #EDE4D4',
-      padding: '20px 24px',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-      ...style,
-    }}>
-      {children}
-    </div>
-  );
-}
-
-export function Badge({ label, color }: { label: string; color: string }) {
-  const colors: Record<string, { bg: string; text: string }> = {
-    green:  { bg: '#dcfce7', text: '#166534' },
-    yellow: { bg: '#fef9c3', text: '#854d0e' },
-    blue:   { bg: '#dbeafe', text: '#1e40af' },
-    red:    { bg: '#fee2e2', text: '#991b1b' },
-    gray:   { bg: '#f1f5f9', text: '#475569' },
-    teal:   { bg: '#ccfbf1', text: '#115e59' },
-    orange: { bg: '#ffedd5', text: '#9a3412' },
-  };
-  const c = colors[color] ?? colors.gray;
-  return (
-    <span style={{
-      background: c.bg, color: c.text,
-      padding: '2px 10px', borderRadius: 999,
-      fontSize: 12, fontWeight: 600, display: 'inline-block',
-    }}>
-      {label}
-    </span>
-  );
-}
-
-export function Btn({
-  children, onClick, variant = 'primary', disabled, small, style,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
-  disabled?: boolean;
-  small?: boolean;
-  style?: React.CSSProperties;
-}) {
-  const variants = {
-    primary:   { background: '#D4813A', color: '#fff', border: 'none' },
-    secondary: { background: '#FEF3E8', color: '#2A1E0C', border: '1px solid #EDE4D4' },
-    danger:    { background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' },
-    ghost:     { background: 'transparent', color: '#8B7355', border: '1px solid #EDE4D4' },
-  };
-  return (
-    <button onClick={onClick} disabled={disabled} style={{
-      ...variants[variant],
-      padding: small ? '5px 12px' : '9px 18px',
-      borderRadius: 9, fontSize: small ? 12 : 14, fontWeight: 600,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.6 : 1, transition: 'opacity 0.15s',
-      ...style,
-    }}>
-      {children}
-    </button>
-  );
-}
-
-export function Input({
-  value, onChange, placeholder, type = 'text', style,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder} style={{
-        border: '1px solid #EDE4D4', borderRadius: 9,
-        padding: '9px 12px', fontSize: 14, color: '#2A1E0C',
-        outline: 'none', width: '100%', background: '#fff', boxSizing: 'border-box',
-        ...style,
-      }}
-    />
-  );
-}
-
-export function Select({
-  value, onChange, options, style,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: Array<{ value: string; label: string }>;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} style={{
-      border: '1px solid #EDE4D4', borderRadius: 9,
-      padding: '9px 12px', fontSize: 14, color: '#2A1E0C',
-      background: '#fff', cursor: 'pointer', ...style,
-    }}>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-  );
-}
-
-export function Spinner() {
-  return <div style={{ textAlign: 'center', padding: '48px', color: '#8B7355' }}>Loading…</div>;
-}
-
-export function EmptyState({ message }: { message: string }) {
-  return <div style={{ textAlign: 'center', padding: '48px', color: '#8B7355', fontSize: 14 }}>{message}</div>;
-}
-
-export function ErrorMsg({ message }: { message: string }) {
-  return (
-    <div style={{
-      background: '#fee2e2', border: '1px solid #fecaca',
-      color: '#991b1b', borderRadius: 10, padding: '12px 16px',
-      fontSize: 13, marginBottom: 16,
-    }}>
-      {message}
-    </div>
-  );
-}
-
-export function statColor(status: string): string {
-  const map: Record<string, string> = {
-    pending: 'yellow', preparing: 'blue', in_progress: 'blue', ready: 'teal',
-    paid: 'green', completed: 'gray', cancelled: 'red',
-    out_for_delivery: 'teal', draft: 'gray', sent: 'green',
-    failed: 'red', active: 'green', expired: 'gray',
-  };
-  return map[status] ?? 'gray';
-}
+// Re-export shared UI helpers so pages can continue importing from '../components/Layout'
+export { Spinner, Card, Badge, ErrorMsg, EmptyState, PageHeader, Btn, Input, Select, statColor } from './SharedUI';

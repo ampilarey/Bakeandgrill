@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/* ════════════════════════════════════════════════════════════
+   BAKE & GRILL — Admin Dashboard Design Tokens
+════════════════════════════════════════════════════════════ */
+:root {
+  /* Brand */
+  --color-primary:       #D4813A;
+  --color-primary-light: #E8A66A;
+  --color-primary-dark:  #B5692E;
+  --color-primary-glow:  rgba(212, 129, 58, 0.2);
+
+  /* Neutrals */
+  --color-bg:            #F8F6F3;
+  --color-surface:       #FFFFFF;
+  --color-surface-hover: #FDF8F4;
+  --color-border:        #E8E0D8;
+  --color-border-light:  #F0EBE5;
+
+  /* Text */
+  --color-text:          #1C1408;
+  --color-text-secondary:#6B5D4F;
+  --color-text-muted:    #9C8E7E;
+
+  /* Sidebar */
+  --color-sidebar-bg:    #1C1408;
+  --color-sidebar-text:  #C4B5A3;
+  --color-sidebar-active:#D4813A;
+  --color-sidebar-hover: rgba(212, 129, 58, 0.1);
+
+  /* Status */
+  --color-success:       #22C55E;
+  --color-warning:       #F59E0B;
+  --color-danger:        #EF4444;
+  --color-info:          #3B82F6;
+
+  /* Radius */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  20px;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 2px rgba(28, 20, 8, 0.05);
+  --shadow-md:  0 4px 12px rgba(28, 20, 8, 0.08);
+  --shadow-lg:  0 8px 24px rgba(28, 20, 8, 0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+a { text-decoration: none; color: inherit; }
+:focus-visible {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Tailwind custom theme extension */
+@theme {
+  --color-brand:      #D4813A;
+  --color-brand-dark: #B5692E;
+  --color-brand-bg:   #F8F6F3;
+  --color-sidebar:    #1C1408;
+}
+
+/* ── Loading spinner ────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin { animation: spin 0.8s linear infinite; }
+
+/* ── Fade in ────────────────────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in-up 0.25s ease both; }
+
+/* ── Skeleton shimmer ───────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--color-border-light) 25%, var(--color-border) 50%, var(--color-border-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ── Toast slide-in ─────────────────────────────────────────── */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.toast-enter { animation: slide-in-right 0.25s ease both; }
+
+/* ── Sidebar transition ─────────────────────────────────────── */
+.sidebar-transition { transition: width 0.2s ease, transform 0.2s ease; }
+
+/* ── Mobile drawer overlay ──────────────────────────────────── */
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.overlay-enter { animation: overlay-in 0.2s ease both; }
+
+/* ── Scrollbar styling ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* ── Print ──────────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+}

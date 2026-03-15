@@ -25,10 +25,11 @@ class ExpireLoyaltyHolds extends Command
             DB::transaction(function () use ($hold): void {
                 $hold->update(['status' => 'expired']);
 
+                $pointsHeld = (int) $hold->points_held; // explicit cast before interpolation
                 DB::table('loyalty_accounts')
                     ->where('customer_id', $hold->customer_id)
                     ->update([
-                        'points_held' => DB::raw("MAX(0, points_held - {$hold->points_held})"),
+                        'points_held' => DB::raw("MAX(0, points_held - {$pointsHeld})"),
                     ]);
             });
             $count++;

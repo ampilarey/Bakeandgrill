@@ -1,0 +1,31 @@
+---
+description: Server deploy commands for Bake & Grill — always use these when user asks to pull or deploy
+alwaysApply: true
+---
+
+# Deploy Commands
+
+## When the user asks "pull?" or "pull command" or "deploy"
+
+**Full deploy** (new migrations or PHP deps):
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear
+```
+
+**Quick pull** (frontend/small fixes only — no new migrations):
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear
+```
+
+## Server Details
+
+| Field | Value |
+|---|---|
+| Server | `sg-s2` |
+| User | `bakeandgrill` |
+| Project root | `/home/bakeandgrill/test.bakeandgrill.mv` |
+| Backend | `/home/bakeandgrill/test.bakeandgrill.mv/backend` |
+| GitHub | `https://github.com/ampilarey/Bakeandgrill` |
+| Branch | `main` |
+
+Always use the **quick pull** for UI-only changes, **full deploy** when PHP files or migrations changed.

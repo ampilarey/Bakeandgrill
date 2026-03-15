@@ -82,7 +82,7 @@ class TimeClockController extends Controller
         $user->loadMissing('role');
         $roleSlug = $user->role?->slug;
 
-        if (!in_array($roleSlug, ['manager', 'admin', 'owner'], true)) {
+        if (!in_array($roleSlug, ['manager', 'owner'], true)) {
             $query->where('user_id', $user->id);
         }
 

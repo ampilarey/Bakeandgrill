@@ -111,7 +111,7 @@ class OrderCreationService
                 ->first();
 
             if (!$itemModel) {
-                throw new \InvalidArgumentException("Item {$itemId} not found or unavailable");
+                abort(422, "Item {$itemId} not found or unavailable");
             }
 
             $quantity = (int) $itemPayload['quantity'];
@@ -119,9 +119,7 @@ class OrderCreationService
             if ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
                 $stockOk = app(StockManagementService::class)->checkStock($itemModel, $quantity);
                 if (!$stockOk) {
-                    throw new \InvalidArgumentException(
-                        "Insufficient stock for {$itemModel->name}. Available: {$itemModel->stock_quantity}, requested: {$quantity}",
-                    );
+                    abort(422, "Insufficient stock for {$itemModel->name}. Available: {$itemModel->stock_quantity}, requested: {$quantity}");
                 }
             }
 
@@ -129,7 +127,7 @@ class OrderCreationService
             if ($variantId) {
                 $variant = $itemModel->variants()->where('id', $variantId)->first();
                 if (!$variant) {
-                    throw new \InvalidArgumentException("Variant {$variantId} not found for item {$itemId}");
+                    abort(422, "Variant {$variantId} not found for item {$itemId}");
                 }
                 $basePrice = (float) $variant->price;
                 $variantName = $variant->name;
@@ -160,7 +158,7 @@ class OrderCreationService
                     $modifierId = $modifierPayload['modifier_id'];
 
                     if (!in_array($modifierId, $validModifierIds)) {
-                        throw new \InvalidArgumentException("Modifier {$modifierId} not valid for item {$itemId}");
+                        abort(422, "Modifier {$modifierId} not valid for item {$itemId}");
                     }
 
                     $modifierModel = $itemModel->modifiers()->where('modifiers.id', $modifierId)->first();
@@ -181,7 +179,7 @@ class OrderCreationService
             $lineTotal = ($basePrice + $modifierTotal) * $quantity;
 
             if ($lineTotal <= 0) {
-                throw new \InvalidArgumentException("Invalid line total calculated for item {$itemId}");
+                abort(422, "Invalid line total calculated for item {$itemId}");
             }
 
             $subtotal += $lineTotal;

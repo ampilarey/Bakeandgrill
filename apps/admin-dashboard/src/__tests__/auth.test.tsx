@@ -19,7 +19,7 @@ describe('LoginPage', () => {
     });
 
     it('calls pinLogin and stores token on success', async () => {
-        const mockUser = { id: 1, name: 'Admin', role: 'admin', email: 'admin@test.com' };
+        const mockUser = { id: 1, name: 'Owner', role: 'owner', email: 'owner@test.com' };
         vi.spyOn(api, 'pinLogin').mockResolvedValue({ token: 'test-token', user: mockUser });
         const onLogin = vi.fn();
 

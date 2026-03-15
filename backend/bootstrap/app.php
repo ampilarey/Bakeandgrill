@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'device.active'  => App\Http\Middleware\EnsureActiveDevice::class,
             'bml.signature'  => App\Http\Middleware\VerifyBmlSignature::class,
             'role'           => App\Http\Middleware\RequireRole::class,
+            'permission'     => App\Http\Middleware\RequirePermission::class,
             'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
             'staff.token'    => App\Http\Middleware\EnsureStaffToken::class,
         ]);
@@ -38,7 +41,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                if ($e instanceof AuthenticationException) {
+                    return response()->json(['message' => 'Unauthenticated.'], 401);
+                }
+
+                if ($e instanceof ValidationException) {
+                    return response()->json([
+                        'message' => 'The given data was invalid.',
+                        'errors'  => $e->errors(),
+                    ], 422);
+                }
+
+                $status  = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 $message = $status < 500 ? $e->getMessage() : 'Server error. Please try again.';
                 return response()->json(['message' => $message], $status);
             }
