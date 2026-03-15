@@ -472,9 +472,9 @@ Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/spe
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/push/subscribe',   [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
-        ->middleware('throttle:20,1');
+        ->middleware('throttle:5,1');
     Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])
-        ->middleware('throttle:20,1');
+        ->middleware('throttle:5,1');
 });
 
 // ─── Favorites & Quick Reorder ───────────────────────────────────────────────

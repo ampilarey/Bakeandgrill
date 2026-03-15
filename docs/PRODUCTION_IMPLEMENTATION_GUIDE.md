@@ -1723,10 +1723,10 @@ npm install -D terser --workspace=apps/online-order-web
 | Priority | Total Items | ✅ Done | 🟡 Partial | 🔴 Not Done |
 |----------|------------|---------|-----------|------------|
 | CRITICAL | 15 | 15 | 0 | 0 |
-| HIGH | 25 | 24 | 0 | 1 |
+| HIGH | 25 | 25 | 0 | 0 |
 | MEDIUM | 26 | 26 | 0 | 0 |
-| LOW | 28 | 27 | 0 | 1 |
-| **Total** | **94** | **93** | **0** | **1** |
+| LOW | 28 | 28 | 0 | 0 |
+| **Total** | **94** | **94** | **0** | **0** |
 
 ---
 
