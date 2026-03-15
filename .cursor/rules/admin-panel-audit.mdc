@@ -1,0 +1,462 @@
+---
+description: Complete admin panel audit — bugs, missing features, missing API functions, mobile issues, and implementation guidance
+alwaysApply: true
+---
+
+# Admin Panel Audit & Implementation Guide
+
+This is a comprehensive audit of `apps/admin-dashboard/`. Use this as your source of truth when working on the admin panel.
+
+## Project Structure
+
+```
+apps/admin-dashboard/src/
+├── api.ts                    # All API functions (currently ~77, backend has ~213 endpoints)
+├── App.tsx                   # Router with all routes
+├── main.tsx                  # Entry point
+├── index.css                 # Global styles (NO mobile breakpoints currently)
+├── components/
+│   ├── Layout.tsx            # Sidebar navigation + top bar + route outlet
+│   ├── SharedUI.tsx          # Shared UI primitives (PageHeader, StatCard, etc.)
+│   ├── ErrorBoundary.tsx     # Error boundary wrapper
+│   └── ui/                   # Reusable components (Badge, Button, Card, Modal, etc.)
+├── hooks/
+│   ├── usePageTitle.ts
+│   └── usePermissions.ts
+└── pages/                    # 22 page components (one per route)
+```
+
+Backend API routes are in:
+- `backend/routes/api.php` — Main API routes (~160+ endpoints)
+- `backend/routes/api_finance.php` — Finance routes (invoices, expenses, P&L, etc.)
+
+---
+
+## CRITICAL BUGS TO FIX FIRST
+
+### Bug 1: ProfitLossPage division by zero (CRASH)
+**File:** `pages/ProfitLossPage.tsx` ~line 99
+**Problem:** `Math.abs(row.value) / pnl.revenue.gross * 100` crashes when `gross = 0`
+**Fix:** Guard with `pnl.revenue.gross !== 0 ? (Math.abs(row.value) / pnl.revenue.gross * 100) : 0`
+
+### Bug 2: SettingsPage non-null assertion (CRASH)
+**File:** `pages/SettingsPage.tsx` ~line 376
+**Problem:** `HUB_CARDS.find((c) => c.id === active)!` — the `!` non-null assertion will crash if `active` doesn't match any card
+**Fix:** Add a fallback: `HUB_CARDS.find((c) => c.id === active) ?? HUB_CARDS[0]` or add a null check before rendering
+
+### Bug 3: WebhooksPage secret key exposure (SECURITY)
+**File:** `pages/WebhooksPage.tsx` ~line 194
+**Problem:** `alert()` shows the webhook secret key in the browser — visible in screen recordings, screenshots
+**Fix:** Use `navigator.clipboard.writeText(secret)` and show a toast "Copied to clipboard". Display secret in a masked modal shown only once.
+
+### Bug 4: KDSPage "Ready" column always empty
+**File:** `pages/KDSPage.tsx` ~line 57
+**Problem:** The "Ready" column is hardcoded as an empty array `[]`, never populated from API response
+**Fix:** Wire it to the actual API data — the backend returns order status that should populate this column
+
+### Bug 5: SmsPage segment calculation wrong for Unicode
+**File:** `pages/SmsPage.tsx` ~line 183
+**Problem:** SMS segment calculation uses 160 chars per segment regardless. Unicode messages (emoji, non-Latin) use 70 chars per segment.
+**Fix:** Detect if message contains non-GSM characters. If yes, use 70 chars/segment; otherwise 160.
+
+### Bug 6: ReportsPage doesn't reload on filter change
+**File:** `pages/ReportsPage.tsx` ~line 24
+**Problem:** `useEffect` dependency array is missing the date filter state variables. Changing date filters does nothing.
+**Fix:** Add the date filter variables to the useEffect dependency array.
+
+### Bug 7: InvoicesPage "All" filter broken
+**File:** `pages/InvoicesPage.tsx` ~line 22
+**Problem:** Filter "All" option uses empty string `""` which is falsy, causing the filter logic to skip it silently.
+**Fix:** Use `"all"` as the value instead of `""`, and handle it explicitly in filter logic.
+
+---
+
+## MEDIUM BUGS
+
+| # | File | Issue | Fix |
+|---|------|-------|-----|
+| 8 | `PromotionsPage.tsx` | No negative number check on percentage discount | Add `value >= 0 && value <= 100` validation |
+| 9 | `LoyaltyPage.tsx` | `parseInt(delta)` can return NaN, no validation before API call | Validate `!isNaN(parsed) && parsed !== 0` before calling API |
+| 10 | `ExpensesPage.tsx` | `parseInt(form.expense_category_id)` can produce NaN | Validate before submit |
+| 11 | `OrdersPage.tsx` | Auto-refresh `setInterval` creates multiple intervals (stale closure) | Use `useRef` for interval ID, clear on unmount properly |
+| 12 | `PurchaseOrdersPage.tsx` | Query params not URL-encoded in API call | Use `URLSearchParams` or `encodeURIComponent` |
+| 13 | `MenuPage.tsx` | Dead code: `{false && (<img...>)}` — image preview permanently disabled | Remove dead code or implement the image preview |
+| 14 | `KDSPage.tsx` | `urgencyColor()` appends `'22'` to hex, assumes 6-char format | Validate hex length or use rgba() |
+| 15 | `ProfitLossPage.tsx` | Loads `getDailySummary(today())` instead of user-selected date range | Use the selected date range state |
+
+---
+
+## 7 HIDDEN PAGES — NO SIDEBAR NAVIGATION LINK
+
+These pages exist, route works, but users CAN'T FIND THEM because Layout.tsx sidebar doesn't link to them:
+
+| Page | Route | Priority | Add to Sidebar Group |
+|------|-------|----------|---------------------|
+| **SmsPage** | `/sms` | HIGH | BUSINESS (under Marketing) |
+| **LoyaltyPage** | `/loyalty` | HIGH | BUSINESS (with Heart icon) |
+| **AnalyticsPage** | `/analytics` | HIGH | MANAGEMENT (with BarChart icon) |
+| **ProfitLossPage** | `/profit-loss` | HIGH | FINANCE (with PieChart icon) |
+| **SupplierIntelligencePage** | `/supplier-intelligence` | MEDIUM | FINANCE (with Factory icon) |
+| **WebhooksPage** | `/webhooks` | LOW | SYSTEM (Owner only, with Webhook icon) |
+| **TestChecklistPage** | `/checklist` | LOW | Hide in production or SYSTEM (dev only) |
+
+**Implementation:** Edit `components/Layout.tsx` — find the sidebar nav items array and add these entries with appropriate icons and grouping. Consider grouping the sidebar into collapsible sections:
+- OPERATIONS: Dashboard, Orders, KDS, Delivery
+- BUSINESS: Menu, Promotions, Loyalty, SMS, Reservations
+- FINANCE: Reports, Invoices, Expenses, P&L, Forecasts, Supplier Intelligence
+- MANAGEMENT: Staff, Analytics, Purchase Orders
+- SYSTEM: Settings, Webhooks (Owner only)
+
+---
+
+## 22 MISSING FEATURE AREAS (Backend Ready, No Admin UI)
+
+The backend has ~213 API endpoints but the admin panel only uses ~77. These features need NEW admin pages AND new api.ts functions.
+
+### HIGH PRIORITY — Build These Pages First
+
+#### 1. Gift Cards Page (`/gift-cards`)
+**Backend endpoints:** `GET/POST /admin/gift-cards`, `GET /gift-cards/{code}/balance`
+**New api.ts functions needed:**
+```typescript
+fetchGiftCards(params?: { status?: string; page?: number }): Promise<PaginatedResponse<GiftCard>>
+createGiftCard(data: { amount: number; recipient_email?: string; message?: string }): Promise<GiftCard>
+checkGiftCardBalance(code: string): Promise<{ balance: number; status: string }>
+```
+**UI:** Table of gift cards with columns: Code, Amount, Balance, Status, Created, Recipient. "Issue New" button opens form modal. Balance check search bar.
+
+#### 2. Reviews & Ratings Page (`/reviews`)
+**Backend endpoints:** `GET /admin/reviews`, `PATCH /admin/reviews/{id}/moderate`
+**New api.ts functions needed:**
+```typescript
+fetchReviews(params?: { status?: string; rating?: number; page?: number }): Promise<PaginatedResponse<Review>>
+moderateReview(id: number, action: 'approve' | 'reject' | 'flag'): Promise<Review>
+```
+**UI:** Table with columns: Customer, Item, Rating (stars), Comment, Date, Status. Filter by status (pending/approved/rejected). Moderate actions as buttons per row.
+
+#### 3. Daily Specials Page (`/specials`)
+**Backend endpoints:** `GET/POST/PATCH/DELETE /admin/specials`
+**New api.ts functions needed:**
+```typescript
+fetchSpecials(): Promise<Special[]>
+createSpecial(data: SpecialForm): Promise<Special>
+updateSpecial(id: number, data: Partial<SpecialForm>): Promise<Special>
+deleteSpecial(id: number): Promise<void>
+```
+**UI:** Card grid showing today's specials + upcoming. Each card: item name, special price, discount %, start/end dates. Add/Edit modal with item picker, pricing, scheduling.
+
+#### 4. Refund Management Page (`/refunds`)
+**Backend endpoints:** `GET /refunds`, `GET /refunds/{id}`, `POST /orders/{orderId}/refunds`
+**New api.ts functions needed:**
+```typescript
+fetchRefunds(params?: { page?: number; status?: string }): Promise<PaginatedResponse<Refund>>
+getRefund(id: number): Promise<Refund>
+issueRefund(orderId: number, data: { amount: number; reason: string; items?: number[] }): Promise<Refund>
+```
+**UI:** Table of refund history with link to process new refund from order detail. Filter by status, date range.
+
+#### 5. Waste Tracking Page (`/waste-logs`)
+**Backend endpoints:** `POST /waste-logs`, `GET /waste-logs/summary`
+**New api.ts functions needed:**
+```typescript
+createWasteLog(data: { item_id: number; quantity: number; reason: string; cost: number }): Promise<WasteLog>
+getWasteSummary(params: { from: string; to: string }): Promise<WasteSummary>
+```
+**UI:** Log entry form (item picker, quantity, reason dropdown, cost). Summary dashboard showing waste by category, trends over time.
+
+#### 6. Inventory Management Page (`/inventory`)
+**Backend endpoints:** `GET/POST /inventory-categories`, `GET/POST /unit-conversions`
+**New api.ts functions needed:**
+```typescript
+getInventoryCategories(): Promise<InventoryCategory[]>
+createInventoryCategory(data: { name: string }): Promise<InventoryCategory>
+updateInventoryCategory(id: number, data: { name: string }): Promise<InventoryCategory>
+getUnitConversions(): Promise<UnitConversion[]>
+createUnitConversion(data: { from_unit: string; to_unit: string; factor: number }): Promise<UnitConversion>
+```
+**UI:** Tab layout — Categories tab (CRUD table), Unit Conversions tab (conversion factor table), Stock Levels tab (from existing low-stock data).
+
+### MEDIUM PRIORITY
+
+#### 7. Staff Scheduling (`/staff` — add as tab)
+**Backend endpoints:** `GET/POST/PATCH/DELETE /admin/schedules`
+**New api.ts functions needed:**
+```typescript
+fetchSchedules(params?: { week?: string; staff_id?: number }): Promise<Schedule[]>
+createSchedule(data: ScheduleForm): Promise<Schedule>
+updateSchedule(id: number, data: Partial<ScheduleForm>): Promise<Schedule>
+deleteSchedule(id: number): Promise<void>
+```
+**UI:** Add "Schedules" tab to existing StaffPage. Weekly calendar grid view with drag-to-create shifts.
+
+#### 8. Table Management Page (`/tables`)
+**Backend endpoints:** `GET/POST/PATCH /tables`, `POST /tables/{id}/open`, `/close`, `/merge`, `/split` — 8 endpoints
+**New api.ts functions needed:**
+```typescript
+fetchTables(): Promise<Table[]>
+createTable(data: { number: string; capacity: number; zone?: string }): Promise<Table>
+updateTable(id: number, data: Partial<TableForm>): Promise<Table>
+openTable(id: number): Promise<Table>
+closeTable(id: number): Promise<Table>
+mergeTables(tableIds: number[]): Promise<Table>
+splitTable(id: number, into: number): Promise<Table[]>
+```
+**UI:** Visual floor plan grid or card layout. Each table shows: number, capacity, status (open/occupied/reserved), current order. Actions: open, close, merge, split.
+
+#### 9. Shift & Cash Drawer Page (`/shifts`)
+**Backend endpoints:** `GET /shifts/current`, `POST /shifts/open`, `POST /shifts/{id}/close`, `POST /shifts/{id}/cash-movements`
+**New api.ts functions needed:**
+```typescript
+getCurrentShift(): Promise<Shift | null>
+openShift(data: { opening_cash: number }): Promise<Shift>
+closeShift(id: number, data: { closing_cash: number; notes?: string }): Promise<ShiftSummary>
+addCashMovement(shiftId: number, data: { type: 'in' | 'out'; amount: number; reason: string }): Promise<CashMovement>
+```
+
+#### 10. Time Clock Page (`/time-clock`)
+**Backend endpoints:** `GET /time-clock/status`, `POST /time-clock/in`, `POST /time-clock/out`, `GET /time-clock/history`, `GET /time-clock/summary`
+**New api.ts functions needed:**
+```typescript
+getTimeClockStatus(): Promise<{ clocked_in: boolean; since?: string }>
+clockIn(): Promise<TimeEntry>
+clockOut(): Promise<TimeEntry>
+getTimeClockHistory(params?: { staff_id?: number; from?: string; to?: string }): Promise<TimeEntry[]>
+getTimeClockSummary(params: { from: string; to: string }): Promise<TimeSummary[]>
+```
+
+#### 11. Device Management Page (`/devices`)
+**Backend endpoints:** `POST /devices/register`, `GET /devices`, `PATCH /devices/{id}/disable`, `PATCH /devices/{id}/enable`
+**New api.ts functions needed:**
+```typescript
+fetchDevices(): Promise<Device[]>
+registerDevice(data: { name: string; type: 'pos' | 'kds' | 'display' }): Promise<Device>
+disableDevice(id: number): Promise<Device>
+enableDevice(id: number): Promise<Device>
+```
+
+#### 12. Referral Program Page (`/referrals`)
+**Backend endpoints:** `GET /admin/referrals`, `POST /referrals/validate`
+**New api.ts functions needed:**
+```typescript
+fetchReferrals(params?: { page?: number }): Promise<PaginatedResponse<Referral>>
+validateReferralCode(code: string): Promise<{ valid: boolean; referrer?: string }>
+```
+
+#### 13. Item Photo Gallery (enhance MenuPage)
+**Backend endpoints:** `GET/POST /items/{itemId}/photos`, `PATCH/DELETE /items/{itemId}/photos/{photoId}`
+**New api.ts functions needed:**
+```typescript
+getItemPhotos(itemId: number): Promise<Photo[]>
+uploadItemPhoto(itemId: number, file: File): Promise<Photo>
+updateItemPhoto(itemId: number, photoId: number, data: { sort_order?: number; is_primary?: boolean }): Promise<Photo>
+deleteItemPhoto(itemId: number, photoId: number): Promise<void>
+```
+
+### LOW PRIORITY
+
+#### 14. Xero Integration Page (Settings sub-page)
+**Backend endpoints:** `GET /xero/connect`, `/callback`, `/status`, `POST /xero/disconnect`, `/invoices/{id}/push`, `/expenses/{id}/push`, `GET /xero/logs` — 7 endpoints
+
+#### 15. Print Job Queue Page
+**Backend endpoints:** `GET /print-jobs`, `POST /print-jobs/{id}/retry`
+
+#### 16. SMS Promotions (enhance SmsPage)
+**Backend endpoints:** `GET/POST /sms/promotions`, `POST /sms/promotions/preview`, `/send` — Currently SmsPage only uses Campaign endpoints, not Promotion endpoints
+
+---
+
+## 27+ MISSING API FUNCTIONS IN api.ts
+
+These backend endpoints exist but have NO function in `apps/admin-dashboard/src/api.ts`:
+
+### Reports (add to api.ts)
+```typescript
+getSalesBreakdown(params: DateRange): Promise<SalesBreakdown>         // GET /reports/sales-breakdown
+getXReport(): Promise<XReport>                                        // GET /reports/x-report
+getZReport(): Promise<ZReport>                                        // GET /reports/z-report
+getInventoryValuation(): Promise<InventoryValuation>                  // GET /reports/inventory-valuation
+getTaxReport(params: DateRange): Promise<TaxReport>                   // GET /reports/finance/tax
+getAccountsPayable(): Promise<AccountsPayable[]>                     // GET /reports/finance/accounts-payable
+getAccountsReceivable(): Promise<AccountsReceivable[]>                // GET /reports/finance/accounts-receivable
+```
+
+### Invoices (add to api.ts)
+```typescript
+updateInvoice(id: number, data: Partial<InvoiceForm>): Promise<Invoice>   // PATCH /invoices/{id}
+createCreditNote(invoiceId: number, data: CreditNoteForm): Promise<CreditNote>  // POST /invoices/{id}/credit-note
+generateInvoicePdf(id: number): Promise<Blob>                              // GET /invoices/{id}/pdf
+createInvoiceFromOrder(orderId: number): Promise<Invoice>                  // POST /invoices/from-order/{orderId}
+createInvoiceFromPurchase(purchaseId: number): Promise<Invoice>            // POST /invoices/from-purchase/{purchaseId}
+```
+
+### Expenses (add to api.ts)
+```typescript
+uploadExpenseReceipt(id: number, file: File): Promise<Expense>   // POST /expenses/{id}/receipt
+approveExpense(id: number): Promise<Expense>                      // POST /expenses/{id}/approve
+```
+
+### Purchases (add to api.ts)
+```typescript
+rejectPurchase(id: number, reason: string): Promise<Purchase>     // POST /purchases/{id}/reject
+receivePurchase(id: number, data: ReceiveData): Promise<Purchase> // POST /purchases/{id}/receive
+createPurchaseFromSuggest(data: SuggestData): Promise<Purchase>   // POST /purchases/from-suggest
+```
+
+### Suppliers (add to api.ts)
+```typescript
+getSupplierRatings(id: number): Promise<Rating[]>                         // GET /suppliers/{id}/ratings
+getSupplierPerformance(id: number): Promise<SupplierPerformance>          // GET /suppliers/{id}/performance
+refreshSupplierCache(id: number): Promise<void>                           // POST /suppliers/{id}/performance/refresh
+getSupplierPriceHistory(supplierId: number, itemId: number): Promise<PriceHistory[]>  // GET /suppliers/{id}/price-history/{itemId}
+```
+
+### Orders (add to api.ts)
+```typescript
+holdOrder(id: number): Promise<Order>                                      // POST /orders/{id}/hold
+resumeOrder(id: number): Promise<Order>                                    // POST /orders/{id}/resume
+addOrderPayments(id: number, data: PaymentData): Promise<Order>            // POST /orders/{id}/payments
+```
+
+### Reservations (add to api.ts)
+```typescript
+getReservationSettings(): Promise<ReservationSettings>                     // GET /admin/reservations/settings
+updateReservationSettings(data: ReservationSettings): Promise<void>        // PATCH /admin/reservations/settings
+```
+
+### Forecasts (add to api.ts)
+```typescript
+getItemForecast(params: { item_id: number }): Promise<ItemForecast>        // GET /forecasts/items
+```
+
+---
+
+## MOBILE & RESPONSIVE ISSUES
+
+The admin panel has ZERO `@media` queries in `index.css`. Every layout is fixed-width.
+
+### Critical Mobile Fixes Needed
+
+1. **OrdersPage.tsx** — Order detail drawer is `420px` fixed width. On mobile it overflows. Fix: `width: min(420px, 100vw - 16px)` or full-width drawer on mobile.
+
+2. **KDSPage.tsx** — Hardcoded `grid-template-columns: repeat(3, 1fr)`. On mobile, columns are ~80px wide. Fix: responsive grid `repeat(auto-fit, minmax(300px, 1fr))`.
+
+3. **index.css** — Add global breakpoints:
+```css
+/* Tablet */
+@media (max-width: 768px) { ... }
+/* Mobile */
+@media (max-width: 480px) { ... }
+```
+
+4. **MenuPage.tsx** — 2-column and 3-column form grids never collapse. Fix: `grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))`.
+
+5. **Button.tsx / SharedUI.tsx** — Touch targets are 32px (below WCAG 48px minimum). Fix: `min-height: 44px` on all interactive elements.
+
+6. **Layout.tsx** — "More" drawer is 3-column grid, too cramped on small phones. Fix: 2-column on `<480px`.
+
+7. **Layout.tsx** — Z-index conflicts: modal overlay (50) === mobile menu overlay (50). Fix: establish z-index scale: sidebar=30, overlay=40, modal=50, toast=60.
+
+---
+
+## RECOMMENDED NAVIGATION STRUCTURE
+
+Current sidebar has 16 flat items with 7 hidden pages. Restructure in `Layout.tsx`:
+
+```
+OPERATIONS
+  Dashboard          /dashboard
+  Orders             /orders
+  Kitchen Display    /kds
+  Delivery           /delivery
+
+MENU & INVENTORY
+  Menu Items         /menu
+  Daily Specials     /specials         ← NEW PAGE
+  Inventory          /inventory        ← NEW PAGE
+  Purchase Orders    /purchase-orders
+  Waste Tracking     /waste-logs       ← NEW PAGE
+
+CUSTOMERS
+  Loyalty Program    /loyalty          ← MISSING NAV LINK
+  Reservations       /reservations
+  Reviews            /reviews          ← NEW PAGE
+  Gift Cards         /gift-cards       ← NEW PAGE
+  Referrals          /referrals        ← NEW PAGE
+
+MARKETING
+  Promotions         /promotions
+  SMS Campaigns      /sms              ← MISSING NAV LINK
+
+FINANCE
+  Reports            /reports
+  Invoices           /invoices
+  Expenses           /expenses
+  Profit & Loss      /profit-loss      ← MISSING NAV LINK
+  Forecasts          /forecasts
+  Suppliers          /supplier-intelligence  ← MISSING NAV LINK
+
+STAFF
+  Staff Management   /staff
+  Scheduling         /staff?tab=schedule    ← NEW TAB
+  Time Clock         /time-clock       ← NEW PAGE
+  Analytics          /analytics        ← MISSING NAV LINK
+
+OPERATIONS (Owner)
+  Table Management   /tables           ← NEW PAGE
+  Devices            /devices          ← NEW PAGE
+  Shifts & Cash      /shifts           ← NEW PAGE
+
+SYSTEM (Owner)
+  Settings           /settings
+  Webhooks           /webhooks         ← MISSING NAV LINK
+  Xero Integration   /settings?tab=xero
+```
+
+---
+
+## CODING CONVENTIONS (Match Existing Code)
+
+When creating new pages, follow existing patterns:
+
+1. **Page structure:** Each page is a single `.tsx` file in `pages/` with all state, handlers, and JSX in one file.
+2. **API pattern:** All API calls go through functions in `api.ts` using the existing `apiFetch()` helper.
+3. **Styling:** Inline styles using JS objects (not CSS modules or Tailwind, except SettingsPage which uses Tailwind).
+4. **State management:** React `useState` + `useEffect` for data fetching. No Redux/Zustand.
+5. **UI components:** Use components from `components/ui/` (Button, Card, Modal, Badge, Input, Tabs, Toast, Toggle, Skeleton, EmptyState).
+6. **Shared components:** Use `SharedUI.tsx` primitives (PageHeader, StatCard, etc.).
+7. **Page title:** Call `usePageTitle('Page Name')` at the top of each page component.
+8. **Permissions:** Use `usePermissions()` hook to check user role access.
+9. **Date formatting:** Use built-in `Intl.DateTimeFormat` or simple date string manipulation (no date libraries).
+10. **Icons:** Import from `lucide-react`.
+
+### Example new page skeleton:
+```tsx
+import { useState, useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { PageHeader } from '../components/SharedUI';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { fetchGiftCards, createGiftCard } from '../api';
+
+export default function GiftCardsPage() {
+  usePageTitle('Gift Cards');
+  const [cards, setCards] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchGiftCards().then(data => {
+      setCards(data.data);
+      setLoading(false);
+    });
+  }, []);
+
+  return (
+    <div>
+      <PageHeader title="Gift Cards" />
+      {/* ... */}
+    </div>
+  );
+}
+```
+
+Then register the route in `App.tsx` and add the nav link in `Layout.tsx`.
