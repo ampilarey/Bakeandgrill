@@ -666,6 +666,38 @@
 @endsection
 
 @section('content')
+@php
+    $heroSlides = [];
+    for ($i = 1; $i <= 3; $i++) {
+        $raw   = \App\Models\SiteSetting::get("hero_slide_{$i}", '{}');
+        $slide = json_decode($raw, true) ?: [];
+        if (!empty($slide['title'])) {
+            $heroSlides[] = $slide;
+        }
+    }
+    $slideCount = max(count($heroSlides), 1);
+
+    $trustItems  = json_decode(\App\Models\SiteSetting::get('trust_items',  '[]'), true) ?: [];
+    $categories  = json_decode(\App\Models\SiteSetting::get('homepage_categories', '[]'), true) ?: [];
+
+    $proofStat    = \App\Models\SiteSetting::get('proof_stat',   '500+');
+    $proofLabel   = \App\Models\SiteSetting::get('proof_label',  'orders delivered in Malé every week — and counting.');
+    $proofDetails = json_decode(\App\Models\SiteSetting::get('proof_details', '[]'), true) ?: [];
+
+    $ctaHeadline = \App\Models\SiteSetting::get('cta_band_headline', 'Hungry? <em>Order now.</em>');
+    $ctaSubtext  = \App\Models\SiteSetting::get('cta_band_subtext',  'Fresh from our kitchen to your door in 30–45 minutes. No fuss, no wait — just real food.');
+
+    $phone             = \App\Models\SiteSetting::get('business_phone',    '+960 912 0011');
+    $phoneTel          = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
+    $waLink            = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
+    $viberLink         = \App\Models\SiteSetting::get('business_viber',    'viber://chat?number=9609120011');
+    $mapsUrl           = \App\Models\SiteSetting::get('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
+    $address           = \App\Models\SiteSetting::get('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
+    $landmark          = \App\Models\SiteSetting::get('business_landmark', 'Near H. Sahara');
+    $deliveryTime      = \App\Models\SiteSetting::get('delivery_time',      '30–45 min');
+    $deliveryThreshold = \App\Models\SiteSetting::get('delivery_threshold', 'MVR 200');
+    $waOrderLink       = $waLink . (str_contains($waLink, '?') ? '&' : '?') . 'text=Hi%2C+I%27d+like+to+place+an+order';
+@endphp
 
 {{-- ══════════════════════════════════════════════════════════
      HERO CAROUSEL
@@ -688,61 +720,41 @@
     @endif
 
     <div class="banner-track" id="bannerTrack">
-
-        <div class="banner-slide active" style="background:#1C1408;">
-            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.49-ffb9abd7-f645-48ef-a78b-f1b36191f0b3.png')) }}" loading="eager" alt="Bake & Grill food">
+        @foreach($heroSlides as $sIdx => $slide)
+        <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;">
+            @if(!empty($slide['image']))
+                <img src="{{ $slide['image'] }}" loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}" alt="{{ \App\Models\SiteSetting::get('site_name', 'Bake & Grill') }}">
+            @endif
             <div class="banner-overlay">
-                <span class="banner-eyebrow">Malé's neighbourhood café</span>
-                <h2 class="banner-title">Where Dhivehi breakfast<br>meets <em>artisan baking</em></h2>
-                <p class="banner-sub">Real food. Proper char. Baked fresh every morning at 5am.</p>
+                @if(!empty($slide['eyebrow']))
+                    <span class="banner-eyebrow">{{ $slide['eyebrow'] }}</span>
+                @endif
+                <h2 class="banner-title">{!! $slide['title'] !!}</h2>
+                @if(!empty($slide['subtitle']))
+                    <p class="banner-sub">{{ $slide['subtitle'] }}</p>
+                @endif
                 <div class="banner-ctas">
-                    <a href="/order/" class="banner-cta-primary">Order Now →</a>
-                    <a href="/menu"   class="banner-cta-secondary">View Menu</a>
+                    <a href="{{ $slide['cta_url']  ?? '/order/' }}" class="banner-cta-primary">{{ $slide['cta_text']  ?? 'Order Now →' }}</a>
+                    <a href="{{ $slide['cta2_url'] ?? '/menu'   }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
                 </div>
             </div>
         </div>
-
-        <div class="banner-slide" style="background:#160E06;">
-            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.57-1d4f7fc3-8bca-4e81-bdb4-12a8dceb7dc0.png')) }}" loading="lazy" alt="Hedhikaa platter">
-            <div class="banner-overlay">
-                <span class="banner-eyebrow">Signature Hedhikaa</span>
-                <h2 class="banner-title">The breakfast your<br>grandmother <em>made</em></h2>
-                <p class="banner-sub">Bajiya, gulha, mas roshi — ready by 7am, made the right way.</p>
-                <div class="banner-ctas">
-                    <a href="/order/" class="banner-cta-primary">Order Hedhikaa →</a>
-                    <a href="/menu"   class="banner-cta-secondary">Browse Menu</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="banner-slide" style="background:#0E1005;">
-            <img src="{{ thumb_url(asset('images/cafe/WhatsApp_Image_2026-01-30_at_19.34.55__1_-a88c997c-ebaa-4efc-a50d-11b8b178fd36.png')) }}" loading="lazy" alt="Grills">
-            <div class="banner-overlay">
-                <span class="banner-eyebrow">Fresh Pastries & Bakes</span>
-                <h2 class="banner-title">Croissants that crackle.<br><em>Baked at dawn.</em></h2>
-                <p class="banner-sub">Free delivery on orders over MVR 200. Delivered hot across all of Malé.</p>
-                <div class="banner-ctas">
-                    <a href="/order/" class="banner-cta-primary">Start Your Order →</a>
-                    <a href="/menu"   class="banner-cta-secondary">View Pastries</a>
-                </div>
-            </div>
-        </div>
-
+        @endforeach
     </div>
 
     <button class="banner-btn prev" onclick="moveBanner(-1)" aria-label="Previous slide">‹</button>
     <button class="banner-btn next" onclick="moveBanner(1)"  aria-label="Next slide">›</button>
 
     <div class="banner-dots" id="bannerDots">
-        <div class="banner-dot active" onclick="goBanner(0)"></div>
-        <div class="banner-dot"        onclick="goBanner(1)"></div>
-        <div class="banner-dot"        onclick="goBanner(2)"></div>
+        @for($d = 0; $d < $slideCount; $d++)
+            <div class="banner-dot {{ $d === 0 ? 'active' : '' }}" onclick="goBanner({{ $d }})"></div>
+        @endfor
     </div>
 </div>
 
 <script>
 (function() {
-    var idx = 0, total = 3;
+    var idx = 0, total = {{ $slideCount }};
     var slides = document.querySelectorAll('.banner-slide');
     var timer = setInterval(function() { move(1); }, 6000);
 
@@ -768,34 +780,15 @@
 ══════════════════════════════════════════════════════════ --}}
 <div class="trust-strip">
     <div class="trust-inner">
+        @foreach($trustItems as $ti)
         <div class="trust-item">
-            <div class="trust-icon-wrap">🌅</div>
+            <div class="trust-icon-wrap">{{ $ti['icon'] ?? '' }}</div>
             <div class="trust-text">
-                <strong>Baked fresh at 5am daily</strong>
-                <span>Never yesterday's pastry</span>
+                <strong>{{ $ti['heading'] ?? '' }}</strong>
+                <span>{{ $ti['subtext'] ?? '' }}</span>
             </div>
         </div>
-        <div class="trust-item">
-            <div class="trust-icon-wrap">🏠</div>
-            <div class="trust-text">
-                <strong>Family-owned</strong>
-                <span>Neighbourhood kitchen, Malé</span>
-            </div>
-        </div>
-        <div class="trust-item">
-            <div class="trust-icon-wrap">⚡</div>
-            <div class="trust-text">
-                <strong>30–45 min delivery</strong>
-                <span>Anywhere in Malé</span>
-            </div>
-        </div>
-        <div class="trust-item">
-            <div class="trust-icon-wrap">💬</div>
-            <div class="trust-text">
-                <strong>WhatsApp & Viber</strong>
-                <span>+960 9120011</span>
-            </div>
-        </div>
+        @endforeach
     </div>
 </div>
 
@@ -811,61 +804,25 @@
             <p class="section-sub">Four things we do properly, every single day.</p>
         </div>
         <div class="categories-grid">
-
-            <a href="/menu" class="cat-card">
+            @foreach($categories as $cat)
+            <a href="{{ $cat['link'] ?? '/menu' }}" class="cat-card">
                 <div class="cat-img">
-                    <img src="{{ asset('images/cafe/Bajiya.png') }}"
-                         alt="Dhivehi Hedhikaa"
-                         onerror="this.parentElement.innerHTML='<div class=\'cat-img-placeholder hedhikaa\'>🥐</div>'">
+                    @if(!empty($cat['image_url']))
+                        <img src="{{ $cat['image_url'] }}"
+                             alt="{{ $cat['name'] ?? '' }}"
+                             onerror="this.parentElement.innerHTML='<div class=cat-img-placeholder>{{ $cat['icon'] ?? '🍽️' }}</div>'">
+                    @else
+                        <div class="cat-img-placeholder">{{ $cat['icon'] ?? '🍽️' }}</div>
+                    @endif
                 </div>
                 <div class="cat-body">
-                    <div class="cat-label">Hedhikaa</div>
-                    <div class="cat-name">Dhivehi Breakfast</div>
-                    <p class="cat-hook">The breakfast your grandmother made, ready by 7am.</p>
+                    <div class="cat-label">{{ $cat['label'] ?? '' }}</div>
+                    <div class="cat-name">{{ $cat['name'] ?? '' }}</div>
+                    <p class="cat-hook">{{ $cat['hook'] ?? '' }}</p>
                     <span class="cat-link">Order now →</span>
                 </div>
             </a>
-
-            <a href="/menu" class="cat-card">
-                <div class="cat-img">
-                    <img src="{{ asset('images/cafe/Cream-bun.png') }}"
-                         alt="Fresh pastries"
-                         onerror="this.parentElement.innerHTML='<div class=\'cat-img-placeholder pastry\'>🥐</div>'">
-                </div>
-                <div class="cat-body">
-                    <div class="cat-label">Pastries & Bakes</div>
-                    <div class="cat-name">Fresh Bakes</div>
-                    <p class="cat-hook">Croissants that crackle. Cream buns that melt. Baked at dawn.</p>
-                    <span class="cat-link">Browse →</span>
-                </div>
-            </a>
-
-            <a href="/menu" class="cat-card">
-                <div class="cat-img">
-                    <div class="cat-img-placeholder grill"><span>🔥</span></div>
-                </div>
-                <div class="cat-body">
-                    <div class="cat-label">Grills</div>
-                    <div class="cat-name">Char & Grill</div>
-                    <p class="cat-hook">Proper char. Proper flavor. Made to order, never pre-cooked.</p>
-                    <span class="cat-link">Order →</span>
-                </div>
-            </a>
-
-            <a href="/menu" class="cat-card">
-                <div class="cat-img">
-                    <img src="{{ asset('images/cafe/G-cake.png') }}"
-                         alt="Celebration cakes"
-                         onerror="this.parentElement.innerHTML='<div class=\'cat-img-placeholder cake\'>🎂</div>'">
-                </div>
-                <div class="cat-body">
-                    <div class="cat-label">Cakes & Special Orders</div>
-                    <div class="cat-name">Celebration Cakes</div>
-                    <p class="cat-hook">Celebration-worthy. Made to order. Call ahead to reserve yours.</p>
-                    <span class="cat-link">Order →</span>
-                </div>
-            </a>
-
+            @endforeach
         </div>
     </div>
 </section>
@@ -953,21 +910,15 @@
 <section class="proof-strip">
     <div class="proof-inner">
         <div class="proof-eyebrow">Loved by Malé</div>
-        <div class="proof-stat">500<span>+</span></div>
-        <p class="proof-label">orders delivered in Malé every week —<br>and counting.</p>
+        <div class="proof-stat">{!! $proofStat !!}</div>
+        <p class="proof-label">{{ $proofLabel }}</p>
         <div class="proof-details">
+            @foreach($proofDetails as $pd)
             <div class="proof-detail">
-                <strong>5am</strong>
-                <span>Baking starts</span>
+                <strong>{{ $pd['value'] ?? '' }}</strong>
+                <span>{{ $pd['label'] ?? '' }}</span>
             </div>
-            <div class="proof-detail">
-                <strong>30–45 min</strong>
-                <span>Average delivery</span>
-            </div>
-            <div class="proof-detail">
-                <strong>MVR 200</strong>
-                <span>Free delivery above</span>
-            </div>
+            @endforeach
         </div>
     </div>
 </section>
@@ -994,8 +945,8 @@
                 <div class="loc-detail-row">
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
-                        Kalaafaanu Hingun, Malé
-                        <small>Near H. Sahara — easy to find</small>
+                        {{ $address }}
+                        <small>{{ $landmark }}</small>
                     </div>
                 </div>
 
@@ -1016,7 +967,7 @@
                 <div class="loc-detail-row">
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
-                        +960 9120011
+                        {{ $phone }}
                         <small>Call to reserve or ask about custom orders</small>
                     </div>
                 </div>
@@ -1025,21 +976,21 @@
 
                 <p class="chat-label">Chat with us</p>
                 <div class="chat-block">
-                    <a href="https://wa.me/9609120011" target="_blank" rel="noopener" class="chat-btn chat-btn-wa">
+                    <a href="{{ $waLink }}" target="_blank" rel="noopener" class="chat-btn chat-btn-wa">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                         WhatsApp
                     </a>
-                    <a href="viber://chat?number=%2B9609120011" class="chat-btn chat-btn-viber">
+                    <a href="{{ $viberLink }}" class="chat-btn chat-btn-viber">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/></svg>
                         Viber
                     </a>
                 </div>
 
                 <div class="loc-ctas" style="margin-top:1rem;">
-                    <a href="https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives" target="_blank" rel="noopener" class="loc-cta-outline">
+                    <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="loc-cta-outline">
                         📍 Get Directions
                     </a>
-                    <a href="tel:+9609120011" class="loc-cta-outline">
+                    <a href="{{ $phoneTel }}" class="loc-cta-outline">
                         📞 Call Us
                     </a>
                 </div>
@@ -1062,7 +1013,7 @@
                 <div class="loc-detail-row">
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
-                        30–45 minutes average delivery time
+                        {{ $deliveryTime }} average delivery time
                         <small>Hot food at your door, not a cold box</small>
                     </div>
                 </div>
@@ -1070,7 +1021,7 @@
                 <div class="loc-detail-row">
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
-                        Free delivery on orders over MVR 200
+                        Free delivery on orders over {{ $deliveryThreshold }}
                         <small>BML online payment or cash on delivery</small>
                     </div>
                 </div>
@@ -1079,11 +1030,11 @@
 
                 <p class="chat-label">Order via app or chat</p>
                 <div class="chat-block">
-                    <a href="https://wa.me/9609120011?text=Hi%2C+I'd+like+to+place+an+order" target="_blank" rel="noopener" class="chat-btn chat-btn-wa">
+                    <a href="{{ $waOrderLink }}" target="_blank" rel="noopener" class="chat-btn chat-btn-wa">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                         Order via WhatsApp
                     </a>
-                    <a href="viber://chat?number=%2B9609120011" class="chat-btn chat-btn-viber">
+                    <a href="{{ $viberLink }}" class="chat-btn chat-btn-viber">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/></svg>
                         Order via Viber
                     </a>
@@ -1109,8 +1060,8 @@
 ══════════════════════════════════════════════════════════ --}}
 <section class="cta-band">
     <div class="cta-band-inner">
-        <h2>Hungry? <em>Order now.</em></h2>
-        <p>Fresh from our kitchen to your door in 30–45 minutes. No fuss, no wait — just real food.</p>
+        <h2>{!! $ctaHeadline !!}</h2>
+        <p>{{ $ctaSubtext }}</p>
         <div class="cta-band-btns">
             <a href="/order/" class="btn-primary">🛒 Order Now</a>
             <a href="/menu"   class="btn-outline">Browse Menu</a>

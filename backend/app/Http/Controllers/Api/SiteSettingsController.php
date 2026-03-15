@@ -52,12 +52,21 @@ class SiteSettingsController extends Controller
     /**
      * POST /api/site-settings/upload — owner only, image upload
      * Multipart: file (image) + key (e.g. "logo")
+     *
+     * Hero/category image keys (hero_1_image … hero_3_image, cat_1_image … cat_4_image)
+     * only store the file and return the URL — the admin UI embeds the URL into the
+     * JSON setting value and saves it via the normal PUT endpoint.
      */
     public function upload(Request $request): JsonResponse
     {
+        $directKeys = ['logo', 'logo_dark', 'favicon', 'og_image'];
+        $jsonKeys   = ['hero_1_image', 'hero_2_image', 'hero_3_image',
+                       'cat_1_image',  'cat_2_image',  'cat_3_image',  'cat_4_image'];
+        $allowedKeys = array_merge($directKeys, $jsonKeys);
+
         $request->validate([
-            'file' => 'required|file|mimes:png,jpg,jpeg,svg,ico|max:2048',
-            'key'  => 'required|string|in:logo,logo_dark,favicon,og_image',
+            'file' => 'required|file|mimes:png,jpg,jpeg,webp,svg,ico|max:5120',
+            'key'  => 'required|string|in:' . implode(',', $allowedKeys),
         ]);
 
         $file      = $request->file('file');
@@ -67,8 +76,11 @@ class SiteSettingsController extends Controller
         $path      = $file->storeAs('site', $filename, 'public');
         $url       = Storage::url($path);
 
-        SiteSetting::set($key, $url);
-        SiteSetting::bust();
+        // For brand assets, auto-save directly to the setting
+        if (in_array($key, $directKeys, true)) {
+            SiteSetting::set($key, $url);
+            SiteSetting::bust();
+        }
 
         return response()->json(['url' => $url]);
     }

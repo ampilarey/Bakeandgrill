@@ -1,4 +1,18 @@
 @extends('layout')
+@php
+    $phone     = \App\Models\SiteSetting::get('business_phone',    '+960 912 0011');
+    $phoneTel  = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
+    $email     = \App\Models\SiteSetting::get('business_email',    'hello@bakeandgrill.mv');
+    $address   = \App\Models\SiteSetting::get('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
+    $landmark  = \App\Models\SiteSetting::get('business_landmark', 'Near H. Sahara');
+    $mapsUrl   = \App\Models\SiteSetting::get('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
+    $waLink    = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
+    $viberLink = \App\Models\SiteSetting::get('business_viber',    'viber://chat?number=9609120011');
+    // Separate address line + city for the card display
+    $addressParts = array_map('trim', explode(',', $address, 2));
+    $addressLine1 = $addressParts[0] ?? $address;
+    $addressLine2 = $addressParts[1] ?? 'Maldives';
+@endphp
 
 @section('title', 'Contact Us – Bake & Grill')
 @section('description', 'Find Bake & Grill in Malé. Call us, WhatsApp, or visit us at Kalaafaanu Hingun.')
@@ -135,11 +149,11 @@
     <div class="contact-card">
         <div class="contact-card-icon">📍</div>
         <h2>Our Location</h2>
-        <p><strong>Bake & Grill Café</strong></p>
-        <p>Kalaafaanu Hingun</p>
-        <p>Malé, Maldives</p>
-        <p>Near H. Sahara</p>
-        <a href="https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives" target="_blank" class="contact-link-row">
+        <p><strong>{{ \App\Models\SiteSetting::get('site_name', 'Bake & Grill') }} Café</strong></p>
+        <p>{{ $addressLine1 }}</p>
+        <p>{{ $addressLine2 }}</p>
+        <p>{{ $landmark }}</p>
+        <a href="{{ $mapsUrl }}" target="_blank" class="contact-link-row">
             Open in Maps →
         </a>
     </div>
@@ -148,14 +162,14 @@
         <div class="contact-card-icon">📞</div>
         <h2>Get in Touch</h2>
         <p><strong>Phone</strong></p>
-        <a href="tel:+9609120011">+960 9120011</a>
+        <a href="{{ $phoneTel }}">{{ $phone }}</a>
         <p style="margin-top:0.75rem;"><strong>Email</strong></p>
-        <a href="mailto:hello@bakeandgrill.mv">hello@bakeandgrill.mv</a>
+        <a href="mailto:{{ $email }}">{{ $email }}</a>
         <div class="contact-msg-btns">
-            <a href="https://wa.me/9609120011" target="_blank" rel="noopener" class="contact-link-wa">
+            <a href="{{ $waLink }}" target="_blank" rel="noopener" class="contact-link-wa">
                 💬 WhatsApp
             </a>
-            <a href="viber://chat?number=%2B9609120011" class="contact-link-viber">
+            <a href="{{ $viberLink }}" class="contact-link-viber">
                 📱 Viber
             </a>
         </div>
@@ -179,7 +193,7 @@
     <h2>📍 Find Us on the Map</h2>
     <div class="map-wrap">
         <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.9!2d73.5093!3d4.1755!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTAnMzEuOCJOIDczwrAzMCczMy41IkU!5e0!3m2!1sen!2s!4v1234567890"
+            src="{{ \App\Models\SiteSetting::get('maps_embed_url', 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.9!2d73.5093!3d4.1755!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTAnMzEuOCJOIDczwrAzMCczMy41IkU!5e0!3m2!1sen!2s!4v1234567890') }}"
             allowfullscreen=""
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade">
