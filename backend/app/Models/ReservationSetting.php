@@ -16,6 +16,14 @@ class ReservationSetting extends Model
         'auto_cancel_minutes',
     ];
 
+    protected $casts = [
+        'slot_duration_minutes'  => 'integer',
+        'max_party_size'         => 'integer',
+        'advance_booking_days'   => 'integer',
+        'buffer_minutes_between' => 'integer',
+        'auto_cancel_minutes'    => 'integer',
+    ];
+
     public static function current(): self
     {
         return self::firstOrCreate([], [

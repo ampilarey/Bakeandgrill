@@ -54,15 +54,22 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'held_at' => 'datetime',
-        'paid_at' => 'datetime',
-        'completed_at' => 'datetime',
-        'delivery_eta_at' => 'datetime',
-        'tax_inclusive' => 'boolean',
-        'delivery_fee' => 'decimal:2',
-        'delivery_fee_laar' => 'integer',
-        'tip_amount' => 'decimal:2',
-        'estimated_wait_minutes' => 'integer',
+        // FK integer columns — MySQL PDO returns these as strings without explicit casts
+        'customer_id'          => 'integer',
+        'shift_id'             => 'integer',
+        'restaurant_table_id'  => 'integer',
+        'delivery_driver_id'   => 'integer',
+        // Datetimes
+        'held_at'              => 'datetime',
+        'paid_at'              => 'datetime',
+        'completed_at'         => 'datetime',
+        'delivery_eta_at'      => 'datetime',
+        // Scalars
+        'tax_inclusive'           => 'boolean',
+        'delivery_fee'            => 'decimal:2',
+        'delivery_fee_laar'       => 'integer',
+        'tip_amount'              => 'decimal:2',
+        'estimated_wait_minutes'  => 'integer',
     ];
 
     public function items(): HasMany
