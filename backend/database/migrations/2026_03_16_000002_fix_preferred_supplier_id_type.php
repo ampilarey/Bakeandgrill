@@ -19,22 +19,31 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('inventory_items', function (Blueprint $table): void {
-            // Drop any existing FK constraint on this column before changing type
-            try {
+        // Drop FK only if it actually exists (MySQL-safe check)
+        $hasFk = collect(DB::select(
+            "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'inventory_items'
+               AND COLUMN_NAME = 'preferred_supplier_id'
+               AND REFERENCED_TABLE_NAME IS NOT NULL"
+        ))->isNotEmpty();
+
+        Schema::table('inventory_items', function (Blueprint $table) use ($hasFk): void {
+            if ($hasFk) {
                 $table->dropForeign(['preferred_supplier_id']);
-            } catch (\Throwable) {
-                // No FK existed — safe to ignore
             }
 
             $table->unsignedBigInteger('preferred_supplier_id')
                 ->nullable()
                 ->change();
 
-            $table->foreign('preferred_supplier_id')
-                ->references('id')
-                ->on('suppliers')
-                ->nullOnDelete();
+            // Only add the FK if the suppliers table exists
+            if (Schema::hasTable('suppliers')) {
+                $table->foreign('preferred_supplier_id')
+                    ->references('id')
+                    ->on('suppliers')
+                    ->nullOnDelete();
+            }
         });
     }
 
