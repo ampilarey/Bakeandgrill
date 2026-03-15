@@ -69,9 +69,9 @@ class BmlConnectService
         ]);
 
         $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'AppId' => $this->appId,
-            'ApiKey' => $this->apiKey,
+            'Content-Type'  => 'application/json',
+            'Accept'        => 'application/json',
+            'Authorization' => $this->apiKey,
         ])
             ->timeout(30)
             ->post("{$this->baseUrl}/v1/transactions", $payload);
@@ -126,8 +126,8 @@ class BmlConnectService
     public function getTransactionStatus(string $transactionId): array
     {
         $response = Http::withHeaders([
-            'AppId' => $this->appId,
-            'ApiKey' => $this->apiKey,
+            'Accept'        => 'application/json',
+            'Authorization' => $this->apiKey,
         ])
             ->timeout(15)
             ->get("{$this->baseUrl}/v1/transactions/{$transactionId}");
