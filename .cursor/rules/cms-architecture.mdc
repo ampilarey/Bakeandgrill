@@ -1,0 +1,102 @@
+---
+description: Full Owner CMS architecture — how site settings work, what is editable, and how to extend it
+alwaysApply: true
+---
+
+# Full Owner CMS — Architecture & Reference
+
+This file works alongside `admin-panel-audit.mdc` (admin panel bugs & API) and `deploy-commands.mdc` (quick reference). Together they give any developer full context on the codebase.
+
+## How It Works
+
+```
+Owner edits in Admin → Settings → Website Settings
+  → PUT /api/site-settings          (bulk key/value save)
+  → POST /api/site-settings/upload  (image upload)
+    → site_settings DB table (key/value rows)
+    → Laravel Cache (auto-busted on every save via SiteSetting::bust())
+      → Blade views read SiteSetting::get('key', 'fallback')
+        → Public website updates instantly
+```
+
+## Key Files
+
+| File | Role |
+|------|------|
+| `backend/app/Models/SiteSetting.php` | Eloquent model — `get()`, `set()`, `bust()`, `allPublic()` |
+| `backend/app/Http/Controllers/Api/SiteSettingsController.php` | API: `index()`, `update()`, `upload()`, `public()` |
+| `backend/database/migrations/2026_03_15_003320_create_site_settings_table.php` | Schema: key, value, type, group, label, description, is_public |
+| `backend/database/migrations/2026_03_15_100000_add_cms_site_settings.php` | Seeded 16 rows: Contact, Hero, Homepage groups |
+| `apps/admin-dashboard/src/pages/SettingsPage.tsx` | Admin UI with custom JSON editors |
+| `backend/resources/views/layout.blade.php` | Footer, nav — reads from DB |
+| `backend/resources/views/home.blade.php` | Hero, trust strip, categories, proof, CTA — reads from DB |
+| `backend/resources/views/contact.blade.php` | Contact details — reads from DB |
+
+## Setting Groups & Keys
+
+### General (existing)
+`site_name`, `site_tagline`, `business_phone`, `business_email`, `business_address`, `business_hours`
+
+### Branding (existing)
+`logo`, `logo_dark`, `favicon`, `primary_color`
+
+### Contact (new)
+`business_whatsapp`, `business_viber`, `business_maps_url`, `business_landmark`, `delivery_threshold`, `delivery_time`
+
+### Hero (new — JSON type)
+`hero_slide_1`, `hero_slide_2`, `hero_slide_3`
+Each stores: `{ image, eyebrow, title, subtitle, cta_text, cta_url, cta2_text, cta2_url }`
+Title supports HTML (`<br>`, `<em>`), rendered with `{!! !!}` in Blade.
+
+### Homepage (new — mixed)
+- `trust_items` — JSON array of 4 `{ icon, heading, subtext }`
+- `proof_stat`, `proof_label` — plain text
+- `proof_details` — JSON array of 3 `{ value, label }`
+- `homepage_categories` — JSON array of 4 `{ icon, label, name, hook, image_url, link }`
+- `cta_band_headline`, `cta_band_subtext` — plain text (headline supports HTML)
+
+### SEO / Social / Footer (existing)
+`meta_title`, `meta_description`, `og_image`, social URLs, footer text
+
+## Image Upload Keys
+
+Allowed in `SiteSettingsController::upload()`:
+- **Brand:** `logo`, `logo_dark`, `favicon`, `og_image` → auto-saved directly to setting
+- **Hero slides:** `hero_1_image`, `hero_2_image`, `hero_3_image` → returns URL only (admin embeds into JSON)
+- **Categories:** `cat_1_image` … `cat_4_image` → returns URL only (admin embeds into JSON)
+
+## Admin UI Custom Editors
+
+Detected by `item.key` in `WebsiteSettings` render loop:
+
+| Key pattern | Editor component | Fields |
+|-------------|-----------------|--------|
+| `hero_slide_1/2/3` | `HeroSlideEditor` | image upload + eyebrow, title, subtitle, 2×CTA |
+| `trust_items` | `TrustItemsEditor` | 4 rows: icon, heading, subtext |
+| `proof_details` | `ProofDetailsEditor` | 3 rows: value, label |
+| `homepage_categories` | `CategoriesEditor` | 4 rows: icon, label, name, hook, image upload, link |
+| `*hours*` (json) | `BusinessHoursEditor` | 7 day rows with open/closed text |
+| everything else | Auto-rendered | image/color/boolean/textarea/text input |
+
+## How to Add a New Editable Setting
+
+1. **Migration** — Add row to `site_settings` via `DB::table('site_settings')->updateOrInsert(...)` with `key`, `value`, `type` (`text`/`json`/`image`/`boolean`/`color`), `group`, `label`, `description`, `is_public`
+2. **Blade** — Replace hardcoded value with `\App\Models\SiteSetting::get('your_key', 'fallback')`
+3. **Admin UI** — Plain text/boolean/color fields appear automatically in the matching tab. Only add a custom editor component in `SettingsPage.tsx` if the field is a JSON array that needs visual editing.
+
+## Blade Pattern (always use this)
+
+```php
+@php
+    $value = \App\Models\SiteSetting::get('key', 'default');
+@endphp
+{{ $value }}          {{-- text — auto-escaped --}}
+{!! $value !!}        {{-- HTML — only for admin-controlled content --}}
+```
+
+## Common Gotchas
+
+- `SiteSetting::get()` reads from cache. Cache is busted automatically on every save via `SiteSetting::bust()` inside `update()` and `upload()` (direct keys only).
+- Hero/category images are NOT auto-saved to the setting on upload — the API returns the URL and the admin UI embeds it into the JSON before saving with PUT.
+- The `layout.blade.php` `@php` block must come BEFORE `@verbatim` (which wraps the CSS) — Blade expressions inside `@verbatim` are not processed.
+- JSON settings with `{!! !!}` in Blade are safe because only the owner can edit them (authenticated API, owner role required).
