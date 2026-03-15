@@ -1,0 +1,198 @@
+---
+description: Full codebase reference for Bake & Grill — architecture, auth, permissions, SMS, models, conventions
+alwaysApply: true
+---
+
+# Bake & Grill — Full Codebase Reference
+
+Works alongside `admin-panel-audit.mdc` (admin panel bugs & missing pages), `deploy-commands.mdc` (server deploy), and `cms-architecture.mdc` (site settings CMS). Together they give full developer context.
+
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|-------|------|
+| Backend | Laravel 11, PHP 8.2, Sanctum, MySQL |
+| Admin UI | React 18, TypeScript, Vite, Lucide icons, inline styles |
+| Public site | Blade templates (extends `layout.blade.php`) |
+| Shared types | `apps/shared/` — consumed by both admin and online-order apps |
+
+```
+/backend/          Laravel app (API + Blade public site)
+/apps/admin-dashboard/   React admin panel
+/apps/online-order-web/  React customer ordering app
+/apps/shared/            Shared TS types and API client
+```
+
+---
+
+## Authentication — Two Separate Token Types
+
+**Staff (admin panel):** PIN login → Sanctum token stored in `localStorage('admin_token')`
+- Middleware: `auth:sanctum` + `staff.token`
+- Login: `POST /api/auth/staff/pin-login`
+- Current user: `GET /api/auth/me`
+
+**Customer (order app):** OTP login → Sanctum token in session
+- Middleware: `auth:sanctum` + `customer.token`
+- Routes prefixed `/api/customer/`
+- Login flow: `POST /api/auth/customer/otp/request` → `POST /api/auth/customer/otp/verify`
+
+**Critical:** Customer tokens are blocked from all staff routes via `staff.token` middleware. Never mix these two token types.
+
+---
+
+## Roles & Permissions
+
+### Three roles (slug-based)
+`owner` → `manager` → `staff`
+
+Owner bypasses ALL permission checks automatically.
+
+### Permission resolution (`HasPermissions` trait on `User`)
+```
+1. role.slug === 'owner' → always true
+2. user_permission pivot (explicit grant/deny override)
+3. role's default permissions (role_permission pivot)
+4. false
+```
+
+### Middleware
+- `can:device.manage` — Laravel Gate alias → calls `hasPermission()`
+- `permission:slug` — `RequirePermission` middleware
+- `role:owner` / `role:manager,owner` — `RequireRole` middleware (older pattern, still used in some routes)
+
+### Admin UI
+`Settings → Roles & Permissions` — per-user permission overrides via `PUT /api/users/{id}/permissions`.
+Frontend uses `usePermissions()` hook → calls `GET /api/auth/me` which includes `permissions[]`.
+
+### Planned (not yet implemented)
+- Migrate remaining `role:` middleware in `api.php` / `api_finance.php` to `permission:` slugs
+- Add customer-token blocking inside `RequirePermission::handle()` (currently only in `RequireRole`)
+- Replace `RoleGuard` with `PermissionGuard` in `App.tsx`
+- Filter sidebar nav by `can(slug)` in `Layout.tsx`
+
+---
+
+## API Route Structure
+
+```php
+// api.php
+Route::get('/health') // public
+Route::get('/opening-hours') // public
+Route::prefix('auth/staff') // login
+Route::prefix('auth/customer') // OTP
+
+// Staff-authenticated block
+Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
+    // All admin routes (Orders, KDS, Inventory, Shifts, Reports, etc.)
+    require __DIR__ . '/api_finance.php'; // invoices, expenses, P&L, forecasts, suppliers
+});
+
+// Customer-authenticated block
+Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')-> // orders, profile
+
+// Public menu
+Route::get('/categories') Route::get('/items')
+
+// Site settings CMS
+Route::get('/site-settings/public') // public
+Route::get('/site-settings') + Route::put() + Route::post('/upload') // owner only
+```
+
+---
+
+## SMS Service
+
+**Location:** `App\Domains\Notifications\Services\SmsService`
+
+**Carrier:** Dhiraagu (Maldivian — config `services.dhiraagu` → username, password, api_url, timeout)
+
+**Key method:** `send(SmsMessage $dto): SmsLog`
+
+**Features:**
+- Auto-detects encoding: GSM-7 (ASCII, 160 chars/seg) vs UCS-2 (Unicode/Thaana, 70 chars/seg)
+- Idempotency key deduplication via `sms_logs` table
+- Falls back to demo mode (logs only) when credentials missing or `APP_ENV=local/testing`
+- Logs every attempt to `sms_logs` with status: `queued` → `sent` / `failed` / `demo`
+
+**DTO:** `App\Domains\Notifications\DTOs\SmsMessage` — fields: `to`, `message`, `type`, `customerId`, `campaignId`, `referenceType`, `referenceId`, `idempotencyKey`
+
+**Consumers:** `CustomerPortalController`, `ReceiptPageController`, `SmsPromotionController`
+
+**Planned (not yet implemented):**
+- Extract `SmsProviderInterface` contract
+- Create `DhiraaguSmsProvider` implementing it
+- Bind in `AppServiceProvider::register()`
+- Inject via DI instead of direct HTTP calls in `SmsService`
+
+---
+
+## Key Models (74 total)
+
+### Core business
+| Model | Table | Notes |
+|-------|-------|-------|
+| `User` | `users` | Staff — HasPermissions, HasApiTokens |
+| `Customer` | `customers` | Separate auth, OTP-based |
+| `Role` | `roles` | slug: owner/manager/staff |
+| `Permission` | `permissions` | slug, name, group |
+| `Order` | `orders` | status: pending/preparing/ready/delivered |
+| `Item` | `items` | Menu items with variants |
+| `Category` | `categories` | Menu categories |
+
+### Finance
+`Invoice`, `Expense`, `ExpenseCategory`, `Refund`, `Shift`, `CashMovement`, `TimePunch`
+
+### Inventory & Purchasing
+`InventoryItem`, `StockMovement`, `Purchase`, `PurchaseItem`, `Supplier`, `SupplierRating`, `SupplierPerformanceCache`, `WasteLog`
+
+### Marketing & Loyalty
+`Promotion`, `LoyaltyAccount`, `LoyaltyLedger`, `SmsCampaign`, `SmsPromotion`, `SmsLog`, `GiftCard`, `Referral`, `ReferralCode`
+
+### Operations
+`Device`, `PrintJob`, `Shift`, `Reservation`, `ReservationSetting`, `RestaurantTable`
+
+### Website / CMS
+`SiteSetting` — see `cms-architecture.mdc` for full detail
+
+---
+
+## Admin Dashboard (React)
+
+**Entry:** `App.tsx` → `Routes` → 22 page components in `pages/`
+
+**Auth flow:** `getMe()` on mount → stores `StaffUser` in state → `AuthGuard` / `RoleGuard` wraps protected routes
+
+**API client:** `api.ts` uses `createApiClient` from `@shared/api` — reads token from `localStorage('admin_token')`, sets `Authorization: Bearer` header
+
+**State:** React `useState` + `useEffect` only. No Redux/Zustand.
+
+**Styling:** Inline JS objects everywhere. No CSS modules. Tailwind v4 is imported but avoided for component styles due to arbitrary-value rendering issues in v4.
+
+**UI components:** `components/ui/` — Button, Card, Modal, Badge, Input, Tabs, Toast, Toggle, Spinner, EmptyState, Pagination. Shared layout primitives in `SharedUI.tsx`.
+
+**Build output:** `apps/admin-dashboard/dist/` copied to `backend/public/admin/` before every commit.
+
+---
+
+## Public Website (Blade)
+
+`layout.blade.php` — shared header/footer, reads from `SiteSetting` (see `cms-architecture.mdc`)
+
+Pages: `home.blade.php`, `contact.blade.php`, `privacy.blade.php`, `hours.blade.php`
+
+All contact info, hero slides, categories, proof stats, CTA copy — fully DB-driven, editable from Admin → Settings → Website Settings.
+
+---
+
+## Development Conventions
+
+1. **New admin pages:** Create `pages/PageName.tsx`, register route in `App.tsx`, add nav link in `Layout.tsx`
+2. **New API functions:** Add to `api.ts` only — never inline `fetch()` in components
+3. **New settings:** Migration with `updateOrInsert` → `SiteSetting::get()` in Blade → optional custom editor in `SettingsPage.tsx`
+4. **New permissions:** Add row to `permissions` table + seed role defaults in `role_permission`
+5. **New SMS types:** Use `SmsMessage` DTO with `type` field, call `SmsService::send()`
+6. **Icons:** `lucide-react` only
+7. **Never** mix customer and staff token logic — they are fully separate auth paths
