@@ -13,17 +13,21 @@ use Symfony\Component\HttpFoundation\Response;
  * Enforce role-based access on staff routes.
  *
  * Usage in routes:
- *   ->middleware('role:admin,owner')
- *   ->middleware('role:manager,admin,owner')
+ *   ->middleware('role:owner')
+ *   ->middleware('role:manager,owner')
+ *   ->middleware('role:staff,manager,owner')
  *
- * Role slugs expected in the roles.slug column:
- *   owner, admin, manager, cashier, kitchen
+ * Role slugs (roles.slug column): owner, manager, staff
  *
  * Rules:
  *   1. Unauthenticated requests → 401
  *   2. Customer tokens (App\Models\Customer) → always 403 on staff routes
  *   3. Staff with no role loaded → 403
  *   4. Staff role slug not in allowed list → 403
+ *
+ * NOTE: Prefer 'permission:slug' middleware for granular access control.
+ *       This middleware is kept for broad role gates where permissions
+ *       don't apply (e.g. customer vs staff separation).
  */
 class RequireRole
 {

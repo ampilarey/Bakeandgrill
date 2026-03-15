@@ -13,7 +13,7 @@ declare(strict_types=1);
 */
 
 // ─── Invoices ──────────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('invoices')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:finance.invoices'])->prefix('invoices')->group(function () {
     Route::get('/',                           [App\Http\Controllers\Api\InvoiceController::class, 'index']);
     Route::post('/',                          [App\Http\Controllers\Api\InvoiceController::class, 'store']);
     Route::get('/{id}',                       [App\Http\Controllers\Api\InvoiceController::class, 'show']);
@@ -28,7 +28,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('invoices')->g
 });
 
 // ─── Expenses ──────────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('expenses')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:finance.expenses'])->prefix('expenses')->group(function () {
     Route::get('/',                [App\Http\Controllers\Api\ExpenseController::class, 'index']);
     Route::post('/',               [App\Http\Controllers\Api\ExpenseController::class, 'store']);
     Route::get('/categories',      [App\Http\Controllers\Api\ExpenseController::class, 'categories']);
@@ -41,7 +41,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('expenses')->g
 });
 
 // ─── Finance Reports ───────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('reports/finance')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('reports/finance')->group(function () {
     Route::get('/profit-and-loss',    [App\Http\Controllers\Api\FinanceReportController::class, 'profitAndLoss']);
     Route::get('/cash-flow',          [App\Http\Controllers\Api\FinanceReportController::class, 'cashFlow']);
     Route::get('/tax',                [App\Http\Controllers\Api\FinanceReportController::class, 'taxReport']);
@@ -51,7 +51,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('reports/finan
 });
 
 // ─── Supplier Intelligence ─────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('suppliers')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:suppliers.manage'])->prefix('suppliers')->group(function () {
     // Static routes MUST come before parameterised /{id} routes
     Route::get('/performance',                 [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'allPerformance']);
     Route::get('/price-comparison/{itemId}',   [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'priceComparison']);
@@ -63,7 +63,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('suppliers')->
 });
 
 // ─── Purchase Workflow ─────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('purchases')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->prefix('purchases')->group(function () {
     Route::post('/{id}/approve',  [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'approve']);
     Route::post('/{id}/reject',   [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject']);
     Route::post('/{id}/receive',  [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'receive']);
@@ -72,7 +72,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('purchases')->
 });
 
 // ─── Inventory Categories & Unit Conversions ───────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('inventory-categories')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:inventory.categories'])->prefix('inventory-categories')->group(function () {
     Route::get('/',       fn() => response()->json(['categories' => \App\Models\InventoryCategory::orderBy('name')->get()]));
     Route::post('/',      function (Illuminate\Http\Request $req) {
         $validated = $req->validate(['name' => 'required|string|max:100', 'description' => 'nullable|string']);
@@ -86,7 +86,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('inventory-cat
     });
 });
 
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('unit-conversions')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->prefix('unit-conversions')->group(function () {
     Route::get('/', fn() => response()->json(['conversions' => \App\Models\UnitConversion::all()]));
     Route::post('/', function (Illuminate\Http\Request $req) {
         $v = $req->validate(['from_unit' => 'required|string|max:20', 'to_unit' => 'required|string|max:20', 'factor' => 'required|numeric|min:0.000001']);
@@ -96,7 +96,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('unit-conversi
 });
 
 // ─── Forecasting ───────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('forecasts')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('forecasts')->group(function () {
     Route::get('/revenue',   [App\Http\Controllers\Api\ForecastController::class, 'revenueForecast']);
     Route::get('/items',     [App\Http\Controllers\Api\ForecastController::class, 'itemForecast']);
     Route::get('/trends',    [App\Http\Controllers\Api\ForecastController::class, 'salesTrends']);

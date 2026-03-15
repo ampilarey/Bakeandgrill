@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { getMe, logout as apiLogout, type StaffUser } from './api';
 import { ToastProvider } from './components/ui';
 import { Layout } from './components/Layout';
+import { usePermissions } from './hooks/usePermissions';
 import { LoginPage } from './pages/LoginPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { KDSPage } from './pages/KDSPage';
@@ -37,16 +38,17 @@ function AuthGuard({
   return <>{children}</>;
 }
 
-function RoleGuard({
-  user,
-  allowed,
+/** Guard that checks a specific permission slug instead of just roles */
+function PermissionGuard({
+  can,
+  permission,
   children,
 }: {
-  user: StaffUser | null;
-  allowed: string[];
+  can: (slug: string) => boolean;
+  permission: string;
   children: React.ReactNode;
 }) {
-  if (!user || !allowed.includes(user.role ?? '')) return <Navigate to="/orders" replace />;
+  if (!can(permission)) return <Navigate to="/orders" replace />;
   return <>{children}</>;
 }
 
@@ -54,6 +56,7 @@ export default function App() {
   const [user, setUser] = useState<StaffUser | null>(null);
   const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
+  const { can } = usePermissions(user?.id ?? null, user?.role);
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
@@ -95,75 +98,31 @@ export default function App() {
         path="/*"
         element={
           <AuthGuard user={user}>
-            <Layout user={user!} onLogout={handleLogout}>
+            <Layout user={user!} onLogout={handleLogout} can={can}>
               <Routes>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard"  element={<DashboardPage />} />
-                <Route path="orders"     element={<OrdersPage />} />
-                <Route path="kds"        element={<KDSPage />} />
-                <Route path="delivery"   element={<DeliveryPage />} />
-                <Route path="promotions" element={<PromotionsPage />} />
-                <Route path="loyalty"    element={<LoyaltyPage />} />
-                <Route path="sms"        element={<SmsPage />} />
-                <Route path="reports"    element={<ReportsPage />} />
-                <Route path="menu"       element={<MenuPage />} />
-                {/* Staff management — owner only */}
-                <Route path="staff" element={
-                  <RoleGuard user={user} allowed={['owner', 'manager']}>
-                    <StaffPage />
-                  </RoleGuard>
-                } />
-                <Route path="reservations" element={<ReservationsPage />} />
-                <Route path="analytics"   element={<AnalyticsPage />} />
-                {/* Finance — manager, owner */}
-                <Route path="invoices" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
-                    <InvoicesPage />
-                  </RoleGuard>
-                } />
-                <Route path="expenses" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
-                    <ExpensesPage />
-                  </RoleGuard>
-                } />
-                <Route path="profit-loss" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
-                    <ProfitLossPage />
-                  </RoleGuard>
-                } />
-                <Route path="supplier-intelligence" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
-                    <SupplierIntelligencePage />
-                  </RoleGuard>
-                } />
-                <Route path="forecasts" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
-                    <ForecastPage />
-                  </RoleGuard>
-                } />
-                <Route path="purchase-orders" element={
-                  <RoleGuard user={user} allowed={['manager', 'owner']}>
-                    <PurchaseOrdersPage />
-                  </RoleGuard>
-                } />
-                {/* Webhooks — owner only */}
-                <Route path="webhooks" element={
-                  <RoleGuard user={user} allowed={['owner']}>
-                    <WebhooksPage />
-                  </RoleGuard>
-                } />
-                <Route path="checklist" element={
-                  <RoleGuard user={user} allowed={['owner']}>
-                    <TestChecklistPage />
-                  </RoleGuard>
-                } />
-                {/* Settings hub — owner + manager */}
-                <Route path="settings/*" element={
-                  <RoleGuard user={user} allowed={['owner', 'manager']}>
-                    <SettingsPage />
-                  </RoleGuard>
-                } />
-                <Route path="*"                     element={<Navigate to="/orders" replace />} />
+                <Route path="orders"     element={<PermissionGuard can={can} permission="orders.view"><OrdersPage /></PermissionGuard>} />
+                <Route path="kds"        element={<PermissionGuard can={can} permission="orders.view"><KDSPage /></PermissionGuard>} />
+                <Route path="delivery"   element={<PermissionGuard can={can} permission="delivery.view"><DeliveryPage /></PermissionGuard>} />
+                <Route path="promotions" element={<PermissionGuard can={can} permission="promotions.view"><PromotionsPage /></PermissionGuard>} />
+                <Route path="loyalty"    element={<PermissionGuard can={can} permission="loyalty.view"><LoyaltyPage /></PermissionGuard>} />
+                <Route path="sms"        element={<PermissionGuard can={can} permission="integrations.sms"><SmsPage /></PermissionGuard>} />
+                <Route path="reports"    element={<PermissionGuard can={can} permission="reports.view"><ReportsPage /></PermissionGuard>} />
+                <Route path="menu"       element={<PermissionGuard can={can} permission="menu.view"><MenuPage /></PermissionGuard>} />
+                <Route path="staff"      element={<PermissionGuard can={can} permission="staff.view"><StaffPage /></PermissionGuard>} />
+                <Route path="reservations" element={<PermissionGuard can={can} permission="reservations.view"><ReservationsPage /></PermissionGuard>} />
+                <Route path="analytics"  element={<PermissionGuard can={can} permission="customers.analytics"><AnalyticsPage /></PermissionGuard>} />
+                <Route path="invoices"   element={<PermissionGuard can={can} permission="finance.invoices"><InvoicesPage /></PermissionGuard>} />
+                <Route path="expenses"   element={<PermissionGuard can={can} permission="finance.expenses"><ExpensesPage /></PermissionGuard>} />
+                <Route path="profit-loss" element={<PermissionGuard can={can} permission="finance.profit_loss"><ProfitLossPage /></PermissionGuard>} />
+                <Route path="supplier-intelligence" element={<PermissionGuard can={can} permission="suppliers.view"><SupplierIntelligencePage /></PermissionGuard>} />
+                <Route path="forecasts"  element={<PermissionGuard can={can} permission="reports.financial"><ForecastPage /></PermissionGuard>} />
+                <Route path="purchase-orders" element={<PermissionGuard can={can} permission="suppliers.purchases"><PurchaseOrdersPage /></PermissionGuard>} />
+                <Route path="webhooks"   element={<PermissionGuard can={can} permission="integrations.webhooks"><WebhooksPage /></PermissionGuard>} />
+                <Route path="checklist"  element={<PermissionGuard can={can} permission="website.manage"><TestChecklistPage /></PermissionGuard>} />
+                <Route path="settings/*" element={<PermissionGuard can={can} permission="website.manage"><SettingsPage /></PermissionGuard>} />
+                <Route path="*"          element={<Navigate to="/orders" replace />} />
               </Routes>
             </Layout>
           </AuthGuard>

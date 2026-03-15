@@ -11,45 +11,50 @@ import {
 } from 'lucide-react';
 
 // ── Navigation structure ──────────────────────────────────────────────────────
-const NAV_GROUPS = [
+// Each item can optionally specify a permission slug; if the user lacks that
+// permission the item is hidden from the sidebar / mobile drawer.
+type NavItem = { to: string; icon: React.ElementType; label: string; permission?: string };
+type NavGroup = { label: string; items: NavItem[] };
+
+const NAV_GROUPS: NavGroup[] = [
   {
     label: 'OPERATIONS',
     items: [
-      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'        },
-      { to: '/orders',     icon: ClipboardList,   label: 'Orders'           },
-      { to: '/kds',        icon: ChefHat,         label: 'Kitchen'          },
-      { to: '/delivery',   icon: Truck,           label: 'Delivery'         },
+      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'                          },
+      { to: '/orders',     icon: ClipboardList,   label: 'Orders',     permission: 'orders.view' },
+      { to: '/kds',        icon: ChefHat,         label: 'Kitchen',    permission: 'orders.view' },
+      { to: '/delivery',   icon: Truck,           label: 'Delivery',   permission: 'delivery.view' },
     ],
   },
   {
     label: 'BUSINESS',
     items: [
-      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu'         },
-      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs'  },
-      { to: '/promotions',      icon: Target,          label: 'Promotions'   },
-      { to: '/loyalty',         icon: Heart,           label: 'Loyalty'      },
-      { to: '/sms',             icon: MessageSquare,   label: 'SMS'          },
-      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations' },
+      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu',         permission: 'menu.view'         },
+      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs',  permission: 'suppliers.purchases' },
+      { to: '/promotions',      icon: Target,          label: 'Promotions',   permission: 'promotions.view'   },
+      { to: '/loyalty',         icon: Heart,           label: 'Loyalty',      permission: 'loyalty.view'      },
+      { to: '/sms',             icon: MessageSquare,   label: 'SMS',          permission: 'integrations.sms'  },
+      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations', permission: 'reservations.view' },
     ],
   },
   {
     label: 'FINANCE',
     items: [
-      { to: '/reports',                icon: BarChart3,    label: 'Reports'             },
-      { to: '/invoices',               icon: DollarSign,   label: 'Invoices'            },
-      { to: '/expenses',               icon: Receipt,      label: 'Expenses'            },
-      { to: '/profit-loss',            icon: PieChart,     label: 'Profit & Loss'       },
-      { to: '/forecasts',              icon: TrendingDown, label: 'Forecasts'           },
-      { to: '/supplier-intelligence',  icon: Factory,      label: 'Suppliers'           },
+      { to: '/reports',                icon: BarChart3,    label: 'Reports',        permission: 'reports.view'       },
+      { to: '/invoices',               icon: DollarSign,   label: 'Invoices',       permission: 'finance.invoices'   },
+      { to: '/expenses',               icon: Receipt,      label: 'Expenses',       permission: 'finance.expenses'   },
+      { to: '/profit-loss',            icon: PieChart,     label: 'Profit & Loss',  permission: 'finance.profit_loss'},
+      { to: '/forecasts',              icon: TrendingDown, label: 'Forecasts',      permission: 'reports.financial'  },
+      { to: '/supplier-intelligence',  icon: Factory,      label: 'Suppliers',      permission: 'suppliers.view'     },
     ],
   },
   {
     label: 'MANAGEMENT',
     items: [
-      { to: '/staff',     icon: Users,    label: 'Staff'     },
-      { to: '/analytics', icon: BarChart2, label: 'Analytics' },
-      { to: '/settings',  icon: Settings, label: 'Settings'  },
-      { to: '/webhooks',  icon: Webhook,  label: 'Webhooks'  },
+      { to: '/staff',     icon: Users,    label: 'Staff',     permission: 'staff.view'            },
+      { to: '/analytics', icon: BarChart2, label: 'Analytics', permission: 'customers.analytics'   },
+      { to: '/settings',  icon: Settings, label: 'Settings',  permission: 'website.manage'        },
+      { to: '/webhooks',  icon: Webhook,  label: 'Webhooks',  permission: 'integrations.webhooks' },
     ],
   },
 ];
@@ -134,9 +139,10 @@ interface LayoutProps {
   user: StaffUser;
   onLogout: () => void;
   children: React.ReactNode;
+  can?: (slug: string) => boolean;
 }
 
-export function Layout({ user, onLogout, children }: LayoutProps) {
+export function Layout({ user, onLogout, children, can }: LayoutProps) {
   const width = useWindowWidth();
   const isMobile = width < 768;
   const isTablet = width >= 768 && width < 1024;
@@ -144,6 +150,14 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Filter nav groups based on user permissions
+  const filteredNavGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      !item.permission || !can || can(item.permission)
+    ),
+  })).filter((group) => group.items.length > 0);
 
   useEffect(() => {
     if (isTablet) setCollapsed(true);
@@ -294,7 +308,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
 
               {/* Nav grid */}
               <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {NAV_GROUPS.map((group) => (
+                {filteredNavGroups.map((group) => (
                   <div key={group.label}>
                     <p style={{ fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.08em', marginBottom: 8, margin: '0 0 8px' }}>
                       {group.label}
@@ -385,7 +399,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
 
         {/* Nav */}
         <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {NAV_GROUPS.map((group) => (
+          {filteredNavGroups.map((group) => (
             <div key={group.label}>
               {!collapsed && (
                 <p style={{

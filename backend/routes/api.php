@@ -112,15 +112,15 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     });
 
     // Orders
-    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/orders', [OrderController::class, 'index'])->middleware('permission:orders.view');
     Route::post('/orders', [OrderController::class, 'store'])
-        ->middleware('device.active');
+        ->middleware(['device.active', 'permission:orders.create']);
     Route::post('/orders/sync', [OrderController::class, 'sync'])
-        ->middleware('device.active');
-    Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::post('/orders/{id}/hold', [OrderController::class, 'hold'])->middleware('throttle:20,1');
-    Route::post('/orders/{id}/resume', [OrderController::class, 'resume'])->middleware('throttle:20,1');
-    Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])->middleware('throttle:20,1');
+        ->middleware(['device.active', 'permission:orders.create']);
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->middleware('permission:orders.view');
+    Route::post('/orders/{id}/hold', [OrderController::class, 'hold'])->middleware(['throttle:20,1', 'permission:orders.create']);
+    Route::post('/orders/{id}/resume', [OrderController::class, 'resume'])->middleware(['throttle:20,1', 'permission:orders.create']);
+    Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])->middleware(['throttle:20,1', 'permission:orders.create']);
 
     // KDS
     Route::get('/kds/orders', [KdsController::class, 'index']);
@@ -133,15 +133,15 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/print-jobs/{id}/retry', [PrintJobController::class, 'retry']);
 
     // Inventory — static paths MUST come before {id} wildcard to avoid shadowing
-    Route::get('/inventory', [InventoryController::class, 'index']);
-    Route::post('/inventory', [InventoryController::class, 'store']);
-    Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
-    Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount']);
-    Route::get('/inventory/{id}', [InventoryController::class, 'show']);
-    Route::patch('/inventory/{id}', [InventoryController::class, 'update']);
-    Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust']);
-    Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory']);
-    Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier']);
+    Route::get('/inventory', [InventoryController::class, 'index'])->middleware('permission:inventory.view');
+    Route::post('/inventory', [InventoryController::class, 'store'])->middleware('permission:inventory.manage');
+    Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->middleware('permission:inventory.view');
+    Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount'])->middleware('permission:inventory.manage');
+    Route::get('/inventory/{id}', [InventoryController::class, 'show'])->middleware('permission:inventory.view');
+    Route::patch('/inventory/{id}', [InventoryController::class, 'update'])->middleware('permission:inventory.manage');
+    Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust'])->middleware('permission:inventory.manage');
+    Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory'])->middleware('permission:inventory.view');
+    Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier'])->middleware('permission:inventory.view');
 
     // Finance & Inventory Routes (invoices, expenses, reports, supplier intelligence,
     // purchase workflow, forecasting) — required HERE so static paths like
@@ -172,21 +172,21 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])->middleware('throttle:30,1');
 
     // Reports
-    Route::get('/reports/sales-summary', [ReportsController::class, 'salesSummary']);
-    Route::get('/reports/sales-breakdown', [ReportsController::class, 'salesBreakdown']);
-    Route::get('/reports/x-report', [ReportsController::class, 'xReport']);
-    Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
-    Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
+    Route::get('/reports/sales-summary', [ReportsController::class, 'salesSummary'])->middleware('permission:reports.sales');
+    Route::get('/reports/sales-breakdown', [ReportsController::class, 'salesBreakdown'])->middleware('permission:reports.sales');
+    Route::get('/reports/x-report', [ReportsController::class, 'xReport'])->middleware('permission:reports.xreport');
+    Route::get('/reports/z-report', [ReportsController::class, 'zReport'])->middleware('permission:reports.zreport');
+    Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation'])->middleware('permission:reports.inventory');
     Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])
-        ->middleware('throttle:20,1');
+        ->middleware(['throttle:20,1', 'permission:reports.sales']);
     Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])
-        ->middleware('throttle:20,1');
+        ->middleware(['throttle:20,1', 'permission:reports.sales']);
     Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])
-        ->middleware('throttle:20,1');
+        ->middleware(['throttle:20,1', 'permission:reports.xreport']);
     Route::get('/reports/z-report/csv', [ReportsController::class, 'zReportCsv'])
-        ->middleware('throttle:20,1');
+        ->middleware(['throttle:20,1', 'permission:reports.zreport']);
     Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv'])
-        ->middleware('throttle:20,1');
+        ->middleware(['throttle:20,1', 'permission:reports.inventory']);
 
     // Tables
     Route::get('/tables', [TableController::class, 'index']);
@@ -204,9 +204,9 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/receipts/{orderId}/send', [ReceiptController::class, 'send']);
 
     // Refunds
-    Route::get('/refunds', [RefundController::class, 'index']);
-    Route::get('/refunds/{id}', [RefundController::class, 'show']);
-    Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store'])->middleware('throttle:10,1');
+    Route::get('/refunds', [RefundController::class, 'index'])->middleware('permission:orders.refund');
+    Route::get('/refunds/{id}', [RefundController::class, 'show'])->middleware('permission:orders.refund');
+    Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store'])->middleware(['throttle:10,1', 'permission:orders.refund']);
 
     // SMS promotions
     Route::get('/sms/promotions', [SmsPromotionController::class, 'index']);
@@ -246,7 +246,7 @@ Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback']
 Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut']);
 
 // Staff-only: update internal notes on a customer profile
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'permission:customers.manage'])->group(function () {
     Route::patch('/customers/{id}/notes', [CustomerController::class, 'updateNotes']);
 });
 
@@ -306,13 +306,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/orders/{orderId}/promo/{promotionId}', [App\Http\Controllers\Api\PromotionController::class, 'removeFromOrder']);
 });
 
-// Admin — full CRUD (requires staff token + manager/admin/owner role)
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin')->group(function () {
-    Route::get('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminIndex']);
-    Route::post('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminStore']);
-    Route::patch('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminUpdate']);
-    Route::delete('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminDestroy']);
-    Route::get('/reports/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminReport']);
+// Admin — full CRUD (requires staff token + permission check)
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    Route::get('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminIndex'])->middleware('permission:promotions.view');
+    Route::post('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminStore'])->middleware('permission:promotions.manage');
+    Route::patch('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminUpdate'])->middleware('permission:promotions.manage');
+    Route::delete('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminDestroy'])->middleware('permission:promotions.manage');
+    Route::get('/reports/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminReport'])->middleware('permission:promotions.view');
 });
 
 // ─── Loyalty ─────────────────────────────────────────────────────────────────
@@ -324,11 +324,11 @@ Route::middleware('auth:sanctum')->prefix('loyalty')->group(function () {
     Route::delete('/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'releaseHold']);
 });
 
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin')->group(function () {
-    Route::get('/loyalty/accounts', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAccountIndex']);
-    Route::get('/loyalty/accounts/{customerId}/ledger', [App\Http\Controllers\Api\LoyaltyController::class, 'adminLedger']);
-    Route::post('/loyalty/accounts/{customerId}/adjust', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAdjust']);
-    Route::get('/reports/loyalty', [App\Http\Controllers\Api\LoyaltyController::class, 'adminReport']);
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    Route::get('/loyalty/accounts', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAccountIndex'])->middleware('permission:loyalty.view');
+    Route::get('/loyalty/accounts/{customerId}/ledger', [App\Http\Controllers\Api\LoyaltyController::class, 'adminLedger'])->middleware('permission:loyalty.view');
+    Route::post('/loyalty/accounts/{customerId}/adjust', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAdjust'])->middleware('permission:loyalty.manage');
+    Route::get('/reports/loyalty', [App\Http\Controllers\Api\LoyaltyController::class, 'adminReport'])->middleware('permission:loyalty.view');
 });
 
 // ─── Delivery Orders ─────────────────────────────────────────────────────────
@@ -361,7 +361,7 @@ Route::get('/stream/order-status/{orderId}', [App\Http\Controllers\Api\StreamCon
     ->middleware('throttle:30,1');
 
 // ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/sms')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:integrations.sms'])->prefix('admin/sms')->group(function () {
     // Full SMS audit log (OTP + promo + campaign + transactional)
     Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
     Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
@@ -376,20 +376,20 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/sms')->
 });
 
 // ─── Image Upload (Admin) ──────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
+Route::middleware(['auth:sanctum', 'permission:menu.manage'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
 
-// ─── Staff Management (Admin/Owner only) ──────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:owner'])->prefix('admin/staff')->group(function () {
-    Route::get('/',         [App\Http\Controllers\Api\StaffController::class, 'index']);
-    Route::post('/',        [App\Http\Controllers\Api\StaffController::class, 'store']);
-    Route::patch('/{id}',   [App\Http\Controllers\Api\StaffController::class, 'update']);
-    Route::post('/{id}/pin', [App\Http\Controllers\Api\StaffController::class, 'resetPin']);
-    Route::delete('/{id}',  [App\Http\Controllers\Api\StaffController::class, 'destroy']);
+// ─── Staff Management (permission-gated) ──────────────────────────────────
+Route::middleware(['auth:sanctum'])->prefix('admin/staff')->group(function () {
+    Route::get('/',         [App\Http\Controllers\Api\StaffController::class, 'index'])->middleware('permission:staff.view');
+    Route::post('/',        [App\Http\Controllers\Api\StaffController::class, 'store'])->middleware('permission:staff.create');
+    Route::patch('/{id}',   [App\Http\Controllers\Api\StaffController::class, 'update'])->middleware('permission:staff.update');
+    Route::post('/{id}/pin', [App\Http\Controllers\Api\StaffController::class, 'resetPin'])->middleware('permission:staff.update');
+    Route::delete('/{id}',  [App\Http\Controllers\Api\StaffController::class, 'destroy'])->middleware('permission:staff.delete');
 });
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/analytics')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:customers.analytics'])->prefix('admin/analytics')->group(function () {
     Route::get('/peak-hours',    [App\Http\Controllers\Api\AnalyticsController::class, 'peakHours']);
     Route::get('/retention',     [App\Http\Controllers\Api\AnalyticsController::class, 'retention']);
     Route::get('/profitability', [App\Http\Controllers\Api\AnalyticsController::class, 'profitability']);
@@ -413,7 +413,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 });
 
 // Admin: gift cards and referral overview
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->group(function () {
     Route::get('/admin/gift-cards',  [App\Http\Controllers\Api\GiftCardController::class, 'index']);
     Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
     Route::get('/admin/referrals',   [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
@@ -425,7 +425,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
 Route::get('/wait-time', [App\Http\Controllers\Api\WaitTimeController::class, 'estimate']);
 
 // Staff Scheduling (admin)
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/schedules')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:staff.schedule'])->prefix('admin/schedules')->group(function () {
     Route::get('/',        [App\Http\Controllers\Api\ScheduleController::class, 'index']);
     Route::post('/',       [App\Http\Controllers\Api\ScheduleController::class, 'store']);
     Route::patch('/{id}',  [App\Http\Controllers\Api\ScheduleController::class, 'update']);
@@ -444,7 +444,7 @@ Route::middleware(['auth:sanctum'])->prefix('waste-logs')->group(function () {
 Route::get('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'index']);
 
 // Admin: manage photos
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'permission:menu.manage'])->group(function () {
     Route::post('/items/{itemId}/photos',            [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
     Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
     Route::delete('/items/{itemId}/photos/{photoId}',[App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
@@ -456,7 +456,7 @@ Route::middleware(['auth:sanctum', 'role:manager,owner'])->group(function () {
 Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class, 'active']);
 
 // Admin: CRUD
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/specials')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/specials')->group(function () {
     Route::get('/',        [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
     Route::post('/',       [App\Http\Controllers\Api\DailySpecialController::class, 'store']);
     Route::patch('/{id}',  [App\Http\Controllers\Api\DailySpecialController::class, 'update']);
@@ -499,7 +499,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 });
 
 // Admin: moderate reviews
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/reviews')->group(function () {
+Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admin/reviews')->group(function () {
     Route::get('/',           [App\Http\Controllers\Api\ReviewController::class, 'adminIndex']);
     Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
 });
@@ -520,11 +520,11 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Staff: manage reservation status + settings
-Route::middleware(['auth:sanctum', 'role:manager,owner'])->prefix('admin/reservations')->group(function () {
-    Route::get('/',                  [ReservationController::class, 'index']);
-    Route::patch('/{id}/status',     [ReservationController::class, 'updateStatus']);
-    Route::get('/settings',          [ReservationController::class, 'getSettings']);
-    Route::patch('/settings',        [ReservationController::class, 'updateSettings']);
+Route::middleware(['auth:sanctum'])->prefix('admin/reservations')->group(function () {
+    Route::get('/',                  [ReservationController::class, 'index'])->middleware('permission:reservations.view');
+    Route::patch('/{id}/status',     [ReservationController::class, 'updateStatus'])->middleware('permission:reservations.manage');
+    Route::get('/settings',          [ReservationController::class, 'getSettings'])->middleware('permission:reservations.view');
+    Route::patch('/settings',        [ReservationController::class, 'updateSettings'])->middleware('permission:reservations.manage');
 });
 
 // ─── Time Clock ────────────────────────────────────────────────────────────
@@ -559,7 +559,7 @@ Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class
     ->middleware('throttle:100,1');
 
 // ─── Xero OAuth ─────────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'permission:integrations.xero'])->group(function () {
     Route::get('/xero/connect',      [App\Http\Controllers\Api\XeroController::class, 'connect']);
     Route::get('/xero/callback',     [App\Http\Controllers\Api\XeroController::class, 'callback']);
     Route::get('/xero/status',       [App\Http\Controllers\Api\XeroController::class, 'status']);
@@ -569,8 +569,8 @@ Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
     Route::get('/xero/logs',         [App\Http\Controllers\Api\XeroController::class, 'logs']);
 });
 
-// ─── Webhook Subscriptions (admin-only) ────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
+// ─── Webhook Subscriptions (permission-gated) ────────────────────────────────
+Route::middleware(['auth:sanctum', 'permission:integrations.webhooks'])->group(function () {
     Route::get('/webhooks/events', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'supportedEvents']);
     Route::get('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'index']);
     Route::post('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'store']);
@@ -583,7 +583,7 @@ Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
 
 // ─── Site Settings ──────────────────────────────────────────────────────────
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public']);
-Route::middleware(['auth:sanctum', 'role:owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function () {
     Route::get('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
     Route::put('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
     Route::post('/site-settings/upload',  [App\Http\Controllers\Api\SiteSettingsController::class, 'upload']);

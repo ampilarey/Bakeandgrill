@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Customer;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +17,11 @@ class RequirePermission
 
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        // Customer tokens must never reach staff/admin routes
+        if ($user instanceof Customer) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         foreach ($permissions as $permission) {
