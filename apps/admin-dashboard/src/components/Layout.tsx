@@ -15,7 +15,7 @@ const NAV_GROUPS = [
   {
     label: 'OPERATIONS',
     items: [
-      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'                          },
+      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard',  permission: 'dashboard.view' },
       { to: '/orders',     icon: ClipboardList,   label: 'Orders',     permission: 'orders.view'   },
       { to: '/kds',        icon: ChefHat,         label: 'Kitchen',    permission: 'orders.view'   },
       { to: '/delivery',   icon: Truck,           label: 'Delivery',   permission: 'delivery.view' },
@@ -57,7 +57,7 @@ const NAV_GROUPS = [
 const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 const BOTTOM_TABS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dash'   },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dash',   permission: 'dashboard.view' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders' },
   { to: '/menu',      icon: UtensilsCrossed, label: 'Menu'   },
   { to: '/reports',   icon: PieChart,        label: 'Money'  },
@@ -222,7 +222,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
           height: 56, background: '#fff', borderTop: '1px solid #E8E0D8',
           display: 'flex', alignItems: 'stretch',
         }}>
-          {BOTTOM_TABS.map(({ to, icon: Icon, label }) => {
+          {BOTTOM_TABS.filter((item) => can(user, item.permission)).map(({ to, icon: Icon, label }) => {
             if (to === '#more') {
               return (
                 <button

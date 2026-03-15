@@ -11,6 +11,9 @@ use Illuminate\Database\Seeder;
 class PermissionSeeder extends Seeder
 {
     private const PERMISSIONS = [
+        // Dashboard
+        ['group' => 'Dashboard',    'slug' => 'dashboard.view',         'name' => 'View Dashboard'],
+
         // Orders
         ['group' => 'Orders',       'slug' => 'orders.create',          'name' => 'Create Orders'],
         ['group' => 'Orders',       'slug' => 'orders.view',            'name' => 'View Orders'],
@@ -88,7 +91,7 @@ class PermissionSeeder extends Seeder
         ['group' => 'Suppliers',    'slug' => 'suppliers.purchases',    'name' => 'Manage Purchases'],
     ];
 
-    // Slugs excluded from Manager by default
+    // Slugs excluded from Manager by default (Manager gets all others including dashboard.view)
     private const MANAGER_EXCLUDED = [
         'staff.create', 'staff.delete',
         'devices.manage',
@@ -98,6 +101,7 @@ class PermissionSeeder extends Seeder
 
     // Slugs granted to Staff by default
     private const STAFF_GRANTED = [
+        'dashboard.view',
         'orders.create', 'orders.view',
         'reports.view',
         'inventory.view',
