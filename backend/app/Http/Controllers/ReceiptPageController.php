@@ -8,7 +8,8 @@ use App\Http\Requests\ReceiptFeedbackRequest;
 use App\Mail\ReceiptMail;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
-use App\Services\SmsService;
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -90,7 +91,12 @@ class ReceiptPageController extends Controller
 
         if ($receipt->channel === 'sms') {
             $message = 'Thanks for visiting Bake & Grill! View your receipt: ' . $this->receiptLink($receipt);
-            $sent = app(SmsService::class)->send($receipt->recipient, $message);
+            $log = app(SmsService::class)->send(new SmsMessage(
+                to: $receipt->recipient,
+                message: $message,
+                type: 'transactional',
+            ));
+            $sent = in_array($log->status, ['sent', 'demo'], true);
         } else {
             Mail::to($receipt->recipient)->send(new ReceiptMail($receipt));
             $sent = true;

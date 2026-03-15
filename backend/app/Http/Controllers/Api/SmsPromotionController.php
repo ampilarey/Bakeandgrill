@@ -11,7 +11,7 @@ use App\Models\Customer;
 use App\Models\SmsPromotion;
 use App\Models\SmsPromotionRecipient;
 use App\Services\AuditLogService;
-use App\Services\SmsService;
+use App\Domains\Notifications\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
