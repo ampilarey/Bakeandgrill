@@ -109,9 +109,9 @@ export function SupplierIntelligencePage() {
                   <div>
                     <div style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Scores</div>
                     <div style={{ fontSize: 12, color: '#6B5D4F' }}>
-                      <span title="Quality">Q:{parseFloat(String(sup.avg_quality? ?? 0)).toFixed(1) ?? '—'}</span>
+                      <span title="Quality">Q:{sup.avg_quality != null ? parseFloat(String(sup.avg_quality)).toFixed(1) : '—'}</span>
                       {' · '}
-                      <span title="Delivery">D:{parseFloat(String(sup.avg_delivery? ?? 0)).toFixed(1) ?? '—'}</span>
+                      <span title="Delivery">D:{sup.avg_delivery != null ? parseFloat(String(sup.avg_delivery)).toFixed(1) : '—'}</span>
                     </div>
                   </div>
                 </div>

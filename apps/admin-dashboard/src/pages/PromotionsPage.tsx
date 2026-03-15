@@ -136,7 +136,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function formatDiscount(p: Promotion): string {
   if (p.type === 'percentage') return `${p.discount_value}%`;
-  if (p.type === 'fixed') return `MVR ${parseFloat(String(p.discount_value ?? 0) / 100 + "").length > 0 ? (parseFloat(String(p.discount_value ?? 0)) / 100).toFixed(2) : "0.00"}`;
+  if (p.type === 'fixed') return `MVR ${(parseFloat(String(p.discount_value ?? 0)) / 100).toFixed(2)}`;
   return p.type;
 }
 
