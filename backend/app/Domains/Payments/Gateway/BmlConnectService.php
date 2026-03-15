@@ -14,12 +14,18 @@ use Illuminate\Support\Facades\Log;
  *
  * Key BML rules:
  *  - Amount MUST be in laari (integer, e.g. 1 MVR = 100 laari)
- *  - localId MUST be unique per merchant and <= 50 chars
+ *  - localId MUST be alphanumeric only (no hyphens), max 50 chars
+ *  - paymentPortalExperience is required by BML Connect v2
  *  - Webhook signature verified via HMAC-SHA256 of raw body
  *  - Return URLs are NON-AUTHORITATIVE — never trust them for payment status
- *  - Always wait for webhook before marking paid
  *  - UAT base URL: https://api.uat.merchants.bankofmaldives.com.mv/public
  *  - Endpoint: /v2/transactions
+ *
+ * Auth modes (BML_AUTH_MODE env):
+ *   raw          → Authorization: {API_KEY}           (BML UAT)
+ *   bearer_jwt   → Authorization: Bearer {API_KEY}
+ *   bearer_basic → Authorization: Bearer base64(API_KEY:APP_ID)
+ *   auto         → eyJ prefix = bearer_jwt, else bearer_basic
  */
 class BmlConnectService
 {
@@ -38,7 +44,7 @@ class BmlConnectService
      * Create a payment session with BML.
      *
      * @param int    $amountLaar Amount in laari (e.g. 2500 = MVR 25.00)
-     * @param string $localId    Unique merchant-side transaction ID (max 50 chars)
+     * @param string $localId    Unique merchant-side transaction ID (alphanumeric, max 50 chars)
      * @return array{payment_url: string, transaction_id: string, local_id: string}
      *
      * @throws \RuntimeException on gateway error
@@ -49,15 +55,23 @@ class BmlConnectService
         ?string $currency = null,
         ?string $returnUrl = null,
     ): array {
-        $currency  = $currency ?? config('bml.default_currency', 'MVR');
-        $localId   = $this->normalizeLocalId($localId);
+        $currency    = $currency ?? config('bml.default_currency', 'MVR');
+        $localId     = $this->normalizeLocalId($localId);
         $redirectUrl = $returnUrl ?? config('bml.return_url') ?? config('frontend.order_status_url');
+
+        // paymentPortalExperience is required by BML Connect v2 API
+        $portalExp = config('bml.payment_portal_experience', []);
 
         $payload = [
             'amount'      => $amountLaar,
             'currency'    => $currency,
             'localId'     => $localId,
             'redirectUrl' => $redirectUrl,
+            'paymentPortalExperience' => [
+                'externalWebsiteTermsAccepted' => (bool) ($portalExp['external_website_terms_accepted'] ?? true),
+                'externalWebsiteTermsUrl'      => $portalExp['external_website_terms_url']
+                                                    ?: rtrim(config('app.url', ''), '/') . '/terms',
+            ],
         ];
 
         // Optional: include webhook URL so BML can push status updates
@@ -65,11 +79,14 @@ class BmlConnectService
             $payload['webhook'] = $webhookUrl;
         }
 
+        $url = "{$this->baseUrl}/v2/transactions";
+
         Log::info('BML: Creating payment session', [
             'local_id'    => $localId,
             'amount_laar' => $amountLaar,
             'currency'    => $currency,
-            'url'         => $this->baseUrl . '/v2/transactions',
+            'url'         => $url,
+            'auth_mode'   => config('bml.auth_mode', 'auto'),
         ]);
 
         $response = Http::withHeaders([
@@ -79,7 +96,7 @@ class BmlConnectService
         ])
             ->timeout(30)
             ->retry(2, 500)
-            ->post("{$this->baseUrl}/v2/transactions", $payload);
+            ->post($url, $payload);
 
         $body = $response->json() ?? [];
 
@@ -149,25 +166,32 @@ class BmlConnectService
     }
 
     /**
-     * Normalize localId: alphanumeric + hyphens, uppercase, max 50 chars.
+     * Normalize localId: alphanumeric only (no hyphens per BML spec), max 50 chars.
      */
     public function normalizeLocalId(string $localId): string
     {
-        $normalized = strtoupper(preg_replace('/[^a-zA-Z0-9\-]/', '', $localId));
-        return substr($normalized, 0, 50);
+        return substr(preg_replace('/[^A-Za-z0-9]/', '', $localId), 0, 50);
     }
 
     /**
-     * Build Authorization header.
-     * If api_key is a JWT (starts with eyJ), use Bearer token.
-     * Otherwise use Bearer base64(apiKey:appId).
+     * Build Authorization header value based on BML_AUTH_MODE:
+     *   raw          → {API_KEY}                        (BML UAT uses this)
+     *   bearer_jwt   → Bearer {API_KEY}
+     *   bearer_basic → Bearer base64(API_KEY:APP_ID)
+     *   auto         → eyJ... = Bearer JWT, else bearer_basic
      */
     private function authorizationHeader(): string
     {
-        $key = trim($this->apiKey);
-        if (str_starts_with($key, 'eyJ')) {
-            return "Bearer {$key}";
-        }
-        return 'Bearer ' . base64_encode($key . ':' . $this->appId);
+        $mode = config('bml.auth_mode', 'auto');
+        $key  = trim($this->apiKey);
+
+        return match ($mode) {
+            'raw'          => $key,
+            'bearer_jwt'   => "Bearer {$key}",
+            'bearer_basic' => 'Bearer ' . base64_encode($key . ':' . $this->appId),
+            default        => str_starts_with($key, 'eyJ')
+                                ? "Bearer {$key}"
+                                : 'Bearer ' . base64_encode($key . ':' . $this->appId),
+        };
     }
 }
