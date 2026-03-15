@@ -21,7 +21,7 @@ export function ReportsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [from, to]);
 
   return (
     <>

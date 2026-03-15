@@ -57,7 +57,7 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
       alignItems: 'stretch', justifyContent: 'flex-end',
     }} onClick={onClose}>
       <div style={{
-        width: 420, background: '#fff', height: '100%',
+        width: 'min(420px, 100vw)', background: '#fff', height: '100%',
         overflowY: 'auto', padding: 24, boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
       }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

@@ -373,7 +373,7 @@ export function SettingsPage() {
   }, []);
 
   if (active) {
-    const card = HUB_CARDS.find((c) => c.id === active)!;
+    const card = HUB_CARDS.find((c) => c.id === active) ?? HUB_CARDS[0];
     return (
       <div className="animate-fade-in">
         {/* Breadcrumb */}

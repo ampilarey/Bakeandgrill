@@ -6,7 +6,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner,
+  Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner,
 } from '../components/Layout';
 
 function StatusBadge({ status }: { status: string }) {
@@ -152,6 +152,8 @@ export function WebhooksPage() {
   const [editing, setEditing] = useState<WebhookSubscription | null>(null);
   const [logsFor, setLogsFor] = useState<WebhookSubscription | null>(null);
   const [error, setError] = useState('');
+  const [newSecret, setNewSecret] = useState<{ name: string; secret: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = () => {
     Promise.all([fetchWebhooks(), fetchSupportedWebhookEvents()])
@@ -191,8 +193,14 @@ export function WebhooksPage() {
 
   const handleRotate = async (sub: WebhookSubscription) => {
     const r = await rotateWebhookSecret(sub.id);
-    alert(`New secret for "${sub.name}":\n\n${r.secret}\n\nSave it now — it won't be shown again.`);
+    setNewSecret({ name: sub.name, secret: r.secret });
+    setCopied(false);
     load();
+  };
+
+  const handleCopySecret = () => {
+    if (!newSecret) return;
+    navigator.clipboard.writeText(newSecret.secret).then(() => setCopied(true));
   };
 
   return (
@@ -282,6 +290,33 @@ export function WebhooksPage() {
 
       {logsFor && (
         <LogsDrawer subscription={logsFor} onClose={() => setLogsFor(null)} />
+      )}
+
+      {/* New secret modal — shown once, copy before closing */}
+      {newSecret && (
+        <Modal title={`New Secret — ${newSecret.name}`} onClose={() => setNewSecret(null)} maxWidth={480}>
+          <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4, margin: '0 0 4px' }}>
+              ⚠️ Save this secret now — it will NOT be shown again.
+            </p>
+            <p style={{ fontSize: 12, color: '#6B5D4F', margin: 0 }}>
+              Use it to verify incoming webhook signatures on your server.
+            </p>
+          </div>
+          <div style={{
+            background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 10,
+            padding: '12px 14px', fontFamily: 'monospace', fontSize: 13,
+            wordBreak: 'break-all', color: '#1C1408', marginBottom: 16,
+          }}>
+            {newSecret.secret}
+          </div>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setNewSecret(null)}>Close</Btn>
+            <Btn onClick={handleCopySecret}>
+              {copied ? '✓ Copied!' : 'Copy to Clipboard'}
+            </Btn>
+          </ModalActions>
+        </Modal>
       )}
     </div>
   );

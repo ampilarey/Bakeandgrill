@@ -95,7 +95,7 @@ export function ProfitLossPage() {
                   ].map((row) => (
                     <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                       <div style={{ width: 150, fontSize: 12, color: '#6B5D4F', flexShrink: 0 }}>{row.label}</div>
-                      <ProgressBar pct={pnl.revenue.gross > 0 ? Math.abs(row.value) / pnl.revenue.gross * 100 : 0} color={row.color} />
+                      <ProgressBar pct={pnl.revenue.gross !== 0 ? Math.abs(row.value) / pnl.revenue.gross * 100 : 0} color={row.color} />
                       <div style={{ width: 100, textAlign: 'right', fontWeight: 700, color: row.value >= 0 ? '#16a34a' : '#dc2626', fontSize: 13, flexShrink: 0 }}>
                         {row.value < 0 ? '−' : ''}MVR {Math.abs(row.value).toFixed(2)}
                       </div>

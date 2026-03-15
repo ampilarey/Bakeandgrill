@@ -4,9 +4,10 @@ import type { StaffUser } from '../api';
 import {
   LayoutDashboard, ClipboardList, ChefHat, Truck,
   UtensilsCrossed, Package, Target, CalendarDays,
-  BarChart3, DollarSign, Receipt, TrendingDown,
+  BarChart3, DollarSign, Receipt, TrendingDown, PieChart,
   Users, Settings, LogOut, Menu, X,
-  ChevronLeft, ChevronRight, PieChart,
+  ChevronLeft, ChevronRight,
+  Heart, MessageSquare, BarChart2, Factory, Webhook,
 } from 'lucide-react';
 
 // ── Navigation structure ──────────────────────────────────────────────────────
@@ -23,26 +24,32 @@ const NAV_GROUPS = [
   {
     label: 'BUSINESS',
     items: [
-      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu'              },
-      { to: '/purchase-orders', icon: Package,         label: 'Inventory & Stock' },
-      { to: '/promotions',      icon: Target,          label: 'Marketing'         },
-      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations'      },
+      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu'         },
+      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs'  },
+      { to: '/promotions',      icon: Target,          label: 'Promotions'   },
+      { to: '/loyalty',         icon: Heart,           label: 'Loyalty'      },
+      { to: '/sms',             icon: MessageSquare,   label: 'SMS'          },
+      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations' },
     ],
   },
   {
     label: 'FINANCE',
     items: [
-      { to: '/reports',   icon: BarChart3,    label: 'Reports'   },
-      { to: '/invoices',  icon: DollarSign,   label: 'Revenue'   },
-      { to: '/expenses',  icon: Receipt,      label: 'Expenses'  },
-      { to: '/forecasts', icon: TrendingDown, label: 'Forecasts' },
+      { to: '/reports',                icon: BarChart3,    label: 'Reports'             },
+      { to: '/invoices',               icon: DollarSign,   label: 'Invoices'            },
+      { to: '/expenses',               icon: Receipt,      label: 'Expenses'            },
+      { to: '/profit-loss',            icon: PieChart,     label: 'Profit & Loss'       },
+      { to: '/forecasts',              icon: TrendingDown, label: 'Forecasts'           },
+      { to: '/supplier-intelligence',  icon: Factory,      label: 'Suppliers'           },
     ],
   },
   {
     label: 'MANAGEMENT',
     items: [
-      { to: '/staff',    icon: Users,    label: 'Staff & Schedules' },
-      { to: '/settings', icon: Settings, label: 'Settings'          },
+      { to: '/staff',     icon: Users,    label: 'Staff'     },
+      { to: '/analytics', icon: BarChart2, label: 'Analytics' },
+      { to: '/settings',  icon: Settings, label: 'Settings'  },
+      { to: '/webhooks',  icon: Webhook,  label: 'Webhooks'  },
     ],
   },
 ];

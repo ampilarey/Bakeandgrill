@@ -50,11 +50,11 @@ export function KDSPage() {
     finally { setActing(null); }
   };
 
-  // Backend statuses: pending → in_progress → completed
+  // Backend statuses: pending → in_progress → ready → completed
   // paid = online order waiting for kitchen
   const pending = tickets.filter((t) => ['pending', 'paid'].includes(t.status));
   const cooking = tickets.filter((t) => t.status === 'in_progress');
-  const ready:   KdsTicket[] = []; // bumped orders go straight to completed
+  const ready   = tickets.filter((t) => t.status === 'ready');
 
   const Column = ({ title, items, color, children }: {
     title: string; items: KdsTicket[]; color: string;
@@ -99,7 +99,7 @@ export function KDSPage() {
       {loading && tickets.length === 0 ? (
         <Card><EmptyState message="Loading kitchen tickets…" /></Card>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
           <Column title="Pending" items={pending} color="#f59e0b">
             {(t) => (
               <>
