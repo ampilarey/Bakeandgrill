@@ -122,13 +122,16 @@ class StaffController extends Controller
 
         $user = User::findOrFail($id);
 
-        // Prevent deleting the last active admin/owner
-        $activeAdmins = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['owner']))
-            ->where('is_active', true)
-            ->count();
+        // Prevent deleting the last active owner — only applies when the user being
+        // deleted is themselves an owner.
+        if ($user->role?->slug === 'owner' && $user->is_active) {
+            $activeOwners = User::whereHas('role', fn ($q) => $q->where('slug', 'owner'))
+                ->where('is_active', true)
+                ->count();
 
-        if ($activeAdmins <= 1 && $user->is_active) {
-            return response()->json(['message' => 'Cannot delete the last active owner.'], 422);
+            if ($activeOwners <= 1) {
+                return response()->json(['message' => 'Cannot delete the last active owner.'], 422);
+            }
         }
 
         $user->delete();
