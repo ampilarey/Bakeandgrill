@@ -6,7 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\OtpVerification;
-use App\Services\SmsService;
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -50,7 +51,8 @@ class CustomerPortalController extends Controller
         // Send SMS
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes.";
-        $smsSent = $smsService->send($phone, $smsMessage);
+        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
+        $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
         $dhiraagu = config('services.dhiraagu');
         $smsConfigured = !empty($dhiraagu['username']) && !empty($dhiraagu['password']);
