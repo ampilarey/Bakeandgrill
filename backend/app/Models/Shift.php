@@ -23,8 +23,14 @@ class Shift extends Model
     ];
 
     protected $casts = [
-        'opened_at' => 'datetime',
-        'closed_at' => 'datetime',
+        'user_id'       => 'integer',
+        'device_id'     => 'integer',
+        'opening_cash'  => 'decimal:2',
+        'closing_cash'  => 'decimal:2',
+        'expected_cash' => 'decimal:2',
+        'variance'      => 'decimal:2',
+        'opened_at'     => 'datetime',
+        'closed_at'     => 'datetime',
     ];
 
     public function user(): BelongsTo

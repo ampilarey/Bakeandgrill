@@ -18,7 +18,7 @@ class StoreRefundRequest extends FormRequest
         return [
             'amount' => 'required|numeric|min:0.01',
             'reason' => 'nullable|string|max:1000',
-            'status' => 'sometimes|string|in:pending,approved,declined,completed',
+            'status' => 'sometimes|string|in:pending,approved,rejected,completed',
         ];
     }
 }

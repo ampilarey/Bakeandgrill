@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PrintJob extends Model
 {
     protected $fillable = [
+        'idempotency_key',
         'order_id',
         'printer_id',
         'type',

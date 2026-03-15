@@ -377,7 +377,7 @@ export function OrderStatusPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18, color: 'var(--color-text)', borderTop: '2px solid var(--color-border)', paddingTop: 12, marginTop: 12 }}>
                 <span>Total</span>
                 <span style={{ color: 'var(--color-primary)' }}>
-                  MVR {typeof order.total === 'number' ? order.total.toFixed(2) : order.total}
+                  MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -412,7 +412,7 @@ export function OrderStatusPage() {
                     </div>
                     <span style={{ color: 'var(--color-text-muted)', fontSize: 13, marginRight: 12 }}>×{item.quantity}</span>
                     <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 14 }}>
-                      MVR {item.total_price.toFixed(2)}
+                      MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}
                     </span>
                   </div>
                 ))}
@@ -520,9 +520,23 @@ export function OrderStatusPage() {
         {/* ── Not found ─────────────────────────────────── */}
         {!loading && !order && !error && (
           <div style={S.card} className="animate-fade-in">
-            <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: 16 }}>
-              Order not found. Please sign in to view your order.
-            </p>
+            {paymentState === 'CONFIRMED' ? (
+              // Payment was confirmed but we can't load the order (e.g. private
+              // browsing or session expired). Don't show a confusing "not found"
+              // message right after a successful payment.
+              <>
+                <p style={{ color: 'var(--color-success)', fontWeight: 700, textAlign: 'center', marginBottom: 8, fontSize: 18 }}>
+                  Payment received!
+                </p>
+                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: 16 }}>
+                  Your order has been confirmed. Check your email or WhatsApp for details.
+                </p>
+              </>
+            ) : (
+              <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: 16 }}>
+                Order not found. Please sign in to view your order.
+              </p>
+            )}
             <button style={{ background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '12px', padding: '12px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%', fontFamily: 'inherit' }} onClick={() => navigate('/')}>
               Back to menu
             </button>

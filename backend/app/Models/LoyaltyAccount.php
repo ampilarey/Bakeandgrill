@@ -18,6 +18,13 @@ class LoyaltyAccount extends Model
         'tier',
     ];
 
+    protected $casts = [
+        'customer_id'     => 'integer',
+        'points_balance'  => 'integer',
+        'points_held'     => 'integer',
+        'lifetime_points' => 'integer',
+    ];
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

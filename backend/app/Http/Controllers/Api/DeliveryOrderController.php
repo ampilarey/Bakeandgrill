@@ -103,6 +103,12 @@ class DeliveryOrderController extends Controller
      */
     public function update(Request $request, Order $order): JsonResponse
     {
+        // Customers can only update their own orders
+        $user = $request->user();
+        if ($user instanceof \App\Models\Customer && $order->customer_id !== $user->id) {
+            abort(403, 'You do not own this order.');
+        }
+
         if (!in_array($order->status, ['pending', 'draft'], true)) {
             throw ValidationException::withMessages([
                 'status' => "Cannot update delivery details once order is {$order->status}.",

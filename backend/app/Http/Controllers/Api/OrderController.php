@@ -173,12 +173,15 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
-        $order = Order::with('payments')->findOrFail($id);
         $validated = $request->validated();
-        $oldStatus = $order->status;
         $printReceipt = !array_key_exists('print_receipt', $validated) || $validated['print_receipt'] === true;
 
-        DB::transaction(function () use ($order, $validated, $request): void {
+        // Single transaction with row-lock to prevent concurrent split-payment race conditions
+        // where two requests both read paidTotal < total and both set status = 'partial'.
+        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request): array {
+            $order = Order::with('payments')->lockForUpdate()->findOrFail($id);
+            $oldStatus = $order->status;
+
             foreach ($validated['payments'] as $paymentPayload) {
                 $payment = Payment::create([
                     'order_id' => $order->id,
@@ -191,30 +194,28 @@ class OrderController extends Controller
 
                 app(AuditLogService::class)->log('payment.created', 'Payment', $payment->id, [], $payment->toArray(), ['order_id' => $order->id], $request);
             }
-        });
 
-        $paidTotal = $order->payments()
-            ->whereIn('status', ['paid', 'completed', 'confirmed'])
-            ->sum('amount');
+            // Re-sum inside the lock so we see all newly inserted payments
+            $paidTotal = $order->payments()
+                ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                ->sum('amount');
 
-        if ($paidTotal >= $order->total) {
-            DB::transaction(function () use ($order, $paidTotal, $oldStatus, $request, $printReceipt): void {
-                $order->update([
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                ]);
+            if ((float) $paidTotal >= (float) $order->total) {
+                $order->update(['status' => 'paid', 'paid_at' => now()]);
 
                 app(AuditLogService::class)->log('order.paid', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'paid'], ['paid_total' => $paidTotal], $request);
 
                 DB::afterCommit(function () use ($order, $printReceipt): void {
                     OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
                 });
-            });
-        } else {
-            $order->update(['status' => 'partial']);
+            } else {
+                $order->update(['status' => 'partial']);
 
-            app(AuditLogService::class)->log('order.partial', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'partial'], ['paid_total' => $paidTotal], $request);
-        }
+                app(AuditLogService::class)->log('order.partial', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'partial'], ['paid_total' => $paidTotal], $request);
+            }
+
+            return [$order, $paidTotal];
+        });
 
         return response()->json([
             'order' => $order->fresh('payments'),

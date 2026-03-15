@@ -21,9 +21,18 @@ class Expense extends Model
     ];
 
     protected $casts = [
+        'expense_category_id' => 'integer',
+        'supplier_id'         => 'integer',
+        'user_id'             => 'integer',
+        'approved_by'         => 'integer',
+        'purchase_id'         => 'integer',
+        'amount'              => 'decimal:2',
+        'tax_amount'          => 'decimal:2',
+        'amount_laar'         => 'integer',
+        'tax_laar'            => 'integer',
+        'is_recurring'        => 'boolean',
         'expense_date'         => 'date',
         'next_recurrence_date' => 'date',
-        'is_recurring'         => 'boolean',
     ];
 
     public function category(): BelongsTo

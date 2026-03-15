@@ -20,6 +20,13 @@ class Variant extends Model
         'sort_order',
     ];
 
+    protected $casts = [
+        'item_id'    => 'integer',
+        'sort_order' => 'integer',
+        'price'      => 'decimal:2',
+        'is_active'  => 'boolean',
+    ];
+
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);

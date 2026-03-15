@@ -17,6 +17,12 @@ class Refund extends Model
         'reason',
     ];
 
+    protected $casts = [
+        'order_id' => 'integer',
+        'user_id'  => 'integer',
+        'amount'   => 'decimal:2',
+    ];
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

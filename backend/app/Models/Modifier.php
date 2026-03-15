@@ -17,6 +17,12 @@ class Modifier extends Model
         'sort_order',
     ];
 
+    protected $casts = [
+        'sort_order' => 'integer',
+        'price'      => 'decimal:2',
+        'is_active'  => 'boolean',
+    ];
+
     public function items(): BelongsToMany
     {
         return $this->belongsToMany(Item::class, 'item_modifier')

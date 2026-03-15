@@ -56,7 +56,6 @@ class Order extends Model
     protected $casts = [
         // FK integer columns — MySQL PDO returns these as strings without explicit casts
         'customer_id'          => 'integer',
-        'shift_id'             => 'integer',
         'restaurant_table_id'  => 'integer',
         'delivery_driver_id'   => 'integer',
         // Datetimes

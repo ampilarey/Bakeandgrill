@@ -12,12 +12,12 @@ export function OpsPanel(ops: OpsState) {
           {ops.shift ? (
             <div className="mt-3 space-y-2 text-sm text-[#8B7355]">
               <p>Opened: {new Date(ops.shift.opened_at).toLocaleString()}</p>
-              <p>Opening Cash: MVR {ops.shift.opening_cash.toFixed(2)}</p>
+              <p>Opening Cash: MVR {parseFloat(String(ops.shift.opening_cash ?? 0)).toFixed(2)}</p>
               {ops.shift.closed_at ? (
                 <>
                   <p>Closed: {new Date(ops.shift.closed_at).toLocaleString()}</p>
-                  <p>Expected Cash: MVR {ops.shift.expected_cash?.toFixed(2)}</p>
-                  <p>Variance: MVR {ops.shift.variance?.toFixed(2)}</p>
+                  <p>Expected Cash: MVR {parseFloat(String(ops.shift.expected_cash ?? 0)).toFixed(2)}</p>
+                  <p>Variance: MVR {parseFloat(String(ops.shift.variance ?? 0)).toFixed(2)}</p>
                 </>
               ) : (
                 <>
@@ -119,14 +119,14 @@ export function OpsPanel(ops: OpsState) {
           {ops.reportData && (
             <div className="mt-4 space-y-2 text-sm text-[#8B7355]">
               <p>Orders: {ops.reportData.totals.orders_count}</p>
-              <p>Subtotal: MVR {ops.reportData.totals.subtotal.toFixed(2)}</p>
-              <p>Tax: MVR {ops.reportData.totals.tax_amount.toFixed(2)}</p>
-              <p>Discounts: MVR {ops.reportData.totals.discount_amount.toFixed(2)}</p>
-              <p>Total: MVR {ops.reportData.totals.total.toFixed(2)}</p>
+              <p>Subtotal: MVR {parseFloat(String(ops.reportData.totals.subtotal ?? 0)).toFixed(2)}</p>
+              <p>Tax: MVR {parseFloat(String(ops.reportData.totals.tax_amount ?? 0)).toFixed(2)}</p>
+              <p>Discounts: MVR {parseFloat(String(ops.reportData.totals.discount_amount ?? 0)).toFixed(2)}</p>
+              <p>Total: MVR {parseFloat(String(ops.reportData.totals.total ?? 0)).toFixed(2)}</p>
               <div className="mt-2">
                 <p className="text-xs font-semibold text-[#8B7355]">Payments</p>
                 {Object.entries(ops.reportData.payments).map(([method, amount]) => (
-                  <p key={method}>{method}: MVR {(amount as number).toFixed(2)}</p>
+                  <p key={method}>{method}: MVR {parseFloat(String(amount ?? 0)).toFixed(2)}</p>
                 ))}
               </div>
             </div>
@@ -186,7 +186,7 @@ export function OpsPanel(ops: OpsState) {
             {ops.refunds.length > 0 && (
               <div className="text-xs text-[#8B7355] space-y-1">
                 {ops.refunds.slice(0, 3).map((r) => (
-                  <div key={r.id}>Order {r.order_id}: MVR {r.amount.toFixed(2)} ({r.status})</div>
+                  <div key={r.id}>Order {r.order_id}: MVR {parseFloat(String(r.amount ?? 0)).toFixed(2)} ({r.status})</div>
                 ))}
               </div>
             )}
@@ -210,7 +210,7 @@ export function OpsPanel(ops: OpsState) {
             </div>
             {ops.promoEstimate && (
               <div className="text-xs text-[#8B7355]">
-                {ops.promoEstimate.recipient_count} recipients · {ops.promoEstimate.segments} segments · Est. MVR {ops.promoEstimate.total_cost_mvr.toFixed(2)}
+                {ops.promoEstimate.recipient_count} recipients · {ops.promoEstimate.segments} segments · Est. MVR {parseFloat(String(ops.promoEstimate.total_cost_mvr ?? 0)).toFixed(2)}
               </div>
             )}
           </div>

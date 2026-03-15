@@ -28,13 +28,21 @@ class Customer extends Model implements AuthenticatableContract
         'sms_opt_out',
         'sms_opt_out_at',
         'internal_notes',
+        // Delivery address fields
+        'delivery_address',
+        'delivery_area',
+        'delivery_building',
+        'delivery_floor',
+        'delivery_notes',
     ];
 
     protected $casts = [
-        'last_login_at' => 'datetime',
-        'last_order_at' => 'datetime',
-        'preferences' => 'array',
-        'sms_opt_out' => 'boolean',
+        'loyalty_points' => 'integer',
+        'is_active'      => 'boolean',
+        'last_login_at'  => 'datetime',
+        'last_order_at'  => 'datetime',
+        'preferences'    => 'array',
+        'sms_opt_out'    => 'boolean',
         'sms_opt_out_at' => 'datetime',
     ];
 

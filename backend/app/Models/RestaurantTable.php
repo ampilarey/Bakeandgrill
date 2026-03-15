@@ -16,4 +16,9 @@ class RestaurantTable extends Model
         'notes',
         'is_active',
     ];
+
+    protected $casts = [
+        'capacity'  => 'integer',
+        'is_active' => 'boolean',
+    ];
 }

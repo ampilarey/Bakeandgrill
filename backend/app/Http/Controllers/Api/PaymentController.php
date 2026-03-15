@@ -91,6 +91,12 @@ class PaymentController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        // Hold the order in payment_pending until BML webhook confirms payment,
+        // so it does not appear in KDS/kitchen queue before payment is received.
+        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+            $order->update(['status' => 'payment_pending']);
+        }
+
         return response()->json([
             'payment_url' => $result['payment_url'],
             'payment_id' => $result['payment_id'],

@@ -272,8 +272,8 @@ Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode'
 Route::post('/items/stock-check', [ItemController::class, 'bulkStockCheck'])
     ->middleware('throttle:60,1');
 
-// Protected menu management (staff only)
-Route::middleware('auth:sanctum')->group(function () {
+// Protected menu management (staff only — requires menu.manage permission)
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
     // Categories
     Route::post('/categories', [CategoryController::class, 'store']);
     Route::patch('/categories/{id}', [CategoryController::class, 'update']);
@@ -357,8 +357,8 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // ─── SSE Real-Time Streams ───────────────────────────────────────────────────
-// staff-only streams (POS / KDS)
-Route::middleware('auth:sanctum')->group(function () {
+// staff-only streams (POS / KDS) — require staff token to prevent customer eavesdropping
+Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/stream/orders', [App\Http\Controllers\Api\StreamController::class, 'orders']);
     Route::get('/stream/kds', [App\Http\Controllers\Api\StreamController::class, 'kds']);
     Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus']);

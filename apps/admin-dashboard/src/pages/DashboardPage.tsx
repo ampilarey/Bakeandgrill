@@ -17,7 +17,7 @@ type DailySummary = {
   top_items: { name: string; qty: number; revenue: number }[];
 };
 
-function fmt(laari: number) { return 'MVR ' + (laari / 100).toFixed(2); }
+function fmt(val: unknown) { return 'MVR ' + parseFloat(String(val ?? 0)).toFixed(2); }
 
 export function DashboardPage() {
   usePageTitle('Dashboard');

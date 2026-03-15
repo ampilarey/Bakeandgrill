@@ -27,6 +27,12 @@ class Purchase extends Model
     ];
 
     protected $casts = [
+        'supplier_id'            => 'integer',
+        'user_id'                => 'integer',
+        'approved_by'            => 'integer',
+        'subtotal'               => 'decimal:2',
+        'tax_amount'             => 'decimal:2',
+        'total'                  => 'decimal:2',
         'purchase_date'          => 'date',
         'expected_delivery_date' => 'date',
         'actual_delivery_date'   => 'date',

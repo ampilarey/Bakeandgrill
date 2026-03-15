@@ -54,7 +54,10 @@ export function useCart() {
           ci === existing ? { ...ci, quantity: ci.quantity + 1 } : ci,
         );
       }
-      return [...curr, { id: item.id, name: item.name, price: item.base_price, quantity: 1, modifiers }];
+      // Parse prices here so MySQL string decimals never reach the cart arithmetic
+      const parsedPrice = parseFloat(String(item.base_price ?? 0));
+      const parsedModifiers = modifiers.map((m) => ({ ...m, price: parseFloat(String(m.price ?? 0)) }));
+      return [...curr, { id: item.id, name: item.name, price: parsedPrice, quantity: 1, modifiers: parsedModifiers }];
     });
   };
 

@@ -57,7 +57,7 @@ export function OrderCart({
                       </p>
                     )}
                   </div>
-                  <p className="text-sm">MVR {item.price.toFixed(2)}</p>
+                  <p className="text-sm">MVR {parseFloat(String(item.price ?? 0)).toFixed(2)}</p>
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <div className="flex items-center gap-2">
@@ -96,7 +96,7 @@ export function OrderCart({
                   <p className="text-sm font-semibold">
                     MVR{" "}
                     {(
-                      (item.price + item.modifiers.reduce((s, m) => s + m.price, 0)) *
+                      (parseFloat(String(item.price ?? 0)) + item.modifiers.reduce((s, m) => s + parseFloat(String(m.price ?? 0)), 0)) *
                       item.quantity
                     ).toFixed(2)}
                   </p>

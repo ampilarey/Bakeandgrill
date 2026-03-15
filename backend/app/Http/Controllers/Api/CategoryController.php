@@ -15,7 +15,10 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $isAdmin = (bool) $request->query('admin');
+        // ?admin=1 only honoured for authenticated staff — never for guests/customers
+        $isAdmin = (bool) $request->query('admin')
+                   && $request->user() instanceof \App\Models\User
+                   && $request->user()->tokenCan('staff');
 
         $query = Category::with(['items' => function ($q) use ($isAdmin) {
             if (!$isAdmin) {

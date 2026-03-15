@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StockMovement extends Model
 {
     protected $fillable = [
+        'idempotency_key',
         'inventory_item_id',
         'user_id',
         'type',

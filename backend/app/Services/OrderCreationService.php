@@ -102,13 +102,18 @@ class OrderCreationService
     {
         $subtotal = 0;
 
+        // Pre-load all referenced items in a single query to avoid N+1
+        $itemIds = array_column($items, 'item_id');
+        $itemMap = Item::with(['variants', 'modifiers'])
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->whereIn('id', $itemIds)
+            ->get()
+            ->keyBy('id');
+
         foreach ($items as $itemPayload) {
             $itemId = $itemPayload['item_id'];
-            $itemModel = Item::with(['variants', 'modifiers'])
-                ->where('id', $itemId)
-                ->where('is_active', true)
-                ->where('is_available', true)
-                ->first();
+            $itemModel = $itemMap->get($itemId);
 
             if (!$itemModel) {
                 abort(422, "Item {$itemId} not found or unavailable");
@@ -152,16 +157,14 @@ class OrderCreationService
             ]);
 
             if (!empty($itemPayload['modifiers'])) {
-                $validModifierIds = $itemModel->modifiers->pluck('id')->toArray();
-
                 foreach ($itemPayload['modifiers'] as $modifierPayload) {
                     $modifierId = $modifierPayload['modifier_id'];
 
-                    if (!in_array($modifierId, $validModifierIds)) {
+                    // Use already-loaded collection — no extra DB query per modifier
+                    $modifierModel = $itemModel->modifiers->firstWhere('id', $modifierId);
+                    if (!$modifierModel) {
                         abort(422, "Modifier {$modifierId} not valid for item {$itemId}");
                     }
-
-                    $modifierModel = $itemModel->modifiers()->where('modifiers.id', $modifierId)->first();
                     $modifierPrice = (float) $modifierModel->price;
                     $modifierQuantity = (int) ($modifierPayload['quantity'] ?? 1);
                     $modifierTotal += $modifierPrice * $modifierQuantity;

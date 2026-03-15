@@ -27,15 +27,21 @@ export function InvoicesPage() {
 
   useEffect(() => { void load(); }, [typeFilter, statusFilter]);
 
-  const handleSent = async (id: number) => { await markInvoiceSent(id); void load(); };
+  const handleSent = async (id: number) => {
+    try { await markInvoiceSent(id); void load(); }
+    catch (e) { setError((e as Error).message); }
+  };
   const handlePaid = async () => {
     if (!selected) return;
-    await markInvoicePaid(selected.id, payMethod);
-    setPaying(false); setSelected(null); void load();
+    try {
+      await markInvoicePaid(selected.id, payMethod);
+      setPaying(false); setSelected(null); void load();
+    } catch (e) { setError((e as Error).message); }
   };
   const handleVoid = async (id: number) => {
     if (!confirm('Void this invoice?')) return;
-    await voidInvoice(id); void load();
+    try { await voidInvoice(id); void load(); }
+    catch (e) { setError((e as Error).message); }
   };
 
   const selectStyle = {

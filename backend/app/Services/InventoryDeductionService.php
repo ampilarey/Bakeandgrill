@@ -42,17 +42,33 @@ class InventoryDeductionService
 
                     $idempotencyKey = 'order:' . $order->id . ':inv:' . $inventoryItem->id;
 
+                    // Lock the inventory row first to close the TOCTOU window.
+                    // Without lockForUpdate(), two concurrent requests can both
+                    // pass the exists() check, both decrement stock, and then
+                    // the second StockMovement::create() fails on the unique
+                    // constraint while the decrement has already run — causing
+                    // double-deduction with no audit trail for the second write.
+                    $lockedItem = DB::table('inventory_items')
+                        ->where('id', $inventoryItem->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$lockedItem) {
+                        continue;
+                    }
+
+                    // Check idempotency inside the lock
                     $alreadyDeducted = StockMovement::where('idempotency_key', $idempotencyKey)->exists();
                     if ($alreadyDeducted) {
                         continue;
                     }
 
-                    // Atomic decrement — prevents race condition
+                    $oldStock = (float) $lockedItem->current_stock;
+
                     DB::table('inventory_items')
                         ->where('id', $inventoryItem->id)
                         ->decrement('current_stock', $neededQuantity);
 
-                    $oldStock = (float) ($inventoryItem->current_stock + $neededQuantity);
                     $inventoryItem->refresh();
 
                     event(new StockLevelChanged(new StockLevelChangedData(
