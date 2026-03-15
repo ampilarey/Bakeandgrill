@@ -1,0 +1,422 @@
+---
+description: Complete Bake & Grill architecture, conventions, permission system, modularity patterns, and development guide
+alwaysApply: true
+---
+
+# Bake & Grill — Full Development Guide
+
+## Project Overview
+
+Restaurant management SaaS for Bake & Grill (Maldives). Monorepo with Laravel backend, 4 React frontends, shared TypeScript package, and a print proxy microservice.
+
+---
+
+## Monorepo Structure
+
+```
+/
+├── backend/                    # Laravel 11 (PHP 8.2+)
+│   ├── app/
+│   │   ├── Domains/            # 15 DDD bounded contexts
+│   │   ├── Http/Controllers/   # Thin controllers (API + web)
+│   │   ├── Models/             # 77 Eloquent models
+│   │   ├── Traits/             # HasPermissions, etc.
+│   │   ├── Providers/          # App, Auth, DomainEvent service providers
+│   │   └── Services/           # Legacy (prefer Domains/)
+│   ├── routes/
+│   │   ├── api.php             # ~160+ admin API endpoints
+│   │   ├── api_finance.php     # Finance sub-routes
+│   │   └── web.php             # Customer portal, receipts
+│   ├── database/
+│   │   └── seeders/PermissionSeeder.php  # 48 permissions, 3 roles
+│   └── config/services.php     # Third-party credentials
+├── apps/
+│   ├── admin-dashboard/        # Admin panel (React/TS, Vite)
+│   ├── pos-web/                # Point of Sale terminal
+│   ├── kds-web/                # Kitchen Display System
+│   └── online-order-web/       # Customer ordering
+├── packages/shared/            # Shared TS types, API client, utils
+├── print-proxy/                # Node.js print job proxy (Docker)
+├── docs/                       # Documentation
+└── scripts/                    # Utility scripts
+```
+
+---
+
+## Backend Architecture
+
+### Domain-Driven Design (15 Domains)
+
+Each domain under `backend/app/Domains/` is self-contained with its own DTOs, Services, Repositories, Events, Listeners, Providers, and StateMachines.
+
+| Domain | Purpose | Key Patterns |
+|--------|---------|-------------|
+| **Orders** | Order lifecycle | StateMachine, Events (OrderPaid, OrderCompleted), Repository |
+| **Payments** | Payment processing | Gateway pattern (Stripe), StateMachine, Events |
+| **Inventory** | Stock management | Events, Repositories, Listeners |
+| **Notifications** | SMS, push, email | Strategy pattern (SmsProviderInterface), DTOs |
+| **Loyalty** | Points, tiers, rewards | Repositories, Services, Listeners |
+| **Reservations** | Table bookings | Events, DTOs, Repositories |
+| **Promotions** | Discounts, promos | Repositories, Services, Listeners |
+| **Accounting** | Financial records | Services |
+| **Delivery** | Delivery management | DTOs, Services |
+| **KitchenDisplay** | KDS integration | StateMachine |
+| **Printing** | Print job routing | Listeners, StateMachine |
+| **Realtime** | WebSocket events | DTOs, Services |
+| **Shifts** | Staff shifts, cash drawer | DTOs, Events, StateMachine |
+| **Webhooks** | External integrations | Jobs, Listeners, Services |
+| **Shared** | Cross-domain utilities | Exceptions, ValueObjects, Support |
+
+### Key Architectural Rules
+
+1. **Thin controllers** — Controllers validate input and delegate to domain services. No business logic in controllers.
+2. **Domain services** — Business logic lives in `Domains/*/Services/`. Services are bound via domain-specific service providers.
+3. **Repository pattern** — Data access through repository interfaces with Eloquent implementations. Bound in domain service providers.
+4. **Event-driven** — Domains communicate via Laravel events (e.g., `OrderPaid` triggers loyalty point calculation, receipt generation, webhook dispatch). Event bindings in `Providers/Domains/DomainEventServiceProvider.php`.
+5. **DTOs** — Data transfer objects for inter-domain communication. Never pass raw arrays between domains.
+6. **StateMachines** — Order, Payment, Shift, Print, and KDS status transitions managed by state machine classes.
+7. **No cross-domain imports** — Domains should not import from other domains directly. Use events or shared contracts.
+
+### Service Provider Registration
+
+- `AppServiceProvider` — SMS provider binding, general app config
+- `AuthServiceProvider` — Sanctum token scoping, Gate definitions
+- `DomainEventServiceProvider` — All domain event→listener mappings
+
+---
+
+## Permission System (Critical Architecture)
+
+### 3-Tier Resolution (`HasPermissions` trait)
+
+Permission checks follow this cascade:
+
+```
+1. Owner role? → ALWAYS TRUE (bypass all checks)
+2. User-level override exists? → Use override (grant=true/deny=false)
+3. Role-level default? → Use role's default for this permission
+4. None of the above? → FALSE
+```
+
+### 48 Permissions in 14 Groups
+
+```
+orders.*        → create, view, void, refund
+reports.*       → view, sales, inventory, financial, xreport, zreport
+inventory.*     → view, manage, categories
+menu.*          → view, manage
+staff.*         → view, create, update, delete, schedule
+finance.*       → view, invoices, expenses, cash_manage, profit_loss
+promotions.*    → view, manage, discounts
+customers.*     → view, manage, analytics
+loyalty.*       → view, manage
+reservations.*  → view, manage
+delivery.*      → view, manage
+devices.*       → view, manage
+integrations.*  → xero, webhooks, sms
+website.*       → manage
+suppliers.*     → view, manage, purchases
+```
+
+### Role Defaults (PermissionSeeder)
+
+- **Owner** — All 48 permissions (never checked, always bypassed)
+- **Manager** — All except: `staff.create`, `staff.delete`, `devices.manage`, `integrations.xero`, `integrations.webhooks`, `website.manage`
+- **Staff** — Limited: `orders.create/view`, `reports.view`, `inventory.view`, `menu.view`, `customers.view`, `suppliers.view`, `delivery.view`, `reservations.view`, `loyalty.view`
+
+### How Permissions Are Enforced
+
+**Backend (middleware):**
+```php
+// In routes/api.php — every admin route uses permission middleware
+Route::get('/staff', [StaffController::class, 'index'])->middleware('permission:staff.view');
+Route::post('/staff', [StaffController::class, 'store'])->middleware('permission:staff.create');
+```
+
+The `RequirePermission` middleware (`App\Http\Middleware\RequirePermission`):
+1. Rejects unauthenticated users (401)
+2. Rejects `Customer` model tokens (403) — security boundary
+3. Checks `$user->hasPermission($slug)` for each required permission
+
+**Frontend (React):**
+```tsx
+// App.tsx — Route-level guards
+const { can } = usePermissions(user?.id ?? null, user?.role);
+<Route path="staff" element={
+  <PermissionGuard can={can} permission="staff.view">
+    <StaffPage />
+  </PermissionGuard>
+} />
+
+// Layout.tsx — Nav item filtering
+const filteredNavGroups = NAV_GROUPS.map(group => ({
+  ...group,
+  items: group.items.filter(item => !item.permission || !can || can(item.permission)),
+})).filter(group => group.items.length > 0);
+```
+
+### Adding a New Permission
+
+1. Add to `PermissionSeeder.php` in the appropriate group
+2. Assign defaults to roles (owner gets all automatically)
+3. Add `->middleware('permission:your.slug')` to the route in `api.php`
+4. Add `permission: 'your.slug'` to the nav item in `Layout.tsx`
+5. Wrap the route in `<PermissionGuard>` in `App.tsx`
+6. Run `php artisan db:seed --class=PermissionSeeder`
+
+### Owner Permission Assignment
+
+Owners can grant/revoke specific permissions per user via the Settings page:
+- `grantPermission(slug, grantedBy)` — Creates user-level override (granted=true)
+- `revokePermission(slug, grantedBy)` — Creates user-level override (granted=false)
+- `resetPermission(slug)` — Removes override, falls back to role default
+
+---
+
+## SMS Modularity (Strategy Pattern)
+
+The SMS service is fully modular — providers can be swapped without affecting any consumer.
+
+### Architecture
+
+```
+Contracts/SmsProviderInterface.php    ← Interface (send, name)
+Providers/DhiraaguSmsProvider.php     ← Concrete implementation
+Services/SmsService.php               ← Orchestrator (accepts interface via DI)
+DTOs/SmsMessage.php                   ← Input DTO (to, message, type)
+```
+
+### How It Works
+
+```php
+// SmsProviderInterface — implement this for new providers
+interface SmsProviderInterface {
+    public function send(string $phone, string $message): array;
+    public function name(): string;
+}
+
+// DI binding in AppServiceProvider
+$this->app->bind(SmsProviderInterface::class, DhiraaguSmsProvider::class);
+
+// All consumers use SmsService (never the provider directly)
+$smsService = app(SmsService::class);
+$log = $smsService->send(new SmsMessage(to: $phone, message: $msg, type: 'otp'));
+```
+
+### Swapping SMS Provider
+
+1. Create new provider: `app/Domains/Notifications/Providers/TwilioSmsProvider.php`
+2. Implement `SmsProviderInterface`
+3. Change one line in `AppServiceProvider`: `$this->app->bind(SmsProviderInterface::class, TwilioSmsProvider::class);`
+4. No other code changes needed
+
+### Consumers (3 total)
+
+- `CustomerPortalController` — OTP codes
+- `ReceiptPageController` — Receipt delivery via SMS
+- `SmsPromotionController` — Bulk promotional SMS
+
+---
+
+## Payment Gateway Architecture
+
+Located in `backend/app/Domains/Payments/Gateway/`.
+
+- Stripe integration with webhook handling
+- Payment state machine manages lifecycle: pending → processing → completed/failed/refunded
+- Events: `PaymentCompleted`, `PaymentFailed`, `RefundProcessed`
+
+---
+
+## Authentication & Token Scoping
+
+### Sanctum Token Types
+
+Two distinct token types — NEVER mix them:
+
+1. **Staff tokens** — Created on staff login, abilities: `['staff']`
+   - Access admin API routes
+   - Resolved to `User` model
+2. **Customer tokens** — Created on OTP verification, abilities: `['customer']`
+   - Access customer-facing API routes only
+   - Resolved to `Customer` model
+   - Blocked by both `RequirePermission` and `RequireRole` middleware
+
+### Security Boundary
+
+Both `RequirePermission` and `RequireRole` middleware check:
+```php
+if ($user instanceof Customer) {
+    return response()->json(['message' => 'Forbidden.'], 403);
+}
+```
+This prevents customer tokens from ever reaching staff/admin routes.
+
+---
+
+## Frontend Architecture
+
+### Admin Dashboard (`apps/admin-dashboard/`)
+
+```
+src/
+├── api.ts              # ~77 API functions using apiFetch()
+├── App.tsx             # Router + PermissionGuard wrappers
+├── main.tsx            # Entry point
+├── index.css           # Global styles
+├── components/
+│   ├── Layout.tsx      # Sidebar nav (permission-filtered) + top bar
+│   ├── SharedUI.tsx    # PageHeader, StatCard primitives
+│   ├── ErrorBoundary.tsx
+│   └── ui/             # Badge, Button, Card, Modal, Input, Tabs, Toast, Toggle, Skeleton, EmptyState
+├── hooks/
+│   ├── usePageTitle.ts
+│   └── usePermissions.ts   # Fetches effective perms, provides can(slug)
+└── pages/              # 22 page components (one file per page)
+```
+
+### Coding Conventions (Admin Dashboard)
+
+1. **One file per page** — All state, handlers, and JSX in a single `.tsx` file in `pages/`
+2. **API calls** — All through `api.ts` using `apiFetch()`. Never call fetch directly in pages.
+3. **Styling** — Inline styles via JS objects. No CSS modules, no Tailwind (except SettingsPage legacy).
+4. **State** — React `useState` + `useEffect`. No Redux/Zustand.
+5. **UI components** — Import from `components/ui/` (Button, Card, Modal, Badge, Input, Tabs, Toast, Toggle, Skeleton, EmptyState)
+6. **Shared components** — Import from `SharedUI.tsx` (PageHeader, StatCard)
+7. **Page title** — Call `usePageTitle('Page Name')` at top of component
+8. **Permissions** — Use `usePermissions()` hook; check with `can('permission.slug')`
+9. **Dates** — Use `Intl.DateTimeFormat` (no moment/dayjs/date-fns)
+10. **Icons** — Import from `lucide-react`
+11. **No emojis** in code unless user requests
+
+### New Page Template
+
+```tsx
+import { useState, useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { PageHeader } from '../components/SharedUI';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { fetchGiftCards, createGiftCard } from '../api';
+
+export default function GiftCardsPage() {
+  usePageTitle('Gift Cards');
+  const [cards, setCards] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchGiftCards().then(data => {
+      setCards(data.data);
+      setLoading(false);
+    });
+  }, []);
+
+  return (
+    <div>
+      <PageHeader title="Gift Cards" />
+      {/* Table, modals, etc. */}
+    </div>
+  );
+}
+```
+
+Then: add route in `App.tsx` with `<PermissionGuard>`, add nav item in `Layout.tsx` with `permission` field.
+
+---
+
+## Third-Party Integrations
+
+| Service | Purpose | Config Key |
+|---------|---------|-----------|
+| **Stripe** | Payments | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| **Dhiraagu** | SMS (Maldives) | `DHIRAAGU_SMS_USERNAME`, `DHIRAAGU_SMS_PASSWORD` |
+| **Xero** | Accounting sync | `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET` |
+| **Print Proxy** | Receipt/kitchen printing | `PRINT_PROXY_URL`, `PRINT_PROXY_KEY` |
+| **Postmark** | Transactional email | `POSTMARK_TOKEN` |
+| **AWS SES** | Email (fallback) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+
+---
+
+## Known Issues & Remaining Work
+
+### Critical Bugs (Fix First)
+
+| # | File | Issue |
+|---|------|-------|
+| 1 | `ProfitLossPage.tsx:99` | Division by zero when `gross = 0` |
+| 2 | `SettingsPage.tsx:376` | Non-null assertion crash on `HUB_CARDS.find()!` |
+| 3 | `WebhooksPage.tsx:194` | `alert()` exposes webhook secret |
+| 4 | `KDSPage.tsx:57` | "Ready" column hardcoded empty `[]` |
+| 5 | `SmsPage.tsx:183` | SMS segment calc ignores Unicode (70 vs 160 chars) |
+| 6 | `ReportsPage.tsx:24` | Missing date filter in useEffect deps |
+| 7 | `InvoicesPage.tsx:22` | "All" filter uses `""` (falsy) instead of `"all"` |
+
+### Medium Bugs
+
+| # | File | Issue |
+|---|------|-------|
+| 8 | `PromotionsPage.tsx` | No negative check on percentage discount |
+| 9 | `LoyaltyPage.tsx` | `parseInt()` can return NaN |
+| 10 | `ExpensesPage.tsx` | `parseInt()` validation missing |
+| 11 | `OrdersPage.tsx` | `setInterval` stale closure leak |
+| 12 | `PurchaseOrdersPage.tsx` | Query params not URL-encoded |
+| 13 | `MenuPage.tsx` | Dead code: `{false && (<img...>)}` |
+| 14 | `KDSPage.tsx` | `urgencyColor()` assumes 6-char hex |
+| 15 | `ProfitLossPage.tsx` | Loads today instead of selected date range |
+
+### Hidden Pages (No Sidebar Link)
+
+SmsPage (`/sms`), LoyaltyPage (`/loyalty`), AnalyticsPage (`/analytics`), ProfitLossPage (`/profit-loss`), SupplierIntelligencePage (`/supplier-intelligence`), WebhooksPage (`/webhooks`), TestChecklistPage (`/checklist`)
+
+### 22 Missing Feature Pages
+
+Backend endpoints exist but admin UI is missing. See `admin-panel-audit.mdc` for full list with API signatures.
+
+HIGH: Gift Cards, Reviews, Daily Specials, Refunds, Waste Tracking, Inventory Management
+MEDIUM: Staff Scheduling, Table Management, Shifts/Cash, Time Clock, Devices, Referrals, Item Photos
+LOW: Xero Integration, Print Queue, SMS Promotions enhancement
+
+### 27+ Missing API Functions
+
+Backend endpoints without corresponding `api.ts` functions. See `admin-panel-audit.mdc` for complete list.
+
+### Mobile/Responsive
+
+Zero `@media` queries. OrdersPage drawer overflow, KDS 3-col hardcoded, touch targets 32px (need 44px+). See `admin-panel-audit.mdc` for details.
+
+---
+
+## Deploy Commands
+
+**Full deploy** (migrations/PHP deps):
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear
+```
+
+**Quick pull** (frontend/small fixes):
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear
+```
+
+| Field | Value |
+|-------|-------|
+| Server | `sg-s2` |
+| User | `bakeandgrill` |
+| Project root | `/home/bakeandgrill/test.bakeandgrill.mv` |
+| GitHub | `https://github.com/ampilarey/Bakeandgrill` |
+| Branch | `main` |
+
+---
+
+## Recommended Navigation Structure
+
+```
+OPERATIONS:     Dashboard, Orders, KDS, Delivery
+MENU & INVENTORY: Menu, Specials, Inventory, Purchase Orders, Waste
+CUSTOMERS:      Loyalty, Reservations, Reviews, Gift Cards, Referrals
+MARKETING:      Promotions, SMS
+FINANCE:        Reports, Invoices, Expenses, P&L, Forecasts, Suppliers
+STAFF:          Staff, Scheduling, Time Clock, Analytics
+OPERATIONS (Owner): Tables, Devices, Shifts & Cash
+SYSTEM (Owner): Settings, Webhooks, Xero
+```
