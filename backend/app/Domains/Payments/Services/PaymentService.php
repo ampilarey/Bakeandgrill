@@ -294,7 +294,10 @@ class PaymentService
             PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($payment, $order));
 
             if ($paidTotal >= $order->total && !in_array($order->status, ['paid', 'completed'], true)) {
-                $this->orders->updateStatus($order->id, 'paid', ['paid_at' => now()]);
+                // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
+                // POS orders already in the kitchen queue go straight to paid.
+                $newStatus = $order->status === 'payment_pending' ? 'pending' : 'paid';
+                $this->orders->updateStatus($order->id, $newStatus, ['paid_at' => now()]);
 
                 DB::afterCommit(function () use ($order): void {
                     $freshOrder = $this->orders->findById($order->id);

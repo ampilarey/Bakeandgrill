@@ -36,6 +36,12 @@ class PaymentController extends Controller
 
         $result = $this->paymentService->initiateBmlPayment($order);
 
+        // Hold the order in payment_pending until BML webhook confirms.
+        // Kitchen (KDS/admin) should not see it until payment is confirmed.
+        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+            $order->update(['status' => 'payment_pending']);
+        }
+
         return response()->json([
             'payment_url' => $result['payment_url'],
             'payment_id' => $result['payment_id'],

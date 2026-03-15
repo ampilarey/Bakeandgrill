@@ -355,6 +355,7 @@ export function Pagination({ page, totalPages, onChange }: {
 export function statColor(status: string): string {
   const map: Record<string, string> = {
     // Order statuses
+    payment_pending: 'orange',
     pending:    'yellow',
     confirmed:  'blue',
     preparing:  'blue',

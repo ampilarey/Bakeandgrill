@@ -8,6 +8,7 @@ import {
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
+  { value: 'payment_pending', label: 'Awaiting Payment' },
   { value: 'pending', label: 'Pending' },
   { value: 'preparing', label: 'Preparing' },
   { value: 'ready', label: 'Ready' },
