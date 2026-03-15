@@ -39,7 +39,14 @@ class ForecastController extends Controller
             ->get();
 
         if ($history->count() < 2) {
-            return response()->json(['error' => 'Not enough data for forecast. Need at least 2 weeks of sales.'], 422);
+            return response()->json([
+                'insufficient_data'  => true,
+                'message'            => 'Not enough sales history yet. Need at least 2 weeks of completed orders.',
+                'history'            => [],
+                'weighted_moving_avg'=> 0,
+                'growth_rate_pct'    => 0,
+                'forecast'           => [],
+            ]);
         }
 
         $values  = $history->pluck('revenue')->map(fn($v) => (float) $v)->values()->toArray();

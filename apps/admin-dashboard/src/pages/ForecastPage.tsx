@@ -35,17 +35,16 @@ export function ForecastPage() {
 
   const load = async () => {
     setLoading(true); setError('');
-    try {
-      const [t, f, i] = await Promise.all([
-        getSalesTrends({ granularity, from, to }),
-        getRevenueForecast(8, 4),
-        getInventoryForecast(),
-      ]);
-      setTrends(t);
-      setForecast(f);
-      setInv(i);
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
+    const [t, f, i] = await Promise.allSettled([
+      getSalesTrends({ granularity, from, to }),
+      getRevenueForecast(8, 4),
+      getInventoryForecast(),
+    ]);
+    if (t.status === 'fulfilled') setTrends(t.value);
+    else setError(`Sales trends: ${(t.reason as Error).message}`);
+    if (f.status === 'fulfilled') setForecast((f.value as typeof f.value & { insufficient_data?: boolean }).insufficient_data ? null : f.value);
+    if (i.status === 'fulfilled') setInv(i.value);
+    setLoading(false);
   };
 
   useEffect(() => { void load(); }, [granularity, from, to]);
@@ -117,6 +116,14 @@ export function ForecastPage() {
           )}
 
           {/* Revenue forecast */}
+          {!forecast && !loading && (
+            <Card>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8' }}>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Revenue Forecast</div>
+                <div style={{ fontSize: 13 }}>Not enough sales history yet — need at least 2 weeks of completed orders.</div>
+              </div>
+            </Card>
+          )}
           {forecast && (
             <Card>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Revenue Forecast (Next 4 Weeks)</div>
