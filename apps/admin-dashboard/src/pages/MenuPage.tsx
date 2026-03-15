@@ -577,7 +577,7 @@ export function MenuPage() {
                           {item.category?.name ?? <span style={{ color: '#cbd5e1' }}>—</span>}
                         </td>
                         <td style={{ padding: '10px 14px', fontWeight: 700, color: '#D4813A' }}>
-                          MVR {item.base_price.toFixed(2)}
+                          MVR {parseFloat(String(item.base_price)).toFixed(2)}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           <button

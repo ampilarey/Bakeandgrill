@@ -130,7 +130,7 @@ export function MenuGrid({
               onClick={() => handleSelectItem(item)}
             >
               <p className="font-semibold" style={{ color: '#2A1E0C' }}>{item.name}</p>
-              <p className="text-sm" style={{ color: '#8B7355' }}>MVR {item.base_price.toFixed(2)}</p>
+              <p className="text-sm" style={{ color: '#8B7355' }}>MVR {parseFloat(String(item.base_price)).toFixed(2)}</p>
             </button>
           ))}
         </div>
@@ -140,7 +140,7 @@ export function MenuGrid({
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold" style={{ color: '#2A1E0C' }}>{selectedItem.name}</p>
-                <p className="text-sm" style={{ color: '#8B7355' }}>MVR {selectedItem.base_price.toFixed(2)}</p>
+                <p className="text-sm" style={{ color: '#8B7355' }}>MVR {parseFloat(String(selectedItem.base_price)).toFixed(2)}</p>
               </div>
               <button
                 className="rounded-lg text-white px-4 py-2 text-sm"
