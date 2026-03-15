@@ -56,10 +56,11 @@ class StaffAuthController extends Controller
             'message' => 'Login successful',
             'token' => $token,
             'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role?->slug,
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'role'        => $user->role?->slug,
+                'permissions' => $this->resolvePermissionSlugs($user),
             ],
         ]);
     }
