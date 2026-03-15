@@ -97,6 +97,7 @@ class Item extends Model
     }
 
     protected $casts = [
+        'category_id' => 'integer',
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'track_stock' => 'boolean',

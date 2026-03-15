@@ -32,8 +32,9 @@ class Category extends Model
     }
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'parent_id'  => 'integer',
         'sort_order' => 'integer',
+        'is_active'  => 'boolean',
     ];
 
     public function items(): HasMany
