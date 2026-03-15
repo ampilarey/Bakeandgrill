@@ -100,7 +100,7 @@ export function ForecastPage() {
                       style={{
                         width: 32,
                         height: Math.max(4, (d.revenue / maxRevenue) * 100),
-                        background: d.growth_pct !== null && d.growth_pct < 0 ? '#f97316' : '#6366f1',
+                        background: d.growth_pct !== null && d.growth_pct < 0 ? '#ef4444' : '#D4813A',
                         borderRadius: '4px 4px 0 0',
                         transition: 'height 0.4s ease',
                       }}
@@ -138,7 +138,7 @@ export function ForecastPage() {
                   <div key={wk.week_start} style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                     <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Week {i + 1}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{wk.week_start}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#6366f1' }}>MVR {wk.projected_revenue.toFixed(2)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#D4813A' }}>MVR {wk.projected_revenue.toFixed(2)}</div>
                   </div>
                 ))}
               </div>

@@ -196,7 +196,7 @@ export function WebhooksPage() {
   };
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <PageHeader
         title="Outgoing Webhooks"
         subtitle="Push real-time events to external systems via signed HTTP POST"
@@ -237,7 +237,7 @@ export function WebhooksPage() {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>{sub.name}</span>
+                    <span style={{ fontWeight: 700, color: '#1C1408' }}>{sub.name}</span>
                     <Badge
                       label={sub.disabled_at ? 'auto-disabled' : sub.active ? 'active' : 'paused'}
                       color={sub.active && !sub.disabled_at ? 'green' : 'red'}

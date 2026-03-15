@@ -5,8 +5,8 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Input,
-  PageHeader, Spinner,
+  Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions,
+  PageHeader, Spinner, TableCard, TD, TH,
 } from '../components/Layout';
 
 const TIER_COLOR: Record<string, string> = {
@@ -26,34 +26,25 @@ function LedgerModal({ customerId, name, onClose }: {
   }, [customerId]);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={onClose}>
-      <Card style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontWeight: 800, fontSize: 17 }}>Ledger — {name}</h2>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
-          </div>
-          {loading ? <Spinner /> : entries.length === 0 ? (
-            <EmptyState message="No transactions yet." />
-          ) : (
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              {entries.map((e) => (
-                <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <div>
-                    <p style={{ fontSize: 14, color: '#374151' }}>{e.reason}</p>
-                    <p style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(e.created_at).toLocaleString()}</p>
-                  </div>
-                  <span style={{ fontWeight: 800, fontSize: 16, color: e.delta >= 0 ? '#22c55e' : '#ef4444' }}>
-                    {e.delta >= 0 ? '+' : ''}{e.delta} pts
-                  </span>
-                </div>
-              ))}
+    <Modal title={`Ledger — ${name}`} onClose={onClose} maxWidth={520}>
+      {loading ? <Spinner /> : entries.length === 0 ? (
+        <EmptyState message="No transactions yet." />
+      ) : (
+        <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+          {entries.map((e) => (
+            <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F0EBE5' }}>
+              <div>
+                <p style={{ fontSize: 14, color: '#1C1408', margin: 0 }}>{e.reason}</p>
+                <p style={{ fontSize: 11, color: '#9C8E7E', margin: '2px 0 0' }}>{new Date(e.created_at).toLocaleString()}</p>
+              </div>
+              <span style={{ fontWeight: 800, fontSize: 15, color: e.delta >= 0 ? '#22c55e' : '#ef4444' }}>
+                {e.delta >= 0 ? '+' : ''}{e.delta} pts
+              </span>
             </div>
-          )}
+          ))}
         </div>
-      </Card>
-    </div>
+      )}
+    </Modal>
   );
 }
 
@@ -82,35 +73,28 @@ function AdjustModal({ account, onClose, onDone }: {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={onClose}>
-      <Card style={{ width: '100%', maxWidth: 400 }}>
-        <div onClick={(e) => e.stopPropagation()}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <h2 style={{ fontWeight: 800, fontSize: 17 }}>Adjust Points</h2>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>✕</button>
-          </div>
-          <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
-            {account.customer_name ?? account.customer_phone} — current balance: <strong>{account.points_balance} pts</strong>
-          </p>
-          {error && <ErrorMsg message={error} />}
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
-              Points (use − to deduct)
-            </label>
-            <Input value={delta} onChange={setDelta} placeholder="e.g. 100 or -50" type="number" />
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Reason</label>
-            <Input value={reason} onChange={setReason} placeholder="e.g. Goodwill adjustment" />
-          </div>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-            <Btn onClick={submit} disabled={loading}>{loading ? 'Saving…' : 'Apply Adjustment'}</Btn>
-          </div>
+    <Modal title="Adjust Points" onClose={onClose} maxWidth={400}>
+      <p style={{ color: '#6B5D4F', fontSize: 14, marginBottom: 16 }}>
+        {account.customer_name ?? account.customer_phone} — balance: <strong style={{ color: '#D4813A' }}>{account.points_balance} pts</strong>
+      </p>
+      {error && <ErrorMsg message={error} />}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>
+            Points (use − to deduct)
+          </label>
+          <Input value={delta} onChange={setDelta} placeholder="e.g. 100 or -50" type="number" />
         </div>
-      </Card>
-    </div>
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Reason</label>
+          <Input value={reason} onChange={setReason} placeholder="e.g. Goodwill adjustment" />
+        </div>
+      </div>
+      <ModalActions>
+        <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+        <Btn onClick={submit} disabled={loading}>{loading ? 'Saving…' : 'Apply Adjustment'}</Btn>
+      </ModalActions>
+    </Modal>
   );
 }
 
@@ -156,35 +140,25 @@ export function LoyaltyPage() {
       ) : accounts.length === 0 ? (
         <Card><EmptyState message="No loyalty accounts found." /></Card>
       ) : (
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <tr>
                 {['Customer', 'Phone', 'Tier', 'Balance', 'Held', 'Lifetime', ''].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12 }}>{h}</th>
+                  <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {accounts.map((a) => (
-                <tr key={a.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600 }}>
-                    {a.customer_name ?? '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: '#475569' }}>{a.customer_phone}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <Badge label={a.tier} color={TIER_COLOR[a.tier] ?? 'gray'} />
-                  </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0ea5e9' }}>
-                    {a.points_balance.toLocaleString()} pts
-                  </td>
-                  <td style={{ padding: '12px 16px', color: '#94a3b8' }}>
-                    {a.points_held > 0 ? `${a.points_held} held` : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: '#475569' }}>
-                    {a.lifetime_points.toLocaleString()}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
+                <tr key={a.id}>
+                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{a.customer_name ?? '—'}</td>
+                  <td style={{ ...TD, color: '#6B5D4F' }}>{a.customer_phone}</td>
+                  <td style={TD}><Badge label={a.tier} color={TIER_COLOR[a.tier] ?? 'gray'} /></td>
+                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>{a.points_balance.toLocaleString()} pts</td>
+                  <td style={{ ...TD, color: '#9C8E7E' }}>{a.points_held > 0 ? `${a.points_held} held` : '—'}</td>
+                  <td style={{ ...TD, color: '#6B5D4F' }}>{a.lifetime_points.toLocaleString()}</td>
+                  <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn small variant="ghost" onClick={() => setViewingLedger(a)}>Ledger</Btn>
                       <Btn small variant="secondary" onClick={() => setAdjusting(a)}>Adjust</Btn>
@@ -194,7 +168,7 @@ export function LoyaltyPage() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       {adjusting && (

@@ -1,22 +1,15 @@
 import { useEffect, useState } from 'react';
 import { getReservations, updateReservationStatus, type AdminReservation } from '../api';
+import { Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, Pagination, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending:   '#FEF3C7',
-  confirmed: '#D1FAE5',
-  seated:    '#DBEAFE',
-  completed: '#F3F4F6',
-  cancelled: '#FEE2E2',
-  no_show:   '#E5E7EB',
-};
-const STATUS_TEXT: Record<string, string> = {
-  pending:   '#92400E',
-  confirmed: '#065F46',
-  seated:    '#1E40AF',
-  completed: '#374151',
-  cancelled: '#B91C1C',
-  no_show:   '#6B7280',
+const STATUS_COLOR: Record<string, string> = {
+  pending:   'yellow',
+  confirmed: 'green',
+  seated:    'blue',
+  completed: 'gray',
+  cancelled: 'red',
+  no_show:   'gray',
 };
 
 const NEXT_STATUSES: Record<string, string[]> = {
@@ -28,8 +21,8 @@ const NEXT_STATUSES: Record<string, string[]> = {
   no_show:   [],
 };
 
-export default function ReservationsPage() {
-    usePageTitle('Reservations');
+export function ReservationsPage() {
+  usePageTitle('Reservations');
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,117 +33,99 @@ export default function ReservationsPage() {
   const [total, setTotal] = useState(0);
 
   const load = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const res = await getReservations({ date: dateFilter || undefined, status: statusFilter || undefined, page });
       setReservations(res.data);
       setLastPage(res.meta.last_page);
       setTotal(res.meta.total);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [dateFilter, statusFilter, page]);
+  useEffect(() => { void load(); }, [dateFilter, statusFilter, page]);
 
   const handleStatus = async (id: number, status: string) => {
     try {
       const res = await updateReservationStatus(id, status);
-      setReservations(prev => prev.map(r => r.id === id ? res.reservation : r));
-    } catch (e) {
-      alert((e as Error).message);
-    }
+      setReservations((prev) => prev.map((r) => r.id === id ? res.reservation : r));
+    } catch (e) { setError((e as Error).message); }
   };
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>Reservations</h1>
-        <p style={{ color: '#6B7280', margin: 0 }}>{total} total</p>
-      </div>
+    <>
+      <PageHeader
+        title="Reservations"
+        subtitle={`${total} total reservations`}
+      />
+      {error && <ErrorMsg message={error} />}
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-        <input
-          type="date"
-          value={dateFilter}
-          onChange={e => { setDateFilter(e.target.value); setPage(1); }}
-          style={inputStyle}
-          placeholder="Filter by date"
-        />
-        <select
-          value={statusFilter}
-          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={inputStyle}
-        >
-          <option value="">All statuses</option>
-          <option value="pending">Pending</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="seated">Seated</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="no_show">No-show</option>
-        </select>
-        <button onClick={() => { setDateFilter(''); setStatusFilter(''); setPage(1); }} style={clearBtnStyle}>
-          Clear filters
-        </button>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-end' }}>
+        <DateInput value={dateFilter} onChange={(v) => { setDateFilter(v); setPage(1); }} label="Date" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#6B5D4F', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none', cursor: 'pointer' }}
+          >
+            <option value="">All Statuses</option>
+            {['pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'].map((s) => (
+              <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+            ))}
+          </select>
+        </div>
+        {(dateFilter || statusFilter) && (
+          <Btn variant="secondary" small onClick={() => { setDateFilter(''); setStatusFilter(''); setPage(1); }}>
+            Clear
+          </Btn>
+        )}
       </div>
 
-      {error && <div style={errorStyle}>{error}</div>}
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF' }}>Loading…</div>
-      ) : reservations.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF' }}>No reservations found.</div>
+      {loading ? <Spinner /> : reservations.length === 0 ? (
+        <TableCard><EmptyState message="No reservations found." /></TableCard>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <TableCard>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                {['#', 'Guest', 'Party', 'Date', 'Time', 'Table', 'Status', 'Actions'].map(h => (
-                  <th key={h} style={thStyle}>{h}</th>
+              <tr>
+                {['#', 'Guest', 'Party', 'Date', 'Time', 'Table', 'Status', 'Actions'].map((h) => (
+                  <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {reservations.map(r => (
-                <tr key={r.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                  <td style={tdStyle}>{r.id}</td>
-                  <td style={tdStyle}>
-                    <div style={{ fontWeight: 600 }}>{r.customer_name}</div>
-                    <div style={{ fontSize: 12, color: '#6B7280' }}>{r.customer_phone}</div>
-                    {r.notes && <div style={{ fontSize: 11, color: '#9CA3AF', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.notes}</div>}
+              {reservations.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.id}</td>
+                  <td style={TD}>
+                    <div style={{ fontWeight: 600, color: '#1C1408' }}>{r.customer_name}</div>
+                    <div style={{ fontSize: 12, color: '#9C8E7E' }}>{r.customer_phone}</div>
+                    {r.notes && (
+                      <div style={{ fontSize: 11, color: '#9C8E7E', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                        {r.notes}
+                      </div>
+                    )}
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'center' as const }}>{r.party_size}</td>
-                  <td style={tdStyle}>{r.date}</td>
-                  <td style={tdStyle}>{r.time_slot}</td>
-                  <td style={tdStyle}>{r.table?.name ?? '—'}</td>
-                  <td style={tdStyle}>
-                    <span style={{
-                      background: STATUS_COLORS[r.status] ?? '#F3F4F6',
-                      color:      STATUS_TEXT[r.status]   ?? '#374151',
-                      padding: '3px 10px',
-                      borderRadius: 20,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {r.status.replace('_', ' ')}
-                    </span>
+                  <td style={{ ...TD, textAlign: 'center', fontWeight: 700 }}>{r.party_size}</td>
+                  <td style={{ ...TD, whiteSpace: 'nowrap' }}>{r.date}</td>
+                  <td style={{ ...TD, whiteSpace: 'nowrap' }}>{r.time_slot}</td>
+                  <td style={TD}>{r.table?.name ?? '—'}</td>
+                  <td style={TD}>
+                    <Badge label={r.status.replace('_', ' ')} color={STATUS_COLOR[r.status] ?? 'gray'} />
                   </td>
-                  <td style={tdStyle}>
+                  <td style={TD}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {NEXT_STATUSES[r.status]?.map(ns => (
-                        <button
+                      {NEXT_STATUSES[r.status]?.map((ns) => (
+                        <Btn
                           key={ns}
+                          small
+                          variant={ns === 'cancelled' || ns === 'no_show' ? 'danger' : 'secondary'}
                           onClick={() => handleStatus(r.id, ns)}
-                          style={actionBtnStyle}
                         >
                           {ns.replace('_', ' ')}
-                        </button>
+                        </Btn>
                       ))}
                     </div>
                   </td>
@@ -158,25 +133,11 @@ export default function ReservationsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          <Pagination page={page} totalPages={lastPage} onChange={setPage} />
+        </TableCard>
       )}
-
-      {/* Pagination */}
-      {lastPage > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20 }}>
-          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={pageBtnStyle}>← Prev</button>
-          <span style={{ padding: '6px 12px', fontSize: 14 }}>{page} / {lastPage}</span>
-          <button disabled={page >= lastPage} onClick={() => setPage(p => p + 1)} style={pageBtnStyle}>Next →</button>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 
-const inputStyle: React.CSSProperties = { padding: '8px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14 };
-const clearBtnStyle: React.CSSProperties = { padding: '8px 14px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, cursor: 'pointer', background: 'white' };
-const errorStyle: React.CSSProperties = { background: '#FEE2E2', color: '#B91C1C', padding: '10px 14px', borderRadius: 8, marginBottom: 16 };
-const thStyle: React.CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 12, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' as const, whiteSpace: 'nowrap' };
-const tdStyle: React.CSSProperties = { padding: '12px', fontSize: 14, verticalAlign: 'top' };
-const actionBtnStyle: React.CSSProperties = { padding: '4px 10px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: 'white', whiteSpace: 'nowrap' };
-const pageBtnStyle: React.CSSProperties = { padding: '6px 14px', border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', fontSize: 14, background: 'white' };
+export default ReservationsPage;

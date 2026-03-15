@@ -1,27 +1,20 @@
 import { useEffect, useState } from 'react';
 import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, type Invoice } from '../api';
-import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { Badge, Btn, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-const STATUS_COLORS: Record<string, string> = {
-  draft:     '#64748b',
-  sent:      '#0ea5e9',
-  paid:      '#22c55e',
-  overdue:   '#ef4444',
-  cancelled: '#94a3b8',
-  void:      '#94a3b8',
-};
+const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
 export function InvoicesPage() {
-    usePageTitle('Invoices');
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
-  const [typeFilter, setType]   = useState('');
-  const [statusFilter, setStatus] = useState('');
-  const [selected, setSelected]   = useState<Invoice | null>(null);
-  const [paying, setPaying]       = useState(false);
-  const [payMethod, setPayMethod] = useState('cash');
+  usePageTitle('Invoices');
+  const [invoices, setInvoices]     = useState<Invoice[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [typeFilter, setType]       = useState('');
+  const [statusFilter, setStatus]   = useState('');
+  const [selected, setSelected]     = useState<Invoice | null>(null);
+  const [paying, setPaying]         = useState(false);
+  const [payMethod, setPayMethod]   = useState('cash');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -34,125 +27,125 @@ export function InvoicesPage() {
 
   useEffect(() => { void load(); }, [typeFilter, statusFilter]);
 
-  const handleSent = async (id: number) => {
-    await markInvoiceSent(id);
-    void load();
-  };
-
+  const handleSent = async (id: number) => { await markInvoiceSent(id); void load(); };
   const handlePaid = async () => {
     if (!selected) return;
     await markInvoicePaid(selected.id, payMethod);
-    setPaying(false); setSelected(null);
-    void load();
+    setPaying(false); setSelected(null); void load();
   };
-
   const handleVoid = async (id: number) => {
     if (!confirm('Void this invoice?')) return;
-    await voidInvoice(id);
-    void load();
+    await voidInvoice(id); void load();
+  };
+
+  const selectStyle = {
+    height: 36, padding: '0 10px',
+    border: '1.5px solid #E8E0D8', borderRadius: 10,
+    fontSize: 13, fontFamily: 'inherit',
+    background: '#fff', color: '#1C1408', outline: 'none', cursor: 'pointer',
   };
 
   return (
     <>
-      <PageHeader title="Invoices" subtitle="Manage sale and purchase invoices" />
+      <PageHeader
+        title="Invoices"
+        subtitle="Manage sale and purchase invoices"
+        action={<Btn onClick={load} variant="secondary">↻ Refresh</Btn>}
+      />
       {error && <ErrorMsg message={error} />}
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <select value={typeFilter} onChange={e => setType(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select value={typeFilter} onChange={(e) => setType(e.target.value)} style={selectStyle}>
           <option value="">All Types</option>
           <option value="sale">Sale</option>
           <option value="purchase">Purchase</option>
           <option value="credit_note">Credit Note</option>
         </select>
-        <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14 }}>
+        <select value={statusFilter} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
           <option value="">All Statuses</option>
-          {['draft', 'sent', 'paid', 'overdue', 'void'].map(s => (
+          {['draft', 'sent', 'paid', 'overdue', 'void'].map((s) => (
             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
           ))}
         </select>
-        <Btn onClick={load}>Refresh</Btn>
       </div>
 
       {loading ? <Spinner /> : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <TableCard>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Number', 'Type', 'Status', 'Recipient', 'Total', 'Issue Date', 'Due Date', 'Actions'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: 12, textTransform: 'uppercase' }}>{h}</th>
+              <tr>
+                {['Number', 'Type', 'Status', 'Recipient', 'Total', 'Issue Date', 'Due', 'Actions'].map((h) => (
+                  <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {invoices.map(inv => (
-                <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '10px 12px', fontWeight: 600, color: '#1e293b' }}>{inv.invoice_number}</td>
-                  <td style={{ padding: '10px 12px' }}>
-                    <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: '#f1f5f9', color: '#475569', textTransform: 'uppercase' }}>{inv.type}</span>
+              {invoices.map((inv) => (
+                <tr key={inv.id}>
+                  <td style={{ ...TD, fontWeight: 700, color: '#1C1408' }}>{inv.invoice_number}</td>
+                  <td style={TD}>
+                    <Badge label={inv.type.replace('_', ' ')} color={TYPE_COLOR[inv.type] ?? 'gray'} />
                   </td>
-                  <td style={{ padding: '10px 12px' }}>
-                    <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: STATUS_COLORS[inv.status] + '22', color: STATUS_COLORS[inv.status] }}>
-                      {inv.status.toUpperCase()}
-                    </span>
+                  <td style={TD}>
+                    <Badge label={inv.status} color={statColor(inv.status)} />
                   </td>
-                  <td style={{ padding: '10px 12px', color: '#475569' }}>{inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'}</td>
-                  <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>MVR {inv.total.toFixed(2)}</td>
-                  <td style={{ padding: '10px 12px', color: '#64748b' }}>{inv.issue_date}</td>
-                  <td style={{ padding: '10px 12px', color: inv.status === 'overdue' ? '#ef4444' : '#64748b' }}>{inv.due_date ?? '—'}</td>
-                  <td style={{ padding: '10px 12px' }}>
+                  <td style={{ ...TD, color: '#6B5D4F' }}>{inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {inv.total.toFixed(2)}</td>
+                  <td style={{ ...TD, color: '#9C8E7E', whiteSpace: 'nowrap' }}>{inv.issue_date}</td>
+                  <td style={{ ...TD, color: inv.status === 'overdue' ? '#ef4444' : '#9C8E7E', whiteSpace: 'nowrap' }}>
+                    {inv.due_date ?? '—'}
+                  </td>
+                  <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {inv.status === 'draft' && (
-                        <button onClick={() => handleSent(inv.id)}
-                          style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#0ea5e9', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                          Mark Sent
-                        </button>
+                        <Btn small variant="secondary" onClick={() => handleSent(inv.id)}>Mark Sent</Btn>
                       )}
                       {['sent', 'overdue'].includes(inv.status) && (
-                        <button onClick={() => { setSelected(inv); setPaying(true); }}
-                          style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                          Mark Paid
-                        </button>
+                        <Btn small onClick={() => { setSelected(inv); setPaying(true); }}>Mark Paid</Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && (
-                        <button onClick={() => handleVoid(inv.id)}
-                          style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                          Void
-                        </button>
+                        <Btn small variant="danger" onClick={() => handleVoid(inv.id)}>Void</Btn>
                       )}
                     </div>
                   </td>
                 </tr>
               ))}
               {invoices.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No invoices found</td></tr>
+                <tr>
+                  <td colSpan={8}>
+                    <EmptyState message="No invoices found." />
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
-        </div>
+        </TableCard>
       )}
 
       {/* Mark Paid Modal */}
       {paying && selected && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <Card style={{ width: 360 }}>
-            <h3 style={{ fontWeight: 700, marginBottom: 16 }}>Mark Invoice Paid</h3>
-            <p style={{ color: '#64748b', marginBottom: 16 }}>{selected.invoice_number} · MVR {selected.total.toFixed(2)}</p>
-            <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600 }}>Payment Method</label>
-            <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 20, fontSize: 14 }}>
-              {['cash', 'card', 'bml_pay', 'bank_transfer', 'other'].map(m => (
+        <Modal title="Mark Invoice Paid" onClose={() => { setPaying(false); setSelected(null); }} maxWidth={380}>
+          <p style={{ color: '#6B5D4F', fontSize: 14, marginBottom: 20 }}>
+            {selected.invoice_number} · <strong style={{ color: '#D4813A' }}>MVR {selected.total.toFixed(2)}</strong>
+          </p>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Payment Method</label>
+            <select
+              value={payMethod}
+              onChange={(e) => setPayMethod(e.target.value)}
+              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none' }}
+            >
+              {['cash', 'card', 'bml_pay', 'bank_transfer', 'other'].map((m) => (
                 <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>
               ))}
             </select>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn onClick={handlePaid}>Confirm Payment</Btn>
-              <button onClick={() => setPaying(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}>Cancel</button>
-            </div>
-          </Card>
-        </div>
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => { setPaying(false); setSelected(null); }}>Cancel</Btn>
+            <Btn onClick={handlePaid}>Confirm Payment</Btn>
+          </ModalActions>
+        </Modal>
       )}
     </>
   );

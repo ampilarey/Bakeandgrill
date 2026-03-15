@@ -63,10 +63,11 @@ export function KDSPage() {
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
-        <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{title}</span>
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{title}</span>
         <span style={{
-          background: '#f1f5f9', color: '#64748b', borderRadius: 999,
-          padding: '1px 8px', fontSize: 12, fontWeight: 600,
+          background: '#F8F6F3', color: '#6B5D4F', borderRadius: 999,
+          padding: '1px 8px', fontSize: 12, fontWeight: 700,
+          border: '1px solid #E8E0D8',
         }}>{items.length}</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -163,12 +164,12 @@ function TicketHeader({ ticket }: { ticket: KdsTicket }) {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
-          <span style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>#{ticket.order_number}</span>
+          <span style={{ fontWeight: 800, fontSize: 16, color: '#1C1408' }}>#{ticket.order_number}</span>
           {ticket.table_number && (
-            <span style={{ marginLeft: 8, fontSize: 12, color: '#64748b' }}>Table {ticket.table_number}</span>
+            <span style={{ marginLeft: 8, fontSize: 12, color: '#9C8E7E' }}>Table {ticket.table_number}</span>
           )}
           {ticket.delivery_island && (
-            <span style={{ marginLeft: 8, fontSize: 12, color: '#0ea5e9' }}>🛵 {ticket.delivery_island}</span>
+            <span style={{ marginLeft: 8, fontSize: 12, color: '#D4813A' }}>🛵 {ticket.delivery_island}</span>
           )}
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -180,8 +181,8 @@ function TicketHeader({ ticket }: { ticket: KdsTicket }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {ticket.items.map((item, i) => (
-          <div key={i} style={{ fontSize: 13, color: '#374151' }}>
-            <span style={{ fontWeight: 700, color: '#0f172a' }}>{item.quantity}×</span> {item.item_name}
+          <div key={i} style={{ fontSize: 13, color: '#6B5D4F' }}>
+            <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}
             {item.modifiers && item.modifiers.length > 0 && (
               <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
                 + {item.modifiers.map((m) => m.modifier_name).join(', ')}

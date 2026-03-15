@@ -6,7 +6,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Input,
-  PageHeader, Select, Spinner,
+  PageHeader, Select, Spinner, TD, TH,
 } from '../components/Layout';
 
 const EMPTY: PromotionPayload = {
@@ -227,34 +227,34 @@ export function PromotionsPage() {
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <tr>
                 {['Name', 'Code', 'Discount', 'Uses', 'Valid', 'Status', ''].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12 }}>{h}</th>
+                  <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {promos.map((p) => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600 }}>{p.name}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <code style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: 6, fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+                <tr key={p.id}>
+                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{p.name}</td>
+                  <td style={TD}>
+                    <code style={{ background: '#F8F6F3', padding: '2px 8px', borderRadius: 6, fontSize: 13, fontWeight: 700, letterSpacing: 1, color: '#1C1408', border: '1px solid #E8E0D8' }}>
                       {p.code}
                     </code>
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#0ea5e9', fontWeight: 600 }}>
+                  <td style={{ ...TD, color: '#D4813A', fontWeight: 700 }}>
                     {formatDiscount(p)}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#475569' }}>
+                  <td style={{ ...TD, color: '#6B5D4F' }}>
                     {p.redemptions_count}{p.max_uses ? ` / ${p.max_uses}` : ''}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#475569', fontSize: 12 }}>
+                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12, whiteSpace: 'nowrap' }}>
                     {p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '∞'}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={TD}>
                     <Badge label={p.is_active ? 'Active' : 'Inactive'} color={p.is_active ? 'green' : 'gray'} />
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn small variant="ghost" onClick={() => handleToggle(p)}>
                         {p.is_active ? 'Disable' : 'Enable'}

@@ -3,7 +3,7 @@ import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
   type StaffMember, type StaffRole,
 } from '../api';
-import { Badge, Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner } from '../components/Layout';
+import { Badge, Btn, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -57,27 +57,6 @@ function timeAgo(iso: string | null) {
   return new Date(iso).toLocaleDateString();
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
-
-function Modal({ title, onClose, children }: {
-  title: string; onClose: () => void; children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontWeight: 800, fontSize: 17, color: '#0f172a', margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', lineHeight: 1 }}>✕</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ── Create staff modal ────────────────────────────────────────────────────────
 
 function CreateModal({ roles, onSave, onClose }: {
@@ -125,10 +104,10 @@ function CreateModal({ roles, onSave, onClose }: {
           <PinInput value={confirmPin} onChange={setConfirmPin} />
         </Field>
       </div>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+      <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
         <Btn onClick={handleSave} disabled={loading}>{loading ? 'Creating…' : 'Create Staff'}</Btn>
-      </div>
+      </ModalActions>
     </Modal>
   );
 }
@@ -175,10 +154,10 @@ function EditModal({ member, roles, onSave, onClose }: {
           Active (can log in)
         </label>
       </div>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+      <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
         <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Changes'}</Btn>
-      </div>
+      </ModalActions>
     </Modal>
   );
 }
@@ -215,10 +194,10 @@ function PinModal({ member, onSave, onClose }: {
           <PinInput value={confirmPin} onChange={setConfirmPin} />
         </Field>
       </div>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+      <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
         <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Update PIN'}</Btn>
-      </div>
+      </ModalActions>
     </Modal>
   );
 }
@@ -290,39 +269,38 @@ export function StaffPage() {
 
       {loading && staff.length === 0 ? <Spinner /> :
       staff.length === 0 ? (
-        <Card><EmptyState message="No staff members found." /></Card>
+        <TableCard><EmptyState message="No staff members found." /></TableCard>
       ) : (
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <tr>
                 {['Name', 'Email', 'Role', 'PIN', 'Status', 'Last Login', ''].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12 }}>{h}</th>
+                  <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {staff.map((m) => (
-                <tr key={m.id} style={{ borderBottom: '1px solid #f1f5f9', opacity: m.is_active ? 1 : 0.55 }}>
-                  <td style={{ padding: '13px 16px', fontWeight: 700 }}>{m.name}</td>
-                  <td style={{ padding: '13px 16px', color: '#475569' }}>{m.email}</td>
-                  <td style={{ padding: '13px 16px' }}>
+                <tr key={m.id} style={{ opacity: m.is_active ? 1 : 0.55 }}>
+                  <td style={{ ...TD, fontWeight: 700, color: '#1C1408' }}>{m.name}</td>
+                  <td style={{ ...TD, color: '#6B5D4F' }}>{m.email}</td>
+                  <td style={TD}>
                     <Badge label={m.role_name ?? m.role ?? '—'} color={roleColor(m.role)} />
                   </td>
-                  <td style={{ padding: '13px 16px' }}>
-                    {m.has_pin ? (
-                      <span style={{ color: '#22c55e', fontSize: 13, fontWeight: 600 }}>Set ✓</span>
-                    ) : (
-                      <span style={{ color: '#f59e0b', fontSize: 13, fontWeight: 600 }}>Not set</span>
-                    )}
+                  <td style={TD}>
+                    {m.has_pin
+                      ? <span style={{ color: '#22c55e', fontSize: 13, fontWeight: 700 }}>Set ✓</span>
+                      : <span style={{ color: '#f59e0b', fontSize: 13, fontWeight: 700 }}>Not set</span>
+                    }
                   </td>
-                  <td style={{ padding: '13px 16px' }}>
+                  <td style={TD}>
                     <Badge label={m.is_active ? 'Active' : 'Inactive'} color={m.is_active ? 'green' : 'gray'} />
                   </td>
-                  <td style={{ padding: '13px 16px', color: '#94a3b8', fontSize: 12 }}>
+                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12, whiteSpace: 'nowrap' }}>
                     {timeAgo(m.last_login_at)}
                   </td>
-                  <td style={{ padding: '13px 16px' }}>
+                  <td style={TD}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <Btn small variant="secondary" onClick={() => setEditing(m)}>Edit</Btn>
                       <Btn small variant="ghost" onClick={() => setChangingPin(m)}>PIN</Btn>
@@ -336,7 +314,7 @@ export function StaffPage() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
 
       {creating && (

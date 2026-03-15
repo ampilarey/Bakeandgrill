@@ -1,6 +1,5 @@
 /**
  * Shared UI primitives used by admin page components.
- * These were previously inlined in Layout.tsx.
  */
 import { type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
 
@@ -208,6 +207,146 @@ export function Select({ options, value, onChange, label, style, ...rest }: Sele
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
+    </div>
+  );
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+export function Modal({
+  title, onClose, children, maxWidth = 440,
+}: { title: string; onClose: () => void; children: ReactNode; maxWidth?: number }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        background: 'rgba(28,20,8,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{
+        background: '#fff', borderRadius: 16, padding: 28,
+        width: '100%', maxWidth,
+        boxShadow: '0 20px 60px rgba(28,20,8,0.18)',
+        maxHeight: '90vh', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h3 style={{ fontWeight: 800, fontSize: 17, color: '#1C1408', margin: 0 }}>{title}</h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: '#F8F6F3', border: 'none', borderRadius: 8,
+              width: 32, height: 32, cursor: 'pointer', color: '#6B5D4F',
+              fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── ModalActions ─────────────────────────────────────────────────────────────
+export function ModalActions({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid #E8E0D8' }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── StatCard ─────────────────────────────────────────────────────────────────
+export function StatCard({
+  label, value, sub, accent = '#D4813A',
+}: { label: string; value: string; sub?: string; accent?: string }) {
+  return (
+    <div style={{
+      background: '#fff',
+      border: '1px solid #E8E0D8',
+      borderRadius: 14,
+      padding: '20px 24px',
+      borderLeft: `4px solid ${accent}`,
+      boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
+      minWidth: 0,
+    }}>
+      <p style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8, margin: '0 0 8px' }}>{label}</p>
+      <p style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: '0 0 4px' }}>{value}</p>
+      {sub && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{sub}</p>}
+    </div>
+  );
+}
+
+// ─── TableCard ────────────────────────────────────────────────────────────────
+export function TableCard({ children }: { children: ReactNode }) {
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #E8E0D8',
+      borderRadius: 14, overflow: 'hidden',
+      boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
+    }}>
+      <div style={{ overflowX: 'auto' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Th / Td helpers ─────────────────────────────────────────────────────────
+export const TH: React.CSSProperties = {
+  padding: '11px 16px', textAlign: 'left', fontWeight: 700,
+  color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase',
+  background: '#F8F6F3', borderBottom: '1px solid #E8E0D8',
+  whiteSpace: 'nowrap',
+};
+export const TD: React.CSSProperties = {
+  padding: '12px 16px', fontSize: 14, color: '#1C1408',
+  borderBottom: '1px solid #F0EBE5', verticalAlign: 'middle',
+};
+
+// ─── DateInput ────────────────────────────────────────────────────────────────
+export function DateInput({ value, onChange, label, max }: {
+  value: string; onChange: (v: string) => void; label?: string; max?: string;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {label && <label style={{ fontSize: 11, fontWeight: 700, color: '#6B5D4F', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>}
+      <input
+        type="date"
+        value={value}
+        max={max}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          height: 36, padding: '0 10px',
+          border: '1.5px solid #E8E0D8', borderRadius: 10,
+          fontSize: 13, fontFamily: 'inherit',
+          background: '#fff', color: '#1C1408', outline: 'none',
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── SectionLabel ─────────────────────────────────────────────────────────────
+export function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <h2 style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
+      {children}
+    </h2>
+  );
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+export function Pagination({ page, totalPages, onChange }: {
+  page: number; totalPages: number; onChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '16px 0' }}>
+      <Btn small variant="secondary" disabled={page <= 1} onClick={() => onChange(page - 1)}>← Prev</Btn>
+      <span style={{ fontSize: 13, color: '#6B5D4F' }}>Page {page} of {totalPages}</span>
+      <Btn small variant="secondary" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>Next →</Btn>
     </div>
   );
 }

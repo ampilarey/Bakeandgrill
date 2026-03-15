@@ -498,4 +498,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
 }
 
 // Re-export shared UI helpers so pages can continue importing from '../components/Layout'
-export { Spinner, Card, Badge, ErrorMsg, EmptyState, PageHeader, Btn, Input, Select, statColor } from './SharedUI';
+export {
+  Spinner, Card, Badge, ErrorMsg, EmptyState, PageHeader, Btn, Input, Select, statColor,
+  Modal, ModalActions, StatCard, TableCard, TH, TD, DateInput, SectionLabel, Pagination,
+} from './SharedUI';

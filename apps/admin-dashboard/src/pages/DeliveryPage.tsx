@@ -98,7 +98,7 @@ export function DeliveryPage() {
               </div>
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18 }}>
                 <span>Total</span>
-                <span style={{ color: '#0ea5e9' }}>MVR {selected.total.toFixed(2)}</span>
+                <span style={{ color: '#D4813A' }}>MVR {selected.total.toFixed(2)}</span>
               </div>
             </div>
           </Card>
@@ -130,7 +130,7 @@ function DeliveryCard({ order, onSelect }: { order: Order; onSelect: (o: Order) 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
         <span style={{ fontSize: 12, color: '#94a3b8' }}>{timeAgo(order.created_at)}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 700, color: '#0ea5e9' }}>MVR {order.total.toFixed(2)}</span>
+              <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {order.total.toFixed(2)}</span>
           <Btn small variant="ghost" onClick={() => onSelect(order)}>Details</Btn>
         </div>
       </div>

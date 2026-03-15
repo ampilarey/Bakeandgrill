@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getAnalytics } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
+import {
+  Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard,
+  TableCard, TD, TH,
+} from '../components/Layout';
 
 type PeakHour     = { hour: number; label: string; count: number; avg_total: number };
 type RetentionRow = { week: string; new: number; returning: number; total_customers: number };
@@ -9,7 +13,7 @@ type ForecastRow  = { date: string; day: string; avg_orders: number };
 type LtvCustomer  = { id: number; name: string; total_spent: number; order_count: number; last_order: string };
 
 export default function AnalyticsPage() {
-    usePageTitle('Analytics');
+  usePageTitle('Analytics');
   const [peakHours,    setPeakHours]    = useState<PeakHour[]>([]);
   const [retention,    setRetention]    = useState<RetentionRow[]>([]);
   const [profitItems,  setProfitItems]  = useState<ProfitItem[]>([]);
@@ -20,8 +24,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     const loadAll = async () => {
-      setLoading(true);
-      setError('');
+      setLoading(true); setError('');
       try {
         const [ph, rt, pr, fc, ltv] = await Promise.all([
           getAnalytics<{ peak_hours: PeakHour[] }>('/admin/analytics/peak-hours'),
@@ -36,7 +39,7 @@ export default function AnalyticsPage() {
         setForecast(fc.forecast);
         setLtvCustomers(ltv.top_customers);
       } catch (e) {
-        setError((e as Error).message ?? 'Failed to load analytics. Please refresh.');
+        setError((e as Error).message ?? 'Failed to load analytics.');
       } finally {
         setLoading(false);
       }
@@ -44,113 +47,158 @@ export default function AnalyticsPage() {
     void loadAll();
   }, []);
 
-  const maxCount = Math.max(...peakHours.map(h => h.count), 1);
+  const maxCount = Math.max(...peakHours.map((h) => h.count), 1);
 
-  if (loading) return <div style={{ padding: 40, color: '#9CA3AF', textAlign: 'center' }}>Loading analytics…</div>;
-  if (error) return <div style={{ padding: 40, color: '#ef4444', textAlign: 'center', background: '#fef2f2', borderRadius: 12, margin: 24 }}>{error}</div>;
+  if (loading) return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><Spinner /></>;
+  if (error)   return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><ErrorMsg message={error} /></>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Analytics</h1>
-      <p style={{ color: '#6B7280', marginBottom: 32 }}>Insights, forecasting, and profitability</p>
+    <>
+      <PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" />
 
-      {/* ── Peak Hours ── */}
-      <section style={sectionStyle}>
-        <h2 style={sectionTitle}>Peak Hours (last 30 days)</h2>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120, marginTop: 16 }}>
-          {peakHours.filter(h => h.hour >= 7 && h.hour <= 22).map(h => (
-            <div key={h.hour} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: '100%', background: '#F59E0B', borderRadius: '4px 4px 0 0', height: `${(h.count / maxCount) * 100}px`, minHeight: h.count > 0 ? 4 : 0 }} title={`${h.count} orders`} />
-              <span style={{ fontSize: 10, color: '#9CA3AF' }}>{h.hour}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Demand Forecast ── */}
-      <section style={sectionStyle}>
-        <h2 style={sectionTitle}>7-Day Demand Forecast</h2>
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-          {forecast.map(f => (
-            <div key={f.date} style={{ background: '#EFF6FF', borderRadius: 12, padding: '14px 18px', minWidth: 80, textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#6B7280' }}>{f.day}</div>
-              <div style={{ fontSize: 11, color: '#9CA3AF' }}>{f.date.slice(5)}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#1D4ED8', marginTop: 4 }}>{f.avg_orders}</div>
-              <div style={{ fontSize: 11, color: '#6B7280' }}>orders</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        {/* ── Retention ── */}
-        <section style={sectionStyle}>
-          <h2 style={sectionTitle}>Customer Retention (12 weeks)</h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
-            <thead>
-              <tr>{['Week', 'New', 'Returning'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {retention.slice(-8).map(r => (
-                <tr key={r.week} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                  <td style={tdS}>{r.week}</td>
-                  <td style={{ ...tdS, color: '#10B981', fontWeight: 600 }}>{r.new}</td>
-                  <td style={{ ...tdS, color: '#3B82F6', fontWeight: 600 }}>{r.returning}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
-        {/* ── Top Customers (LTV) ── */}
-        <section style={sectionStyle}>
-          <h2 style={sectionTitle}>Top Customers by Revenue</h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
-            <thead>
-              <tr>{['Name', 'Orders', 'Revenue'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {ltvCustomers.slice(0, 8).map(c => (
-                <tr key={c.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                  <td style={tdS}>{c.name}</td>
-                  <td style={{ ...tdS, textAlign: 'center' as const }}>{c.order_count}</td>
-                  <td style={{ ...tdS, fontWeight: 600, color: '#059669' }}>MVR {c.total_spent.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+      {/* Peak Hours bar chart */}
+      <div style={{ marginBottom: 24 }}>
+        <SectionLabel>Peak Hours — last 30 days</SectionLabel>
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
+            {peakHours.filter((h) => h.hour >= 7 && h.hour <= 22).map((h) => (
+              <div key={h.hour} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div
+                  style={{
+                    width: '100%', borderRadius: '4px 4px 0 0',
+                    background: '#D4813A',
+                    height: `${Math.max((h.count / maxCount) * 100, h.count > 0 ? 4 : 0)}px`,
+                    transition: 'height 0.3s ease',
+                  }}
+                  title={`${h.label}: ${h.count} orders`}
+                />
+                <span style={{ fontSize: 10, color: '#9C8E7E' }}>{h.hour}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      {/* ── Profitability ── */}
-      <section style={sectionStyle}>
-        <h2 style={sectionTitle}>Item Profitability (this month)</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
-          <thead>
-            <tr>{['Item', 'Qty', 'Revenue', 'Gross Profit', 'Margin'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {profitItems.slice(0, 15).map(item => (
-              <tr key={item.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                <td style={tdS}>{item.name}</td>
-                <td style={{ ...tdS, textAlign: 'center' as const }}>{item.total_qty}</td>
-                <td style={tdS}>MVR {item.total_revenue.toFixed(2)}</td>
-                <td style={{ ...tdS, color: item.gross_profit >= 0 ? '#059669' : '#DC2626', fontWeight: 600 }}>
-                  MVR {item.gross_profit.toFixed(2)}
-                </td>
-                <td style={{ ...tdS, color: item.margin_pct >= 50 ? '#059669' : item.margin_pct >= 20 ? '#D97706' : '#DC2626' }}>
-                  {item.margin_pct}%
-                </td>
+      {/* 7-Day Demand Forecast */}
+      <div style={{ marginBottom: 24 }}>
+        <SectionLabel>7-Day Demand Forecast</SectionLabel>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {forecast.map((f) => (
+            <div key={f.date} style={{
+              background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12,
+              padding: '16px 20px', minWidth: 90, textAlign: 'center',
+              boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>{f.day}</div>
+              <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 6 }}>{f.date.slice(5)}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#D4813A' }}>{f.avg_orders}</div>
+              <div style={{ fontSize: 11, color: '#9C8E7E' }}>orders</div>
+            </div>
+          ))}
+          {forecast.length === 0 && (
+            <div style={{ color: '#9C8E7E', fontSize: 13, padding: '16px 0' }}>No forecast data available.</div>
+          )}
+        </div>
+      </div>
+
+      {/* Retention + Top Customers */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+        <div>
+          <SectionLabel>Customer Retention — last 12 weeks</SectionLabel>
+          <TableCard>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr>
+                  {['Week', 'New', 'Returning'].map((h) => <th key={h} style={TH}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {retention.slice(-8).map((r) => (
+                  <tr key={r.week}>
+                    <td style={{ ...TD, color: '#6B5D4F' }}>{r.week}</td>
+                    <td style={{ ...TD, color: '#22c55e', fontWeight: 700 }}>{r.new}</td>
+                    <td style={{ ...TD, color: '#D4813A', fontWeight: 700 }}>{r.returning}</td>
+                  </tr>
+                ))}
+                {retention.length === 0 && (
+                  <tr><td colSpan={3} style={{ ...TD, color: '#9C8E7E', textAlign: 'center' }}>No data yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </TableCard>
+        </div>
+
+        <div>
+          <SectionLabel>Top Customers by Revenue</SectionLabel>
+          <TableCard>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr>
+                  {['Name', 'Orders', 'Revenue'].map((h) => <th key={h} style={TH}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {ltvCustomers.slice(0, 8).map((c) => (
+                  <tr key={c.id}>
+                    <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{c.name}</td>
+                    <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{c.order_count}</td>
+                    <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {c.total_spent.toFixed(2)}</td>
+                  </tr>
+                ))}
+                {ltvCustomers.length === 0 && (
+                  <tr><td colSpan={3} style={{ ...TD, color: '#9C8E7E', textAlign: 'center' }}>No data yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </TableCard>
+        </div>
+      </div>
+
+      {/* Item Profitability */}
+      <div>
+        <SectionLabel>Item Profitability — this month</SectionLabel>
+        <TableCard>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr>
+                {['Item', 'Qty Sold', 'Revenue', 'Gross Profit', 'Margin'].map((h) => (
+                  <th key={h} style={TH}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    </div>
+            </thead>
+            <tbody>
+              {profitItems.slice(0, 15).map((item) => (
+                <tr key={item.id}>
+                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{item.name}</td>
+                  <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{item.total_qty}</td>
+                  <td style={{ ...TD, color: '#1C1408' }}>MVR {item.total_revenue.toFixed(2)}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: item.gross_profit >= 0 ? '#22c55e' : '#ef4444' }}>
+                    MVR {item.gross_profit.toFixed(2)}
+                  </td>
+                  <td style={{ ...TD, fontWeight: 700, color: item.margin_pct >= 50 ? '#22c55e' : item.margin_pct >= 20 ? '#D4813A' : '#ef4444' }}>
+                    {item.margin_pct}%
+                  </td>
+                </tr>
+              ))}
+              {profitItems.length === 0 && (
+                <tr><td colSpan={5} style={{ ...TD, color: '#9C8E7E', textAlign: 'center' }}>No profitability data yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </TableCard>
+      </div>
+
+      {/* Summary stats */}
+      {ltvCustomers.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <SectionLabel>Summary</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+            <StatCard label="Top Customer Spend" value={`MVR ${ltvCustomers[0]?.total_spent.toFixed(2) ?? '0'}`} accent="#D4813A" />
+            <StatCard label="Unique Customers" value={String(ltvCustomers.length)} accent="#8b5cf6" />
+            <StatCard label="Menu Items Tracked" value={String(profitItems.length)} accent="#22c55e" />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
-
-const sectionStyle: React.CSSProperties = { background: 'white', borderRadius: 14, padding: '20px 24px', marginBottom: 24, border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' };
-const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: 700, margin: 0, color: '#111827' };
-const thS: React.CSSProperties = { textAlign: 'left', padding: '8px 10px', fontSize: 11, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap', borderBottom: '2px solid #F3F4F6' };
-const tdS: React.CSSProperties = { padding: '10px', fontSize: 13 };

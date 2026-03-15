@@ -469,10 +469,10 @@ export function MenuPage() {
         {(['categories', 'items'] as View[]).map((t) => (
           <button key={t} onClick={() => setView(t)} style={{
             padding: '10px 22px', fontSize: 14, fontWeight: view === t ? 700 : 400,
-            color: view === t ? '#0ea5e9' : '#64748b',
+            color: view === t ? '#D4813A' : '#9C8E7E',
             background: 'none', border: 'none', cursor: 'pointer', textTransform: 'capitalize',
-            borderBottom: view === t ? '2px solid #0ea5e9' : '2px solid transparent',
-            marginBottom: -2,
+            borderBottom: view === t ? '2px solid #D4813A' : '2px solid transparent',
+            marginBottom: -2, fontFamily: 'inherit',
           }}>
             {t === 'categories' ? `Categories (${categories.length})` : 'Items'}
           </button>
@@ -576,7 +576,7 @@ export function MenuPage() {
                         <td style={{ padding: '10px 14px', color: '#475569', fontSize: 13 }}>
                           {item.category?.name ?? <span style={{ color: '#cbd5e1' }}>—</span>}
                         </td>
-                        <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0ea5e9' }}>
+                        <td style={{ padding: '10px 14px', fontWeight: 700, color: '#D4813A' }}>
                           MVR {item.base_price.toFixed(2)}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
