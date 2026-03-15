@@ -15,6 +15,68 @@ const HUB_CARDS = [
   { id: 'integrations', icon: Link2,       label: 'Integrations', desc: 'Xero, Webhooks, SMS provider' },
 ];
 
+const WEEK_DAYS = [
+  { key: 'mon', label: 'Monday' },
+  { key: 'tue', label: 'Tuesday' },
+  { key: 'wed', label: 'Wednesday' },
+  { key: 'thu', label: 'Thursday' },
+  { key: 'fri', label: 'Friday' },
+  { key: 'sat', label: 'Saturday' },
+  { key: 'sun', label: 'Sunday' },
+];
+
+function BusinessHoursEditor({
+  label, description, value, onChange,
+}: {
+  label: string; description?: string; value: string; onChange: (v: string) => void;
+}) {
+  let parsed: Record<string, string> = {};
+  try { parsed = JSON.parse(value || '{}'); } catch { /* keep empty */ }
+
+  const update = (day: string, v: string) => {
+    onChange(JSON.stringify({ ...parsed, [day]: v }));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{label}</label>
+      {description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{description}</p>}
+      <div style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 12, overflow: 'hidden' }}>
+        {WEEK_DAYS.map(({ key, label: dayLabel }, i) => {
+          const val = parsed[key] ?? '';
+          const isClosed = val.toLowerCase() === 'closed';
+          return (
+            <div
+              key={key}
+              style={{
+                display: 'flex', alignItems: 'center', padding: '10px 14px',
+                borderTop: i === 0 ? 'none' : '1px solid #F0EBE5', gap: 12,
+                background: isClosed ? '#FAFAFA' : '#fff',
+              }}
+            >
+              <span style={{ width: 90, fontSize: 13, fontWeight: 600, color: '#1C1408', flexShrink: 0 }}>
+                {dayLabel}
+              </span>
+              <input
+                value={val}
+                onChange={(e) => update(key, e.target.value)}
+                placeholder="e.g. 8:00 AM – 8:00 PM or Closed"
+                style={{
+                  flex: 1, height: 32, padding: '0 10px',
+                  border: '1px solid #E8E0D8', borderRadius: 8,
+                  fontSize: 13, fontFamily: 'inherit', outline: 'none',
+                  color: isClosed ? '#9C8E7E' : '#1C1408',
+                  background: '#fff',
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Website Settings sub-page ────────────────────────────────────────────────
 function WebsiteSettings() {
   const { success, error } = useToast();
@@ -65,9 +127,9 @@ function WebsiteSettings() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="skeleton h-14 rounded-[10px]" />
+          <div key={i} className="skeleton" style={{ height: 56, borderRadius: 10 }} />
         ))}
       </div>
     );
@@ -77,7 +139,7 @@ function WebsiteSettings() {
   const tabs = groups.length > 0 ? groups : ['General', 'Branding', 'Footer', 'Social', 'SEO'];
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <Tabs active={activeTab} onChange={setActiveTab}>
         <TabList>
           {tabs.map((g) => <Tab key={g} id={g.toLowerCase()}>{g}</Tab>)}
@@ -85,18 +147,24 @@ function WebsiteSettings() {
 
         {tabs.map((group) => (
           <TabPanel key={group} id={group.toLowerCase()}>
-            <div className="pt-5 space-y-4 max-w-2xl">
+            <div style={{ paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 640 }}>
               {(settings[group] ?? []).map((item) => {
+
+                // ── Image upload ───────────────────────────────────
                 if (item.type === 'image') {
                   return (
-                    <div key={item.key} className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-[#1C1408]">{item.label}</label>
-                      {item.description && <p className="text-xs text-[#9C8E7E]">{item.description}</p>}
-                      <div className="flex items-center gap-3">
+                    <div key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{item.label}</label>
+                      {item.description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{item.description}</p>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {form[item.key] ? (
-                          <img src={form[item.key]} alt={item.label} className="w-16 h-16 object-contain rounded-[10px] border border-[#E8E0D8] p-1 bg-white" />
+                          <img
+                            src={form[item.key]}
+                            alt={item.label}
+                            style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 10, border: '1px solid #E8E0D8', padding: 4, background: '#fff' }}
+                          />
                         ) : (
-                          <div className="w-16 h-16 rounded-[10px] border border-dashed border-[#E8E0D8] flex items-center justify-center text-[#9C8E7E]">
+                          <div style={{ width: 64, height: 64, borderRadius: 10, border: '1.5px dashed #E8E0D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9C8E7E' }}>
                             <Upload size={20} />
                           </div>
                         )}
@@ -113,16 +181,17 @@ function WebsiteSettings() {
                   );
                 }
 
+                // ── Colour picker ──────────────────────────────────
                 if (item.type === 'color') {
                   return (
-                    <div key={item.key} className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-[#1C1408]">{item.label}</label>
-                      <div className="flex items-center gap-3">
+                    <div key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{item.label}</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <input
                           type="color"
                           value={form[item.key] ?? '#000000'}
                           onChange={(e) => setForm((f) => ({ ...f, [item.key]: e.target.value }))}
-                          className="w-10 h-10 rounded-[8px] border border-[#E8E0D8] cursor-pointer p-0.5"
+                          style={{ width: 40, height: 40, borderRadius: 8, border: '1px solid #E8E0D8', cursor: 'pointer', padding: 2 }}
                         />
                         <Input
                           value={form[item.key] ?? ''}
@@ -135,12 +204,13 @@ function WebsiteSettings() {
                   );
                 }
 
+                // ── Boolean toggle ─────────────────────────────────
                 if (item.type === 'boolean') {
                   return (
-                    <div key={item.key} className="flex items-center justify-between py-2">
+                    <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0EBE5' }}>
                       <div>
-                        <p className="text-sm font-semibold text-[#1C1408]">{item.label}</p>
-                        {item.description && <p className="text-xs text-[#9C8E7E]">{item.description}</p>}
+                        <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1408', margin: 0 }}>{item.label}</p>
+                        {item.description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: '2px 0 0' }}>{item.description}</p>}
                       </div>
                       <Toggle
                         checked={form[item.key] === 'true'}
@@ -150,21 +220,41 @@ function WebsiteSettings() {
                   );
                 }
 
+                // ── Business Hours JSON ────────────────────────────
+                if (item.type === 'json' && item.key.toLowerCase().includes('hour')) {
+                  return (
+                    <BusinessHoursEditor
+                      key={item.key}
+                      label={item.label}
+                      description={item.description ?? undefined}
+                      value={form[item.key] ?? ''}
+                      onChange={(v) => setForm((f) => ({ ...f, [item.key]: v }))}
+                    />
+                  );
+                }
+
+                // ── Generic textarea / JSON ────────────────────────
                 if (item.type === 'textarea' || item.type === 'json') {
                   return (
-                    <div key={item.key} className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-[#1C1408]">{item.label}</label>
-                      {item.description && <p className="text-xs text-[#9C8E7E]">{item.description}</p>}
+                    <div key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{item.label}</label>
+                      {item.description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{item.description}</p>}
                       <textarea
                         value={form[item.key] ?? ''}
                         onChange={(e) => setForm((f) => ({ ...f, [item.key]: e.target.value }))}
                         rows={item.type === 'json' ? 6 : 3}
-                        className="w-full rounded-[10px] border border-[#E8E0D8] bg-white px-3 py-2 text-sm text-[#1C1408] outline-none resize-y focus:border-[#D4813A] focus:ring-2 focus:ring-[#D4813A]/20 font-mono"
+                        style={{
+                          width: '100%', borderRadius: 10, border: '1.5px solid #E8E0D8',
+                          background: '#fff', padding: '10px 12px', fontSize: 13,
+                          fontFamily: 'monospace', outline: 'none', resize: 'vertical',
+                          color: '#1C1408', boxSizing: 'border-box',
+                        }}
                       />
                     </div>
                   );
                 }
 
+                // ── Default text input ─────────────────────────────
                 return (
                   <Input
                     key={item.key}
@@ -176,7 +266,7 @@ function WebsiteSettings() {
                 );
               })}
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
                 <Button variant="primary" icon={<Save size={15} />} onClick={handleSave} loading={saving}>
                   Save Changes
                 </Button>
@@ -186,7 +276,7 @@ function WebsiteSettings() {
         ))}
       </Tabs>
 
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
     </div>
   );
 }
@@ -229,7 +319,6 @@ function PermissionsSettings() {
     try {
       await updateUserPermissions(selectedUserId, overrides);
       success('Permissions saved');
-      // Refresh
       const { permissions } = await getUserPermissions(selectedUserId);
       setPerms(permissions);
       setOverrides({});
@@ -241,14 +330,18 @@ function PermissionsSettings() {
   };
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 720 }}>
       <Card>
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-[#1C1408]">Select staff member</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>Select staff member</label>
           <select
             value={selectedUserId ?? ''}
             onChange={(e) => setSelectedUserId(Number(e.target.value) || null)}
-            className="h-9 rounded-[10px] border border-[#E8E0D8] bg-white px-3 text-sm text-[#1C1408] outline-none focus:border-[#D4813A] focus:ring-2 focus:ring-[#D4813A]/20"
+            style={{
+              height: 36, borderRadius: 10, border: '1.5px solid #E8E0D8',
+              background: '#fff', padding: '0 12px', fontSize: 14, fontFamily: 'inherit',
+              color: '#1C1408', outline: 'none', cursor: 'pointer',
+            }}
           >
             <option value="">— Choose staff member —</option>
             {staff.map((s) => (
@@ -261,27 +354,38 @@ function PermissionsSettings() {
       {selectedUserId && (
         <Card>
           {loadingPerms ? (
-            <div className="space-y-3">
-              {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton h-9 rounded-[8px]" />)}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ height: 36, borderRadius: 8 }} />
+              ))}
             </div>
           ) : (
-            <div className="space-y-5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {Object.entries(grouped).map(([group, items]) => (
                 <div key={group}>
-                  <p className="text-[11px] font-bold text-[#9C8E7E] uppercase tracking-wider mb-2">{group}</p>
-                  <div className="space-y-1">
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8, margin: '0 0 8px' }}>
+                    {group}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {items.map((p) => {
                       const effective = overrides[p.slug] !== undefined ? overrides[p.slug] : p.granted;
                       const isOverridden = overrides[p.slug] !== undefined;
                       return (
-                        <div key={p.slug} className="flex items-center justify-between py-1.5 px-2 rounded-[8px] hover:bg-[#F8F6F3]">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-[#1C1408]">{p.name}</span>
+                        <div
+                          key={p.slug}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '8px 10px', borderRadius: 8,
+                            background: isOverridden ? '#FFF8F3' : 'transparent',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 14, color: '#1C1408' }}>{p.name}</span>
                             <Badge variant={p.source === 'override' ? 'brand' : 'neutral'} className="text-[10px]">
                               {isOverridden ? 'modified' : p.source}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Toggle
                               size="sm"
                               checked={Boolean(effective)}
@@ -290,7 +394,7 @@ function PermissionsSettings() {
                             {isOverridden && (
                               <button
                                 onClick={() => setOverrides((o) => { const n = { ...o }; delete n[p.slug]; return n; })}
-                                className="text-[10px] text-[#9C8E7E] hover:text-[#D4813A] underline"
+                                style={{ fontSize: 11, color: '#9C8E7E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
                               >
                                 reset
                               </button>
@@ -303,7 +407,7 @@ function PermissionsSettings() {
                 </div>
               ))}
 
-              <div className="flex justify-between items-center pt-3 border-t border-[#E8E0D8]">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid #E8E0D8' }}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -327,13 +431,13 @@ function PermissionsSettings() {
 // ─── Devices sub-page (placeholder) ──────────────────────────────────────────
 function DevicesSettings() {
   return (
-    <div className="max-w-xl">
+    <div style={{ maxWidth: 520 }}>
       <Card>
-        <p className="text-sm text-[#9C8E7E]">
+        <p style={{ fontSize: 14, color: '#9C8E7E', margin: 0 }}>
           POS and KDS devices are registered automatically on first login using a device ID stored in localStorage.
           Manage active devices from the Devices page.
         </p>
-        <div className="mt-4">
+        <div style={{ marginTop: 16 }}>
           <Button variant="secondary" onClick={() => window.location.href = '/admin/devices'}>
             Manage Devices →
           </Button>
@@ -346,12 +450,12 @@ function DevicesSettings() {
 // ─── Integrations sub-page (placeholder) ─────────────────────────────────────
 function IntegrationsSettings() {
   return (
-    <div className="max-w-xl">
+    <div style={{ maxWidth: 520 }}>
       <Card>
-        <p className="text-sm text-[#9C8E7E]">
+        <p style={{ fontSize: 14, color: '#9C8E7E', margin: 0 }}>
           Configure Xero, Webhooks, and SMS integrations here.
         </p>
-        <div className="mt-4 flex gap-2 flex-wrap">
+        <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Button variant="secondary" onClick={() => window.location.href = '/admin/webhooks'}>
             Webhooks →
           </Button>
@@ -377,20 +481,22 @@ export function SettingsPage() {
     return (
       <div className="animate-fade-in">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-5 text-sm">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, fontSize: 14 }}>
           <button
             onClick={() => setActive(null)}
-            className="text-[#9C8E7E] hover:text-[#D4813A] transition-colors"
+            style={{ color: '#9C8E7E', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, padding: 0 }}
+            onMouseOver={(e) => (e.currentTarget.style.color = '#D4813A')}
+            onMouseOut={(e) => (e.currentTarget.style.color = '#9C8E7E')}
           >
             Settings
           </button>
-          <span className="text-[#9C8E7E]">›</span>
-          <span className="font-semibold text-[#1C1408]">{card.label}</span>
+          <span style={{ color: '#9C8E7E' }}>›</span>
+          <span style={{ fontWeight: 600, color: '#1C1408' }}>{card.label}</span>
         </div>
 
-        <div className="mb-5">
-          <h1 className="text-xl font-bold text-[#1C1408]">{card.label}</h1>
-          <p className="text-sm text-[#9C8E7E]">{card.desc}</p>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: 0 }}>{card.label}</h1>
+          <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>{card.desc}</p>
         </div>
 
         {active === 'website'      && <WebsiteSettings />}
@@ -403,23 +509,37 @@ export function SettingsPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#1C1408]">Settings</h1>
-        <p className="text-sm text-[#9C8E7E] mt-1">Manage your business settings, permissions, and integrations</p>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1C1408', margin: 0 }}>Settings</h1>
+        <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>Manage your business settings, permissions, and integrations</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
         {HUB_CARDS.map(({ id, icon: Icon, label, desc }) => (
           <button
             key={id}
             onClick={() => setActive(id)}
-            className="text-left p-5 bg-white border border-[#E8E0D8] rounded-[14px] shadow-[0_1px_2px_rgba(28,20,8,0.05)] hover:border-[#D4813A]/40 hover:shadow-md transition-all group"
+            style={{
+              textAlign: 'left', padding: 20,
+              background: '#fff', border: '1.5px solid #E8E0D8',
+              borderRadius: 14, boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
+              cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
+              fontFamily: 'inherit',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(212,129,58,0.4)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(28,20,8,0.08)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderColor = '#E8E0D8';
+              e.currentTarget.style.boxShadow = '0 1px 2px rgba(28,20,8,0.05)';
+            }}
           >
-            <div className="w-10 h-10 rounded-[10px] bg-[#D4813A]/10 flex items-center justify-center text-[#D4813A] mb-3 group-hover:bg-[#D4813A]/20 transition-colors">
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(212,129,58,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D4813A', marginBottom: 12 }}>
               <Icon size={20} />
             </div>
-            <p className="font-bold text-[#1C1408] text-sm mb-1">{label}</p>
-            <p className="text-xs text-[#9C8E7E] leading-relaxed">{desc}</p>
+            <p style={{ fontWeight: 700, color: '#1C1408', fontSize: 14, margin: '0 0 4px' }}>{label}</p>
+            <p style={{ fontSize: 12, color: '#9C8E7E', lineHeight: 1.5, margin: 0 }}>{desc}</p>
           </button>
         ))}
       </div>

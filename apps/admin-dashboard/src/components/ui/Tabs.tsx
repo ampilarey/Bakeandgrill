@@ -29,7 +29,16 @@ interface TabListProps {
 
 export function TabList({ children, className = '' }: TabListProps) {
   return (
-    <div className={['flex border-b border-[#E8E0D8] overflow-x-auto', className].join(' ')}>
+    <div
+      className={className}
+      style={{
+        display: 'flex',
+        borderBottom: '2px solid #E8E0D8',
+        overflowX: 'auto',
+        flexWrap: 'nowrap',
+        gap: 0,
+      }}
+    >
       {children}
     </div>
   );
@@ -46,12 +55,22 @@ export function Tab({ id, children }: TabProps) {
   return (
     <button
       onClick={() => ctx.onChange(id)}
-      className={[
-        'px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors',
-        isActive
-          ? 'border-[#D4813A] text-[#D4813A]'
-          : 'border-transparent text-[#9C8E7E] hover:text-[#1C1408] hover:border-[#E8E0D8]',
-      ].join(' ')}
+      style={{
+        padding: '10px 20px',
+        fontSize: 14,
+        fontWeight: isActive ? 700 : 500,
+        color: isActive ? '#D4813A' : '#9C8E7E',
+        background: 'none',
+        border: 'none',
+        borderBottom: `2px solid ${isActive ? '#D4813A' : 'transparent'}`,
+        marginBottom: -2,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
+        transition: 'color 0.15s',
+        outline: 'none',
+        flexShrink: 0,
+      }}
     >
       {children}
     </button>

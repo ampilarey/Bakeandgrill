@@ -86,12 +86,12 @@ export function DeliveryPage() {
                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
               </div>
               <Badge label={selected.status} color={statColor(selected.status)} />
-              <div style={{ background: '#f0f9ff', borderRadius: 10, padding: 16, marginTop: 16 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#0369a1', marginBottom: 8 }}>Delivery Details</p>
-                <p style={{ fontSize: 14, color: '#0f172a' }}>{selected.delivery_address_line1 ?? 'N/A'}</p>
-                {selected.delivery_island && <p style={{ fontSize: 13, color: '#475569' }}>{selected.delivery_island}</p>}
+              <div style={{ background: '#FFF8F3', borderRadius: 10, padding: 16, marginTop: 16, border: '1px solid #F0DCC8' }}>
+                <p style={{ fontWeight: 700, fontSize: 13, color: '#D4813A', marginBottom: 8 }}>Delivery Details</p>
+                <p style={{ fontSize: 14, color: '#1C1408' }}>{selected.delivery_address_line1 ?? 'N/A'}</p>
+                {selected.delivery_island && <p style={{ fontSize: 13, color: '#6B5D4F' }}>{selected.delivery_island}</p>}
                 {selected.delivery_contact_name && (
-                  <p style={{ fontSize: 13, color: '#475569', marginTop: 6 }}>
+                  <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 6 }}>
                     👤 {selected.delivery_contact_name} · {selected.delivery_contact_phone}
                   </p>
                 )}
