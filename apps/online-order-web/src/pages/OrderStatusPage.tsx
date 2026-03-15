@@ -4,6 +4,7 @@ import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, AP
 import { BIZ } from "../constants/biz";
 import { ReviewForm } from "../components/ReviewForm";
 import { useCart } from "../context/CartContext";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -209,6 +210,8 @@ export function OrderStatusPage() {
   const isCancelled = order?.status === 'cancelled';
   const isDone = order?.status === 'completed';
   const activeStep = order ? stepIndex(order.status) : -1;
+
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe } = usePushNotifications(token);
 
   return (
     <div style={S.page}>
@@ -422,6 +425,45 @@ export function OrderStatusPage() {
                 ? '🟢 Live tracking enabled — updates instantly'
                 : '🔄 Auto-refreshing every 10 seconds'}
             </p>
+
+            {/* Push notification opt-in banner */}
+            {pushSupported && !pushSubscribed && !isCancelled && !isDone && token && (
+              <div style={{
+                ...S.card,
+                display: 'flex', alignItems: 'center', gap: 14,
+                background: 'linear-gradient(135deg, #fff7ed 0%, #fff 100%)',
+                borderColor: 'rgba(234, 88, 12, 0.2)',
+              }}>
+                <div style={{ fontSize: 28, flexShrink: 0 }}>🔔</div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 2px', color: 'var(--color-text)' }}>
+                    Get notified when your order is ready
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+                    We'll send you a push notification as your order progresses.
+                  </p>
+                </div>
+                <button
+                  onClick={() => void pushSubscribe()}
+                  disabled={pushLoading}
+                  style={{
+                    background: 'var(--color-primary)', color: 'white',
+                    border: 'none', borderRadius: '10px',
+                    padding: '8px 16px', fontSize: 13, fontWeight: 700,
+                    cursor: pushLoading ? 'not-allowed' : 'pointer',
+                    flexShrink: 0, fontFamily: 'inherit',
+                    opacity: pushLoading ? 0.7 : 1,
+                  }}
+                >
+                  {pushLoading ? '…' : 'Enable'}
+                </button>
+              </div>
+            )}
+            {pushSupported && pushSubscribed && !isCancelled && !isDone && (
+              <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-success)' }}>
+                🔔 Push notifications enabled — you'll be notified when your order status changes.
+              </p>
+            )}
 
             {/* Review form */}
             {token && ['completed', 'paid'].includes(order.status) && !reviewDone && (

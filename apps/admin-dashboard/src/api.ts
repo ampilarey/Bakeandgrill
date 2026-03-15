@@ -18,6 +18,17 @@ const { request: req } = createApiClient({
   getToken: () => localStorage.getItem('admin_token'),
 });
 
+/**
+ * Generic authenticated request helper for ad-hoc admin API calls.
+ * Uses the same token and base URL as all other admin requests.
+ */
+export async function adminRequest<T = unknown>(
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
+  return req(path, options);
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function pinLogin(pin: string): Promise<{ token: string; user: StaffUser }> {
@@ -63,6 +74,9 @@ export type Order = {
   delivery_island?: string | null;
   delivery_contact_name?: string | null;
   delivery_contact_phone?: string | null;
+  delivery_driver_id?: number | null;
+  driver?: { id: number; name: string; phone?: string | null } | null;
+  driver_assigned_at?: string | null;
 };
 
 export type OrdersResponse = {

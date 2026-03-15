@@ -160,37 +160,37 @@ class StreamController extends Controller
         $cursor = $request->header('Last-Event-ID')
             ?? $request->query('since', '');
 
-        return $this->sse->stream(
-            function (string $c) use ($order): array {
-                // Refresh the order and check if it changed since cursor
-                $order->refresh();
-                [$since, $sinceId] = $this->orderProvider->parseCursor($c);
+        $fetchEvents = function (string $c) use ($order): array {
+            $order->refresh();
+            [$since, $sinceId] = $this->orderProvider->parseCursor($c);
 
-                if ($order->updated_at > $since || ($order->updated_at == $since && $order->id > $sinceId)) {
-                    $eventType = match ($order->status) {
-                        'paid' => 'order.paid',
-                        'completed' => 'order.completed',
-                        'cancelled' => 'order.cancelled',
-                        default => 'order.updated',
-                    };
-                    $newCursor = $order->updated_at->getPreciseTimestamp(3) . '.' . $order->id;
+            if ($order->updated_at > $since || ($order->updated_at == $since && $order->id > $sinceId)) {
+                $eventType = match ($order->status) {
+                    'paid'      => 'order.paid',
+                    'completed' => 'order.completed',
+                    'cancelled' => 'order.cancelled',
+                    default     => 'order.updated',
+                };
+                $newCursor = $order->updated_at->getPreciseTimestamp(3) . '.' . $order->id;
 
-                    return [new \App\Domains\Realtime\DTOs\StreamEvent(
-                        id: $newCursor,
-                        type: $eventType,
-                        data: json_encode([
-                            'id' => $order->id,
-                            'order_number' => $order->order_number,
-                            'status' => $order->status,
-                            'paid_at' => $order->paid_at?->toIso8601String(),
-                            'updated_at' => $order->updated_at?->toIso8601String(),
-                        ], JSON_UNESCAPED_UNICODE),
-                    )];
-                }
+                return [new \App\Domains\Realtime\DTOs\StreamEvent(
+                    id: $newCursor,
+                    type: $eventType,
+                    data: json_encode([
+                        'id'           => $order->id,
+                        'order_number' => $order->order_number,
+                        'status'       => $order->status,
+                        'paid_at'      => $order->paid_at?->toIso8601String(),
+                        'updated_at'   => $order->updated_at?->toIso8601String(),
+                    ], JSON_UNESCAPED_UNICODE),
+                )];
+            }
 
-                return [];
-            },
-            (string) $cursor,
-        );
+            return [];
+        };
+
+        // Use Redis pub/sub for single-order tracking when available — lower latency,
+        // no DB polling. Falls back to DB polling if Redis is not configured.
+        return $this->sse->streamOrderViaRedis($order->id, $fetchEvents, (string) $cursor);
     }
 }

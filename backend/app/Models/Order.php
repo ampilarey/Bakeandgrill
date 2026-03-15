@@ -99,4 +99,9 @@ class Order extends Model
     {
         return $this->hasOne(Receipt::class);
     }
+
+    public function deliveryDriver(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryDriver::class, 'delivery_driver_id');
+    }
 }

@@ -342,6 +342,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/orders/{order}/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'update']);
 });
 
+// ─── Delivery Drivers (staff only) ───────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'permission:reservations.manage'])->group(function () {
+    Route::get('/delivery/drivers', [App\Http\Controllers\Api\DeliveryDriverController::class, 'index']);
+    Route::post('/delivery/drivers', [App\Http\Controllers\Api\DeliveryDriverController::class, 'store']);
+    Route::patch('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'update']);
+    Route::delete('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'destroy']);
+    Route::post('/delivery/orders/{order}/assign-driver', [App\Http\Controllers\Api\DeliveryDriverController::class, 'assignDriver']);
+});
+
 // ─── Partial Online Payment ───────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments/online/initiate-partial', [App\Http\Controllers\Api\PaymentController::class, 'initiatePartial']);
@@ -469,6 +478,9 @@ Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/spe
 });
 
 // ─── Push Notification Subscriptions ─────────────────────────────────────────
+
+// Public: VAPID public key for subscription setup (no auth needed)
+Route::get('/push/vapid-key', [App\Http\Controllers\Api\PushSubscriptionController::class, 'vapidKey']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/push/subscribe',   [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
