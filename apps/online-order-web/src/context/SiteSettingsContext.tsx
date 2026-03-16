@@ -13,6 +13,7 @@ export interface SiteSettings {
   business_whatsapp?: string;
   business_viber?: string;
   maps_embed_url?: string;
+  delivery_eta?: string;
   [key: string]: string | undefined;
 }
 
@@ -37,13 +38,17 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     fetch('/api/site-settings/public')
       .then((r) => r.json())
-      .then(({ settings: s }: { settings: Record<string, string> }) => {
+      .then(({ settings: s }: { settings: Record<string, string | null> }) => {
         if (s && typeof s === 'object') {
-          setSettings({ ...DEFAULT_SETTINGS, ...s });
+          // Filter out null values so they don't overwrite non-null defaults
+          const nonNull = Object.fromEntries(
+            Object.entries(s).filter(([, v]) => v != null)
+          ) as SiteSettings;
+          setSettings({ ...DEFAULT_SETTINGS, ...nonNull });
         }
       })
-      .catch(() => {
-        // Gracefully keep defaults if the API is unavailable
+      .catch((e) => {
+        console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
       });
   }, []);
 

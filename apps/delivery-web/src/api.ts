@@ -1,4 +1,6 @@
-const BASE = '/api';
+const BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+  (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
 function getToken(): string | null {
   return localStorage.getItem('driver_token');

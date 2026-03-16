@@ -17,11 +17,13 @@ function LogsTab() {
   const [logs, setLogs] = useState<SmsLog[]>([]);
   const [stats, setStats] = useState<{ total: number; sent: number; failed: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   const load = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [logsRes, statsRes] = await Promise.all([
         fetchSmsLogs({ type: typeFilter || undefined, status: statusFilter || undefined }),
@@ -29,6 +31,8 @@ function LogsTab() {
       ]);
       setLogs(logsRes.data);
       setStats(statsRes);
+    } catch (e) {
+      setLoadError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -38,6 +42,11 @@ function LogsTab() {
 
   return (
     <>
+      {loadError && (
+        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
+          {loadError}
+        </div>
+      )}
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
           <StatCard label="Total SMS" value={stats.total.toLocaleString()} accent="#D4813A" />
@@ -180,7 +189,13 @@ function CampaignsTab() {
   };
 
   const charCount = message.length;
-  const segments = charCount <= 160 ? 1 : Math.ceil(charCount / 153);
+  // Detect if the message contains non-GSM7 characters (Thaana, emoji, etc.)
+  // GSM-7: single segment = 160 chars, multipart = 153 chars per segment
+  // Unicode (UCS-2): single segment = 70 chars, multipart = 67 chars per segment
+  const isUnicode = /[^\u0000-\u007F\u00A0-\u00FF\u20AC\u0160\u0161\u017D\u017E\u0152\u0153\u0178]/.test(message);
+  const singleLimit = isUnicode ? 70 : 160;
+  const multiLimit  = isUnicode ? 67 : 153;
+  const segments = charCount <= singleLimit ? 1 : Math.ceil(charCount / multiLimit);
 
   return (
     <>

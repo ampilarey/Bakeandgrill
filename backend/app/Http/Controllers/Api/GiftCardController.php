@@ -47,7 +47,17 @@ class GiftCardController extends Controller
             'expires_at' => ['nullable', 'date'],
         ]);
 
-        $code = strtoupper(Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4));
+        $code = null;
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $candidate = strtoupper(Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4));
+            if (!GiftCard::where('code', $candidate)->exists()) {
+                $code = $candidate;
+                break;
+            }
+        }
+        if ($code === null) {
+            return response()->json(['message' => 'Could not generate a unique gift card code. Please try again.'], 500);
+        }
 
         $card = GiftCard::create([
             'code'                     => $code,

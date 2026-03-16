@@ -18,11 +18,13 @@ export type ApiClient = ReturnType<typeof createApiClient>;
 export function createApiClient(config: ApiClientConfig) {
   async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const token = config.getToken?.();
+    // Don't set Content-Type for FormData — browser must set it with the multipart boundary
+    const isFormData = options.body instanceof FormData;
 
     const response = await fetch(`${config.baseUrl}${path}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
         Accept: 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         // Caller-supplied headers override defaults (including auth if needed)

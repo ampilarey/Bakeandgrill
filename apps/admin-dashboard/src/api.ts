@@ -835,10 +835,27 @@ export async function updateSiteSettings(settings: Record<string, string | null>
 }
 
 export async function uploadSiteLogo(key: string, file: File): Promise<{ url: string }> {
+  const token = localStorage.getItem('admin_token');
   const form = new FormData();
   form.append('file', file);
   form.append('key', key);
-  return req('/site-settings/upload', { method: 'POST', body: form });
+  const res = await fetch(`${BASE}/site-settings/upload`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: form,
+  });
+  if (res.status === 401) {
+    window.dispatchEvent(new CustomEvent('auth_expired'));
+    throw new Error('Session expired. Please log in again.');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body.message ?? `Upload failed (${res.status})`);
+  }
+  return res.json() as Promise<{ url: string }>;
 }
 
 // ── Permissions ───────────────────────────────────────────────────────────────

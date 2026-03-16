@@ -48,8 +48,9 @@ export default function LocationTracker() {
       try {
         await api.postLocation(payload);
       } catch {
-        // Put failed updates back so we don't lose them
-        buffer.current = [...payload, ...buffer.current];
+        // Put failed updates back so we don't lose them; cap at 50 to prevent unbounded growth
+        const merged = [...payload, ...buffer.current];
+        buffer.current = merged.slice(0, 50);
       }
     }, BATCH_INTERVAL_MS);
 

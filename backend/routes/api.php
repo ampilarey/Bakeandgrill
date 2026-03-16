@@ -337,13 +337,13 @@ Route::middleware(['auth:sanctum', 'permission:loyalty.manage'])->prefix('admin'
 });
 
 // ─── Delivery Orders ─────────────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/orders/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'store']);
     Route::patch('/orders/{order}/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'update']);
 });
 
 // ─── Delivery Drivers (staff only) ───────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:reservations.manage'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:orders.manage'])->group(function () {
     Route::get('/delivery/drivers', [App\Http\Controllers\Api\DeliveryDriverController::class, 'index']);
     Route::post('/delivery/drivers', [App\Http\Controllers\Api\DeliveryDriverController::class, 'store']);
     Route::patch('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'update']);
@@ -447,7 +447,7 @@ Route::middleware(['auth:sanctum', 'permission:staff.schedule'])->prefix('admin/
 });
 
 // Waste Logs (staff)
-Route::middleware(['auth:sanctum'])->prefix('waste-logs')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token'])->prefix('waste-logs')->group(function () {
     Route::get('/',  [App\Http\Controllers\Api\WasteLogController::class, 'index']);
     Route::post('/', [App\Http\Controllers\Api\WasteLogController::class, 'store']);
 });
@@ -545,7 +545,7 @@ Route::middleware(['auth:sanctum', 'permission:reservations.manage'])->prefix('a
 });
 
 // ─── Time Clock ────────────────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/time-clock/status',  [App\Http\Controllers\Api\TimeClockController::class, 'status']);
     Route::post('/time-clock/in',     [App\Http\Controllers\Api\TimeClockController::class, 'clockIn']);
     Route::post('/time-clock/out',    [App\Http\Controllers\Api\TimeClockController::class, 'clockOut']);

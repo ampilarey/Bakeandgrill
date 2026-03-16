@@ -90,13 +90,14 @@ export function CheckoutPage() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const s = useSiteSettings();
 
-  const siteName  = s.site_name        || 'Bake & Grill';
-  const phone     = s.business_phone   || '+960 912 0011';
-  const phoneTel  = 'tel:' + phone.replace(/[^+\d]/g, '');
-  const email     = s.business_email   || 'hello@bakeandgrill.mv';
-  const address   = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
-  const waLink    = s.business_whatsapp|| 'https://wa.me/9609120011';
-  const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
+  const siteName    = s.site_name        || 'Bake & Grill';
+  const phone       = s.business_phone   || '+960 912 0011';
+  const phoneTel    = 'tel:' + phone.replace(/[^+\d]/g, '');
+  const email       = s.business_email   || 'hello@bakeandgrill.mv';
+  const address     = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
+  const waLink      = s.business_whatsapp|| 'https://wa.me/9609120011';
+  const viberLink   = s.business_viber   || 'viber://chat?number=9609120011';
+  const deliveryEta = s.delivery_eta     || '30–45 min';
 
   useEffect(() => { document.title = `Checkout — ${siteName}`; }, [siteName]);
 
@@ -173,7 +174,7 @@ export function CheckoutPage() {
               {orderType === 'delivery' && (
                 <SectionCard title="Delivery Details">
                   <div style={S.infoNote}>
-                    <span>🛵</span> Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong> · Estimated 30–45 min
+                    <span>🛵</span> Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong> · Estimated {deliveryEta}
                   </div>
                   <Field label="Address *" placeholder="House / Flat number, Street"
                     value={delivery.address_line1} onChange={(v) => setDelivery({ ...delivery, address_line1: v })} error={errors.address_line1} />

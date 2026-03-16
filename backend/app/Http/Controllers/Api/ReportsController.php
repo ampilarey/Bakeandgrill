@@ -22,15 +22,17 @@ class ReportsController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
-        $orders = Order::whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed');
+        $agg = Order::whereBetween('created_at', [$from, $to])
+            ->where('status', 'completed')
+            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(total),0) as total')
+            ->first();
 
         $totals = [
-            'orders_count' => $orders->count(),
-            'subtotal' => $orders->sum('subtotal'),
-            'tax_amount' => $orders->sum('tax_amount'),
-            'discount_amount' => $orders->sum('discount_amount'),
-            'total' => $orders->sum('total'),
+            'orders_count'    => (int)   ($agg->orders_count    ?? 0),
+            'subtotal'        => (float) ($agg->subtotal        ?? 0),
+            'tax_amount'      => (float) ($agg->tax_amount      ?? 0),
+            'discount_amount' => (float) ($agg->discount_amount ?? 0),
+            'total'           => (float) ($agg->total           ?? 0),
         ];
 
         $payments = Payment::whereBetween('processed_at', [$from, $to])

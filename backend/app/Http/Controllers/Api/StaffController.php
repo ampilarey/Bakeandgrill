@@ -63,7 +63,7 @@ class StaffController extends Controller
             'name'    => 'required|string|max:255',
             'email'   => 'required|email|unique:users,email',
             'role_id' => 'required|exists:roles,id',
-            'pin'     => 'required|string|min:4|max:8',
+            'pin'     => 'required|digits_between:4,8',
         ]);
 
         $user = User::create([
@@ -106,7 +106,7 @@ class StaffController extends Controller
         $this->authorizePermission($request, 'staff.update');
 
         $validated = $request->validate([
-            'pin' => 'required|string|min:4|max:8',
+            'pin' => 'required|digits_between:4,8',
         ]);
 
         $user = User::findOrFail($id);

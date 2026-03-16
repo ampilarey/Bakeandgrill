@@ -61,7 +61,12 @@ export function ExpensesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this expense?')) return;
-    await deleteExpense(id); void load();
+    try {
+      await deleteExpense(id);
+      void load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   const fieldStyle = {

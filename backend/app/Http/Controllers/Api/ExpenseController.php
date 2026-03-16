@@ -187,9 +187,14 @@ class ExpenseController extends Controller
 
     private function generateExpenseNumber(): string
     {
-        $date  = now()->format('Ymd');
-        $count = Expense::whereDate('created_at', now()->toDateString())->withTrashed()->count() + 1;
-        return 'EXP-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        return \DB::transaction(function () {
+            $date  = now()->format('Ymd');
+            $count = Expense::whereDate('created_at', now()->toDateString())
+                ->withTrashed()
+                ->lockForUpdate()
+                ->count() + 1;
+            return 'EXP-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        });
     }
 
     private function nextRecurrenceDate(string $fromDate, string $interval): string

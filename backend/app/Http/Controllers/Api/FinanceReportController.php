@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 
 class FinanceReportController extends Controller
@@ -335,8 +336,29 @@ class FinanceReportController extends Controller
 
     private function parseRange(Request $request): array
     {
-        $from = Carbon::parse($request->query('from', now()->startOfMonth()->toDateString()))->startOfDay();
-        $to   = Carbon::parse($request->query('to',   now()->toDateString()))->endOfDay();
+        try {
+            $from = $request->query('from')
+                ? Carbon::createFromFormat('Y-m-d', $request->query('from'))->startOfDay()
+                : now()->startOfMonth()->startOfDay();
+            $to = $request->query('to')
+                ? Carbon::createFromFormat('Y-m-d', $request->query('to'))->endOfDay()
+                : now()->endOfDay();
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'from' => ['Invalid date format. Use YYYY-MM-DD.'],
+            ]);
+        }
+
+        if ($to->lessThan($from)) {
+            throw ValidationException::withMessages([
+                'to' => ['End date must be after start date.'],
+            ]);
+        }
+
+        // Cap to 365 days to prevent memory/timeout issues
+        if ($from->diffInDays($to) > 365) {
+            $to = $from->copy()->addDays(365)->endOfDay();
+        }
 
         return [$from, $to];
     }

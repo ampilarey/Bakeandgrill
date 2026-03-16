@@ -45,16 +45,18 @@ class KdsController extends Controller
 
     public function bump(Request $request, int $id): JsonResponse
     {
-        $order = Order::findOrFail($id);
-        if (!in_array($order->status, ['pending', 'in_progress', 'paid'], true)) {
-            return response()->json(['message' => 'Order cannot be bumped.'], 422);
-        }
+        $result = DB::transaction(function () use ($id, $request) {
+            // Re-fetch with a row lock inside the transaction to prevent duplicate bumps
+            $order = Order::lockForUpdate()->findOrFail($id);
 
-        $oldStatus = $order->status;
+            if (!in_array($order->status, ['pending', 'in_progress', 'paid'], true)) {
+                return ['error' => 'Order cannot be bumped.'];
+            }
 
-        DB::transaction(function () use ($order, $request, $oldStatus): void {
+            $oldStatus = $order->status;
+
             $order->update([
-                'status' => 'completed',
+                'status'       => 'completed',
                 'completed_at' => now(),
             ]);
 
@@ -66,9 +68,15 @@ class KdsController extends Controller
                     OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), false));
                 });
             }
+
+            return ['order' => $order];
         });
 
-        return response()->json(['order' => $order]);
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json(['order' => $result['order']]);
     }
 
     public function recall(Request $request, int $id): JsonResponse

@@ -88,7 +88,13 @@ export function useCheckout() {
 
   useEffect(() => {
     if (!token) return;
-    getCustomerMe(token).then((r) => setCustomerName(r.customer.name ?? r.customer.phone)).catch(() => {});
+    getCustomerMe(token)
+      .then((r) => setCustomerName(r.customer.name ?? r.customer.phone))
+      .catch(() => {
+        // Token may be expired — clear it and signal the app to re-authenticate
+        localStorage.removeItem('online_token');
+        window.dispatchEvent(new CustomEvent('auth_change'));
+      });
     getLoyaltyAccount(token).then((r) => {
       if (r.account && r.account.points_balance > 0) {
         setLoyaltyAccount(r.account);

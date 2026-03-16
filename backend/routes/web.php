@@ -68,13 +68,15 @@ Route::get('/order', function () {
 })->name('order.redirect');
 Route::get('/order/{any}', function () {
     abort_if(! file_exists(public_path('order/index.html')), 503, 'Order app not deployed.');
-    return response()->file(public_path('order/index.html'));
+    return response()->file(public_path('order/index.html'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
 })->where('any', '.*')->name('order.spa');
 
 // Admin Dashboard SPA — catch-all for /admin/* sub-paths
 Route::get('/admin/{any}', function () {
     abort_if(! file_exists(public_path('admin/index.html')), 503, 'Admin app not deployed.');
-    return response()->file(public_path('admin/index.html'));
+    return response()->file(public_path('admin/index.html'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
 })->where('any', '.*')->name('admin.spa');
 
 // KDS SPA — catch-all for /kds/* sub-paths
@@ -83,7 +85,8 @@ Route::get('/kds', function () {
 })->name('kds.redirect');
 Route::get('/kds/{any}', function () {
     abort_if(! file_exists(public_path('kds/index.html')), 503, 'KDS app not deployed.');
-    return response()->file(public_path('kds/index.html'));
+    return response()->file(public_path('kds/index.html'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
 })->where('any', '.*')->name('kds.spa');
 
 // POS SPA — catch-all for /pos/* sub-paths
@@ -92,7 +95,8 @@ Route::get('/pos', function () {
 })->name('pos.redirect');
 Route::get('/pos/{any}', function () {
     abort_if(! file_exists(public_path('pos/index.html')), 503, 'POS app not deployed.');
-    return response()->file(public_path('pos/index.html'));
+    return response()->file(public_path('pos/index.html'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
 })->where('any', '.*')->name('pos.spa');
 
 // Driver PWA SPA — catch-all for /driver/* sub-paths
@@ -101,5 +105,6 @@ Route::get('/driver', function () {
 })->name('driver.redirect');
 Route::get('/driver/{any}', function () {
     abort_if(! file_exists(public_path('driver/index.html')), 503, 'Driver app not deployed.');
-    return response()->file(public_path('driver/index.html'));
+    return response()->file(public_path('driver/index.html'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
 })->where('any', '.*')->name('driver.spa');
