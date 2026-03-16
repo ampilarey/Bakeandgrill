@@ -12,10 +12,14 @@
     $addressParts = array_map('trim', explode(',', $address, 2));
     $addressLine1 = $addressParts[0] ?? $address;
     $addressLine2 = $addressParts[1] ?? 'Maldives';
+    // Business hours: stored as JSON, fallback to typical hours
+    $hoursRaw    = \App\Models\SiteSetting::get('business_hours', null);
+    $hoursData   = $hoursRaw ? json_decode($hoursRaw, true) : null;
+    $siteName    = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
 @endphp
 
-@section('title', 'Contact Us – Bake & Grill')
-@section('description', 'Find Bake & Grill in Malé. Call us, WhatsApp, or visit us at Kalaafaanu Hingun.')
+@section('title', 'Contact Us – ' . \App\Models\SiteSetting::get('site_name', 'Bake & Grill'))
+@section('description', 'Find ' . \App\Models\SiteSetting::get('site_name', 'Bake & Grill') . ' in Malé. Call us, WhatsApp, or visit us at ' . \App\Models\SiteSetting::get('business_address', 'Kalaafaanu Hingun, Malé, Maldives') . '.')
 
 @section('styles')
 <style>
@@ -149,7 +153,7 @@
     <div class="contact-card">
         <div class="contact-card-icon">📍</div>
         <h2>Our Location</h2>
-        <p><strong>{{ \App\Models\SiteSetting::get('site_name', 'Bake & Grill') }} Café</strong></p>
+        <p><strong>{{ $siteName }} Café</strong></p>
         <p>{{ $addressLine1 }}</p>
         <p>{{ $addressLine2 }}</p>
         <p>{{ $landmark }}</p>
@@ -178,10 +182,19 @@
     <div class="contact-card">
         <div class="contact-card-icon">🕐</div>
         <h2>Opening Hours</h2>
-        <p><strong>Sunday – Thursday</strong></p>
-        <p>7:00 AM – 11:00 PM</p>
-        <p style="margin-top:0.75rem;"><strong>Friday – Saturday</strong></p>
-        <p>7:00 AM – 2:00 AM</p>
+        @if($hoursData && is_array($hoursData))
+            @foreach($hoursData as $period)
+                @if(isset($period['days']) && isset($period['hours']))
+                    <p><strong>{{ $period['days'] }}</strong></p>
+                    <p style="{{ !$loop->first ? 'margin-top:0.75rem;' : '' }}">{{ $period['hours'] }}</p>
+                @endif
+            @endforeach
+        @else
+            <p><strong>Sunday – Thursday</strong></p>
+            <p>7:00 AM – 11:00 PM</p>
+            <p style="margin-top:0.75rem;"><strong>Friday – Saturday</strong></p>
+            <p>7:00 AM – 2:00 AM</p>
+        @endif
         <a href="/hours" class="contact-link-row" style="margin-top:1rem;">
             Full Schedule →
         </a>

@@ -2,17 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-
-// ── Business contact constants (single source of truth for the footer) ─────────
-const BIZ = {
-  phone:    '+960 912 0011',
-  phoneTel: '+9609120011',
-  email:    'hello@bakeandgrill.mv',
-  address:  'Kalaafaanu Hingun, Malé, Maldives',
-  whatsapp: 'https://wa.me/9609120011',
-  viber:    'viber://chat?number=9609120011',
-  maps:     'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives',
-};
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 function WhatsAppIcon() {
@@ -37,6 +27,24 @@ export function Layout() {
   const { cart } = useCart();
   useLanguage(); // keep provider active for t() calls in child pages
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
+  const s = useSiteSettings();
+
+  const siteName   = s.site_name        || 'Bake & Grill';
+  const siteTagline= s.site_tagline     || 'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.';
+  const logoUrl    = s.logo             || '/logo.png';
+  const phone      = s.business_phone   || '+960 912 0011';
+  const phoneTel   = 'tel:' + phone.replace(/[^+\d]/g, '');
+  const email      = s.business_email   || 'hello@bakeandgrill.mv';
+  const address    = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
+  const landmark   = s.business_landmark|| 'Near H. Sahara';
+  const mapsUrl    = s.business_maps_url|| 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives';
+  const waLink     = s.business_whatsapp|| 'https://wa.me/9609120011';
+  const viberLink  = s.business_viber   || 'viber://chat?number=9609120011';
+
+  // Split address into line1 / city for the footer
+  const addrParts  = address.split(',');
+  const addrLine1  = addrParts[0]?.trim() || address;
+  const addrCity   = addrParts.slice(1).join(',').trim() || 'Maldives';
 
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('online_token'));
   const [customerName, setCustomerName] = useState<string | null>(() => localStorage.getItem('online_customer_name'));
@@ -89,8 +97,8 @@ export function Layout() {
 
           {/* Logo — links to main website */}
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}>
-            <img src="/logo.png" alt="Bake & Grill" style={{ width: '38px', height: '38px', borderRadius: '9px' }} />
-            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.02em' }}>Bake &amp; Grill</span>
+            <img src={logoUrl} alt={siteName} style={{ width: '38px', height: '38px', borderRadius: '9px' }} />
+            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.02em' }}>{siteName}</span>
           </a>
 
           {/* Desktop Nav — main site links use <a>, order links use Link */}
@@ -259,15 +267,15 @@ export function Layout() {
           {/* ── Brand (double width on desktop) ── */}
           <div className="order-footer-brand">
             <a href="/" className="order-footer-logo">
-              <img src="/logo.png" alt="Bake & Grill" />
-              Bake &amp; Grill
+              <img src={logoUrl} alt={siteName} />
+              {siteName}
             </a>
-            <p>Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.</p>
+            <p>{siteTagline}</p>
             <div className="order-footer-btns">
-              <a href={BIZ.whatsapp} target="_blank" rel="noopener noreferrer" className="order-footer-wa" aria-label="Chat on WhatsApp">
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="order-footer-wa" aria-label="Chat on WhatsApp">
                 <WhatsAppIcon /> WhatsApp
               </a>
-              <a href={BIZ.viber} className="order-footer-viber" aria-label="Chat on Viber">
+              <a href={viberLink} className="order-footer-viber" aria-label="Chat on Viber">
                 <ViberIcon /> Viber
               </a>
             </div>
@@ -286,17 +294,17 @@ export function Layout() {
           {/* ── Location ── */}
           <div className="order-footer-col">
             <h4>Location</h4>
-            <p>Kalaafaanu Hingun</p>
-            <p>Malé, Maldives</p>
-            <p>Near H. Sahara</p>
-            <a href={BIZ.maps} target="_blank" rel="noopener noreferrer">📍 Get directions</a>
+            <p>{addrLine1}</p>
+            <p>{addrCity}</p>
+            {landmark && <p>{landmark}</p>}
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer">📍 Get directions</a>
           </div>
 
           {/* ── Contact ── */}
           <div className="order-footer-col">
             <h4>Contact</h4>
-            <a href={`tel:${BIZ.phoneTel}`}>📞 {BIZ.phone}</a>
-            <a href={`mailto:${BIZ.email}`}>✉ {BIZ.email}</a>
+            <a href={phoneTel}>📞 {phone}</a>
+            <a href={`mailto:${email}`}>✉ {email}</a>
             <div className="order-footer-legal">
               <Link to="/privacy">Privacy Policy</Link>
               <a href="/terms">Terms &amp; Conditions</a>
@@ -308,8 +316,8 @@ export function Layout() {
 
         {/* ── Bottom bar ── */}
         <div className="order-footer-bottom">
-          <span>© {new Date().getFullYear()} Bake &amp; Grill. All rights reserved.</span>
-          <span>Malé, Maldives</span>
+          <span>© {new Date().getFullYear()} {siteName}. All rights reserved.</span>
+          <span>{addrCity}</span>
         </div>
       </footer>
 

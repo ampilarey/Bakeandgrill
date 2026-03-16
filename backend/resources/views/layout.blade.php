@@ -38,10 +38,10 @@
     {
       "@@context": "https://schema.org",
       "@@type": "Restaurant",
-      "name": "Bake & Grill",
-      "description": "Fresh Dhivehi food, artisan baking, and premium grills in Malé, Maldives.",
+      "name": "{{ e($siteName) }}",
+      "description": "{{ e($metaDesc) }}",
       "url": "{{ url('/') }}",
-      "logo": "{{ asset('logo.png') }}",
+      "logo": "{{ $logoUrl }}",
       "address": {
         "@@type": "PostalAddress",
         "addressLocality": "Malé",

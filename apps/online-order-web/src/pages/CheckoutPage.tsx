@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
-import { BIZ } from "../constants/biz";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 import { AuthBlock } from "../components/AuthBlock";
 import { CartSummary } from "../components/CartSummary";
 
@@ -88,8 +88,17 @@ export function CheckoutPage() {
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const s = useSiteSettings();
 
-  useEffect(() => { document.title = 'Checkout — Bake & Grill'; }, []);
+  const siteName  = s.site_name        || 'Bake & Grill';
+  const phone     = s.business_phone   || '+960 912 0011';
+  const phoneTel  = 'tel:' + phone.replace(/[^+\d]/g, '');
+  const email     = s.business_email   || 'hello@bakeandgrill.mv';
+  const address   = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
+  const waLink    = s.business_whatsapp|| 'https://wa.me/9609120011';
+  const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
+
+  useEffect(() => { document.title = `Checkout — ${siteName}`; }, [siteName]);
 
   const {
     cart, token, customerName, loyaltyAccount, loyaltyPoints,
@@ -256,7 +265,7 @@ export function CheckoutPage() {
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                   <a
-                    href={`${BIZ.whatsapp}?text=Hi%2C+I+need+help+with+my+order`}
+                    href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={S.chatBtnWa}
@@ -265,7 +274,7 @@ export function CheckoutPage() {
                     <WhatsAppIcon /> WhatsApp
                   </a>
                   <a
-                    href={BIZ.viber}
+                    href={viberLink}
                     style={S.chatBtnViber}
                     aria-label="Contact us on Viber"
                   >
@@ -395,9 +404,9 @@ export function CheckoutPage() {
 
               {/* Req 3: Corporate info */}
               <div style={S.corporateInfo}>
-                <strong>Bake &amp; Grill</strong> · Kalaafaanu Hingun, Malé, Maldives ·{' '}
-                <a href={`tel:${BIZ.phoneTel}`} style={{ color: 'inherit' }}>{BIZ.phone}</a> ·{' '}
-                <a href={`mailto:${BIZ.email}`} style={{ color: 'inherit' }}>{BIZ.email}</a>
+                <strong>{siteName}</strong> · {address} ·{' '}
+                <a href={phoneTel} style={{ color: 'inherit' }}>{phone}</a> ·{' '}
+                <a href={`mailto:${email}`} style={{ color: 'inherit' }}>{email}</a>
               </div>
             </div>
           )}

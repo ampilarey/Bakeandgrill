@@ -1,40 +1,49 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BIZ } from '../constants/biz';
-
-const CONTACT_ITEMS = [
-  {
-    label: 'Phone',
-    abbr: 'PH',
-    color: '#D4813A',
-    value: BIZ.phone,
-    action: { href: `tel:${BIZ.phoneTel}`, text: 'Call us' },
-  },
-  {
-    label: 'Email',
-    abbr: 'EM',
-    color: '#D4813A',
-    value: BIZ.email,
-    action: { href: `mailto:${BIZ.email}`, text: 'Send email' },
-  },
-  {
-    label: 'WhatsApp',
-    abbr: 'WA',
-    color: '#25D366',
-    value: BIZ.phone,
-    action: { href: BIZ.whatsapp, text: 'Message us', external: true },
-  },
-  {
-    label: 'Address',
-    abbr: 'AD',
-    color: '#8B7355',
-    value: 'Majeedhee Magu, Malé, Maldives',
-    action: null,
-  },
-];
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export function ContactPage() {
-  useEffect(() => { document.title = 'Contact — Bake & Grill'; }, []);
+  const s = useSiteSettings();
+
+  const siteName  = s.site_name        || 'Bake & Grill';
+  const phone     = s.business_phone   || '+960 912 0011';
+  const phoneTel  = 'tel:' + phone.replace(/[^+\d]/g, '');
+  const email     = s.business_email   || 'hello@bakeandgrill.mv';
+  const address   = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
+  const waLink    = s.business_whatsapp|| 'https://wa.me/9609120011';
+
+  useEffect(() => { document.title = `Contact — ${siteName}`; }, [siteName]);
+
+  const CONTACT_ITEMS = [
+    {
+      label: 'Phone',
+      abbr: 'PH',
+      color: '#D4813A',
+      value: phone,
+      action: { href: phoneTel, text: 'Call us' },
+    },
+    {
+      label: 'Email',
+      abbr: 'EM',
+      color: '#D4813A',
+      value: email,
+      action: { href: `mailto:${email}`, text: 'Send email' },
+    },
+    {
+      label: 'WhatsApp',
+      abbr: 'WA',
+      color: '#25D366',
+      value: phone,
+      action: { href: waLink, text: 'Message us', external: true },
+    },
+    {
+      label: 'Address',
+      abbr: 'AD',
+      color: '#8B7355',
+      value: address,
+      action: null,
+    },
+  ];
 
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem' }}>

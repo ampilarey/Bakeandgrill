@@ -1,8 +1,15 @@
 import { useEffect } from 'react';
-import { BIZ } from '../constants/biz';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export function PrivacyPage() {
-  useEffect(() => { document.title = 'Privacy Policy — Bake & Grill'; }, []);
+  const s = useSiteSettings();
+  const siteName = s.site_name      || 'Bake & Grill';
+  const phone    = s.business_phone || '+960 912 0011';
+  const phoneTel = 'tel:' + phone.replace(/[^+\d]/g, '');
+  const email    = s.business_email || 'hello@bakeandgrill.mv';
+  const address  = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
+
+  useEffect(() => { document.title = `Privacy Policy — ${siteName}`; }, [siteName]);
 
   return (
     <div style={S.wrap}>
@@ -10,7 +17,7 @@ export function PrivacyPage() {
       <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
 
       <Section title="Introduction">
-        <p>Bake &amp; Grill ("we", "us", "our") operates the Bake &amp; Grill café and online ordering system. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>
+        <p>{siteName} ("we", "us", "our") operates the {siteName} café and online ordering system. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>
       </Section>
 
       <Section title="Information We Collect">
@@ -44,11 +51,11 @@ export function PrivacyPage() {
           <li>Order confirmation and status messages</li>
           <li>Promotional offers (if opted in)</li>
         </ul>
-        <p><strong>Opt-out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at <a href={`tel:${BIZ.phoneTel}`} style={{ color: 'var(--color-primary, #d97706)' }}>{BIZ.phone}</a>.</p>
+        <p><strong>Opt-out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at <a href={phoneTel} style={{ color: 'var(--color-primary, #d97706)' }}>{phone}</a>.</p>
       </Section>
 
       <Section title="Card Payment Security">
-        <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page using SSL/TLS encryption. Bake &amp; Grill does <strong>not</strong> store, view, process, or retain any payment card details on our servers. Your card data is handled entirely by BML.</p>
+        <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page using SSL/TLS encryption. {siteName} does <strong>not</strong> store, view, process, or retain any payment card details on our servers. Your card data is handled entirely by BML.</p>
         <p>We strongly recommend you retain a copy of your order confirmation and payment receipt for your records.</p>
       </Section>
 
@@ -85,9 +92,9 @@ export function PrivacyPage() {
       <Section title="Contact Us">
         <p>For privacy-related questions or requests:</p>
         <ul>
-          <li><strong>Email:</strong> <a href={`mailto:${BIZ.email}`} style={{ color: 'var(--color-primary, #d97706)' }}>{BIZ.email}</a></li>
-          <li><strong>Phone:</strong> <a href={`tel:${BIZ.phoneTel}`} style={{ color: 'var(--color-primary, #d97706)' }}>{BIZ.phone}</a></li>
-          <li><strong>Address:</strong> Kalaafaanu Hingun, Malé 20026, Republic of Maldives</li>
+          <li><strong>Email:</strong> <a href={`mailto:${email}`} style={{ color: 'var(--color-primary, #d97706)' }}>{email}</a></li>
+          <li><strong>Phone:</strong> <a href={phoneTel} style={{ color: 'var(--color-primary, #d97706)' }}>{phone}</a></li>
+          <li><strong>Address:</strong> {address}</li>
         </ul>
       </Section>
     </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
 import { Layout } from './components/Layout';
@@ -22,6 +23,7 @@ if (!rootEl) throw new Error('Root element #root not found in DOM');
 ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <ErrorBoundary>
+    <SiteSettingsProvider>
     <LanguageProvider>
       <CartProvider>
         <BrowserRouter basename="/order">
@@ -52,6 +54,7 @@ ReactDOM.createRoot(rootEl).render(
         </BrowserRouter>
       </CartProvider>
     </LanguageProvider>
+    </SiteSettingsProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );
