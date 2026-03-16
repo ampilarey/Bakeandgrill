@@ -4,29 +4,42 @@ interface Props { stats: Stats }
 
 export default function EarningsCard({ stats }: Props) {
   return (
-    <div className="bg-[#1C1408] rounded-2xl p-4 text-white">
-      <p className="text-[#8B7355] text-xs font-medium uppercase tracking-wide mb-4">Your Stats</p>
-      <div className="grid grid-cols-3 gap-3 mb-4">
+    <div style={{
+      background: 'var(--color-dark)',
+      borderRadius: 'var(--radius-2xl)',
+      padding: '1.25rem',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+    }}>
+      <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 14px' }}>
+        Your Stats
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
         {[
-          { label: 'Today',   value: stats.today },
-          { label: 'Week',    value: stats.this_week },
-          { label: 'Month',   value: stats.this_month },
+          { label: 'Today', value: stats.today },
+          { label: 'This Week', value: stats.this_week },
+          { label: 'This Month', value: stats.this_month },
         ].map(item => (
-          <div key={item.label} className="text-center">
-            <p className="text-2xl font-bold text-[#D4813A]">{item.value}</p>
-            <p className="text-[#8B7355] text-xs mt-0.5">{item.label}</p>
+          <div key={item.label} style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)', margin: '0 0 2px', letterSpacing: '-0.02em' }}>
+              {item.value}
+            </p>
+            <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', margin: 0, fontWeight: 600 }}>
+              {item.label}
+            </p>
           </div>
         ))}
       </div>
-      <div className="border-t border-[#3D2910] pt-3 flex justify-between items-center">
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <p className="text-[#8B7355] text-xs">Total Earned</p>
-          <p className="text-lg font-bold text-[#D4813A]">MVR {stats.total_fees_mvr.toFixed(2)}</p>
+          <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', fontWeight: 600 }}>Total Earned</p>
+          <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', margin: 0 }}>
+            MVR {stats.total_fees_mvr.toFixed(2)}
+          </p>
         </div>
-        {stats.avg_minutes && (
-          <div className="text-right">
-            <p className="text-[#8B7355] text-xs">Avg. Time</p>
-            <p className="text-lg font-bold">{stats.avg_minutes}m</p>
+        {stats.avg_minutes != null && (
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', fontWeight: 600 }}>Avg. Time</p>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: 0 }}>{stats.avg_minutes}m</p>
           </div>
         )}
       </div>

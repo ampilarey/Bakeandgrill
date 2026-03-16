@@ -5,6 +5,21 @@ import { api } from '../api';
 import StatusStepper from '../components/StatusStepper';
 import ContactBar from '../components/ContactBar';
 
+const S: Record<string, React.CSSProperties> = {
+  card: {
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-2xl)',
+    padding: '1rem',
+    boxShadow: 'var(--shadow-sm)',
+  },
+  cardTitle: {
+    fontSize: '0.7rem', fontWeight: 700,
+    color: 'var(--color-text-muted)', textTransform: 'uppercase',
+    letterSpacing: '0.08em', margin: '0 0 12px',
+  },
+};
+
 export default function DetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -33,7 +48,7 @@ export default function DetailPage() {
     setError('');
     try {
       const { delivery: updated } = await api.updateStatus(delivery.id, next);
-      setDelivery(prev => prev ? { ...prev, ...updated, status: updated.status as import('../types').DeliveryStatus } : prev);
+      setDelivery(prev => prev ? { ...prev, ...updated, status: updated.status as DeliveryStatus } : prev);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update status.');
     } finally {
@@ -50,59 +65,69 @@ export default function DetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5EFE6] flex items-center justify-center">
-        <div className="text-[#D4813A] text-4xl animate-spin">⟳</div>
+      <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="animate-spin" style={{ fontSize: '2rem', color: 'var(--color-primary)' }}>⟳</div>
       </div>
     );
   }
 
   if (!delivery) {
     return (
-      <div className="min-h-screen bg-[#F5EFE6] flex flex-col items-center justify-center px-4">
-        <p className="text-[#1C1408] font-semibold">Delivery not found.</p>
-        <button onClick={() => navigate('/')} className="mt-4 text-[#D4813A] font-medium">← Back</button>
+      <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <p style={{ color: 'var(--color-text)', fontWeight: 600, marginBottom: 12 }}>Delivery not found.</p>
+        <button onClick={() => navigate('/')} style={{ color: 'var(--color-primary)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.9375rem' }}>
+          ← Back to Active
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5EFE6] pb-28">
+    <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', paddingBottom: 100 }}>
       {/* Header */}
-      <div className="bg-[#1C1408] text-white px-4 pt-12 pb-5 safe-top">
-        <button onClick={() => navigate('/')} className="text-[#D4813A] text-sm font-medium mb-3 flex items-center gap-1">
+      <div style={{
+        background: 'var(--color-dark)', color: 'white',
+        padding: 'max(3rem, env(safe-area-inset-top)) 1.25rem 1.25rem',
+      }}>
+        <button
+          onClick={() => navigate('/')}
+          style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.875rem', fontFamily: 'inherit', cursor: 'pointer', padding: '0 0 10px', display: 'flex', alignItems: 'center', gap: 4 }}
+        >
           ‹ Back
         </button>
-        <h1 className="text-xl font-bold">Delivery #{delivery.id}</h1>
-        <p className="text-[#8B7355] text-sm mt-0.5">MVR {parseFloat(String(delivery.total)).toFixed(2)}</p>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, margin: '0 0 2px', letterSpacing: '-0.02em' }}>
+          Delivery #{delivery.id}
+        </h1>
+        <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+          MVR {parseFloat(String(delivery.total)).toFixed(2)}
+        </p>
       </div>
 
-      <div className="px-4 pt-5 space-y-4">
+      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 12 }} className="animate-fade-in">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+          <div style={{ background: 'var(--color-error-bg)', border: '1px solid rgba(220,38,38,0.2)', color: '#7f1d1d', borderRadius: 'var(--radius-lg)', padding: '10px 14px', fontSize: '0.875rem' }}>
             {error}
           </div>
         )}
 
         {/* Status stepper */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#EDE4D4]">
-          <p className="text-xs font-medium text-[#8B7355] uppercase tracking-wide mb-4">Delivery Status</p>
-          <StatusStepper
-            status={delivery.status as DeliveryStatus}
-            onUpdate={handleStatusUpdate}
-            loading={updating}
-          />
+        <div style={S.card}>
+          <p style={S.cardTitle}>Delivery Status</p>
+          <StatusStepper status={delivery.status as DeliveryStatus} onUpdate={handleStatusUpdate} loading={updating} />
         </div>
 
-        {/* Delivery address */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#EDE4D4]">
-          <p className="text-xs font-medium text-[#8B7355] uppercase tracking-wide mb-3">Delivery Address</p>
-          <div className="space-y-1 text-sm text-[#1C1408]">
-            {delivery.delivery_area && <p className="font-semibold">{delivery.delivery_area}</p>}
-            {delivery.delivery_address && <p>{delivery.delivery_address}</p>}
-            {delivery.delivery_building && <p>Building: {delivery.delivery_building}</p>}
-            {delivery.delivery_floor && <p>Floor: {delivery.delivery_floor}</p>}
+        {/* Address */}
+        <div style={S.card}>
+          <p style={S.cardTitle}>Delivery Address</p>
+          <div style={{ fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: 1.7 }}>
+            {delivery.delivery_area && <p style={{ fontWeight: 700, margin: '0 0 2px' }}>{delivery.delivery_area}</p>}
+            {delivery.delivery_address && <p style={{ margin: '0 0 2px' }}>{delivery.delivery_address}</p>}
+            {delivery.delivery_building && <p style={{ margin: '0 0 2px' }}>Building: {delivery.delivery_building}</p>}
+            {delivery.delivery_floor && <p style={{ margin: '0 0 2px' }}>Floor: {delivery.delivery_floor}</p>}
             {delivery.delivery_notes && (
-              <p className="text-[#8B7355] mt-2 italic">Note: {delivery.delivery_notes}</p>
+              <p style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '6px 0 0' }}>
+                Note: {delivery.delivery_notes}
+              </p>
             )}
           </div>
           {mapsLink && (
@@ -110,7 +135,11 @@ export default function DetailPage() {
               href={mapsLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 flex items-center gap-2 text-[#D4813A] text-sm font-semibold"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                marginTop: 12, color: 'var(--color-primary)',
+                fontWeight: 700, fontSize: '0.875rem', textDecoration: 'none',
+              }}
             >
               🗺️ Open in Google Maps
             </a>
@@ -125,65 +154,51 @@ export default function DetailPage() {
 
         {/* Items */}
         {delivery.items && delivery.items.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#EDE4D4]">
-            <p className="text-xs font-medium text-[#8B7355] uppercase tracking-wide mb-3">
-              Items ({delivery.items.length})
-            </p>
-            <div className="space-y-3">
+          <div style={S.card}>
+            <p style={S.cardTitle}>Items ({delivery.items.length})</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {delivery.items.map((item, i) => (
-                <div key={i} className="flex justify-between items-start gap-3">
-                  <div className="flex-1">
-                    <p className="font-medium text-[#1C1408] text-sm">
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)', margin: '0 0 2px' }}>
                       {item.quantity}× {item.name}
                     </p>
-                    {item.variant && (
-                      <p className="text-[#8B7355] text-xs">{item.variant}</p>
-                    )}
-                    {item.modifiers.length > 0 && (
-                      <p className="text-[#8B7355] text-xs">{item.modifiers.join(', ')}</p>
-                    )}
-                    {item.notes && (
-                      <p className="text-[#8B7355] text-xs italic">{item.notes}</p>
-                    )}
+                    {item.variant && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>{item.variant}</p>}
+                    {item.modifiers.length > 0 && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>{item.modifiers.join(', ')}</p>}
+                    {item.notes && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '2px 0 0' }}>{item.notes}</p>}
                   </div>
-                  <p className="text-sm font-semibold text-[#1C1408] whitespace-nowrap">
+                  <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', margin: 0 }}>
                     MVR {parseFloat(String(item.total_price)).toFixed(2)}
                   </p>
                 </div>
               ))}
             </div>
-            <div className="border-t border-[#F5EFE6] mt-3 pt-3 flex justify-between">
-              <span className="text-sm font-semibold text-[#1C1408]">Total</span>
-              <span className="text-sm font-bold text-[#D4813A]">
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 12, marginTop: 10, borderTop: '1px solid var(--color-border)' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)' }}>Total</span>
+              <span style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--color-primary)' }}>
                 MVR {parseFloat(String(delivery.total)).toFixed(2)}
               </span>
             </div>
           </div>
         )}
 
-        {/* Timing */}
+        {/* Timeline */}
         {(delivery.driver_assigned_at || delivery.picked_up_at || delivery.delivered_at) && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#EDE4D4]">
-            <p className="text-xs font-medium text-[#8B7355] uppercase tracking-wide mb-3">Timeline</p>
-            <div className="space-y-2 text-sm">
-              {delivery.driver_assigned_at && (
-                <div className="flex justify-between">
-                  <span className="text-[#8B7355]">Assigned</span>
-                  <span className="text-[#1C1408]">{new Date(delivery.driver_assigned_at).toLocaleTimeString()}</span>
+          <div style={S.card}>
+            <p style={S.cardTitle}>Timeline</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { label: 'Assigned',  time: delivery.driver_assigned_at },
+                { label: 'Picked up', time: delivery.picked_up_at },
+                { label: 'Delivered', time: delivery.delivered_at },
+              ].filter(r => r.time).map(row => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>{row.label}</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
+                    {new Date(row.time!).toLocaleTimeString()}
+                  </span>
                 </div>
-              )}
-              {delivery.picked_up_at && (
-                <div className="flex justify-between">
-                  <span className="text-[#8B7355]">Picked up</span>
-                  <span className="text-[#1C1408]">{new Date(delivery.picked_up_at).toLocaleTimeString()}</span>
-                </div>
-              )}
-              {delivery.delivered_at && (
-                <div className="flex justify-between">
-                  <span className="text-[#8B7355]">Delivered</span>
-                  <span className="text-[#1C1408]">{new Date(delivery.delivered_at).toLocaleTimeString()}</span>
-                </div>
-              )}
+              ))}
             </div>
           </div>
         )}

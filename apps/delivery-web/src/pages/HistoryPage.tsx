@@ -23,37 +23,46 @@ export default function HistoryPage() {
       setLastPage(histRes.meta.last_page);
       setPage(histRes.meta.current_page);
       setStats(statsRes.stats);
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* silent */ }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { void load(1, date); }, [load, date]);
 
   return (
-    <div className="min-h-screen bg-[#F5EFE6] pb-24">
+    <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="bg-[#1C1408] text-white px-4 pt-12 pb-5 safe-top">
-        <h1 className="text-xl font-bold">Delivery History</h1>
+      <div style={{
+        background: 'var(--color-dark)', color: 'white',
+        padding: 'max(3rem, env(safe-area-inset-top)) 1.25rem 1.5rem',
+      }}>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
+          Delivery History
+        </h1>
       </div>
 
-      <div className="px-4 pt-5 space-y-4">
+      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {stats && <EarningsCard stats={stats} />}
 
         {/* Date filter */}
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <input
             type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
-            className="flex-1 bg-white border border-[#EDE4D4] rounded-xl px-3 py-2 text-sm text-[#1C1408] focus:outline-none focus:border-[#D4813A]"
+            style={{
+              flex: 1, height: 40, padding: '0 12px',
+              border: '1.5px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              fontSize: '0.9rem', fontFamily: 'inherit',
+              color: 'var(--color-text)', background: 'var(--color-surface)',
+              outline: 'none',
+            }}
           />
           {date && (
             <button
               onClick={() => setDate('')}
-              className="text-[#8B7355] text-sm font-medium"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontWeight: 600, fontFamily: 'inherit', fontSize: '0.875rem', padding: '4px 6px' }}
             >
               Clear
             </button>
@@ -61,55 +70,57 @@ export default function HistoryPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white rounded-2xl h-20 animate-pulse border border-[#EDE4D4]" />
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 90 }} />)}
           </div>
         ) : deliveries.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-5xl mb-3">📋</p>
-            <p className="text-[#1C1408] font-semibold">No deliveries yet</p>
-            {date && <p className="text-[#8B7355] text-sm mt-1">Try a different date</p>}
+          <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: 10, opacity: 0.4 }}>📋</div>
+            <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>No deliveries yet</p>
+            {date && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>Try a different date</p>}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} className="animate-fade-in">
             {deliveries.map(d => (
-              <div key={d.id} className="bg-white rounded-2xl p-4 border border-[#EDE4D4] shadow-sm">
-                <div className="flex items-start justify-between mb-2">
-                  <span className="font-bold text-[#1C1408]">#{d.id}</span>
+              <div key={d.id} style={{
+                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-2xl)', padding: '1rem', boxShadow: 'var(--shadow-sm)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--color-text)' }}>#{d.id}</span>
                   <StatusBadge status={d.status} />
                 </div>
-                <div className="text-sm text-[#8B7355] space-y-0.5">
-                  {d.delivery_area && <p>📍 {d.delivery_area}</p>}
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                  {d.delivery_area && <p style={{ margin: 0 }}>📍 {d.delivery_area}</p>}
                   {d.delivered_at && (
-                    <p>🕐 {new Date(d.delivered_at).toLocaleDateString()} {new Date(d.delivered_at).toLocaleTimeString()}</p>
+                    <p style={{ margin: 0 }}>
+                      🕐 {new Date(d.delivered_at).toLocaleDateString()} · {new Date(d.delivered_at).toLocaleTimeString()}
+                    </p>
                   )}
                 </div>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-[#F5EFE6]">
-                  <span className="text-sm text-[#8B7355]">{d.item_count} items</span>
-                  <span className="text-sm font-semibold text-[#D4813A]">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{d.item_count} items</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                     MVR {parseFloat(String(d.total)).toFixed(2)}
                   </span>
                 </div>
               </div>
             ))}
 
-            {/* Pagination */}
             {lastPage > 1 && (
-              <div className="flex items-center justify-center gap-3 py-2">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '8px 0' }}>
                 <button
                   onClick={() => void load(page - 1, date)}
                   disabled={page <= 1}
-                  className="px-4 py-2 text-sm font-medium text-[#D4813A] disabled:text-[#8B7355] disabled:cursor-not-allowed"
+                  style={{ background: 'none', border: 'none', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, color: page > 1 ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: page > 1 ? 'pointer' : 'not-allowed' }}
                 >
                   ‹ Prev
                 </button>
-                <span className="text-sm text-[#8B7355]">{page} / {lastPage}</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{page} / {lastPage}</span>
                 <button
                   onClick={() => void load(page + 1, date)}
                   disabled={page >= lastPage}
-                  className="px-4 py-2 text-sm font-medium text-[#D4813A] disabled:text-[#8B7355] disabled:cursor-not-allowed"
+                  style={{ background: 'none', border: 'none', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, color: page < lastPage ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: page < lastPage ? 'pointer' : 'not-allowed' }}
                 >
                   Next ›
                 </button>

@@ -8,11 +8,20 @@ interface Props {
 }
 
 const VEHICLE_ICONS: Record<string, string> = {
-  bike: '🚲',
-  scooter: '🛵',
-  car: '🚗',
-  motorcycle: '🏍️',
+  bike: '🚲', scooter: '🛵', car: '🚗', motorcycle: '🏍️',
 };
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '12px 0', borderBottom: '1px solid var(--color-border)',
+    }}>
+      <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{label}</span>
+      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{value}</span>
+    </div>
+  );
+}
 
 export default function ProfilePage({ driver, onLogout }: Props) {
   const [logging, setLogging] = useState(false);
@@ -20,9 +29,7 @@ export default function ProfilePage({ driver, onLogout }: Props) {
   const handleLogout = async () => {
     if (!confirm('Are you sure you want to log out?')) return;
     setLogging(true);
-    try {
-      await api.logout();
-    } finally {
+    try { await api.logout(); } finally {
       localStorage.removeItem('driver_token');
       onLogout();
     }
@@ -33,59 +40,66 @@ export default function ProfilePage({ driver, onLogout }: Props) {
     : '🚚';
 
   return (
-    <div className="min-h-screen bg-[#F5EFE6] pb-24">
+    <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="bg-[#1C1408] text-white px-4 pt-12 pb-8 safe-top text-center">
-        <div className="w-20 h-20 rounded-full bg-[#D4813A] flex items-center justify-center text-3xl mx-auto mb-3">
+      <div style={{
+        background: 'var(--color-dark)', color: 'white',
+        padding: 'max(3rem, env(safe-area-inset-top)) 1.25rem 2rem',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: '50%',
+          background: 'var(--color-primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '1.75rem', margin: '0 auto 12px',
+          boxShadow: '0 4px 16px var(--color-primary-glow)',
+        }}>
           {vehicleIcon}
         </div>
-        <h1 className="text-xl font-bold">{driver.name}</h1>
-        <p className="text-[#8B7355] text-sm mt-0.5">{driver.phone}</p>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+          {driver.name}
+        </h1>
+        <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', margin: 0 }}>{driver.phone}</p>
       </div>
 
-      <div className="px-4 pt-5 space-y-4">
+      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 12 }} className="animate-fade-in">
         {/* Info card */}
-        <div className="bg-white rounded-2xl overflow-hidden border border-[#EDE4D4] shadow-sm">
-          <div className="divide-y divide-[#F5EFE6]">
-            <InfoRow label="Name" value={driver.name} />
-            <InfoRow label="Phone" value={driver.phone} />
-            <InfoRow
-              label="Vehicle"
-              value={driver.vehicle_type ? `${vehicleIcon} ${driver.vehicle_type}` : 'Not set'}
-            />
-            <InfoRow label="Status" value={driver.is_active ? '🟢 Active' : '🔴 Inactive'} />
-            <InfoRow label="PIN" value={driver.has_pin ? '🔒 Set' : '⚠️ Not set'} />
-            {driver.last_login_at && (
-              <InfoRow
-                label="Last login"
-                value={new Date(driver.last_login_at).toLocaleString()}
-              />
-            )}
-          </div>
+        <div style={{
+          background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-2xl)', padding: '0 1rem',
+          boxShadow: 'var(--shadow-sm)',
+        }}>
+          <InfoRow label="Name" value={driver.name} />
+          <InfoRow label="Phone" value={driver.phone} />
+          <InfoRow label="Vehicle" value={driver.vehicle_type ? `${vehicleIcon} ${driver.vehicle_type}` : 'Not set'} />
+          <InfoRow label="Status" value={driver.is_active ? '🟢 Active' : '🔴 Inactive'} />
+          <InfoRow label="PIN" value={driver.has_pin ? '🔒 Set' : '⚠️ Not set — contact admin'} />
+          {driver.last_login_at && (
+            <InfoRow label="Last login" value={new Date(driver.last_login_at).toLocaleString()} />
+          )}
         </div>
 
         {/* Logout */}
         <button
-          onClick={handleLogout}
+          onClick={() => void handleLogout()}
           disabled={logging}
-          className="w-full bg-red-50 border border-red-200 text-red-700 font-bold py-4 rounded-2xl text-base transition hover:bg-red-100 disabled:opacity-60"
+          style={{
+            width: '100%', height: 48,
+            background: 'white',
+            border: '1.5px solid rgba(220,38,38,0.3)',
+            color: '#dc2626', borderRadius: 'var(--radius-full)',
+            fontSize: '0.9375rem', fontWeight: 700,
+            fontFamily: 'inherit', cursor: logging ? 'not-allowed' : 'pointer',
+            transition: 'all 0.15s', opacity: logging ? 0.6 : 1,
+          }}
         >
           {logging ? 'Logging out…' : '🚪 Log Out'}
         </button>
 
-        <p className="text-center text-[#8B7355] text-xs mt-2">
-          Contact your admin to update profile or PIN.
+        <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+          Contact your admin to update your profile or PIN.
         </p>
       </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-center px-4 py-3">
-      <span className="text-sm text-[#8B7355]">{label}</span>
-      <span className="text-sm font-medium text-[#1C1408]">{value}</span>
     </div>
   );
 }

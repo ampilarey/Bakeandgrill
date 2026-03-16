@@ -20,12 +20,10 @@ export default function LoginPage({ onLogin }: Props) {
 
   const handlePinChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    const newPin = [...pin];
-    newPin[index] = value.slice(-1);
-    setPin(newPin);
-    if (value && index < 3) {
-      pinRefs[index + 1].current?.focus();
-    }
+    const next = [...pin];
+    next[index] = value.slice(-1);
+    setPin(next);
+    if (value && index < 3) pinRefs[index + 1].current?.focus();
   };
 
   const handlePinKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -38,8 +36,8 @@ export default function LoginPage({ onLogin }: Props) {
     e.preventDefault();
     setError('');
     const pinStr = pin.join('');
-    if (pinStr.length < 4) { setError('Please enter your 4-digit PIN.'); return; }
     if (!phone.trim()) { setError('Please enter your phone number.'); return; }
+    if (pinStr.length < 4) { setError('Please enter your 4-digit PIN.'); return; }
 
     setLoading(true);
     try {
@@ -47,7 +45,7 @@ export default function LoginPage({ onLogin }: Props) {
       localStorage.setItem('driver_token', token);
       onLogin(driver);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed.');
+      setError(err instanceof Error ? err.message : 'Login failed. Check your phone and PIN.');
       setPin(['', '', '', '']);
       pinRefs[0].current?.focus();
     } finally {
@@ -56,64 +54,143 @@ export default function LoginPage({ onLogin }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[#1C1408] flex flex-col items-center justify-center px-6 safe-top safe-bottom">
-      {/* Logo */}
-      <div className="mb-10 text-center">
-        <div className="w-20 h-20 rounded-2xl bg-[#D4813A] flex items-center justify-center mx-auto mb-4 text-white text-3xl shadow-lg">
+    <div style={{
+      minHeight: '100dvh',
+      background: 'var(--color-bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '2rem 1.5rem',
+    }}>
+      {/* Logo / Brand */}
+      <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: 20,
+          background: 'var(--color-dark)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 1rem', fontSize: 32,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+        }}>
           🚚
         </div>
-        <h1 className="text-white text-2xl font-bold">Bake &amp; Grill</h1>
-        <p className="text-[#8B7355] text-sm mt-1">Driver Portal</p>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+          Bake &amp; Grill
+        </h1>
+        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
+          Driver Portal
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6">
-        {/* Phone */}
-        <div>
-          <label className="block text-[#EDE4D4] text-sm font-medium mb-2">Phone Number</label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="+960 7XX XXXX"
-            className="w-full bg-[#2C1E0A] border border-[#3D2910] text-white placeholder-[#5C4A30] rounded-xl px-4 py-3 text-base focus:outline-none focus:border-[#D4813A] transition"
-            autoComplete="tel"
-          />
-        </div>
-
-        {/* PIN */}
-        <div>
-          <label className="block text-[#EDE4D4] text-sm font-medium mb-2">PIN</label>
-          <div className="flex gap-3 justify-center">
-            {pin.map((digit, i) => (
-              <input
-                key={i}
-                ref={pinRefs[i]}
-                type="password"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={e => handlePinChange(i, e.target.value)}
-                onKeyDown={e => handlePinKeyDown(i, e)}
-                className="w-14 h-14 bg-[#2C1E0A] border border-[#3D2910] text-white text-center text-2xl font-bold rounded-xl focus:outline-none focus:border-[#D4813A] transition"
-              />
-            ))}
+      {/* Card */}
+      <div style={{
+        width: '100%', maxWidth: 360,
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-2xl)',
+        padding: '2rem',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
+      }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Phone */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+960 7XX XXXX"
+              autoComplete="tel"
+              style={{
+                width: '100%', height: 44, padding: '0 12px',
+                border: '1.5px solid var(--color-border)',
+                borderRadius: 'var(--radius-lg)',
+                fontSize: '0.9375rem', fontFamily: 'inherit',
+                color: 'var(--color-text)',
+                background: 'var(--color-surface)',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+              onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
+              onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+            />
           </div>
-        </div>
 
-        {error && (
-          <div className="bg-red-900/30 border border-red-700/50 text-red-300 text-sm rounded-xl px-4 py-3 text-center">
-            {error}
+          {/* PIN */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: 10 }}>
+              PIN
+            </label>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              {pin.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={pinRefs[i]}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={e => handlePinChange(i, e.target.value)}
+                  onKeyDown={e => handlePinKeyDown(i, e)}
+                  style={{
+                    width: 56, height: 56,
+                    border: '1.5px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: '1.5rem', fontWeight: 700,
+                    textAlign: 'center', fontFamily: 'inherit',
+                    color: 'var(--color-text)',
+                    background: digit ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                    outline: 'none',
+                    transition: 'all 0.15s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
+                  onBlur={e => (e.target.style.borderColor = digit ? 'var(--color-primary)' : 'var(--color-border)')}
+                />
+              ))}
+            </div>
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#D4813A] hover:bg-[#B5681F] text-white font-bold py-4 rounded-xl text-base transition disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
-        >
-          {loading ? 'Signing in…' : 'Sign In'}
-        </button>
-      </form>
+          {/* Error */}
+          {error && (
+            <div style={{
+              background: 'var(--color-error-bg)',
+              border: '1px solid rgba(220,38,38,0.2)',
+              color: '#7f1d1d',
+              borderRadius: 'var(--radius-lg)',
+              padding: '10px 14px',
+              fontSize: '0.875rem',
+              textAlign: 'center',
+            }}>
+              {error}
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%', height: 48,
+              background: loading ? '#9ca3af' : 'var(--color-primary)',
+              color: 'white', border: 'none',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.9375rem', fontWeight: 700,
+              fontFamily: 'inherit', cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: loading ? 'none' : '0 4px 12px var(--color-primary-glow)',
+            }}
+          >
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
+      </div>
+
+      <p style={{ marginTop: '1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+        Contact your admin if you don't have a PIN.
+      </p>
     </div>
   );
 }

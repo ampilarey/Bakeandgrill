@@ -1,28 +1,46 @@
 import { NavLink } from 'react-router-dom';
 
 const ITEMS = [
-  { to: '/',        icon: '🚚', label: 'Active'   },
-  { to: '/history', icon: '📋', label: 'History'  },
-  { to: '/profile', icon: '👤', label: 'Profile'  },
+  { to: '/',        icon: '🚚', label: 'Active'  },
+  { to: '/history', icon: '📋', label: 'History' },
+  { to: '/profile', icon: '👤', label: 'Profile' },
 ];
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EDE4D4] safe-bottom z-50">
-      <div className="flex">
+    <nav style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0,
+      background: 'rgba(255,253,249,0.97)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      borderTop: '1px solid var(--color-border)',
+      boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
+      paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      zIndex: 100,
+    }}>
+      <div style={{ display: 'flex' }}>
         {ITEMS.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
-            className={({ isActive }) =>
-              `flex-1 flex flex-col items-center py-2.5 gap-0.5 text-xs font-medium transition-colors ${
-                isActive ? 'text-[#D4813A]' : 'text-[#8B7355]'
-              }`
-            }
+            style={({ isActive }) => ({
+              flex: 1, display: 'flex', flexDirection: 'column' as const,
+              alignItems: 'center', gap: 3, padding: '10px 0',
+              color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              textDecoration: 'none', fontSize: '0.6rem', fontWeight: 700,
+              textTransform: 'uppercase' as const, letterSpacing: '0.05em',
+              transition: 'color 0.15s',
+            })}
           >
-            <span className="text-xl">{item.icon}</span>
-            <span>{item.label}</span>
+            {({ isActive }) => (
+              <>
+                <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>{item.icon}</span>
+                <span style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                  {item.label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>

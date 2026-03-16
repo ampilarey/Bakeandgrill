@@ -16,62 +16,83 @@ export default function ActivePage({ driver }: Props) {
       setDeliveries(d);
       setError('');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load.');
+      setError(err instanceof Error ? err.message : 'Failed to load deliveries.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
-
-  // Poll every 30s for new assignments
   useEffect(() => {
     const id = setInterval(() => void load(), 30_000);
     return () => clearInterval(id);
   }, [load]);
 
   return (
-    <div className="min-h-screen bg-[#F5EFE6] pb-24">
+    <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="bg-[#1C1408] text-white px-4 pt-12 pb-6 safe-top">
-        <p className="text-[#8B7355] text-xs font-medium uppercase tracking-wide mb-1">Good day,</p>
-        <h1 className="text-xl font-bold">{driver.name}</h1>
+      <div style={{
+        background: 'var(--color-dark)', color: 'white',
+        padding: 'max(3rem, env(safe-area-inset-top)) 1.25rem 1.5rem',
+      }}>
+        <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
+          Good day,
+        </p>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, margin: '0 0 2px', letterSpacing: '-0.02em' }}>
+          {driver.name}
+        </h1>
         {driver.vehicle_type && (
-          <p className="text-[#8B7355] text-sm mt-0.5">🚗 {driver.vehicle_type}</p>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+            🚗 {driver.vehicle_type}
+          </p>
         )}
       </div>
 
-      <div className="px-4 pt-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-[#1C1408]">Active Deliveries</h2>
+      <div style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+            Active Deliveries
+          </h2>
           <button
             onClick={() => { setLoading(true); void load(); }}
-            className="text-[#D4813A] text-sm font-medium"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)',
+              fontFamily: 'inherit', padding: '4px 8px',
+            }}
           >
-            Refresh
+            ↻ Refresh
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+          <div style={{
+            background: 'var(--color-error-bg)', border: '1px solid rgba(220,38,38,0.2)',
+            color: '#7f1d1d', borderRadius: 'var(--radius-lg)',
+            padding: '10px 14px', fontSize: '0.875rem', marginBottom: 12,
+          }}>
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[1, 2].map(i => (
-              <div key={i} className="bg-white rounded-2xl h-32 animate-pulse border border-[#EDE4D4]" />
+              <div key={i} className="skeleton" style={{ height: 120 }} />
             ))}
           </div>
         ) : deliveries.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-3">🎉</div>
-            <p className="text-[#1C1408] font-semibold">No active deliveries</p>
-            <p className="text-[#8B7355] text-sm mt-1">You're all caught up!</p>
+          <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: 12, opacity: 0.5 }}>🎉</div>
+            <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', margin: '0 0 4px' }}>
+              No active deliveries
+            </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              You're all caught up!
+            </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} className="animate-fade-in">
             {deliveries.map(d => <DeliveryCard key={d.id} delivery={d} />)}
           </div>
         )}
