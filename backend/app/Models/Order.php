@@ -53,6 +53,8 @@ class Order extends Model
         'delivery_eta_at',
         'delivery_driver_id',
         'driver_assigned_at',
+        'picked_up_at',
+        'delivered_at',
         'store_id',
     ];
 
@@ -66,6 +68,9 @@ class Order extends Model
         'paid_at'              => 'datetime',
         'completed_at'         => 'datetime',
         'delivery_eta_at'      => 'datetime',
+        'driver_assigned_at'   => 'datetime',
+        'picked_up_at'         => 'datetime',
+        'delivered_at'         => 'datetime',
         // Scalars
         'tax_inclusive'           => 'boolean',
         'delivery_fee'            => 'decimal:2',

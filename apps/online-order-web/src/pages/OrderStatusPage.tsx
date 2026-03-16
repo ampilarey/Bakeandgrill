@@ -12,6 +12,109 @@ function readToken(): string | null {
   return localStorage.getItem("online_token");
 }
 
+// ─── Driver Tracker ───────────────────────────────────────────────────────────
+
+type DriverLocationData = {
+  latitude: number;
+  longitude: number;
+  recorded_at: string;
+  driver?: { name: string; phone: string } | null;
+};
+
+function DriverTracker({ orderId, token }: { orderId: number; token: string | null }) {
+  const [data, setData] = useState<{ location: DriverLocationData | null; driver: { name: string; phone: string } | null } | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/driver/deliveries/${orderId}/location`, {
+          headers: {
+            Accept: 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        if (res.ok) {
+          const json = await res.json() as { location: DriverLocationData | null; driver: { name: string; phone: string } | null };
+          setData(json);
+        }
+      } catch { /* ignore */ }
+    };
+    void load();
+    const id = setInterval(() => void load(), 10_000);
+    return () => clearInterval(id);
+  }, [orderId, token]);
+
+  const location = data?.location;
+  const driver = data?.driver;
+
+  const mapsUrl = location
+    ? `https://maps.google.com/?q=${location.latitude},${location.longitude}`
+    : null;
+
+  const waLink = driver?.phone
+    ? `https://wa.me/${driver.phone.replace(/\s+/g, '').replace(/^\+/, '')}`
+    : null;
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #D4813A, #B5681F)',
+      borderRadius: 16, padding: 16, color: 'white',
+    }}>
+      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px', opacity: 0.85 }}>🚀 Your driver is on the way!</p>
+      {driver && <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>🛵 {driver.name}</p>}
+      {location ? (
+        <p style={{ fontSize: 12, margin: '0 0 12px', opacity: 0.8 }}>
+          Last seen: {Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000)} min ago
+        </p>
+      ) : (
+        <p style={{ fontSize: 12, margin: '0 0 12px', opacity: 0.8 }}>Locating driver…</p>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {mapsUrl && (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.2)',
+              color: 'white', fontWeight: 700, fontSize: 13, padding: '10px 0',
+              borderRadius: 10, textDecoration: 'none',
+            }}
+          >
+            📍 Track on Map
+          </a>
+        )}
+        {driver?.phone && (
+          <a
+            href={`tel:${driver.phone}`}
+            style={{
+              flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.2)',
+              color: 'white', fontWeight: 700, fontSize: 13, padding: '10px 0',
+              borderRadius: 10, textDecoration: 'none',
+            }}
+          >
+            📞 Call
+          </a>
+        )}
+        {waLink && (
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              flex: 1, textAlign: 'center', background: '#25D366',
+              color: 'white', fontWeight: 700, fontSize: 13, padding: '10px 0',
+              borderRadius: 10, textDecoration: 'none',
+            }}
+          >
+            💬 WhatsApp
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Status config ────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, {
   label: string; sub: string; next?: string;
@@ -47,6 +150,24 @@ const STATUS_CONFIG: Record<string, {
     next: undefined,
     color: "#c2410c", bg: "#ffedd5", icon: "🛵",
   },
+  picked_up: {
+    label: "Driver picked up your order",
+    sub: "Your driver has collected your order and is heading your way!",
+    next: undefined,
+    color: "#c2410c", bg: "#ffedd5", icon: "✅",
+  },
+  on_the_way: {
+    label: "Driver is on the way!",
+    sub: "Your order is almost there. Keep an eye out for your driver.",
+    next: undefined,
+    color: "#9a3412", bg: "#fed7aa", icon: "🏃",
+  },
+  delivered: {
+    label: "Delivered!",
+    sub: "Your order has been delivered. Enjoy your meal!",
+    next: undefined,
+    color: "#065f46", bg: "#d1fae5", icon: "🎉",
+  },
   completed: {
     label: "Delivered!",
     sub: "Your order was delivered. Enjoy your meal!",
@@ -71,8 +192,8 @@ const STEPS = [
 function stepIndex(status: string): number {
   const normalised = status === "paid" ? "preparing" : status;
   const s = STEPS.findIndex((s) => s.key === normalised);
-  // out_for_delivery sits between ready and completed
-  if (status === "out_for_delivery") return 2; // "ready" position
+  // delivery statuses sit between ready and completed
+  if (['out_for_delivery', 'picked_up', 'on_the_way', 'delivered'].includes(status)) return 2;
   if (status === "completed") return 3;
   return s;
 }
@@ -381,6 +502,11 @@ export function OrderStatusPage() {
                 </span>
               </div>
             </div>
+
+            {/* Driver tracking — shown when driver is on the way */}
+            {order.type === 'delivery' && ['picked_up', 'on_the_way'].includes(order.status) && (
+              <DriverTracker orderId={order.id} token={token} />
+            )}
 
             {/* Delivery address */}
             {order.type === 'delivery' && order.delivery_address_line1 && (

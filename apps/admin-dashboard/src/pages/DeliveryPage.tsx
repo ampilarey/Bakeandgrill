@@ -1,9 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchOrders, type Order, adminRequest } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, Spinner, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-type Driver = { id: number; name: string; phone?: string | null; is_active: boolean };
+type Driver = {
+  id: number;
+  name: string;
+  phone?: string | null;
+  is_active: boolean;
+  vehicle_type?: string | null;
+  has_pin?: boolean;
+  last_login_at?: string | null;
+};
+
+type DriverLocation = {
+  latitude: number;
+  longitude: number;
+  heading: number | null;
+  speed: number | null;
+  recorded_at: string;
+  driver?: { name: string; phone: string } | null;
+};
 
 function timeAgo(iso: string) {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -174,13 +191,15 @@ function DeliveryCard({
   const urgent = order.status === 'pending' &&
     (Date.now() - new Date(order.created_at).getTime()) > 10 * 60 * 1000;
 
-  const driverName = (order as Order & { driver?: { name: string } }).driver?.name;
+  const extOrder = order as Order & { driver?: { name: string; phone?: string }; delivery_driver_id?: number };
+  const driverName = extOrder.driver?.name;
+  const isActiveDelivery = ['out_for_delivery', 'picked_up', 'on_the_way'].includes(order.status);
 
   return (
     <Card style={{ border: urgent ? '2px solid #ef4444' : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <span style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>#{order.order_number}</span>
-        <Badge label={order.status} color={statColor(order.status)} />
+        <Badge label={order.status.replace(/_/g, ' ')} color={statColor(order.status)} />
       </div>
       <p style={{ fontSize: 14, color: '#374151', marginBottom: 4 }}>
         {order.delivery_address_line1 ?? '—'}
@@ -194,9 +213,12 @@ function DeliveryCard({
 
       {/* Driver badge or quick assign */}
       {driverName ? (
-        <p style={{ fontSize: 13, color: '#16a34a', fontWeight: 600, marginTop: 6 }}>
-          🛵 {driverName}
-        </p>
+        <div style={{ marginTop: 6 }}>
+          <p style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>🛵 {driverName}</p>
+          {isActiveDelivery && extOrder.delivery_driver_id && (
+            <DriverLocationBadge orderId={order.id} />
+          )}
+        </div>
       ) : !['completed', 'cancelled'].includes(order.status) && drivers.length > 0 ? (
         <QuickAssignDriver order={order} drivers={drivers} onAssigned={onDriverAssigned} />
       ) : null}
@@ -209,6 +231,47 @@ function DeliveryCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+// ─── Driver Location Badge ───────────────────────────────────────────────────
+
+function DriverLocationBadge({ orderId }: { orderId: number }) {
+  const [location, setLocation] = useState<DriverLocation | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await adminRequest<{ location: DriverLocation | null }>(`/driver/deliveries/${orderId}/location`);
+      setLocation(res.location);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId]);
+
+  useEffect(() => {
+    void load();
+    const id = setInterval(() => void load(), 15_000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  if (loading) return <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Loading location…</p>;
+  if (!location) return <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>📍 Location not available</p>;
+
+  const mapsUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+  const updatedMins = Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000);
+
+  return (
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ fontSize: 12, color: '#D4813A', fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 2 }}
+    >
+      📍 Track live · {updatedMins < 1 ? 'just now' : `${updatedMins}m ago`}
+    </a>
   );
 }
 
@@ -301,8 +364,11 @@ function AssignDriverInline({
 
 // ─── Drivers Panel ───────────────────────────────────────────────────────────
 
+type DriverForm = { name: string; phone: string; is_active: boolean; vehicle_type: string; pin: string };
+const emptyForm = (): DriverForm => ({ name: '', phone: '', is_active: true, vehicle_type: '', pin: '' });
+
 function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: () => void }) {
-  const [form, setForm] = useState<{ name: string; phone: string; is_active: boolean }>({ name: '', phone: '', is_active: true });
+  const [form, setForm] = useState<DriverForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -312,12 +378,20 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
     setSaving(true);
     setError('');
     try {
+      const payload: Record<string, unknown> = {
+        name: form.name,
+        phone: form.phone || null,
+        is_active: form.is_active,
+        vehicle_type: form.vehicle_type || null,
+      };
+      if (form.pin) payload.pin = form.pin;
+
       if (editId !== null) {
-        await adminRequest(`/delivery/drivers/${editId}`, { method: 'PATCH', body: JSON.stringify(form) });
+        await adminRequest(`/delivery/drivers/${editId}`, { method: 'PATCH', body: JSON.stringify(payload) });
       } else {
-        await adminRequest('/delivery/drivers', { method: 'POST', body: JSON.stringify(form) });
+        await adminRequest('/delivery/drivers', { method: 'POST', body: JSON.stringify(payload) });
       }
-      setForm({ name: '', phone: '', is_active: true });
+      setForm(emptyForm());
       setEditId(null);
       onRefresh();
     } catch (e) {
@@ -337,7 +411,12 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
 
   const startEdit = (d: Driver) => {
     setEditId(d.id);
-    setForm({ name: d.name, phone: d.phone ?? '', is_active: d.is_active });
+    setForm({ name: d.name, phone: d.phone ?? '', is_active: d.is_active, vehicle_type: d.vehicle_type ?? '', pin: '' });
+  };
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1, padding: '9px 12px', borderRadius: 8,
+    border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'inherit', minWidth: 120,
   };
 
   return (
@@ -348,20 +427,42 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
           {editId !== null ? 'Edit Driver' : 'Add Driver'}
         </p>
         {error && <ErrorMsg message={error} />}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <input
             placeholder="Name *"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            style={{ flex: 2, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'inherit', minWidth: 140 }}
+            style={{ ...inputStyle, flex: 2, minWidth: 140 }}
           />
           <input
-            placeholder="Phone (optional)"
+            placeholder="Phone"
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'inherit', minWidth: 120 }}
+            style={inputStyle}
           />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151' }}>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          <select
+            value={form.vehicle_type}
+            onChange={(e) => setForm((f) => ({ ...f, vehicle_type: e.target.value }))}
+            style={{ ...inputStyle, color: form.vehicle_type ? '#374151' : '#94a3b8' }}
+          >
+            <option value="">Vehicle type…</option>
+            <option value="bike">🚲 Bike</option>
+            <option value="scooter">🛵 Scooter</option>
+            <option value="motorcycle">🏍️ Motorcycle</option>
+            <option value="car">🚗 Car</option>
+          </select>
+          <input
+            placeholder={editId !== null ? 'New PIN (leave blank to keep)' : 'PIN (4-6 digits)'}
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            value={form.pin}
+            onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))}
+            style={inputStyle}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
             Active
           </label>
@@ -371,7 +472,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
             {saving ? 'Saving…' : editId !== null ? 'Update' : 'Add Driver'}
           </Btn>
           {editId !== null && (
-            <Btn variant="secondary" onClick={() => { setEditId(null); setForm({ name: '', phone: '', is_active: true }); }}>
+            <Btn variant="secondary" onClick={() => { setEditId(null); setForm(emptyForm()); }}>
               Cancel
             </Btn>
           )}
@@ -389,16 +490,31 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
                 <div>
                   <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>{d.name}</p>
                   {d.phone && <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>📞 {d.phone}</p>}
-                  <span style={{
-                    display: 'inline-block', marginTop: 6, padding: '2px 8px',
-                    background: d.is_active ? '#dcfce7' : '#f1f5f9',
-                    color: d.is_active ? '#16a34a' : '#64748b',
-                    borderRadius: 99, fontSize: 11, fontWeight: 600,
-                  }}>
-                    {d.is_active ? 'Active' : 'Inactive'}
-                  </span>
+                  {d.vehicle_type && <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>🚗 {d.vehicle_type}</p>}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    <span style={{
+                      padding: '2px 8px', background: d.is_active ? '#dcfce7' : '#f1f5f9',
+                      color: d.is_active ? '#16a34a' : '#64748b',
+                      borderRadius: 99, fontSize: 11, fontWeight: 600,
+                    }}>
+                      {d.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                    <span style={{
+                      padding: '2px 8px',
+                      background: d.has_pin ? '#dbeafe' : '#fef9c3',
+                      color: d.has_pin ? '#1d4ed8' : '#854d0e',
+                      borderRadius: 99, fontSize: 11, fontWeight: 600,
+                    }}>
+                      {d.has_pin ? '🔒 PIN set' : '⚠️ No PIN'}
+                    </span>
+                  </div>
+                  {d.last_login_at && (
+                    <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                      Last login: {new Date(d.last_login_at).toLocaleString()}
+                    </p>
+                  )}
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <Btn small variant="ghost" onClick={() => startEdit(d)}>Edit</Btn>
                   <Btn small variant="danger" onClick={() => void handleDelete(d.id)}>Delete</Btn>
                 </div>

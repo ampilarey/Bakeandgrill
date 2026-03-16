@@ -94,3 +94,12 @@ Route::get('/pos/{any}', function () {
     abort_if(! file_exists(public_path('pos/index.html')), 503, 'POS app not deployed.');
     return response()->file(public_path('pos/index.html'));
 })->where('any', '.*')->name('pos.spa');
+
+// Driver PWA SPA — catch-all for /driver/* sub-paths
+Route::get('/driver', function () {
+    return redirect('/driver/');
+})->name('driver.redirect');
+Route::get('/driver/{any}', function () {
+    abort_if(! file_exists(public_path('driver/index.html')), 503, 'Driver app not deployed.');
+    return response()->file(public_path('driver/index.html'));
+})->where('any', '.*')->name('driver.spa');

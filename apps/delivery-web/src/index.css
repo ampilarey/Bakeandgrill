@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #D4813A;
+  --color-brand-dark: #B5681F;
+  --color-brand-light: #EDE4D4;
+  --color-dark: #1C1408;
+  --color-muted: #8B7355;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #F5EFE6;
+  color: var(--color-dark);
+  overscroll-behavior: none;
+}
+
+/* Safe area for notched phones */
+.safe-top    { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

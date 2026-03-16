@@ -9,6 +9,7 @@ use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Manage delivery drivers and assign them to orders.
@@ -19,7 +20,7 @@ class DeliveryDriverController extends Controller
 
     public function index(): JsonResponse
     {
-        $drivers = DeliveryDriver::orderBy('name')->get();
+        $drivers = DeliveryDriver::orderBy('name')->get()->map(fn(DeliveryDriver $d) => $this->driverData($d));
 
         return response()->json(['drivers' => $drivers]);
     }
@@ -27,27 +28,52 @@ class DeliveryDriverController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'      => ['required', 'string', 'max:100'],
-            'phone'     => ['nullable', 'string', 'max:30'],
-            'is_active' => ['boolean'],
+            'name'         => ['required', 'string', 'max:100'],
+            'phone'        => ['nullable', 'string', 'max:30'],
+            'is_active'    => ['boolean'],
+            'vehicle_type' => ['nullable', 'string', 'max:30'],
+            'pin'          => ['nullable', 'string', 'digits_between:4,6'],
         ]);
+
+        if (!empty($validated['pin'])) {
+            $validated['pin'] = Hash::make($validated['pin']);
+        }
 
         $driver = DeliveryDriver::create($validated);
 
-        return response()->json(['driver' => $driver], 201);
+        return response()->json(['driver' => $this->driverData($driver)], 201);
     }
 
     public function update(Request $request, DeliveryDriver $driver): JsonResponse
     {
         $validated = $request->validate([
-            'name'      => ['sometimes', 'string', 'max:100'],
-            'phone'     => ['nullable', 'string', 'max:30'],
-            'is_active' => ['boolean'],
+            'name'         => ['sometimes', 'string', 'max:100'],
+            'phone'        => ['nullable', 'string', 'max:30'],
+            'is_active'    => ['boolean'],
+            'vehicle_type' => ['nullable', 'string', 'max:30'],
+            'pin'          => ['nullable', 'string', 'digits_between:4,6'],
         ]);
+
+        if (array_key_exists('pin', $validated)) {
+            $validated['pin'] = $validated['pin'] ? Hash::make($validated['pin']) : null;
+        }
 
         $driver->update($validated);
 
-        return response()->json(['driver' => $driver]);
+        return response()->json(['driver' => $this->driverData($driver)]);
+    }
+
+    private function driverData(DeliveryDriver $driver): array
+    {
+        return [
+            'id'           => $driver->id,
+            'name'         => $driver->name,
+            'phone'        => $driver->phone,
+            'is_active'    => $driver->is_active,
+            'vehicle_type' => $driver->vehicle_type,
+            'has_pin'      => (bool) $driver->getAttributes()['pin'],
+            'last_login_at' => $driver->last_login_at?->toIso8601String(),
+        ];
     }
 
     public function destroy(DeliveryDriver $driver): JsonResponse

@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission'     => App\Http\Middleware\RequirePermission::class,
             'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
             'staff.token'    => App\Http\Middleware\EnsureStaffToken::class,
+            'driver.token'   => App\Http\Middleware\EnsureDriverToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
