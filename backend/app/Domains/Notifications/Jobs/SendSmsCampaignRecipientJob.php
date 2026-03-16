@@ -6,6 +6,7 @@ namespace App\Domains\Notifications\Jobs;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Models\SmsCampaign;
 use App\Models\SmsCampaignRecipient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,7 +46,7 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
                 type: 'campaign',
                 customerId: $this->recipient->customer_id,
                 campaignId: $campaign->id,
-                referenceType: 'App\Models\SmsCampaign',
+                referenceType: SmsCampaign::class,
                 referenceId: (string) $campaign->id,
                 idempotencyKey: "campaign:{$campaign->id}:recipient:{$this->recipient->id}",
             ));

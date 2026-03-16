@@ -51,6 +51,9 @@ class Order extends Model
         'delivery_fee',
         'delivery_fee_laar',
         'delivery_eta_at',
+        'delivery_driver_id',
+        'driver_assigned_at',
+        'store_id',
     ];
 
     protected $casts = [

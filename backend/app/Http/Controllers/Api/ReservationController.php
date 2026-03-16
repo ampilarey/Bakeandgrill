@@ -143,6 +143,8 @@ class ReservationController extends Controller
             'advance_booking_days'   => ['sometimes', 'integer', 'min:1', 'max:365'],
             'buffer_minutes_between' => ['sometimes', 'integer', 'min:0', 'max:120'],
             'auto_cancel_minutes'    => ['sometimes', 'integer', 'min:5', 'max:120'],
+            'opening_time'           => ['sometimes', 'date_format:H:i'],
+            'closing_time'           => ['sometimes', 'date_format:H:i', 'after:opening_time'],
         ]);
 
         $settings = ReservationSetting::current();

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { BIZ } from "../constants/biz";
@@ -128,7 +128,8 @@ export function OrderStatusPage() {
   const token = readToken();
   const esRef = useRef<EventSource | null>(null);
 
-  const loadOrder = async () => {
+  // useCallback gives a stable reference so polling intervals don't capture stale closures
+  const loadOrder = useCallback(async () => {
     if (!token || !orderId) return;
     try {
       const res = await getOrderDetail(token, parseInt(orderId, 10));
@@ -138,7 +139,7 @@ export function OrderStatusPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, orderId]);
 
   useEffect(() => {
     document.title = order?.order_number
@@ -151,7 +152,7 @@ export function OrderStatusPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentState]);
 
-  useEffect(() => { void loadOrder(); }, [orderId, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadOrder(); }, [loadOrder]);
 
   // SSE real-time tracking
   useEffect(() => {
@@ -195,13 +196,12 @@ export function OrderStatusPage() {
     };
   }, [orderId, token]);
 
-  // Fallback polling
+  // Fallback polling — uses stable loadOrder reference from useCallback
   useEffect(() => {
     if (liveConnected) return;
     const interval = setInterval(() => void loadOrder(), 10_000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveConnected, orderId, token]);
+  }, [liveConnected, loadOrder]);
 
   const statusInfo = order ? (STATUS_CONFIG[order.status] ?? {
     label: order.status, sub: '', color: 'var(--color-text-muted)', bg: 'var(--color-surface-alt)', icon: '📋',

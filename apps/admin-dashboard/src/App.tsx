@@ -49,7 +49,15 @@ function PermissionGuard({
   if (!user) return <Navigate to="/login" replace />;
   // Owner bypasses all permission checks
   if (user.role === 'owner') return <>{children}</>;
-  if (!user.permissions?.includes(permission)) return <Navigate to="/orders" replace />;
+  if (!user.permissions?.includes(permission)) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
+        <div style={{ fontSize: 48 }}>🔒</div>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C1408', margin: 0 }}>Access Denied</h2>
+        <p style={{ color: '#8B7355', margin: 0 }}>You don't have permission to view this page.</p>
+      </div>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -101,22 +109,62 @@ export default function App() {
             <Layout user={user!} onLogout={handleLogout}>
               <Routes>
                 <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard"  element={<DashboardPage />} />
-                <Route path="orders"     element={<OrdersPage />} />
-                <Route path="kds"        element={<KDSPage />} />
-                <Route path="delivery"   element={<DeliveryPage />} />
-                <Route path="promotions" element={<PromotionsPage />} />
-                <Route path="loyalty"    element={<LoyaltyPage />} />
-                <Route path="sms"        element={<SmsPage />} />
-                <Route path="reports"    element={<ReportsPage />} />
-                <Route path="menu"       element={<MenuPage />} />
+                <Route path="dashboard" element={
+                  <PermissionGuard user={user} permission="dashboard.view">
+                    <DashboardPage />
+                  </PermissionGuard>
+                } />
+                <Route path="orders" element={
+                  <PermissionGuard user={user} permission="orders.view">
+                    <OrdersPage />
+                  </PermissionGuard>
+                } />
+                <Route path="kds" element={
+                  <PermissionGuard user={user} permission="orders.view">
+                    <KDSPage />
+                  </PermissionGuard>
+                } />
+                <Route path="delivery" element={
+                  <PermissionGuard user={user} permission="delivery.view">
+                    <DeliveryPage />
+                  </PermissionGuard>
+                } />
+                <Route path="promotions" element={
+                  <PermissionGuard user={user} permission="promotions.view">
+                    <PromotionsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="loyalty" element={
+                  <PermissionGuard user={user} permission="loyalty.view">
+                    <LoyaltyPage />
+                  </PermissionGuard>
+                } />
+                <Route path="sms" element={
+                  <PermissionGuard user={user} permission="integrations.sms">
+                    <SmsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="reports" element={
+                  <PermissionGuard user={user} permission="reports.view">
+                    <ReportsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="menu" element={
+                  <PermissionGuard user={user} permission="menu.view">
+                    <MenuPage />
+                  </PermissionGuard>
+                } />
                 {/* Staff management */}
                 <Route path="staff" element={
                   <PermissionGuard user={user} permission="staff.view">
                     <StaffPage />
                   </PermissionGuard>
                 } />
-                <Route path="reservations" element={<ReservationsPage />} />
+                <Route path="reservations" element={
+                  <PermissionGuard user={user} permission="reservations.view">
+                    <ReservationsPage />
+                  </PermissionGuard>
+                } />
                 <Route path="analytics" element={
                   <PermissionGuard user={user} permission="customers.analytics">
                     <AnalyticsPage />

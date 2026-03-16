@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchOrders, fetchOrder, type Order } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
@@ -152,7 +152,7 @@ export function OrdersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -164,15 +164,15 @@ export function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, typeFilter, page]);
 
-  useEffect(() => { void load(); }, [statusFilter, typeFilter, page]);
+  useEffect(() => { void load(); }, [load]);
 
-  // Auto-refresh every 30s
+  // Auto-refresh every 30s — resets timer when filters/page change
   useEffect(() => {
     const t = setInterval(() => void load(), 30_000);
     return () => clearInterval(t);
-  }, [statusFilter, typeFilter, page]);
+  }, [load]);
 
   return (
     <>

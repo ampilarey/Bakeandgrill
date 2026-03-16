@@ -151,8 +151,11 @@ class ReservationService
     private function generateSlots(ReservationSetting $settings): array
     {
         $slots    = [];
-        $start    = Carbon::createFromTime(9, 0);
-        $end      = Carbon::createFromTime(22, 0);
+        // Use DB-stored opening/closing times; fall back to 09:00–22:00 if not set
+        [$openH, $openM]  = array_map('intval', explode(':', $settings->opening_time ?? '09:00'));
+        [$closeH, $closeM] = array_map('intval', explode(':', $settings->closing_time ?? '22:00'));
+        $start    = Carbon::createFromTime($openH, $openM);
+        $end      = Carbon::createFromTime($closeH, $closeM);
         $interval = $settings->slot_duration_minutes + $settings->buffer_minutes_between;
 
         while ($start->lte($end)) {
