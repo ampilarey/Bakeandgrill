@@ -22,11 +22,11 @@ class PrayerTimesSeeder extends Seeder
 
         $driver = DB::getDriverName();
 
-        DB::transaction(function () use ($sqlite, $driver) {
-            if ($driver === 'mysql') {
-                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-            }
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        }
 
+        DB::transaction(function () use ($sqlite, $driver) {
             // ── Categories ──────────────────────────────────────────────
             $this->command->info('Seeding prayer_categories...');
             DB::table('prayer_categories')->truncate();
@@ -90,10 +90,10 @@ class PrayerTimesSeeder extends Seeder
                 $total += count($buffer);
             }
             $this->command->info("Inserted {$total} prayer time rows.");
-
-            if ($driver === 'mysql') {
-                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-            }
         });
+
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
     }
 }
