@@ -258,7 +258,7 @@
         }
         .mob-nav-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(6, 1fr);
             gap: 0.25rem;
         }
         .mob-nav-item {
@@ -441,6 +441,7 @@
         <nav class="header-nav">
             <a href="/">Home</a>
             <a href="/hours">Hours</a>
+            <a href="/prayer-times">Prayer Times</a>
             <a href="/contact">Contact</a>
         </nav>
         <div class="header-actions">
@@ -544,6 +545,9 @@
         </a>
         <a href="/hours" class="mob-nav-item">
             <span class="mob-nav-icon">🕐</span>Hours
+        </a>
+        <a href="/prayer-times" class="mob-nav-item">
+            <span class="mob-nav-icon">🕌</span>Prayer
         </a>
         <a href="/contact" class="mob-nav-item">
             <span class="mob-nav-icon">📞</span>Contact

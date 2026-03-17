@@ -61,6 +61,10 @@ return [
         'subject'     => env('VAPID_SUBJECT', env('APP_URL')),
     ],
 
+    'salat' => [
+        'api_url' => env('SALAT_API_URL'),
+    ],
+
     'xero' => [
         'client_id'       => env('XERO_CLIENT_ID'),
         'client_secret'   => env('XERO_CLIENT_SECRET'),

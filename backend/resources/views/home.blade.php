@@ -662,6 +662,48 @@
     .btn-primary, .btn-outline { width: 100%; justify-content: center; }
 }
 
+/* ─── Prayer Times Section ───────────────────────────────── */
+.prayer-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #0F5C4D08 0%, #1e293b05 100%);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+.prayer-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+.prayer-title {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 800;
+    color: var(--dark);
+    letter-spacing: -0.03em;
+    margin-bottom: 0.25rem;
+}
+.prayer-sub {
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+.prayer-full-link {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--amber);
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.prayer-full-link:hover { color: var(--amber-hover); }
+.prayer-widget-wrap {
+    max-width: 640px;
+}
+@media (max-width: 768px) {
+    .prayer-section { padding: 2.5rem 0; }
+}
+
 </style>
 @endsection
 
@@ -1053,6 +1095,33 @@
         </div>
     </div>
 </section>
+
+
+{{-- ══════════════════════════════════════════════════════════
+     PRAYER TIMES
+══════════════════════════════════════════════════════════ --}}
+@if($salatApiUrl)
+<section class="prayer-section">
+    <div class="container">
+        <div class="prayer-header">
+            <div>
+                <h2 class="prayer-title">🕌 Prayer Times</h2>
+                <p class="prayer-sub">Daily Salat times for all islands of Maldives</p>
+            </div>
+            <a href="/prayer-times" class="prayer-full-link">Full schedule →</a>
+        </div>
+        <div class="prayer-widget-wrap">
+            <div
+                data-salat-widget
+                data-api-base="{{ $salatApiUrl }}"
+                data-theme="light"
+                data-lang="dv"
+            ></div>
+        </div>
+    </div>
+</section>
+<script src="{{ asset('salat-widget.js') }}"></script>
+@endif
 
 
 {{-- ══════════════════════════════════════════════════════════
