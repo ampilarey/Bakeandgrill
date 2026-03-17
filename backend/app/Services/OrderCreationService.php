@@ -181,8 +181,8 @@ class OrderCreationService
 
             $lineTotal = ($basePrice + $modifierTotal) * $quantity;
 
-            if ($lineTotal <= 0) {
-                abort(422, "Invalid line total calculated for item {$itemId}");
+            if ($lineTotal < 0) {
+                abort(422, "Negative line total calculated for item {$itemId}");
             }
 
             $subtotal += $lineTotal;

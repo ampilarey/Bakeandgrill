@@ -1,0 +1,15 @@
+{
+  "name": "@bakeandgrill/prayer-times-widget",
+  "version": "1.0.0",
+  "description": "Prayer times widget for Maldives – React component",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -96,7 +96,11 @@ class StockManagementService
         foreach ($recipients as $user) {
             if ($user->phone) {
                 try {
-                    $smsService->send($user->phone, $message);
+                    $smsService->send(new \App\Domains\Notifications\DTOs\SmsMessage(
+                        to: $user->phone,
+                        message: $message,
+                        type: 'transactional',
+                    ));
                 } catch (\Exception $e) {
                     \Log::error('Failed to send low stock SMS', [
                         'user' => $user->id,

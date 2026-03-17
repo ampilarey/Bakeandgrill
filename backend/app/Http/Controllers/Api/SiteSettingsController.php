@@ -65,7 +65,7 @@ class SiteSettingsController extends Controller
         $allowedKeys = array_merge($directKeys, $jsonKeys);
 
         $request->validate([
-            'file' => 'required|file|mimes:png,jpg,jpeg,webp,svg,ico|max:5120',
+            'file' => 'required|file|mimes:png,jpg,jpeg,webp,ico|max:5120',
             'key'  => 'required|string|in:' . implode(',', $allowedKeys),
         ]);
 

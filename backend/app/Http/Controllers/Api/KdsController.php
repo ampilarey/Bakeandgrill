@@ -17,9 +17,14 @@ class KdsController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $allowed  = ['pending', 'in_progress'];
         $statuses = $request->query('status')
-            ? explode(',', $request->query('status'))
-            : ['pending', 'in_progress'];
+            ? array_intersect(explode(',', $request->query('status')), $allowed)
+            : $allowed;
+
+        if (empty($statuses)) {
+            $statuses = $allowed;
+        }
 
         $orders = Order::with(['items.modifiers'])
             ->whereIn('status', $statuses)

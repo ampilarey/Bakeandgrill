@@ -195,6 +195,11 @@ class PurchaseController extends Controller
         }
 
         while (($data = fgetcsv($handle)) !== false) {
+            if (count($rows) >= 2000) {
+                fclose($handle);
+                return response()->json(['message' => 'CSV exceeds the maximum of 2,000 rows.'], 422);
+            }
+
             $row = array_combine($normalized, $data);
             if (!$row || empty($row['name'])) {
                 continue;
@@ -236,8 +241,9 @@ class PurchaseController extends Controller
 
     private function generatePurchaseNumber(): string
     {
-        $date = now()->format('Ymd');
-        $count = Purchase::whereDate('purchase_date', now()->toDateString())->count() + 1;
+        // Lock the latest record to prevent duplicate number generation under concurrency
+        $date     = now()->format('Ymd');
+        $count    = Purchase::whereDate('purchase_date', now()->toDateString())->lockForUpdate()->count() + 1;
         $sequence = str_pad((string) $count, 4, '0', STR_PAD_LEFT);
 
         return "PO-{$date}-{$sequence}";

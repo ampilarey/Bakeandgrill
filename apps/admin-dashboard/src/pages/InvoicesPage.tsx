@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, type Invoice } from '../api';
-import { Badge, Btn, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor } from '../components/Layout';
+import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
@@ -15,6 +15,7 @@ export function InvoicesPage() {
   const [selected, setSelected]     = useState<Invoice | null>(null);
   const [paying, setPaying]         = useState(false);
   const [payMethod, setPayMethod]   = useState('cash');
+  const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const load = async () => {
     setLoading(true); setError('');
@@ -38,10 +39,17 @@ export function InvoicesPage() {
       setPaying(false); setSelected(null); void load();
     } catch (e) { setError((e as Error).message); }
   };
-  const handleVoid = async (id: number) => {
-    if (!confirm('Void this invoice?')) return;
-    try { await voidInvoice(id); void load(); }
-    catch (e) { setError((e as Error).message); }
+  const handleVoid = (id: number) => {
+    ask({
+      title: 'Void Invoice',
+      message: 'Void this invoice? This action cannot be undone.',
+      confirmLabel: 'Void',
+      danger: true,
+      onConfirm: async () => {
+        try { await voidInvoice(id); void load(); }
+        catch (e) { setError((e as Error).message); }
+      },
+    });
   };
 
   const selectStyle = {
@@ -53,6 +61,7 @@ export function InvoicesPage() {
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Invoices"
         subtitle="Manage sale and purchase invoices"

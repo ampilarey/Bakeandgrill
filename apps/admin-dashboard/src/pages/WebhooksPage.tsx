@@ -6,7 +6,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, useConfirmDialog,
 } from '../components/Layout';
 
 function StatusBadge({ status }: { status: string }) {
@@ -37,6 +37,12 @@ function WebhookForm({
   const handleSave = async () => {
     if (!name.trim() || !url.trim() || events.length === 0) {
       setError('Name, URL and at least one event are required.');
+      return;
+    }
+    try {
+      new URL(url.trim());
+    } catch {
+      setError('Please enter a valid URL (must start with https://).');
       return;
     }
     setSaving(true);
@@ -154,6 +160,8 @@ export function WebhooksPage() {
   const [error, setError] = useState('');
   const [newSecret, setNewSecret] = useState<{ name: string; secret: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [actingId, setActingId] = useState<number | null>(null);
+  const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const load = () => {
     Promise.all([fetchWebhooks(), fetchSupportedWebhookEvents()])
@@ -181,21 +189,36 @@ export function WebhooksPage() {
   };
 
   const handleToggleActive = async (sub: WebhookSubscription) => {
-    await updateWebhook(sub.id, { active: !sub.active });
-    load();
+    setActingId(sub.id);
+    try { await updateWebhook(sub.id, { active: !sub.active }); load(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setActingId(null); }
   };
 
-  const handleDelete = async (sub: WebhookSubscription) => {
-    if (!confirm(`Delete webhook "${sub.name}"?`)) return;
-    await deleteWebhook(sub.id);
-    load();
+  const handleDelete = (sub: WebhookSubscription) => {
+    ask({
+      title: 'Delete Webhook',
+      message: `Delete webhook "${sub.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setActingId(sub.id);
+        try { await deleteWebhook(sub.id); load(); }
+        catch (e) { setError((e as Error).message); }
+        finally { setActingId(null); }
+      },
+    });
   };
 
   const handleRotate = async (sub: WebhookSubscription) => {
-    const r = await rotateWebhookSecret(sub.id);
-    setNewSecret({ name: sub.name, secret: r.secret });
-    setCopied(false);
-    load();
+    setActingId(sub.id);
+    try {
+      const r = await rotateWebhookSecret(sub.id);
+      setNewSecret({ name: sub.name, secret: r.secret });
+      setCopied(false);
+      load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setActingId(null); }
   };
 
   const handleCopySecret = () => {
@@ -205,6 +228,7 @@ export function WebhooksPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Outgoing Webhooks"
         subtitle="Push real-time events to external systems via signed HTTP POST"

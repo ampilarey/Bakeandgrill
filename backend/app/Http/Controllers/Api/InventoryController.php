@@ -127,7 +127,7 @@ class InventoryController extends Controller
 
         DB::transaction(function () use ($validated, $request, &$adjustments) {
             foreach ($validated['counts'] as $count) {
-                $item = InventoryItem::findOrFail($count['inventory_item_id']);
+                $item = InventoryItem::lockForUpdate()->findOrFail($count['inventory_item_id']);
                 $newQuantity = (float) $count['quantity'];
                 $oldQuantity = (float) ($item->current_stock ?? 0);
                 $difference = $newQuantity - $oldQuantity;

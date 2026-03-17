@@ -47,6 +47,14 @@ class WasteLogController extends Controller
             'notes'             => ['nullable', 'string', 'max:500'],
         ]);
 
+        // At least one item reference is required
+        if (empty($validated['item_id']) && empty($validated['inventory_item_id'])) {
+            return response()->json([
+                'message' => 'Either item_id or inventory_item_id is required.',
+                'errors'  => ['item_id' => ['At least one item reference is required.']],
+            ], 422);
+        }
+
         $validated['user_id'] = $request->user()->id;
 
         $wasteLog = DB::transaction(function () use ($validated): WasteLog {

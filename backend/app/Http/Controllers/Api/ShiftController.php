@@ -126,13 +126,11 @@ class ShiftController extends Controller
             $request,
         );
 
-        $orderCount = Order::where('user_id', $shift->user_id)
-            ->whereBetween('created_at', [$shift->opened_at, $shift->closed_at])
+        $orderCount = Order::where('shift_id', $shift->id)
             ->whereNotIn('status', ['cancelled'])
             ->count();
 
-        $totalRevenue = Order::where('user_id', $shift->user_id)
-            ->whereBetween('created_at', [$shift->opened_at, $shift->closed_at])
+        $totalRevenue = Order::where('shift_id', $shift->id)
             ->whereNotIn('status', ['cancelled'])
             ->sum('total');
 

@@ -86,8 +86,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const cartTotal = useMemo(
     () =>
       cart.reduce((total, e) => {
-        const modsTotal = e.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0);
-        return total + (parseFloat(String(e.item.base_price)) + modsTotal) * e.quantity;
+        const basePrice = parseFloat(String(e.item.base_price)) || 0;
+        const modsTotal = e.modifiers.reduce((s, m) => s + (parseFloat(String(m.price)) || 0), 0);
+        return total + (basePrice + modsTotal) * e.quantity;
       }, 0),
     [cart],
   );

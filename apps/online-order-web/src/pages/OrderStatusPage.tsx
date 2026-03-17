@@ -388,10 +388,20 @@ export function OrderStatusPage() {
         {error && (
           <div className="banner banner-error">
             <span className="banner-icon">⚠️</span>
-            <div>
+            <div style={{ flex: 1 }}>
               <p className="banner-title">Couldn't load your order</p>
               <p className="banner-sub">{error}</p>
             </div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                marginLeft: 12, padding: '6px 14px', fontSize: 13, fontWeight: 600,
+                background: '#fff', color: '#ef4444', border: '1.5px solid #ef4444',
+                borderRadius: 8, cursor: 'pointer',
+              }}
+            >
+              Try again
+            </button>
           </div>
         )}
 

@@ -151,6 +151,13 @@ class ExpenseController extends Controller
     public function approve(Request $request, int $id): JsonResponse
     {
         $expense = Expense::findOrFail($id);
+
+        abort_if(
+            $expense->user_id === $request->user()->id,
+            403,
+            'You cannot approve your own expense.'
+        );
+
         $expense->update(['status' => 'approved', 'approved_by' => $request->user()->id]);
 
         return response()->json(['expense' => $this->format($expense->fresh('category'))]);

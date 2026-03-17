@@ -247,8 +247,9 @@ Route::post('/receipts/{token}/resend', [ReceiptController::class, 'resend'])
 Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback'])
     ->middleware('throttle:10,10');
 
-// Customer SMS opt-out
-Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut']);
+// Customer SMS opt-out (throttled to prevent bulk unsubscribing)
+Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut'])
+    ->middleware('throttle:5,10');
 
 // Staff-only: update internal notes on a customer profile
 Route::middleware(['auth:sanctum', 'permission:customers.manage'])->group(function () {
@@ -629,7 +630,8 @@ Route::middleware(['auth:sanctum', 'permission:website.manage'])->get('/admin/sy
 });
 
 // ─── Driver Auth (public — PIN login) ──────────────────────────────────────
-Route::post('/auth/driver/pin-login', [App\Http\Controllers\Api\DriverAuthController::class, 'pinLogin']);
+Route::post('/auth/driver/pin-login', [App\Http\Controllers\Api\DriverAuthController::class, 'pinLogin'])
+    ->middleware('throttle:5,1');
 
 // ─── Driver API (authenticated driver only) ─────────────────────────────────
 Route::middleware(['auth:sanctum', 'driver.token'])->group(function (): void {

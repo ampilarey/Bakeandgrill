@@ -32,15 +32,17 @@ trait HasPermissions
             return true;
         }
 
-        // User-level override
-        $override = $this->permissions()->where('slug', $slug)->first();
+        // Load all user-level permission overrides in one query, then filter in PHP
+        $this->loadMissing('permissions');
+        $override = $this->permissions->firstWhere('slug', $slug);
         if ($override !== null) {
             return (bool) $override->pivot->granted;
         }
 
-        // Role default
+        // Role default — load all role permissions in one query, then filter in PHP
         if ($this->role) {
-            return $this->role->permissions()->where('slug', $slug)->exists();
+            $this->role->loadMissing('permissions');
+            return $this->role->permissions->contains('slug', $slug);
         }
 
         return false;

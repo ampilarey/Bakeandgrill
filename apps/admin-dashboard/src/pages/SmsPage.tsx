@@ -7,8 +7,9 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Input,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input,
   PageHeader, Select, Spinner, StatCard, TableCard, TD, TH, statColor,
+  useConfirmDialog,
 } from '../components/Layout';
 
 type Tab = 'logs' | 'campaigns';
@@ -116,6 +117,8 @@ function CampaignsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [actionId, setActionId] = useState<number | null>(null);
+  const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   // Create form state
   const [name, setName] = useState('');
@@ -168,24 +171,43 @@ function CampaignsTab() {
     }
   };
 
-  const handleSend = async (id: number) => {
-    if (!confirm('Send this campaign to all recipients?')) return;
-    try {
-      await sendSmsCampaign(id);
-      await load();
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  const handleSend = (id: number) => {
+    ask({
+      title: 'Send Campaign',
+      message: 'Send this campaign to all recipients? This cannot be undone.',
+      confirmLabel: 'Send',
+      onConfirm: async () => {
+        setActionId(id);
+        try {
+          await sendSmsCampaign(id);
+          await load();
+        } catch (e) {
+          setError((e as Error).message);
+        } finally {
+          setActionId(null);
+        }
+      },
+    });
   };
 
-  const handleCancel = async (id: number) => {
-    if (!confirm('Cancel this campaign?')) return;
-    try {
-      await cancelSmsCampaign(id);
-      await load();
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  const handleCancel = (id: number) => {
+    ask({
+      title: 'Cancel Campaign',
+      message: 'Cancel this campaign? It will not be sent.',
+      confirmLabel: 'Cancel Campaign',
+      danger: true,
+      onConfirm: async () => {
+        setActionId(id);
+        try {
+          await cancelSmsCampaign(id);
+          await load();
+        } catch (e) {
+          setError((e as Error).message);
+        } finally {
+          setActionId(null);
+        }
+      },
+    });
   };
 
   const charCount = message.length;
@@ -199,6 +221,7 @@ function CampaignsTab() {
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       {error && <ErrorMsg message={error} />}
 
       {!creating && (
@@ -215,7 +238,7 @@ function CampaignsTab() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Message</label>
-              <span style={{ fontSize: 11, color: charCount > 160 ? '#ef4444' : '#94a3b8' }}>
+              <span style={{ fontSize: 11, color: charCount > (isUnicode ? 70 : 160) ? '#ef4444' : '#94a3b8' }}>
                 {charCount} chars · {segments} segment{segments > 1 ? 's' : ''}
               </span>
             </div>
@@ -279,10 +302,14 @@ function CampaignsTab() {
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {c.status === 'draft' && (
-                        <Btn small onClick={() => handleSend(c.id)}>Send</Btn>
+                        <Btn small onClick={() => handleSend(c.id)} disabled={actionId === c.id}>
+                          {actionId === c.id ? 'Sending…' : 'Send'}
+                        </Btn>
                       )}
                       {['draft', 'sending'].includes(c.status) && (
-                        <Btn small variant="danger" onClick={() => handleCancel(c.id)}>Cancel</Btn>
+                        <Btn small variant="danger" onClick={() => handleCancel(c.id)} disabled={actionId === c.id}>
+                          Cancel
+                        </Btn>
                       )}
                     </div>
                   </td>

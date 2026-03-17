@@ -88,19 +88,28 @@ export function useCheckout() {
 
   useEffect(() => {
     if (!token) return;
+    let cancelled = false;
+
     getCustomerMe(token)
-      .then((r) => setCustomerName(r.customer.name ?? r.customer.phone))
+      .then((r) => {
+        if (!cancelled) setCustomerName(r.customer.name ?? r.customer.phone);
+      })
       .catch(() => {
-        // Token may be expired — clear it and signal the app to re-authenticate
-        localStorage.removeItem('online_token');
-        window.dispatchEvent(new CustomEvent('auth_change'));
+        if (!cancelled) {
+          // Token may be expired — clear it and signal the app to re-authenticate
+          localStorage.removeItem('online_token');
+          window.dispatchEvent(new CustomEvent('auth_change'));
+        }
       });
+
     getLoyaltyAccount(token).then((r) => {
-      if (r.account && r.account.points_balance > 0) {
+      if (!cancelled && r.account && r.account.points_balance > 0) {
         setLoyaltyAccount(r.account);
         setLoyaltyPoints(r.account.points_balance);
       }
     }).catch(() => {});
+
+    return () => { cancelled = true; };
   }, [token]);
 
   useEffect(() => {
@@ -157,6 +166,7 @@ export function useCheckout() {
   // ── Place order + Pay ──────────────────────────────────────────────────────
   const handlePlaceAndPay = async () => {
     if (!token) return;
+    if (isPlacing) return; // prevent double-submission
     if (orderType === "delivery" && !validateDelivery()) return;
 
     setIsPlacing(true);
@@ -165,7 +175,11 @@ export function useCheckout() {
     try {
       let orderId: number;
 
-      if (orderType === "delivery") {
+      // If an order was already created (e.g. payment failed on first attempt),
+      // reuse it instead of creating a duplicate.
+      if (pendingOrderId) {
+        orderId = pendingOrderId;
+      } else       } else if (orderType === "delivery") {
         const res = await createDeliveryOrder(token, {
           items: cart.map((item) => ({
             item_id: item.id, quantity: item.quantity,

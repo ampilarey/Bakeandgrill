@@ -132,21 +132,22 @@ export function ReservationPage() {
             <h2 style={s.heading}>Make a Reservation</h2>
             {error && <div style={s.error}>{error}</div>}
 
-            <label style={s.label}>Your Name</label>
-            <input style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
+            <label htmlFor="rsv-name" style={s.label}>Your Name</label>
+            <input id="rsv-name" style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
 
-            <label style={s.label}>Phone Number</label>
-            <input style={s.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 7654321" type="tel" />
+            <label htmlFor="rsv-phone" style={s.label}>Phone Number</label>
+            <input id="rsv-phone" style={s.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 7654321" type="tel" />
 
             <label style={s.label}>Party Size</label>
             <div style={s.stepper}>
-              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.max(1, p - 1))}>−</button>
-              <span style={s.stepVal}>{partySize}</span>
-              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.min(20, p + 1))}>+</button>
+              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.max(1, p - 1))} aria-label="Decrease party size">−</button>
+              <span style={s.stepVal} aria-live="polite">{partySize}</span>
+              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.min(20, p + 1))} aria-label="Increase party size">+</button>
             </div>
 
-            <label style={s.label}>Date</label>
+            <label htmlFor="rsv-date" style={s.label}>Date</label>
             <input
+              id="rsv-date"
               style={s.input}
               type="date"
               value={date}
@@ -154,8 +155,8 @@ export function ReservationPage() {
               onChange={e => setDate(e.target.value)}
             />
 
-            <label style={s.label}>Special Requests (optional)</label>
-            <textarea style={{ ...s.input, resize: "vertical", minHeight: 72 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Allergies, celebrations, seating preferences…" />
+            <label htmlFor="rsv-notes" style={s.label}>Special Requests (optional)</label>
+            <textarea id="rsv-notes" style={{ ...s.input, resize: "vertical", minHeight: 72 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Allergies, celebrations, seating preferences…" />
 
             <button
               style={s.btn}

@@ -54,12 +54,9 @@ class CustomerPortalController extends Controller
         $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
         $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
-        $dhiraagu = config('services.dhiraagu');
-        $smsConfigured = !empty($dhiraagu['username']) && !empty($dhiraagu['password']);
-        if (!$smsConfigured || !$smsSent) {
-            session()->flash('otp_hint', "SMS not configured or failed. Use this code to login: {$otpCode}");
-        } elseif (!app()->environment('production')) {
-            session()->flash('otp_hint', "Dev OTP: {$otpCode}");
+        // In non-production, hint is safe for developers (never reveal OTP in production)
+        if (!app()->environment('production') && !$smsSent) {
+            session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
         return back()->with('otp_requested', true)->with('phone', $phone);
@@ -73,6 +70,14 @@ class CustomerPortalController extends Controller
         ]);
 
         $phone = $this->normalizePhone($request->phone);
+
+        // Rate limit OTP verification attempts (5 per 10 minutes per phone)
+        $verifyKey = 'otp-web-verify:' . $phone;
+        if (RateLimiter::tooManyAttempts($verifyKey, 5)) {
+            $seconds = RateLimiter::availableIn($verifyKey);
+            return back()->withErrors(['otp' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
+        }
+        RateLimiter::hit($verifyKey, 600);
 
         $otpRecord = OtpVerification::where('phone', $phone)
             ->whereNull('used_at')
@@ -94,25 +99,39 @@ class CustomerPortalController extends Controller
         $customer->update(['last_login_at' => now()]);
 
         // Create Sanctum token for API/React app use
-        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-portal', ['customer'])->plainTextToken;
 
         session([
             'customer_id' => $customer->id,
             'customer_name' => $customer->name ?: $customer->phone,
             'customer_phone' => $customer->phone,
-            'customer_token' => $token, // Store token in session
+            'customer_token' => $token,
         ]);
 
-        // Redirect to intended page or menu
+        // Validate intended URL to prevent open redirect
         $intendedUrl = session('intended_url', '/menu');
         session()->forget('intended_url');
+        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
+            $intendedUrl = '/menu';
+        }
 
         return redirect($intendedUrl)->with('message', 'Logged in successfully!');
     }
 
     public function logout(Request $request)
     {
-        $request->session()->forget(['customer_id', 'customer_name', 'customer_phone']);
+        // Revoke the Sanctum token so it cannot be reused after logout
+        $token = $request->session()->get('customer_token');
+        if ($token) {
+            $customerId = $request->session()->get('customer_id');
+            if ($customerId) {
+                $customer = \App\Models\Customer::find($customerId);
+                $customer?->tokens()->where('name', 'customer-portal')->delete();
+            }
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/')->with('message', 'Logged out successfully');
     }

@@ -29,7 +29,8 @@ class PromotionController extends Controller
         ]);
 
         $orderId = $request->input('order_id');
-        $order = $orderId ? Order::findOrFail($orderId) : null;
+        // Eager-load items.item so PromotionEvaluator doesn't trigger N+1 queries per category
+        $order = $orderId ? Order::with('items.item')->findOrFail($orderId) : null;
         $customerId = $request->user()?->id;
 
         if (!$order) {
@@ -58,7 +59,7 @@ class PromotionController extends Controller
     {
         $request->validate(['code' => 'required|string|max:50']);
 
-        $order = Order::findOrFail($orderId);
+        $order = Order::with('items.item')->findOrFail($orderId);
         $customerId = $request->user()?->id;
 
         $user = $request->user();

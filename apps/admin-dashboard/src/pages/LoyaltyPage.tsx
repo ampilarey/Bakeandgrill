@@ -119,7 +119,10 @@ export function LoyaltyPage() {
     }
   };
 
-  useEffect(() => { void load(); }, [search]);
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   return (
     <>

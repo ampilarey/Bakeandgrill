@@ -523,4 +523,5 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
 export {
   Spinner, Card, Badge, ErrorMsg, EmptyState, PageHeader, Btn, Input, Select, statColor,
   Modal, ModalActions, StatCard, TableCard, TH, TD, DateInput, SectionLabel, Pagination,
+  ConfirmDialog, useConfirmDialog,
 } from './SharedUI';

@@ -5,8 +5,8 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Input,
-  PageHeader, Select, Spinner, TD, TH,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input,
+  PageHeader, Select, Spinner, TD, TH, useConfirmDialog,
 } from '../components/Layout';
 
 const EMPTY: PromotionPayload = {
@@ -147,6 +147,7 @@ export function PromotionsPage() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
+  const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const load = async () => {
     setLoading(true);
@@ -175,19 +176,35 @@ export function PromotionsPage() {
     await load();
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this promotion?')) return;
-    await deletePromotion(id);
-    await load();
+  const handleDelete = (id: number) => {
+    ask({
+      title: 'Delete Promotion',
+      message: 'Delete this promotion? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deletePromotion(id);
+          await load();
+        } catch (e) {
+          setError((e as Error).message);
+        }
+      },
+    });
   };
 
   const handleToggle = async (p: Promotion) => {
-    await updatePromotion(p.id, { is_active: !p.is_active });
-    await load();
+    try {
+      await updatePromotion(p.id, { is_active: !p.is_active });
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Promotions"
         subtitle="Manage promo codes and discounts"

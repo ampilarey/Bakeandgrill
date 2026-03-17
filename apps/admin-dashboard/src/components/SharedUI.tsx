@@ -1,7 +1,7 @@
 /**
  * Shared UI primitives used by admin page components.
  */
-import { type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { useState, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -235,6 +235,7 @@ export function Modal({
           <h3 style={{ fontWeight: 800, fontSize: 17, color: '#1C1408', margin: 0 }}>{title}</h3>
           <button
             onClick={onClose}
+            aria-label="Close"
             style={{
               background: '#F8F6F3', border: 'none', borderRadius: 8,
               width: 32, height: 32, cursor: 'pointer', color: '#6B5D4F',
@@ -381,4 +382,73 @@ export function statColor(status: string): string {
     closed:     'red',
   };
   return map[status?.toLowerCase()] ?? 'gray';
+}
+
+// ─── ConfirmDialog ────────────────────────────────────────────────────────────
+/**
+ * Replacement for native window.confirm().
+ * Usage:
+ *   const [dialog, setDialog] = useConfirmDialog();
+ *   <ConfirmDialog {...dialog} />
+ *   // trigger: setDialog({ message: '...', onConfirm: () => doThing() })
+ */
+export interface ConfirmDialogState {
+  open: boolean;
+  message: string;
+  title?: string;
+  confirmLabel?: string;
+  danger?: boolean;
+  onConfirm: () => void;
+}
+
+export function useConfirmDialog() {
+  const [state, setState] = useState<ConfirmDialogState>({
+    open: false, message: '', onConfirm: () => {},
+  });
+
+  const ask = (opts: Omit<ConfirmDialogState, 'open'>) => setState({ ...opts, open: true });
+  const close = () => setState((s) => ({ ...s, open: false }));
+
+  return { state, ask, close };
+}
+
+export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; close: () => void }) {
+  if (!state.open) return null;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cdlg-title"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.45)',
+      }}
+      onClick={close}
+    >
+      <div
+        style={{
+          background: '#fff', borderRadius: 14, padding: '1.75rem',
+          maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 id="cdlg-title" style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+          {state.title ?? 'Confirm'}
+        </h3>
+        <p style={{ fontSize: 14, color: '#6B5D4F', marginBottom: 24, lineHeight: 1.5 }}>
+          {state.message}
+        </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <Btn variant="secondary" onClick={close}>Cancel</Btn>
+          <Btn
+            variant={state.danger ? 'danger' : 'primary'}
+            onClick={() => { state.onConfirm(); close(); }}
+          >
+            {state.confirmLabel ?? 'Confirm'}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
 }

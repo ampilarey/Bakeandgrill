@@ -7,15 +7,15 @@ return [
     | UAT:  https://api.uat.merchants.bankofmaldives.com.mv/public
     | Prod: https://api.merchants.bankofmaldives.com.mv/public
     */
-    'base_url'         => env('BML_BASE_URL', 'https://api.merchants.bankofmaldives.com.mv/public'),
+    'base_url'         => env('BML_BASE_URL'), // Must be set explicitly — no production default
     'app_id'           => env('BML_APP_ID'),
     'api_key'          => env('BML_API_KEY'),
     'merchant_id'      => env('BML_MERCHANT_ID'),
     'webhook_secret'   => env('BML_WEBHOOK_SECRET'),
     'webhook_url'      => env('BML_WEBHOOK_URL'),
-    'return_url'       => env('BML_RETURN_URL', env('APP_URL') . '/payments/bml/return'),
+    'return_url'       => env('BML_RETURN_URL'), // Must be set explicitly — nested env() breaks config:cache
     'default_currency' => env('BML_DEFAULT_CURRENCY', 'MVR'),
-    'environment'      => env('BML_ENVIRONMENT', 'production'),
+    'environment'      => env('BML_ENVIRONMENT', 'sandbox'), // Default to sandbox for safety
 
     /*
     | Auth mode for Authorization header:

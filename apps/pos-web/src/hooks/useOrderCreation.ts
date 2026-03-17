@@ -37,6 +37,7 @@ type Params = {
 
 export function useOrderCreation(params: Params) {
   const [statusMessage, setStatusMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastHeldOrderId, setLastHeldOrderId] = useState<number | null>(() => {
     const raw = localStorage.getItem("pos_last_held_order");
     return raw ? Number(raw) : null;
@@ -63,6 +64,7 @@ export function useOrderCreation(params: Params) {
 
   const handleCheckout = () => {
     if (params.cartItems.length === 0) return;
+    if (isSubmitting) return; // prevent double-submission
     if (params.orderType === "Dine-in" && !params.selectedTableId) {
       setStatusMessage("Select a table for dine-in orders.");
       return;
@@ -71,8 +73,12 @@ export function useOrderCreation(params: Params) {
     const payload = buildPayload();
 
     if (params.isOnline) {
+      setIsSubmitting(true);
+      let orderCreated = false;
+
       createOrder(payload)
         .then((response) => {
+          orderCreated = true;
           const parsedPayments = params.payments
             .map((p) => ({ method: p.method, amount: Number.parseFloat(p.amount) }))
             .filter((p) => Number.isFinite(p.amount) && p.amount > 0);
@@ -96,6 +102,7 @@ export function useOrderCreation(params: Params) {
           params.clearCart();
           params.setSelectedItem(null);
           setStatusMessage("Order paid and sent to kitchen.");
+          setTimeout(() => setStatusMessage(""), 5000);
         })
         .catch((err: unknown) => {
           const status = (err as { status?: number })?.status;
@@ -103,10 +110,17 @@ export function useOrderCreation(params: Params) {
             setStatusMessage(`Order failed: ${(err as Error).message}`);
             return;
           }
-          enqueue(payload);
-          params.setOfflineQueueCount(getQueueCount());
-          setStatusMessage("Network error. Order queued for sync.");
-        });
+          // Only queue for offline sync if the order was never successfully created
+          if (!orderCreated) {
+            enqueue(payload);
+            params.setOfflineQueueCount(getQueueCount());
+            setStatusMessage("Network error. Order queued for sync.");
+          } else {
+            // Order created but payment failed — show error, don't duplicate
+            setStatusMessage("Order created but payment failed. Please collect payment manually.");
+          }
+        })
+        .finally(() => setIsSubmitting(false));
       return;
     }
 
@@ -115,6 +129,7 @@ export function useOrderCreation(params: Params) {
     params.clearCart();
     params.setSelectedItem(null);
     setStatusMessage("Offline order queued. Sync when online.");
+    setTimeout(() => setStatusMessage(""), 5000);
   };
 
   const handleHoldOrder = () => {
@@ -233,6 +248,7 @@ export function useOrderCreation(params: Params) {
   return {
     statusMessage,
     setStatusMessage,
+    isSubmitting,
     lastHeldOrderId,
     barcode,
     setBarcode,

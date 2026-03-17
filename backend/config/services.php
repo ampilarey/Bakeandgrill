@@ -43,9 +43,9 @@ return [
     ],
 
     'dhiraagu' => [
-        'api_url' => env('DHIRAAGU_API_URL', 'https://messaging.dhiraagu.com.mv/v1/api/sms'),
-        'username' => env('DHIRAAGU_SMS_USERNAME', env('DHIRAAGU_USERNAME')),
-        'password' => env('DHIRAAGU_SMS_PASSWORD', env('DHIRAAGU_PASSWORD')),
+        'api_url' => env('DHIRAAGU_API_URL'), // Must be set explicitly — no live API default
+        'username' => env('DHIRAAGU_SMS_USERNAME'),
+        'password' => env('DHIRAAGU_SMS_PASSWORD'),
         'timeout' => env('DHIRAAGU_SMS_TIMEOUT', 30),
     ],
 
@@ -64,7 +64,7 @@ return [
     'xero' => [
         'client_id'       => env('XERO_CLIENT_ID'),
         'client_secret'   => env('XERO_CLIENT_SECRET'),
-        'redirect_uri'    => env('XERO_REDIRECT_URI', env('APP_URL') . '/api/xero/callback'),
+        'redirect_uri'    => env('XERO_REDIRECT_URI'), // Must be set explicitly — nested env() breaks config:cache
         'revenue_account' => env('XERO_REVENUE_ACCOUNT', '200'),
         'expense_account' => env('XERO_EXPENSE_ACCOUNT', '400'),
         'bank_account'    => env('XERO_BANK_ACCOUNT', '090'),

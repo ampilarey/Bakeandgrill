@@ -50,9 +50,19 @@ class PermissionController extends Controller
             'permissions.*' => 'nullable|boolean',
         ]);
 
-        $actorId = $request->user()?->id;
+        $actor   = $request->user();
+        $actorId = $actor?->id;
 
+        // Prevent modifying own permissions
+        abort_if($actorId === $user->id, 403, 'You cannot modify your own permissions.');
+
+        // Non-owners can only grant permissions they themselves hold
+        $isOwner = $actor?->role?->slug === 'owner';
         foreach ($validated['permissions'] as $slug => $value) {
+            if ($value === true && !$isOwner && !$actor->hasPermission($slug)) {
+                abort(403, "You cannot grant the '{$slug}' permission you do not hold.");
+            }
+
             if ($value === null) {
                 $user->resetPermission($slug);
             } elseif ($value === true) {

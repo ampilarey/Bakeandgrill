@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getExpenses, getExpenseCategories, storeExpense, deleteExpense, getExpenseSummary, type Expense, type ExpenseCategory } from '../api';
-import { Badge, Btn, Card, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH } from '../components/Layout';
+import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -20,6 +20,7 @@ export function ExpensesPage() {
   const [to, setTo]               = useState(today());
   const [showAdd, setShowAdd]     = useState(false);
   const [saving, setSaving]       = useState(false);
+  const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const [form, setForm] = useState({
     expense_category_id: '',
@@ -59,14 +60,21 @@ export function ExpensesPage() {
     finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this expense?')) return;
-    try {
-      await deleteExpense(id);
-      void load();
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  const handleDelete = (id: number) => {
+    ask({
+      title: 'Delete Expense',
+      message: 'Delete this expense record? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteExpense(id);
+          void load();
+        } catch (e) {
+          setError((e as Error).message);
+        }
+      },
+    });
   };
 
   const fieldStyle = {
@@ -78,6 +86,7 @@ export function ExpensesPage() {
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Expenses"
         subtitle="Track operating costs and overheads"
@@ -156,7 +165,7 @@ export function ExpensesPage() {
 
       {/* Add Expense Modal */}
       {showAdd && (
-        <Modal title="Add Expense" onClose={() => setShowAdd(false)}>
+        <Modal title="Add Expense" onClose={() => { setShowAdd(false); setError(''); }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
               Category *

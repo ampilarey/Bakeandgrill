@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import type { DriverLocation } from '../types';
 
@@ -11,8 +11,9 @@ const COLLECT_INTERVAL_MS = 5_000; // collect every 5s
  * Active whenever the driver is logged in.
  */
 export default function LocationTracker() {
-  const buffer = useRef<DriverLocation[]>([]);
+  const buffer  = useRef<DriverLocation[]>([]);
   const watchId = useRef<number | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   useEffect(() => {
     if (!('geolocation' in navigator)) return;
@@ -20,6 +21,7 @@ export default function LocationTracker() {
     // Collect positions
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
+        setPermissionDenied(false);
         buffer.current.push({
           latitude:    pos.coords.latitude,
           longitude:   pos.coords.longitude,
@@ -29,7 +31,9 @@ export default function LocationTracker() {
         });
       },
       (err) => {
-        if (err.code !== err.PERMISSION_DENIED) {
+        if (err.code === err.PERMISSION_DENIED) {
+          setPermissionDenied(true);
+        } else {
           console.warn('[LocationTracker] geolocation error:', err.message);
         }
       },
@@ -61,6 +65,19 @@ export default function LocationTracker() {
       clearInterval(flushId);
     };
   }, []);
+
+  if (permissionDenied) {
+    return (
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999,
+        background: '#ef4444', color: '#fff',
+        padding: '10px 16px', fontSize: 14, textAlign: 'center',
+        fontWeight: 600,
+      }}>
+        Location permission denied. Please enable location access to track deliveries.
+      </div>
+    );
+  }
 
   return null;
 }

@@ -19,9 +19,12 @@ class RefundController extends Controller
 {
     public function index(Request $request)
     {
+        Gate::authorize('refund.process');
+
+        $allowedStatuses = ['pending', 'approved', 'rejected', 'processed'];
         $query = Refund::with(['order', 'user'])->orderByDesc('created_at');
 
-        if ($request->filled('status')) {
+        if ($request->filled('status') && in_array($request->query('status'), $allowedStatuses, true)) {
             $query->where('status', $request->query('status'));
         }
 
@@ -32,6 +35,8 @@ class RefundController extends Controller
 
     public function show($id)
     {
+        Gate::authorize('refund.process');
+
         $refund = Refund::with(['order', 'user'])->findOrFail($id);
 
         return response()->json(['refund' => $refund]);

@@ -14,6 +14,7 @@ use App\Models\LoyaltyLedger;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class LoyaltyController extends Controller
 {
@@ -208,7 +209,7 @@ class LoyaltyController extends Controller
                 'points'          => $delta,
                 'balance_after'   => $newBalance,
                 'notes'           => $request->input('reason'),
-                'idempotency_key' => 'admin-adjust:' . $customer->id . ':' . now()->timestamp,
+                'idempotency_key' => 'admin-adjust:' . $customer->id . ':' . Str::uuid(),
                 'occurred_at'     => now(),
             ]);
 

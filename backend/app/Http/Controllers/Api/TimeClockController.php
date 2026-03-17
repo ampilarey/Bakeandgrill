@@ -99,6 +99,12 @@ class TimeClockController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
+        // Only managers and owners may view all-staff summaries
+        $user = $request->user();
+        $user->loadMissing('role');
+        $roleSlug = $user->role?->slug;
+        abort_unless(in_array($roleSlug, ['manager', 'owner'], true), 403);
+
         $from = $request->query('from', now()->startOfWeek()->toDateString());
         $to   = $request->query('to', now()->toDateString());
 

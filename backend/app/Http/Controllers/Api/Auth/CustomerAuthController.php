@@ -99,7 +99,9 @@ class CustomerAuthController extends Controller
     {
         $request->validate([
             'phone' => ['required', 'string', new MaldivesPhone()],
-            'otp' => 'required|string|size:6',
+            'otp'   => 'required|string|size:6',
+            'name'  => 'nullable|string|max:100',
+            'email' => 'nullable|email|max:100',
         ]);
 
         // Normalize phone number to match format used in requestOtp
@@ -137,20 +139,18 @@ class CustomerAuthController extends Controller
         // Mark OTP as used
         $otpRecord->update(['used_at' => now()]);
 
-        // Find or create customer — fire event only on first creation
-        $wasNew = !Customer::where('phone', $phone)->exists();
-
+        // Find or create customer atomically; wasRecentlyCreated is set by firstOrCreate
         $customer = Customer::firstOrCreate(
             ['phone' => $phone],
             [
-                'name' => $request->name ?? null,
-                'email' => $request->email ?? null,
+                'name'           => $request->validated('name'),
+                'email'          => $request->validated('email'),
                 'loyalty_points' => 0,
-                'tier' => 'bronze',
+                'tier'           => 'bronze',
             ],
         );
 
-        if ($wasNew) {
+        if ($customer->wasRecentlyCreated) {
             event(new CustomerCreated(new CustomerCreatedData(
                 customerId: $customer->id,
                 phone: $customer->phone,

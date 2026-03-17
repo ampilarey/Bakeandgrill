@@ -22,7 +22,6 @@ class Promotion extends Model
         'expires_at',
         'max_uses',
         'max_uses_per_customer',
-        'redemptions_count',
         'stackable',
         'min_order_laar',
         'scope',

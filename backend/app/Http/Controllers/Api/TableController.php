@@ -256,6 +256,7 @@ class TableController extends Controller
                 'print' => false,
             ], $request->user());
 
+            // Scope strictly to this order to prevent stealing items from other orders
             OrderItem::where('order_id', $order->id)
                 ->whereIn('id', $validated['item_ids'])
                 ->update(['order_id' => $splitOrder->id]);

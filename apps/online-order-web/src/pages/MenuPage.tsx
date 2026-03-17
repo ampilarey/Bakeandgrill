@@ -6,10 +6,12 @@ import { ItemModal } from '../components/ItemModal';
 import { CartDrawer } from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
+  const s = useSiteSettings();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -32,7 +34,8 @@ export function MenuPage() {
   const pillContainerRef = useRef<HTMLDivElement>(null);
   const activePillRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => { document.title = 'Menu — Bake & Grill'; }, []);
+  const siteName = s.site_name ?? 'Bake & Grill';
+  useEffect(() => { document.title = `Menu — ${siteName}`; }, [siteName]);
 
   useEffect(() => {
     Promise.all([fetchCategories(), fetchItems(), fetchOpeningHoursStatus()])

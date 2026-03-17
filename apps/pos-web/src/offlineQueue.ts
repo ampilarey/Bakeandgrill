@@ -34,6 +34,8 @@ export function setQueue(queue: QueueEntry[]) {
   writeQueue(queue);
 }
 
+const MAX_QUEUE_SIZE = 100;
+
 export function enqueue(payload: Record<string, unknown>): QueueEntry {
   const entry: QueueEntry = {
     id: crypto.randomUUID(),
@@ -41,6 +43,10 @@ export function enqueue(payload: Record<string, unknown>): QueueEntry {
     payload,
   };
   const queue = readQueue();
+  if (queue.length >= MAX_QUEUE_SIZE) {
+    console.warn(`[offlineQueue] Queue full (${MAX_QUEUE_SIZE} entries). Oldest entry dropped.`);
+    queue.shift();
+  }
   queue.push(entry);
   writeQueue(queue);
   return entry;

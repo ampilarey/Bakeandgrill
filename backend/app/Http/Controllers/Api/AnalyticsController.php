@@ -55,7 +55,7 @@ class AnalyticsController extends Controller
      */
     public function retention(Request $request): JsonResponse
     {
-        $weeks = (int) ($request->query('weeks', 12));
+        $weeks = min((int) ($request->query('weeks', 12)), 52);
 
         $data = [];
         for ($i = $weeks - 1; $i >= 0; $i--) {
