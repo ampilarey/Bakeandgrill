@@ -37,9 +37,7 @@ class HomeController extends Controller
             ->limit(6)
             ->get();
 
-        $salatApiUrl = rtrim(config('services.salat.api_url', env('SALAT_API_URL', '')), '/');
-
-        return view('home', compact('isOpen', 'todayHours', 'featuredItems', 'bestSellers', 'salatApiUrl'));
+        return view('home', compact('isOpen', 'todayHours', 'featuredItems', 'bestSellers'));
     }
 
     public function contact()
@@ -70,13 +68,6 @@ class HomeController extends Controller
     public function refund()
     {
         return view('refund');
-    }
-
-    public function prayerTimes()
-    {
-        $salatApiUrl = rtrim(config('services.salat.api_url', env('SALAT_API_URL', '')), '/');
-
-        return view('prayer-times', compact('salatApiUrl'));
     }
 
 }

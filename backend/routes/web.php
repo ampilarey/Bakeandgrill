@@ -28,7 +28,6 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::redirect('/menu', '/order/menu', 301)->name('menu');
 Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
 Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
-Route::get('/prayer-times', [HomeController::class, 'prayerTimes'])->name('prayer-times');
 Route::redirect('/privacy', '/order/privacy', 301)->name('privacy');
 Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
 Route::get('/refund', [HomeController::class, 'refund'])->name('refund');
