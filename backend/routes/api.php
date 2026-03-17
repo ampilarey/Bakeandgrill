@@ -43,6 +43,15 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
+// ── Prayer Times (public, throttled) ─────────────────────────────────────────
+Route::middleware('throttle:60,1')
+    ->prefix('prayer-times')
+    ->group(function () {
+        Route::get('islands',  [App\Http\Controllers\Api\Prayer\IslandsController::class, 'index']);
+        Route::get('nearest',  App\Http\Controllers\Api\Prayer\NearestIslandController::class);
+        Route::get('',         App\Http\Controllers\Api\Prayer\PrayerTimesApiController::class);
+    });
+
 // Opening hours status (public - for online order app)
 Route::get('/opening-hours/status', function () {
     $service = app(App\Services\OpeningHoursService::class);
