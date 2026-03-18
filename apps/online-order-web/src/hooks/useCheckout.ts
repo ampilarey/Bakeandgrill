@@ -79,7 +79,7 @@ export function useCheckout() {
   useEffect(() => {
     const rawFee = parseInt(import.meta.env.VITE_DELIVERY_FEE_MVR ?? '20', 10);
     if (isNaN(rawFee) || rawFee < 0) {
-      console.error('VITE_DELIVERY_FEE_MVR must be a non-negative integer — falling back to 20 MVR');
+      if (import.meta.env.DEV) console.error('VITE_DELIVERY_FEE_MVR must be a non-negative integer — falling back to 20 MVR');
       setDeliveryFee(20 * 100);
     } else {
       setDeliveryFee(rawFee * 100);
@@ -227,7 +227,7 @@ export function useCheckout() {
         try {
           await createLoyaltyHold(token, orderId, loyaltyPoints);
         } catch (e) {
-          console.warn("Loyalty hold failed:", (e as Error).message);
+          if (import.meta.env.DEV) console.warn("Loyalty hold failed:", (e as Error).message);
         }
       }
 

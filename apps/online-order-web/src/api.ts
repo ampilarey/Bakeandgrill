@@ -32,10 +32,6 @@ const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
 
-if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
-  // eslint-disable-next-line no-console
-  console.warn('[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api');
-}
 
 /** Base URL for images (same origin as API, no /api suffix) */
 export const API_ORIGIN =
@@ -123,7 +119,14 @@ export async function fetchCategories(): Promise<{ data: Category[] }> {
 }
 
 export async function fetchItems(): Promise<{ data: MenuItem[] }> {
-  return request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?available_only=1`);
+  const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?available_only=1`);
+  // Coerce prices to numbers at the API boundary so consumers never need parseFloat()
+  res.data = res.data.map((item) => ({
+    ...item,
+    base_price: Number(item.base_price),
+    modifiers: item.modifiers?.map((m) => ({ ...m, price: Number(m.price) })),
+  }));
+  return res;
 }
 
 // ── Customer ─────────────────────────────────────────────────────────────────

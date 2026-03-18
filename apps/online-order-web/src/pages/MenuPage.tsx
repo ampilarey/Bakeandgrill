@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOpeningHoursStatus } from '../api';
 import type { Category, Item, Modifier } from '../api';
 import { MenuCard } from '../components/MenuCard';
@@ -6,12 +7,14 @@ import { ItemModal } from '../components/ItemModal';
 import { CartDrawer } from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useToast } from '../context/ToastContext';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
-  const s = useSiteSettings();
+  const { showToast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -29,25 +32,52 @@ export function MenuPage() {
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   // Refs for scrolling category pill into view
   const pillContainerRef = useRef<HTMLDivElement>(null);
   const activePillRef = useRef<HTMLButtonElement>(null);
 
-  const siteName = s.site_name ?? 'Bake & Grill';
-  useEffect(() => { document.title = `Menu — ${siteName}`; }, [siteName]);
+  // Back to top visibility
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 300);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  usePageTitle('Menu');
 
   useEffect(() => {
+    const categorySlug = searchParams.get('category');
+    const itemId = searchParams.get('item') ? Number(searchParams.get('item')) : null;
+
     Promise.all([fetchCategories(), fetchItems(), fetchOpeningHoursStatus()])
       .then(([cats, its, hours]) => {
         setCategories(cats.data);
         setItems(its.data);
-        setActiveCategoryId(cats.data[0]?.id ?? null);
+
+        // BUG-11: pre-select category from ?category= query param
+        if (categorySlug) {
+          const match = cats.data.find(
+            (c) => c.name.toLowerCase().replace(/\s+/g, '-') === categorySlug,
+          );
+          setActiveCategoryId(match?.id ?? cats.data[0]?.id ?? null);
+        } else {
+          setActiveCategoryId(cats.data[0]?.id ?? null);
+        }
+
+        // BUG-12: auto-open item modal from ?item= query param
+        if (itemId) {
+          const match = its.data.find((i) => i.id === itemId);
+          if (match) { setSelectedItem(match); setSelectedModifiers([]); }
+        }
+
         setIsOpen(hours.open);
         setClosedMessage(hours.open ? null : (hours.message ?? 'We are currently closed.'));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Scroll active pill into view when category changes
@@ -64,8 +94,8 @@ export function MenuPage() {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
     }
-    if (sortBy === 'price-low') return [...list].sort((a, b) => parseFloat(String(a.base_price)) - parseFloat(String(b.base_price)));
-    if (sortBy === 'price-high') return [...list].sort((a, b) => parseFloat(String(b.base_price)) - parseFloat(String(a.base_price)));
+    if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
+    if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
   }, [items, activeCategoryId, searchQuery, sortBy]);
 
@@ -79,6 +109,7 @@ export function MenuPage() {
   const handleModalAdd = () => {
     if (!selectedItem) return;
     addItem(selectedItem, 1, selectedModifiers);
+    showToast(`${selectedItem.name} added to cart`);
     setSelectedItem(null);
     setSelectedModifiers([]);
   };
@@ -151,7 +182,7 @@ export function MenuPage() {
       <div style={{ flex: 1, minWidth: 0 }}>
 
         {/* Mobile sticky category bar */}
-        <div className="mobile-category-pills sticky-cat-bar" style={{ display: 'none' }}>
+        <div className="mobile-category-pills sticky-cat-bar">
           <div className="sticky-cat-bar-inner" ref={pillContainerRef}>
             <button
               className={`category-pill${activeCategoryId === null ? ' active' : ''}`}
@@ -260,12 +291,13 @@ export function MenuPage() {
         {!loading && filteredItems.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '1.25rem 1.5rem' }}>
             {filteredItems.map((item) => (
-              <MenuCard
-                key={item.id}
-                item={item}
-                onSelectItem={handleSelectItem}
-                onAddToCart={addItem}
-              />
+              <div key={item.id} className="menu-item-anim">
+                <MenuCard
+                  item={item}
+                  onSelectItem={handleSelectItem}
+                  onAddToCart={(it, qty) => { addItem(it, qty); showToast(`${it.name} added to cart`); }}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -285,7 +317,6 @@ export function MenuPage() {
         onClick={() => setCartVisible(true)}
         aria-label={`View cart — ${cartCount} item${cartCount !== 1 ? 's' : ''}`}
         style={{
-          display: 'none',
           position: 'fixed',
           bottom: '1.25rem', right: '1.25rem',
           background: 'var(--color-primary)',
@@ -335,6 +366,15 @@ export function MenuPage() {
         </div>
       )}
 
+      {/* ── Back to top FAB ─────────────────────────────────────── */}
+      <button
+        className={`back-to-top${showBackToTop ? '' : ' hidden'}`}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Back to top"
+      >
+        ↑
+      </button>
+
       {/* ── Item modifier modal ──────────────────────────────────── */}
       {selectedItem && (
         <ItemModal
@@ -354,6 +394,7 @@ function CatButton({ label, active, onClick }: { label: string; active: boolean;
   return (
     <button
       onClick={onClick}
+      className={active ? undefined : 'cat-btn-hover'}
       style={{
         padding: '0.6rem 0.875rem',
         borderRadius: '10px',
@@ -363,11 +404,9 @@ function CatButton({ label, active, onClick }: { label: string; active: boolean;
         color: active ? 'white' : 'var(--color-text)',
         fontSize: '0.875rem', fontWeight: active ? 600 : 400,
         cursor: 'pointer', textAlign: 'left',
-        transition: 'all 0.15s', fontFamily: 'inherit',
+        fontFamily: 'inherit',
         width: '100%',
       }}
-      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}}
-      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text)'; }}}
     >
       {label}
     </button>

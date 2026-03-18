@@ -1,17 +1,19 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 type Props = { children: ReactNode };
-type State = { hasError: boolean; message: string };
+type State = { hasError: boolean };
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, message: '' };
+  state: State = { hasError: false };
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, message: error.message };
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[ErrorBoundary]', error, info.componentStack);
+    if (import.meta.env.DEV) {
+      console.error('[ErrorBoundary]', error, info.componentStack);
+    }
   }
 
   render() {
@@ -29,16 +31,16 @@ export class ErrorBoundary extends Component<Props, State> {
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
         >
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1c1e21', marginBottom: '0.5rem' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.5rem' }}>
             Something went wrong
           </h1>
-          <p style={{ color: '#636e72', marginBottom: '1.5rem', maxWidth: 400 }}>
-            {this.state.message || 'An unexpected error occurred. Please refresh the page.'}
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', maxWidth: 400 }}>
+            An unexpected error occurred. Please refresh the page.
           </p>
           <button
             onClick={() => window.location.reload()}
             style={{
-              background: '#1ba3b9',
+              background: 'var(--color-primary)',
               color: '#fff',
               border: 'none',
               borderRadius: 8,

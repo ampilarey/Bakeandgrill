@@ -81,7 +81,7 @@ export function usePushNotifications(token: string | null) {
       if (!res.ok) throw new Error("Subscribe request failed");
       setSubscribed(true);
     } catch (e) {
-      console.error("[Push] Subscribe failed:", e);
+      if (import.meta.env.DEV) console.error("[Push] Subscribe failed:", e);
     } finally {
       setLoading(false);
     }
@@ -107,7 +107,7 @@ export function usePushNotifications(token: string | null) {
       }
       setSubscribed(false);
     } catch (e) {
-      console.error("[Push] Unsubscribe failed:", e);
+      if (import.meta.env.DEV) console.error("[Push] Unsubscribe failed:", e);
     } finally {
       setLoading(false);
     }

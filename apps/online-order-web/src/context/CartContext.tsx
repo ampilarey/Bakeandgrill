@@ -15,25 +15,34 @@ interface CartContextValue {
   clearCart: () => void;
 }
 
+const CART_VERSION = 2;
+const CART_KEY = 'bakegrill_cart';
+
+type StoredCart = {
+  version: number;
+  entries: Array<{
+    item: Item;
+    quantity: number;
+    modifiers: Modifier[];
+  }>;
+};
+
 const CartContext = createContext<CartContextValue | null>(null);
 
 function loadCart(): CartEntry[] {
   try {
-    const raw = localStorage.getItem('bakegrill_cart');
+    const raw = localStorage.getItem(CART_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as Array<{
-      id: number;
-      name: string;
-      price: number;
-      quantity: number;
-      modifiers?: Array<{ id: number; name: string; price: number }>;
-    }>;
-    return parsed.map((entry) => ({
-      item: { id: entry.id, name: entry.name, base_price: entry.price, category_id: 0 } as Item,
-      quantity: entry.quantity || 1,
-      modifiers: (entry.modifiers ?? []).map(
-        (m) => ({ id: m.id, name: m.name, price: m.price }) as Modifier,
-      ),
+    const parsed = JSON.parse(raw) as StoredCart;
+    if (!parsed.version || parsed.version !== CART_VERSION) {
+      // Version mismatch — discard stale data to avoid type errors
+      localStorage.removeItem(CART_KEY);
+      return [];
+    }
+    return (parsed.entries ?? []).map((e) => ({
+      item: e.item,
+      quantity: e.quantity || 1,
+      modifiers: e.modifiers ?? [],
     }));
   } catch {
     return [];
@@ -41,14 +50,15 @@ function loadCart(): CartEntry[] {
 }
 
 function saveCart(cart: CartEntry[]): void {
-  const serialized = cart.map((e) => ({
-    id: e.item.id,
-    name: e.item.name,
-    price: e.item.base_price,
-    quantity: e.quantity,
-    modifiers: e.modifiers.map((m) => ({ id: m.id, name: m.name, price: m.price })),
-  }));
-  localStorage.setItem('bakegrill_cart', JSON.stringify(serialized));
+  const stored: StoredCart = {
+    version: CART_VERSION,
+    entries: cart.map((e) => ({
+      item: e.item,
+      quantity: e.quantity,
+      modifiers: e.modifiers,
+    })),
+  };
+  localStorage.setItem(CART_KEY, JSON.stringify(stored));
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -86,8 +96,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const cartTotal = useMemo(
     () =>
       cart.reduce((total, e) => {
-        const basePrice = parseFloat(String(e.item.base_price)) || 0;
-        const modsTotal = e.modifiers.reduce((s, m) => s + (parseFloat(String(m.price)) || 0), 0);
+        const basePrice = Number(e.item.base_price) || 0;
+        const modsTotal = e.modifiers.reduce((s, m) => s + (Number(m.price) || 0), 0);
         return total + (basePrice + modsTotal) * e.quantity;
       }, 0),
     [cart],

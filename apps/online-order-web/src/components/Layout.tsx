@@ -4,22 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { PrayerBar } from './PrayerBar';
-
-// ── SVG icons ─────────────────────────────────────────────────────────────────
-function WhatsAppIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-    </svg>
-  );
-}
-function ViberIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/>
-    </svg>
-  );
-}
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon } from './icons';
 
 
 export function Layout() {
@@ -50,6 +35,7 @@ export function Layout() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('online_token'));
   const [customerName, setCustomerName] = useState<string | null>(() => localStorage.getItem('online_customer_name'));
   const [menuOpen, setMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   // Validate token on mount — clear it if it's clearly stale (no customer name)
   useEffect(() => {
@@ -74,6 +60,11 @@ export function Layout() {
     };
   }, []);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? 'dark' : '';
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
   const handleLogout = () => {
     localStorage.removeItem('online_token');
     localStorage.removeItem('online_customer_name');
@@ -84,6 +75,9 @@ export function Layout() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)' }}>
+
+      {/* A11Y-02: Skip to content link (visible on focus) */}
+      <a href="#main-content" className="skip-link">Skip to content</a>
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <header style={{
@@ -108,18 +102,17 @@ export function Layout() {
             {/* ← Back to website — most prominent nav item */}
             <a
               href="/"
+              className="nav-pill-hover"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
                 padding: '0.45rem 0.875rem',
                 borderRadius: '8px', fontSize: '0.875rem',
                 fontWeight: 600, color: 'var(--color-primary)',
-                textDecoration: 'none', transition: 'all 0.15s',
+                textDecoration: 'none',
                 background: 'var(--color-primary-light)',
                 border: '1px solid rgba(217,119,6,0.2)',
                 marginRight: '0.25rem',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'white'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-primary-light)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
             >
               ← Website
             </a>
@@ -132,9 +125,8 @@ export function Layout() {
               <Link
                 key={to}
                 to={to}
-                style={{ padding: '0.45rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', textDecoration: 'none', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-light)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+                className="nav-link-hover"
+                style={{ padding: '0.45rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', textDecoration: 'none' }}
               >
                 {label}
               </Link>
@@ -148,9 +140,8 @@ export function Layout() {
               <a
                 key={href}
                 href={href}
-                style={{ padding: '0.45rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', textDecoration: 'none', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-light)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+                className="nav-link-hover"
+                style={{ padding: '0.45rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', textDecoration: 'none' }}
               >
                 {label}
               </a>
@@ -160,6 +151,16 @@ export function Layout() {
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
             <PrayerBar />
+
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => setDarkMode((d) => !d)}
+              style={{ background: 'var(--color-surface-alt)', border: '1.5px solid var(--color-border)', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={darkMode ? 'Light mode' : 'Dark mode'}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
 
             {/* Only show account info when the customer is actually logged in */}
             {token && customerName && (
@@ -180,6 +181,7 @@ export function Layout() {
             {/* Cart button */}
             <Link
               to="/menu"
+              className="nav-pill-hover"
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.35rem',
                 padding: '0.5rem 1rem',
@@ -188,11 +190,9 @@ export function Layout() {
                 border: '1.5px solid rgba(217,119,6,0.2)',
                 borderRadius: '10px',
                 fontSize: '0.875rem', fontWeight: 600,
-                textDecoration: 'none', transition: 'all 0.15s',
+                textDecoration: 'none',
                 flexShrink: 0,
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'white'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-primary-light)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
               aria-label={`Cart — ${cartCount} item${cartCount !== 1 ? 's' : ''}`}
             >
               🛒 Cart
@@ -329,15 +329,15 @@ export function Layout() {
       {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
         <div className="order-mob-grid">
-          <a href="/" className="order-mob-item">
-            <span className="order-mob-icon">🏠</span>
+          <a href="/" className={`order-mob-item${location.pathname === '/' ? ' order-mob-active' : ''}`}>
+            <span className="order-mob-icon"><HomeIcon size={20} /></span>
             Home
           </a>
           <Link
             to="/menu"
             className={`order-mob-item${location.pathname === '/menu' ? ' order-mob-active' : ''}`}
           >
-            <span className="order-mob-icon">🍽️</span>
+            <span className="order-mob-icon"><MenuIcon size={20} /></span>
             Menu
           </Link>
           <Link
@@ -345,15 +345,22 @@ export function Layout() {
             className="order-mob-item order-mob-order"
             aria-label={`Cart${cartCount > 0 ? ` — ${cartCount}` : ''}`}
           >
-            <span className="order-mob-icon">🛒</span>
-            {cartCount > 0 ? `Cart (${cartCount})` : 'Order'}
+            <span className="order-mob-icon" style={{ position: 'relative' }}>
+              <CartIcon size={20} />
+              {cartCount > 0 && (
+                <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'var(--color-primary)', color: 'white', borderRadius: '999px', fontSize: '0.6rem', fontWeight: 700, padding: '0 0.3rem', minWidth: '14px', textAlign: 'center', lineHeight: '14px' }}>
+                  {cartCount}
+                </span>
+              )}
+            </span>
+            {cartCount > 0 ? 'Cart' : 'Order'}
           </Link>
           <a href="/hours" className="order-mob-item">
-            <span className="order-mob-icon">🕐</span>
+            <span className="order-mob-icon"><ClockIcon size={20} /></span>
             Hours
           </a>
           <a href="/contact" className="order-mob-item">
-            <span className="order-mob-icon">📞</span>
+            <span className="order-mob-icon"><PhoneIcon size={20} /></span>
             Contact
           </a>
         </div>

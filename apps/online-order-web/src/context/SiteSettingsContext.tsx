@@ -14,6 +14,7 @@ export interface SiteSettings {
   business_viber?: string;
   maps_embed_url?: string;
   delivery_eta?: string;
+  delivery_time?: string;
   [key: string]: string | undefined;
 }
 
@@ -48,7 +49,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
         }
       })
       .catch((e) => {
-        console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
+        if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
       });
   }, []);
 

@@ -35,29 +35,17 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
 
   return (
     <article
+      className={`menu-card-article${isUnavailable ? ' unavailable' : ''}`}
       style={{
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
         borderRadius: '18px',
         overflow: 'hidden',
-        transition: 'all 0.2s',
         boxShadow: 'var(--shadow-sm)',
         display: 'flex',
         flexDirection: 'column',
         opacity: isUnavailable ? 0.6 : 1,
         position: 'relative',
-      }}
-      onMouseEnter={(e) => {
-        if (!isUnavailable) {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 14px 32px rgba(28,20,8,0.1)';
-          e.currentTarget.style.borderColor = 'rgba(217,119,6,0.4)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-        e.currentTarget.style.borderColor = 'var(--color-border)';
       }}
     >
       {/* ── Image ──────────────────────────────────────────── */}
@@ -161,7 +149,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '0.75rem' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>MVR</span>
             <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
-              {parseFloat(String(item.base_price)).toFixed(2)}
+              {Number(item.base_price).toFixed(2)}
             </span>
           </div>
 
@@ -215,17 +203,16 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onAddToCart(item, quantity); setQuantity(1); }}
+                className="card-add-btn"
                 style={{
                   flex: 1, padding: '0.5rem',
                   background: 'var(--color-primary)', color: 'white',
                   border: 'none', borderRadius: 'var(--radius-lg)',
                   fontSize: '0.85rem', fontWeight: 700,
-                  cursor: 'pointer', transition: 'background 0.15s',
+                  cursor: 'pointer',
                   fontFamily: 'inherit', height: '32px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary-hover)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-primary)'; }}
                 aria-label={`Add ${quantity} ${item.name} to cart`}
               >
                 Add {quantity > 1 ? `(${quantity})` : ''}
@@ -238,6 +225,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
+              className="card-customise-btn"
               style={{
                 width: '100%', marginTop: '0.4rem',
                 padding: '0.35rem',
@@ -247,10 +235,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
                 borderRadius: 'var(--radius-lg)',
                 fontSize: '0.78rem', fontWeight: 600,
                 cursor: 'pointer', fontFamily: 'inherit',
-                transition: 'border-color 0.15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; }}
             >
               Customise options
             </button>
