@@ -178,7 +178,10 @@ class PaymentService
     public function handleBmlWebhook(string $rawBody, array $headers): void
     {
         $payload = json_decode($rawBody, true) ?? [];
-        $signature = $headers['x-signature'] ?? $headers['X-Signature'] ?? '';
+
+        // headers->all() returns arrays per header; extract the scalar value
+        $rawSig = $headers['x-signature'] ?? $headers['X-Signature'] ?? null;
+        $signature = is_array($rawSig) ? ($rawSig[0] ?? '') : ($rawSig ?? '');
 
         $idempotencyKey = 'bml:webhook:' . ($payload['transactionId'] ?? Str::uuid());
 
