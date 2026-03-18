@@ -736,7 +736,7 @@
                 @endif
                 <div class="banner-ctas">
                     <a href="{{ $slide['cta_url']  ?? '/order/' }}" class="banner-cta-primary">{{ $slide['cta_text']  ?? 'Order Now →' }}</a>
-                    <a href="{{ $slide['cta2_url'] ?? '/menu'   }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
+                    <a href="{{ $slide['cta2_url'] ?? '/order/menu'   }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
                 </div>
             </div>
         </div>
@@ -806,7 +806,7 @@
         </div>
         <div class="categories-grid">
             @foreach($categories as $cat)
-            <a href="{{ $cat['link'] ?? '/menu' }}" class="cat-card">
+            <a href="{{ $cat['link'] ?? '/order/menu' }}" class="cat-card">
                 <div class="cat-img">
                     @if(!empty($cat['image_url']))
                         <img src="{{ $cat['image_url'] }}"
@@ -1045,7 +1045,7 @@
                     <a href="/order/" class="loc-cta-primary">
                         🛒 Order Online Now
                     </a>
-                    <a href="/menu" class="loc-cta-outline">
+                    <a href="/order/menu" class="loc-cta-outline">
                         🍽️ View Menu
                     </a>
                 </div>
@@ -1065,7 +1065,7 @@
         <p>{{ $ctaSubtext }}</p>
         <div class="cta-band-btns">
             <a href="/order/" class="btn-primary">🛒 Order Now</a>
-            <a href="/menu"   class="btn-outline">Browse Menu</a>
+            <a href="/order/menu"   class="btn-outline">Browse Menu</a>
         </div>
     </div>
 </section>

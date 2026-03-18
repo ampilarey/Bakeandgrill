@@ -554,6 +554,7 @@
         </a>
         <nav class="header-nav">
             <a href="/">Home</a>
+            <a href="/order/menu">Menu</a>
             <a href="/hours">Hours</a>
             <a href="/contact">Contact</a>
         </nav>

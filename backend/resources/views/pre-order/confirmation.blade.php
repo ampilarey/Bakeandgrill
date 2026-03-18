@@ -55,7 +55,7 @@
         <a href="/" style="padding: 1rem 2rem; background: white; border: 2px solid var(--teal); color: var(--teal); border-radius: 999px; font-weight: 600;">
             ← Back to Home
         </a>
-        <a href="/menu" style="padding: 1rem 2rem; background: var(--teal); color: white; border-radius: 999px; font-weight: 600;">
+        <a href="/order/menu" style="padding: 1rem 2rem; background: var(--teal); color: white; border-radius: 999px; font-weight: 600;">
             Browse Menu
         </a>
     </div>
