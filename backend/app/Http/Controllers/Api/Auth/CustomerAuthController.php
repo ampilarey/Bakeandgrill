@@ -97,7 +97,7 @@ class CustomerAuthController extends Controller
      */
     public function verifyOtp(Request $request)
     {
-        $request->validate([
+        $input = $request->validate([
             'phone' => ['required', 'string', new MaldivesPhone()],
             'otp'   => 'required|string|size:6',
             'name'  => 'nullable|string|max:100',
@@ -105,7 +105,7 @@ class CustomerAuthController extends Controller
         ]);
 
         // Normalize phone number to match format used in requestOtp
-        $phone = $this->normalizePhone($request->phone);
+        $phone = $this->normalizePhone($input['phone']);
 
         // Find latest OTP for this phone
         $otpRecord = OtpVerification::where('phone', $phone)
@@ -128,7 +128,7 @@ class CustomerAuthController extends Controller
         }
 
         // Verify OTP
-        if (!Hash::check($request->otp, $otpRecord->code_hash)) {
+        if (!Hash::check($input['otp'], $otpRecord->code_hash)) {
             $otpRecord->increment('attempts');
 
             throw ValidationException::withMessages([
@@ -140,12 +140,11 @@ class CustomerAuthController extends Controller
         $otpRecord->update(['used_at' => now()]);
 
         // Find or create customer atomically; wasRecentlyCreated is set by firstOrCreate
-        $validated = $request->validated();
         $customer = Customer::firstOrCreate(
             ['phone' => $phone],
             [
-                'name'           => $validated['name'] ?? null,
-                'email'          => $validated['email'] ?? null,
+                'name'           => $input['name'] ?? null,
+                'email'          => $input['email'] ?? null,
                 'loyalty_points' => 0,
                 'tier'           => 'bronze',
             ],
