@@ -787,7 +787,13 @@
                 break;
             }
         }
-        if (!pName) { pName='Fajr'; pTime='–'; cdStr='tomorrow'; }
+        if (!pName) {
+            // All prayers done — count down to tomorrow's Fajr (today's Fajr ≈ tomorrow's)
+            var fajrMin=parseHHMM(prayers.fajr);
+            var msToMidnight=(24*60-nowMin)*60000-mv.getUTCSeconds()*1000;
+            var msToFajr=msToMidnight+fajrMin*60000;
+            pName='Fajr'; pTime=prayers.fajr; cdStr='('+fmtCountdown(msToFajr)+')';
+        }
         var clock=fmtClock(mv);
         setText('ptPillPrayer', pName);  setText('ptPillPTime',  pTime);
         setText('ptPillCd',     cdStr);  setText('ptPillClock',  clock);

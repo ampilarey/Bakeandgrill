@@ -105,7 +105,15 @@ function computeTick(prayers: PrayerData): TickInfo {
       break;
     }
   }
-  if (!pName) { pName = 'Fajr'; pTime = '–'; cdStr = 'tomorrow'; }
+  if (!pName) {
+    // All prayers done — count down to tomorrow's Fajr (today's Fajr time ≈ tomorrow's)
+    const fajrMin = parseHHMM(prayers.fajr);
+    const msToMidnight = (24 * 60 - nowMin) * 60000 - mv.getUTCSeconds() * 1000;
+    const msToFajr = msToMidnight + fajrMin * 60000;
+    pName = 'Fajr';
+    pTime = prayers.fajr;
+    cdStr = `(${fmtCountdown(msToFajr)})`;
+  }
   return { pName, pTime, cdStr, clock: fmtClock(mv) };
 }
 
