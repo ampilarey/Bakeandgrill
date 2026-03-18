@@ -22,7 +22,8 @@ class VerifyBmlSignature
     public function handle(Request $request, Closure $next): Response
     {
         $rawBody = $request->getContent();
-        $signature = $request->header('X-Signature', '');
+        $headerName = config('bml.webhook_signature_header', 'X-Signature');
+        $signature = $request->header($headerName, '') ?: $request->header('X-Signature', '');
 
         if (!$this->bml->verifyWebhookSignature($rawBody, $signature)) {
             return response()->json(['message' => 'Invalid signature'], 401);
