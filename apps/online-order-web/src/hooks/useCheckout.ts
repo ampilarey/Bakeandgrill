@@ -179,7 +179,7 @@ export function useCheckout() {
       // reuse it instead of creating a duplicate.
       if (pendingOrderId) {
         orderId = pendingOrderId;
-      } else       } else if (orderType === "delivery") {
+      } else if (orderType === "delivery") {
         const res = await createDeliveryOrder(token, {
           items: cart.map((item) => ({
             item_id: item.id, quantity: item.quantity,
