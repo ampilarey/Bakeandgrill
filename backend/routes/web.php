@@ -71,9 +71,12 @@ Route::get('/order', function () {
     return redirect('/order/');
 })->name('order.redirect');
 Route::get('/order/{any}', function () {
-    abort_if(! file_exists(public_path('order/index.html')), 503, 'Order app not deployed.');
-    return response()->file(public_path('order/index.html'))
-        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    $path = public_path('order/index.html');
+    abort_if(! file_exists($path), 503, 'Order app not deployed.');
+    return response(file_get_contents($path), 200, [
+        'Content-Type'  => 'text/html; charset=utf-8',
+        'Cache-Control' => 'no-store, no-cache, must-revalidate',
+    ]);
 })->where('any', '.*')->name('order.spa');
 
 // Admin Dashboard SPA — catch-all for /admin/* sub-paths
