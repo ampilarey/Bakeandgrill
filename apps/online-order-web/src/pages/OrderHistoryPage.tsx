@@ -1,22 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { fetchCustomerOrders } from '../api';
+import type { Order } from '../api';
 
-interface HistoryEntry {
-  orderId: number;
-  orderType: 'takeaway' | 'delivery';
-  totalLaar: number;
-  itemCount: number;
-  placedAt: string;
-}
-
-function loadHistory(): HistoryEntry[] {
-  try {
-    return JSON.parse(localStorage.getItem('bakegrill_order_history') ?? '[]');
-  } catch { return []; }
-}
-
-function laarToMvr(laar: number) { return (laar / 100).toFixed(2); }
+const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  payment_pending: { label: 'Awaiting payment',  color: '#92400e', bg: '#fef3c7' },
+  pending:         { label: 'Payment received',  color: '#1e40af', bg: '#dbeafe' },
+  paid:            { label: 'Confirmed',          color: '#065f46', bg: '#d1fae5' },
+  preparing:       { label: 'Being prepared',    color: '#1e40af', bg: '#dbeafe' },
+  ready:           { label: 'Ready for pickup',  color: '#065f46', bg: '#d1fae5' },
+  completed:       { label: 'Completed',         color: '#374151', bg: '#f3f4f6' },
+  cancelled:       { label: 'Cancelled',         color: '#991b1b', bg: '#fee2e2' },
+};
 
 function fmtDate(iso: string) {
   const d = new Date(iso);
@@ -26,95 +22,123 @@ function fmtDate(iso: string) {
 }
 
 export function OrderHistoryPage() {
-  usePageTitle('Order History');
-  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
+  usePageTitle('My Orders');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const clearHistory = () => {
-    localStorage.removeItem('bakegrill_order_history');
-    setHistory([]);
-  };
+  useEffect(() => {
+    const token = localStorage.getItem('online_token');
+    if (!token) {
+      setError('Please log in to view your orders.');
+      setLoading(false);
+      return;
+    }
+    fetchCustomerOrders(token)
+      .then((res) => {
+        const list: Order[] = Array.isArray(res) ? res : (res as { data?: Order[]; orders?: Order[] }).data ?? (res as { orders?: Order[] }).orders ?? [];
+        setOrders(list);
+      })
+      .catch(() => setError('Could not load orders. Please try again.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', padding: '2rem 1.25rem', minHeight: '60vh' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>Order History</h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0' }}>
-            Your recent orders from this device
-          </p>
-        </div>
-        {history.length > 0 && (
-          <button
-            onClick={clearHistory}
-            style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '0.4rem 0.875rem', fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-          >
-            Clear history
-          </button>
-        )}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>My Orders</h1>
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0' }}>
+          Your order history and live status
+        </p>
       </div>
 
-      {history.length === 0 ? (
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--color-text-muted)' }}>
+          Loading orders…
+        </div>
+      )}
+
+      {!loading && error && (
         <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📋</div>
-          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>No orders yet on this device.</p>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>{error}</p>
           <Link to="/menu" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
             Browse the menu →
           </Link>
         </div>
-      ) : (
+      )}
+
+      {!loading && !error && orders.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📋</div>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>No orders yet.</p>
+          <Link to="/menu" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
+            Browse the menu →
+          </Link>
+        </div>
+      )}
+
+      {!loading && orders.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {history.map((entry) => (
-            <div
-              key={`${entry.orderId}-${entry.placedAt}`}
-              style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '14px',
-                padding: '1rem 1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              <div style={{ fontSize: '1.75rem', flexShrink: 0 }}>
-                {entry.orderType === 'delivery' ? '🛵' : '🥡'}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
-                    Order #{entry.orderId}
-                  </span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', background: 'var(--color-surface-alt)', padding: '0.1rem 0.5rem', borderRadius: '999px', textTransform: 'capitalize' }}>
-                    {entry.orderType}
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                  {entry.itemCount} item{entry.itemCount !== 1 ? 's' : ''} · MVR {laarToMvr(entry.totalLaar)}
-                </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>
-                  {fmtDate(entry.placedAt)}
-                </div>
-              </div>
-              <Link
-                to={`/orders/${entry.orderId}`}
+          {orders.map((order) => {
+            const s = STATUS_LABEL[order.status] ?? { label: order.status, color: '#374151', bg: '#f3f4f6' };
+            const isActive = !['completed', 'cancelled'].includes(order.status);
+            return (
+              <div
+                key={order.id}
                 style={{
-                  padding: '0.45rem 0.875rem',
-                  background: 'var(--color-primary-light)',
-                  color: 'var(--color-primary)',
-                  border: '1px solid rgba(217,119,6,0.2)',
-                  borderRadius: '8px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  flexShrink: 0,
-                  whiteSpace: 'nowrap',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '14px',
+                  padding: '1rem 1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
-                Track →
-              </Link>
-            </div>
-          ))}
+                <div style={{ fontSize: '1.75rem', flexShrink: 0 }}>
+                  {order.type === 'delivery' ? '🛵' : '🥡'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem' }}>
+                      #{order.order_number ?? order.id}
+                    </span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: s.color, background: s.bg, padding: '0.15rem 0.55rem', borderRadius: '999px' }}>
+                      {s.label}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
+                    MVR {Number(order.total).toFixed(2)}
+                  </div>
+                  {order.created_at && (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>
+                      {fmtDate(order.created_at)}
+                    </div>
+                  )}
+                </div>
+                {isActive && (
+                  <Link
+                    to={`/orders/${order.id}`}
+                    style={{
+                      padding: '0.45rem 0.875rem',
+                      background: 'var(--color-primary-light)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid rgba(217,119,6,0.2)',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Track →
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
