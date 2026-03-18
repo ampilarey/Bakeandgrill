@@ -262,6 +262,10 @@ export function useCheckout() {
         localStorage.setItem(historyKey, JSON.stringify(updated));
       } catch { /* ignore */ }
 
+      // Clear the cart before leaving — payment is initiated, order is placed
+      localStorage.removeItem("bakegrill_cart");
+      window.dispatchEvent(new CustomEvent("cart_cleared"));
+
       window.location.href = payment.payment_url;
     } catch (e) {
       setGlobalError((e as Error).message);

@@ -66,6 +66,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { saveCart(cart); }, [cart]);
 
+  // Clear in-memory cart when payment redirects away and removes it from localStorage
+  useEffect(() => {
+    const handler = () => setCart([]);
+    window.addEventListener("cart_cleared", handler);
+    return () => window.removeEventListener("cart_cleared", handler);
+  }, []);
+
   const addItem = useCallback((item: Item, quantity: number, modifiers: Modifier[] = []) => {
     if (quantity < 1) return;
     setCart((prev) => {
