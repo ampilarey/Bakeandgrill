@@ -140,11 +140,12 @@ class CustomerAuthController extends Controller
         $otpRecord->update(['used_at' => now()]);
 
         // Find or create customer atomically; wasRecentlyCreated is set by firstOrCreate
+        $validated = $request->validated();
         $customer = Customer::firstOrCreate(
             ['phone' => $phone],
             [
-                'name'           => $request->validated('name'),
-                'email'          => $request->validated('email'),
+                'name'           => $validated['name'] ?? null,
+                'email'          => $validated['email'] ?? null,
                 'loyalty_points' => 0,
                 'tier'           => 'bronze',
             ],
