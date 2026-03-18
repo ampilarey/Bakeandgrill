@@ -38,7 +38,18 @@ export const EMPTY_DELIVERY: DeliveryForm = {
 function readCart(): CartItem[] {
   try {
     const raw = localStorage.getItem("bakegrill_cart");
-    return raw ? (JSON.parse(raw) as CartItem[]) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    // CartContext stores a versioned object: { version, entries: [{ item, quantity, modifiers }] }
+    const entries: Array<{ item: { id: number; name: string; base_price: number | string }; quantity: number; modifiers?: Array<{ id: number; name: string; price: number | string }> }>
+      = Array.isArray(parsed) ? parsed : (parsed?.entries ?? []);
+    return entries.map((e) => ({
+      id:        e.item?.id ?? (e as unknown as CartItem).id,
+      name:      e.item?.name ?? (e as unknown as CartItem).name,
+      price:     Number(e.item?.base_price ?? (e as unknown as CartItem).price ?? 0),
+      quantity:  e.quantity,
+      modifiers: (e.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: Number(m.price) })),
+    }));
   } catch { return []; }
 }
 
