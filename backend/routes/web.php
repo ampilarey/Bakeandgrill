@@ -23,6 +23,10 @@ Route::get('/admin', function () {
     return redirect('/admin/');
 })->name('admin.redirect');
 
+// Prayer Times standalone page
+use App\Http\Controllers\PrayerTimesWebController;
+Route::get('/prayer-times', [PrayerTimesWebController::class, 'index'])->name('prayer-times.index');
+
 // Public Website Pages (Customer-facing only)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::redirect('/menu', '/order/menu', 301)->name('menu');
