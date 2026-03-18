@@ -3,6 +3,7 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { PrayerBar } from './PrayerBar';
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 function WhatsAppIcon() {
@@ -158,6 +159,7 @@ export function Layout() {
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <PrayerBar />
 
             {/* Only show account info when the customer is actually logged in */}
             {token && customerName && (
@@ -254,6 +256,9 @@ export function Layout() {
           </div>
         )}
       </header>
+
+      {/* Mobile prayer strip portal target */}
+      <div id="prayer-strip-root" />
 
       {/* Page content */}
       <main style={{ flex: 1 }} id="main-content">
