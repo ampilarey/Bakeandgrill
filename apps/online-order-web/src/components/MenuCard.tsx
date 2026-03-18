@@ -70,6 +70,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
             alt={item.name}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             loading="lazy"
+            decoding="async"
             onError={() => setImgError(true)}
           />
         ) : (

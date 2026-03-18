@@ -92,7 +92,7 @@ export function Layout() {
 
           {/* Logo — links to main website */}
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}>
-            <img src={logoUrl} alt={siteName} style={{ width: '38px', height: '38px', borderRadius: '9px' }} />
+            <img src={logoUrl} alt={siteName} style={{ width: '38px', height: '38px', borderRadius: '9px' }} fetchPriority="high" decoding="async" />
             <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.02em' }}>{siteName}</span>
           </a>
 
@@ -292,6 +292,7 @@ export function Layout() {
             <a href="/">Home</a>
             <Link to="/menu">Order Online</Link>
             <Link to="/pre-order">Pre-Order (Events)</Link>
+            <Link to="/order-history">Order History</Link>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
           </div>

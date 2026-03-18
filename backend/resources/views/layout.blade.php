@@ -53,6 +53,9 @@
     }
     </script>
 
+    <!-- Apply saved theme before first paint to avoid flash -->
+    <script>if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';</script>
+
     <link rel="icon" type="image/png" href="{{ \App\Models\SiteSetting::get('favicon', asset('logo.png')) }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ $logoUrl }}">
@@ -80,6 +83,43 @@
             --danger-bg:    #FCE4E1;
             --danger-text:  #8C1C0E;
         }
+
+        [data-theme="dark"] {
+            --amber:        #e09242;
+            --amber-hover:  #c97a2a;
+            --amber-light:  rgba(224,146,66,0.15);
+            --amber-glow:   rgba(224,146,66,0.22);
+            --dark:         #f5e6cc;
+            --surface:      #231809;
+            --bg:           #1a1208;
+            --border:       #3a2a12;
+            --text:         #e8d5b5;
+            --muted:        #9c8060;
+            --success-bg:   #0d2d1a;
+            --success-text: #4ade80;
+            --danger-bg:    #2d0f0a;
+            --danger-text:  #f87171;
+        }
+        [data-theme="dark"] .site-header,
+        [data-theme="dark"] .mobile-header,
+        [data-theme="dark"] .mobile-bottom-nav {
+            background: rgba(26, 18, 8, 0.94);
+        }
+        [data-theme="dark"] .site-footer { background: #0e0a04; }
+        [data-theme="dark"] .mob-nav-order { background: var(--amber); }
+
+        .dark-toggle {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            width: 36px; height: 36px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .dark-toggle:hover { background: var(--amber-light); border-color: var(--amber); }
 
         html { scroll-behavior: smooth; }
 
@@ -592,6 +632,7 @@
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
             @endif
+            <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
             <a href="/order/" class="hdr-order">Order Now →</a>
         </div>
     </div>
@@ -610,6 +651,7 @@
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endif
+            <button id="darkToggleMobile" class="dark-toggle" aria-label="Toggle dark mode" style="width:32px;height:32px;font-size:0.9rem;">🌙</button>
             <a href="/order/" class="mob-order-btn">Order Now</a>
         </div>
     </div>
@@ -739,8 +781,9 @@
     function getMVT()    { return new Date(Date.now() + 5 * 3600 * 1000); }
     function parseHHMM(s){ var p=s.split(':'); return +p[0]*60 + +p[1]; }
 
-    function mvtDateStr() {
+    function mvtDateStr(offsetDays) {
         var d=getMVT();
+        if (offsetDays) d.setUTCDate(d.getUTCDate()+offsetDays);
         return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
     }
 
@@ -767,12 +810,13 @@
     function setText(id,v) { var e=$$( id); if(e) e.textContent=v; }
 
     /* ── State ──────────────────────────────────────────────────────────── */
-    var prayers       = null;
-    var currentIsland = null;   // { id, atollLatin, nameLatin }
-    var allIslands    = [];     // cached flat list
-    var tickTimer     = null;
-    var dropOpen      = false;
-    var activeTrigger = null;
+    var prayers         = null;
+    var tomorrowPrayers = null;
+    var currentIsland   = null;   // { id, atollLatin, nameLatin }
+    var allIslands      = [];     // cached flat list
+    var tickTimer       = null;
+    var dropOpen        = false;
+    var activeTrigger   = null;
 
     /* ── Prayer tick ────────────────────────────────────────────────────── */
     function tick() {
@@ -788,11 +832,12 @@
             }
         }
         if (!pName) {
-            // All prayers done — count down to tomorrow's Fajr (today's Fajr ≈ tomorrow's)
-            var fajrMin=parseHHMM(prayers.fajr);
+            // All prayers done — count down to tomorrow's actual Fajr
+            var tFajr = (tomorrowPrayers && tomorrowPrayers.fajr) ? tomorrowPrayers.fajr : prayers.fajr;
+            var fajrMin=parseHHMM(tFajr);
             var msToMidnight=(24*60-nowMin)*60000-mv.getUTCSeconds()*1000;
             var msToFajr=msToMidnight+fajrMin*60000;
-            pName='Fajr'; pTime=prayers.fajr; cdStr='('+fmtCountdown(msToFajr)+')';
+            pName='Fajr'; pTime=tFajr; cdStr='('+fmtCountdown(msToFajr)+')';
         }
         var clock=fmtClock(mv);
         setText('ptPillPrayer', pName);  setText('ptPillPTime',  pTime);
@@ -813,13 +858,25 @@
         if (!tickTimer) tickTimer = setInterval(tick, 1000);
     }
 
+    /* ── Pre-fetch tomorrow's prayers ───────────────────────────────────── */
+    function prefetchTomorrow(islandId) {
+        var tom=mvtDateStr(1), tKey='pt_day_'+tom+'_'+islandId;
+        try { var c=localStorage.getItem(tKey); if(c){ tomorrowPrayers=JSON.parse(c); return; } } catch(e){}
+        fetch('/api/prayer-times?island_id='+islandId+'&date='+tom)
+            .then(function(r){ return r.json(); })
+            .then(function(d){ if(d.prayers){ tomorrowPrayers=d.prayers; try{localStorage.setItem(tKey,JSON.stringify(d.prayers));}catch(e){} } })
+            .catch(function(){});
+    }
+
     /* ── Prayer data ────────────────────────────────────────────────────── */
     function loadPrayers(islandId, cb) {
         var today=mvtDateStr(), cKey='pt_day_'+today+'_'+islandId;
-        try { var c=localStorage.getItem(cKey); if(c){ prayers=JSON.parse(c); cb(); return; } } catch(e){}
+        // Restore cached tomorrow right away
+        try { var ct=localStorage.getItem('pt_day_'+mvtDateStr(1)+'_'+islandId); if(ct) tomorrowPrayers=JSON.parse(ct); } catch(e){}
+        try { var c=localStorage.getItem(cKey); if(c){ prayers=JSON.parse(c); cb(); prefetchTomorrow(islandId); return; } } catch(e){}
         fetch('/api/prayer-times?island_id='+islandId+'&date='+today)
             .then(function(r){ return r.json(); })
-            .then(function(d){ if(d.prayers){ prayers=d.prayers; try{localStorage.setItem(cKey,JSON.stringify(prayers));}catch(e){} } cb(); })
+            .then(function(d){ if(d.prayers){ prayers=d.prayers; try{localStorage.setItem(cKey,JSON.stringify(prayers));}catch(e){} } cb(); prefetchTomorrow(islandId); })
             .catch(function(){ cb(); });
     }
 
@@ -827,7 +884,7 @@
     function selectIsland(isl) {
         currentIsland = { id: isl.id, atollLatin: isl.atoll_latin||'', nameLatin: isl.name_latin||isl.name };
         try { localStorage.setItem('pt_island', JSON.stringify(currentIsland)); } catch(e){}
-        prayers = null;
+        prayers = null; tomorrowPrayers = null;
         loadPrayers(currentIsland.id, function(){ if(prayers) showPill(currentIsland); });
     }
 
@@ -969,6 +1026,34 @@
 
     if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
     else init();
+})();
+
+/* ── Dark mode ───────────────────────────────────────────────────────── */
+(function() {
+    var saved = localStorage.getItem('theme');
+    var dark = saved === 'dark';
+    function applyTheme(d) {
+        document.documentElement.dataset.theme = d ? 'dark' : '';
+        var icon = d ? '☀️' : '🌙';
+        var dt = document.getElementById('darkToggleDesktop');
+        var dm = document.getElementById('darkToggleMobile');
+        if (dt) { dt.textContent = icon; dt.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
+        if (dm) { dm.textContent = icon; dm.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
+    }
+    applyTheme(dark);
+    function toggleDark() {
+        dark = !dark;
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
+        applyTheme(dark);
+    }
+    function attachToggles() {
+        var dt = document.getElementById('darkToggleDesktop');
+        var dm = document.getElementById('darkToggleMobile');
+        if (dt) dt.addEventListener('click', toggleDark);
+        if (dm) dm.addEventListener('click', toggleDark);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachToggles);
+    else attachToggles();
 })();
 </script>
 </body>

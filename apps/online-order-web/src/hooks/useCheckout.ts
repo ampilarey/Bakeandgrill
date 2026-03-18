@@ -236,6 +236,21 @@ export function useCheckout() {
         throw new Error("Payment could not be started. Please try again in a moment.");
       }
 
+      // Save to order history in localStorage before leaving the page
+      try {
+        const historyKey = 'bakegrill_order_history';
+        const existing = JSON.parse(localStorage.getItem(historyKey) ?? '[]');
+        const entry = {
+          orderId,
+          orderType,
+          totalLaar,
+          itemCount: cart.reduce((s, i) => s + i.quantity, 0),
+          placedAt: new Date().toISOString(),
+        };
+        const updated = [entry, ...existing].slice(0, 20); // keep last 20 orders
+        localStorage.setItem(historyKey, JSON.stringify(updated));
+      } catch { /* ignore */ }
+
       window.location.href = payment.payment_url;
     } catch (e) {
       setGlobalError((e as Error).message);

@@ -22,6 +22,7 @@ const OrderStatusPage  = lazy(() => import('./pages/OrderStatusPage').then((m) =
 const PreOrderPage     = lazy(() => import('./pages/PreOrderPage').then((m) => ({ default: m.PreOrderPage })));
 const PrivacyPage      = lazy(() => import('./pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })));
 const NotFoundPage     = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage').then((m) => ({ default: m.OrderHistoryPage })));
 
 // Minimal fallback shown while a page chunk loads
 function PageSkeleton() {
@@ -57,6 +58,7 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="reservations" element={<ReservationPage />} />
                     <Route path="pre-order" element={<PreOrderPage />} />
                     <Route path="privacy" element={<PrivacyPage />} />
+                    <Route path="order-history" element={<OrderHistoryPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
 

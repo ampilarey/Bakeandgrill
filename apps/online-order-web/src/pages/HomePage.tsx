@@ -230,7 +230,7 @@ export function HomePage() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       {imgSrc ? (
-                        <img src={imgSrc} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                        <img src={imgSrc} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
                       ) : (
                         <span style={{ fontSize: '2.5rem', opacity: 0.4 }}>🍽️</span>
                       )}

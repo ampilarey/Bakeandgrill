@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Page Not Found - Bake & Grill')
+@section('title', 'Something went wrong - Bake & Grill')
 
 @section('styles')
 <style>
@@ -43,12 +43,12 @@
 
 @section('content')
 <div class="error-hero">
-    <div class="error-code">404</div>
-    <h1>Page not found</h1>
-    <p>Sorry, we couldn't find the page you're looking for. It may have moved or never existed.</p>
+    <div class="error-code">500</div>
+    <h1>Something went wrong</h1>
+    <p>We're sorry — our server ran into an unexpected problem. Our team has been notified. Please try again in a moment.</p>
     <div class="error-actions">
         <a href="/" class="btn-primary-err">Back to Home</a>
-        <a href="/order/" class="btn-ghost-err">Order Online</a>
+        <a href="javascript:location.reload()" class="btn-ghost-err">Try again</a>
     </div>
 </div>
 @endsection

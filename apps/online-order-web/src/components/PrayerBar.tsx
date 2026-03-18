@@ -61,8 +61,9 @@ function parseHHMM(s: string) {
   return +h * 60 + +m;
 }
 
-function mvtDateStr() {
+function mvtDateStr(offsetDays = 0) {
   const d = getMVT();
+  d.setUTCDate(d.getUTCDate() + offsetDays);
   return d.getUTCFullYear() + '-'
     + String(d.getUTCMonth() + 1).padStart(2, '0') + '-'
     + String(d.getUTCDate()).padStart(2, '0');
@@ -91,7 +92,7 @@ function makeLabel(atollLatin: string, nameLatin: string) {
   return (abbr ? abbr + '. ' : '') + (nameLatin || '');
 }
 
-function computeTick(prayers: PrayerData): TickInfo {
+function computeTick(prayers: PrayerData, tomorrowPrayers?: PrayerData | null): TickInfo {
   const mv = getMVT();
   const nowMin = mv.getUTCHours() * 60 + mv.getUTCMinutes();
   let pName = '', pTime = '', cdStr = '';
@@ -106,12 +107,13 @@ function computeTick(prayers: PrayerData): TickInfo {
     }
   }
   if (!pName) {
-    // All prayers done — count down to tomorrow's Fajr (today's Fajr time ≈ tomorrow's)
-    const fajrMin = parseHHMM(prayers.fajr);
+    // All prayers done — count down to tomorrow's actual Fajr
+    const tomorrowFajr = tomorrowPrayers?.fajr ?? prayers.fajr;
+    const fajrMin = parseHHMM(tomorrowFajr);
     const msToMidnight = (24 * 60 - nowMin) * 60000 - mv.getUTCSeconds() * 1000;
     const msToFajr = msToMidnight + fajrMin * 60000;
     pName = 'Fajr';
-    pTime = prayers.fajr;
+    pTime = tomorrowFajr;
     cdStr = `(${fmtCountdown(msToFajr)})`;
   }
   return { pName, pTime, cdStr, clock: fmtClock(mv) };
@@ -147,6 +149,7 @@ export function PrayerBar() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const prayersRef = useRef<PrayerData | null>(null);
+  const tomorrowPrayersRef = useRef<PrayerData | null>(null);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const dropTriggerRef = useRef<HTMLElement | null>(null);
@@ -155,10 +158,19 @@ export function PrayerBar() {
 
   const loadPrayers = useCallback((islandId: number, cb: () => void) => {
     const today = mvtDateStr();
+    const tomorrow = mvtDateStr(1);
     const cKey = `pt_day_${today}_${islandId}`;
+    const tKey = `pt_day_${tomorrow}_${islandId}`;
+
+    // Restore cached tomorrow prayers if available
+    try {
+      const ct = localStorage.getItem(tKey);
+      if (ct) tomorrowPrayersRef.current = JSON.parse(ct);
+    } catch { /* ignore */ }
+
     try {
       const c = localStorage.getItem(cKey);
-      if (c) { prayersRef.current = JSON.parse(c); cb(); return; }
+      if (c) { prayersRef.current = JSON.parse(c); cb(); prefetchTomorrow(islandId, tKey); return; }
     } catch { /* ignore */ }
     fetch(`/api/prayer-times?island_id=${islandId}&date=${today}`)
       .then(r => r.json())
@@ -168,8 +180,23 @@ export function PrayerBar() {
           try { localStorage.setItem(cKey, JSON.stringify(d.prayers)); } catch { /* ignore */ }
         }
         cb();
+        prefetchTomorrow(islandId, tKey);
       })
       .catch(() => cb());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const prefetchTomorrow = useCallback((islandId: number, tKey: string) => {
+    if (tomorrowPrayersRef.current) return; // already cached
+    const tomorrow = mvtDateStr(1);
+    fetch(`/api/prayer-times?island_id=${islandId}&date=${tomorrow}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.prayers) {
+          tomorrowPrayersRef.current = d.prayers;
+          try { localStorage.setItem(tKey, JSON.stringify(d.prayers)); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => { /* ignore */ });
   }, []);
 
   // ── Start tick timer ────────────────────────────────────────────────────
@@ -177,7 +204,7 @@ export function PrayerBar() {
   const startTick = useCallback(() => {
     if (tickTimer.current) return;
     tickTimer.current = setInterval(() => {
-      if (prayersRef.current) setTick(computeTick(prayersRef.current));
+      if (prayersRef.current) setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
     }, 1000);
   }, []);
 
@@ -192,9 +219,10 @@ export function PrayerBar() {
     setIsland(info);
     try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
     prayersRef.current = null;
+    tomorrowPrayersRef.current = null;
     loadPrayers(info.id, () => {
       if (prayersRef.current) {
-        setTick(computeTick(prayersRef.current));
+        setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
         setLoaded(true);
         startTick();
       }
@@ -214,7 +242,7 @@ export function PrayerBar() {
       setIsland(savedIsland);
       loadPrayers(savedIsland.id, () => {
         if (prayersRef.current) {
-          setTick(computeTick(prayersRef.current));
+          setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
           setLoaded(true);
           startTick();
         }
@@ -242,7 +270,7 @@ export function PrayerBar() {
           try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
           loadPrayers(info.id, () => {
             if (prayersRef.current) {
-              setTick(computeTick(prayersRef.current));
+              setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
               setLoaded(true);
               startTick();
             }
