@@ -398,51 +398,114 @@
         .hdr-prayer-pill {
             display: none;
             align-items: center;
-            gap: 0.28rem;
-            padding: 0.32rem 0.7rem;
+            gap: 0.22rem;
+            padding: 0.28rem 0.6rem 0.28rem 0.45rem;
             border: 1px solid var(--border);
             border-radius: 999px;
             font-size: 0.76rem;
             color: var(--text);
             background: var(--surface);
             white-space: nowrap;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.15s;
+            transition: border-color 0.15s;
             flex-shrink: 0;
         }
         .hdr-prayer-pill.pt-loaded { display: inline-flex; }
-        .hdr-prayer-pill:hover { border-color: var(--amber); background: var(--amber-light); }
-        .pt-pill-icon { font-size: 0.8rem; line-height: 1; }
-        .pt-pill-loc  { color: var(--muted); font-weight: 500; }
-        .pt-pill-div  { color: var(--border); margin: 0 0.05rem; }
+        .hdr-prayer-pill:hover { border-color: var(--amber); }
+        .pt-pill-div   { color: var(--border); margin: 0 0.08rem; }
         .pt-pill-prayer { font-weight: 700; }
         .pt-pill-ptime  { color: var(--amber); font-weight: 600; }
         .pt-pill-cd     { color: var(--muted); font-size: 0.7rem; }
         .pt-pill-clock  { color: var(--muted); }
+        .pt-pill-info   { display: flex; align-items: center; gap: 0.22rem; text-decoration: none; color: inherit; }
+        .pt-pill-info:hover .pt-pill-prayer { color: var(--amber); }
+
+        /* ─── Geo + island buttons (shared pill/strip) ──────────── */
+        .pt-geo-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 0.18rem 0.25rem; color: var(--muted);
+            display: flex; align-items: center;
+            border-radius: 5px; transition: color 0.15s; flex-shrink: 0;
+        }
+        .pt-geo-btn:hover { color: var(--amber); }
+        .pt-geo-btn svg { width: 12px; height: 12px; display: block; }
+        .pt-geo-btn.pt-spin svg { animation: ptSpin 1s linear infinite; }
+        .pt-isl-btn {
+            background: none; border: none; cursor: pointer;
+            display: flex; align-items: center; gap: 0.18rem;
+            color: var(--muted); font-size: 0.76rem; font-weight: 600;
+            font-family: inherit; padding: 0.18rem 0.25rem;
+            border-radius: 5px; transition: color 0.15s, background 0.15s;
+            white-space: nowrap;
+        }
+        .pt-isl-btn:hover { color: var(--amber); background: var(--amber-light); }
+        .pt-isl-arrow { font-size: 0.5rem; opacity: 0.55; }
+        @keyframes ptSpin { to { transform: rotate(360deg); } }
+
+        /* ─── Floating island dropdown ───────────────────────────── */
+        .hpt-panel {
+            position: fixed;
+            background: var(--surface);
+            border: 1.5px solid var(--amber);
+            border-radius: 14px;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            width: 290px;
+            max-height: 380px;
+            box-shadow: 0 16px 48px rgba(28,20,8,0.14);
+            overflow: hidden;
+        }
+        .hpt-panel.open { display: flex; }
+        .hpt-search-row {
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .hpt-search-input {
+            width: 100%; border: 1px solid var(--border); border-radius: 8px;
+            padding: 0.4rem 0.65rem; font-size: 0.85rem; font-family: inherit;
+            color: var(--text); background: var(--bg); outline: none;
+            transition: border-color 0.15s;
+        }
+        .hpt-search-input:focus { border-color: var(--amber); }
+        .hpt-list { overflow-y: auto; flex: 1; }
+        .hpt-group-label {
+            padding: 0.45rem 0.9rem 0.25rem;
+            font-size: 0.67rem; font-weight: 700; letter-spacing: 0.07em;
+            text-transform: uppercase; color: var(--amber);
+            background: var(--surface); position: sticky; top: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .hpt-option {
+            padding: 0.42rem 0.9rem; cursor: pointer;
+            font-size: 0.83rem; color: var(--text);
+            transition: background 0.1s;
+        }
+        .hpt-option:hover { background: var(--amber-light); color: var(--amber); }
+        .hpt-option.selected { color: var(--amber); font-weight: 600; }
+        .hpt-no-results { padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
         /* ─── Prayer Strip (mobile only) ────────────────────────── */
         .mob-prayer-strip {
             display: none;
             background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 0.45rem 1rem;
-            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            gap: 0.4rem;
             align-items: center;
             justify-content: space-between;
             font-size: 0.76rem;
             color: var(--text);
-            text-decoration: none;
-            -webkit-tap-highlight-color: transparent;
         }
         .mob-prayer-strip.pt-loaded { display: flex; }
-        .mob-prayer-strip:active { background: var(--amber-light); }
-        .pt-strip-left  { display: flex; align-items: center; gap: 0.3rem; color: var(--muted); font-weight: 500; }
-        .pt-strip-mid   { display: flex; align-items: center; gap: 0.3rem; }
+        .pt-strip-controls { display: flex; align-items: center; gap: 0.15rem; }
+        .pt-strip-info { display: flex; align-items: center; gap: 0.22rem; text-decoration: none; color: inherit; flex-wrap: wrap; justify-content: flex-end; }
+        .pt-strip-info:active { color: var(--amber); }
         .pt-strip-prayer { font-weight: 700; }
         .pt-strip-ptime  { color: var(--amber); font-weight: 600; }
         .pt-strip-cd     { color: var(--muted); font-size: 0.7rem; }
-        .pt-strip-clock  { color: var(--muted); flex-shrink: 0; font-size: 0.72rem; }
+        .pt-strip-div    { color: var(--border); }
+        .pt-strip-clock  { color: var(--muted); font-size: 0.7rem; }
         @media (min-width: 769px) { .mob-prayer-strip { display: none !important; } }
 
         /* ─── Responsive ─────────────────────────────────────────── */
@@ -496,16 +559,29 @@
         </nav>
         <div class="header-actions">
             {{-- Prayer time pill --}}
-            <a href="/prayer-times" id="ptPill" class="hdr-prayer-pill" aria-label="Prayer times">
-                <span class="pt-pill-icon">🕌</span>
-                <span class="pt-pill-loc" id="ptPillLoc"></span>
-                <span class="pt-pill-div">·</span>
-                <span class="pt-pill-prayer" id="ptPillPrayer"></span>
-                <span class="pt-pill-ptime" id="ptPillPTime"></span>
-                <span class="pt-pill-cd" id="ptPillCd"></span>
-                <span class="pt-pill-div">·</span>
-                <span class="pt-pill-clock" id="ptPillClock"></span>
-            </a>
+            <div id="ptPill" class="hdr-prayer-pill" aria-label="Prayer times">
+                {{-- GPS button --}}
+                <button type="button" id="ptGeoBtn" class="pt-geo-btn" title="Detect my location">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                        <circle cx="12" cy="12" r="8" opacity=".18"/>
+                    </svg>
+                </button>
+                {{-- Island selector button --}}
+                <button type="button" id="ptIslBtn" class="pt-isl-btn">
+                    <span id="ptPillLoc">K. Malé</span>
+                    <span class="pt-isl-arrow">▾</span>
+                </button>
+                {{-- Prayer info (links to prayer-times page) --}}
+                <a href="/prayer-times" class="pt-pill-info">
+                    <span class="pt-pill-div">·</span>
+                    <span class="pt-pill-prayer" id="ptPillPrayer"></span>
+                    <span class="pt-pill-ptime" id="ptPillPTime"></span>
+                    <span class="pt-pill-cd" id="ptPillCd"></span>
+                    <span class="pt-pill-div">·</span>
+                    <span class="pt-pill-clock" id="ptPillClock"></span>
+                </a>
+            </div>
             @if(session('customer_id'))
                 <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', session('customer_name')) }}</span>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
@@ -538,19 +614,28 @@
     </div>
 </div>
 
-{{-- Prayer time strip (mobile only — shown between header and page content) --}}
-<a href="/prayer-times" id="ptStrip" class="mob-prayer-strip" aria-label="Prayer times">
-    <span class="pt-strip-left">
-        <span>🕌</span>
-        <span id="ptStripLoc"></span>
-    </span>
-    <span class="pt-strip-mid">
+{{-- Prayer time strip (mobile only — between header and page content) --}}
+<div id="ptStrip" class="mob-prayer-strip" aria-label="Prayer times">
+    <div class="pt-strip-controls">
+        <button type="button" id="ptGeoBtn2" class="pt-geo-btn" title="Detect my location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                <circle cx="12" cy="12" r="8" opacity=".18"/>
+            </svg>
+        </button>
+        <button type="button" id="ptIslBtn2" class="pt-isl-btn">
+            <span id="ptStripLoc">K. Malé</span>
+            <span class="pt-isl-arrow">▾</span>
+        </button>
+    </div>
+    <a href="/prayer-times" class="pt-strip-info">
         <span class="pt-strip-prayer" id="ptStripPrayer"></span>
         <span class="pt-strip-ptime" id="ptStripPTime"></span>
         <span class="pt-strip-cd" id="ptStripCd"></span>
-    </span>
-    <span class="pt-strip-clock" id="ptStripClock"></span>
-</a>
+        <span class="pt-strip-div">·</span>
+        <span class="pt-strip-clock" id="ptStripClock"></span>
+    </a>
+</div>
 
 @yield('content')
 
@@ -627,178 +712,256 @@
     </div>
 </nav>
 
+{{-- Shared floating island dropdown (used by both pill and strip) --}}
+<div id="hptPanel" class="hpt-panel" role="listbox" aria-label="Select island">
+    <div class="hpt-search-row">
+        <input type="text" id="hptSearch" class="hpt-search-input" placeholder="Search island or atoll…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="hpt-list" id="hptList"></div>
+</div>
+
 <script>
 (function () {
     'use strict';
 
-    var PRAYERS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+    /* ── Constants ──────────────────────────────────────────────────────── */
+    var PRAYERS   = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
     var PRAYER_EN = { fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
-
-    /* Atoll full-name → official abbreviation */
     var ATOLL_ABBR = {
-        'Haa Alif': 'HA', 'Haa Dhaalu': 'HDh', 'Shaviyani': 'Sh',
-        'Noonu': 'N', 'Raa': 'R', 'Baa': 'B', 'Lhaviyani': 'Lh',
-        'Kaafu': 'K', 'Alif Alif': 'AA', 'Alif Dhaalu': 'ADh',
-        'Vaavu': 'V', 'Meemu': 'M', 'Faafu': 'F', 'Dhaalu': 'Dh',
-        'Thaa': 'Th', 'Laamu': 'L', 'Gaafu Alif': 'GA',
-        'Gaafu Dhaalu': 'GDh', 'Gnaviyani': 'Gn', 'Seenu': 'S',
-        'Malé': 'K',
+        'Haa Alif':'HA','Haa Dhaalu':'HDh','Shaviyani':'Sh','Noonu':'N','Raa':'R',
+        'Baa':'B','Lhaviyani':'Lh','Kaafu':'K','Alif Alif':'AA','Alif Dhaalu':'ADh',
+        'Vaavu':'V','Meemu':'M','Faafu':'F','Dhaalu':'Dh','Thaa':'Th','Laamu':'L',
+        'Gaafu Alif':'GA','Gaafu Dhaalu':'GDh','Gnaviyani':'Gn','Seenu':'S','Malé':'K',
     };
 
-    function getMVT() { return new Date(Date.now() + 5 * 3600 * 1000); }
+    /* ── Time helpers ───────────────────────────────────────────────────── */
+    function getMVT()    { return new Date(Date.now() + 5 * 3600 * 1000); }
+    function parseHHMM(s){ var p=s.split(':'); return +p[0]*60 + +p[1]; }
 
     function mvtDateStr() {
-        var d = getMVT();
-        return d.getUTCFullYear() + '-' +
-            String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
-            String(d.getUTCDate()).padStart(2, '0');
+        var d=getMVT();
+        return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
     }
 
-    function parseHHMM(s) { var p = s.split(':'); return +p[0] * 60 + +p[1]; }
-
     function fmtCountdown(ms) {
-        var t = Math.max(0, Math.floor(ms / 1000));
-        var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
-        if (h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-        return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        var t=Math.max(0,Math.floor(ms/1000)), h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=t%60;
+        if (h>0) return h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+        return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
     }
 
     function fmtClock(d) {
-        var h24 = d.getUTCHours(), h12 = h24 % 12 || 12;
-        var m  = String(d.getUTCMinutes()).padStart(2,'0');
-        var ap = h24 >= 12 ? 'PM' : 'AM';
-        var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        return String(h12).padStart(2,'0') + ':' + m + ' ' + ap +
-               '  ·  ' + days[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + months[d.getUTCMonth()];
+        var h24=d.getUTCHours(), h12=h24%12||12, m=String(d.getUTCMinutes()).padStart(2,'0');
+        var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return String(h12).padStart(2,'0')+':'+m+(h24>=12?' PM':' AM')+'  ·  '+days[d.getUTCDay()]+' '+d.getUTCDate()+' '+months[d.getUTCMonth()];
     }
 
     function makeLabel(atollLatin, nameLatin) {
         var abbr = ATOLL_ABBR[atollLatin] || (atollLatin ? atollLatin.split(' ')[0] : '');
-        return (abbr ? abbr + '. ' : '') + (nameLatin || '');
+        return (abbr ? abbr+'. ' : '') + (nameLatin || '');
     }
 
-    function setText(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; }
+    /* ── DOM helpers ────────────────────────────────────────────────────── */
+    function $$(id)        { return document.getElementById(id); }
+    function setText(id,v) { var e=$$( id); if(e) e.textContent=v; }
 
-    var prayers = null;
+    /* ── State ──────────────────────────────────────────────────────────── */
+    var prayers       = null;
+    var currentIsland = null;   // { id, atollLatin, nameLatin }
+    var allIslands    = [];     // cached flat list
+    var tickTimer     = null;
+    var dropOpen      = false;
+    var activeTrigger = null;
 
+    /* ── Prayer tick ────────────────────────────────────────────────────── */
     function tick() {
         if (!prayers) return;
-        var mv = getMVT();
-        var nowMin = mv.getUTCHours() * 60 + mv.getUTCMinutes();
-        var pName = '', pTime = '', cdStr = '';
-
-        for (var i = 0; i < PRAYERS.length; i++) {
-            var key  = PRAYERS[i];
-            var pMin = parseHHMM(prayers[key]);
-            if (pMin > nowMin) {
-                var diffMs = (pMin - nowMin) * 60000 - mv.getUTCSeconds() * 1000;
-                pName  = PRAYER_EN[key];
-                pTime  = prayers[key];
-                cdStr  = '(' + fmtCountdown(diffMs) + ')';
+        var mv=getMVT(), nowMin=mv.getUTCHours()*60+mv.getUTCMinutes();
+        var pName='', pTime='', cdStr='';
+        for (var i=0; i<PRAYERS.length; i++) {
+            var key=PRAYERS[i], pMin=parseHHMM(prayers[key]);
+            if (pMin>nowMin) {
+                var ms=(pMin-nowMin)*60000-mv.getUTCSeconds()*1000;
+                pName=PRAYER_EN[key]; pTime=prayers[key]; cdStr='('+fmtCountdown(ms)+')';
                 break;
             }
         }
-        if (!pName) { pName = 'Fajr'; pTime = '–'; cdStr = 'tomorrow'; }
-
-        var clock = fmtClock(mv);
-        setText('ptPillPrayer',  pName);  setText('ptPillPTime',  pTime);
-        setText('ptPillCd',      cdStr);  setText('ptPillClock',  clock);
-        setText('ptStripPrayer', pName);  setText('ptStripPTime', pTime);
-        setText('ptStripCd',     cdStr);  setText('ptStripClock', clock);
+        if (!pName) { pName='Fajr'; pTime='–'; cdStr='tomorrow'; }
+        var clock=fmtClock(mv);
+        setText('ptPillPrayer', pName);  setText('ptPillPTime',  pTime);
+        setText('ptPillCd',     cdStr);  setText('ptPillClock',  clock);
+        setText('ptStripPrayer',pName);  setText('ptStripPTime', pTime);
+        setText('ptStripCd',    cdStr);  setText('ptStripClock', clock);
     }
 
-    function show(label) {
+    /* ── Show pill/strip ────────────────────────────────────────────────── */
+    function showPill(isl) {
+        var label = makeLabel(isl.atollLatin, isl.nameLatin);
         setText('ptPillLoc',  label);
         setText('ptStripLoc', label);
-        var pill  = document.getElementById('ptPill');
-        var strip = document.getElementById('ptStrip');
+        var pill=$$('ptPill'), strip=$$('ptStrip');
         if (pill)  pill.classList.add('pt-loaded');
         if (strip) strip.classList.add('pt-loaded');
         tick();
-        setInterval(tick, 1000);
+        if (!tickTimer) tickTimer = setInterval(tick, 1000);
     }
 
-    function loadPrayers(islandId) {
-        var today = mvtDateStr();
-        var cKey  = 'pt_day_' + today + '_' + islandId;
-        try {
-            var c = localStorage.getItem(cKey);
-            if (c) { prayers = JSON.parse(c); return Promise.resolve(); }
-        } catch (e) {}
-        return fetch('/api/prayer-times?island_id=' + islandId + '&date=' + today)
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                if (d.prayers) {
-                    prayers = d.prayers;
-                    try { localStorage.setItem(cKey, JSON.stringify(prayers)); } catch (e) {}
-                }
-            })
-            .catch(function () {});
+    /* ── Prayer data ────────────────────────────────────────────────────── */
+    function loadPrayers(islandId, cb) {
+        var today=mvtDateStr(), cKey='pt_day_'+today+'_'+islandId;
+        try { var c=localStorage.getItem(cKey); if(c){ prayers=JSON.parse(c); cb(); return; } } catch(e){}
+        fetch('/api/prayer-times?island_id='+islandId+'&date='+today)
+            .then(function(r){ return r.json(); })
+            .then(function(d){ if(d.prayers){ prayers=d.prayers; try{localStorage.setItem(cKey,JSON.stringify(prayers));}catch(e){} } cb(); })
+            .catch(function(){ cb(); });
     }
 
-    function init() {
-        var isl = null;
-        try {
-            var s = localStorage.getItem('pt_island');
-            if (s) isl = JSON.parse(s);
-        } catch (e) {}
+    /* ── Select island ──────────────────────────────────────────────────── */
+    function selectIsland(isl) {
+        currentIsland = { id: isl.id, atollLatin: isl.atoll_latin||'', nameLatin: isl.name_latin||isl.name };
+        try { localStorage.setItem('pt_island', JSON.stringify(currentIsland)); } catch(e){}
+        prayers = null;
+        loadPrayers(currentIsland.id, function(){ if(prayers) showPill(currentIsland); });
+    }
 
-        function proceed(island) {
-            if (!island) return;
-            loadPrayers(island.id).then(function () {
-                if (prayers) show(makeLabel(island.atollLatin, island.nameLatin));
+    /* ── Island dropdown ────────────────────────────────────────────────── */
+    function buildList(q) {
+        var list=$$('hptList'); if(!list) return;
+        list.innerHTML=''; q=(q||'').toLowerCase().trim();
+        var groups={}, order=[];
+        allIslands.forEach(function(isl){
+            var a=isl.atoll_latin||isl.atoll||'–';
+            if(!groups[a]){ groups[a]=[]; order.push(a); }
+            groups[a].push(isl);
+        });
+        var any=false;
+        order.forEach(function(atoll){
+            var vis = q ? groups[atoll].filter(function(i){
+                return (i.name_latin||i.name||'').toLowerCase().includes(q) || atoll.toLowerCase().includes(q);
+            }) : groups[atoll];
+            if(!vis.length) return;
+            any=true;
+            var lbl=document.createElement('div');
+            lbl.className='hpt-group-label';
+            lbl.textContent=(ATOLL_ABBR[atoll]||atoll)+'  —  '+atoll;
+            list.appendChild(lbl);
+            vis.forEach(function(isl){
+                var opt=document.createElement('div');
+                opt.className='hpt-option'+(currentIsland&&isl.id===currentIsland.id?' selected':'');
+                opt.textContent=isl.name_latin||isl.name;
+                opt.addEventListener('click', function(e){ e.stopPropagation(); closeDropdown(); selectIsland(isl); });
+                list.appendChild(opt);
             });
-        }
-
-        function fallbackMale() {
-            fetch('/api/prayer-times/islands')
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    var list = d.islands || [];
-                    var m = list.find(function (i) {
-                        return (i.name_latin || '').replace(/[^a-zA-Z]/g, '').toLowerCase() === 'male';
-                    });
-                    if (m) {
-                        isl = { id: m.id, atollLatin: m.atoll_latin || 'Kaafu', nameLatin: m.name_latin || 'Malé' };
-                        try { localStorage.setItem('pt_island', JSON.stringify(isl)); } catch (e) {}
-                        proceed(isl);
-                    }
-                })
-                .catch(function () {});
-        }
-
-        if (isl) { proceed(isl); return; }
-
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function (pos) {
-                    fetch('/api/prayer-times/nearest?lat=' + pos.coords.latitude + '&lng=' + pos.coords.longitude)
-                        .then(function (r) { return r.json(); })
-                        .then(function (d) {
-                            if (d.island) {
-                                isl = {
-                                    id:         d.island.id,
-                                    atollLatin: d.island.atoll_latin || '',
-                                    nameLatin:  d.island.name_latin  || d.island.name,
-                                };
-                                try { localStorage.setItem('pt_island', JSON.stringify(isl)); } catch (e) {}
-                                proceed(isl);
-                            } else { fallbackMale(); }
-                        })
-                        .catch(fallbackMale);
-                },
-                fallbackMale,
-                { timeout: 6000 }
-            );
-        } else { fallbackMale(); }
+        });
+        if(!any){ var nr=document.createElement('div'); nr.className='hpt-no-results'; nr.textContent='No islands found'; list.appendChild(nr); }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+    function openDropdown(trigger) {
+        var panel=$$('hptPanel'); if(!panel) return;
+        var r=trigger.getBoundingClientRect();
+        var pw=290;
+        var left=r.left;
+        if (left+pw > window.innerWidth-8) left=window.innerWidth-pw-8;
+        panel.style.top  = (r.bottom+6)+'px';
+        panel.style.left = left+'px';
+        panel.classList.add('open');
+        dropOpen=true; activeTrigger=trigger;
+        var s=$$('hptSearch'); if(s){ s.value=''; s.focus(); }
+        buildList('');
     }
+
+    function closeDropdown() {
+        var panel=$$('hptPanel'); if(panel) panel.classList.remove('open');
+        dropOpen=false; activeTrigger=null;
+    }
+
+    function openIslands(trigger) {
+        if (dropOpen && activeTrigger===trigger) { closeDropdown(); return; }
+        closeDropdown();
+        if (allIslands.length) { openDropdown(trigger); return; }
+        try {
+            var c=localStorage.getItem('pt_islands_list');
+            if(c){ allIslands=JSON.parse(c); openDropdown(trigger); return; }
+        } catch(e){}
+        fetch('/api/prayer-times/islands')
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                allIslands=d.islands||[];
+                try{ localStorage.setItem('pt_islands_list', JSON.stringify(allIslands)); }catch(e){}
+                openDropdown(trigger);
+            }).catch(function(){});
+    }
+
+    /* ── Geolocation ────────────────────────────────────────────────────── */
+    function handleGeo(btn) {
+        if (!navigator.geolocation) return;
+        btn.classList.add('pt-spin'); btn.disabled=true;
+        navigator.geolocation.getCurrentPosition(
+            function(pos){
+                fetch('/api/prayer-times/nearest?lat='+pos.coords.latitude+'&lng='+pos.coords.longitude)
+                    .then(function(r){ return r.json(); })
+                    .then(function(d){
+                        btn.classList.remove('pt-spin'); btn.disabled=false;
+                        if(d.island){ try{localStorage.removeItem('pt_island');}catch(e){} selectIsland(d.island); }
+                    })
+                    .catch(function(){ btn.classList.remove('pt-spin'); btn.disabled=false; });
+            },
+            function(){ btn.classList.remove('pt-spin'); btn.disabled=false; },
+            { timeout: 8000 }
+        );
+    }
+
+    /* ── Wire events ────────────────────────────────────────────────────── */
+    function wireEvents() {
+        ['ptGeoBtn','ptGeoBtn2'].forEach(function(id){
+            var b=$$( id); if(b) b.addEventListener('click', function(e){ e.stopPropagation(); handleGeo(b); });
+        });
+        ['ptIslBtn','ptIslBtn2'].forEach(function(id){
+            var b=$$( id); if(b) b.addEventListener('click', function(e){ e.stopPropagation(); openIslands(b); });
+        });
+        var s=$$('hptSearch');
+        if(s){
+            s.addEventListener('input',  function(){ buildList(s.value); });
+            s.addEventListener('click',  function(e){ e.stopPropagation(); });
+        }
+        var panel=$$('hptPanel');
+        if(panel) panel.addEventListener('click', function(e){ e.stopPropagation(); });
+        document.addEventListener('click',   function(){ if(dropOpen) closeDropdown(); });
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDropdown(); });
+    }
+
+    /* ── Init ───────────────────────────────────────────────────────────── */
+    function init() {
+        wireEvents();
+        var isl=null;
+        try{ var s=localStorage.getItem('pt_island'); if(s) isl=JSON.parse(s); }catch(e){}
+
+        if (isl) {
+            currentIsland=isl;
+            loadPrayers(isl.id, function(){ if(prayers) showPill(isl); });
+            return;
+        }
+
+        /* Default: find Malé from the islands list, no location prompt */
+        fetch('/api/prayer-times/islands')
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                allIslands=d.islands||[];
+                try{ localStorage.setItem('pt_islands_list', JSON.stringify(allIslands)); }catch(e){}
+                var male=allIslands.find(function(i){
+                    return (i.name_latin||'').replace(/[^a-zA-Z]/g,'').toLowerCase()==='male';
+                });
+                if (male) {
+                    isl={ id:male.id, atollLatin:male.atoll_latin||'Kaafu', nameLatin:male.name_latin||'Malé' };
+                    currentIsland=isl;
+                    try{ localStorage.setItem('pt_island', JSON.stringify(isl)); }catch(e){}
+                    loadPrayers(isl.id, function(){ if(prayers) showPill(isl); });
+                }
+            }).catch(function(){});
+    }
+
+    if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 })();
 </script>
 </body>
