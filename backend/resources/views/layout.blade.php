@@ -949,7 +949,7 @@
                 allIslands=d.islands||[];
                 try{ localStorage.setItem('pt_islands_list', JSON.stringify(allIslands)); }catch(e){}
                 var male=allIslands.find(function(i){
-                    return (i.name_latin||'').replace(/[^a-zA-Z]/g,'').toLowerCase()==='male';
+                    return (i.name_latin||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z]/g,'').toLowerCase()==='male';
                 });
                 if (male) {
                     isl={ id:male.id, atollLatin:male.atoll_latin||'Kaafu', nameLatin:male.name_latin||'Malé' };

@@ -222,7 +222,7 @@ export function PrayerBar() {
         setAllIslands(islands);
         try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
         const male = islands.find(i =>
-          (i.name_latin || '').replace(/[^a-zA-Z]/g, '').toLowerCase() === 'male'
+          (i.name_latin || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase() === 'male'
         );
         if (male) {
           const info: IslandInfo = {
