@@ -299,9 +299,8 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->gr
 
 // ─── BML Payment Gateway ─────────────────────────────────────────────────────
 
-// Webhook — no auth, signature verified by VerifyBmlSignature middleware
+// Webhook — no auth, signature verified inside PaymentService::handleBmlWebhook
 Route::post('/payments/bml/webhook', [BmlWebhookController::class, 'handle'])
-    ->middleware('bml.signature')
     ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 // Initiate BML payment (customer only)
