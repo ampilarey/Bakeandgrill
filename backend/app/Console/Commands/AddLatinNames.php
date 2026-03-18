@@ -53,6 +53,7 @@ class AddLatinNames extends Command
         'މުޅަދޫ'         => 'Mulhadhoo',
         'މުރައިދޫ'       => 'Muraidhoo',
         'އުތީމު'         => 'Utheemu',
+        'ހަތިފުށި'       => 'Hathifushi',
 
         // Haa Dhaalu
         'ހިރިމަރަދޫ'     => 'Hirimaradhoo',
@@ -61,13 +62,18 @@ class AddLatinNames extends Command
         'ކުޅުދުއްފުށި'   => 'Kulhudhuffushi',
         'ކުމުންދޫ'       => 'Kumundhoo',
         'ކުރިންބި'       => 'Kurinbi',
+        'ކުރިނބި'        => 'Kurinbi',
         'ނޮޅިވަރަންފަރު' => 'Nolhivaranfaru',
         'ނޮޅިވަރަމް'     => 'Nolhivaram',
+        'ނޮޅިވަރަމު'     => 'Nolhivaram',
         'ނޭކުރެންދޫ'     => 'Neykurendhoo',
         'ނެއްލައިދޫ'     => 'Nellaidhoo',
         'ނައިވާދޫ'       => 'Naivaadhoo',
         'ވައިކަރަދޫ'     => 'Vaikaradhoo',
         'މަކުނުދޫ'       => 'Makunudhoo',
+        'ފަރިދޫ'         => 'Faridhoo',
+        'ހޮނޑައިދޫ'      => 'Hondaidhoo',
+        'މާވައިދޫ'       => 'Maavaidhoo',
 
         // Shaviyani
         'ނޫމަރާ'         => 'Noomaraa',
@@ -76,6 +82,7 @@ class AddLatinNames extends Command
         'މަރޮށި'         => 'Maroshi',
         'މާއުނގޫދޫ'      => 'Maaungoodhoo',
         'ލައިމަގު'       => 'Lhaimagu',
+        'ޅައިމަގު'       => 'Lhaimagu',
         'ކޮމަންޑޫ'       => 'Komandoo',
         'ކަނޑިތީމު'      => 'Kanditheemu',
         'ގޮއިދޫ'         => 'Goidhoo',
@@ -83,7 +90,10 @@ class AddLatinNames extends Command
         'ފޯކައިދޫ'       => 'Foakaidhoo',
         'ފޭދޫ'           => 'Feydhoo',
         'ފީވަށް'         => 'Feevah',
+        'ފީވައް'         => 'Feevah',
         'ބިލެތްފަހި'     => 'Bileffahi',
+        'މާކަނޑޫދޫ'      => 'Maakandhoodhoo',
+        'ފިރުނބައިދޫ'    => 'Firunbaidhoo',
 
         // Noonu
         'ވެލިދޫ'         => 'Velidhoo',
@@ -93,12 +103,16 @@ class AddLatinNames extends Command
         'މާޅެންދޫ'       => 'Maalhendhoo',
         'މާފަރު'         => 'Maafaru',
         'ލޮހި'           => 'Lhohi',
+        'ޅޮހި'           => 'Lhohi',
         'ލަންދޫ'         => 'Landhoo',
         'ކުޑަފަރި'       => 'Kudafari',
         'ކެންދިކުޅުދޫ'   => 'Kendhikulhudhoo',
+        'ކެނދިކުޅުދޫ'    => 'Kendhikulhudhoo',
         'ހޮޅުދޫ'         => 'Holhudhoo',
         'ހެންބަދޫ'       => 'Henbadhoo',
+        'ހެނބަދޫ'        => 'Henbadhoo',
         'ފޮއްދޫ'         => 'Foddhoo',
+        'ތޮޅެންދޫ'       => 'Tholhendhoo',
 
         // Raa
         'ވާދޫ'           => 'Vaadhoo',
@@ -116,6 +130,9 @@ class AddLatinNames extends Command
         'ފައިނު'         => 'Fainu',
         'އަނގޮޅިތީމު'    => 'Angolhitheemu',
         'އަލިފުށި'       => 'Alifushi',
+        'ގާއުނޑޫދޫ'      => 'Gaaundhoodhoo',
+        'އުނގުލު'        => 'Ungulu',
+        'ކަނދޮޅުދޫ'      => 'Kandholhudhoo',
 
         // Baa
         'ތުޅާދޫ'         => 'Thulhaadhoo',
@@ -129,6 +146,8 @@ class AddLatinNames extends Command
         'މާޅޮސް'         => 'Maalhos',
         'ކަމަދޫ'         => 'Kamadhoo',
         'ކުޑަރިކިލު'     => 'Kudarikilu',
+        'އޭދަފުށި'       => 'Eydhafushi',
+        'ފުޅަދޫ'         => 'Fulhadhoo',
 
         // Lhaviyani
         'ހިންނަވަރު'     => 'Hinnavaru',
@@ -154,6 +173,7 @@ class AddLatinNames extends Command
         'ބޮޑުފޮޅުދޫ'     => 'Bodufolhudhoo',
         'ފެރިދޫ'         => 'Feridhoo',
         'ހިމަންދޫ'       => 'Himandhoo',
+        'ހިމެންދޫ'       => 'Himandhoo',
         'މާޅޮސް (އއ)'    => 'Maalhos',
         'މަތިވެރި'       => 'Mathiveri',
         'ރަސްދޫ'         => 'Rasdhoo',
@@ -169,11 +189,13 @@ class AddLatinNames extends Command
         'މަހިބަދޫ'       => 'Mahibadhoo',
         'މަންދޫ'         => 'Mandhoo',
         'އޮމަދޫ'         => 'Omadhoo',
+        'މާމިގިލި'       => 'Maamigili',
 
         // Vaavu
         'ފެލިދޫ'         => 'Felidhoo',
         'ފުލިދޫ'         => 'Fulidhoo',
         'ކިއޮދޫ'         => 'Keyodhoo',
+        'ކެޔޮދޫ'         => 'Keyodhoo',
         'ރަކީދޫ'         => 'Rakeedhoo',
         'ތިނަދޫ (ވ)'     => 'Thinadhoo',
 
@@ -186,12 +208,16 @@ class AddLatinNames extends Command
         'ނާލާފުށި'       => 'Naalaafushi',
         'ރައިމަންދޫ'     => 'Raimmandhoo',
         'ވޭވަށް'         => 'Veyvah',
+        'ރަތްމަންދޫ'     => 'Rathmandhoo',
 
         // Faafu
         'ބިލެހްދޫ'       => 'Bileddhoo',
+        'ބިލެތްދޫ'       => 'Bileddhoo',
         'ދަރަންބޫދޫ'     => 'Dharanboodhoo',
+        'ދަރަނބޫދޫ'      => 'Dharanboodhoo',
         'ފީއަލި'         => 'Feeali',
         'ނިލަންދޫ (ފ)'   => 'Nilandhoo',
+        'ނިލަންދޫ'       => 'Nilandhoo',
 
         // Dhaalu
         'ބަނޑިދޫ'        => 'Bandidhoo',
@@ -199,6 +225,8 @@ class AddLatinNames extends Command
         'ކުޑަހުވަދޫ'     => 'Kudahuvadhoo',
         'މާއެނބޫދޫ'      => 'Maaenboodhoo',
         'ރިނބުދޫ'        => 'Rinbudhoo',
+        'ގެމެންދޫ'       => 'Gemendhoo',
+        'ވާނި'           => 'Vaani',
 
         // Thaa
         'ބުރުނި'         => 'Buruni',
@@ -211,7 +239,9 @@ class AddLatinNames extends Command
         'އޮމަދޫ (ތ)'     => 'Omadhoo',
         'ތިމަރަފުށި'     => 'Thimarafushi',
         'ވޭމަންދޫ'       => 'Veymandoo',
+        'ވޭމަންޑޫ'       => 'Veymandoo',
         'ވިލުފުށި'       => 'Vilufushi',
+        'ވަންދޫ'         => 'Vandhoo',
 
         // Laamu
         'ފޮނަދޫ'         => 'Fonadhoo',
@@ -219,13 +249,16 @@ class AddLatinNames extends Command
         'ހިތަދޫ (ލ)'     => 'Hithadhoo',
         'އިސްދޫ'         => 'Isdhoo',
         'ކަލައިދޫ'       => 'Kalaidhoo',
+        'ކަޅައިދޫ'       => 'Kalaidhoo',
         'ކުނަހަންދޫ'     => 'Kunahandhoo',
         'ދަނބިދޫ'        => 'Dhanbidhoo',
         'ގާދޫ'           => 'Gaadhoo',
         'މާވަށް'         => 'Maavah',
         'މާންދޫ'         => 'Maandhoo',
         'މުންދޫ'         => 'Mundhoo',
+        'މުންޑޫ'         => 'Mundhoo',
         'ވަށަފަރު (ލ)'   => 'Vashafaru',
+        'މާބައިދޫ'       => 'Maabaidhoo',
 
         // Gaafu Alif
         'ދާންދޫ'         => 'Dhaandhoo',
@@ -234,18 +267,25 @@ class AddLatinNames extends Command
         'ކަނޑުހުޅުދޫ'    => 'Kanduhulhudhoo',
         'ކޮލަމާފުށި'     => 'Kolamaafushi',
         'ކޮންދޭ'         => 'Kondey',
+        'ކޮނޑޭ'          => 'Kondey',
         'މާމެންދޫ'       => 'Maamendhoo',
         'ނިލަންދޫ (ގ.އ)' => 'Nilandhoo',
         'ވިލިނގިލި'      => 'Villingili',
+        'ދިޔަދޫ'         => 'Dhiyadhoo',
 
         // Gaafu Dhaalu
         'ފަރެސްމާތޮޑާ'   => 'Faresmaathodaa',
+        'ފަރެސް'         => 'Fares',
+        'މާތޮޑާ'         => 'Maathodaa',
         'ގައްދޫ'         => 'Gadhdhoo',
         'ހޯނޑެއްދޫ'      => 'Hoandeddhoo',
         'ނަޑެއްލާ'       => 'Nadella',
+        'ނަޑައްލާ'       => 'Nadella',
         'ތިނަދޫ'         => 'Thinadhoo',
         'ވާދޫ (ގ.ދ)'     => 'Vaadhoo',
         'މަޑަވެލި'       => 'Madaveli',
+        'ރަތަފަންދޫ'     => 'Rathafandhoo',
+        'ފިޔޯރީ'         => 'Fiyoree',
 
         // Gnaviyani
         'ފުވައްމުލައް'   => 'Fuvahmulah',
@@ -257,6 +297,7 @@ class AddLatinNames extends Command
         'ހުޅުމީދޫ'       => 'Hulhumeedhoo',
         'މަރަދޫ'         => 'Maradhoo',
         'މަރަދޫ-ފޭދޫ'    => 'Maradhoo-Feydhoo',
+        'މަރަދޫފޭދޫ'     => 'Maradhoo-Feydhoo',
         'މީދޫ (ސ)'       => 'Meedhoo',
         'ގަން (ސ)'        => 'Gan',
     ];
