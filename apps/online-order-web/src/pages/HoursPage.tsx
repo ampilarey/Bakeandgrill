@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOpeningHoursStatus, fetchOpeningHoursSchedule } from '../api';
-import { BIZ } from '../constants/biz';
 import type { DaySchedule } from '../api';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const DAY_NAMES   = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -22,6 +22,8 @@ export function HoursPage() {
   const [message, setMessage]   = useState<string | null>(null);
   const [schedule, setSchedule] = useState<Record<string, DaySchedule> | null>(null);
   const [loadErr, setLoadErr]   = useState(false);
+  const s = useSiteSettings();
+  const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
 
   usePageTitle('Hours');
 
@@ -132,7 +134,7 @@ export function HoursPage() {
           Order Now →
         </Link>
         <a
-          href={BIZ.whatsapp}
+          href={waLink}
           target="_blank"
           rel="noopener noreferrer"
           style={{

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchItems, fetchOpeningHoursStatus, API_ORIGIN } from '../api';
-import { BIZ } from '../constants/biz';
 import type { Item } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 // ─── Category shortcuts data ──────────────────────────────────────────────────
 const CATEGORIES = [
@@ -25,6 +25,10 @@ export function HomePage() {
   const [featuredItems, setFeaturedItems] = useState<Item[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
+  const s = useSiteSettings();
+
+  const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
+  const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
 
   usePageTitle(null);
 
@@ -266,7 +270,7 @@ export function HomePage() {
           </p>
           <div className="chat-btns">
             <a
-              href={BIZ.whatsapp}
+              href={waLink}
               target="_blank"
               rel="noopener noreferrer"
               className="chat-btn chat-btn-wa"
@@ -275,7 +279,7 @@ export function HomePage() {
               <WhatsAppIcon /> WhatsApp
             </a>
             <a
-              href={BIZ.viber}
+              href={viberLink}
               className="chat-btn chat-btn-viber"
               aria-label="Chat on Viber"
             >

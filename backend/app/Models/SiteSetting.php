@@ -18,10 +18,14 @@ class SiteSetting extends Model
 
     public static function get(string $key, mixed $default = null): mixed
     {
-        return Cache::rememberForever("site_setting.{$key}", function () use ($key, $default) {
-            $setting = static::where('key', $key)->first();
-            return $setting ? $setting->value : $default;
+        // Cache the raw DB value only — never cache the caller's default,
+        // so different callers can supply different fallbacks for the same key.
+        $value = Cache::rememberForever("site_setting.{$key}", function () use ($key) {
+            return static::where('key', $key)->value('value');
         });
+
+        // Treat null or empty-string DB values as "not set" and fall back to default.
+        return ($value !== null && $value !== '') ? $value : $default;
     }
 
     public static function set(string $key, mixed $value): void

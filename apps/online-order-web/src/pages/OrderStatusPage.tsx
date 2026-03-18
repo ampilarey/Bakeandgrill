@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
-import { BIZ } from "../constants/biz";
 import { ReviewForm } from "../components/ReviewForm";
 import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -237,6 +237,9 @@ export function OrderStatusPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { clearCart } = useCart();
+  const s = useSiteSettings();
+  const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
+  const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
 
   const paymentState = searchParams.get("payment") as PaymentState;
 
@@ -616,7 +619,7 @@ export function OrderStatusPage() {
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <a
-                  href={`${BIZ.whatsapp}?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
+                  href={`${waLink}?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0.625rem 1.125rem', background: '#25d366', color: 'white', borderRadius: '10px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}
@@ -625,7 +628,7 @@ export function OrderStatusPage() {
                   <WhatsAppIcon /> WhatsApp
                 </a>
                 <a
-                  href={BIZ.viber}
+                  href={viberLink}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0.625rem 1.125rem', background: '#7360f2', color: 'white', borderRadius: '10px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}
                   aria-label="Contact us on Viber"
                 >
