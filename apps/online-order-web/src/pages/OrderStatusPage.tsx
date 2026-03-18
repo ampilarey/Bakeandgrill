@@ -121,8 +121,8 @@ const STATUS_CONFIG: Record<string, {
   color: string; bg: string; icon: string;
 }> = {
   pending: {
-    label: "Confirming your order…",
-    sub: "We received your order and are checking availability.",
+    label: "Payment received!",
+    sub: "Your payment is confirmed and your order is in the queue.",
     next: "Up next: kitchen will start preparing",
     color: "#92400e", bg: "#fef3c7", icon: "⏳",
   },
