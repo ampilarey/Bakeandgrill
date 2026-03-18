@@ -34,6 +34,7 @@ class WebhookLog extends Model
 
     protected $casts = [
         'payload' => 'array',
+        'headers' => 'array',
     ];
 
     public function subscription(): BelongsTo
