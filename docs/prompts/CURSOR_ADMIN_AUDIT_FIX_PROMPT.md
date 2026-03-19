@@ -106,7 +106,59 @@ try {
 }
 ```
 
-### Task 1.3 — Fix Backend Mass Assignment Protection
+### Task 1.3 — Fix FormRequest authorize() Methods (CRITICAL)
+
+**Files:**
+- `backend/app/Http/Requests/StoreOrderRequest.php` (lines 11-14)
+- `backend/app/Http/Requests/StoreRefundRequest.php` (lines 11-14)
+
+**Current (broken):** Both always return `true`, meaning ANY authenticated user can create orders or process refunds.
+```php
+public function authorize(): bool
+{
+    return true;
+}
+```
+
+**Fix `StoreOrderRequest.php`:**
+```php
+public function authorize(): bool
+{
+    return $this->user()->tokenCan('staff');
+}
+```
+
+**Fix `StoreRefundRequest.php`:**
+```php
+public function authorize(): bool
+{
+    return $this->user()->tokenCan('staff')
+        && $this->user()->hasPermission('refund.process');
+}
+```
+
+### Task 1.4 — Fix LIKE Injection in SupplierController
+
+**File:** `backend/app/Http/Controllers/Api/SupplierController.php` (lines 23-26)
+
+**Current (vulnerable):**
+```php
+if ($request->has('search')) {
+    $search = $request->query('search');
+    $query->where('name', 'like', "%{$search}%");
+}
+```
+
+**Fix:** Escape LIKE wildcards (follow the pattern used in `ItemController`):
+```php
+if ($request->has('search')) {
+    $search = Str::limit(strip_tags($request->query('search', '')), 100);
+    $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $search);
+    $query->where('name', 'like', "%{$escaped}%");
+}
+```
+
+### Task 1.5 — Fix Backend Mass Assignment Protection
 
 **Search all controllers for `$request->all()` usage:**
 ```bash
@@ -115,7 +167,21 @@ grep -rn '$request->all()' backend/app/Http/Controllers/
 
 **Replace every instance** with explicit field lists using `$request->only([...])` or use Form Request classes.
 
-### Task 1.4 — Add Missing Permission Middleware to Backend Routes
+**Also fix Payment model (`backend/app/Models/Payment.php` lines 12-26):**
+Remove sensitive fields from `$fillable`:
+```php
+// Remove these from $fillable:
+// 'provider_transaction_id', 'gateway_response'
+// Instead, set them explicitly in the PaymentService
+```
+
+**Fix Order model discount bypass (`backend/app/Models/Order.php`):**
+Add validation in `OrderCreationService` or `StoreOrderRequest`:
+```php
+'discount_amount' => 'nullable|numeric|min:0|lte:subtotal',
+```
+
+### Task 1.6 — Add Missing Permission Middleware to Backend Routes
 
 **File:** `backend/routes/api.php`
 

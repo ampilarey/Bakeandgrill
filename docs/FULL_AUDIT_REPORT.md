@@ -231,29 +231,53 @@
 
 ### 5.1 CRITICAL — Security Issues
 
-| # | File | Issue | Severity |
-|---|------|-------|----------|
-| BS1 | `routes/api.php` | Several admin routes missing `RequirePermission` middleware | HIGH |
-| BS2 | `SecurityHeaders.php` | CSP not strict enough — `'unsafe-inline'` for styles | MEDIUM |
-| BS3 | Multiple controllers | `$request->all()` used in some places — mass assignment risk | HIGH |
-| BS4 | `CustomerAuthController.php` | OTP rate limiting (3/5min) may be too generous for brute force | MEDIUM |
-| BS5 | `StaffAuthController.php` | PIN-based auth is inherently weak (4-digit) — no lockout after failed attempts documented | HIGH |
+| # | File | Line | Issue | Severity |
+|---|------|------|-------|----------|
+| BS1 | `StoreOrderRequest.php` | 11-14 | `authorize()` always returns `true` — any authenticated user can create orders | CRITICAL |
+| BS2 | `StoreRefundRequest.php` | 11-14 | `authorize()` always returns `true` — any user can process refunds | CRITICAL |
+| BS3 | `SupplierController.php` | 23-26 | LIKE injection — search param not escaped for `%` wildcards | HIGH |
+| BS4 | `StaffAuthController.php` | 36-40 | PIN login loops through ALL users with `limit(500)` — brute force + performance risk | HIGH |
+| BS5 | `CustomerAuthController.php` | 88-90 | OTP sent in API response when `debug=true` — exposed if debug reaches prod | HIGH |
+| BS6 | `routes/api.php` | 123-132 | Order routes only check `staff.token`, no permission-based access control | HIGH |
+| BS7 | Multiple controllers | — | `$request->all()` used — mass assignment risk | HIGH |
+| BS8 | `SecurityHeaders.php` | — | CSP allows `'unsafe-inline'` for styles | MEDIUM |
+| BS9 | `CustomerAuthController.php` | 34-42 | OTP rate limiting too generous (3/hour request, 5 verifies) | MEDIUM |
+| BS10 | `Payment.php` | 12-26 | `$fillable` includes `provider_transaction_id`, `gateway_response` — sensitive fields mass-assignable | MEDIUM |
 
 ### 5.2 HIGH — Authorization Gaps
 
 | # | Issue | Detail |
 |---|-------|--------|
-| BA1 | Owner bypass | `user.role === 'owner'` bypasses all frontend permission checks — backend must also enforce |
-| BA2 | Missing policies | No policy for Promotion, Loyalty, Reservation, Expense, Invoice CRUD |
-| BA3 | Webhook secrets | Displayed once in modal but visible in DOM |
+| BA1 | FormRequest authorize bypass | `StoreOrderRequest` and `StoreRefundRequest` always return `true` |
+| BA2 | Owner bypass | `user.role === 'owner'` bypasses all frontend permission checks — backend must also enforce |
+| BA3 | Missing policies | No policy for Promotion, Loyalty, Reservation, Expense, Invoice CRUD |
+| BA4 | Webhook secrets | Displayed once in modal but visible in DOM |
+| BA5 | Discount bypass | `discount_amount` is directly fillable on Order model — no validation against subtotal |
+| BA6 | Device ID weak | `crypto.randomUUID().slice(0, 8)` — only 8 chars of entropy, easily guessable |
 
-### 5.3 MEDIUM — API Issues
+### 5.3 MEDIUM — API & Architecture Issues
 
 | # | Issue | Detail |
 |---|-------|--------|
 | BI1 | No API versioning | All routes under `/api/` with no version prefix |
-| BI2 | No request throttling on some endpoints | Analytics, reports endpoints unthrottled |
+| BI2 | No request throttling | Analytics, reports, supplier endpoints unthrottled |
 | BI3 | SSE streams | No authentication timeout on long-lived SSE connections |
+| BI4 | No idempotency keys | Payments could process twice on retry |
+| BI5 | No request ID tracking | Can't correlate logs across services |
+| BI6 | Redundant auth checks | Controllers recheck token abilities after middleware already validates |
+| BI7 | RefundController info leak | Error message exposes refund calculation details (line 60) |
+
+### 5.4 POS App — Additional Security Issues
+
+| # | File | Line | Issue | Severity |
+|---|------|------|-------|----------|
+| PS1 | `App.tsx` | 101 | Auth token stored in plaintext localStorage — XSS can steal it | CRITICAL |
+| PS2 | `offlineQueue.ts` | 20-23 | Customer PII (addresses, phones) stored unencrypted in localStorage | HIGH |
+| PS3 | `LoginPage.tsx` | 128-132 | Dev PINs hardcoded in source code | HIGH |
+| PS4 | `OrderCart.tsx` | 154-160 | No validation on discount input — negative values accepted | MEDIUM |
+| PS5 | `OrderCart.tsx` | 28-31 | Cart clear has no confirmation dialog — accidental data loss | MEDIUM |
+| PS6 | `App.tsx` | 26 | Device ID truncated to 8 chars — weak randomness | MEDIUM |
+| PS7 | `useOrderCreation.ts` | 194-209 | Barcode input not format-validated | LOW |
 
 ---
 
@@ -263,22 +287,27 @@
 
 | Area | Critical | High | Medium | Low | Total |
 |------|----------|------|--------|-----|-------|
-| Admin Panel | 4 | 9 | 12 | 5 | 30 |
-| Website Layout | 4 | 8 | 9 | 4 | 25 |
-| POS App | 4 | 5 | 5 | 0 | 14 |
-| Admin Editing Tools | 0 | 10 | 8 | 0 | 18 |
-| Backend Security | 5 | 3 | 3 | 0 | 11 |
-| **TOTAL** | **17** | **35** | **37** | **9** | **98** |
+| Admin Panel | 4 | 9 | 12 | 5 | **30** |
+| Website Layout | 4 | 8 | 9 | 4 | **25** |
+| POS App | 5 | 7 | 7 | 1 | **20** |
+| Admin Editing Tools | 0 | 10 | 8 | 0 | **18** |
+| Backend Security | 7 | 6 | 7 | 0 | **20** |
+| **TOTAL** | **20** | **40** | **43** | **10** | **113** |
 
-### Top 10 Priority Fixes
+### Top 15 Priority Fixes
 
-1. **Add input sanitization (DOMPurify)** across all React apps for user-supplied strings
-2. **Fix webhook URL HTTPS validation** — currently accepts HTTP
-3. **Add missing CRUD** — Expenses edit, Invoice create/edit, Category edit
-4. **Fix error handling** — replace silent catches with user-facing error toasts
-5. **Add permission middleware** to unprotected admin API routes
-6. **Implement code splitting** with `React.lazy()` on all route-level pages
-7. **Fix mobile responsiveness** on admin tables and checkout layout
-8. **Add accessibility** — ARIA labels, focus traps, semantic HTML
-9. **Add bulk operations** — select all, multi-action, CSV import/export
-10. **Build website layout editing tools** — theme editor, content CMS, banner manager
+1. **Fix FormRequest authorize()** — `StoreOrderRequest` and `StoreRefundRequest` always return `true` (CRITICAL)
+2. **Fix LIKE injection** in `SupplierController.php` search query (HIGH)
+3. **Add input sanitization (DOMPurify)** across all React apps for user-supplied strings (HIGH)
+4. **Fix POS token storage** — move from plaintext localStorage to httpOnly cookies (CRITICAL)
+5. **Fix webhook URL HTTPS validation** — currently accepts HTTP (HIGH)
+6. **Add permission middleware** to unprotected admin API routes (HIGH)
+7. **Fix discount bypass** — validate `discount_amount` <= subtotal on Order model (HIGH)
+8. **Remove dev PINs** from source code in LoginPage.tsx (HIGH)
+9. **Fix mass assignment** — remove sensitive fields from Payment `$fillable` (MEDIUM)
+10. **Add missing CRUD** — Expenses edit, Invoice create/edit, Category edit (HIGH)
+11. **Fix error handling** — replace silent catches with user-facing error toasts (HIGH)
+12. **Implement code splitting** with `React.lazy()` on all route-level pages (MEDIUM)
+13. **Fix mobile responsiveness** on admin tables and checkout layout (MEDIUM)
+14. **Add accessibility** — ARIA labels, focus traps, semantic HTML (MEDIUM)
+15. **Build website layout editing tools** — theme editor, content CMS, banner manager (MEDIUM)
