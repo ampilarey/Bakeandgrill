@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { PrayerBar } from './PrayerBar';
-import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon } from './icons';
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
 
 
 export function Layout() {
@@ -103,6 +103,7 @@ export function Layout() {
             {[
               { to: '/menu',      label: 'Menu' },
               { to: '/pre-order', label: 'Pre-Order' },
+              ...(token && customerName ? [{ to: '/order-history' as const, label: 'My orders' }] : []),
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -146,7 +147,24 @@ export function Layout() {
 
             {/* Only show account info when the customer is actually logged in */}
             {token && customerName && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+                <Link
+                  to="/order-history"
+                  className="nav-link-hover order-history-header-btn"
+                  style={{
+                    padding: '0.4rem 0.65rem',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    color: 'var(--color-primary)',
+                    textDecoration: 'none',
+                    border: '1px solid rgba(217,119,6,0.35)',
+                    background: 'var(--color-primary-light)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  My orders
+                </Link>
                 <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="show-desktop">
                   Hi, {customerName}
                 </span>
@@ -212,6 +230,7 @@ export function Layout() {
             {[
               { to: '/menu',      label: 'Order Menu' },
               { to: '/pre-order', label: 'Pre-Order (Events)' },
+              ...(token && customerName ? [{ to: '/order-history' as const, label: 'My orders' }] : []),
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -311,7 +330,7 @@ export function Layout() {
 
       {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
-        <div className="order-mob-grid">
+        <div className={`order-mob-grid${token && customerName ? ' order-mob-grid--6' : ''}`}>
           <a href="/" className={`order-mob-item${location.pathname === '/' ? ' order-mob-active' : ''}`}>
             <span className="order-mob-icon"><HomeIcon size={20} /></span>
             Home
@@ -338,6 +357,15 @@ export function Layout() {
             </span>
             {cartCount > 0 ? 'Cart' : 'Order'}
           </Link>
+          {token && customerName && (
+            <Link
+              to="/order-history"
+              className={`order-mob-item${location.pathname === '/order-history' ? ' order-mob-active' : ''}`}
+            >
+              <span className="order-mob-icon"><OrdersIcon size={20} /></span>
+              Orders
+            </Link>
+          )}
           <a href="/hours" className="order-mob-item">
             <span className="order-mob-icon"><ClockIcon size={20} /></span>
             Hours
