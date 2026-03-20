@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
+import { OrderStatusBar } from './OrderStatusBar';
 import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
 import { getCustomerMe, logoutCustomerWebSession } from '../api';
 
@@ -339,6 +340,8 @@ export function Layout() {
             )}
           </div>
         )}
+      {/* ── Order status bar — shown when logged in and has a recent order ── */}
+      <OrderStatusBar />
       </header>
 
       {/* Mobile prayer strip portal target */}
