@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -36,6 +36,8 @@ export function Layout() {
 
   const { token, customerName, clearAuth } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   // If token exists but name is missing, hydrate from API
@@ -66,6 +68,17 @@ export function Layout() {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
+  // Close "More" dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const handleLogout = () => {
     clearAuth();
     navigate('/');
@@ -94,14 +107,12 @@ export function Layout() {
             <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.02em' }}>{siteName}</span>
           </a>
 
-          {/* Desktop Nav — main site links use <a>, order links use Link */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', flex: 1, marginLeft: '0.75rem', minWidth: 0, flexWrap: 'wrap', rowGap: '4px' }} className="desktop-nav" aria-label="Main navigation">
+          {/* Desktop Nav */}
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', flex: 1, marginLeft: '0.75rem', minWidth: 0 }} className="desktop-nav" aria-label="Main navigation">
 
-            {/* Order app nav (React Router) — Order history always visible on desktop (prompts login if needed) */}
             {[
-              { to: '/menu',          label: 'Menu' },
-              { to: '/pre-order',     label: 'Pre-Order' },
-              { to: '/order-history', label: 'Order history' },
+              { to: '/menu',      label: 'Menu' },
+              { to: '/pre-order', label: 'Pre-Order' },
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -113,20 +124,53 @@ export function Layout() {
               </Link>
             ))}
 
-            {/* Main site links — regular anchor tags */}
-            {[
-              { href: '/hours',   label: 'Hours' },
-              { href: '/contact', label: 'Contact' },
-            ].map(({ href, label }) => (
-              <a
-                key={href}
-                href={href}
+            {/* More dropdown — Hours & Contact */}
+            <div ref={moreRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setMoreOpen((o) => !o)}
                 className="nav-link-hover"
-                style={{ padding: '0.45rem 0.875rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', textDecoration: 'none' }}
+                style={{ padding: '0.45rem 0.75rem', borderRadius: '8px', fontSize: '0.925rem', fontWeight: 500, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                aria-expanded={moreOpen}
+                aria-haspopup="menu"
               >
-                {label}
-              </a>
-            ))}
+                More
+                <span style={{ fontSize: '0.6rem', opacity: 0.6, transition: 'transform 0.15s', transform: moreOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+              </button>
+
+              {moreOpen && (
+                <div
+                  role="menu"
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                    minWidth: '140px',
+                    zIndex: 200,
+                    overflow: 'hidden',
+                    padding: '0.375rem',
+                  }}
+                >
+                  {[
+                    { href: '/hours',   label: '🕐  Hours' },
+                    { href: '/contact', label: '📞  Contact' },
+                  ].map(({ href, label }) => (
+                    <a
+                      key={href}
+                      href={href}
+                      role="menuitem"
+                      onClick={() => setMoreOpen(false)}
+                      style={{ display: 'block', padding: '0.55rem 0.875rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 500, color: 'var(--color-text)', textDecoration: 'none', transition: 'background 0.12s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface-alt)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* Actions */}
@@ -228,9 +272,8 @@ export function Layout() {
             </a>
             {/* Menu + Pre-Order (React Router) */}
             {[
-              { to: '/menu',          label: 'Order Menu' },
-              { to: '/pre-order',     label: 'Pre-Order (Events)' },
-              { to: '/order-history', label: 'Order history' },
+              { to: '/menu',      label: 'Order Menu' },
+              { to: '/pre-order', label: 'Pre-Order (Events)' },
             ].map(({ to, label }) => (
               <Link
                 key={to}
