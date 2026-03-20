@@ -9,6 +9,13 @@ type ApiClientConfig = {
    * Called on every request so the token is always fresh.
    */
   getToken?: () => string | null;
+  /**
+   * Controls whether cookies are sent with requests.
+   * Set to 'include' for the online-order app to support unified session auth
+   * (customer logs in on either the Blade site or React app, stays logged in on both).
+   * Defaults to 'same-origin'.
+   */
+  credentials?: RequestCredentials;
 };
 
 type ApiError = { message?: string; errors?: Record<string, string[]> };
@@ -22,6 +29,7 @@ export function createApiClient(config: ApiClientConfig) {
     const isFormData = options.body instanceof FormData;
 
     const response = await fetch(`${config.baseUrl}${path}`, {
+      credentials: config.credentials ?? 'same-origin',
       ...options,
       headers: {
         ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),

@@ -9,6 +9,7 @@ use App\Models\OtpVerification;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -16,8 +17,15 @@ class CustomerPortalController extends Controller
 {
     public function showLogin()
     {
+        // If already logged in via session, redirect immediately
+        if (Auth::guard('customer')->check()) {
+            return redirect('/order/menu');
+        }
+
         return view('customer.login');
     }
+
+    // ── Step 1: Phone submitted — check if returning customer or new ─────────
 
     public function requestOtp(Request $request)
     {
@@ -25,10 +33,19 @@ class CustomerPortalController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
+        if (! preg_match('/^\+960[0-9]{7}$/', $phone)) {
             return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
         }
 
+        // Returning customer with a password → show password form (no SMS cost)
+        $customer = Customer::where('phone', $phone)->first();
+        if ($customer && ! empty($customer->password)) {
+            return back()
+                ->with('password_step', true)
+                ->with('phone', $phone);
+        }
+
+        // New customer or no password → send OTP
         $key = 'otp-web-request:' . $phone;
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
@@ -37,41 +54,138 @@ class CustomerPortalController extends Controller
             return back()->withErrors(['phone' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
         }
 
+        RateLimiter::hit($key, 3600);
+
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         OtpVerification::create([
-            'phone' => $phone,
-            'code_hash' => Hash::make($otpCode),
+            'phone'      => $phone,
+            'code_hash'  => Hash::make($otpCode),
             'expires_at' => now()->addMinutes(10),
-            'attempts' => 0,
+            'attempts'   => 0,
         ]);
 
-        RateLimiter::hit($key, 3600);
-
-        // Send SMS
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes.";
-        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
-        $smsSent = in_array($log->status, ['sent', 'demo'], true);
+        $log        = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
+        $smsSent    = in_array($log->status, ['sent', 'demo'], true);
 
-        // In non-production, hint is safe for developers (never reveal OTP in production)
-        if (!app()->environment('production') && !$smsSent) {
+        if (! app()->environment('production') && ! $smsSent) {
             session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
         return back()->with('otp_requested', true)->with('phone', $phone);
     }
 
-    public function verifyOtp(Request $request)
+    // ── Forgot password ───────────────────────────────────────────────────────
+
+    public function showForgotPassword()
+    {
+        return view('customer.forgot-password');
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['phone' => 'required|string']);
+
+        $phone = $this->normalizePhone($request->phone);
+
+        if (! preg_match('/^\+960[0-9]{7}$/', $phone)) {
+            return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
+        }
+
+        $key = 'otp-web-request:' . $phone;
+
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $seconds = RateLimiter::availableIn($key);
+            return back()->withErrors(['phone' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
+        }
+
+        RateLimiter::hit($key, 3600);
+
+        $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        OtpVerification::create([
+            'phone'      => $phone,
+            'code_hash'  => Hash::make($otpCode),
+            'expires_at' => now()->addMinutes(10),
+            'attempts'   => 0,
+        ]);
+
+        $smsService = app(SmsService::class);
+        $smsMessage = "Your Bake & Grill password reset code is {$otpCode}. Valid for 10 minutes.";
+        $log        = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
+        $smsSent    = in_array($log->status, ['sent', 'demo'], true);
+
+        if (! app()->environment('production') && ! $smsSent) {
+            session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
+        }
+
+        return back()
+            ->with('reset_otp_requested', true)
+            ->with('phone', $phone);
+    }
+
+    public function verifyResetOtp(Request $request)
     {
         $request->validate([
             'phone' => 'required|string',
-            'otp' => 'required|string|size:6',
+            'otp'   => 'required|string|size:6',
         ]);
 
         $phone = $this->normalizePhone($request->phone);
 
-        // Rate limit OTP verification attempts (5 per 10 minutes per phone)
+        $otpRecord = OtpVerification::where('phone', $phone)
+            ->whereNull('used_at')
+            ->where('expires_at', '>', now())
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (! $otpRecord || ! Hash::check($request->otp, $otpRecord->code_hash)) {
+            return back()->withErrors(['otp' => 'Invalid or expired code']);
+        }
+
+        $otpRecord->update(['used_at' => now()]);
+
+        return back()
+            ->with('reset_verified', true)
+            ->with('phone', $phone);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'phone'                 => 'required|string',
+            'password'              => 'required|string|min:6|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        $phone    = $this->normalizePhone($request->phone);
+        $customer = Customer::where('phone', $phone)->first();
+
+        if (! $customer) {
+            return back()->withErrors(['phone' => 'No account found for this phone number.']);
+        }
+
+        $customer->update(['password' => Hash::make($request->password)]);
+
+        Auth::guard('customer')->login($customer);
+        $request->session()->regenerate();
+
+        return redirect('/order/menu')->with('message', 'Password reset successfully. Welcome back!');
+    }
+
+    // ── Step 2a: Verify OTP ───────────────────────────────────────────────────
+
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+            'otp'   => 'required|string|size:6',
+        ]);
+
+        $phone = $this->normalizePhone($request->phone);
+
         $verifyKey = 'otp-web-verify:' . $phone;
         if (RateLimiter::tooManyAttempts($verifyKey, 5)) {
             $seconds = RateLimiter::availableIn($verifyKey);
@@ -85,7 +199,7 @@ class CustomerPortalController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (!$otpRecord || !Hash::check($request->otp, $otpRecord->code_hash)) {
+        if (! $otpRecord || ! Hash::check($request->otp, $otpRecord->code_hash)) {
             return back()->withErrors(['otp' => 'Invalid or expired OTP']);
         }
 
@@ -98,43 +212,114 @@ class CustomerPortalController extends Controller
 
         $customer->update(['last_login_at' => now()]);
 
-        // Create Sanctum token for API/React app use
-        $token = $customer->createToken('customer-portal', ['customer'])->plainTextToken;
+        // Use the customer guard so the session cookie works for both
+        // the Blade site and the React order app.
+        Auth::guard('customer')->login($customer);
+        $request->session()->regenerate();
 
-        session([
-            'customer_id' => $customer->id,
-            'customer_name' => $customer->name ?: $customer->phone,
-            'customer_phone' => $customer->phone,
-            'customer_token' => $token,
-        ]);
+        // Redirect to profile setup if this is a first-time customer
+        if (! $customer->is_profile_complete) {
+            return redirect()->route('customer.complete-profile');
+        }
 
-        // Validate intended URL to prevent open redirect
-        $intendedUrl = session('intended_url', '/menu');
+        $intendedUrl = session('intended_url', '/order/menu');
         session()->forget('intended_url');
-        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
-            $intendedUrl = '/menu';
+        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
+            $intendedUrl = '/order/menu';
         }
 
         return redirect($intendedUrl)->with('message', 'Logged in successfully!');
     }
 
-    public function logout(Request $request)
+    // ── Step 2b: Password login ───────────────────────────────────────────────
+
+    public function passwordLogin(Request $request)
     {
-        // Revoke the Sanctum token so it cannot be reused after logout
-        $token = $request->session()->get('customer_token');
-        if ($token) {
-            $customerId = $request->session()->get('customer_id');
-            if ($customerId) {
-                $customer = \App\Models\Customer::find($customerId);
-                $customer?->tokens()->where('name', 'customer-portal')->delete();
-            }
+        $request->validate([
+            'phone'    => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        $phone    = $this->normalizePhone($request->phone);
+        $customer = Customer::where('phone', $phone)->first();
+
+        if (! $customer || empty($customer->password) || ! Hash::check($request->password, $customer->password)) {
+            return back()->withErrors(['password' => 'Invalid phone number or password.'])->withInput(['phone' => $request->phone]);
         }
 
+        $customer->update(['last_login_at' => now()]);
+
+        Auth::guard('customer')->login($customer);
+        $request->session()->regenerate();
+
+        if (! $customer->is_profile_complete) {
+            return redirect()->route('customer.complete-profile');
+        }
+
+        $intendedUrl = session('intended_url', '/order/menu');
+        session()->forget('intended_url');
+        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
+            $intendedUrl = '/order/menu';
+        }
+
+        return redirect($intendedUrl)->with('message', 'Logged in successfully!');
+    }
+
+    // ── Profile setup (first-time) ────────────────────────────────────────────
+
+    public function showCompleteProfile()
+    {
+        if (! Auth::guard('customer')->check()) {
+            return redirect()->route('customer.login');
+        }
+
+        return view('customer.complete-profile');
+    }
+
+    public function completeProfile(Request $request)
+    {
+        if (! Auth::guard('customer')->check()) {
+            return redirect()->route('customer.login');
+        }
+
+        $request->validate([
+            'name'                  => 'required|string|max:100',
+            'email'                 => 'nullable|email|max:100',
+            'password'              => 'required|string|min:6|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        /** @var Customer $customer */
+        $customer = Auth::guard('customer')->user();
+
+        $customer->update([
+            'name'                => $request->name,
+            'email'               => $request->email,
+            'password'            => Hash::make($request->password),
+            'is_profile_complete' => true,
+        ]);
+
+        $intendedUrl = session('intended_url', '/order/menu');
+        session()->forget('intended_url');
+        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
+            $intendedUrl = '/order/menu';
+        }
+
+        return redirect($intendedUrl)->with('message', 'Welcome! Your account is all set.');
+    }
+
+    // ── Logout ────────────────────────────────────────────────────────────────
+
+    public function logout(Request $request)
+    {
+        Auth::guard('customer')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect('/')->with('message', 'Logged out successfully');
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function normalizePhone(string $phone): string
     {

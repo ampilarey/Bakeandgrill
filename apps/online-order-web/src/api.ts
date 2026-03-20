@@ -41,26 +41,114 @@ export const API_ORIGIN =
 // Re-export MenuItem so consumers can also import by its original name
 export type { MenuItem };
 
-const client = createApiClient({ baseUrl: API_BASE_URL });
+// credentials: 'include' sends the session cookie on every request, enabling:
+// - GET /api/auth/customer/check to detect Blade-site logins (unified auth)
+// - Sanctum SPA cookie authentication for same-domain requests
+const client = createApiClient({ baseUrl: API_BASE_URL, credentials: 'include' });
 const { request } = client;
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
-export async function requestOtp(phone: string): Promise<{ otp?: string }> {
-  return request<{ otp?: string }>(ENDPOINTS.CUSTOMER_OTP_REQUEST, {
+export type AuthCustomer = Customer & {
+  is_profile_complete: boolean;
+};
+
+export type AuthResponse = {
+  token: string;
+  customer: AuthCustomer;
+  is_new_customer?: boolean;
+};
+
+/** Check if a phone has an account and has set a password. */
+export async function checkPhone(phone: string): Promise<{ exists: boolean; has_password: boolean }> {
+  return request(ENDPOINTS.CUSTOMER_CHECK_PHONE, {
     method: 'POST',
     body: JSON.stringify({ phone }),
   });
 }
 
+/** Password-based login for returning customers (no OTP / SMS cost). */
+export async function passwordLogin(payload: {
+  phone: string;
+  password: string;
+}): Promise<AuthResponse> {
+  return request<AuthResponse>(ENDPOINTS.CUSTOMER_PASSWORD_LOGIN, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Request OTP for new customers or password reset. */
+export async function requestOtp(phone: string, purpose: 'register' | 'reset_password' = 'register'): Promise<{ otp?: string }> {
+  return request<{ otp?: string }>(ENDPOINTS.CUSTOMER_OTP_REQUEST, {
+    method: 'POST',
+    body: JSON.stringify({ phone, purpose }),
+  });
+}
+
+/** Verify OTP and register / login. */
 export async function verifyOtp(payload: {
   phone: string;
   otp: string;
-}): Promise<{ token: string; customer: Customer }> {
-  return request<{ token: string; customer: Customer }>(
+}): Promise<AuthResponse> {
+  return request<AuthResponse>(
     ENDPOINTS.CUSTOMER_OTP_VERIFY,
     { method: 'POST', body: JSON.stringify(payload) },
   );
+}
+
+/**
+ * Check if the customer is already authenticated via the session cookie
+ * (e.g. logged in on the Blade site). Returns a fresh Bearer token if so.
+ * Called by Layout on mount for unified cross-app auth.
+ */
+export async function checkSession(): Promise<AuthResponse & { authenticated: boolean }> {
+  return request(ENDPOINTS.CUSTOMER_SESSION_CHECK);
+}
+
+/** Send OTP for password reset. */
+export async function forgotPassword(phone: string): Promise<{ otp?: string }> {
+  return request(ENDPOINTS.CUSTOMER_FORGOT_PASSWORD, {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  });
+}
+
+/** Verify OTP and set a new password. */
+export async function resetPassword(payload: {
+  phone: string;
+  otp: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<AuthResponse> {
+  return request<AuthResponse>(ENDPOINTS.CUSTOMER_RESET_PASSWORD, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** First-time profile setup after OTP registration. */
+export async function completeProfile(
+  token: string,
+  payload: { name: string; email?: string; password: string; password_confirmation: string },
+): Promise<{ customer: AuthCustomer }> {
+  return request(ENDPOINTS.CUSTOMER_COMPLETE_PROFILE, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Change password for a logged-in customer. */
+export async function changePassword(
+  token: string,
+  payload: { current_password: string; password: string; password_confirmation: string },
+): Promise<{ message: string }> {
+  return request(ENDPOINTS.CUSTOMER_CHANGE_PASSWORD, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
 }
 
 // ── Opening hours ─────────────────────────────────────────────────────────────

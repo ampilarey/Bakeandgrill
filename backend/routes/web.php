@@ -39,10 +39,21 @@ Route::get('/refund', [HomeController::class, 'refund'])->name('refund');
 // Customer Portal (Web Login)
 use App\Http\Controllers\CustomerPortalController;
 
-Route::get('/customer/login', [CustomerPortalController::class, 'showLogin'])->name('customer.login');
-Route::post('/customer/request-otp', [CustomerPortalController::class, 'requestOtp'])->name('customer.request-otp');
-Route::post('/customer/verify-otp', [CustomerPortalController::class, 'verifyOtp'])->name('customer.verify-otp');
-Route::post('/customer/logout', [CustomerPortalController::class, 'logout'])->name('customer.logout');
+Route::get('/customer/login',         [CustomerPortalController::class, 'showLogin'])->name('customer.login');
+Route::post('/customer/request-otp',  [CustomerPortalController::class, 'requestOtp'])->name('customer.request-otp');
+Route::post('/customer/verify-otp',   [CustomerPortalController::class, 'verifyOtp'])->name('customer.verify-otp');
+Route::post('/customer/login',        [CustomerPortalController::class, 'passwordLogin'])->name('customer.password-login');
+Route::post('/customer/logout',       [CustomerPortalController::class, 'logout'])->name('customer.logout');
+
+// Profile setup — redirect to login if not authenticated
+Route::get('/customer/complete-profile',  [CustomerPortalController::class, 'showCompleteProfile'])->name('customer.complete-profile');
+Route::post('/customer/complete-profile', [CustomerPortalController::class, 'completeProfile'])->name('customer.complete-profile.post');
+
+// Forgot / reset password via OTP
+Route::get('/customer/forgot-password',    [CustomerPortalController::class, 'showForgotPassword'])->name('customer.forgot-password');
+Route::post('/customer/forgot-password',   [CustomerPortalController::class, 'forgotPassword'])->name('customer.forgot-password.post');
+Route::post('/customer/verify-reset-otp',  [CustomerPortalController::class, 'verifyResetOtp'])->name('customer.verify-reset-otp');
+Route::post('/customer/reset-password',    [CustomerPortalController::class, 'resetPassword'])->name('customer.reset-password');
 
 // Legacy redirects — these pages now live in the React order app
 Route::redirect('/order-type', '/order/', 301);

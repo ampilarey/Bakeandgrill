@@ -18,6 +18,8 @@ class Customer extends Model implements AuthenticatableContract
         'name',
         'phone',
         'email',
+        'password',
+        'is_profile_complete',
         'loyalty_points',
         'tier',
         'preferences',
@@ -36,14 +38,20 @@ class Customer extends Model implements AuthenticatableContract
         'delivery_notes',
     ];
 
+    protected $hidden = [
+        'password',
+    ];
+
     protected $casts = [
-        'loyalty_points' => 'integer',
-        'is_active'      => 'boolean',
-        'last_login_at'  => 'datetime',
-        'last_order_at'  => 'datetime',
-        'preferences'    => 'array',
-        'sms_opt_out'    => 'boolean',
-        'sms_opt_out_at' => 'datetime',
+        'password'           => 'hashed',
+        'is_profile_complete'=> 'boolean',
+        'loyalty_points'     => 'integer',
+        'is_active'          => 'boolean',
+        'last_login_at'      => 'datetime',
+        'last_order_at'      => 'datetime',
+        'preferences'        => 'array',
+        'sms_opt_out'        => 'boolean',
+        'sms_opt_out_at'     => 'datetime',
     ];
 
     public function orders(): HasMany

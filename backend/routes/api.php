@@ -91,13 +91,38 @@ Route::prefix('auth/staff')->group(function () {
 |--------------------------------------------------------------------------
 | Customer Authentication Routes
 |--------------------------------------------------------------------------
+| StartSession is added so that Auth::guard('customer')->login() persists
+| the session cookie, enabling unified login across the Blade site and
+| the React order app (same-domain cookie with SESSION_DOMAIN set).
+|--------------------------------------------------------------------------
 */
-Route::prefix('auth/customer')->group(function () {
-    Route::post('/otp/request', [CustomerAuthController::class, 'requestOtp'])
-        ->middleware('throttle:3,5');   // 3 requests per 5 min per IP (was 5/10)
-    Route::post('/otp/verify', [CustomerAuthController::class, 'verifyOtp'])
-        ->middleware('throttle:5,10');  // 5 verify attempts per 10 min per IP
-});
+Route::prefix('auth/customer')
+    ->middleware(\Illuminate\Session\Middleware\StartSession::class)
+    ->group(function () {
+        // Existing OTP flow
+        Route::post('/otp/request', [CustomerAuthController::class, 'requestOtp'])
+            ->middleware('throttle:3,5');
+        Route::post('/otp/verify', [CustomerAuthController::class, 'verifyOtp'])
+            ->middleware('throttle:5,10');
+
+        // New: check if phone exists and has a password
+        Route::post('/check-phone', [CustomerAuthController::class, 'checkPhone'])
+            ->middleware('throttle:10,1');
+
+        // New: password-based login (no SMS cost for returning customers)
+        Route::post('/login', [CustomerAuthController::class, 'passwordLogin'])
+            ->middleware('throttle:5,5');
+
+        // New: check if already authenticated via session cookie
+        // React app calls this on mount to auto-login customers from Blade session
+        Route::get('/check', [CustomerAuthController::class, 'check']);
+
+        // New: password reset via OTP
+        Route::post('/forgot-password', [CustomerAuthController::class, 'forgotPassword'])
+            ->middleware('throttle:3,5');
+        Route::post('/reset-password', [CustomerAuthController::class, 'resetPassword'])
+            ->middleware('throttle:5,10');
+    });
 
 // Logout is available to both staff and customer tokens
 Route::middleware('auth:sanctum')->post('/auth/logout', [StaffAuthController::class, 'logout']);
@@ -243,6 +268,10 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'storeCustomer']);
     Route::patch('/profile', [CustomerController::class, 'update']);
+
+    // Profile completion and password management
+    Route::post('/complete-profile', [\App\Http\Controllers\Api\CustomerProfileController::class, 'completeProfile']);
+    Route::post('/change-password',  [\App\Http\Controllers\Api\CustomerProfileController::class, 'changePassword']);
 });
 
 /*

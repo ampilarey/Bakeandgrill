@@ -5,12 +5,19 @@ export const ENDPOINTS = {
   STAFF_PIN_LOGIN:    '/auth/staff/pin-login',
   AUTH_ME:            '/auth/me',
   AUTH_LOGOUT:        '/auth/logout',
-  CUSTOMER_OTP_REQUEST: '/auth/customer/otp/request',
-  CUSTOMER_OTP_VERIFY:  '/auth/customer/otp/verify',
+  CUSTOMER_OTP_REQUEST:   '/auth/customer/otp/request',
+  CUSTOMER_OTP_VERIFY:    '/auth/customer/otp/verify',
+  CUSTOMER_CHECK_PHONE:   '/auth/customer/check-phone',
+  CUSTOMER_PASSWORD_LOGIN:'/auth/customer/login',
+  CUSTOMER_SESSION_CHECK: '/auth/customer/check',
+  CUSTOMER_FORGOT_PASSWORD: '/auth/customer/forgot-password',
+  CUSTOMER_RESET_PASSWORD:  '/auth/customer/reset-password',
 
   // Customer
-  CUSTOMER_ME:        '/customer/me',
-  CUSTOMER_ORDERS:    '/customer/orders',
+  CUSTOMER_ME:              '/customer/me',
+  CUSTOMER_ORDERS:          '/customer/orders',
+  CUSTOMER_COMPLETE_PROFILE:'/customer/complete-profile',
+  CUSTOMER_CHANGE_PASSWORD: '/customer/change-password',
 
   // Menu
   CATEGORIES:         '/categories',

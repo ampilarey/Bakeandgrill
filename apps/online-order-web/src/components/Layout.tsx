@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { PrayerBar } from './PrayerBar';
 import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
-import { getCustomerMe } from '../api';
+import { getCustomerMe, checkSession } from '../api';
 
 
 export function Layout() {
@@ -38,29 +38,49 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
-  // If we have a token but no saved display name (e.g. older sessions / checkout-only state), hydrate from API — don't drop a valid token.
+  // On mount:
+  // 1. If there's no token at all, try the session cookie (customer may have logged in on
+  //    the Blade site). GET /api/auth/customer/check returns a fresh Bearer token if the
+  //    session is active — unified cross-app auth.
+  // 2. If there's a token but no saved display name, hydrate from the customer API.
   useEffect(() => {
-    const t = localStorage.getItem('online_token');
-    const name = localStorage.getItem('online_customer_name');
-    if (!t || name) return;
     let cancelled = false;
-    getCustomerMe(t)
-      .then((r) => {
-        if (cancelled) return;
-        const n = r.customer.name ?? r.customer.phone ?? '';
-        if (n) {
-          localStorage.setItem('online_customer_name', n);
-          setCustomerName(n);
+
+    const existingToken  = localStorage.getItem('online_token');
+    const existingName   = localStorage.getItem('online_customer_name');
+
+    if (!existingToken) {
+      // No localStorage token — check for an active session cookie (Blade login)
+      checkSession()
+        .then((r) => {
+          if (cancelled || !r.authenticated) return;
+          const n = r.customer.name ?? r.customer.phone ?? '';
+          localStorage.setItem('online_token', r.token);
+          if (n) localStorage.setItem('online_customer_name', n);
           window.dispatchEvent(new Event('auth_change'));
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        localStorage.removeItem('online_token');
-        localStorage.removeItem('online_customer_name');
-        setToken(null);
-        setCustomerName(null);
-      });
+        })
+        .catch(() => { /* Not logged in — silently ignore */ });
+    } else if (!existingName) {
+      // Token exists but name is missing — hydrate from API
+      getCustomerMe(existingToken)
+        .then((r) => {
+          if (cancelled) return;
+          const n = r.customer.name ?? r.customer.phone ?? '';
+          if (n) {
+            localStorage.setItem('online_customer_name', n);
+            setCustomerName(n);
+            window.dispatchEvent(new Event('auth_change'));
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          localStorage.removeItem('online_token');
+          localStorage.removeItem('online_customer_name');
+          setToken(null);
+          setCustomerName(null);
+        });
+    }
+
     return () => { cancelled = true; };
   }, []);
 
