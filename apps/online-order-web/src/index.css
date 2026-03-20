@@ -606,6 +606,8 @@ textarea.field-input {
   .desktop-nav { display: none !important; }
   .show-desktop { display: none !important; }
   .mobile-menu-btn { display: flex !important; align-items: center; justify-content: center; }
+  /* My orders / Sign out live in the hamburger menu — top bar has no room */
+  .order-header-account { display: none !important; }
 }
 
 /* ════════════════════════════════════════════════════════════

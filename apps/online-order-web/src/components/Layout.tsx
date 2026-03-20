@@ -192,9 +192,9 @@ export function Layout() {
               {darkMode ? '☀️' : '🌙'}
             </button>
 
-            {/* Logged-in customer — show actions whenever we have a token (name may hydrate async) */}
+            {/* Logged-in customer — desktop header; on narrow screens use hamburger menu instead */}
             {token && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+              <div className="order-header-account" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
                 <Link
                   to="/order-history"
                   className="nav-link-hover order-history-header-btn"
@@ -297,11 +297,46 @@ export function Layout() {
               <a
                 key={href}
                 href={href}
+                onClick={() => setMenuOpen(false)}
                 style={{ display: 'block', padding: '0.625rem 0', fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
               >
                 {label}
               </a>
             ))}
+
+            {/* Mobile: account — top bar often has no room for Sign out */}
+            {token && (
+              <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '2px solid var(--color-border)' }}>
+                {customerName ? (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: '0.75rem' }}>
+                    Hi, {customerName}
+                  </div>
+                ) : null}
+                <Link
+                  to="/order-history"
+                  onClick={() => setMenuOpen(false)}
+                  style={{ display: 'block', padding: '0.625rem 0', fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
+                >
+                  My orders
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void handleLogout();
+                  }}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    padding: '0.75rem 0', marginTop: '0.25rem',
+                    fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-text-muted)',
+                    background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                    borderTop: '1px solid var(--color-border)',
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         )}
       </header>
