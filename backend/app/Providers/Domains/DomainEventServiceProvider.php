@@ -23,6 +23,7 @@ use App\Domains\Promotions\Listeners\ConsumePromoRedemptionsListener;
 use App\Domains\Promotions\Listeners\ReleasePromoReservationListener;
 use App\Domains\Reservations\Events\ReservationCreated;
 use App\Domains\Notifications\Listeners\SendOrderConfirmationListener;
+use App\Domains\Notifications\Listeners\SendPaymentConfirmationListener;
 use App\Domains\Reservations\Listeners\SendReservationConfirmationListener;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Shifts\Events\ShiftOpened;
@@ -51,6 +52,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             DispatchReceiptPrintListener::class,
             ConsumePromoRedemptionsListener::class,
             ConsumeLoyaltyHoldListener::class,
+            SendPaymentConfirmationListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],
 
