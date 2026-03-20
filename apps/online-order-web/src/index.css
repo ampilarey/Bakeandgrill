@@ -586,13 +586,11 @@ textarea.field-input {
 .menu-sidebar { display: block !important; }
 .cart-sidebar { display: block !important; }
 .mobile-category-pills { display: none !important; }
-.mobile-cart-fab { display: none !important; }
 
 @media (max-width: 900px) {
   .menu-sidebar { display: none !important; }
   .mobile-category-pills { display: flex !important; }
   .cart-sidebar { display: none !important; }
-  .mobile-cart-fab { display: flex !important; }
 }
 
 @media (max-width: 768px) {

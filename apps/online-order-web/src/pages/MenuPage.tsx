@@ -142,10 +142,6 @@ export function MenuPage() {
     setSelectedModifiers([]);
   };
 
-  // Cart item count for FAB
-  const { cart } = useCart();
-  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
-
   if (error) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -339,32 +335,7 @@ export function MenuPage() {
         <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />
       </aside>
 
-      {/* ── Mobile floating cart button ──────────────────────────── */}
-      <button
-        className="mobile-cart-fab"
-        onClick={() => setCartVisible(true)}
-        aria-label={`View cart — ${cartCount} item${cartCount !== 1 ? 's' : ''}`}
-        style={{
-          position: 'fixed',
-          /* Clear .order-mobile-nav (~72px) + safe area; was 1.25rem and sat under the bar */
-          bottom: 'max(5.5rem, calc(4.25rem + env(safe-area-inset-bottom)))',
-          right: '1.25rem',
-          background: 'var(--color-primary)',
-          color: 'white', border: 'none',
-          borderRadius: 'var(--radius-full)',
-          padding: '0.875rem 1.5rem',
-          fontSize: '0.925rem', fontWeight: 700,
-          cursor: 'pointer',
-          boxShadow: '0 4px 20px var(--color-primary-glow)',
-          /* Above bottom nav (300); below cart portal (5000) */
-          zIndex: 310, fontFamily: 'inherit',
-          alignItems: 'center', gap: '0.5rem',
-        }}
-      >
-        🛒 Cart{cartCount > 0 ? ` (${cartCount})` : ''}
-      </button>
-
-      {/* ── Mobile cart bottom sheet (portal → body avoids #root stacking / clipping) ── */}
+      {/* ── Mobile cart bottom sheet (portal → body; open via header/bottom Cart → ?openCart=1) ── */}
       {cartVisible && typeof document !== 'undefined' && createPortal(
         <div
           role="dialog"
