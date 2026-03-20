@@ -357,8 +357,8 @@
         }
         .mob-nav-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 0.25rem;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.12rem;
         }
         .mob-nav-item {
             display: flex;
@@ -379,6 +379,13 @@
         }
         .mob-nav-item:hover,
         .mob-nav-item.active { color: var(--amber); }
+        .mob-nav-grid .mob-nav-item {
+            font-size: 0.52rem;
+            padding: 0.35rem 0.05rem;
+            letter-spacing: 0.02em;
+            min-height: 44px;
+        }
+        .mob-nav-grid .mob-nav-icon { font-size: 1.15rem; }
         .mob-nav-icon { font-size: 1.3rem; line-height: 1; }
         .mob-nav-order {
             background: var(--amber);
@@ -909,6 +916,9 @@
         </a>
         <a href="/order/" class="mob-nav-item mob-nav-order">
             <span class="mob-nav-icon">🛒</span>Order
+        </a>
+        <a href="/order/pre-order" class="mob-nav-item">
+            <span class="mob-nav-icon">📅</span>Pre-order
         </a>
         @auth('customer')
             <a href="/contact" class="mob-nav-item">

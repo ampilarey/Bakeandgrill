@@ -799,21 +799,21 @@ textarea.field-input {
 [data-theme="dark"] .order-mobile-nav {
   box-shadow: 0 -2px 16px rgba(0,0,0,0.35);
 }
-/* Always 5 columns — logged-out has 4 tabs (5th cell empty); logged-in has 5 tabs */
+/* 6 columns — Home, Menu, Order, Pre-order, Hours/Contact, Contact/Log out */
 .order-mob-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.12rem;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.08rem;
 }
 .order-mob-grid .order-mob-item {
-  font-size: 0.6rem;
-  padding: 0.4rem 0.08rem;
-  letter-spacing: 0.02em;
+  font-size: 0.52rem;
+  padding: 0.35rem 0.04rem;
+  letter-spacing: 0.01em;
   min-height: 44px;
 }
 .order-mob-grid .order-mob-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 .order-mob-item {
   display: flex;

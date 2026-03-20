@@ -6,7 +6,7 @@ import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { OrderStatusBar } from './OrderStatusBar';
-import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, LogOutIcon } from './icons';
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PreOrderIcon, ClockIcon, PhoneIcon, LogOutIcon } from './icons';
 import { getCustomerMe, logoutCustomerWebSession } from '../api';
 
 
@@ -439,6 +439,13 @@ export function Layout() {
               )}
             </span>
             {cartCount > 0 ? 'Cart' : 'Order'}
+          </Link>
+          <Link
+            to="/pre-order"
+            className={`order-mob-item${location.pathname === '/pre-order' ? ' order-mob-active' : ''}`}
+          >
+            <span className="order-mob-icon"><PreOrderIcon size={20} /></span>
+            Pre-order
           </Link>
           {token ? (
             <a href="/contact" className="order-mob-item">
