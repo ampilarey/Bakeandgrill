@@ -762,7 +762,7 @@
                 <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', $cust->phone) }}</span>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
-                    <button type="submit" class="hdr-logout-btn">Logout</button>
+                    <button type="submit" class="hdr-logout-btn">Log out</button>
                 </form>
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
@@ -917,7 +917,7 @@
             <form method="POST" action="{{ route('customer.logout') }}" style="margin:0;padding:0;display:contents;">
                 @csrf
                 <button type="submit" class="mob-nav-item" style="background:none;border:none;cursor:pointer;font-family:inherit;color:var(--danger-text, #991b1b);">
-                    <span class="mob-nav-icon">🚪</span>Logout
+                    <span class="mob-nav-icon">🚪</span>Log out
                 </button>
             </form>
         @else

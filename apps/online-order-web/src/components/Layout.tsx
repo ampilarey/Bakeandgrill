@@ -217,7 +217,7 @@ export function Layout() {
                   style={{ padding: '0.35rem 0.7rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' }}
                   aria-label="Log out"
                 >
-                  Sign out
+                  Log out
                 </button>
               </div>
             )}
@@ -302,7 +302,7 @@ export function Layout() {
               </a>
             ))}
 
-            {/* Mobile: account — top bar often has no room for Sign out */}
+            {/* Mobile: account — top bar often has no room for Log out */}
             {token && (
               <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '2px solid var(--color-border)' }}>
                 {customerName ? (
@@ -331,7 +331,7 @@ export function Layout() {
                     borderTop: '1px solid var(--color-border)',
                   }}
                 >
-                  Sign out
+                  Log out
                 </button>
               </div>
             )}
@@ -459,7 +459,7 @@ export function Layout() {
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-error, #dc2626)' }}
             >
               <span className="order-mob-icon"><LogOutIcon size={20} /></span>
-              Logout
+              Log out
             </button>
           ) : (
             <a href="/contact" className="order-mob-item">
