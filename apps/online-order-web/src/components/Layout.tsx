@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { PrayerBar } from './PrayerBar';
 import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
+import { getCustomerMe } from '../api';
 
 
 export function Layout() {
@@ -37,14 +38,30 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
-  // Validate token on mount — clear it if it's clearly stale (no customer name)
+  // If we have a token but no saved display name (e.g. older sessions / checkout-only state), hydrate from API — don't drop a valid token.
   useEffect(() => {
     const t = localStorage.getItem('online_token');
     const name = localStorage.getItem('online_customer_name');
-    if (t && !name) {
-      localStorage.removeItem('online_token');
-      setToken(null);
-    }
+    if (!t || name) return;
+    let cancelled = false;
+    getCustomerMe(t)
+      .then((r) => {
+        if (cancelled) return;
+        const n = r.customer.name ?? r.customer.phone ?? '';
+        if (n) {
+          localStorage.setItem('online_customer_name', n);
+          setCustomerName(n);
+          window.dispatchEvent(new Event('auth_change'));
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        localStorage.removeItem('online_token');
+        localStorage.removeItem('online_customer_name');
+        setToken(null);
+        setCustomerName(null);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -97,13 +114,13 @@ export function Layout() {
           </a>
 
           {/* Desktop Nav — main site links use <a>, order links use Link */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', flex: 1, marginLeft: '0.75rem' }} className="desktop-nav" aria-label="Main navigation">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', flex: 1, marginLeft: '0.75rem', minWidth: 0, flexWrap: 'wrap', rowGap: '4px' }} className="desktop-nav" aria-label="Main navigation">
 
-            {/* Order app nav (React Router) */}
+            {/* Order app nav (React Router) — Order history always visible on desktop (prompts login if needed) */}
             {[
-              { to: '/menu',      label: 'Menu' },
-              { to: '/pre-order', label: 'Pre-Order' },
-              ...(token && customerName ? [{ to: '/order-history' as const, label: 'My orders' }] : []),
+              { to: '/menu',          label: 'Menu' },
+              { to: '/pre-order',     label: 'Pre-Order' },
+              { to: '/order-history', label: 'Order history' },
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -145,8 +162,8 @@ export function Layout() {
               {darkMode ? '☀️' : '🌙'}
             </button>
 
-            {/* Only show account info when the customer is actually logged in */}
-            {token && customerName && (
+            {/* Logged-in customer — show actions whenever we have a token (name may hydrate async) */}
+            {token && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
                 <Link
                   to="/order-history"
@@ -165,9 +182,11 @@ export function Layout() {
                 >
                   My orders
                 </Link>
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="show-desktop">
-                  Hi, {customerName}
-                </span>
+                {customerName ? (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="show-desktop">
+                    Hi, {customerName}
+                  </span>
+                ) : null}
                 <button
                   onClick={handleLogout}
                   style={{ padding: '0.35rem 0.7rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' }}
@@ -228,9 +247,9 @@ export function Layout() {
             </a>
             {/* Menu + Pre-Order (React Router) */}
             {[
-              { to: '/menu',      label: 'Order Menu' },
-              { to: '/pre-order', label: 'Pre-Order (Events)' },
-              ...(token && customerName ? [{ to: '/order-history' as const, label: 'My orders' }] : []),
+              { to: '/menu',          label: 'Order Menu' },
+              { to: '/pre-order',     label: 'Pre-Order (Events)' },
+              { to: '/order-history', label: 'Order history' },
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -330,7 +349,7 @@ export function Layout() {
 
       {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
-        <div className={`order-mob-grid${token && customerName ? ' order-mob-grid--6' : ''}`}>
+        <div className={`order-mob-grid${token ? ' order-mob-grid--6' : ''}`}>
           <a href="/" className={`order-mob-item${location.pathname === '/' ? ' order-mob-active' : ''}`}>
             <span className="order-mob-icon"><HomeIcon size={20} /></span>
             Home
@@ -357,7 +376,7 @@ export function Layout() {
             </span>
             {cartCount > 0 ? 'Cart' : 'Order'}
           </Link>
-          {token && customerName && (
+          {token && (
             <Link
               to="/order-history"
               className={`order-mob-item${location.pathname === '/order-history' ? ' order-mob-active' : ''}`}

@@ -21,6 +21,21 @@ function fmtDate(iso: string) {
   return `${pad(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}  ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Normalize Laravel paginated or plain list shapes */
+function ordersFromResponse(res: unknown): Order[] {
+  if (Array.isArray(res)) return res as Order[];
+  if (!res || typeof res !== 'object') return [];
+  const o = res as Record<string, unknown>;
+  const d = o.data;
+  if (Array.isArray(d)) return d as Order[];
+  if (d && typeof d === 'object') {
+    const inner = (d as Record<string, unknown>).data;
+    if (Array.isArray(inner)) return inner as Order[];
+  }
+  if (Array.isArray(o.orders)) return o.orders as Order[];
+  return [];
+}
+
 export function OrderHistoryPage() {
   usePageTitle('My Orders');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -28,19 +43,27 @@ export function OrderHistoryPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('online_token');
-    if (!token) {
-      setError('Please log in to view your orders.');
-      setLoading(false);
-      return;
-    }
-    fetchCustomerOrders(token)
-      .then((res) => {
-        const list: Order[] = Array.isArray(res) ? res : (res as { data?: Order[]; orders?: Order[] }).data ?? (res as { orders?: Order[] }).orders ?? [];
-        setOrders(list);
-      })
-      .catch(() => setError('Could not load orders. Please try again.'))
-      .finally(() => setLoading(false));
+    const load = () => {
+      const token = localStorage.getItem('online_token');
+      if (!token) {
+        setOrders([]);
+        setError('Please log in to view your orders.');
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError('');
+      fetchCustomerOrders(token)
+        .then((res) => {
+          setOrders(ordersFromResponse(res));
+        })
+        .catch(() => setError('Could not load orders. Please try again.'))
+        .finally(() => setLoading(false));
+    };
+
+    load();
+    window.addEventListener('auth_change', load);
+    return () => window.removeEventListener('auth_change', load);
   }, []);
 
   return (

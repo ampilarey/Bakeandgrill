@@ -103,7 +103,13 @@ export function useCheckout() {
 
     getCustomerMe(token)
       .then((r) => {
-        if (!cancelled) setCustomerName(r.customer.name ?? r.customer.phone);
+        if (cancelled) return;
+        const display = r.customer.name ?? r.customer.phone ?? "";
+        setCustomerName(display);
+        if (display) {
+          localStorage.setItem("online_customer_name", display);
+          window.dispatchEvent(new Event("auth_change"));
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -275,6 +281,9 @@ export function useCheckout() {
   };
 
   const handleAuthSuccess = (tok: string, name: string) => {
+    localStorage.setItem("online_token", tok);
+    localStorage.setItem("online_customer_name", name);
+    window.dispatchEvent(new Event("auth_change"));
     setToken(tok);
     setCustomerName(name);
   };
