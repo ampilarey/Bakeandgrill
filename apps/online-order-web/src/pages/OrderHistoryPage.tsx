@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { fetchCustomerOrders } from '../api';
 import type { Order } from '../api';
+import { AuthBlock } from '../components/AuthBlock';
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   payment_pending: { label: 'Awaiting payment',  color: '#92400e', bg: '#fef3c7' },
@@ -38,22 +39,23 @@ function ordersFromResponse(res: unknown): Order[] {
 
 export function OrderHistoryPage() {
   usePageTitle('My Orders');
+  const [token, setToken]   = useState<string | null>(() => localStorage.getItem('online_token'));
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError]   = useState('');
 
   useEffect(() => {
     const load = () => {
-      const token = localStorage.getItem('online_token');
-      if (!token) {
+      const t = localStorage.getItem('online_token');
+      setToken(t);
+      if (!t) {
         setOrders([]);
-        setError('Please log in to view your orders.');
         setLoading(false);
         return;
       }
       setLoading(true);
       setError('');
-      fetchCustomerOrders(token)
+      fetchCustomerOrders(t)
         .then((res) => {
           setOrders(ordersFromResponse(res));
         })
@@ -66,6 +68,12 @@ export function OrderHistoryPage() {
     return () => window.removeEventListener('auth_change', load);
   }, []);
 
+  const handleAuthSuccess = (tok: string, name: string) => {
+    localStorage.setItem('online_token', tok);
+    localStorage.setItem('online_customer_name', name);
+    window.dispatchEvent(new Event('auth_change'));
+  };
+
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', padding: '2rem 1.25rem', minHeight: '60vh' }}>
       <div style={{ marginBottom: '1.5rem' }}>
@@ -75,13 +83,23 @@ export function OrderHistoryPage() {
         </p>
       </div>
 
+      {/* Not logged in — show inline auth block */}
+      {!loading && !token && (
+        <div>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+            Sign in to view your orders.
+          </p>
+          <AuthBlock onSuccess={handleAuthSuccess} />
+        </div>
+      )}
+
       {loading && (
         <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--color-text-muted)' }}>
           Loading orders…
         </div>
       )}
 
-      {!loading && error && (
+      {!loading && token && error && (
         <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>{error}</p>
           <Link to="/menu" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
@@ -90,7 +108,7 @@ export function OrderHistoryPage() {
         </div>
       )}
 
-      {!loading && !error && orders.length === 0 && (
+      {!loading && token && !error && orders.length === 0 && (
         <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📋</div>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>No orders yet.</p>
@@ -100,7 +118,7 @@ export function OrderHistoryPage() {
         </div>
       )}
 
-      {!loading && orders.length > 0 && (
+      {!loading && token && orders.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {orders.map((order) => {
             const s = STATUS_LABEL[order.status] ?? { label: order.status, color: '#374151', bg: '#f3f4f6' };
