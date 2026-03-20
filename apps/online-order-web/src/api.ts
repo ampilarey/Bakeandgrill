@@ -38,6 +38,41 @@ export const API_ORIGIN =
   API_BASE_URL.replace(/\/api\/?$/, '') ||
   (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
+function readCookie(name: string): string | null {
+  const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
+  if (!m) return null;
+  return decodeURIComponent(m.split('=').slice(1).join('='));
+}
+
+/**
+ * Invalidate the Blade customer web session (same cookie as main website).
+ * Call this when signing out from the order app so the main site header
+ * shows "Login" instead of the phone number.
+ */
+export async function logoutCustomerWebSession(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const origin = API_ORIGIN;
+  try {
+    await fetch(`${origin}/sanctum/csrf-cookie`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+  } catch {
+    /* cookie may already exist */
+  }
+  const xsrf = readCookie('XSRF-TOKEN');
+  const headers: Record<string, string> = {
+    Accept: 'text/html,application/xhtml+xml',
+    'X-Requested-With': 'XMLHttpRequest',
+  };
+  if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+  await fetch(`${origin}/customer/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+  });
+}
+
 // Re-export MenuItem so consumers can also import by its original name
 export type { MenuItem };
 

@@ -6,7 +6,7 @@ import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
-import { getCustomerMe } from '../api';
+import { getCustomerMe, logoutCustomerWebSession } from '../api';
 
 
 export function Layout() {
@@ -79,7 +79,12 @@ export function Layout() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutCustomerWebSession();
+    } catch {
+      /* still clear local app state */
+    }
     clearAuth();
     navigate('/');
   };
