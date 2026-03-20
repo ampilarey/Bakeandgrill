@@ -400,15 +400,13 @@ export function Layout() {
             </span>
             {cartCount > 0 ? 'Cart' : 'Order'}
           </Link>
-          {token && (
-            <Link
-              to="/order-history"
-              className={`order-mob-item${location.pathname === '/order-history' ? ' order-mob-active' : ''}`}
-            >
-              <span className="order-mob-icon"><OrdersIcon size={20} /></span>
-              Orders
-            </Link>
-          )}
+          <Link
+            to="/order-history"
+            className={`order-mob-item${location.pathname === '/order-history' ? ' order-mob-active' : ''}`}
+          >
+            <span className="order-mob-icon"><OrdersIcon size={20} /></span>
+            Orders
+          </Link>
           <a href="/contact" className="order-mob-item">
             <span className="order-mob-icon"><PhoneIcon size={20} /></span>
             Contact
