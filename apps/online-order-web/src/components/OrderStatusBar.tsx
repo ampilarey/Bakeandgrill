@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchCustomerOrders } from '../api';
@@ -86,37 +86,32 @@ export function OrderStatusBar() {
   const s = STATUS[order.status] ?? { label: order.status, color: '#374151', dot: '#9ca3af' };
   const isActive = ACTIVE.has(order.status);
 
+  const barStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    padding: '0 0 0 1.5rem',
+    background: isActive ? 'var(--color-primary-light)' : 'var(--color-surface-alt)',
+    borderTop: '1px solid var(--color-border)',
+    fontSize: '0.8rem',
+    minHeight: '36px',
+  };
+
   return (
-    <Link
-      to={isActive ? `/orders/${order.id}` : '/order-history'}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.75rem',
-        padding: '0.45rem 1.5rem',
-        background: isActive
-          ? 'var(--color-primary-light)'
-          : 'var(--color-surface-alt)',
-        borderTop: '1px solid var(--color-border)',
-        textDecoration: 'none',
-        fontSize: '0.8rem',
-        cursor: 'pointer',
-        transition: 'opacity 0.15s',
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-      onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-    >
-      {/* Left — order info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-        {/* Live dot */}
+    <div style={barStyle}>
+      {/* Left — clicking "My orders" goes to full order history */}
+      <Link
+        to="/order-history"
+        style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          minWidth: 0, flex: 1, textDecoration: 'none', color: 'inherit',
+          padding: '0.45rem 0',
+        }}
+      >
         <span
           className={isActive ? 'status-dot-pulse' : undefined}
-          style={{
-            width: '8px', height: '8px', borderRadius: '50%',
-            background: s.dot,
-            flexShrink: 0,
-          }}
+          style={{ width: '8px', height: '8px', borderRadius: '50%', background: s.dot, flexShrink: 0 }}
         />
         <span style={{ fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
           My orders
@@ -125,20 +120,24 @@ export function OrderStatusBar() {
         <span style={{ fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
           #{order.order_number ?? order.id}
         </span>
-        <span
-          style={{
-            color: s.color,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}
-        >
+        <span style={{ color: s.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {s.label}
         </span>
-      </div>
+      </Link>
 
-      {/* Right — CTA */}
-      <span style={{ color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
+      {/* Right — "Track" goes to the specific order; "View all" also goes to history */}
+      <Link
+        to={isActive ? `/orders/${order.id}` : '/order-history'}
+        style={{
+          flexShrink: 0, color: 'var(--color-primary)', fontWeight: 600,
+          whiteSpace: 'nowrap', textDecoration: 'none',
+          padding: '0.45rem 1.5rem 0.45rem 0.75rem',
+          borderLeft: '1px solid var(--color-border)',
+          fontSize: '0.8rem',
+        }}
+      >
         {isActive ? 'Track →' : 'View all →'}
-      </span>
-    </Link>
+      </Link>
+    </div>
   );
 }

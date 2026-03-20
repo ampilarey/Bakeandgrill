@@ -196,23 +196,6 @@ export function Layout() {
             {/* Logged-in customer — desktop header; on narrow screens use hamburger menu instead */}
             {token && (
               <div className="order-header-account" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                <Link
-                  to="/order-history"
-                  className="nav-link-hover order-history-header-btn"
-                  style={{
-                    padding: '0.4rem 0.65rem',
-                    borderRadius: '8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    color: 'var(--color-primary)',
-                    textDecoration: 'none',
-                    border: '1px solid rgba(217,119,6,0.35)',
-                    background: 'var(--color-primary-light)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  My orders
-                </Link>
                 {customerName ? (
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="show-desktop">
                     Hi, {customerName}

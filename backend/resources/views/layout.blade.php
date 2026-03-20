@@ -572,40 +572,43 @@
         /* ─── Order Status Bar ───────────────────────────────────── */
         .order-status-bar {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-            padding: 0.45rem 2rem;
+            align-items: stretch;
             background: var(--amber-light);
             border-top: 1px solid var(--border);
             font-size: 0.8rem;
-            text-decoration: none;
-            color: var(--text);
-            transition: opacity 0.15s;
-            cursor: pointer;
+            min-height: 36px;
         }
-        .order-status-bar:hover { opacity: 0.82; }
         .order-status-bar--neutral { background: var(--surface); }
-        .osb-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; overflow: hidden; }
+        .osb-left-link {
+            display: flex; align-items: center; gap: 0.5rem;
+            flex: 1; min-width: 0; overflow: hidden;
+            padding: 0.4rem 0.75rem 0.4rem 2rem;
+            text-decoration: none; color: inherit;
+            transition: opacity 0.15s;
+        }
+        .osb-left-link:hover { opacity: 0.78; }
         .osb-label { font-weight: 700; color: var(--amber); white-space: nowrap; }
-        .osb-sep { color: var(--border); }
+        .osb-sep { color: var(--border); flex-shrink: 0; }
         .osb-num { font-weight: 600; color: var(--text); white-space: nowrap; }
         .osb-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .osb-dot {
-            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-        }
+        .osb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .osb-dot--pulse { animation: osbPulse 2s ease-in-out infinite; }
         @keyframes osbPulse {
             0%, 100% { opacity: 1; }
             50%       { opacity: 0.35; }
         }
-        .osb-cta { flex-shrink: 0; font-weight: 600; color: var(--amber); white-space: nowrap; }
-        /* Mobile: shown after mobile header, 1rem side padding */
-        .order-status-bar-mob {
-            display: none;
-            padding: 0.4rem 1rem;
-            font-size: 0.78rem;
+        .osb-cta-link {
+            flex-shrink: 0; font-weight: 600; color: var(--amber); white-space: nowrap;
+            text-decoration: none; padding: 0.4rem 2rem 0.4rem 0.75rem;
+            border-left: 1px solid var(--border);
+            display: flex; align-items: center;
+            transition: opacity 0.15s;
         }
+        .osb-cta-link:hover { opacity: 0.75; }
+        /* Mobile version: shown after mobile header */
+        .order-status-bar-mob { display: none; font-size: 0.78rem; }
+        .order-status-bar-mob .osb-left-link { padding-left: 1rem; }
+        .order-status-bar-mob .osb-cta-link  { padding-right: 1rem; }
 
         /* ─── Responsive ─────────────────────────────────────────── */
         @media (max-width: 768px) {
@@ -698,17 +701,17 @@
         </div>
     </div>
     @if($orderBar)
-    <a href="{{ $orderBarLink }}" class="order-status-bar {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
-        <div class="osb-left">
+    <div class="order-status-bar {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
+        <a href="/order/order-history" class="osb-left osb-left-link">
             <span class="osb-dot {{ $orderBarMeta['active'] ? 'osb-dot--pulse' : '' }}" style="background:{{ $orderBarMeta['dot'] }};"></span>
             <span class="osb-label">My orders</span>
             <span class="osb-sep">·</span>
             <span class="osb-num">#{{ $orderBar->order_number ?? $orderBar->id }}</span>
             <span class="osb-sep">·</span>
             <span class="osb-status" style="color:{{ $orderBarMeta['color'] }};">{{ $orderBarMeta['label'] }}</span>
-        </div>
-        <span class="osb-cta">{{ $orderBarMeta['active'] ? 'Track →' : 'View all →' }}</span>
-    </a>
+        </a>
+        <a href="{{ $orderBarLink }}" class="osb-cta osb-cta-link">{{ $orderBarMeta['active'] ? 'Track →' : 'View all →' }}</a>
+    </div>
     @endif
 </header>
 
@@ -734,18 +737,17 @@
 
 {{-- Order status bar (mobile only — below mobile header) --}}
 @if($orderBar)
-<a href="{{ $orderBarLink }}"
-   class="order-status-bar order-status-bar-mob {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
-    <div class="osb-left">
+<div class="order-status-bar order-status-bar-mob {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
+    <a href="/order/order-history" class="osb-left osb-left-link">
         <span class="osb-dot {{ $orderBarMeta['active'] ? 'osb-dot--pulse' : '' }}" style="background:{{ $orderBarMeta['dot'] }};"></span>
         <span class="osb-label">My orders</span>
         <span class="osb-sep">·</span>
         <span class="osb-num">#{{ $orderBar->order_number ?? $orderBar->id }}</span>
         <span class="osb-sep">·</span>
         <span class="osb-status" style="color:{{ $orderBarMeta['color'] }};">{{ $orderBarMeta['label'] }}</span>
-    </div>
-    <span class="osb-cta">{{ $orderBarMeta['active'] ? 'Track →' : 'View all →' }}</span>
-</a>
+    </a>
+    <a href="{{ $orderBarLink }}" class="osb-cta osb-cta-link">{{ $orderBarMeta['active'] ? 'Track →' : 'View all →' }}</a>
+</div>
 @endif
 
 {{-- Prayer time strip (mobile only — between header and page content) --}}
