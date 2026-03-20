@@ -720,7 +720,6 @@
             <span>{{ $siteName }}</span>
         </a>
         <nav class="header-nav" aria-label="Main navigation">
-            <a href="/">Home</a>
             <a href="/order/menu">Menu</a>
             <a href="/order/pre-order">Pre-Order</a>
             <div class="more-wrap">
