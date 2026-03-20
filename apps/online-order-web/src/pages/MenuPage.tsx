@@ -67,14 +67,14 @@ export function MenuPage() {
         setCategories(cats.data);
         setItems(its.data);
 
-        // BUG-11: pre-select category from ?category= query param
+        // Pre-select category from ?category= query param, otherwise show All
         if (categorySlug) {
           const match = cats.data.find(
             (c) => c.name.toLowerCase().replace(/\s+/g, '-') === categorySlug,
           );
-          setActiveCategoryId(match?.id ?? cats.data[0]?.id ?? null);
+          setActiveCategoryId(match?.id ?? null);
         } else {
-          setActiveCategoryId(cats.data[0]?.id ?? null);
+          setActiveCategoryId(null);
         }
 
         // BUG-12: auto-open item modal from ?item= query param
