@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Use our custom EncryptCookies so _cauth/_cauth_name stay plain-text
         // (they are short-lived handoff cookies read by the React order app via JS)
-        $middleware->encryptCookies(except: ['_cauth', '_cauth_name']);
+        $middleware->encryptCookies(except: ['_cauth', '_cauth_name', '_cauth_revoked']);
 
         $middleware->alias([
             'device.active'  => App\Http\Middleware\EnsureActiveDevice::class,

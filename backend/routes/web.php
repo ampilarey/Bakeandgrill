@@ -45,6 +45,14 @@ Route::post('/customer/verify-otp',   [CustomerPortalController::class, 'verifyO
 Route::post('/customer/login',        [CustomerPortalController::class, 'passwordLogin'])->name('customer.password-login');
 Route::post('/customer/logout',       [CustomerPortalController::class, 'logout'])->name('customer.logout');
 
+// Called by the React order app after login to establish a Blade session
+// (so the main website header shows "Hi, [phone]" immediately).
+// Protected by Sanctum Bearer token instead of CSRF — no form token needed.
+Route::post('/customer/sync-session', [CustomerPortalController::class, 'syncSession'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->middleware(['auth:sanctum', 'customer.token'])
+    ->name('customer.sync-session');
+
 // Profile setup — redirect to login if not authenticated
 Route::get('/customer/complete-profile',  [CustomerPortalController::class, 'showCompleteProfile'])->name('customer.complete-profile');
 Route::post('/customer/complete-profile', [CustomerPortalController::class, 'completeProfile'])->name('customer.complete-profile.post');

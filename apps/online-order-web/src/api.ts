@@ -45,6 +45,24 @@ function readCookie(name: string): string | null {
 }
 
 /**
+ * Establish a Blade web session from a Sanctum Bearer token.
+ * Call after every React login so the main website header shows "Hi, [phone]".
+ * Uses a CSRF-exempt web route protected by Sanctum Bearer auth.
+ */
+export async function syncBladeSession(token: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+  await fetch(`${API_ORIGIN}/customer/sync-session`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  });
+}
+
+/**
  * Invalidate the Blade customer web session (same cookie as main website).
  * Call this when signing out from the order app so the main site header
  * shows "Login" instead of the phone number.

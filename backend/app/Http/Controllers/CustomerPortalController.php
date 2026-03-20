@@ -319,6 +319,25 @@ class CustomerPortalController extends Controller
         return redirect($intendedUrl)->with('message', 'Welcome! Your account is all set.');
     }
 
+    // ── Session sync (called by React order app after API login) ─────────────
+
+    /**
+     * Establish a Blade web session from a valid Sanctum Bearer token.
+     * React calls this after every login so the main website header
+     * immediately reflects the logged-in state.
+     * Protected by auth:sanctum + customer.token; CSRF is waived.
+     */
+    public function syncSession(Request $request)
+    {
+        /** @var Customer $customer */
+        $customer = $request->user();
+
+        Auth::guard('customer')->login($customer);
+        $request->session()->regenerate();
+
+        return response()->json(['ok' => true]);
+    }
+
     // ── Logout ────────────────────────────────────────────────────────────────
 
     public function logout(Request $request)
@@ -326,6 +345,12 @@ class CustomerPortalController extends Controller
         Auth::guard('customer')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        // Tell the React order app (same origin, JS-readable cookie) that
+        // the session was invalidated so it can clear its localStorage token.
+        $domain = config('session.domain');
+        $secure = $request->isSecure();
+        Cookie::queue('_cauth_revoked', '1', 10, '/', $domain, $secure, false, false, 'Lax');
 
         return redirect('/')->with('message', 'Logged out successfully');
     }
