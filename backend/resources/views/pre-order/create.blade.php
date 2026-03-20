@@ -22,7 +22,7 @@ input[type="number"] {
 
 <!-- Desktop Filters -->
 <div id="desktopFilters" style="background: white; padding: 1.25rem 2rem; border-bottom: 1px solid #e9ecef;">
-    <div style="max-width: 1400px; margin: 0 auto; display: flex; gap: 1.25rem; align-items: center;">
+    <div style="max-width: 1280px; margin: 0 auto; display: flex; gap: 1.25rem; align-items: center;">
         <input type="text" id="searchInput" placeholder="🔍 Search..." onkeyup="filterItems()" style="flex: 1; min-width: 250px; padding: 0.7rem 1rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.95rem;">
         <select id="categoryFilter" onchange="filterItems()" style="padding: 0.7rem 1rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.95rem; cursor: pointer;">
             <option value="all">All Items</option>
@@ -83,7 +83,7 @@ input[type="number"] {
 }
 </style>
 
-<div style="max-width: 1400px; margin: 2rem auto 4rem; padding: 0 2rem;">
+<div style="max-width: 1280px; margin: 2rem auto 4rem; padding: 0 2rem;">
     <form method="POST" action="{{ route('pre-order.store') }}">
         @csrf
         

@@ -80,6 +80,15 @@ export function Layout() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Close mobile menu on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && menuOpen) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [menuOpen]);
+
   const handleLogout = async () => {
     try {
       await logoutCustomerWebSession();
@@ -102,7 +111,7 @@ export function Layout() {
         style={{
           position: 'sticky', top: 0,
           borderBottom: '1px solid var(--color-border)',
-          zIndex: 100,
+          zIndex: 'var(--z-header)',
           backdropFilter: 'blur(14px)',
           WebkitBackdropFilter: 'blur(14px)',
         }}
@@ -155,7 +164,7 @@ export function Layout() {
                     borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
                     minWidth: '140px',
-                    zIndex: 200,
+                    zIndex: 'var(--z-dropdown)',
                     overflow: 'hidden',
                     padding: '0.375rem',
                   }}
@@ -188,7 +197,7 @@ export function Layout() {
             {/* Dark mode toggle */}
             <button
               onClick={() => setDarkMode((d) => !d)}
-              style={{ background: 'var(--color-surface-alt)', border: '1.5px solid var(--color-border)', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              style={{ background: 'var(--color-surface-alt)', border: '1.5px solid var(--color-border)', borderRadius: '8px', width: '40px', height: '40px', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               title={darkMode ? 'Light mode' : 'Dark mode'}
             >
@@ -245,6 +254,7 @@ export function Layout() {
               style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.35rem', color: 'var(--color-dark)', fontSize: '1.35rem', lineHeight: 1 }}
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={menuOpen}
+              aria-controls="mobile-nav-panel"
             >
               {menuOpen ? '✕' : '☰'}
             </button>
@@ -253,7 +263,7 @@ export function Layout() {
 
         {/* Mobile dropdown nav */}
         {menuOpen && (
-          <div style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0.75rem 1.5rem 1rem' }}>
+          <div id="mobile-nav-panel" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0.75rem 1.5rem 1rem' }}>
             {/* Back to main website — first and most visible */}
             <a
               href="/"

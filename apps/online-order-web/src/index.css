@@ -69,6 +69,20 @@
   --shadow-lg:     0 10px 24px rgba(0,0,0,0.09);
   --button-height: 2.75rem;
   --input-height:  2.75rem;
+
+  /* ── Z-index scale ──────────────────────────────── */
+  --z-sticky-bar:  50;    /* sticky category bar */
+  --z-fab:         60;    /* back-to-top FAB */
+  --z-header:      100;   /* sticky app header */
+  --z-dropdown:    200;   /* inline dropdowns (More menu) */
+  --z-bottom-nav:  300;   /* fixed mobile bottom nav */
+  --z-pay-bar:     320;   /* checkout pay bar (above bottom-nav) */
+  --z-modal:       400;   /* modal backdrop + content */
+  --z-toast:       500;   /* toast notifications */
+  --z-island-drop: 600;   /* floating island dropdown panel */
+
+  /* ── Layout ─────────────────────────────────────── */
+  --layout-max:    1280px;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -109,7 +123,7 @@
 ════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
 
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -133,7 +147,7 @@ a { text-decoration: none; color: inherit; }
   position: absolute;
   left: -9999px;
   top: 8px;
-  z-index: 9999;
+  z-index: 9999; /* always on top for accessibility */
   padding: 8px 16px;
   background: var(--color-primary);
   color: white;
@@ -404,10 +418,10 @@ textarea.field-input {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--color-border);
-  z-index: 100;
+  z-index: var(--z-header);
 }
 .header-content {
-  max-width: 1400px;
+  max-width: var(--layout-max);
   margin: 0 auto;
   padding: 0.875rem 1.5rem;
   display: flex;
@@ -455,7 +469,7 @@ textarea.field-input {
 ════════════════════════════════════════════════════════════ */
 .footer { background: var(--color-footer-bg); color: white; padding: 3rem 1.5rem; margin-top: auto; }
 .footer-content {
-  max-width: 1400px; margin: 0 auto;
+  max-width: var(--layout-max); margin: 0 auto;
   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 2.5rem;
 }
@@ -650,12 +664,13 @@ textarea.field-input {
   .footer-content { grid-template-columns: 1fr !important; gap: 2rem; text-align: center; }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .desktop-nav { display: none !important; }
   .show-desktop { display: none !important; }
   .mobile-menu-btn { display: flex !important; align-items: center; justify-content: center; }
   /* My orders / Sign out live in the hamburger menu — top bar has no room */
   .order-header-account { display: none !important; }
+  html { scroll-padding-top: 140px; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -772,7 +787,7 @@ textarea.field-input {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 300;
+  z-index: var(--z-bottom-nav);
   background: var(--color-mobile-nav-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -791,9 +806,10 @@ textarea.field-input {
   gap: 0.12rem;
 }
 .order-mob-grid .order-mob-item {
-  font-size: 0.52rem;
-  padding: 0.35rem 0.08rem;
+  font-size: 0.6rem;
+  padding: 0.4rem 0.08rem;
   letter-spacing: 0.02em;
+  min-height: 44px;
 }
 .order-mob-grid .order-mob-icon svg {
   width: 18px;
@@ -845,7 +861,7 @@ textarea.field-input {
 .sticky-cat-bar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-sticky-bar);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
@@ -973,7 +989,7 @@ textarea.field-input {
   background: var(--color-surface);
   border: 1.5px solid var(--color-primary);
   border-radius: 14px;
-  z-index: 9999;
+  z-index: var(--z-island-drop);
   display: flex;
   flex-direction: column;
   width: 290px;
@@ -1028,7 +1044,7 @@ textarea.field-input {
   display: flex; align-items: center; justify-content: center;
   font-size: 1.1rem;
   box-shadow: 0 4px 16px var(--color-primary-glow);
-  z-index: 60;
+  z-index: var(--z-fab);
   transition: opacity 0.2s, transform 0.2s;
 }
 .back-to-top:hover { transform: translateY(-2px); }

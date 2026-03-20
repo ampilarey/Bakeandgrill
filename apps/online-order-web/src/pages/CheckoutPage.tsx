@@ -424,7 +424,7 @@ const S = {
     borderBottom: '1px solid var(--color-border)',
     padding: '12px 20px',
     display: 'flex', alignItems: 'center', gap: 16,
-    zIndex: 100,
+    zIndex: 'var(--z-header)' as unknown as number,
     boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
   } as React.CSSProperties,
 
@@ -578,9 +578,9 @@ const S = {
     backdropFilter: 'blur(12px)',
     borderTop: '1px solid var(--color-border)',
     padding: '12px 16px',
-    /* Above .order-mobile-nav (z-index: 300) so Pay button is tappable */
+    /* Above .order-mobile-nav (--z-bottom-nav: 300) so Pay button is tappable */
     paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-    zIndex: 320,
+    zIndex: 'var(--z-pay-bar)' as unknown as number,
   } as React.CSSProperties,
 
   complianceBox: {

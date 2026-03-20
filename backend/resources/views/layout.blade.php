@@ -135,7 +135,7 @@
             background: var(--surface);
             border: 1.5px solid var(--border);
             border-radius: 8px;
-            width: 36px; height: 36px;
+            width: 40px; height: 40px;
             cursor: pointer;
             font-size: 1rem;
             display: flex; align-items: center; justify-content: center;
@@ -144,7 +144,7 @@
         }
         .dark-toggle:hover { background: var(--amber-light); border-color: var(--amber); }
 
-        html { scroll-behavior: smooth; }
+        html { scroll-behavior: smooth; scroll-padding-top: 75px; }
 
         body {
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -310,7 +310,7 @@
             display: none;
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            z-index: 300;
+            z-index: 300; /* matches --z-bottom-nav in React order app */
             background: rgba(255, 253, 249, 0.97);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -614,6 +614,7 @@
 
         /* ─── Responsive ─────────────────────────────────────────── */
         @media (max-width: 768px) {
+            html { scroll-padding-top: 130px; }
             .site-header   { display: none; }
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: block; }
@@ -731,7 +732,7 @@
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endauth
-            <button id="darkToggleMobile" class="dark-toggle" aria-label="Toggle dark mode" style="width:32px;height:32px;font-size:0.9rem;">🌙</button>
+            <button id="darkToggleMobile" class="dark-toggle" aria-label="Toggle dark mode" style="width:40px;height:40px;font-size:0.9rem;">🌙</button>
             <a href="/order/" class="mob-order-btn">Order Now</a>
         </div>
     </div>

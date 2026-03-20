@@ -341,7 +341,7 @@ export function MenuPage() {
           role="dialog"
           aria-modal="true"
           aria-label={t('cart.title')}
-          style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,0.45)' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number, background: 'rgba(0,0,0,0.45)' }}
           onClick={(e) => { if (e.target === e.currentTarget) setCartVisible(false); }}
         >
           <div

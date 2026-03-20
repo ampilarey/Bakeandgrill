@@ -62,7 +62,7 @@ function ToastStack({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: st
         display: 'flex',
         flexDirection: 'column',
         gap: '0.5rem',
-        zIndex: 9000,
+        zIndex: 'var(--z-toast)' as unknown as number,
         width: '100%',
         maxWidth: '360px',
         padding: '0 1rem',
