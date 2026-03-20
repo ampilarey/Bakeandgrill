@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
-import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PhoneIcon, OrdersIcon } from './icons';
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
 import { getCustomerMe } from '../api';
 
 
@@ -400,13 +400,20 @@ export function Layout() {
             </span>
             {cartCount > 0 ? 'Cart' : 'Order'}
           </Link>
-          <Link
-            to="/order-history"
-            className={`order-mob-item${location.pathname === '/order-history' ? ' order-mob-active' : ''}`}
-          >
-            <span className="order-mob-icon"><OrdersIcon size={20} /></span>
-            Orders
-          </Link>
+          {token ? (
+            <Link
+              to="/order-history"
+              className={`order-mob-item${location.pathname === '/order-history' ? ' order-mob-active' : ''}`}
+            >
+              <span className="order-mob-icon"><OrdersIcon size={20} /></span>
+              Orders
+            </Link>
+          ) : (
+            <a href="/hours" className="order-mob-item">
+              <span className="order-mob-icon"><ClockIcon size={20} /></span>
+              Hours
+            </a>
+          )}
           <a href="/contact" className="order-mob-item">
             <span className="order-mob-icon"><PhoneIcon size={20} /></span>
             Contact
