@@ -38,11 +38,21 @@ export function MenuPage() {
   const pillContainerRef = useRef<HTMLDivElement>(null);
   const activePillRef = useRef<HTMLButtonElement>(null);
 
-  // Back to top visibility
+  // Back to top visibility — throttled with requestAnimationFrame
   useEffect(() => {
-    const onScroll = () => setShowBackToTop(window.scrollY > 300);
+    let rafId: number | null = null;
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        setShowBackToTop(window.scrollY > 300);
+        rafId = null;
+      });
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   usePageTitle('Menu');

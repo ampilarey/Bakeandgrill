@@ -5,6 +5,7 @@ import {
   Badge, Btn, Card, EmptyState, ErrorMsg,
   PageHeader, Select, Spinner, statColor,
 } from '../components/Layout';
+import { downloadCSV } from '../utils/csvExport';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -151,12 +152,13 @@ export function OrdersPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [perPage, setPerPage] = useState(25);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchOrders({ status: statusFilter || undefined, type: typeFilter || undefined, page });
+      const res = await fetchOrders({ status: statusFilter || undefined, type: typeFilter || undefined, page, per_page: perPage });
       setOrders(res.data);
       setTotalPages(res.meta?.last_page ?? 1);
     } catch (e) {
@@ -164,7 +166,7 @@ export function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, typeFilter, page]);
+  }, [statusFilter, typeFilter, page, perPage]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -179,15 +181,30 @@ export function OrdersPage() {
       <PageHeader
         title="Orders"
         subtitle="All customer and POS orders"
-        action={<Btn onClick={load} variant="secondary">↻ Refresh</Btn>}
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="secondary" onClick={() => downloadCSV('orders', orders.map((o) => ({ 'Order #': o.order_number, Type: o.type, Status: o.status, Customer: o.customer?.name ?? '', Total: `MVR ${Number(o.total ?? 0).toFixed(2)}`, Time: o.created_at })))}>Export CSV</Btn>
+            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+          </div>
+        }
       />
 
       {error && <ErrorMsg message={error} />}
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+          Per page:
+          <select
+            value={perPage}
+            onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, fontFamily: 'inherit' }}
+          >
+            {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
       </div>
 
       {loading && orders.length === 0 ? (
@@ -196,6 +213,7 @@ export function OrdersPage() {
         <Card><EmptyState message="No orders found." /></Card>
       ) : (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
@@ -235,6 +253,7 @@ export function OrdersPage() {
               ))}
             </tbody>
           </table>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (

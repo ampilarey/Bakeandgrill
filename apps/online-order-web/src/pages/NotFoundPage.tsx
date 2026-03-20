@@ -7,7 +7,7 @@ export function NotFoundPage() {
       <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
         The page you're looking for doesn't exist.
       </p>
-      <a href="/order/" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
+      <a href="/" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
         Back to home
       </a>
     </div>

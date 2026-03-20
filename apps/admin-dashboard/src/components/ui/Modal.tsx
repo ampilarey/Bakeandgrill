@@ -34,6 +34,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: P
       className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-enter"
       role="dialog"
       aria-modal="true"
+      aria-labelledby={title ? 'ui-modal-title' : undefined}
     >
       {/* Overlay */}
       <div
@@ -45,7 +46,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: P
       <div className={['relative w-full bg-white rounded-[14px] shadow-[0_8px_24px_rgba(28,20,8,0.15)] animate-fade-in', sizeStyles[size]].join(' ')}>
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8E0D8]">
-            <h2 className="text-base font-bold text-[#1C1408]">{title}</h2>
+            <h2 id="ui-modal-title" className="text-base font-bold text-[#1C1408]">{title}</h2>
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-full flex items-center justify-center text-[#9C8E7E] hover:bg-[#F8F6F3] hover:text-[#1C1408] transition-colors"

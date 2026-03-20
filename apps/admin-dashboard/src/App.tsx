@@ -1,30 +1,39 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { getMe, logout as apiLogout, type StaffUser } from './api';
 import { ToastProvider } from './components/ui';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
-import { OrdersPage } from './pages/OrdersPage';
-import { KDSPage } from './pages/KDSPage';
-import { DeliveryPage } from './pages/DeliveryPage';
-import { PromotionsPage } from './pages/PromotionsPage';
-import { LoyaltyPage } from './pages/LoyaltyPage';
-import { SmsPage } from './pages/SmsPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { MenuPage } from './pages/MenuPage';
-import { StaffPage } from './pages/StaffPage';
-import ReservationsPage from './pages/ReservationsPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import { InvoicesPage } from './pages/InvoicesPage';
-import { ExpensesPage } from './pages/ExpensesPage';
-import { ProfitLossPage } from './pages/ProfitLossPage';
-import { SupplierIntelligencePage } from './pages/SupplierIntelligencePage';
-import { ForecastPage } from './pages/ForecastPage';
-import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
-import { WebhooksPage } from './pages/WebhooksPage';
-import { DashboardPage } from './pages/DashboardPage';
-import TestChecklistPage from './pages/TestChecklistPage';
-import { SettingsPage } from './pages/SettingsPage';
+
+const OrdersPage              = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
+const KDSPage                 = lazy(() => import('./pages/KDSPage').then((m) => ({ default: m.KDSPage })));
+const DeliveryPage            = lazy(() => import('./pages/DeliveryPage').then((m) => ({ default: m.DeliveryPage })));
+const PromotionsPage          = lazy(() => import('./pages/PromotionsPage').then((m) => ({ default: m.PromotionsPage })));
+const LoyaltyPage             = lazy(() => import('./pages/LoyaltyPage').then((m) => ({ default: m.LoyaltyPage })));
+const SmsPage                 = lazy(() => import('./pages/SmsPage').then((m) => ({ default: m.SmsPage })));
+const ReportsPage             = lazy(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const MenuPage                = lazy(() => import('./pages/MenuPage').then((m) => ({ default: m.MenuPage })));
+const StaffPage               = lazy(() => import('./pages/StaffPage').then((m) => ({ default: m.StaffPage })));
+const ReservationsPage        = lazy(() => import('./pages/ReservationsPage'));
+const AnalyticsPage           = lazy(() => import('./pages/AnalyticsPage'));
+const InvoicesPage            = lazy(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })));
+const ExpensesPage            = lazy(() => import('./pages/ExpensesPage').then((m) => ({ default: m.ExpensesPage })));
+const ProfitLossPage          = lazy(() => import('./pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
+const SupplierIntelligencePage = lazy(() => import('./pages/SupplierIntelligencePage').then((m) => ({ default: m.SupplierIntelligencePage })));
+const ForecastPage            = lazy(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
+const PurchaseOrdersPage      = lazy(() => import('./pages/PurchaseOrdersPage').then((m) => ({ default: m.PurchaseOrdersPage })));
+const WebhooksPage            = lazy(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
+const DashboardPage           = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const TestChecklistPage       = lazy(() => import('./pages/TestChecklistPage'));
+const SettingsPage            = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+
+function PageFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '40vh', color: '#94a3b8', fontSize: 14 }}>
+      Loading…
+    </div>
+  );
+}
 
 function AuthGuard({
   user,
@@ -107,6 +116,7 @@ export default function App() {
         element={
           <AuthGuard user={user}>
             <Layout user={user!} onLogout={handleLogout}>
+              <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={
@@ -220,6 +230,7 @@ export default function App() {
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />
               </Routes>
+              </Suspense>
             </Layout>
           </AuthGuard>
         }

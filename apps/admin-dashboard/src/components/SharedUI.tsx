@@ -1,7 +1,7 @@
 /**
  * Shared UI primitives used by admin page components.
  */
-import { useState, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -212,11 +212,37 @@ export function Select({ options, value, onChange, label, style, ...rest }: Sele
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
+const FOCUSABLE_SEL = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   title, onClose, children, maxWidth = 440,
 }: { title: string; onClose: () => void; children: ReactNode; maxWidth?: number }) {
+  const titleId = `modal-title-${title.replace(/\s+/g, '-').toLowerCase()}`;
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const els = () => Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SEL));
+    els()[0]?.focus();
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = els();
+      if (!focusable.length) { e.preventDefault(); return; }
+      const first = focusable[0]; const last = focusable[focusable.length - 1];
+      if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+      else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
       style={{
         position: 'fixed', inset: 0, zIndex: 50,
         background: 'rgba(28,20,8,0.45)',
@@ -225,14 +251,14 @@ export function Modal({
       }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{
+      <div ref={panelRef} style={{
         background: '#fff', borderRadius: 16, padding: 28,
         width: '100%', maxWidth,
         boxShadow: '0 20px 60px rgba(28,20,8,0.18)',
         maxHeight: '90vh', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontWeight: 800, fontSize: 17, color: '#1C1408', margin: 0 }}>{title}</h3>
+          <h3 id={titleId} style={{ fontWeight: 800, fontSize: 17, color: '#1C1408', margin: 0 }}>{title}</h3>
           <button
             onClick={onClose}
             aria-label="Close"

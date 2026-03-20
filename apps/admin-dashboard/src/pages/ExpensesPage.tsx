@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getExpenses, getExpenseCategories, storeExpense, deleteExpense, getExpenseSummary, type Expense, type ExpenseCategory } from '../api';
+import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, type Expense, type ExpenseCategory } from '../api';
+import { downloadCSV } from '../utils/csvExport';
 import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -19,17 +20,12 @@ export function ExpensesPage() {
   const [from, setFrom]           = useState(monthStart());
   const [to, setTo]               = useState(today());
   const [showAdd, setShowAdd]     = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [saving, setSaving]       = useState(false);
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
-  const [form, setForm] = useState({
-    expense_category_id: '',
-    description: '',
-    amount: '',
-    expense_date: today(),
-    payment_method: 'cash',
-    notes: '',
-  });
+  const emptyForm = { expense_category_id: '', description: '', amount: '', expense_date: today(), payment_method: 'cash', notes: '' };
+  const [form, setForm] = useState(emptyForm);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -54,7 +50,31 @@ export function ExpensesPage() {
     try {
       await storeExpense({ ...form, expense_category_id: parseInt(form.expense_category_id), amount: parseFloat(form.amount) });
       setShowAdd(false);
-      setForm({ expense_category_id: '', description: '', amount: '', expense_date: today(), payment_method: 'cash', notes: '' });
+      setForm(emptyForm);
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  const handleEdit = (exp: Expense) => {
+    setEditingExpense(exp);
+    setForm({
+      expense_category_id: String(exp.category?.id ?? ''),
+      description: exp.description ?? '',
+      amount: String(exp.amount ?? ''),
+      expense_date: exp.expense_date ?? today(),
+      payment_method: exp.payment_method ?? 'cash',
+      notes: exp.notes ?? '',
+    });
+  };
+
+  const handleUpdate = async () => {
+    if (!editingExpense) return;
+    setSaving(true);
+    try {
+      await updateExpense(editingExpense.id, { ...form, expense_category_id: parseInt(form.expense_category_id), amount: parseFloat(form.amount) });
+      setEditingExpense(null);
+      setForm(emptyForm);
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
@@ -90,7 +110,12 @@ export function ExpensesPage() {
       <PageHeader
         title="Expenses"
         subtitle="Track operating costs and overheads"
-        action={<Btn onClick={() => setShowAdd(true)}>+ Add Expense</Btn>}
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="secondary" onClick={() => downloadCSV('expenses', expenses.map((e) => ({ Date: e.expense_date, Category: e.category?.name ?? '', Description: e.description, 'Amount (MVR)': Number(e.amount ?? 0).toFixed(2), Method: e.payment_method ?? '', Status: e.status, Notes: e.notes ?? '' })))}>Export CSV</Btn>
+            <Btn onClick={() => setShowAdd(true)}>+ Add Expense</Btn>
+          </div>
+        }
       />
       {error && <ErrorMsg message={error} />}
 
@@ -128,8 +153,11 @@ export function ExpensesPage() {
                       <td style={TD}>
                         <Badge label={exp.status} color={STATUS_COLOR[exp.status] ?? 'gray'} />
                       </td>
-                      <td style={TD}>
-                        <Btn small variant="danger" onClick={() => handleDelete(exp.id)}>Delete</Btn>
+                      <td style={{ ...TD, whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <Btn small variant="secondary" onClick={() => handleEdit(exp)}>Edit</Btn>
+                          <Btn small variant="danger" onClick={() => handleDelete(exp.id)}>Delete</Btn>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -161,6 +189,53 @@ export function ExpensesPage() {
             ))}
           </Card>
         </div>
+      )}
+
+      {/* Edit Expense Modal */}
+      {editingExpense && (
+        <Modal title="Edit Expense" onClose={() => { setEditingExpense(null); setForm(emptyForm); setError(''); }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              Category *
+              <select value={form.expense_category_id} onChange={(e) => setForm((f) => ({ ...f, expense_category_id: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }}>
+                <option value="">Select category</option>
+                {cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              Description *
+              <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+                Amount (MVR) *
+                <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+              </label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+                Date *
+                <input type="date" value={form.expense_date} onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+              </label>
+            </div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              Payment Method
+              <select value={form.payment_method} onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }}>
+                {['cash', 'card', 'bank_transfer', 'bml_pay', 'other'].map((m) => (
+                  <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>
+                ))}
+              </select>
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              Notes
+              <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }} />
+            </label>
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => { setEditingExpense(null); setForm(emptyForm); }}>Cancel</Btn>
+            <Btn onClick={handleUpdate} disabled={saving || !form.expense_category_id || !form.description || !form.amount}>
+              {saving ? 'Saving…' : 'Update Expense'}
+            </Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {/* Add Expense Modal */}

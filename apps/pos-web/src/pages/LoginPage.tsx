@@ -88,6 +88,7 @@ export function LoginPage({ pin, setPin, deviceId, setDeviceId, authError, onLog
                 else if (d !== '') append(d);
               }}
               disabled={d === ''}
+              aria-label={d === '⌫' ? 'Backspace' : d === '' ? undefined : `Digit ${d}`}
               style={{
                 height: 56, borderRadius: 12, border: '1px solid #EDE4D4',
                 background: d === '⌫' ? '#FFF3E8' : d === '' ? 'transparent' : '#FFFDF9',

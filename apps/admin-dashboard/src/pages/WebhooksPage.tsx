@@ -40,7 +40,11 @@ function WebhookForm({
       return;
     }
     try {
-      new URL(url.trim());
+      const parsed = new URL(url.trim());
+      if (parsed.protocol !== 'https:') {
+        setError('Webhook URL must use HTTPS.');
+        return;
+      }
     } catch {
       setError('Please enter a valid URL (must start with https://).');
       return;
@@ -298,13 +302,13 @@ export function WebhooksPage() {
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                  <Btn variant="secondary" small onClick={() => setEditing(sub)}>Edit</Btn>
+                  <Btn variant="secondary" small onClick={() => setEditing(sub)} disabled={actingId === sub.id}>Edit</Btn>
                   <Btn variant="secondary" small onClick={() => setLogsFor(sub)}>Logs</Btn>
-                  <Btn variant="secondary" small onClick={() => handleToggleActive(sub)}>
-                    {sub.active ? 'Pause' : 'Enable'}
+                  <Btn variant="secondary" small onClick={() => handleToggleActive(sub)} disabled={actingId === sub.id}>
+                    {actingId === sub.id ? '…' : sub.active ? 'Pause' : 'Enable'}
                   </Btn>
-                  <Btn variant="secondary" small onClick={() => handleRotate(sub)}>Rotate Secret</Btn>
-                  <Btn variant="danger" small onClick={() => handleDelete(sub)}>Delete</Btn>
+                  <Btn variant="secondary" small onClick={() => handleRotate(sub)} disabled={actingId === sub.id}>Rotate Secret</Btn>
+                  <Btn variant="danger" small onClick={() => handleDelete(sub)} disabled={actingId === sub.id}>Delete</Btn>
                 </div>
               </div>
             </Card>

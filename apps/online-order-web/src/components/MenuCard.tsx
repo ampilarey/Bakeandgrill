@@ -16,6 +16,8 @@ const SPICE_MAP: Record<string, { label: string; icon: string }> = {
   extra_hot: { label: 'Extra Hot', icon: '🔥' },
 };
 
+const MAX_QTY = 99;
+
 export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [imgError, setImgError] = useState(false);
@@ -192,7 +194,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
                 </span>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); setQuantity((q) => q + 1); }}
+                  onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(MAX_QTY, q + 1)); }}
                   style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label="Increase quantity"
                 >

@@ -41,7 +41,7 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->all();
+        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url']);
         if (isset($data['image_url']) && $data['image_url'] === '') {
             $data['image_url'] = null;
         }
@@ -86,7 +86,7 @@ class CategoryController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $data = $request->all();
+        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url']);
         if (isset($data['image_url']) && $data['image_url'] === '') {
             $data['image_url'] = null;
         }

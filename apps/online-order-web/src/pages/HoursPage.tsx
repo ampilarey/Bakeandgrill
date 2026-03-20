@@ -72,11 +72,14 @@ export function HoursPage() {
         borderRadius: '14px', padding: '1.25rem 1.5rem', marginBottom: '2rem',
       }}>
         {isOpen !== null && (
-          <span style={{
-            width: 12, height: 12, borderRadius: '50%',
-            background: isOpen ? 'var(--color-success)' : 'var(--color-error)', flexShrink: 0,
-            boxShadow: `0 0 0 3px ${isOpen ? 'rgba(72,199,142,0.25)' : 'rgba(255,112,67,0.25)'}`,
-          }} />
+          <span
+            aria-hidden="true"
+            style={{
+              width: 12, height: 12, borderRadius: '50%',
+              background: isOpen ? 'var(--color-success)' : 'var(--color-error)', flexShrink: 0,
+              boxShadow: `0 0 0 3px ${isOpen ? 'rgba(72,199,142,0.25)' : 'rgba(255,112,67,0.25)'}`,
+            }}
+          />
         )}
         <div>
           <p style={{ fontWeight: 700, color: 'var(--color-dark)', fontSize: '1rem', marginBottom: '0.2rem' }}>

@@ -18,10 +18,8 @@ class Payment extends Model
         'amount',
         'amount_laar',
         'local_id',
-        'provider_transaction_id',
         'status',
         'reference_number',
-        'gateway_response',
         'processed_at',
     ];
 

@@ -231,7 +231,8 @@ function ItemFormModal({
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Item name is required.'); return; }
-    if (!form.base_price || parseFloat(form.base_price) < 0) { setError('Price must be 0 or more.'); return; }
+    const priceNum = parseFloat(form.base_price);
+    if (!form.base_price || !Number.isFinite(priceNum) || priceNum < 0) { setError('Price must be a valid number (0 or more).'); return; }
     setError(''); setLoading(true);
     try { await onSave(form); }
     catch (e) { setError((e as Error).message); }
@@ -347,6 +348,7 @@ export function MenuPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
 
   // Modals
   const [editingCat, setEditingCat] = useState<MenuCategory | null>(null);
@@ -370,6 +372,7 @@ export function MenuPage() {
         category_id: selectedCat ?? undefined,
         search: search || undefined,
         page: p,
+        per_page: perPage,
       });
       setItems(res.data);
       setLastPage(res.meta?.last_page ?? 1);
@@ -541,6 +544,16 @@ export function MenuPage() {
             <div style={{ flex: 1, minWidth: 180 }}>
               <Input value={search} onChange={setSearch} placeholder="Search by name or SKU…" />
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+              Per page:
+              <select
+                value={perPage}
+                onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); void loadItems(1); }}
+                style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, fontFamily: 'inherit' }}
+              >
+                {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
           </div>
 
           {loading && items.length === 0 ? <Spinner /> :
@@ -549,6 +562,7 @@ export function MenuPage() {
           ) : (
             <>
               <Card style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
@@ -605,6 +619,7 @@ export function MenuPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </Card>
 
               {/* Pagination */}

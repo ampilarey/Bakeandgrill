@@ -157,12 +157,12 @@ export function PrayerBar() {
   // ── Prayer data loader ──────────────────────────────────────────────────
 
   const loadPrayers = useCallback((islandId: number, cb: () => void) => {
-    const today = mvtDateStr();
+    const today    = mvtDateStr();
     const tomorrow = mvtDateStr(1);
     const cKey = `pt_day_${today}_${islandId}`;
     const tKey = `pt_day_${tomorrow}_${islandId}`;
 
-    // Restore cached tomorrow prayers if available
+    // Restore both days from cache synchronously if available
     try {
       const ct = localStorage.getItem(tKey);
       if (ct) tomorrowPrayersRef.current = JSON.parse(ct);
@@ -170,17 +170,32 @@ export function PrayerBar() {
 
     try {
       const c = localStorage.getItem(cKey);
-      if (c) { prayersRef.current = JSON.parse(c); cb(); prefetchTomorrow(islandId, tKey); return; }
+      if (c) {
+        prayersRef.current = JSON.parse(c);
+        cb();
+        // Still prefetch tomorrow in parallel if not yet cached
+        if (!tomorrowPrayersRef.current) prefetchTomorrow(islandId, tKey);
+        return;
+      }
     } catch { /* ignore */ }
-    fetch(`/api/prayer-times?island_id=${islandId}&date=${today}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.prayers) {
-          prayersRef.current = d.prayers;
-          try { localStorage.setItem(cKey, JSON.stringify(d.prayers)); } catch { /* ignore */ }
+
+    // Fetch today and tomorrow in parallel
+    Promise.all([
+      fetch(`/api/prayer-times?island_id=${islandId}&date=${today}`).then(r => r.json()),
+      tomorrowPrayersRef.current
+        ? Promise.resolve(null)
+        : fetch(`/api/prayer-times?island_id=${islandId}&date=${tomorrow}`).then(r => r.json()),
+    ])
+      .then(([todayData, tomorrowData]) => {
+        if (todayData?.prayers) {
+          prayersRef.current = todayData.prayers;
+          try { localStorage.setItem(cKey, JSON.stringify(todayData.prayers)); } catch { /* ignore */ }
+        }
+        if (tomorrowData?.prayers) {
+          tomorrowPrayersRef.current = tomorrowData.prayers;
+          try { localStorage.setItem(tKey, JSON.stringify(tomorrowData.prayers)); } catch { /* ignore */ }
         }
         cb();
-        prefetchTomorrow(islandId, tKey);
       })
       .catch(() => cb());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

@@ -14,10 +14,8 @@ function useIsMobile() {
   );
 }
 
-// ── Utility ────────────────────────────────────────────────────────────────────
-function laarToMvr(laar: number): string { return (laar / 100).toFixed(2); }
-
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
+import { laarToMvr } from '../utils/money';
 
 // ── Field component ────────────────────────────────────────────────────────────
 function Field({
@@ -135,7 +133,7 @@ export function CheckoutPage() {
         )}
       </header>
 
-      <div style={{ ...S.layout, gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) 380px' }}>
+      <div style={{ ...S.layout, gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(300px,380px)' }}>
 
         {/* ── Left: form sections ──────────────────────────── */}
         <div style={{ ...S.col, order: isMobile ? 1 : 0, paddingBottom: isMobile ? '120px' : 0 }}>

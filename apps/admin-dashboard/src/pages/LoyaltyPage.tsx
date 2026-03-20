@@ -8,6 +8,7 @@ import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions,
   PageHeader, Spinner, TableCard, TD, TH,
 } from '../components/Layout';
+import { downloadCSV } from '../utils/csvExport';
 
 const TIER_COLOR: Record<string, string> = {
   bronze: 'orange', silver: 'gray', gold: 'yellow', platinum: 'blue',
@@ -126,7 +127,11 @@ export function LoyaltyPage() {
 
   return (
     <>
-      <PageHeader title="Loyalty Accounts" subtitle="View and manage customer loyalty points" />
+      <PageHeader
+        title="Loyalty Accounts"
+        subtitle="View and manage customer loyalty points"
+        action={<Btn variant="secondary" onClick={() => downloadCSV('loyalty-accounts', accounts.map((a) => ({ Name: a.customer_name ?? '', Phone: a.customer_phone, Points: a.points_balance, Tier: a.tier, 'Lifetime Points': a.lifetime_points })))}>Export CSV</Btn>}
+      />
       {error && <ErrorMsg message={error} />}
 
       <div style={{ marginBottom: 20 }}>

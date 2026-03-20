@@ -8,6 +8,7 @@ import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input,
   PageHeader, Select, Spinner, TD, TH, useConfirmDialog,
 } from '../components/Layout';
+import { downloadCSV } from '../utils/csvExport';
 
 const EMPTY: PromotionPayload = {
   name: '', code: '', type: 'fixed', discount_value: 0,
@@ -209,9 +210,12 @@ export function PromotionsPage() {
         title="Promotions"
         subtitle="Manage promo codes and discounts"
         action={
-          !creating && !editing
-            ? <Btn onClick={() => setCreating(true)}>+ New Promo</Btn>
-            : undefined
+          !creating && !editing ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn variant="secondary" onClick={() => downloadCSV('promotions', promos.map((p) => ({ Name: p.name, Code: p.code, Type: p.type, 'Discount Value': p.discount_value, Scope: p.scope, 'Max Uses': p.max_uses ?? 'Unlimited', Redemptions: p.redemptions_count, Active: p.is_active ? 'Yes' : 'No', Expires: p.expires_at ?? 'No expiry' })))}>Export CSV</Btn>
+              <Btn onClick={() => setCreating(true)}>+ New Promo</Btn>
+            </div>
+          ) : undefined
         }
       />
       {error && <ErrorMsg message={error} />}

@@ -88,12 +88,14 @@ export async function fetchOrders(params?: {
   status?: string;
   type?: string;
   page?: number;
+  per_page?: number;
   date?: string;
 }): Promise<OrdersResponse> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set('status', params.status);
   if (params?.type) qs.set('type', params.type);
   if (params?.page) qs.set('page', String(params.page));
+  if (params?.per_page) qs.set('per_page', String(params.per_page));
   if (params?.date) qs.set('date', params.date);
   return req(`/orders?${qs}`);
 }
@@ -421,11 +423,13 @@ export async function fetchAdminItems(params?: {
   category_id?: number;
   search?: string;
   page?: number;
+  per_page?: number;
 }): Promise<{ data: MenuItem[]; meta?: { total: number; last_page: number; current_page: number } }> {
   const qs = new URLSearchParams({ admin: '1' });
   if (params?.category_id) qs.set('category_id', String(params.category_id));
   if (params?.search) qs.set('search', params.search);
   if (params?.page) qs.set('page', String(params.page));
+  if (params?.per_page) qs.set('per_page', String(params.per_page));
   return req(`/items?${qs}`);
 }
 
@@ -655,6 +659,10 @@ export async function getExpenseCategories(): Promise<{ categories: ExpenseCateg
 
 export async function storeExpense(data: Record<string, unknown>): Promise<{ expense: Expense }> {
   return req('/expenses', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateExpense(id: number, data: Record<string, unknown>): Promise<{ expense: Expense }> {
+  return req(`/expenses/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function deleteExpense(id: number): Promise<void> {

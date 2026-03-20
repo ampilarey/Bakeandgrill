@@ -21,7 +21,7 @@ class SupplierController extends Controller
         }
 
         if ($request->has('search')) {
-            $search = $request->query('search');
+            $search = str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $request->query('search'));
             $query->where('name', 'like', "%{$search}%");
         }
 

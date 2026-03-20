@@ -54,7 +54,7 @@ export function DeliveryPage() {
     try {
       const res = await adminRequest<{ drivers: Driver[] }>('/delivery/drivers');
       setDrivers(res.drivers);
-    } catch { /* ignore - permission might be denied */ }
+    } catch (e: unknown) { console.error('Failed to load drivers', e); }
   };
 
   useEffect(() => {
@@ -244,8 +244,8 @@ function DriverLocationBadge({ orderId }: { orderId: number }) {
     try {
       const res = await adminRequest<{ location: DriverLocation | null }>(`/driver/deliveries/${orderId}/location`);
       setLocation(res.location);
-    } catch {
-      // ignore
+    } catch (e: unknown) {
+      console.error('Failed to load driver location', e);
     } finally {
       setLoading(false);
     }
@@ -289,7 +289,9 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
         body: JSON.stringify({ driver_id: parseInt(driverId, 10) }),
       });
       onAssigned();
-    } catch { /* ignore */ } finally {
+    } catch (e: unknown) {
+      console.error('Failed to assign driver', e);
+    } finally {
       setSaving(false);
     }
   };
@@ -335,7 +337,9 @@ function AssignDriverInline({
         body: JSON.stringify({ driver_id: driverId ? parseInt(driverId, 10) : null }),
       });
       onAssigned(res.order);
-    } catch { /* ignore */ } finally {
+    } catch (e: unknown) {
+      console.error('Failed to assign driver', e);
+    } finally {
       setSaving(false);
     }
   };
@@ -406,7 +410,9 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
     try {
       await adminRequest(`/delivery/drivers/${id}`, { method: 'DELETE' });
       onRefresh();
-    } catch { /* ignore */ }
+    } catch (e: unknown) {
+      console.error('Failed to delete driver', e);
+    }
   };
 
   const startEdit = (d: Driver) => {

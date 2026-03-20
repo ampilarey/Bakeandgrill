@@ -10,7 +10,7 @@ class StoreRefundRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->tokenCan('staff') ?? false;
     }
 
     public function rules(): array
