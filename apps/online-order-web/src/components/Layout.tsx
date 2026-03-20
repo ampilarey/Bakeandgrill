@@ -162,7 +162,7 @@ export function Layout() {
 
             {/* Cart button */}
             <Link
-              to="/menu"
+              to="/menu?openCart=1"
               className="nav-pill-hover"
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.35rem',
@@ -324,7 +324,7 @@ export function Layout() {
             Menu
           </Link>
           <Link
-            to="/menu"
+            to="/menu?openCart=1"
             className="order-mob-item order-mob-order"
             aria-label={`Cart${cartCount > 0 ? ` — ${cartCount}` : ''}`}
           >

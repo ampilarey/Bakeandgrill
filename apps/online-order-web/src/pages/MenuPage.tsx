@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOpeningHoursStatus } from '../api';
 import type { Category, Item, Modifier } from '../api';
@@ -14,7 +15,7 @@ export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
   const { showToast } = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -89,6 +90,23 @@ export function MenuPage() {
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mobile: header/bottom-nav "Cart" links use ?openCart=1 — open sheet (they don't tap the FAB).
+  useEffect(() => {
+    if (searchParams.get('openCart') !== '1') return;
+    const sheet = window.matchMedia('(max-width: 900px)').matches;
+    if (sheet) setCartVisible(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('openCart');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!cartVisible) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [cartVisible]);
 
   // Scroll active pill into view when category changes
   useEffect(() => {
@@ -328,7 +346,9 @@ export function MenuPage() {
         aria-label={`View cart — ${cartCount} item${cartCount !== 1 ? 's' : ''}`}
         style={{
           position: 'fixed',
-          bottom: '1.25rem', right: '1.25rem',
+          /* Clear .order-mobile-nav (~72px) + safe area; was 1.25rem and sat under the bar */
+          bottom: 'max(5.5rem, calc(4.25rem + env(safe-area-inset-bottom)))',
+          right: '1.25rem',
           background: 'var(--color-primary)',
           color: 'white', border: 'none',
           borderRadius: 'var(--radius-full)',
@@ -336,19 +356,21 @@ export function MenuPage() {
           fontSize: '0.925rem', fontWeight: 700,
           cursor: 'pointer',
           boxShadow: '0 4px 20px var(--color-primary-glow)',
-          /* Above sticky header (100); below cart sheet (400) */
-          zIndex: 120, fontFamily: 'inherit',
+          /* Above bottom nav (300); below cart portal (5000) */
+          zIndex: 310, fontFamily: 'inherit',
           alignItems: 'center', gap: '0.5rem',
         }}
       >
         🛒 Cart{cartCount > 0 ? ` (${cartCount})` : ''}
       </button>
 
-      {/* ── Mobile cart bottom sheet ─────────────────────────────── */}
-      {cartVisible && (
+      {/* ── Mobile cart bottom sheet (portal → body avoids #root stacking / clipping) ── */}
+      {cartVisible && typeof document !== 'undefined' && createPortal(
         <div
-          /* Must sit above .order-mobile-nav (z-index: 300) or checkout button is hidden */
-          style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.45)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('cart.title')}
+          style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,0.45)' }}
           onClick={(e) => { if (e.target === e.currentTarget) setCartVisible(false); }}
         >
           <div
@@ -359,14 +381,17 @@ export function MenuPage() {
               padding: '1.25rem 1.5rem',
               paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
               maxHeight: '85vh', overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
             }}
             className="animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>
                 {t('cart.title')}
               </span>
               <button
+                type="button"
                 onClick={() => setCartVisible(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--color-text-muted)', padding: '0.25rem', lineHeight: 1 }}
                 aria-label="Close cart"
@@ -374,9 +399,10 @@ export function MenuPage() {
                 ✕
               </button>
             </div>
-            <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />
+            <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} compact />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* ── Back to top FAB ─────────────────────────────────────── */}

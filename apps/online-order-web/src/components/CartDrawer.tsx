@@ -5,9 +5,11 @@ import { useLanguage } from '../context/LanguageContext';
 type Props = {
   isOpen?: boolean;
   closedMessage?: string | null;
+  /** Mobile sheet already shows a title — hide inner heading to save space and surface checkout */
+  compact?: boolean;
 };
 
-export function CartDrawer({ isOpen = true, closedMessage }: Props) {
+export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const navigate = useNavigate();
   const { cart, cartTotal, updateQuantity } = useCart();
   const { t } = useLanguage();
@@ -20,16 +22,18 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
   const canCheckout = cart.length > 0 && isOpen;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ background: 'white', border: '1px solid #EDE4D4', borderRadius: '16px', padding: '1.25rem' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#1C1408', marginBottom: '1rem' }}>
-          {t('cart.title')}
-          {cart.length > 0 && (
-            <span style={{ marginLeft: '0.5rem', background: '#D4813A', color: 'white', borderRadius: '999px', padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}>
-              {cart.reduce((s, e) => s + e.quantity, 0)}
-            </span>
-          )}
-        </h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.5rem' : '1rem' }}>
+      <div style={{ background: 'white', border: compact ? 'none' : '1px solid #EDE4D4', borderRadius: '16px', padding: compact ? '0' : '1.25rem' }}>
+        {!compact && (
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#1C1408', marginBottom: '1rem' }}>
+            {t('cart.title')}
+            {cart.length > 0 && (
+              <span style={{ marginLeft: '0.5rem', background: '#D4813A', color: 'white', borderRadius: '999px', padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}>
+                {cart.reduce((s, e) => s + e.quantity, 0)}
+              </span>
+            )}
+          </h2>
+        )}
 
         {cart.length === 0 ? (
           <p style={{ color: '#adb5bd', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0' }}>
@@ -93,6 +97,7 @@ export function CartDrawer({ isOpen = true, closedMessage }: Props) {
         )}
 
         <button
+          type="button"
           onClick={handleCheckout}
           disabled={!canCheckout}
           style={{
