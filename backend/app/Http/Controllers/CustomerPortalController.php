@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Order;
 use App\Models\OtpVerification;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
@@ -169,6 +170,7 @@ class CustomerPortalController extends Controller
         }
 
         $customer->update(['password' => Hash::make($request->password)]);
+        $this->linkGuestOrders($customer);
 
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
@@ -218,6 +220,7 @@ class CustomerPortalController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
+        $this->linkGuestOrders($customer);
 
         // Use the customer guard so the session cookie works for both
         // the Blade site and the React order app.
@@ -262,6 +265,7 @@ class CustomerPortalController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
+        $this->linkGuestOrders($customer);
 
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
@@ -392,6 +396,13 @@ class CustomerPortalController extends Controller
         // non-httponly so React JS can read with document.cookie
         Cookie::queue('_cauth',      $token, 1440, '/', $domain, $secure, false, false, 'Lax');
         Cookie::queue('_cauth_name', $name,  1440, '/', $domain, $secure, false, false, 'Lax');
+    }
+
+    private function linkGuestOrders(Customer $customer): void
+    {
+        Order::where('guest_phone', $customer->phone)
+            ->whereNull('customer_id')
+            ->update(['customer_id' => $customer->id]);
     }
 
     private function normalizePhone(string $phone): string

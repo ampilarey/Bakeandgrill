@@ -10,6 +10,7 @@ use App\Domains\Notifications\Events\CustomerCreated;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Order;
 use App\Models\OtpVerification;
 use App\Rules\MaldivesPhone;
 use Illuminate\Http\Request;
@@ -21,6 +22,13 @@ use Illuminate\Validation\ValidationException;
 class CustomerAuthController extends Controller
 {
     // ── Shared helpers ────────────────────────────────────────────────────────
+
+    private function linkGuestOrders(Customer $customer): void
+    {
+        Order::where('guest_phone', $customer->phone)
+            ->whereNull('customer_id')
+            ->update(['customer_id' => $customer->id]);
+    }
 
     private function normalizePhone(string $phone): string
     {
@@ -143,6 +151,7 @@ class CustomerAuthController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
+        $this->linkGuestOrders($customer);
 
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
@@ -248,15 +257,16 @@ class CustomerAuthController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
+        $this->linkGuestOrders($customer);
 
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
-            'message'      => 'Verified successfully',
-            'token'        => $token,
+            'message'         => 'Verified successfully',
+            'token'           => $token,
             'is_new_customer' => $customer->wasRecentlyCreated,
-            'customer'     => $this->customerResponse($customer, $token),
+            'customer'        => $this->customerResponse($customer, $token),
         ]);
     }
 
@@ -366,6 +376,7 @@ class CustomerAuthController extends Controller
             'password'        => Hash::make($input['password']),
             'last_login_at'   => now(),
         ]);
+        $this->linkGuestOrders($customer);
 
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
