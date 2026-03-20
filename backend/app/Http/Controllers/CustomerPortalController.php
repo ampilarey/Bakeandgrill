@@ -228,10 +228,10 @@ class CustomerPortalController extends Controller
 
         $this->queueHandoffCookies($customer);
 
-        $intendedUrl = session('intended_url', '/order/menu');
+        $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
         if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
-            $intendedUrl = '/order/menu';
+            $intendedUrl = '/';
         }
 
         return redirect($intendedUrl)->with('message', 'Logged in successfully!');
@@ -265,10 +265,10 @@ class CustomerPortalController extends Controller
 
         $this->queueHandoffCookies($customer);
 
-        $intendedUrl = session('intended_url', '/order/menu');
+        $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
         if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
-            $intendedUrl = '/order/menu';
+            $intendedUrl = '/';
         }
 
         return redirect($intendedUrl)->with('message', 'Logged in successfully!');
@@ -310,10 +310,10 @@ class CustomerPortalController extends Controller
 
         $this->queueHandoffCookies($customer);
 
-        $intendedUrl = session('intended_url', '/order/menu');
+        $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
         if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
-            $intendedUrl = '/order/menu';
+            $intendedUrl = '/';
         }
 
         return redirect($intendedUrl)->with('message', 'Welcome! Your account is all set.');
