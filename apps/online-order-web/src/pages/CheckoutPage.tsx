@@ -578,7 +578,9 @@ const S = {
     backdropFilter: 'blur(12px)',
     borderTop: '1px solid var(--color-border)',
     padding: '12px 16px',
-    zIndex: 50,
+    /* Above .order-mobile-nav (z-index: 300) so Pay button is tappable */
+    paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+    zIndex: 320,
   } as React.CSSProperties,
 
   complianceBox: {

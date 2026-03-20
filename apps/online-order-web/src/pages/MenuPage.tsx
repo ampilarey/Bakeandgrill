@@ -336,7 +336,8 @@ export function MenuPage() {
           fontSize: '0.925rem', fontWeight: 700,
           cursor: 'pointer',
           boxShadow: '0 4px 20px var(--color-primary-glow)',
-          zIndex: 50, fontFamily: 'inherit',
+          /* Above sticky header (100); below cart sheet (400) */
+          zIndex: 120, fontFamily: 'inherit',
           alignItems: 'center', gap: '0.5rem',
         }}
       >
@@ -346,7 +347,8 @@ export function MenuPage() {
       {/* ── Mobile cart bottom sheet ─────────────────────────────── */}
       {cartVisible && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.45)' }}
+          /* Must sit above .order-mobile-nav (z-index: 300) or checkout button is hidden */
+          style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.45)' }}
           onClick={(e) => { if (e.target === e.currentTarget) setCartVisible(false); }}
         >
           <div
@@ -355,6 +357,7 @@ export function MenuPage() {
               background: 'var(--color-surface)',
               borderRadius: '20px 20px 0 0',
               padding: '1.25rem 1.5rem',
+              paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
               maxHeight: '85vh', overflowY: 'auto',
             }}
             className="animate-fade-in"
