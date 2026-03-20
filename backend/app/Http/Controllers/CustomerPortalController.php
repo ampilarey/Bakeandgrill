@@ -10,6 +10,7 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -172,6 +173,8 @@ class CustomerPortalController extends Controller
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
+        $this->queueHandoffCookies($customer);
+
         return redirect('/order/menu')->with('message', 'Password reset successfully. Welcome back!');
     }
 
@@ -219,8 +222,11 @@ class CustomerPortalController extends Controller
 
         // Redirect to profile setup if this is a first-time customer
         if (! $customer->is_profile_complete) {
+            $this->queueHandoffCookies($customer);
             return redirect()->route('customer.complete-profile');
         }
+
+        $this->queueHandoffCookies($customer);
 
         $intendedUrl = session('intended_url', '/order/menu');
         session()->forget('intended_url');
@@ -253,8 +259,11 @@ class CustomerPortalController extends Controller
         $request->session()->regenerate();
 
         if (! $customer->is_profile_complete) {
+            $this->queueHandoffCookies($customer);
             return redirect()->route('customer.complete-profile');
         }
+
+        $this->queueHandoffCookies($customer);
 
         $intendedUrl = session('intended_url', '/order/menu');
         session()->forget('intended_url');
@@ -299,6 +308,8 @@ class CustomerPortalController extends Controller
             'is_profile_complete' => true,
         ]);
 
+        $this->queueHandoffCookies($customer);
+
         $intendedUrl = session('intended_url', '/order/menu');
         session()->forget('intended_url');
         if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
@@ -320,6 +331,23 @@ class CustomerPortalController extends Controller
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Queue short-lived non-httponly cookies so the React order app can
+     * detect the Blade login without touching the session cookie.
+     * TTL: 24 hours — the React app consumes and deletes them on first mount.
+     */
+    private function queueHandoffCookies(Customer $customer): void
+    {
+        $token  = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        $name   = $customer->name ?? $customer->phone ?? '';
+        $domain = config('session.domain'); // .bakeandgrill.mv
+        $secure = request()->isSecure();
+
+        // non-httponly so React JS can read with document.cookie
+        Cookie::queue('_cauth',      $token, 1440, '/', $domain, $secure, false, false, 'Lax');
+        Cookie::queue('_cauth_name', $name,  1440, '/', $domain, $secure, false, false, 'Lax');
+    }
 
     private function normalizePhone(string $phone): string
     {

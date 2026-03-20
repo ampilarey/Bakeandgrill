@@ -91,13 +91,14 @@ Route::prefix('auth/staff')->group(function () {
 |--------------------------------------------------------------------------
 | Customer Authentication Routes
 |--------------------------------------------------------------------------
-| StartSession is added so that Auth::guard('customer')->login() persists
-| the session cookie, enabling unified login across the Blade site and
-| the React order app (same-domain cookie with SESSION_DOMAIN set).
+| NOTE: No StartSession here — adding StartSession to API routes causes the
+| session cookie to be rewritten without EncryptCookies, which corrupts the
+| Blade site's session and logs users out of the main website.
+| Cross-app auth is handled via a short-lived _cauth handoff cookie set
+| by the Blade login controller (CustomerPortalController).
 |--------------------------------------------------------------------------
 */
 Route::prefix('auth/customer')
-    ->middleware(\Illuminate\Session\Middleware\StartSession::class)
     ->group(function () {
         // Existing OTP flow
         Route::post('/otp/request', [CustomerAuthController::class, 'requestOtp'])

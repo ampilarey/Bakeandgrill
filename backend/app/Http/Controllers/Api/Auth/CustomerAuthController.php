@@ -144,12 +144,6 @@ class CustomerAuthController extends Controller
 
         $customer->update(['last_login_at' => now()]);
 
-        // Start session-based auth (unified login — also logs in on Blade site)
-        Auth::guard('customer')->login($customer);
-        if ($request->hasSession()) {
-            $request->session()->regenerate();
-        }
-
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
@@ -247,12 +241,6 @@ class CustomerAuthController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
-
-        // Start session-based auth (unified login — also logs in on Blade site)
-        Auth::guard('customer')->login($customer);
-        if ($request->hasSession()) {
-            $request->session()->regenerate();
-        }
 
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
@@ -354,12 +342,6 @@ class CustomerAuthController extends Controller
             'password'        => $input['password'],
             'last_login_at'   => now(),
         ]);
-
-        // Start session-based auth after password reset
-        Auth::guard('customer')->login($customer);
-        if ($request->hasSession()) {
-            $request->session()->regenerate();
-        }
 
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 

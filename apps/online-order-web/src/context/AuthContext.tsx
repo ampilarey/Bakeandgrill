@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { checkSession } from '../api';
 
 interface AuthState {
   token: string | null;
   customerName: string | null;
-  /** true once the initial session check has resolved (success or failure) */
+  /** true once the initial handoff-cookie check has resolved */
   authReady: boolean;
   setAuth: (token: string, name: string) => void;
   clearAuth: () => void;
@@ -18,33 +17,52 @@ const AuthContext = createContext<AuthState>({
   clearAuth: () => {},
 });
 
+/** Read and immediately delete a short-lived handoff cookie set by the Blade login. */
+function consumeHandoffCookies(): { token: string; name: string } | null {
+  const get = (name: string) => {
+    const match = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
+    return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : null;
+  };
+  const token = get('_cauth');
+  if (!token) return null;
+
+  const name = get('_cauth_name') ?? '';
+
+  // Consume immediately so the token isn't left in cookies any longer than needed
+  const domain = window.location.hostname.includes('.')
+    ? '.' + window.location.hostname.split('.').slice(-2).join('.')
+    : window.location.hostname;
+  const expire = '; Max-Age=0; path=/; domain=' + domain;
+  document.cookie = '_cauth=' + expire;
+  document.cookie = '_cauth_name=' + expire;
+
+  return { token, name };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken]               = useState<string | null>(() => localStorage.getItem('online_token'));
   const [customerName, setCustomerName] = useState<string | null>(() => localStorage.getItem('online_customer_name'));
   const [authReady, setAuthReady]       = useState<boolean>(() => !!localStorage.getItem('online_token'));
 
-  // On mount: if no token, probe the Blade session cookie for a cross-app login
+  // On mount: check for a handoff cookie set by the Blade login controller.
+  // This is how "log in on main site → order app knows you're logged in" works,
+  // without touching the session cookie (which would corrupt the Blade session).
   useEffect(() => {
-    let cancelled = false;
-
-    if (!localStorage.getItem('online_token')) {
-      checkSession()
-        .then((r) => {
-          if (cancelled) return;
-          if (r.authenticated) {
-            const n = r.customer.name ?? r.customer.phone ?? '';
-            localStorage.setItem('online_token', r.token);
-            if (n) localStorage.setItem('online_customer_name', n);
-            setToken(r.token);
-            setCustomerName(n || null);
-            window.dispatchEvent(new Event('auth_change'));
-          }
-        })
-        .catch(() => { /* not logged in — ignore */ })
-        .finally(() => { if (!cancelled) setAuthReady(true); });
+    if (localStorage.getItem('online_token')) {
+      // Already have a token — nothing to do
+      setAuthReady(true);
+      return;
     }
 
-    return () => { cancelled = true; };
+    const handoff = consumeHandoffCookies();
+    if (handoff) {
+      localStorage.setItem('online_token', handoff.token);
+      if (handoff.name) localStorage.setItem('online_customer_name', handoff.name);
+      setToken(handoff.token);
+      setCustomerName(handoff.name || null);
+      window.dispatchEvent(new Event('auth_change'));
+    }
+    setAuthReady(true);
   }, []);
 
   // Sync with localStorage changes (other tabs, manual changes, auth_change events)
