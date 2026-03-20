@@ -130,6 +130,16 @@
             background: rgba(26, 18, 8, 0.94);
         }
         [data-theme="dark"] .mob-nav-order { background: var(--amber); }
+        [data-theme="dark"] .mob-nav-preorder {
+            background: rgba(224, 146, 66, 0.2);
+            color: #f4c48a !important;
+            border: 1.5px solid rgba(224, 146, 66, 0.55);
+            box-sizing: border-box;
+        }
+        [data-theme="dark"] .mob-nav-preorder:hover {
+            background: rgba(224, 146, 66, 0.32);
+            border-color: var(--amber);
+        }
 
         .dark-toggle {
             background: var(--surface);
@@ -400,6 +410,18 @@
             border-radius: 12px;
         }
         .mob-nav-order:hover { background: var(--amber-hover); }
+        /* Pre-order — same orange family as Order, softer pill (outline + tint) */
+        .mob-nav-preorder {
+            background: var(--amber-light);
+            color: var(--amber) !important;
+            border: 1.5px solid rgba(212, 129, 58, 0.42);
+            border-radius: 12px;
+            box-sizing: border-box;
+        }
+        .mob-nav-preorder:hover {
+            background: #fde5d4;
+            border-color: var(--amber);
+        }
 
         /* ─── Footer ────────────────────────────────────────────── */
         .site-footer {
@@ -933,7 +955,7 @@
         <a href="/order/" class="mob-nav-item mob-nav-order">
             <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-cart"/></svg>Order
         </a>
-        <a href="/order/pre-order" class="mob-nav-item">
+        <a href="/order/pre-order" class="mob-nav-item mob-nav-preorder">
             <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Pre-order
         </a>
         @auth('customer')

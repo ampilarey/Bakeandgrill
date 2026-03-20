@@ -346,7 +346,7 @@ export function Layout() {
           </Link>
           <Link
             to="/pre-order"
-            className={`order-mob-item${location.pathname === '/pre-order' ? ' order-mob-active' : ''}`}
+            className={`order-mob-item order-mob-preorder${location.pathname === '/pre-order' ? ' order-mob-active' : ''}`}
           >
             <span className="order-mob-icon"><PreOrderIcon size={20} /></span>
             Pre-order

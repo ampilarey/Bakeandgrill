@@ -838,6 +838,34 @@ textarea.field-input {
   border-radius: 12px;
 }
 .order-mob-order:hover { background: var(--color-primary-dark, #b45309); }
+/* Pre-order — same orange family as Order, softer pill (tint + border) */
+.order-mob-preorder {
+  background: var(--color-primary-light);
+  color: var(--color-primary) !important;
+  border: 1.5px solid rgba(217, 119, 6, 0.45);
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+.order-mob-preorder:hover {
+  background: #fde5d4;
+  border-color: var(--color-primary);
+}
+.order-mob-preorder.order-mob-active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.25);
+}
+[data-theme="dark"] .order-mob-preorder {
+  background: rgba(226, 138, 26, 0.22);
+  color: #f4c48a !important;
+  border-color: rgba(226, 138, 26, 0.55);
+}
+[data-theme="dark"] .order-mob-preorder:hover {
+  background: rgba(226, 138, 26, 0.34);
+  border-color: var(--color-primary);
+}
+[data-theme="dark"] .order-mob-preorder.order-mob-active {
+  box-shadow: 0 0 0 1px rgba(226, 138, 26, 0.35);
+}
 
 /* Show mobile nav + add footer bottom padding on small screens */
 @media (max-width: 768px) {
