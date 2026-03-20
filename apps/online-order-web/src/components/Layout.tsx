@@ -3,9 +3,10 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
-import { getCustomerMe, checkSession } from '../api';
+import { getCustomerMe } from '../api';
 
 
 export function Layout() {
@@ -33,69 +34,32 @@ export function Layout() {
   const addrLine1  = addrParts[0]?.trim() || address;
   const addrCity   = addrParts.slice(1).join(',').trim() || 'Maldives';
 
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('online_token'));
-  const [customerName, setCustomerName] = useState<string | null>(() => localStorage.getItem('online_customer_name'));
+  const { token, customerName, clearAuth } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
-  // On mount:
-  // 1. If there's no token at all, try the session cookie (customer may have logged in on
-  //    the Blade site). GET /api/auth/customer/check returns a fresh Bearer token if the
-  //    session is active — unified cross-app auth.
-  // 2. If there's a token but no saved display name, hydrate from the customer API.
+  // If token exists but name is missing, hydrate from API
   useEffect(() => {
     let cancelled = false;
-
-    const existingToken  = localStorage.getItem('online_token');
-    const existingName   = localStorage.getItem('online_customer_name');
-
-    if (!existingToken) {
-      // No localStorage token — check for an active session cookie (Blade login)
-      checkSession()
-        .then((r) => {
-          if (cancelled || !r.authenticated) return;
-          const n = r.customer.name ?? r.customer.phone ?? '';
-          localStorage.setItem('online_token', r.token);
-          if (n) localStorage.setItem('online_customer_name', n);
-          window.dispatchEvent(new Event('auth_change'));
-        })
-        .catch(() => { /* Not logged in — silently ignore */ });
-    } else if (!existingName) {
-      // Token exists but name is missing — hydrate from API
+    const existingToken = localStorage.getItem('online_token');
+    const existingName  = localStorage.getItem('online_customer_name');
+    if (existingToken && !existingName) {
       getCustomerMe(existingToken)
         .then((r) => {
           if (cancelled) return;
           const n = r.customer.name ?? r.customer.phone ?? '';
           if (n) {
             localStorage.setItem('online_customer_name', n);
-            setCustomerName(n);
             window.dispatchEvent(new Event('auth_change'));
           }
         })
         .catch(() => {
           if (cancelled) return;
-          localStorage.removeItem('online_token');
-          localStorage.removeItem('online_customer_name');
-          setToken(null);
-          setCustomerName(null);
+          clearAuth();
         });
     }
-
     return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    const sync = () => {
-      setToken(localStorage.getItem('online_token'));
-      setCustomerName(localStorage.getItem('online_customer_name'));
-    };
-    window.addEventListener('storage', sync);
-    window.addEventListener('auth_change', sync);
-    return () => {
-      window.removeEventListener('storage', sync);
-      window.removeEventListener('auth_change', sync);
-    };
-  }, []);
+  }, [clearAuth]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = darkMode ? 'dark' : '';
@@ -103,10 +67,7 @@ export function Layout() {
   }, [darkMode]);
 
   const handleLogout = () => {
-    localStorage.removeItem('online_token');
-    localStorage.removeItem('online_customer_name');
-    setToken(null);
-    setCustomerName(null);
+    clearAuth();
     navigate('/');
   };
 

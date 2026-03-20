@@ -6,6 +6,7 @@ import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './context/AuthContext';
 import { Layout } from './components/Layout';
 import { ScrollToTop } from './components/ScrollToTop';
 import './index.css';
@@ -44,6 +45,7 @@ ReactDOM.createRoot(rootEl).render(
         <LanguageProvider>
           <CartProvider>
             <ToastProvider>
+            <AuthProvider>
             <BrowserRouter basename="/order">
               <ScrollToTop />
               <Suspense fallback={<PageSkeleton />}>
@@ -68,6 +70,7 @@ ReactDOM.createRoot(rootEl).render(
                 </Routes>
               </Suspense>
             </BrowserRouter>
+            </AuthProvider>
             </ToastProvider>
           </CartProvider>
         </LanguageProvider>
