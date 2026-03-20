@@ -731,22 +731,18 @@ textarea.field-input {
   padding: 0.5rem;
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
+/* Always 5 columns — logged-out has 4 tabs (5th cell empty); logged-in has 5 tabs */
 .order-mob-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.25rem;
-}
-/* Logged-in customers: 5th tab (Orders) */
-.order-mob-grid--5 {
   grid-template-columns: repeat(5, 1fr);
   gap: 0.12rem;
 }
-.order-mob-grid--5 .order-mob-item {
+.order-mob-grid .order-mob-item {
   font-size: 0.52rem;
   padding: 0.35rem 0.08rem;
   letter-spacing: 0.02em;
 }
-.order-mob-grid--5 .order-mob-icon svg {
+.order-mob-grid .order-mob-icon svg {
   width: 18px;
   height: 18px;
 }

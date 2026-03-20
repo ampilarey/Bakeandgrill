@@ -373,7 +373,7 @@ export function Layout() {
 
       {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
-        <div className={`order-mob-grid${token ? ' order-mob-grid--5' : ''}`}>
+        <div className="order-mob-grid">
           <a href="/" className={`order-mob-item${location.pathname === '/' ? ' order-mob-active' : ''}`}>
             <span className="order-mob-icon"><HomeIcon size={20} /></span>
             Home
