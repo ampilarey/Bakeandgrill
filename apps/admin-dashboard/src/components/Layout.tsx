@@ -8,6 +8,7 @@ import {
   Users, Settings, LogOut, Menu, X,
   ChevronLeft, ChevronRight,
   Heart, MessageSquare, BarChart2, Factory, Webhook,
+  Gift, Star, Tag, RotateCcw, Trash2,
 } from 'lucide-react';
 
 // ── Navigation structure ──────────────────────────────────────────────────────
@@ -22,25 +23,40 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'BUSINESS',
+    label: 'MENU & INVENTORY',
     items: [
-      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu',         permission: 'menu.view'             },
-      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs',  permission: 'suppliers.purchases'   },
-      { to: '/promotions',      icon: Target,          label: 'Promotions',   permission: 'promotions.view'       },
-      { to: '/loyalty',         icon: Heart,           label: 'Loyalty',      permission: 'loyalty.view'          },
-      { to: '/sms',             icon: MessageSquare,   label: 'SMS',          permission: 'integrations.sms'      },
-      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations', permission: 'reservations.view'     },
+      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu Items',    permission: 'menu.view'           },
+      { to: '/specials',        icon: Tag,             label: 'Daily Specials',permission: 'menu.manage'         },
+      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs',   permission: 'suppliers.purchases' },
+      { to: '/waste-logs',      icon: Trash2,          label: 'Waste Tracking',permission: 'menu.manage'         },
+    ],
+  },
+  {
+    label: 'CUSTOMERS',
+    items: [
+      { to: '/loyalty',         icon: Heart,           label: 'Loyalty',       permission: 'loyalty.view'        },
+      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations',  permission: 'reservations.view'   },
+      { to: '/reviews',         icon: Star,            label: 'Reviews',       permission: 'customers.manage'    },
+      { to: '/gift-cards',      icon: Gift,            label: 'Gift Cards',    permission: 'promotions.manage'   },
+    ],
+  },
+  {
+    label: 'MARKETING',
+    items: [
+      { to: '/promotions',      icon: Target,          label: 'Promotions',    permission: 'promotions.view'     },
+      { to: '/sms',             icon: MessageSquare,   label: 'SMS Campaigns', permission: 'integrations.sms'   },
     ],
   },
   {
     label: 'FINANCE',
     items: [
-      { to: '/reports',                icon: BarChart3,    label: 'Reports',       permission: 'reports.view'       },
-      { to: '/invoices',               icon: DollarSign,   label: 'Invoices',       permission: 'finance.invoices'   },
-      { to: '/expenses',               icon: Receipt,      label: 'Expenses',       permission: 'finance.expenses'   },
-      { to: '/profit-loss',            icon: PieChart,     label: 'Profit & Loss',  permission: 'finance.profit_loss'},
-      { to: '/forecasts',              icon: TrendingDown, label: 'Forecasts',      permission: 'reports.financial'  },
-      { to: '/supplier-intelligence',  icon: Factory,      label: 'Suppliers',      permission: 'suppliers.view'     },
+      { to: '/reports',               icon: BarChart3,    label: 'Reports',        permission: 'reports.view'       },
+      { to: '/invoices',              icon: DollarSign,   label: 'Invoices',       permission: 'finance.invoices'   },
+      { to: '/expenses',              icon: Receipt,      label: 'Expenses',       permission: 'finance.expenses'   },
+      { to: '/refunds',               icon: RotateCcw,    label: 'Refunds',        permission: 'orders.manage'      },
+      { to: '/profit-loss',           icon: PieChart,     label: 'Profit & Loss',  permission: 'finance.profit_loss'},
+      { to: '/forecasts',             icon: TrendingDown, label: 'Forecasts',      permission: 'reports.financial'  },
+      { to: '/supplier-intelligence', icon: Factory,      label: 'Suppliers',      permission: 'suppliers.view'     },
     ],
   },
   {

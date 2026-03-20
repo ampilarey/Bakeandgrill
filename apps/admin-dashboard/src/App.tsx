@@ -26,6 +26,11 @@ const WebhooksPage            = lazy(() => import('./pages/WebhooksPage').then((
 const DashboardPage           = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazy(() => import('./pages/TestChecklistPage'));
 const SettingsPage            = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const GiftCardsPage           = lazy(() => import('./pages/GiftCardsPage'));
+const ReviewsPage             = lazy(() => import('./pages/ReviewsPage'));
+const SpecialsPage            = lazy(() => import('./pages/SpecialsPage'));
+const RefundsPage             = lazy(() => import('./pages/RefundsPage'));
+const WasteLogsPage           = lazy(() => import('./pages/WasteLogsPage'));
 
 function PageFallback() {
   return (
@@ -226,6 +231,32 @@ export default function App() {
                 <Route path="settings/*" element={
                   <PermissionGuard user={user} permission="website.manage">
                     <SettingsPage />
+                  </PermissionGuard>
+                } />
+                {/* New feature pages */}
+                <Route path="gift-cards" element={
+                  <PermissionGuard user={user} permission="promotions.manage">
+                    <GiftCardsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="reviews" element={
+                  <PermissionGuard user={user} permission="customers.manage">
+                    <ReviewsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="specials" element={
+                  <PermissionGuard user={user} permission="menu.manage">
+                    <SpecialsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="refunds" element={
+                  <PermissionGuard user={user} permission="orders.manage">
+                    <RefundsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="waste-logs" element={
+                  <PermissionGuard user={user} permission="menu.manage">
+                    <WasteLogsPage />
                   </PermissionGuard>
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />

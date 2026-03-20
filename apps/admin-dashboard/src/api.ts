@@ -882,3 +882,144 @@ export async function getUserPermissions(userId: number): Promise<{ user_id: num
 export async function updateUserPermissions(userId: number, permissions: Record<string, boolean | null>): Promise<void> {
   await req(`/users/${userId}/permissions`, { method: 'PUT', body: JSON.stringify({ permissions }) });
 }
+
+// ── Gift Cards ────────────────────────────────────────────────────────────────
+export interface GiftCard {
+  id: number;
+  code: string;
+  initial_balance: number;
+  current_balance: number;
+  status: 'active' | 'redeemed' | 'expired' | 'cancelled';
+  expires_at: string | null;
+  issued_to: { id: number; name: string } | null;
+  created_at?: string;
+}
+
+export async function fetchGiftCards(params?: { page?: number }): Promise<{ data: GiftCard[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  return req(`/admin/gift-cards?${qs}`);
+}
+
+export async function issueGiftCard(data: { amount: number; customer_id?: number | null; expires_at?: string | null }): Promise<{ gift_card: GiftCard }> {
+  return req('/admin/gift-cards', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function checkGiftCardBalance(code: string): Promise<{ code: string; current_balance: number; expires_at: string | null }> {
+  return req(`/gift-cards/${encodeURIComponent(code)}/balance`);
+}
+
+// ── Reviews ───────────────────────────────────────────────────────────────────
+export interface Review {
+  id: number;
+  rating: number;
+  comment: string | null;
+  type: string;
+  status: 'pending' | 'approved' | 'rejected';
+  is_anonymous: boolean;
+  author: string;
+  item: { id: number; name: string } | null;
+  order: { id: number; order_number: string } | null;
+  created_at: string;
+}
+
+export async function fetchAdminReviews(params?: { status?: string; page?: number }): Promise<{ data: Review[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set('status', params.status);
+  if (params?.page) qs.set('page', String(params.page));
+  return req(`/admin/reviews?${qs}`);
+}
+
+export async function moderateReview(id: number, status: 'approved' | 'rejected'): Promise<{ review: Review }> {
+  return req(`/admin/reviews/${id}/moderate`, { method: 'PATCH', body: JSON.stringify({ status }) });
+}
+
+// ── Daily Specials ────────────────────────────────────────────────────────────
+export interface DailySpecial {
+  id: number;
+  item_id: number;
+  item_name: string | null;
+  item_image: string | null;
+  badge_label: string;
+  special_price: number | null;
+  discount_pct: number | null;
+  effective_price: number | null;
+  original_price: number | null;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  days_of_week: number[] | null;
+  is_active: boolean;
+  sold_count: number;
+  max_quantity: number | null;
+}
+
+export async function fetchSpecials(params?: { page?: number }): Promise<{ data: DailySpecial[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  return req(`/admin/specials?${qs}`);
+}
+
+export async function createSpecial(data: Partial<DailySpecial>): Promise<{ special: DailySpecial }> {
+  return req('/admin/specials', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSpecial(id: number, data: Partial<DailySpecial>): Promise<{ special: DailySpecial }> {
+  return req(`/admin/specials/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteSpecial(id: number): Promise<void> {
+  await req(`/admin/specials/${id}`, { method: 'DELETE' });
+}
+
+// ── Waste Logs ────────────────────────────────────────────────────────────────
+export interface WasteLog {
+  id: number;
+  item: { id: number; name: string } | null;
+  inventory_item: { id: number; name: string } | null;
+  quantity: number;
+  unit: string | null;
+  cost_estimate: number | null;
+  reason: string;
+  notes: string | null;
+  logged_by: string | null;
+  created_at: string;
+}
+
+export async function fetchWasteLogs(params?: { from?: string; to?: string; page?: number }): Promise<{ data: WasteLog[]; meta: { current_page: number; last_page: number; total: number }; total_cost: number }> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  if (params?.page) qs.set('page', String(params.page));
+  return req(`/waste-logs?${qs}`);
+}
+
+export async function createWasteLog(data: { item_id?: number; inventory_item_id?: number; quantity: number; unit?: string; cost_estimate?: number; reason: string; notes?: string }): Promise<{ waste_log: WasteLog }> {
+  return req('/waste-logs', { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ── Refunds ───────────────────────────────────────────────────────────────────
+export interface AdminRefund {
+  id: number;
+  order_id: number;
+  order?: { id: number; order_number: string };
+  amount: number;
+  reason: string | null;
+  status: string;
+  processed_at: string | null;
+  created_at: string;
+  user?: { name: string };
+}
+
+export async function fetchAdminRefunds(params?: { page?: number; status?: string }): Promise<{ refunds: { data: AdminRefund[]; current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.status) qs.set('status', params.status);
+  return req(`/refunds?${qs}`);
+}
+
+export async function issueRefund(orderId: number, data: { amount: number; reason?: string }): Promise<{ refund: AdminRefund }> {
+  return req(`/orders/${orderId}/refunds`, { method: 'POST', body: JSON.stringify(data) });
+}
