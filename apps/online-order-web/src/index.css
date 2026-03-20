@@ -23,7 +23,15 @@
   --color-warning-bg:    #fef9c3;
   --color-error:         #dc2626;
   --color-error-bg:      #fee2e2;
+  /** Heading / logo text (flips in dark mode) — do NOT use for footer backgrounds */
   --color-dark:          #1c1408;
+  /** Always-dark strip behind footer (independent of --color-dark) */
+  --color-footer-bg:     #1c1408;
+  /** Sticky header / mobile nav scrim */
+  --color-header-bg:     rgba(255, 251, 245, 0.94);
+  --color-mobile-nav-bg: rgba(255, 253, 249, 0.97);
+  /** Skeleton shimmer mid-stop */
+  --color-skeleton-mid:  #ede8e0;
 
   /* ── Aliases for backward compat (point to canonical tokens) ── */
   --amber:        var(--color-primary);
@@ -78,6 +86,22 @@
   --color-primary-light: rgba(226,138,26,0.15);
   --color-primary-glow:  rgba(226,138,26,0.25);
   --color-dark:          #f5ede0;
+  --color-footer-bg:     #0e0a04;
+  --color-header-bg:     rgba(26, 18, 8, 0.94);
+  --color-mobile-nav-bg: rgba(26, 18, 8, 0.97);
+  --color-skeleton-mid:  #3d3428;
+  /* Semantic states — tuned for dark surfaces */
+  --color-success:       #4ade80;
+  --color-success-bg:    rgba(34, 197, 94, 0.14);
+  --color-warning:       #facc15;
+  --color-warning-bg:    rgba(234, 179, 8, 0.12);
+  --color-error:         #f87171;
+  --color-error-bg:      rgba(248, 113, 113, 0.12);
+}
+
+/* ── Order app sticky header (class on Layout root header) ───────── */
+.order-app-header {
+  background: var(--color-header-bg);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -210,7 +234,7 @@ a { text-decoration: none; color: inherit; }
 }
 
 .cart-card {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 1.5rem;
@@ -238,6 +262,18 @@ a { text-decoration: none; color: inherit; }
 .badge-spicy      { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
 .badge-mto        { background: rgba(22,163,74,0.1); color: #15803d; border: 1px solid rgba(22,163,74,0.2); }
 .badge-combo      { background: rgba(79,70,229,0.1); color: #4338ca; border: 1px solid rgba(79,70,229,0.2); }
+[data-theme="dark"] .badge-bestseller {
+  background: rgba(251,191,36,0.14); color: #fcd34d; border-color: rgba(251,191,36,0.35);
+}
+[data-theme="dark"] .badge-spicy {
+  background: rgba(248,113,113,0.12); color: #fca5a5; border-color: rgba(248,113,113,0.3);
+}
+[data-theme="dark"] .badge-mto {
+  background: rgba(74,222,128,0.12); color: #86efac; border-color: rgba(74,222,128,0.28);
+}
+[data-theme="dark"] .badge-combo {
+  background: rgba(165,180,252,0.12); color: #c7d2fe; border-color: rgba(165,180,252,0.3);
+}
 .badge-unavail    { background: var(--color-surface-alt); color: var(--color-text-muted); border: 1px solid var(--color-border); }
 
 /* ════════════════════════════════════════════════════════════
@@ -324,9 +360,12 @@ textarea.field-input {
   border-radius: var(--radius-xl);
   font-size: 0.9375rem;
 }
-.banner-success { background: var(--color-success-bg); color: #14532d; border: 1px solid rgba(22,163,74,0.2); }
-.banner-error   { background: var(--color-error-bg);   color: #7f1d1d; border: 1px solid rgba(220,38,38,0.2); }
-.banner-warning { background: var(--color-warning-bg); color: #713f12; border: 1px solid rgba(202,138,4,0.2); }
+.banner-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid rgba(22,163,74,0.2); }
+.banner-error   { background: var(--color-error-bg);   color: var(--color-error); border: 1px solid rgba(220,38,38,0.2); }
+.banner-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid rgba(202,138,4,0.2); }
+[data-theme="dark"] .banner-success { border-color: rgba(74,222,128,0.25); }
+[data-theme="dark"] .banner-error   { border-color: rgba(248,113,113,0.25); }
+[data-theme="dark"] .banner-warning { border-color: rgba(250,204,21,0.25); }
 .banner-icon    { font-size: 1.375rem; flex-shrink: 0; line-height: 1; margin-top: 2px; }
 .banner-title   { font-weight: 700; margin-bottom: 2px; }
 .banner-sub     { opacity: 0.85; font-size: 0.875rem; }
@@ -361,7 +400,7 @@ textarea.field-input {
 .header {
   position: sticky;
   top: 0;
-  background: rgba(255, 251, 245, 0.94);
+  background: var(--color-header-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--color-border);
@@ -414,7 +453,7 @@ textarea.field-input {
 /* ════════════════════════════════════════════════════════════
    FOOTER
 ════════════════════════════════════════════════════════════ */
-.footer { background: var(--color-dark); color: white; padding: 3rem 1.5rem; margin-top: auto; }
+.footer { background: var(--color-footer-bg); color: white; padding: 3rem 1.5rem; margin-top: auto; }
 .footer-content {
   max-width: 1400px; margin: 0 auto;
   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -531,7 +570,7 @@ textarea.field-input {
    SKELETON LOADER
 ════════════════════════════════════════════════════════════ */
 .skeleton {
-  background: linear-gradient(90deg, var(--color-surface-alt) 25%, #ede8e0 50%, var(--color-surface-alt) 75%);
+  background: linear-gradient(90deg, var(--color-surface-alt) 25%, var(--color-skeleton-mid) 50%, var(--color-surface-alt) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
   border-radius: var(--radius-lg);
@@ -623,7 +662,7 @@ textarea.field-input {
    ORDER APP — FOOTER
 ════════════════════════════════════════════════════════════ */
 .order-footer {
-  background: var(--color-dark);
+  background: var(--color-footer-bg);
   color: white;
   padding: 4rem 2rem 2rem;
   margin-top: 5rem;
@@ -734,13 +773,16 @@ textarea.field-input {
   left: 0;
   right: 0;
   z-index: 300;
-  background: rgba(255, 253, 249, 0.97);
+  background: var(--color-mobile-nav-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--color-border);
   box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
   padding: 0.5rem;
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+[data-theme="dark"] .order-mobile-nav {
+  box-shadow: 0 -2px 16px rgba(0,0,0,0.35);
 }
 /* Always 5 columns — logged-out has 4 tabs (5th cell empty); logged-in has 5 tabs */
 .order-mob-grid {
@@ -1062,6 +1104,19 @@ textarea.field-input {
 }
 .menu-card-article.unavailable:hover {
   transform: none;
+}
+
+/* Unavailable overlay on menu card image */
+.menu-card-unavail-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+[data-theme="dark"] .menu-card-unavail-overlay {
+  background: rgba(0, 0, 0, 0.55);
 }
 
 /* Sidebar category button */

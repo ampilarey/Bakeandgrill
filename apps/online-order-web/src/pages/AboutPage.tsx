@@ -59,7 +59,7 @@ export function AboutPage() {
         <div style={{ display: 'flex', gap: '0.875rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link
             to="/hours"
-            style={{ background: 'white', color: 'var(--color-primary)', padding: '0.6rem 1.5rem', borderRadius: '999px', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
+            style={{ background: 'var(--color-surface)', color: 'var(--color-primary)', padding: '0.6rem 1.5rem', borderRadius: '999px', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
           >
             Opening Hours
           </Link>

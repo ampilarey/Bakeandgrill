@@ -103,6 +103,8 @@
             --success-text: #195C36;
             --danger-bg:    #FCE4E1;
             --danger-text:  #8C1C0E;
+            /* Dark bars with light text (hero, proof) — not the same as --dark heading text */
+            --inverse-section-bg: #1C1408;
         }
 
         [data-theme="dark"] {
@@ -120,13 +122,13 @@
             --success-text: #4ade80;
             --danger-bg:    #2d0f0a;
             --danger-text:  #f87171;
+            --inverse-section-bg: #0e0a04;
         }
         [data-theme="dark"] .site-header,
         [data-theme="dark"] .mobile-header,
         [data-theme="dark"] .mobile-bottom-nav {
             background: rgba(26, 18, 8, 0.94);
         }
-        [data-theme="dark"] .site-footer { background: #0e0a04; }
         [data-theme="dark"] .mob-nav-order { background: var(--amber); }
 
         .dark-toggle {
@@ -351,7 +353,7 @@
 
         /* ─── Footer ────────────────────────────────────────────── */
         .site-footer {
-            background: var(--dark);
+            background: var(--inverse-section-bg);
             color: white;
             padding: 4rem 2rem 2rem;
             margin-top: 5rem;

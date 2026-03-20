@@ -24,7 +24,7 @@ export function Input({ label, error, id, ...props }: InputProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
       {label && (
-        <label htmlFor={inputId} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-dark)' }}>
+        <label htmlFor={inputId} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
           {label}
         </label>
       )}
@@ -57,7 +57,7 @@ export function Textarea({ label, error, id, ...props }: TextareaProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
       {label && (
-        <label htmlFor={inputId} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-dark)' }}>
+        <label htmlFor={inputId} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
           {label}
         </label>
       )}

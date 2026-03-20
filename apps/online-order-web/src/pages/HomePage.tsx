@@ -290,7 +290,7 @@ export function HomePage() {
       </section>
 
       {/* ── Browse menu CTA ───────────────────────────────────── */}
-      <section style={{ background: 'var(--color-dark)', padding: '3rem 1.5rem', textAlign: 'center' }}>
+      <section style={{ background: 'var(--color-footer-bg)', padding: '3rem 1.5rem', textAlign: 'center' }}>
         <div style={{ maxWidth: '520px', margin: '0 auto' }}>
           <h2 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'white', marginBottom: '0.75rem', letterSpacing: '-0.03em' }}>
             Hungry? Browse the menu.

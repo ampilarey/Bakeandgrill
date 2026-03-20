@@ -419,7 +419,7 @@ const S = {
 
   header: {
     position: 'sticky' as const, top: 0,
-    background: 'rgba(255,251,245,0.95)',
+    background: 'var(--color-header-bg)',
     backdropFilter: 'blur(12px)',
     borderBottom: '1px solid var(--color-border)',
     padding: '12px 20px',
@@ -574,7 +574,7 @@ const S = {
   stickyPayBar: {
     position: 'fixed' as const,
     bottom: 0, left: 0, right: 0,
-    background: 'rgba(255,251,245,0.97)',
+    background: 'var(--color-header-bg)',
     backdropFilter: 'blur(12px)',
     borderTop: '1px solid var(--color-border)',
     padding: '12px 16px',

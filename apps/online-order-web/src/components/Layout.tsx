@@ -97,14 +97,16 @@ export function Layout() {
       <a href="#main-content" className="skip-link">Skip to content</a>
 
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header style={{
-        position: 'sticky', top: 0,
-        background: 'rgba(255, 251, 245, 0.94)',
-        borderBottom: '1px solid var(--color-border)',
-        zIndex: 100,
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-      }}>
+      <header
+        className="order-app-header"
+        style={{
+          position: 'sticky', top: 0,
+          borderBottom: '1px solid var(--color-border)',
+          zIndex: 100,
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+        }}
+      >
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem', height: '68px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
 
           {/* Logo — links to main website */}

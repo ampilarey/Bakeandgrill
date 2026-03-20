@@ -399,7 +399,7 @@ export function OrderStatusPage() {
               onClick={() => window.location.reload()}
               style={{
                 marginLeft: 12, padding: '6px 14px', fontSize: 13, fontWeight: 600,
-                background: '#fff', color: '#ef4444', border: '1.5px solid #ef4444',
+                background: 'var(--color-surface)', color: 'var(--color-error)', border: '1.5px solid var(--color-error)',
                 borderRadius: 8, cursor: 'pointer',
               }}
             >
@@ -415,7 +415,7 @@ export function OrderStatusPage() {
             {/* Status hero card */}
             <div style={{
               ...S.card,
-              background: isCancelled ? '#fff5f5' : statusInfo.bg,
+              background: isCancelled ? 'var(--color-error-bg)' : statusInfo.bg,
               borderColor: isCancelled ? 'rgba(220,38,38,0.2)' : 'transparent',
             }}>
               {/* Icon + label */}
@@ -423,7 +423,7 @@ export function OrderStatusPage() {
                 <div style={{
                   width: 56, height: 56,
                   borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.7)',
+                  background: 'var(--color-surface-alt)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 26, flexShrink: 0,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -434,7 +434,7 @@ export function OrderStatusPage() {
                   <p style={{ fontSize: 20, fontWeight: 800, color: statusInfo.color, margin: 0, letterSpacing: '-0.025em' }}>
                     {statusInfo.label}
                   </p>
-                  <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.55)', margin: '4px 0 0', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>
                     {statusInfo.sub}
                   </p>
                   {statusInfo.next && !isCancelled && (
@@ -445,7 +445,7 @@ export function OrderStatusPage() {
                 </div>
               </div>
 
-              <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)', fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
                 Order #{order.order_number}
               </p>
 
@@ -453,7 +453,7 @@ export function OrderStatusPage() {
               {!isCancelled && (
                 <div style={{ position: 'relative' }}>
                   {/* Background rail */}
-                  <div style={{ position: 'absolute', top: 13, left: '12.5%', right: '12.5%', height: 3, background: 'rgba(0,0,0,0.08)', borderRadius: 99 }} />
+                  <div style={{ position: 'absolute', top: 13, left: '12.5%', right: '12.5%', height: 3, background: 'var(--color-border)', borderRadius: 99 }} />
                   {/* Filled rail */}
                   <div style={{
                     position: 'absolute', top: 13, left: '12.5%',
@@ -472,11 +472,11 @@ export function OrderStatusPage() {
                         <div key={step.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                           <div style={{
                             width: 28, height: 28, borderRadius: '50%',
-                            background: (done || active) ? statusInfo.color : 'rgba(255,255,255,0.8)',
-                            border: `2.5px solid ${(done || active) ? statusInfo.color : 'rgba(0,0,0,0.12)'}`,
+                            background: (done || active) ? statusInfo.color : 'var(--color-surface)',
+                            border: `2.5px solid ${(done || active) ? statusInfo.color : 'var(--color-border)'}`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: 11, fontWeight: 800,
-                            color: (done || active) ? 'white' : 'rgba(0,0,0,0.3)',
+                            color: (done || active) ? 'white' : 'var(--color-text-muted)',
                             boxShadow: active ? `0 0 0 5px ${statusInfo.color}22` : 'none',
                             animation: active ? 'stepper-pulse 2s ease-in-out infinite' : 'none',
                             transition: 'all 0.3s',
@@ -485,7 +485,7 @@ export function OrderStatusPage() {
                           </div>
                           <span style={{
                             fontSize: 10, fontWeight: active ? 700 : 500,
-                            color: (done || active) ? statusInfo.color : 'rgba(0,0,0,0.4)',
+                            color: (done || active) ? statusInfo.color : 'var(--color-text-muted)',
                             textAlign: 'center', lineHeight: 1.2,
                             whiteSpace: 'nowrap',
                           }}>
@@ -570,7 +570,7 @@ export function OrderStatusPage() {
               <div style={{
                 ...S.card,
                 display: 'flex', alignItems: 'center', gap: 14,
-                background: 'linear-gradient(135deg, #fff7ed 0%, #fff 100%)',
+                background: 'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-surface) 100%)',
                 borderColor: 'rgba(234, 88, 12, 0.2)',
               }}>
                 <div style={{ fontSize: 28, flexShrink: 0 }}>🔔</div>
@@ -696,7 +696,7 @@ const S = {
 
   header: {
     position: 'sticky' as const, top: 0,
-    background: 'rgba(255,251,245,0.95)',
+    background: 'var(--color-header-bg)',
     backdropFilter: 'blur(12px)',
     borderBottom: '1px solid var(--color-border)',
     padding: '12px 20px',

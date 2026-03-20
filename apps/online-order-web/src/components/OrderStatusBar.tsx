@@ -120,7 +120,7 @@ export function OrderStatusBar() {
         <span style={{ fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
           #{order.order_number ?? order.id}
         </span>
-        <span style={{ color: s.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {s.label}
         </span>
       </Link>

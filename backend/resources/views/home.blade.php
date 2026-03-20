@@ -13,7 +13,7 @@
     position: relative;
     height: 600px;
     overflow: hidden;
-    background: var(--dark);
+    background: var(--inverse-section-bg);
 }
 @media (max-width: 768px) { .hero-banner { height: 420px; } }
 
@@ -468,7 +468,7 @@
    SOCIAL PROOF / STAT
 ══════════════════════════════════════════════════════════ */
 .proof-strip {
-    background: var(--dark);
+    background: var(--inverse-section-bg);
     padding: 5rem 2rem;
     text-align: center;
 }
@@ -662,6 +662,21 @@
     .btn-primary, .btn-outline { width: 100%; justify-content: center; }
 }
 
+/* ─── Dark mode: fix light-only section backgrounds & readability ─── */
+[data-theme="dark"] .section.alt {
+    background: var(--surface);
+}
+[data-theme="dark"] .cta-band {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%);
+}
+[data-theme="dark"] .product-img {
+    background: linear-gradient(145deg, var(--amber-light), var(--surface));
+}
+[data-theme="dark"] .cat-img-placeholder.hedhikaa,
+[data-theme="dark"] .cat-img-placeholder.pastry,
+[data-theme="dark"] .cat-img-placeholder.cake {
+    filter: brightness(0.85);
+}
 
 </style>
 @endsection

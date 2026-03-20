@@ -104,7 +104,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
                       border: `1.5px solid ${checked ? 'var(--color-primary)' : 'var(--color-border)'}`,
                       borderRadius: '10px',
                       cursor: 'pointer',
-                      background: checked ? 'var(--color-primary-light)' : 'white',
+                      background: checked ? 'var(--color-primary-light)' : 'var(--color-surface)',
                       transition: 'all 0.15s',
                     }}
                   >

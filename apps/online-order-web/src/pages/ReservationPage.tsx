@@ -87,10 +87,10 @@ export function ReservationPage() {
             {reservation.table && (
               <p style={s.sub}>Table: <b>{reservation.table.name}</b></p>
             )}
-            <p style={{ ...s.sub, color: "#6b7280", fontSize: 13 }}>
+            <p style={{ ...s.sub, color: "var(--color-text-muted)", fontSize: 13 }}>
               You'll receive an SMS confirmation shortly.
             </p>
-            <p style={{ ...s.sub, color: "#6b7280", fontSize: 12 }}>
+            <p style={{ ...s.sub, color: "var(--color-text-muted)", fontSize: 12 }}>
               Reference: <code>#{reservation.id}</code>
             </p>
             <button style={s.btn} onClick={() => navigate("/")}>Back to Menu</button>
@@ -172,28 +172,25 @@ export function ReservationPage() {
   );
 }
 
-const amber = "#D4813A";
-const amberLight = "#FEF3C7";
-
 const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: "100vh", background: "#F9FAFB", fontFamily: "system-ui, sans-serif" },
-  header: { background: "#1C1917", padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 },
-  back: { background: "none", border: "none", color: "#D1D5DB", cursor: "pointer", fontSize: 15 },
+  page: { minHeight: "100vh", background: "var(--color-bg)", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" },
+  header: { background: "var(--color-footer-bg)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 },
+  back: { background: "none", border: "none", color: "rgba(255,255,255,0.75)", cursor: "pointer", fontSize: 15 },
   title: { color: "white", fontSize: 22, fontWeight: 700, margin: 0 },
-  card: { maxWidth: 520, margin: "32px auto", background: "white", borderRadius: 16, padding: 32, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" },
-  heading: { fontSize: 22, fontWeight: 700, margin: "0 0 8px", color: "#1C1917" },
-  sub: { fontSize: 15, color: "#374151", margin: "0 0 16px" },
-  label: { display: "block", fontWeight: 600, fontSize: 14, color: "#374151", marginBottom: 6, marginTop: 16 },
-  input: { width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 15, boxSizing: "border-box" as const, outline: "none" },
+  card: { maxWidth: 520, margin: "32px auto", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 16, padding: 32, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" },
+  heading: { fontSize: 22, fontWeight: 700, margin: "0 0 8px", color: "var(--color-text)" },
+  sub: { fontSize: 15, color: "var(--color-text-muted)", margin: "0 0 16px" },
+  label: { display: "block", fontWeight: 600, fontSize: 14, color: "var(--color-text)", marginBottom: 6, marginTop: 16 },
+  input: { width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid var(--color-border)", fontSize: 15, boxSizing: "border-box" as const, outline: "none", background: "var(--color-surface)", color: "var(--color-text)" },
   stepper: { display: "flex", alignItems: "center", gap: 16, marginTop: 4 },
-  stepBtn: { width: 36, height: 36, borderRadius: "50%", border: `2px solid ${amber}`, background: "none", color: amber, fontSize: 20, cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" },
-  stepVal: { fontSize: 22, fontWeight: 700, color: "#1C1917", minWidth: 32, textAlign: "center" as const },
-  btn: { marginTop: 24, width: "100%", padding: "13px 0", borderRadius: 12, background: amber, color: "white", fontWeight: 700, fontSize: 16, border: "none", cursor: "pointer" },
-  error: { background: "#FEE2E2", color: "#B91C1C", padding: "10px 14px", borderRadius: 8, fontSize: 14, marginBottom: 12 },
-  backLink: { background: "none", border: "none", color: amber, cursor: "pointer", fontSize: 14, padding: 0, marginBottom: 12 },
+  stepBtn: { width: 36, height: 36, borderRadius: "50%", border: "2px solid var(--color-primary)", background: "none", color: "var(--color-primary)", fontSize: 20, cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" },
+  stepVal: { fontSize: 22, fontWeight: 700, color: "var(--color-text)", minWidth: 32, textAlign: "center" as const },
+  btn: { marginTop: 24, width: "100%", padding: "13px 0", borderRadius: 12, background: "var(--color-primary)", color: "white", fontWeight: 700, fontSize: 16, border: "none", cursor: "pointer" },
+  error: { background: "var(--color-error-bg)", color: "var(--color-error)", padding: "10px 14px", borderRadius: 8, fontSize: 14, marginBottom: 12 },
+  backLink: { background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: 14, padding: 0, marginBottom: 12 },
   slotGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 },
-  slotBtn: { padding: "10px 0", borderRadius: 10, border: `2px solid #E5E7EB`, background: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#374151" },
-  slotSelected: { borderColor: amber, background: amberLight, color: amber },
+  slotBtn: { padding: "10px 0", borderRadius: 10, border: "2px solid var(--color-border)", background: "var(--color-surface)", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "var(--color-text)" },
+  slotSelected: { borderColor: "var(--color-primary)", background: "var(--color-primary-light)", color: "var(--color-primary)" },
   slotDisabled: { opacity: 0.4, cursor: "not-allowed" },
-  successIcon: { fontSize: 56, color: "#10B981", marginBottom: 12 },
+  successIcon: { fontSize: 56, color: "var(--color-success)", marginBottom: 12 },
 };

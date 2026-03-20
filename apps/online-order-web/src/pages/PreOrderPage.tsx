@@ -345,7 +345,7 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'inherit',
   },
   totalBar: {
-    position: 'sticky', bottom: 0, background: 'rgba(255,251,245,0.97)',
+    position: 'sticky', bottom: 0, background: 'var(--color-header-bg)',
     backdropFilter: 'blur(12px)', borderTop: '1px solid var(--color-border)',
     padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     gap: '1rem', flexWrap: 'wrap',

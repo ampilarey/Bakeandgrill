@@ -81,11 +81,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
 
         {/* Unavailable overlay */}
         {isUnavailable && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'rgba(255,255,255,0.65)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+          <div className="menu-card-unavail-overlay">
             <span className="badge badge-unavail">Unavailable</span>
           </div>
         )}
