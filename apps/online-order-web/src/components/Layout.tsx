@@ -456,7 +456,7 @@ export function Layout() {
               type="button"
               className="order-mob-item"
               onClick={() => void handleLogout()}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-error, #dc2626)', padding: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-error, #dc2626)' }}
             >
               <span className="order-mob-icon"><LogOutIcon size={20} /></span>
               Logout
