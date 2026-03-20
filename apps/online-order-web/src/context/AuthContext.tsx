@@ -56,6 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── On mount ────────────────────────────────────────────────────────────────
   useEffect(() => {
+    // Check for Blade logout signal first — this covers the case where the
+    // user logged out on the main website and then navigated to the order app.
+    const revoked = getCookie('_cauth_revoked');
+    if (revoked) {
+      deleteCookie('_cauth_revoked');
+      localStorage.removeItem('online_token');
+      localStorage.removeItem('online_customer_name');
+      setToken(null);
+      setCustomerName(null);
+      setAuthReady(true);
+      return;
+    }
+
     const existingToken = localStorage.getItem('online_token');
 
     if (existingToken) {
