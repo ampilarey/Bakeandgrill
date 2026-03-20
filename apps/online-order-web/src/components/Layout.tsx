@@ -99,24 +99,6 @@ export function Layout() {
           {/* Desktop Nav — main site links use <a>, order links use Link */}
           <nav style={{ display: 'flex', alignItems: 'center', gap: '0.125rem', flex: 1, marginLeft: '0.75rem' }} className="desktop-nav" aria-label="Main navigation">
 
-            {/* ← Back to website — most prominent nav item */}
-            <a
-              href="/"
-              className="nav-pill-hover"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                padding: '0.45rem 0.875rem',
-                borderRadius: '8px', fontSize: '0.875rem',
-                fontWeight: 600, color: 'var(--color-primary)',
-                textDecoration: 'none',
-                background: 'var(--color-primary-light)',
-                border: '1px solid rgba(217,119,6,0.2)',
-                marginRight: '0.25rem',
-              }}
-            >
-              ← Website
-            </a>
-
             {/* Order app nav (React Router) */}
             {[
               { to: '/menu',      label: 'Menu' },
