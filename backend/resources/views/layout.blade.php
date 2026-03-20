@@ -385,7 +385,14 @@
             letter-spacing: 0.02em;
             min-height: 44px;
         }
-        .mob-nav-grid .mob-nav-icon { font-size: 1.15rem; }
+        /* Outline SVGs — same paths as order app (apps/online-order-web icons) */
+        .mob-nav-icon-svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            display: block;
+            color: inherit;
+        }
         .mob-nav-icon { font-size: 1.3rem; line-height: 1; }
         .mob-nav-order {
             background: var(--amber);
@@ -905,37 +912,46 @@
     </div>
 </footer>
 
-{{-- ─── Mobile Bottom Navigation ────────────────────────────────── --}}
+{{-- ─── Mobile Bottom Navigation (SVG icons match order app) ─────── --}}
+<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="mob-nav-home" viewBox="0 0 24 24"><path d="M3 9.75L12 3l9 6.75V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.75z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="mob-nav-menu" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="mob-nav-cart" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 10a4 4 0 01-8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="mob-nav-preorder" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="mob-nav-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="12 6 12 12 16 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="mob-nav-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="mob-nav-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 17 21 12 16 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
 <nav class="mobile-bottom-nav">
     <div class="mob-nav-grid">
         <a href="/" class="mob-nav-item">
-            <span class="mob-nav-icon">🏠</span>Home
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-home"/></svg>Home
         </a>
         <a href="/order/menu" class="mob-nav-item">
-            <span class="mob-nav-icon">🍽️</span>Menu
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-menu"/></svg>Menu
         </a>
         <a href="/order/" class="mob-nav-item mob-nav-order">
-            <span class="mob-nav-icon">🛒</span>Order
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-cart"/></svg>Order
         </a>
         <a href="/order/pre-order" class="mob-nav-item">
-            <span class="mob-nav-icon">📅</span>Pre-order
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Pre-order
         </a>
         @auth('customer')
             <a href="/contact" class="mob-nav-item">
-                <span class="mob-nav-icon">📞</span>Contact
+                <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
             </a>
             <form method="POST" action="{{ route('customer.logout') }}" style="margin:0;padding:0;display:contents;">
                 @csrf
                 <button type="submit" class="mob-nav-item" style="background:none;border:none;cursor:pointer;font-family:inherit;color:var(--danger-text, #991b1b);">
-                    <span class="mob-nav-icon">🚪</span>Log out
+                    <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-logout"/></svg>Log out
                 </button>
             </form>
         @else
             <a href="/hours" class="mob-nav-item">
-                <span class="mob-nav-icon">🕐</span>Hours
+                <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-clock"/></svg>Hours
             </a>
             <a href="/contact" class="mob-nav-item">
-                <span class="mob-nav-icon">📞</span>Contact
+                <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
             </a>
         @endauth
     </div>
