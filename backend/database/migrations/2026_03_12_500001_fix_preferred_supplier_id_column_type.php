@@ -19,6 +19,12 @@ return new class extends Migration
     {
         Schema::table('inventory_items', function (Blueprint $table): void {
             if (Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {
+                // Drop the FK constraint first (MySQL won't allow dropping the column otherwise)
+                try {
+                    $table->dropForeign(['preferred_supplier_id']);
+                } catch (\Throwable) {
+                    // No FK existed on this column (it was a plain varchar) — safe to continue
+                }
                 $table->dropColumn('preferred_supplier_id');
             }
         });
