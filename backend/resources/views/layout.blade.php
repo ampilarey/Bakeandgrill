@@ -1,4 +1,25 @@
 @php
+    /* ── Order status bar data ─────────────────────────────── */
+    $orderBar = null;
+    if (Auth::guard('customer')->check()) {
+        $orderBar = \App\Models\Order::where('customer_id', Auth::guard('customer')->id())
+            ->orderBy('created_at', 'desc')
+            ->first(['id', 'order_number', 'status']);
+    }
+    $orderBarStatuses = [
+        'payment_pending' => ['label' => 'Awaiting payment', 'color' => '#92400e', 'dot' => '#f59e0b', 'active' => true],
+        'pending'         => ['label' => 'Payment received',  'color' => '#1e40af', 'dot' => '#3b82f6', 'active' => true],
+        'paid'            => ['label' => 'Confirmed',          'color' => '#065f46', 'dot' => '#10b981', 'active' => true],
+        'preparing'       => ['label' => 'Being prepared',     'color' => '#1e40af', 'dot' => '#3b82f6', 'active' => true],
+        'ready'           => ['label' => 'Ready for pickup',   'color' => '#065f46', 'dot' => '#10b981', 'active' => true],
+        'completed'       => ['label' => 'Completed',          'color' => '#374151', 'dot' => '#9ca3af', 'active' => false],
+        'cancelled'       => ['label' => 'Cancelled',          'color' => '#991b1b', 'dot' => '#ef4444', 'active' => false],
+    ];
+    $orderBarMeta = $orderBar ? ($orderBarStatuses[$orderBar->status] ?? ['label' => $orderBar->status, 'color' => '#374151', 'dot' => '#9ca3af', 'active' => false]) : null;
+    $orderBarLink = $orderBar
+        ? ($orderBarMeta['active'] ? '/order/orders/' . $orderBar->id : '/order/order-history')
+        : null;
+
     $siteName    = \App\Models\SiteSetting::get('site_name',        'Bake & Grill');
     $siteTagline = \App\Models\SiteSetting::get('site_tagline',     'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.');
     $metaTitle   = \App\Models\SiteSetting::get('meta_title',       $siteName . ' – Café & Online Orders');
@@ -548,11 +569,50 @@
         .pt-strip-clock  { color: var(--muted); font-size: 0.7rem; }
         @media (min-width: 769px) { .mob-prayer-strip { display: none !important; } }
 
+        /* ─── Order Status Bar ───────────────────────────────────── */
+        .order-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.45rem 2rem;
+            background: var(--amber-light);
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            text-decoration: none;
+            color: var(--text);
+            transition: opacity 0.15s;
+            cursor: pointer;
+        }
+        .order-status-bar:hover { opacity: 0.82; }
+        .order-status-bar--neutral { background: var(--surface); }
+        .osb-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; overflow: hidden; }
+        .osb-label { font-weight: 700; color: var(--amber); white-space: nowrap; }
+        .osb-sep { color: var(--border); }
+        .osb-num { font-weight: 600; color: var(--text); white-space: nowrap; }
+        .osb-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .osb-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .osb-dot--pulse { animation: osbPulse 2s ease-in-out infinite; }
+        @keyframes osbPulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.35; }
+        }
+        .osb-cta { flex-shrink: 0; font-weight: 600; color: var(--amber); white-space: nowrap; }
+        /* Mobile: shown after mobile header, 1rem side padding */
+        .order-status-bar-mob {
+            display: none;
+            padding: 0.4rem 1rem;
+            font-size: 0.78rem;
+        }
+
         /* ─── Responsive ─────────────────────────────────────────── */
         @media (max-width: 768px) {
             .site-header   { display: none; }
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: block; }
+            .order-status-bar-mob { display: flex; }
             .site-footer   { padding-bottom: calc(2rem + 72px); margin-top: 3rem; }
             .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
             .footer-brand  { grid-column: 1 / -1; }
@@ -637,6 +697,19 @@
             <a href="/order/" class="hdr-order">Order Now →</a>
         </div>
     </div>
+    @if($orderBar)
+    <a href="{{ $orderBarLink }}" class="order-status-bar {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
+        <div class="osb-left">
+            <span class="osb-dot {{ $orderBarMeta['active'] ? 'osb-dot--pulse' : '' }}" style="background:{{ $orderBarMeta['dot'] }};"></span>
+            <span class="osb-label">My orders</span>
+            <span class="osb-sep">·</span>
+            <span class="osb-num">#{{ $orderBar->order_number ?? $orderBar->id }}</span>
+            <span class="osb-sep">·</span>
+            <span class="osb-status" style="color:{{ $orderBarMeta['color'] }};">{{ $orderBarMeta['label'] }}</span>
+        </div>
+        <span class="osb-cta">{{ $orderBarMeta['active'] ? 'Track →' : 'View all →' }}</span>
+    </a>
+    @endif
 </header>
 
 {{-- ─── Mobile Top Bar ──────────────────────────────────────────── --}}
@@ -658,6 +731,22 @@
         </div>
     </div>
 </div>
+
+{{-- Order status bar (mobile only — below mobile header) --}}
+@if($orderBar)
+<a href="{{ $orderBarLink }}"
+   class="order-status-bar order-status-bar-mob {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
+    <div class="osb-left">
+        <span class="osb-dot {{ $orderBarMeta['active'] ? 'osb-dot--pulse' : '' }}" style="background:{{ $orderBarMeta['dot'] }};"></span>
+        <span class="osb-label">My orders</span>
+        <span class="osb-sep">·</span>
+        <span class="osb-num">#{{ $orderBar->order_number ?? $orderBar->id }}</span>
+        <span class="osb-sep">·</span>
+        <span class="osb-status" style="color:{{ $orderBarMeta['color'] }};">{{ $orderBarMeta['label'] }}</span>
+    </div>
+    <span class="osb-cta">{{ $orderBarMeta['active'] ? 'Track →' : 'View all →' }}</span>
+</a>
+@endif
 
 {{-- Prayer time strip (mobile only — between header and page content) --}}
 <div id="ptStrip" class="mob-prayer-strip" aria-label="Prayer times">
