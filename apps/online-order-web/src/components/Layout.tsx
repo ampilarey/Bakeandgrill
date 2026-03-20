@@ -36,7 +36,6 @@ export function Layout() {
   const addrCity   = addrParts.slice(1).join(',').trim() || 'Maldives';
 
   const { token, customerName, clearAuth } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -79,15 +78,6 @@ export function Layout() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  // Close mobile menu on Escape key
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && menuOpen) setMenuOpen(false);
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [menuOpen]);
 
   const handleLogout = async () => {
     const currentToken = token;
@@ -248,97 +238,9 @@ export function Layout() {
                 </span>
               )}
             </Link>
-
-            {/* Mobile menu toggle — hidden when logged in (bottom nav covers all actions) */}
-            {!token && (
-              <button
-                className="mobile-menu-btn"
-                onClick={() => setMenuOpen((o) => !o)}
-                style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.35rem', color: 'var(--color-dark)', fontSize: '1.35rem', lineHeight: 1 }}
-                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={menuOpen}
-                aria-controls="mobile-nav-panel"
-              >
-                {menuOpen ? '✕' : '☰'}
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Mobile dropdown nav */}
-        {menuOpen && (
-          <div id="mobile-nav-panel" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0.75rem 1.5rem 1rem' }}>
-            {/* Back to main website — first and most visible */}
-            <a
-              href="/"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 0', fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
-            >
-              ← Back to main website
-            </a>
-            {/* Menu + Pre-Order (React Router) */}
-            {[
-              { to: '/menu',      label: 'Order Menu' },
-              { to: '/pre-order', label: 'Pre-Order (Events)' },
-            ].map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => setMenuOpen(false)}
-                style={{ display: 'block', padding: '0.625rem 0', fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
-              >
-                {label}
-              </Link>
-            ))}
-            {/* Main site links */}
-            {[
-              { href: '/hours',   label: 'Opening Hours' },
-              { href: '/contact', label: 'Contact Us' },
-            ].map(({ href, label }) => (
-              <a
-                key={href}
-                href={href}
-                onClick={() => setMenuOpen(false)}
-                style={{ display: 'block', padding: '0.625rem 0', fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
-              >
-                {label}
-              </a>
-            ))}
-
-            {/* Mobile: account — top bar often has no room for Log out */}
-            {token && (
-              <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '2px solid var(--color-border)' }}>
-                {customerName ? (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: '0.75rem' }}>
-                    Hi, {customerName}
-                  </div>
-                ) : null}
-                <Link
-                  to="/order-history"
-                  onClick={() => setMenuOpen(false)}
-                  style={{ display: 'block', padding: '0.625rem 0', fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none', borderBottom: '1px solid var(--color-border)' }}
-                >
-                  My orders
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    void handleLogout();
-                  }}
-                  style={{
-                    display: 'block', width: '100%', textAlign: 'left',
-                    padding: '0.75rem 0', marginTop: '0.25rem',
-                    fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-text-muted)',
-                    background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                    borderTop: '1px solid var(--color-border)',
-                  }}
-                >
-                  Log out
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       {/* ── Order status bar — shown when logged in and has a recent order ── */}
       <OrderStatusBar />
       </header>

@@ -644,7 +644,6 @@ textarea.field-input {
 ════════════════════════════════════════════════════════════ */
 .desktop-nav { display: flex !important; }
 .show-desktop { display: inline !important; }
-.mobile-menu-btn { display: none !important; }
 .menu-sidebar { display: block !important; }
 .cart-sidebar { display: block !important; }
 .mobile-category-pills { display: none !important; }
@@ -667,9 +666,7 @@ textarea.field-input {
 @media (max-width: 768px) {
   .desktop-nav { display: none !important; }
   .show-desktop { display: none !important; }
-  .mobile-menu-btn { display: flex !important; align-items: center; justify-content: center; }
-  /* My orders / Log out live in the hamburger menu — top bar has no room */
-  .order-header-account { display: none !important; }
+  /* No hamburger: logged-in users use header + bottom nav for navigation */
   html { scroll-padding-top: 140px; }
 }
 
