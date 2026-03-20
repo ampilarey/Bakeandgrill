@@ -198,16 +198,52 @@
             flex: 1;
             margin-left: 0.75rem;
         }
-        .header-nav a {
-            padding: 0.5rem 0.875rem;
+        .header-nav a,
+        .header-nav .more-btn {
+            padding: 0.45rem 0.875rem;
             border-radius: 8px;
             font-weight: 500;
             font-size: 0.925rem;
             color: var(--muted);
             transition: all 0.15s;
+            text-decoration: none;
         }
         .header-nav a:hover,
-        .header-nav a.active { background: var(--amber-light); color: var(--amber); }
+        .header-nav a.active,
+        .header-nav .more-btn:hover,
+        .header-nav .more-btn.open { background: var(--amber-light); color: var(--amber); }
+
+        /* ─── More dropdown ─────────────────────────────────── */
+        .more-wrap { position: relative; }
+        .more-btn {
+            background: none; border: none; cursor: pointer;
+            font-family: inherit; display: inline-flex; align-items: center; gap: 0.25rem;
+        }
+        .more-arrow { font-size: 0.6rem; opacity: 0.6; transition: transform 0.15s; }
+        .more-btn.open .more-arrow { transform: rotate(180deg); }
+        .more-panel {
+            display: none;
+            position: absolute; top: calc(100% + 6px); left: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            min-width: 150px;
+            z-index: 200;
+            overflow: hidden;
+            padding: 0.375rem;
+        }
+        .more-panel.open { display: block; }
+        .more-panel a {
+            display: block;
+            padding: 0.55rem 0.875rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text);
+            transition: background 0.12s;
+        }
+        .more-panel a:hover { background: var(--surface-alt, #f7f3ec); }
 
         .header-actions {
             display: flex;
@@ -646,6 +682,31 @@
                 const h = a.getAttribute('href');
                 if (h === path || (h && h !== '/' && path.startsWith(h))) a.classList.add('active');
             });
+
+            // ── "More" dropdown toggle ──────────────────────────────────
+            const moreBtn   = document.getElementById('moreBtn');
+            const morePanel = document.getElementById('morePanel');
+            if (moreBtn && morePanel) {
+                moreBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const open = morePanel.classList.toggle('open');
+                    moreBtn.classList.toggle('open', open);
+                    moreBtn.setAttribute('aria-expanded', open);
+                });
+                document.addEventListener('click', () => {
+                    morePanel.classList.remove('open');
+                    moreBtn.classList.remove('open');
+                    moreBtn.setAttribute('aria-expanded', 'false');
+                });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        morePanel.classList.remove('open');
+                        moreBtn.classList.remove('open');
+                        moreBtn.setAttribute('aria-expanded', 'false');
+                        moreBtn.focus();
+                    }
+                });
+            }
         });
     </script>
 </head>
@@ -658,12 +719,19 @@
             <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
-        <nav class="header-nav">
+        <nav class="header-nav" aria-label="Main navigation">
             <a href="/">Home</a>
             <a href="/order/menu">Menu</a>
             <a href="/order/pre-order">Pre-Order</a>
-            <a href="/hours">Hours</a>
-            <a href="/contact">Contact</a>
+            <div class="more-wrap">
+                <button type="button" id="moreBtn" class="more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="morePanel">
+                    More <span class="more-arrow">▼</span>
+                </button>
+                <div id="morePanel" class="more-panel" role="menu">
+                    <a href="/hours" role="menuitem">🕐&nbsp; Hours</a>
+                    <a href="/contact" role="menuitem">📞&nbsp; Contact</a>
+                </div>
+            </div>
         </nav>
         <div class="header-actions">
             {{-- Prayer time pill --}}
