@@ -733,20 +733,20 @@ textarea.field-input {
 }
 .order-mob-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.25rem;
 }
-/* Logged-in customers: 6th tab (My orders) */
-.order-mob-grid--6 {
-  grid-template-columns: repeat(6, 1fr);
+/* Logged-in customers: 5th tab (Orders) */
+.order-mob-grid--5 {
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.12rem;
 }
-.order-mob-grid--6 .order-mob-item {
+.order-mob-grid--5 .order-mob-item {
   font-size: 0.52rem;
   padding: 0.35rem 0.08rem;
   letter-spacing: 0.02em;
 }
-.order-mob-grid--6 .order-mob-icon svg {
+.order-mob-grid--5 .order-mob-icon svg {
   width: 18px;
   height: 18px;
 }

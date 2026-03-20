@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
-import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PhoneIcon, OrdersIcon } from './icons';
 import { getCustomerMe } from '../api';
 
 
@@ -373,7 +373,7 @@ export function Layout() {
 
       {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
-        <div className={`order-mob-grid${token ? ' order-mob-grid--6' : ''}`}>
+        <div className={`order-mob-grid${token ? ' order-mob-grid--5' : ''}`}>
           <a href="/" className={`order-mob-item${location.pathname === '/' ? ' order-mob-active' : ''}`}>
             <span className="order-mob-icon"><HomeIcon size={20} /></span>
             Home
@@ -409,10 +409,6 @@ export function Layout() {
               Orders
             </Link>
           )}
-          <a href="/hours" className="order-mob-item">
-            <span className="order-mob-icon"><ClockIcon size={20} /></span>
-            Hours
-          </a>
           <a href="/contact" className="order-mob-item">
             <span className="order-mob-icon"><PhoneIcon size={20} /></span>
             Contact
