@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export function NotFoundPage() {
   return (
     <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
@@ -7,9 +9,9 @@ export function NotFoundPage() {
       <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
         The page you're looking for doesn't exist.
       </p>
-      <a href="/" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
+      <Link to="/" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
         Back to home
-      </a>
+      </Link>
     </div>
   );
 }

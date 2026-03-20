@@ -47,7 +47,10 @@ class ItemController extends Controller
             $query->where('is_available', true);
         }
 
-        $items = $query->orderBy('sort_order')->orderBy('name')->paginate(100);
+        $perPage = $isAdmin
+            ? min(100, max(10, (int) $request->input('per_page', 25)))
+            : 100; // public menu always gets all items
+        $items = $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
 
         // Admin gets full data; public gets stripped response
         $transformed = $items->through(function ($item) use ($isAdmin) {

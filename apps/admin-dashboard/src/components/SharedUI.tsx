@@ -1,7 +1,7 @@
 /**
  * Shared UI primitives used by admin page components.
  */
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -217,7 +217,8 @@ const FOCUSABLE_SEL = 'a[href],button:not([disabled]),input:not([disabled]),sele
 export function Modal({
   title, onClose, children, maxWidth = 440,
 }: { title: string; onClose: () => void; children: ReactNode; maxWidth?: number }) {
-  const titleId = `modal-title-${title.replace(/\s+/g, '-').toLowerCase()}`;
+  const uid = useId();
+  const titleId = `modal-title-${uid}`;
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -439,12 +440,14 @@ export function useConfirmDialog() {
 }
 
 export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; close: () => void }) {
+  const uid = useId();
+  const titleId = `cdlg-title-${uid}`;
   if (!state.open) return null;
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="cdlg-title"
+      aria-labelledby={titleId}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -459,7 +462,7 @@ export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; clo
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="cdlg-title" style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
+        <h3 id={titleId} style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
           {state.title ?? 'Confirm'}
         </h3>
         <p style={{ fontSize: 14, color: '#6B5D4F', marginBottom: 24, lineHeight: 1.5 }}>

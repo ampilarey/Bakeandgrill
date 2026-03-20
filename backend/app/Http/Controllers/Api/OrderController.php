@@ -46,7 +46,8 @@ class OrderController extends Controller
             $query->whereDate('created_at', $request->input('date'));
         }
 
-        $orders = $query->paginate(30);
+        $perPage = min(100, max(10, (int) $request->input('per_page', 30)));
+        $orders = $query->paginate($perPage);
 
         return response()->json($orders);
     }
