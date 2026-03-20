@@ -842,10 +842,10 @@
         <a href="/order/" class="mob-nav-item mob-nav-order">
             <span class="mob-nav-icon">🛒</span>Order
         </a>
-        <a href="/hours" class="mob-nav-item">
-            <span class="mob-nav-icon">🕐</span>Hours
-        </a>
         @auth('customer')
+            <a href="/contact" class="mob-nav-item">
+                <span class="mob-nav-icon">📞</span>Contact
+            </a>
             <form method="POST" action="{{ route('customer.logout') }}" style="margin:0;padding:0;display:contents;">
                 @csrf
                 <button type="submit" class="mob-nav-item" style="background:none;border:none;cursor:pointer;font-family:inherit;color:var(--danger-text, #991b1b);">
@@ -853,6 +853,9 @@
                 </button>
             </form>
         @else
+            <a href="/hours" class="mob-nav-item">
+                <span class="mob-nav-icon">🕐</span>Hours
+            </a>
             <a href="/contact" class="mob-nav-item">
                 <span class="mob-nav-icon">📞</span>Contact
             </a>

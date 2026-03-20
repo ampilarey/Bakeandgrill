@@ -6,7 +6,7 @@ import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { OrderStatusBar } from './OrderStatusBar';
-import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, OrdersIcon } from './icons';
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, ClockIcon, PhoneIcon, LogOutIcon } from './icons';
 import { getCustomerMe, logoutCustomerWebSession } from '../api';
 
 
@@ -247,17 +247,19 @@ export function Layout() {
               )}
             </Link>
 
-            {/* Mobile menu toggle */}
-            <button
-              className="mobile-menu-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.35rem', color: 'var(--color-dark)', fontSize: '1.35rem', lineHeight: 1 }}
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={menuOpen}
-              aria-controls="mobile-nav-panel"
-            >
-              {menuOpen ? '✕' : '☰'}
-            </button>
+            {/* Mobile menu toggle — hidden when logged in (bottom nav covers all actions) */}
+            {!token && (
+              <button
+                className="mobile-menu-btn"
+                onClick={() => setMenuOpen((o) => !o)}
+                style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.35rem', color: 'var(--color-dark)', fontSize: '1.35rem', lineHeight: 1 }}
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
+                aria-controls="mobile-nav-panel"
+              >
+                {menuOpen ? '✕' : '☰'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -439,23 +441,32 @@ export function Layout() {
             {cartCount > 0 ? 'Cart' : 'Order'}
           </Link>
           {token ? (
-            <Link
-              to="/order-history"
-              className={`order-mob-item${location.pathname === '/order-history' ? ' order-mob-active' : ''}`}
-            >
-              <span className="order-mob-icon"><OrdersIcon size={20} /></span>
-              Orders
-            </Link>
+            <a href="/contact" className="order-mob-item">
+              <span className="order-mob-icon"><PhoneIcon size={20} /></span>
+              Contact
+            </a>
           ) : (
             <a href="/hours" className="order-mob-item">
               <span className="order-mob-icon"><ClockIcon size={20} /></span>
               Hours
             </a>
           )}
-          <a href="/contact" className="order-mob-item">
-            <span className="order-mob-icon"><PhoneIcon size={20} /></span>
-            Contact
-          </a>
+          {token ? (
+            <button
+              type="button"
+              className="order-mob-item"
+              onClick={() => void handleLogout()}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-error, #dc2626)', padding: 0 }}
+            >
+              <span className="order-mob-icon"><LogOutIcon size={20} /></span>
+              Logout
+            </button>
+          ) : (
+            <a href="/contact" className="order-mob-item">
+              <span className="order-mob-icon"><PhoneIcon size={20} /></span>
+              Contact
+            </a>
+          )}
         </div>
       </nav>
     </div>
