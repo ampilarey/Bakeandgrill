@@ -4,7 +4,6 @@ import {
   applyPromoCode,
   createCustomerOrder,
   createDeliveryOrder,
-  createGuestOrder,
   createLoyaltyHold,
   getLoyaltyAccount,
   getCustomerMe,
@@ -77,10 +76,6 @@ export function useCheckout() {
   const [promoError, setPromoError]   = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
-
-  // Guest checkout state
-  const [guestName, setGuestName]   = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
 
   const [useLoyalty, setUseLoyalty]   = useState(false);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
@@ -183,42 +178,6 @@ export function useCheckout() {
     if (!delivery.contact_phone.trim()) errs.contact_phone = "Contact phone is required";
     setErrors(errs);
     return Object.keys(errs).length === 0;
-  };
-
-  // ── Guest order (no token) ─────────────────────────────────────────────────
-  const handleGuestOrder = async () => {
-    if (isPlacing) return;
-    const errs: Record<string, string> = {};
-    if (!guestName.trim()) errs.guestName = "Name is required";
-    if (!guestPhone.trim()) errs.guestPhone = "Phone number is required";
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    setIsPlacing(true);
-    setGlobalError("");
-
-    try {
-      const res = await createGuestOrder({
-        guest_name:  guestName.trim(),
-        guest_phone: guestPhone.trim(),
-        type: "online_pickup",
-        items: cart.map((item) => ({
-          item_id: item.id, quantity: item.quantity,
-          modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
-        })),
-        customer_notes: notes || undefined,
-      });
-
-      const { order, guest_token } = res;
-      localStorage.setItem("bakegrill_guest_order_id", String(order.id));
-      localStorage.setItem("bakegrill_guest_token", guest_token);
-      localStorage.removeItem("bakegrill_cart");
-      window.dispatchEvent(new CustomEvent("cart_cleared"));
-      navigate(`/order/status/${order.id}?guest_token=${encodeURIComponent(guest_token)}`);
-    } catch (e) {
-      setGlobalError((e as Error).message);
-    } finally {
-      setIsPlacing(false);
-    }
   };
 
   // ── Place order + Pay ──────────────────────────────────────────────────────
@@ -335,7 +294,6 @@ export function useCheckout() {
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
-    guestName, setGuestName, guestPhone, setGuestPhone,
-    handleApplyPromo, handlePlaceAndPay, handleGuestOrder, handleAuthSuccess,
+    handleApplyPromo, handlePlaceAndPay, handleAuthSuccess,
   };
 }

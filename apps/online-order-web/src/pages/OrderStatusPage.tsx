@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, getGuestOrder, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -250,18 +250,13 @@ export function OrderStatusPage() {
   const [reviewDone, setReviewDone] = useState(false);
 
   const token = readToken();
-  const guestToken = searchParams.get("guest_token");
-  const isGuest = !!guestToken;
   const esRef = useRef<EventSource | null>(null);
 
   // useCallback gives a stable reference so polling intervals don't capture stale closures
   const loadOrder = useCallback(async () => {
     if (!orderId) return;
     try {
-      if (guestToken) {
-        const res = await getGuestOrder(parseInt(orderId, 10), guestToken);
-        setOrder(res.order);
-      } else if (token) {
+      if (token) {
         const res = await getOrderDetail(token, parseInt(orderId, 10));
         setOrder(res.order);
       } else {
@@ -272,7 +267,7 @@ export function OrderStatusPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, guestToken, orderId]);
+  }, [token, orderId]);
 
   useEffect(() => {
     document.title = order?.order_number
@@ -616,24 +611,6 @@ export function OrderStatusPage() {
             {/* Review form */}
             {token && ['completed', 'paid'].includes(order.status) && !reviewDone && (
               <ReviewForm orderId={order.id} token={token} onDone={() => setReviewDone(true)} />
-            )}
-
-            {/* Guest: prompt to create account */}
-            {isGuest && (
-              <div style={{ ...S.card, textAlign: 'center', background: 'var(--color-surface-alt)' }}>
-                <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'var(--color-text)' }}>
-                  Save time on your next order
-                </p>
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 14 }}>
-                  Create a free account to track orders, earn loyalty points, and check out faster.
-                </p>
-                <a
-                  href="/customer/login"
-                  style={{ display: 'inline-block', background: 'var(--color-primary)', color: 'white', borderRadius: '10px', padding: '10px 24px', fontWeight: 700, fontSize: 14, textDecoration: 'none' }}
-                >
-                  Create account
-                </a>
-              </div>
             )}
 
             {/* Support block */}

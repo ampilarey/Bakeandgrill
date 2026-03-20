@@ -511,40 +511,6 @@ export async function createReservation(payload: {
   return data.reservation;
 }
 
-// ── Guest orders ─────────────────────────────────────────────────────────────
-
-export type GuestOrderPayload = {
-  guest_phone: string;
-  guest_name: string;
-  guest_email?: string;
-  type?: 'online_pickup';
-  notes?: string;
-  customer_notes?: string;
-  items: Array<{
-    item_id: number;
-    quantity: number;
-    variant_id?: number;
-    modifiers?: Array<{ modifier_id: number; quantity?: number }>;
-  }>;
-};
-
-export async function createGuestOrder(
-  payload: GuestOrderPayload,
-): Promise<{ order: Order; guest_token: string }> {
-  return request<{ order: Order; guest_token: string }>(`${API_BASE_URL}/guest/orders`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function getGuestOrder(
-  orderId: number,
-  guestToken: string,
-): Promise<{ order: Order }> {
-  return request<{ order: Order }>(
-    `${API_BASE_URL}/guest/orders/${orderId}?guest_token=${encodeURIComponent(guestToken)}`,
-  );
-}
 
 // ── Reviews ───────────────────────────────────────────────────────────────────
 

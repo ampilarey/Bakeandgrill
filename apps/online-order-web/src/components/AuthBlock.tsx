@@ -21,6 +21,7 @@ type Step =
 
 type Props = {
   onSuccess: (token: string, name: string) => void;
+  skipProfileSetup?: boolean;
 };
 
 function persistAuth(token: string, customer: AuthCustomer) {
@@ -31,7 +32,7 @@ function persistAuth(token: string, customer: AuthCustomer) {
   return display;
 }
 
-export function AuthBlock({ onSuccess }: Props) {
+export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const [step, setStep]       = useState<Step>("phone");
   const [phone, setPhone]     = useState("");
   const [password, setPassword]   = useState("");
@@ -107,7 +108,7 @@ export function AuthBlock({ onSuccess }: Props) {
     setLoading(true);
     try {
       const res = await verifyOtp({ phone, otp });
-      if (!res.customer.is_profile_complete) {
+      if (!res.customer.is_profile_complete && !skipProfileSetup) {
         setPendingToken(res.token);
         setPendingCustomer(res.customer);
         go("profile_setup");

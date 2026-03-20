@@ -93,8 +93,6 @@ export function CheckoutPage() {
 
   useEffect(() => { document.title = `Checkout — ${siteName}`; }, [siteName]);
 
-  const [guestMode, setGuestMode] = useState(false);
-
   const {
     cart, token, customerName, loyaltyAccount, loyaltyPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
@@ -103,8 +101,7 @@ export function CheckoutPage() {
     useLoyalty, setUseLoyalty,
     deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
-    guestName, setGuestName, guestPhone, setGuestPhone,
-    handleApplyPromo, handlePlaceAndPay, handleGuestOrder, handleAuthSuccess,
+    handleApplyPromo, handlePlaceAndPay, handleAuthSuccess,
   } = useCheckout();
 
   if (cart.length === 0) {
@@ -141,47 +138,9 @@ export function CheckoutPage() {
         {/* ── Left: form sections ──────────────────────────── */}
         <div style={{ ...S.col, order: isMobile ? 1 : 0, paddingBottom: isMobile ? '120px' : 0 }}>
 
-          {/* Auth / Guest */}
-          {!token && !guestMode && (
-            <div>
-              <AuthBlock onSuccess={handleAuthSuccess} />
-              <div style={{ textAlign: 'center', margin: '12px 0 4px', color: 'var(--color-text-muted)', fontSize: 13 }}>
-                — or —
-              </div>
-              <button
-                style={{ ...S.secondaryBtn, width: '100%', marginBottom: 8, padding: '12px 0', fontSize: 14 }}
-                onClick={() => setGuestMode(true)}
-              >
-                Continue as guest (takeaway only)
-              </button>
-            </div>
-          )}
-
-          {!token && guestMode && (
-            <SectionCard title="Guest Checkout">
-              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-                Takeaway order — pay at pickup. <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: 0, fontSize: 13, fontFamily: 'inherit' }} onClick={() => setGuestMode(false)}>Sign in instead</button>
-              </p>
-              <Field label="Your name *" placeholder="Full name" value={guestName} onChange={setGuestName} error={errors.guestName} />
-              <Field label="Phone number *" placeholder="7xxxxxxx" value={guestPhone} onChange={setGuestPhone} error={errors.guestPhone} />
-              <SectionCard title="Special Instructions">
-                <textarea
-                  className="field-input"
-                  placeholder="Allergies, special requests, or notes for the kitchen"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  style={{ height: 80, resize: 'vertical' }}
-                />
-              </SectionCard>
-              {globalError && <p style={{ color: 'var(--color-error)', marginTop: 8, fontSize: 14 }}>{globalError}</p>}
-              <button
-                style={{ ...S.primaryBtn, width: '100%', marginTop: 12, opacity: isPlacing ? 0.7 : 1 }}
-                onClick={() => void handleGuestOrder()}
-                disabled={isPlacing}
-              >
-                {isPlacing ? 'Placing order…' : 'Place order (pay at pickup)'}
-              </button>
-            </SectionCard>
+          {/* Auth */}
+          {!token && (
+            <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />
           )}
 
           {token && (

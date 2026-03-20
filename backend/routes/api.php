@@ -133,16 +133,6 @@ Route::middleware(['auth:sanctum', 'customer.token'])->post('/auth/customer/logo
 
 /*
 |--------------------------------------------------------------------------
-| Guest Order Routes (no authentication required)
-|--------------------------------------------------------------------------
-*/
-Route::prefix('guest')->middleware('throttle:20,1')->group(function () {
-    Route::post('/orders', [OrderController::class, 'storeGuest']);
-    Route::get('/orders/{id}', [OrderController::class, 'showGuest']);
-});
-
-/*
-|--------------------------------------------------------------------------
 | Protected Staff Routes
 |--------------------------------------------------------------------------
 */
