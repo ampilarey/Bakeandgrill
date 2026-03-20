@@ -625,7 +625,7 @@
             </div>
             @auth('customer')
                 @php $cust = Auth::guard('customer')->user(); @endphp
-                <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ $cust->name ?: str_replace('+960', '', $cust->phone) }}</span>
+                <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', $cust->phone) }}</span>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
                     <button type="submit" class="hdr-logout-btn">Logout</button>
@@ -649,7 +649,7 @@
         <div class="mob-hdr-btns">
             @auth('customer')
                 @php $cust = Auth::guard('customer')->user(); @endphp
-                <span style="font-size:0.75rem;color:var(--muted);font-weight:500;">Hi, {{ $cust->name ?: str_replace('+960', '', $cust->phone) }}</span>
+                <span style="font-size:0.75rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', $cust->phone) }}</span>
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endauth

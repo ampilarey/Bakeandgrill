@@ -340,7 +340,8 @@ class CustomerPortalController extends Controller
     private function queueHandoffCookies(Customer $customer): void
     {
         $token  = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
-        $name   = $customer->name ?? $customer->phone ?? '';
+        // Always show the short phone number (strip +960) so both apps show the same thing
+        $name   = str_replace('+960', '', $customer->phone ?? '');
         $domain = config('session.domain'); // .bakeandgrill.mv
         $secure = request()->isSecure();
 

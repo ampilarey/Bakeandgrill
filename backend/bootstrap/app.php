@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
+        // Use our custom EncryptCookies so _cauth/_cauth_name stay plain-text
+        // (they are short-lived handoff cookies read by the React order app via JS)
+        $middleware->encryptCookies(except: ['_cauth', '_cauth_name']);
+
         $middleware->alias([
             'device.active'  => App\Http\Middleware\EnsureActiveDevice::class,
             'bml.signature'  => App\Http\Middleware\VerifyBmlSignature::class,
