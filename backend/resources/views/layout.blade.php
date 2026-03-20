@@ -623,15 +623,16 @@
                     <span class="pt-pill-clock" id="ptPillClock"></span>
                 </a>
             </div>
-            @if(session('customer_id'))
-                <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', session('customer_name')) }}</span>
+            @auth('customer')
+                @php $cust = Auth::guard('customer')->user(); @endphp
+                <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ $cust->name ?: str_replace('+960', '', $cust->phone) }}</span>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
                     <button type="submit" class="hdr-logout-btn">Logout</button>
                 </form>
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
-            @endif
+            @endauth
             <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
             <a href="/order/" class="hdr-order">Order Now →</a>
         </div>
@@ -646,11 +647,12 @@
             <span>{{ $siteName }}</span>
         </a>
         <div class="mob-hdr-btns">
-            @if(session('customer_id'))
-                <span style="font-size:0.75rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', session('customer_name')) }}</span>
+            @auth('customer')
+                @php $cust = Auth::guard('customer')->user(); @endphp
+                <span style="font-size:0.75rem;color:var(--muted);font-weight:500;">Hi, {{ $cust->name ?: str_replace('+960', '', $cust->phone) }}</span>
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
-            @endif
+            @endauth
             <button id="darkToggleMobile" class="dark-toggle" aria-label="Toggle dark mode" style="width:32px;height:32px;font-size:0.9rem;">🌙</button>
             <a href="/order/" class="mob-order-btn">Order Now</a>
         </div>
