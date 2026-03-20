@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { OrderStatusBar } from './OrderStatusBar';
 import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PreOrderIcon, ClockIcon, PhoneIcon, LogOutIcon } from './icons';
-import { getCustomerMe, logoutCustomerWebSession } from '../api';
+import { getCustomerMe, logoutCustomerWebSession, revokeCustomerToken } from '../api';
 
 
 export function Layout() {
@@ -90,12 +90,14 @@ export function Layout() {
   }, [menuOpen]);
 
   const handleLogout = async () => {
+    const currentToken = token;
+    clearAuth();
     try {
+      if (currentToken) await revokeCustomerToken(currentToken);
       await logoutCustomerWebSession();
     } catch {
-      /* still clear local app state */
+      /* ignore — local state already cleared */
     }
-    clearAuth();
     navigate('/');
   };
 

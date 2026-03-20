@@ -8,6 +8,7 @@ use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerOrderRequest;
+use App\Http\Requests\StoreGuestOrderRequest;
 use App\Http\Requests\StoreOrderBatchRequest;
 use App\Http\Requests\StoreOrderPaymentsRequest;
 use App\Http\Requests\StoreOrderRequest;
@@ -19,6 +20,7 @@ use App\Services\OrderCreationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
@@ -164,6 +166,60 @@ class OrderController extends Controller
         $order->update(['status' => 'pending', 'held_at' => null]);
 
         app(AuditLogService::class)->log('order.resumed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'pending'], [], $request);
+
+        return response()->json(['order' => $order]);
+    }
+
+    /**
+     * POST /api/guest/orders — Create a guest order (no authentication required).
+     */
+    public function storeGuest(StoreGuestOrderRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $phone = \App\Rules\MaldivesPhone::normalize($validated['guest_phone']);
+
+        $guestToken = Str::random(64);
+
+        $payload = [
+            'type'           => $validated['type'] ?? 'online_pickup',
+            'customer_id'    => null,
+            'notes'          => $validated['notes'] ?? null,
+            'customer_notes' => $validated['customer_notes'] ?? null,
+            'items'          => $validated['items'],
+            'guest_phone'    => $phone,
+            'guest_name'     => $validated['guest_name'],
+            'guest_email'    => $validated['guest_email'] ?? null,
+            'guest_token'    => $guestToken,
+        ];
+
+        $order = app(OrderCreationService::class)->createFromPayload($payload, null);
+
+        // Expose the guest_token only in the creation response so the client can save it
+        return response()->json([
+            'order'       => $order,
+            'guest_token' => $guestToken,
+        ], 201);
+    }
+
+    /**
+     * GET /api/guest/orders/{id}?guest_token=xxx — Retrieve a guest order status.
+     */
+    public function showGuest(Request $request, int $id): JsonResponse
+    {
+        $token = $request->query('guest_token');
+        if (! $token) {
+            return response()->json(['message' => 'guest_token is required.'], 401);
+        }
+
+        $order = Order::with(['items.modifiers', 'payments'])
+            ->where('id', $id)
+            ->whereNotNull('guest_token')
+            ->first();
+
+        if (! $order || ! hash_equals((string) $order->guest_token, (string) $token)) {
+            return response()->json(['message' => 'Order not found.'], 404);
+        }
 
         return response()->json(['order' => $order]);
     }

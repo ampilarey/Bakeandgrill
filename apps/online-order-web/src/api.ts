@@ -63,6 +63,27 @@ export async function syncBladeSession(token: string): Promise<void> {
 }
 
 /**
+ * Revoke the current Sanctum Bearer token via the API.
+ * Call this before clearing localStorage auth so the old token stops working immediately.
+ */
+export async function revokeCustomerToken(token: string): Promise<void> {
+  if (!token) return;
+  try {
+    await fetch(`${API_BASE_URL}/auth/customer/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+  } catch {
+    /* ignore — token may already be gone */
+  }
+}
+
+/**
  * Invalidate the Blade customer web session (same cookie as main website).
  * Call this when signing out from the order app so the main site header
  * shows "Login" instead of the phone number.
@@ -488,6 +509,41 @@ export async function createReservation(payload: {
     body: JSON.stringify(payload),
   });
   return data.reservation;
+}
+
+// ── Guest orders ─────────────────────────────────────────────────────────────
+
+export type GuestOrderPayload = {
+  guest_phone: string;
+  guest_name: string;
+  guest_email?: string;
+  type?: 'online_pickup';
+  notes?: string;
+  customer_notes?: string;
+  items: Array<{
+    item_id: number;
+    quantity: number;
+    variant_id?: number;
+    modifiers?: Array<{ modifier_id: number; quantity?: number }>;
+  }>;
+};
+
+export async function createGuestOrder(
+  payload: GuestOrderPayload,
+): Promise<{ order: Order; guest_token: string }> {
+  return request<{ order: Order; guest_token: string }>(`${API_BASE_URL}/guest/orders`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getGuestOrder(
+  orderId: number,
+  guestToken: string,
+): Promise<{ order: Order }> {
+  return request<{ order: Order }>(
+    `${API_BASE_URL}/guest/orders/${orderId}?guest_token=${encodeURIComponent(guestToken)}`,
+  );
 }
 
 // ── Reviews ───────────────────────────────────────────────────────────────────

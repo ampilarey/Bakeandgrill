@@ -144,6 +144,7 @@ class CustomerAuthController extends Controller
 
         $customer->update(['last_login_at' => now()]);
 
+        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
@@ -232,6 +233,12 @@ class CustomerAuthController extends Controller
             ],
         );
 
+        if (! $customer->wasRecentlyCreated && ! $customer->is_active) {
+            throw ValidationException::withMessages([
+                'phone' => ['This account has been deactivated. Please contact support.'],
+            ]);
+        }
+
         if ($customer->wasRecentlyCreated) {
             event(new CustomerCreated(new CustomerCreatedData(
                 customerId: $customer->id,
@@ -242,6 +249,7 @@ class CustomerAuthController extends Controller
 
         $customer->update(['last_login_at' => now()]);
 
+        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
@@ -265,6 +273,11 @@ class CustomerAuthController extends Controller
             return response()->json(['authenticated' => false], 401);
         }
 
+        if (! $customer->is_active) {
+            return response()->json(['authenticated' => false, 'message' => 'Account deactivated.'], 403);
+        }
+
+        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
@@ -272,6 +285,17 @@ class CustomerAuthController extends Controller
             'token'         => $token,
             'customer'      => $this->customerResponse($customer, $token),
         ]);
+    }
+
+    /**
+     * Revoke the current token and log the customer out of the React app.
+     * Called by the React order app before clearing localStorage auth state.
+     */
+    public function logout(Request $request)
+    {
+        $request->user()?->currentAccessToken()?->delete();
+
+        return response()->json(['message' => 'Logged out successfully'], 200);
     }
 
     /**
@@ -339,10 +363,11 @@ class CustomerAuthController extends Controller
         }
 
         $customer->update([
-            'password'        => $input['password'],
+            'password'        => Hash::make($input['password']),
             'last_login_at'   => now(),
         ]);
 
+        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([

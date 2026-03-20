@@ -128,6 +128,19 @@ Route::prefix('auth/customer')
 // Logout is available to both staff and customer tokens
 Route::middleware('auth:sanctum')->post('/auth/logout', [StaffAuthController::class, 'logout']);
 
+// Customer API logout — revokes the current Sanctum token
+Route::middleware(['auth:sanctum', 'customer.token'])->post('/auth/customer/logout', [CustomerAuthController::class, 'logout']);
+
+/*
+|--------------------------------------------------------------------------
+| Guest Order Routes (no authentication required)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('guest')->middleware('throttle:20,1')->group(function () {
+    Route::post('/orders', [OrderController::class, 'storeGuest']);
+    Route::get('/orders/{id}', [OrderController::class, 'showGuest']);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Protected Staff Routes

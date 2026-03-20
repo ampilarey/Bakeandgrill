@@ -45,6 +45,10 @@ class EnsureCustomerToken
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
+        if (! $user->is_active) {
+            return response()->json(['message' => 'This account has been deactivated.'], 403);
+        }
+
         // Token ability check only when a Bearer token was presented;
         // session auth does not carry token abilities.
         if ($request->bearerToken() && ! $user->tokenCan('customer')) {

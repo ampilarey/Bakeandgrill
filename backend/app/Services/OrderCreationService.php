@@ -39,6 +39,11 @@ class OrderCreationService
                 'total' => 0,
                 'notes' => $payload['notes'] ?? null,
                 'customer_notes' => $payload['customer_notes'] ?? null,
+                // Guest order fields (null for authenticated orders)
+                'guest_phone' => $payload['guest_phone'] ?? null,
+                'guest_name'  => $payload['guest_name'] ?? null,
+                'guest_email' => $payload['guest_email'] ?? null,
+                'guest_token' => $payload['guest_token'] ?? null,
             ]);
 
             $subtotal = $this->addOrderItems($order, $payload['items'] ?? []);

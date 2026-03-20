@@ -56,6 +56,15 @@ class Order extends Model
         'picked_up_at',
         'delivered_at',
         'store_id',
+        // Guest order fields
+        'guest_phone',
+        'guest_name',
+        'guest_email',
+        'guest_token',
+    ];
+
+    protected $hidden = [
+        'guest_token',
     ];
 
     protected $casts = [

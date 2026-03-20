@@ -47,7 +47,7 @@ class CustomerPortalController extends Controller
         }
 
         // New customer or no password → send OTP
-        $key = 'otp-web-request:' . $phone;
+        $key = 'otp-request:' . $phone;
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
@@ -95,7 +95,7 @@ class CustomerPortalController extends Controller
             return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
         }
 
-        $key = 'otp-web-request:' . $phone;
+        $key = 'otp-request:' . $phone;
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
@@ -213,6 +213,10 @@ class CustomerPortalController extends Controller
             ['loyalty_points' => 0, 'tier' => 'bronze'],
         );
 
+        if (! $customer->wasRecentlyCreated && ! $customer->is_active) {
+            return back()->withErrors(['otp' => 'This account has been deactivated. Please contact support.']);
+        }
+
         $customer->update(['last_login_at' => now()]);
 
         // Use the customer guard so the session cookie works for both
@@ -251,6 +255,10 @@ class CustomerPortalController extends Controller
 
         if (! $customer || empty($customer->password) || ! Hash::check($request->password, $customer->password)) {
             return back()->withErrors(['password' => 'Invalid phone number or password.'])->withInput(['phone' => $request->phone]);
+        }
+
+        if (! $customer->is_active) {
+            return back()->withErrors(['phone' => 'This account has been deactivated. Please contact support.'])->withInput(['phone' => $request->phone]);
         }
 
         $customer->update(['last_login_at' => now()]);
@@ -332,6 +340,10 @@ class CustomerPortalController extends Controller
         /** @var Customer $customer */
         $customer = $request->user();
 
+        if (! $customer->is_active) {
+            return response()->json(['message' => 'This account has been deactivated.'], 403);
+        }
+
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
@@ -342,6 +354,12 @@ class CustomerPortalController extends Controller
 
     public function logout(Request $request)
     {
+        /** @var Customer|null $customer */
+        $customer = Auth::guard('customer')->user();
+        if ($customer instanceof Customer) {
+            $customer->tokens()->where('name', 'like', 'customer-%')->delete();
+        }
+
         Auth::guard('customer')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -364,6 +382,7 @@ class CustomerPortalController extends Controller
      */
     private function queueHandoffCookies(Customer $customer): void
     {
+        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token  = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
         // Always show the short phone number (strip +960) so both apps show the same thing
         $name   = str_replace('+960', '', $customer->phone ?? '');
