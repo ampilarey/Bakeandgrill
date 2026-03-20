@@ -17,6 +17,13 @@ class OrderItemModifier extends Model
         'quantity',
     ];
 
+    protected $casts = [
+        'order_item_id' => 'integer',
+        'modifier_id'   => 'integer',
+        'quantity'      => 'integer',
+        'modifier_price'=> 'decimal:2',
+    ];
+
     public function orderItem(): BelongsTo
     {
         return $this->belongsTo(OrderItem::class);

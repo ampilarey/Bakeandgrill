@@ -69,16 +69,13 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     total_cost_mvr: number;
   } | null>(null);
 
+  // Load static ops data (shift, inventory, suppliers, refunds) — only when entering ops mode
   useEffect(() => {
     if (!isLoggedIn || viewMode !== "ops") return;
 
     getCurrentShift()
       .then((r) => setShift(r.shift))
       .catch(() => setOpsMessage("Unable to load shift."));
-
-    getSalesSummary({ from: reportFrom, to: reportTo })
-      .then((r) => setReportData(r))
-      .catch(() => setOpsMessage("Unable to load sales summary."));
 
     fetchInventory()
       .then((r) => setInventoryItems(r.items.data))
@@ -91,6 +88,15 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     fetchRefunds()
       .then((r) => setRefunds(r.refunds.data))
       .catch(() => setOpsMessage("Unable to load refunds."));
+  }, [isLoggedIn, viewMode]);
+
+  // Sales summary re-fetches when date range changes (separated so only 1 API call fires)
+  useEffect(() => {
+    if (!isLoggedIn || viewMode !== "ops") return;
+
+    getSalesSummary({ from: reportFrom, to: reportTo })
+      .then((r) => setReportData(r))
+      .catch(() => setOpsMessage("Unable to load sales summary."));
   }, [isLoggedIn, viewMode, reportFrom, reportTo]);
 
   const handleOpenShift = () => {

@@ -29,11 +29,16 @@ class Promotion extends Model
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'stackable' => 'boolean',
-        'starts_at' => 'datetime',
-        'expires_at' => 'datetime',
-        'metadata' => 'array',
+        'is_active'              => 'boolean',
+        'stackable'              => 'boolean',
+        'starts_at'              => 'datetime',
+        'expires_at'             => 'datetime',
+        'metadata'               => 'array',
+        'discount_value'         => 'integer',
+        'min_order_laar'         => 'integer',
+        'max_uses'               => 'integer',
+        'max_uses_per_customer'  => 'integer',
+        'redemptions_count'      => 'integer',
     ];
 
     /**
