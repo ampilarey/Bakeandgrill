@@ -101,9 +101,14 @@ class PaymentService
             ]);
         }
 
+        // Include orderId in the return URL so bmlReturn() can redirect to the right order page.
+        // BML appends its own params (&state=...&transactionId=...) to whatever URL we provide.
+        $bmlReturnUrl = rtrim(config('bml.return_url'), '/') . '?orderId=' . $order->id;
+
         $result = $this->bml->createPayment(
             $payment->amount_laar,
             $localId,
+            returnUrl: $bmlReturnUrl,
         );
 
         $this->payments->update($payment->id, [
