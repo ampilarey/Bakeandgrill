@@ -108,7 +108,7 @@ export function Layout() {
           WebkitBackdropFilter: 'blur(14px)',
         }}
       >
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem', height: '68px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <div className="order-header-inner" style={{ justifyContent: 'space-between' }}>
 
           {/* Logo — links to main website */}
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}>

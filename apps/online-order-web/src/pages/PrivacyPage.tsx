@@ -111,7 +111,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const S: Record<string, React.CSSProperties> = {
-  wrap: { maxWidth: '860px', margin: '3rem auto 5rem', padding: '0 1.5rem', fontFamily: 'inherit' },
+  wrap: { maxWidth: '860px', margin: '3rem auto 5rem', padding: '0 var(--page-gutter)', fontFamily: 'inherit' },
   h1: { fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark, #1c1408)', marginBottom: '0.375rem', letterSpacing: '-0.03em' },
   updated: { color: 'var(--color-text-muted, #78716c)', fontSize: '0.9rem', marginBottom: '2.5rem', display: 'block' },
   h2: { fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary, #d97706)', marginBottom: '0.75rem' },

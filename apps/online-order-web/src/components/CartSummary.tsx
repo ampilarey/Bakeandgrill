@@ -17,7 +17,7 @@ export function CartSummary({ cart }: Props) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.name}</span>
             {item.modifiers && item.modifiers.length > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
                 + {item.modifiers.map((m) => m.name).join(', ')}
               </div>
             )}
@@ -33,7 +33,7 @@ export function CartSummary({ cart }: Props) {
 }
 
 const styles = {
-  card:         { background: 'var(--color-surface)', borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border)' },
-  sectionTitle: { fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--color-border)' },
-  cartRow:      { display: 'flex', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid var(--color-border)', marginBottom: 10 },
+  card:         { background: 'var(--color-surface)', borderRadius: '0.75rem', padding: '1.25rem', marginBottom: '1rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border)' },
+  sectionTitle: { fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', paddingBottom: '0.625rem', borderBottom: '1px solid var(--color-border)' },
+  cartRow:      { display: 'flex', alignItems: 'center', paddingBottom: '0.625rem', borderBottom: '1px solid var(--color-border)', marginBottom: '0.625rem' },
 } as const;

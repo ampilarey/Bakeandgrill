@@ -60,18 +60,18 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
   return (
     <div style={{
       background: 'linear-gradient(135deg, #D4813A, #B5681F)',
-      borderRadius: 16, padding: 16, color: 'white',
+      borderRadius: '1rem', padding: '1rem', color: 'white',
     }}>
-      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px', opacity: 0.85 }}>🚀 Your driver is on the way!</p>
-      {driver && <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>🛵 {driver.name}</p>}
+      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}>🚀 Your driver is on the way!</p>
+      {driver && <p style={{ fontSize: 'var(--text-body)', fontWeight: 700, margin: '0 0 0.25rem' }}>🛵 {driver.name}</p>}
       {location ? (
-        <p style={{ fontSize: 12, margin: '0 0 12px', opacity: 0.8 }}>
+        <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>
           Last seen: {Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000)} min ago
         </p>
       ) : (
-        <p style={{ fontSize: 12, margin: '0 0 12px', opacity: 0.8 }}>Locating driver…</p>
+        <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>Locating driver…</p>
       )}
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
         {mapsUrl && (
           <a
             href={mapsUrl}
@@ -79,8 +79,8 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
             rel="noopener noreferrer"
             style={{
               flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.2)',
-              color: 'white', fontWeight: 700, fontSize: 13, padding: '10px 0',
-              borderRadius: 10, textDecoration: 'none',
+              color: 'white', fontWeight: 700, fontSize: 'var(--text-sm)', padding: '0.625rem 0',
+              borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
             📍 Track on Map
@@ -91,8 +91,8 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
             href={`tel:${driver.phone}`}
             style={{
               flex: 1, textAlign: 'center', background: 'rgba(255,255,255,0.2)',
-              color: 'white', fontWeight: 700, fontSize: 13, padding: '10px 0',
-              borderRadius: 10, textDecoration: 'none',
+              color: 'white', fontWeight: 700, fontSize: 'var(--text-sm)', padding: '0.625rem 0',
+              borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
             📞 Call
@@ -105,8 +105,8 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
             rel="noopener noreferrer"
             style={{
               flex: 1, textAlign: 'center', background: '#25D366',
-              color: 'white', fontWeight: 700, fontSize: 13, padding: '10px 0',
-              borderRadius: 10, textDecoration: 'none',
+              color: 'white', fontWeight: 700, fontSize: 'var(--text-sm)', padding: '0.625rem 0',
+              borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
             💬 WhatsApp
@@ -212,7 +212,7 @@ function orderTypeLabel(type: string): string {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingTop: 10 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-base)', paddingTop: '0.625rem' }}>
       <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
       <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{value}</span>
     </div>
@@ -338,8 +338,8 @@ export function OrderStatusPage() {
   const phoneTel  = 'tel:' + phone.replace(/[^+\d]/g, '');
 
   const liveIndicator = liveConnected ? (
-    <span style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block', animation: 'pulse-dot 2s infinite' }} />
+    <span style={{ fontSize: '0.6875rem', color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+      <span style={{ width: '0.4375rem', height: '0.4375rem', borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block', animation: 'pulse-dot 2s infinite' }} />
       Live
     </span>
   ) : null;
@@ -398,9 +398,9 @@ export function OrderStatusPage() {
             <button
               onClick={() => window.location.reload()}
               style={{
-                marginLeft: 12, padding: '6px 14px', fontSize: 13, fontWeight: 600,
+                marginLeft: '0.75rem', padding: '0.375rem 0.875rem', fontSize: 'var(--text-sm)', fontWeight: 600,
                 background: 'var(--color-surface)', color: 'var(--color-error)', border: '1.5px solid var(--color-error)',
-                borderRadius: 8, cursor: 'pointer',
+                borderRadius: '0.5rem', cursor: 'pointer',
               }}
             >
               Try again
@@ -410,7 +410,7 @@ export function OrderStatusPage() {
 
         {/* ── Order content ─────────────────────────────── */}
         {!loading && order && statusInfo && (
-          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
             {/* Status hero card */}
             <div style={{
@@ -419,33 +419,33 @@ export function OrderStatusPage() {
               borderColor: isCancelled ? 'rgba(220,38,38,0.2)' : 'transparent',
             }}>
               {/* Icon + label */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                 <div style={{
-                  width: 56, height: 56,
+                  width: '3.5rem', height: '3.5rem',
                   borderRadius: '50%',
                   background: 'var(--color-surface-alt)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 26, flexShrink: 0,
+                  fontSize: '1.625rem', flexShrink: 0,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                 }}>
                   {statusInfo.icon}
                 </div>
                 <div>
-                  <p style={{ fontSize: 20, fontWeight: 800, color: statusInfo.color, margin: 0, letterSpacing: '-0.025em' }}>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 800, color: statusInfo.color, margin: 0, letterSpacing: '-0.025em' }}>
                     {statusInfo.label}
                   </p>
-                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
                     {statusInfo.sub}
                   </p>
                   {statusInfo.next && !isCancelled && (
-                    <p style={{ fontSize: 12, color: statusInfo.color, margin: '6px 0 0', fontWeight: 600, opacity: 0.8 }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: statusInfo.color, margin: '0.375rem 0 0', fontWeight: 600, opacity: 0.8 }}>
                       {statusInfo.next}
                     </p>
                   )}
                 </div>
               </div>
 
-              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 600, margin: '0 0 0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
                 Order #{order.order_number}
               </p>
 
@@ -469,13 +469,13 @@ export function OrderStatusPage() {
                       const done   = i < activeStep;
                       const active = i === activeStep;
                       return (
-                        <div key={step.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <div key={step.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.375rem' }}>
                           <div style={{
-                            width: 28, height: 28, borderRadius: '50%',
+                            width: '1.75rem', height: '1.75rem', borderRadius: '50%',
                             background: (done || active) ? statusInfo.color : 'var(--color-surface)',
                             border: `2.5px solid ${(done || active) ? statusInfo.color : 'var(--color-border)'}`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 11, fontWeight: 800,
+                            fontSize: '0.6875rem', fontWeight: 800,
                             color: (done || active) ? 'white' : 'var(--color-text-muted)',
                             boxShadow: active ? `0 0 0 5px ${statusInfo.color}22` : 'none',
                             animation: active ? 'stepper-pulse 2s ease-in-out infinite' : 'none',
@@ -484,7 +484,7 @@ export function OrderStatusPage() {
                             {done ? '✓' : i + 1}
                           </div>
                           <span style={{
-                            fontSize: 10, fontWeight: active ? 700 : 500,
+                            fontSize: '0.625rem', fontWeight: active ? 700 : 500,
                             color: (done || active) ? statusInfo.color : 'var(--color-text-muted)',
                             textAlign: 'center', lineHeight: 1.2,
                             whiteSpace: 'nowrap',
@@ -508,7 +508,7 @@ export function OrderStatusPage() {
               {order.paid_at && (
                 <DetailRow label="Paid at" value={new Date(order.paid_at).toLocaleString()} />
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18, color: 'var(--color-text)', borderTop: '2px solid var(--color-border)', paddingTop: 12, marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 'var(--text-lg)', color: 'var(--color-text)', borderTop: '2px solid var(--color-border)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
                 <span>Total</span>
                 <span style={{ color: 'var(--color-primary)' }}>
                   MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}
@@ -525,10 +525,10 @@ export function OrderStatusPage() {
             {order.type === 'delivery' && order.delivery_address_line1 && (
               <div style={S.card}>
                 <p style={S.cardTitle}>Delivery Address</p>
-                <p style={{ fontSize: 14, color: 'var(--color-text)', margin: 0 }}>{order.delivery_address_line1}</p>
-                {order.delivery_island && <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{order.delivery_island}</p>}
+                <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', margin: 0 }}>{order.delivery_address_line1}</p>
+                {order.delivery_island && <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', margin: '0.25rem 0 0' }}>{order.delivery_island}</p>}
                 {order.delivery_contact_name && (
-                  <p style={{ fontSize: 14, color: 'var(--color-text)', margin: '8px 0 0' }}>
+                  <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', margin: '0.5rem 0 0' }}>
                     Contact: {order.delivery_contact_name}{order.delivery_contact_phone && ` · ${order.delivery_contact_phone}`}
                   </p>
                 )}
@@ -540,17 +540,17 @@ export function OrderStatusPage() {
               <div style={S.card}>
                 <p style={S.cardTitle}>Items Ordered</p>
                 {order.items.map((item: OrderDetailItem) => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid var(--color-border)' }}>
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', paddingBottom: '0.625rem', marginBottom: '0.625rem', borderBottom: '1px solid var(--color-border)' }}>
                     <div style={{ flex: 1 }}>
-                      <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{item.item_name}</span>
+                      <span style={{ fontWeight: 600, fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>{item.item_name}</span>
                       {item.modifiers && item.modifiers.length > 0 && (
-                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.125rem' }}>
                           + {item.modifiers.map((m) => m.name ?? '').join(', ')}
                         </div>
                       )}
                     </div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: 13, marginRight: 12 }}>×{item.quantity}</span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 14 }}>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginRight: '0.75rem' }}>×{item.quantity}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 'var(--text-base)' }}>
                       MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}
                     </span>
                   </div>
@@ -559,7 +559,7 @@ export function OrderStatusPage() {
             )}
 
             {/* Refresh note */}
-            <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted)' }}>
+            <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
               {liveConnected
                 ? '🟢 Live tracking enabled — updates instantly'
                 : '🔄 Auto-refreshing every 10 seconds'}
@@ -569,16 +569,16 @@ export function OrderStatusPage() {
             {pushSupported && !pushSubscribed && !isCancelled && !isDone && token && (
               <div style={{
                 ...S.card,
-                display: 'flex', alignItems: 'center', gap: 14,
+                display: 'flex', alignItems: 'center', gap: '0.875rem',
                 background: 'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-surface) 100%)',
                 borderColor: 'rgba(234, 88, 12, 0.2)',
               }}>
-                <div style={{ fontSize: 28, flexShrink: 0 }}>🔔</div>
+                <div style={{ fontSize: '1.75rem', flexShrink: 0 }}>🔔</div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 2px', color: 'var(--color-text)' }}>
+                  <p style={{ fontWeight: 700, fontSize: 'var(--text-base)', margin: '0 0 0.125rem', color: 'var(--color-text)' }}>
                     Get notified when your order is ready
                   </p>
-                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
                     We'll send you a push notification as your order progresses.
                   </p>
                 </div>
@@ -587,8 +587,8 @@ export function OrderStatusPage() {
                   disabled={pushLoading}
                   style={{
                     background: 'var(--color-primary)', color: 'white',
-                    border: 'none', borderRadius: '10px',
-                    padding: '8px 16px', fontSize: 13, fontWeight: 700,
+                    border: 'none', borderRadius: '0.625rem',
+                    padding: '0.5rem 1rem', fontSize: 'var(--text-sm)', fontWeight: 700,
                     cursor: pushLoading ? 'not-allowed' : 'pointer',
                     flexShrink: 0, fontFamily: 'inherit',
                     opacity: pushLoading ? 0.7 : 1,
@@ -599,7 +599,7 @@ export function OrderStatusPage() {
               </div>
             )}
             {pushSupported && pushSubscribed && !isCancelled && !isDone && (
-              <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-success)' }}>
+              <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-success)' }}>
                 🔔 Push notifications enabled — you'll be notified when your order status changes.
               </p>
             )}
@@ -611,25 +611,25 @@ export function OrderStatusPage() {
 
             {/* Support block */}
             <div style={{ ...S.card, textAlign: 'center', padding: '1.375rem 1.5rem' }}>
-              <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9375rem', marginBottom: 4 }}>
+              <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 'var(--text-body)', marginBottom: '0.25rem' }}>
                 Need help with your order?
               </p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 14 }}>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: '0.875rem' }}>
                 We reply within 10 minutes on WhatsApp and Viber
               </p>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <a
                   href={`${waLink}?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0.625rem 1.125rem', background: '#25d366', color: 'white', borderRadius: '10px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.625rem 1.125rem', background: '#25d366', color: 'white', borderRadius: '0.625rem', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                   aria-label="Contact us on WhatsApp"
                 >
                   <WhatsAppIcon /> WhatsApp
                 </a>
                 <a
                   href={viberLink}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '0.625rem 1.125rem', background: '#7360f2', color: 'white', borderRadius: '10px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.625rem 1.125rem', background: '#7360f2', color: 'white', borderRadius: '0.625rem', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                   aria-label="Contact us on Viber"
                 >
                   <ViberIcon /> Viber
@@ -643,8 +643,8 @@ export function OrderStatusPage() {
                 background: isDone ? 'var(--color-primary)' : 'var(--color-surface)',
                 color: isDone ? 'white' : 'var(--color-primary)',
                 border: isDone ? 'none' : '1.5px solid var(--color-primary)',
-                borderRadius: '12px', padding: '14px 24px',
-                fontSize: 15, fontWeight: 700,
+                borderRadius: '0.75rem', padding: '0.875rem 1.5rem',
+                fontSize: 'var(--text-body)', fontWeight: 700,
                 cursor: 'pointer', width: '100%', fontFamily: 'inherit',
                 boxShadow: isDone ? '0 4px 14px var(--color-primary-glow)' : 'none',
                 transition: 'all 0.15s',
@@ -664,19 +664,19 @@ export function OrderStatusPage() {
               // browsing or session expired). Don't show a confusing "not found"
               // message right after a successful payment.
               <>
-                <p style={{ color: 'var(--color-success)', fontWeight: 700, textAlign: 'center', marginBottom: 8, fontSize: 18 }}>
+                <p style={{ color: 'var(--color-success)', fontWeight: 700, textAlign: 'center', marginBottom: '0.5rem', fontSize: 'var(--text-lg)' }}>
                   Payment received!
                 </p>
-                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: 16 }}>
+                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '1rem' }}>
                   Your order has been confirmed. Check your email or WhatsApp for details.
                 </p>
               </>
             ) : (
-              <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: 16 }}>
+              <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '1rem' }}>
                 Order not found. Please sign in to view your order.
               </p>
             )}
-            <button style={{ background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '12px', padding: '12px 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%', fontFamily: 'inherit' }} onClick={() => navigate('/')}>
+            <button style={{ background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '0.75rem', padding: '0.75rem 1.5rem', fontSize: 'var(--text-body)', fontWeight: 700, cursor: 'pointer', width: '100%', fontFamily: 'inherit' }} onClick={() => navigate('/')}>
               Back to menu
             </button>
           </div>
@@ -687,12 +687,12 @@ export function OrderStatusPage() {
       <footer style={{
         borderTop: '1px solid var(--color-border)',
         background: 'var(--color-surface)',
-        padding: '20px 20px 28px',
+        padding: '1.25rem var(--page-gutter) 1.75rem',
         marginTop: 'auto',
         textAlign: 'center',
       }}>
-        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.625rem', alignItems: 'center' }}>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
             Need help?{' '}
             <a href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
               WhatsApp us
@@ -700,7 +700,7 @@ export function OrderStatusPage() {
             {' · '}
             <a href={phoneTel} style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{phone}</a>
           </p>
-          <a href="/" style={{ fontSize: 12, color: 'var(--color-text-muted)', textDecoration: 'none' }}>
+          <a href="/" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textDecoration: 'none' }}>
             ← Back to main website
           </a>
         </div>
@@ -720,21 +720,21 @@ const S = {
   } as React.CSSProperties,
 
   container: {
-    maxWidth: 600, margin: '0 auto',
-    padding: '20px 16px 40px',
-    display: 'flex', flexDirection: 'column' as const, gap: 16,
+    maxWidth: '600px', margin: '0 auto',
+    padding: '1.25rem var(--page-gutter) 2.5rem',
+    display: 'flex', flexDirection: 'column' as const, gap: '1rem',
   } as React.CSSProperties,
 
   card: {
     background: 'var(--color-surface)',
-    borderRadius: '16px', padding: '20px',
+    borderRadius: '1rem', padding: '1.25rem',
     boxShadow: 'var(--shadow-sm)',
     border: '1px solid var(--color-border)',
   } as React.CSSProperties,
 
   cardTitle: {
-    fontSize: 12, fontWeight: 700,
+    fontSize: 'var(--text-xs)', fontWeight: 700,
     textTransform: 'uppercase' as const, letterSpacing: '0.08em',
-    color: 'var(--color-text-muted)', marginBottom: 4, margin: '0 0 8px',
+    color: 'var(--color-text-muted)', margin: '0 0 0.5rem',
   } as React.CSSProperties,
 } as const;

@@ -30,18 +30,7 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
         borderBottom: '1px solid var(--color-border)',
       }}
     >
-      <div
-        style={{
-          maxWidth: '1280px',
-          margin: '0 auto',
-          padding: '0 1.25rem',
-          height: '64px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.75rem',
-        }}
-      >
+      <div className="order-header-inner" style={{ justifyContent: 'space-between', gap: '0.75rem' }}>
         {/* Left: optional back + logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
           {onBack && (
@@ -80,15 +69,15 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
             <img
               src={logoUrl}
               alt={siteName}
-              width={36}
-              height={36}
-              style={{ borderRadius: '8px', objectFit: 'cover' }}
+              width={38}
+              height={38}
+              style={{ borderRadius: '9px', objectFit: 'cover' }}
               fetchPriority="high"
               decoding="async"
             />
             <span
               style={{
-                fontSize: '1.1rem',
+                fontSize: '1.2rem',
                 fontWeight: 800,
                 color: 'var(--color-dark)',
                 letterSpacing: '-0.02em',

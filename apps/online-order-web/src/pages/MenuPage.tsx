@@ -172,10 +172,10 @@ export function MenuPage() {
   }
 
   return (
-    <div style={{ maxWidth: '1300px', margin: '0 auto', padding: '0 0 5rem', display: 'flex', gap: '1.5rem', position: 'relative' }}>
+    <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', display: 'flex', gap: '1.5rem', position: 'relative' }}>
 
       {/* ── Desktop sidebar categories ─────────────────────────── */}
-      <aside style={{ width: '200px', flexShrink: 0, padding: '1.5rem 0 1.5rem 1.5rem' }} className="menu-sidebar">
+      <aside style={{ width: '200px', flexShrink: 0, padding: '1.5rem 0' }} className="menu-sidebar">
         <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: '0.625rem', padding: '0 0.25rem' }}>
           Categories
         </p>

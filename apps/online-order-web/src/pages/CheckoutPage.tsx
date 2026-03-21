@@ -421,8 +421,8 @@ const S = {
   } as React.CSSProperties,
 
   layout: {
-    maxWidth: 1100, margin: '0 auto',
-    padding: '20px 16px',
+    maxWidth: 1280, margin: '0 auto',
+    padding: '1.5rem var(--page-gutter)',
     display: 'grid', gap: 20,
   } as React.CSSProperties,
 

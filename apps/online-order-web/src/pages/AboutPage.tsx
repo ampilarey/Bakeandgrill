@@ -17,7 +17,7 @@ export function AboutPage() {
   const phone    = s.business_phone    || '+960 912 0011';
   const email    = s.business_email    || 'hello@bakeandgrill.mv';
   return (
-    <div style={{ maxWidth: '860px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+    <div style={{ maxWidth: '860px', margin: '0 auto', padding: '3rem var(--page-gutter)' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🍽️</div>

@@ -29,7 +29,7 @@ const AccountPage      = lazy(() => import('./pages/AccountPage').then((m) => ({
 // Minimal fallback shown while a page chunk loads
 function PageSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem 1.5rem', maxWidth: '1300px', margin: '0 auto' }}>
+    <div className="order-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: 'var(--page-gutter)' }}>
       <div className="skeleton" style={{ height: '48px', borderRadius: '12px', maxWidth: '40%' }} />
       <div className="skeleton" style={{ height: '300px', borderRadius: '16px' }} />
       <div className="skeleton" style={{ height: '200px', borderRadius: '16px' }} />

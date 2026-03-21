@@ -305,7 +305,7 @@ export function PreOrderPage() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const S: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: 'var(--color-bg)', padding: '3rem 1rem 5rem' },
+  page: { minHeight: '100vh', background: 'var(--color-bg)', padding: '3rem var(--page-gutter) 5rem' },
   container: { maxWidth: '900px', margin: '0 auto' },
   heading: { fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '0.75rem' },
   sub: { color: 'var(--color-text-muted)', fontSize: '1rem', lineHeight: 1.7, maxWidth: '540px', margin: '0 auto 1rem' },

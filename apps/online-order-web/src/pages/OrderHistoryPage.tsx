@@ -60,7 +60,7 @@ export function OrderHistoryPage() {
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '2rem 1.25rem', minHeight: '60vh' }}>
+    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '2rem var(--page-gutter)', minHeight: '60vh' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>My Orders</h1>
         <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0' }}>
