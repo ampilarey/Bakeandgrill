@@ -117,9 +117,10 @@ class PromotionController extends Controller
         });
 
         return response()->json([
-            'message' => $result['message'],
+            'message'       => $result['message'],
             'discount_laar' => $result['discount_laar'],
-            'discount_mvr' => number_format($result['discount_laar'] / 100, 2),
+            'discount_mvr'  => number_format($result['discount_laar'] / 100, 2),
+            'promotion_id'  => $promotion->id,
         ]);
     }
 

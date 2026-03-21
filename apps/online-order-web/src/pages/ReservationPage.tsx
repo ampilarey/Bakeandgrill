@@ -71,7 +71,7 @@ export function ReservationPage() {
     <div style={s.page}>
       {/* Header */}
       <div style={s.header}>
-        <button style={s.back} onClick={() => navigate("/")}>← Menu</button>
+        <button style={s.back} onClick={() => navigate("/menu")}>← Menu</button>
         <h1 style={s.title}>Table Reservation</h1>
       </div>
 
@@ -93,7 +93,7 @@ export function ReservationPage() {
             <p style={{ ...s.sub, color: "var(--color-text-muted)", fontSize: 12 }}>
               Reference: <code>#{reservation.id}</code>
             </p>
-            <button style={s.btn} onClick={() => navigate("/")}>Back to Menu</button>
+            <button style={s.btn} onClick={() => navigate("/menu")}>Back to Menu</button>
           </div>
         ) : step === "slots" ? (
           <>

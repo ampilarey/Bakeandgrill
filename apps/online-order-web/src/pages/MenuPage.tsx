@@ -59,37 +59,37 @@ export function MenuPage() {
   usePageTitle('Menu');
 
   useEffect(() => {
-    const categorySlug = searchParams.get('category');
-    const itemId = searchParams.get('item') ? Number(searchParams.get('item')) : null;
-
     Promise.all([fetchCategories(), fetchItems(), fetchOpeningHoursStatus()])
       .then(([cats, its, hours]) => {
         setCategories(cats.data);
         setItems(its.data);
-
-        // Pre-select category from ?category= query param, otherwise show All
-        if (categorySlug) {
-          const match = cats.data.find(
-            (c) => c.name.toLowerCase().replace(/\s+/g, '-') === categorySlug,
-          );
-          setActiveCategoryId(match?.id ?? null);
-        } else {
-          setActiveCategoryId(null);
-        }
-
-        // BUG-12: auto-open item modal from ?item= query param
-        if (itemId) {
-          const match = its.data.find((i) => i.id === itemId);
-          if (match) { setSelectedItem(match); setSelectedModifiers([]); }
-        }
-
         setIsOpen(hours.open);
         setClosedMessage(hours.open ? null : (hours.message ?? 'We are currently closed.'));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-apply category / item selection whenever the URL search params change
+  useEffect(() => {
+    if (categories.length === 0) return;
+    const categorySlug = searchParams.get('category');
+    const itemId = searchParams.get('item') ? Number(searchParams.get('item')) : null;
+
+    if (categorySlug) {
+      const match = categories.find(
+        (c) => c.name.toLowerCase().replace(/\s+/g, '-') === categorySlug,
+      );
+      setActiveCategoryId(match?.id ?? null);
+    } else {
+      setActiveCategoryId(null);
+    }
+
+    if (itemId) {
+      const match = items.find((i) => i.id === itemId);
+      if (match) { setSelectedItem(match); setSelectedModifiers([]); }
+    }
+  }, [searchParams, categories, items]);
 
   // Mobile: header/bottom-nav "Cart" links use ?openCart=1 — open sheet (they don't tap the FAB).
   useEffect(() => {

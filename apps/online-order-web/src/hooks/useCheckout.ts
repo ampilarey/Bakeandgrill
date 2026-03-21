@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   applyPromoCode,
+  removePromoCode,
   createCustomerOrder,
   createDeliveryOrder,
   createLoyaltyHold,
@@ -72,7 +73,7 @@ export function useCheckout() {
 
   const [promoCode, setPromoCode]   = useState("");
   const [promoApplied, setPromoApplied] = useState<{
-    code: string; discountLaar: number; pending?: boolean;
+    code: string; discountLaar: number; promotionId?: number; pending?: boolean;
   } | null>(null);
   const [promoError, setPromoError]   = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
@@ -161,13 +162,23 @@ export function useCheckout() {
     setPromoLoading(true);
     try {
       const res = await applyPromoCode(token, pendingOrderId, promoCode.trim().toUpperCase());
-      setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: res.discount_laar });
+      setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: res.discount_laar, promotionId: res.promotion_id });
       setPromoCode("");
     } catch (e) {
       setPromoError((e as Error).message);
     } finally {
       setPromoLoading(false);
     }
+  };
+
+  const handleRemovePromo = async () => {
+    if (token && pendingOrderId && promoApplied?.promotionId && !promoApplied.pending) {
+      try {
+        await removePromoCode(token, pendingOrderId, promoApplied.promotionId);
+      } catch { /* ignore — UI state cleared regardless */ }
+    }
+    setPromoApplied(null);
+    setPromoCode("");
   };
 
   // ── Validation ─────────────────────────────────────────────────────────────
@@ -233,7 +244,7 @@ export function useCheckout() {
       if (promoToApply && (!promoApplied || promoApplied.pending)) {
         try {
           const promoRes = await applyPromoCode(token, orderId, promoToApply);
-          setPromoApplied({ code: promoToApply, discountLaar: promoRes.discount_laar });
+          setPromoApplied({ code: promoToApply, discountLaar: promoRes.discount_laar, promotionId: promoRes.promotion_id });
           setPromoCode("");
         } catch (e) {
           setPromoError((e as Error).message);
@@ -298,6 +309,6 @@ export function useCheckout() {
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
-    handleApplyPromo, handlePlaceAndPay, handleAuthSuccess,
+    handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
   };
 }

@@ -97,12 +97,12 @@ export function CheckoutPage() {
   const {
     cart, token, customerName, loyaltyAccount, loyaltyPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
-    promoCode, setPromoCode, promoApplied, setPromoApplied,
+    promoCode, setPromoCode, promoApplied,
     promoError, promoLoading,
     useLoyalty, setUseLoyalty,
     deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
-    handleApplyPromo, handlePlaceAndPay, handleAuthSuccess,
+    handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
   } = useCheckout();
 
   if (cart.length === 0) {
@@ -209,7 +209,7 @@ export function CheckoutPage() {
                         : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
                       }
                     </span>
-                    <button style={S.removeBtn} onClick={() => setPromoApplied(null)}>Remove</button>
+                    <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>Remove</button>
                   </div>
                 ) : (
                   <>

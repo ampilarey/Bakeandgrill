@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 const VALUES = [
   { initial: 'F', title: 'Fresh Ingredients', desc: 'We source locally and prep daily. No shortcuts, no compromises.' },
@@ -10,6 +11,11 @@ const VALUES = [
 
 export function AboutPage() {
   usePageTitle('About');
+  const s = useSiteSettings();
+  const address  = s.business_address  || 'Majeedhee Magu, Malé, Maldives';
+  const landmark = s.business_landmark || 'Near the ferry terminal';
+  const phone    = s.business_phone    || '+960 912 0011';
+  const email    = s.business_email    || 'hello@bakeandgrill.mv';
   return (
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '3rem 1.5rem' }}>
       {/* Header */}
@@ -30,7 +36,7 @@ export function AboutPage() {
           Bake &amp; Grill was born out of a passion for honest, well-made food. We wanted to create a place where locals could gather for a proper breakfast, a quick lunch, or a relaxed dinner — without compromise on quality.
         </p>
         <p style={{ color: 'var(--color-text)', fontSize: '1rem', lineHeight: 1.8 }}>
-          Located on Majeedhee Magu in the heart of Malé, we bring together traditional Dhivehi tastes and modern café culture under one roof. Every item on our menu is freshly prepared — from our morning pastries to our evening grill specials.
+          Located in the heart of Malé at {address}, we bring together traditional Dhivehi tastes and modern café culture under one roof. Every item on our menu is freshly prepared — from our morning pastries to our evening grill specials.
         </p>
       </section>
 
@@ -54,8 +60,11 @@ export function AboutPage() {
       {/* Location */}
       <section style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '20px', padding: '2.5rem', textAlign: 'center', marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>Visit Us</h2>
-        <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Majeedhee Magu, Malé, Maldives</p>
-        <p style={{ opacity: 0.9, marginBottom: '1.5rem' }}>Near the ferry terminal</p>
+        <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>{address}</p>
+        <p style={{ opacity: 0.9, marginBottom: '0.5rem', fontSize: '0.875rem' }}>{landmark}</p>
+        <p style={{ opacity: 0.85, marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+          {phone}{email ? ` · ${email}` : ''}
+        </p>
         <div style={{ display: 'flex', gap: '0.875rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link
             to="/hours"

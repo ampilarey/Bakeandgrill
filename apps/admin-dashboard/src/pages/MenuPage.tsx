@@ -286,14 +286,6 @@ function ItemFormModal({
         <Field label="Image">
           <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
         </Field>
-        {false && (
-          <img
-            src={form.image_url}
-            alt="preview"
-            style={{ height: 80, width: 80, objectFit: 'cover', borderRadius: 10, border: '1px solid #e2e8f0' }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        )}
         <div style={{ display: 'flex', gap: 20 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
             <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />

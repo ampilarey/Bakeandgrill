@@ -46,9 +46,15 @@ export function ExpensesPage() {
   useEffect(() => { void load(); }, [from, to]);
 
   const handleAdd = async () => {
+    const catId  = parseInt(form.expense_category_id, 10);
+    const amount = parseFloat(form.amount);
+    if (isNaN(catId) || isNaN(amount) || amount <= 0) {
+      setError('Please select a category and enter a valid amount.');
+      return;
+    }
     setSaving(true);
     try {
-      await storeExpense({ ...form, expense_category_id: parseInt(form.expense_category_id), amount: parseFloat(form.amount) });
+      await storeExpense({ ...form, expense_category_id: catId, amount });
       setShowAdd(false);
       setForm(emptyForm);
       void load();
@@ -70,9 +76,15 @@ export function ExpensesPage() {
 
   const handleUpdate = async () => {
     if (!editingExpense) return;
+    const catId  = parseInt(form.expense_category_id, 10);
+    const amount = parseFloat(form.amount);
+    if (isNaN(catId) || isNaN(amount) || amount <= 0) {
+      setError('Please select a category and enter a valid amount.');
+      return;
+    }
     setSaving(true);
     try {
-      await updateExpense(editingExpense.id, { ...form, expense_category_id: parseInt(form.expense_category_id), amount: parseFloat(form.amount) });
+      await updateExpense(editingExpense.id, { ...form, expense_category_id: catId, amount });
       setEditingExpense(null);
       setForm(emptyForm);
       void load();

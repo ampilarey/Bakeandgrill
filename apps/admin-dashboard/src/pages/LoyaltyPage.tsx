@@ -58,8 +58,8 @@ function AdjustModal({ account, onClose, onDone }: {
   const [error, setError] = useState('');
 
   const submit = async () => {
-    const d = parseInt(delta);
-    if (!d || !reason) { setError('Delta and reason are required.'); return; }
+    const d = parseInt(delta, 10);
+    if (isNaN(d) || d === 0 || !reason) { setError('Delta and reason are required.'); return; }
     setError('');
     setLoading(true);
     try {

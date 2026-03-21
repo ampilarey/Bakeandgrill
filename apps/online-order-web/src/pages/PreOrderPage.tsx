@@ -4,6 +4,7 @@ import { fetchItems, createPreOrder } from '../api';
 import type { Item, PreOrderResult } from '../api';
 import { AuthBlock } from '../components/AuthBlock';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useAuth } from '../context/AuthContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function mvrToDisplay(mvr: number) { return mvr.toFixed(2); }
@@ -19,13 +20,12 @@ function minFulfillmentDate(): string {
 export function PreOrderPage() {
   const s = useSiteSettings();
   const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
+  const { token, customerName, setAuth } = useAuth();
   const [step, setStep] = useState<'items' | 'details' | 'confirm' | 'done'>('items');
   const [items, setItems] = useState<Item[]>([]);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [fulfillmentDate, setFulfillmentDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('online_token'));
-  const [customerName, setCustomerName] = useState<string | null>(() => localStorage.getItem('online_customer_name'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<PreOrderResult | null>(null);
@@ -239,7 +239,7 @@ export function PreOrderPage() {
 
             {/* Auth if needed */}
             {!token ? (
-              <AuthBlock onSuccess={(t, name) => { setToken(t); setCustomerName(name); }} />
+              <AuthBlock onSuccess={(t, name) => setAuth(t, name)} />
             ) : (
               <div style={{ background: 'var(--color-surface-alt)', borderRadius: '10px', padding: '0.875rem 1rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
                 ✅ Ordering as <strong>{customerName}</strong>

@@ -213,18 +213,6 @@ export async function completeProfile(
   });
 }
 
-/** Change password for a logged-in customer. */
-export async function changePassword(
-  token: string,
-  payload: { current_password: string; password: string; password_confirmation: string },
-): Promise<{ message: string }> {
-  return request(ENDPOINTS.CUSTOMER_CHANGE_PASSWORD, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload),
-  });
-}
-
 /** Update the logged-in customer's profile (name / email). */
 export async function updateCustomerProfile(
   token: string,
@@ -449,8 +437,8 @@ export async function applyPromoCode(
   token: string,
   orderId: number,
   code: string,
-): Promise<{ order: OrderDetail; discount_laar: number }> {
-  return request<{ order: OrderDetail; discount_laar: number }>(
+): Promise<{ order: OrderDetail; discount_laar: number; promotion_id: number }> {
+  return request<{ order: OrderDetail; discount_laar: number; promotion_id: number }>(
     ENDPOINTS.ORDER_APPLY_PROMO(orderId),
     {
       method: 'POST',
