@@ -1104,6 +1104,7 @@ textarea.field-input {
 ════════════════════════════════════════════════════════════ */
 .desktop-nav { display: flex !important; }
 .show-desktop { display: inline !important; }
+.show-mobile { display: none !important; }
 .menu-sidebar { display: block !important; }
 .cart-sidebar { display: block !important; }
 .mobile-category-pills { display: none !important; }
@@ -1126,6 +1127,7 @@ textarea.field-input {
 @media (max-width: 768px) {
   .desktop-nav { display: none !important; }
   .show-desktop { display: none !important; }
+  .show-mobile { display: inline-flex !important; }
   /* No hamburger: logged-in users use header + bottom nav for navigation */
   html { scroll-padding-top: 130px; }
 }

@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { OrderStatusBar } from './OrderStatusBar';
-import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PreOrderIcon, ClockIcon, PhoneIcon, LogOutIcon } from './icons';
-import { getCustomerMe, logoutCustomerWebSession, revokeCustomerToken } from '../api';
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PreOrderIcon, ClockIcon, PhoneIcon } from './icons';
+import { getCustomerMe } from '../api';
 
 
 export function Layout() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { cart } = useCart();
   useLanguage(); // keep provider active for t() calls in child pages
@@ -78,18 +77,6 @@ export function Layout() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const handleLogout = async () => {
-    const currentToken = token;
-    clearAuth();
-    try {
-      if (currentToken) await revokeCustomerToken(currentToken);
-      await logoutCustomerWebSession();
-    } catch {
-      /* ignore — local state already cleared */
-    }
-    navigate('/');
-  };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)' }}>
@@ -196,14 +183,15 @@ export function Layout() {
               {darkMode ? '☀️' : '🌙'}
             </button>
 
-            {/* Logged-in customer — desktop header; on narrow screens use hamburger menu instead */}
+            {/* Logged-in customer — "Hi, number" pill links to account on all screen sizes */}
             {token && (
-              <div className="order-header-account" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                {customerName ? (
+              <div className="order-header-account" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                {/* Desktop: "Hi, name" text + My Account link */}
+                {customerName && (
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="show-desktop">
                     Hi, {customerName}
                   </span>
-                ) : null}
+                )}
                 <Link
                   to="/account"
                   style={{ padding: '0.35rem 0.7rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap', textDecoration: 'none' }}
@@ -211,13 +199,15 @@ export function Layout() {
                 >
                   My Account
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  style={{ padding: '0.35rem 0.7rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' }}
-                  aria-label="Log out"
+                {/* Mobile: tappable pill showing phone number → account */}
+                <Link
+                  to="/account"
+                  className="show-mobile"
+                  style={{ alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                  aria-label="My account"
                 >
-                  Log out
-                </button>
+                  👤 {customerName ?? 'Account'}
+                </Link>
               </div>
             )}
 
@@ -359,39 +349,14 @@ export function Layout() {
             <span className="order-mob-icon"><PreOrderIcon size={20} /></span>
             Pre-order
           </Link>
-          {token ? (
-            <a href="/contact" className="order-mob-item">
-              <span className="order-mob-icon"><PhoneIcon size={20} /></span>
-              Contact
-            </a>
-          ) : (
-            <a href="/hours" className="order-mob-item">
-              <span className="order-mob-icon"><ClockIcon size={20} /></span>
-              Hours
-            </a>
-          )}
-          {token ? (
-            <Link to="/account" className="order-mob-item" onClick={() => setMoreOpen(false)}>
-              <span className="order-mob-icon">👤</span>
-              My Account
-            </Link>
-          ) : null}
-          {token ? (
-            <button
-              type="button"
-              className="order-mob-item"
-              onClick={() => void handleLogout()}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-error, #dc2626)' }}
-            >
-              <span className="order-mob-icon"><LogOutIcon size={20} /></span>
-              Log out
-            </button>
-          ) : (
-            <a href="/contact" className="order-mob-item">
-              <span className="order-mob-icon"><PhoneIcon size={20} /></span>
-              Contact
-            </a>
-          )}
+          <a href="/hours" className={`order-mob-item${location.pathname === '/hours' ? ' order-mob-active' : ''}`}>
+            <span className="order-mob-icon"><ClockIcon size={20} /></span>
+            Hours
+          </a>
+          <a href="/contact" className={`order-mob-item${location.pathname === '/contact' ? ' order-mob-active' : ''}`}>
+            <span className="order-mob-icon"><PhoneIcon size={20} /></span>
+            Contact
+          </a>
         </div>
       </nav>
     </div>

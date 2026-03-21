@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
-import { getCustomerMe, updateCustomerProfile, changeCustomerPassword } from '../api';
+import { getCustomerMe, updateCustomerProfile, changeCustomerPassword, revokeCustomerToken, logoutCustomerWebSession } from '../api';
 import type { AuthCustomer } from '../api';
 import { AuthBlock } from '../components/AuthBlock';
 
@@ -63,7 +64,8 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 export function AccountPage() {
   usePageTitle('My Account');
-  const { token, authReady, setAuth, customerName } = useAuth();
+  const navigate = useNavigate();
+  const { token, authReady, setAuth, clearAuth, customerName } = useAuth();
 
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -91,6 +93,18 @@ export function AccountPage() {
   }, [token, authReady]);
 
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
+
+  const handleLogout = async () => {
+    const currentToken = token;
+    clearAuth();
+    navigate('/');
+    try {
+      if (currentToken) await revokeCustomerToken(currentToken);
+      await logoutCustomerWebSession();
+    } catch {
+      /* ignore — local state already cleared */
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!token) return;
@@ -260,6 +274,24 @@ export function AccountPage() {
           </button>
         </div>
       </SectionCard>
+
+      {/* Sign out */}
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => void handleLogout()}
+          style={{
+            padding: '10px 20px',
+            background: 'transparent',
+            border: '1.5px solid var(--color-error, #dc2626)',
+            borderRadius: 10,
+            fontSize: 14, fontWeight: 600,
+            color: 'var(--color-error, #dc2626)',
+            fontFamily: 'inherit', cursor: 'pointer',
+          }}
+        >
+          Sign Out
+        </button>
+      </div>
     </div>
   );
 }
