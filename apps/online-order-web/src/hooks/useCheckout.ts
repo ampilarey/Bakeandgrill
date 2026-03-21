@@ -276,17 +276,21 @@ export function useCheckout() {
           itemCount: cart.reduce((s, i) => s + i.quantity, 0),
           placedAt: new Date().toISOString(),
         };
-        const updated = [entry, ...existing].slice(0, 20); // keep last 20 orders
+        const updated = [entry, ...existing].slice(0, 20);
         localStorage.setItem(historyKey, JSON.stringify(updated));
       } catch { /* ignore */ }
 
       // Do NOT clear the cart here — cart is cleared in OrderStatusPage once
       // the order status is confirmed as paid/pending. If the user cancels
       // payment or the gateway fails, their cart will still be intact.
+
+      // Keep isPlacing=true during redirect so the button stays disabled
+      // while the browser navigates to BML. Don't call setIsPlacing(false)
+      // in the finally block when we successfully redirect.
       window.location.href = payment.payment_url;
+      return; // skip the finally reset below
     } catch (e) {
       setGlobalError((e as Error).message);
-    } finally {
       setIsPlacing(false);
     }
   };
