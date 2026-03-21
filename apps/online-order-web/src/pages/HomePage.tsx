@@ -4,8 +4,9 @@ import { fetchItems, fetchOpeningHoursStatus, API_ORIGIN } from '../api';
 import type { Item, OpeningHoursStatus } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
+import { HeroCarousel } from '../components/HeroCarousel';
 
 // ─── Category shortcuts data ──────────────────────────────────────────────────
 const CATEGORIES = [
@@ -15,19 +16,12 @@ const CATEGORIES = [
   { icon: '🎂', name: 'Special Orders', slug: 'special-orders', hook: 'Cakes made to order. Call ahead.', color: '#fdf4ff' },
 ];
 
-const TRUST_CHIPS = [
-  { icon: '🌅', text: 'Baked at 5am daily' },
-  { icon: '⚡', text: '30–45 min delivery' },
-  { icon: '🏠', text: 'Family-owned' },
-  { icon: '💳', text: 'BML + Cash on delivery' },
-];
-
 export function HomePage() {
   const [featuredItems, setFeaturedItems] = useState<Item[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
   const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
-  const s = useSiteSettings();
+  const { settings: s, trustItems, heroSlides } = useSiteSettingsContext();
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
   const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
@@ -46,106 +40,72 @@ export function HomePage() {
     }).catch(() => setIsOpen(true));
   }, []);
 
-  return (
-    <div>
+  const statusBadge =
+    isOpen !== null ? (
+      <OpeningStatusBadge
+        open={isOpen}
+        today={todayHours}
+        closedDetail={hoursMsg}
+        className="opening-status-badge-hero"
+        timeDisplay="24h"
+      />
+    ) : null;
 
-      {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="home-hero" style={{
+  const gradientHeroFallback = (
+    <section
+      className="home-hero"
+      style={{
         background: 'linear-gradient(135deg, var(--color-primary-light) 0%, #fff7ed 40%, var(--color-surface-alt) 100%)',
         borderBottom: '1px solid var(--color-border)',
         padding: '3.5rem var(--page-gutter) 3rem',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
-      }}>
-        {/* Opening status badge — absolute top-right, matching main website hero */}
-        {isOpen !== null && (
-          <OpeningStatusBadge
-            open={isOpen}
-            today={todayHours}
-            closedDetail={hoursMsg}
-            className="opening-status-badge-hero"
-          />
-        )}
-
-        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-
-          <h1 style={{
-            fontSize: 'clamp(1.875rem, 6vw, 3rem)',
-            fontWeight: 800,
-            lineHeight: 1.1,
-            letterSpacing: '-0.035em',
-            color: 'var(--color-dark)',
-            marginBottom: '0.875rem',
-          }}>
-            Where Dhivehi breakfast<br />
-            <span style={{ color: 'var(--color-primary)' }}>meets artisan baking</span>
-          </h1>
-
-          <p style={{
-            fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.7,
-            maxWidth: '480px',
-            margin: '0 auto 2rem',
-          }}>
-            Real food. Proper char. Baked fresh every morning in the heart of Malé.
-          </p>
-
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link
-              to="/menu"
-              className="btn-primary-hover"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                background: 'var(--color-primary)',
-                color: 'white',
-                padding: '0.9rem 2rem',
-                borderRadius: 'var(--radius-full)',
-                fontWeight: 700, fontSize: '1rem',
-                boxShadow: '0 4px 16px var(--color-primary-glow)',
-                textDecoration: 'none',
-              }}
-            >
-              Order Now →
-            </Link>
-            <Link
-              to="/menu"
-              className="btn-ghost-hover"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                background: 'transparent',
-                color: 'var(--color-text)',
-                padding: '0.9rem 2rem',
-                borderRadius: 'var(--radius-full)',
-                fontWeight: 600, fontSize: '1rem',
-                border: '1.5px solid var(--color-border)',
-                textDecoration: 'none',
-              }}
-            >
-              Browse Menu
-            </Link>
-          </div>
+      }}
+    >
+      {statusBadge}
+      <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+        <span className="home-banner-eyebrow">Malé&apos;s neighbourhood café</span>
+        <h1 className="home-banner-title">
+          Where Dhivehi breakfast
+          <br />
+          meets <em>artisan baking</em>
+        </h1>
+        <p className="home-banner-sub">
+          Real food. Proper char. Baked fresh every morning at 5am.
+        </p>
+        <div className="home-banner-ctas">
+          <Link to="/menu" className="home-banner-cta-primary btn-primary-hover">
+            Order Now →
+          </Link>
+          <Link to="/menu" className="home-banner-cta-secondary btn-ghost-hover">
+            View Menu
+          </Link>
         </div>
-      </section>
+      </div>
+    </section>
+  );
 
-      {/* ── Trust chips ───────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--color-surface)',
-        borderBottom: '1px solid var(--color-border)',
-        padding: '0.875rem var(--page-gutter)',
-        overflowX: 'auto',
-      }}>
-        <div style={{
-          display: 'flex', gap: '0.625rem',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-          maxWidth: 'var(--layout-max)', margin: '0 auto',
-        }}>
-          {TRUST_CHIPS.map((chip) => (
-            <div key={chip.text} className="trust-chip">
-              <span className="trust-chip-icon">{chip.icon}</span>
-              {chip.text}
+  return (
+    <div>
+
+      <HeroCarousel
+        slides={heroSlides}
+        apiOrigin={API_ORIGIN}
+        fallback={gradientHeroFallback}
+        statusSlot={statusBadge}
+      />
+
+      {/* ── Trust strip (Blade .trust-strip parity) ───────────────────────── */}
+      <div className="order-trust-strip">
+        <div className="order-trust-inner">
+          {trustItems.map((ti, i) => (
+            <div key={i} className="order-trust-item">
+              <div className="order-trust-icon-wrap">{ti.icon ?? ''}</div>
+              <div className="order-trust-text">
+                <strong>{ti.heading ?? ''}</strong>
+                <span>{ti.subtext ?? ''}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -206,7 +166,7 @@ export function HomePage() {
               </div>
               <Link
                 to="/menu"
-                style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: 'var(--text-base)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
               >
                 See full menu →
               </Link>
@@ -230,7 +190,6 @@ export function HomePage() {
                       overflow: 'hidden',
                     }}
                   >
-                    {/* Image */}
                     <div style={{
                       height: '150px', flexShrink: 0, overflow: 'hidden',
                       background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), #f7e0c4)',
@@ -242,9 +201,8 @@ export function HomePage() {
                         <span style={{ fontSize: '2.5rem', opacity: 0.4 }}>🍽️</span>
                       )}
                     </div>
-                    {/* Info */}
                     <div style={{ padding: '0.875rem 1rem' }}>
-                      <h3 style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.375rem', lineHeight: 1.3 }}>
+                      <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.375rem', lineHeight: 1.3 }}>
                         {item.name}
                       </h3>
                       <p style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-primary)', margin: 0 }}>
@@ -299,7 +257,7 @@ export function HomePage() {
           <h2 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'white', marginBottom: '0.75rem', letterSpacing: '-0.03em' }}>
             Hungry? Browse the menu.
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.9375rem', marginBottom: '1.75rem', lineHeight: 1.65 }}>
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 'var(--text-body)', marginBottom: '1.75rem', lineHeight: 1.65 }}>
             Order in seconds — no app needed.
           </p>
           <Link
@@ -311,7 +269,7 @@ export function HomePage() {
               color: 'white',
               padding: '0.875rem 2.25rem',
               borderRadius: 'var(--radius-full)',
-              fontWeight: 700, fontSize: '1rem',
+              fontWeight: 700, fontSize: 'var(--text-md)',
               boxShadow: '0 4px 18px var(--color-primary-glow)',
               textDecoration: 'none',
             }}

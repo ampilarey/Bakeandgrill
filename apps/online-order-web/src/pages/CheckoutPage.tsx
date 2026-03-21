@@ -107,7 +107,7 @@ export function CheckoutPage() {
 
   if (cart.length === 0) {
     return (
-      <div style={{ padding: '3rem 1.5rem', textAlign: 'center', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ padding: '3rem var(--page-gutter)', textAlign: 'center', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="animate-fade-in">
           <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.35 }}>🛒</div>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', fontSize: '1rem' }}>
@@ -128,7 +128,7 @@ export function CheckoutPage() {
         onBack={() => navigate(-1)}
         backLabel="← Back"
         rightSlot={customerName ? (
-          <span style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 500 }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 500 }}>
             Hi, {customerName}
           </span>
         ) : undefined}
@@ -203,7 +203,7 @@ export function CheckoutPage() {
               <SectionCard title="Promo Code">
                 {promoApplied ? (
                   <div style={S.promoApplied}>
-                    <span style={{ fontSize: 14 }}>
+                    <span style={{ fontSize: 'var(--text-base)' }}>
                       {promoApplied.pending
                         ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — applied at checkout</>
                         : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
@@ -238,11 +238,11 @@ export function CheckoutPage() {
               {/* Loyalty points */}
               {loyaltyAccount && loyaltyAccount.points_balance > 0 && (
                 <SectionCard title="Loyalty Points">
-                  <p style={{ fontSize: 14, color: 'var(--color-text)', marginBottom: 12 }}>
+                  <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 12 }}>
                     You have <strong>{loyaltyAccount.points_balance} pts</strong> available
                     {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {laarToMvr(loyaltyAccount.points_balance)}</span> value).
                   </p>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--color-text)', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-base)', color: 'var(--color-text)', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={useLoyalty}
@@ -378,8 +378,8 @@ export function CheckoutPage() {
                 style={{
                   ...S.primaryBtn,
                   width: '100%',
-                  padding: '1rem 1.5rem',
-                  fontSize: 16,
+                  padding: '1rem var(--page-gutter)',
+                  fontSize: 'var(--text-md)',
                   opacity: (isPlacing || !acceptTerms) ? 0.55 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                   cursor: !acceptTerms ? 'not-allowed' : 'pointer',
@@ -421,7 +421,7 @@ const S = {
   } as React.CSSProperties,
 
   layout: {
-    maxWidth: 1280, margin: '0 auto',
+    maxWidth: 'var(--layout-max)', margin: '0 auto',
     padding: '1.5rem var(--page-gutter)',
     display: 'grid', gap: 20,
   } as React.CSSProperties,
@@ -441,7 +441,7 @@ const S = {
   } as React.CSSProperties,
 
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 'var(--text-base)',
     fontWeight: 700,
     color: 'var(--color-text)',
     margin: '0 0 14px',
@@ -453,7 +453,7 @@ const S = {
 
   fieldLabel: {
     display: 'block',
-    fontSize: 13, fontWeight: 600,
+    fontSize: 'var(--text-sm)', fontWeight: 600,
     color: 'var(--color-text)',
     marginBottom: 5,
   } as React.CSSProperties,
@@ -469,7 +469,7 @@ const S = {
     border: '1.5px solid var(--color-border)',
     borderRadius: '12px',
     background: 'var(--color-surface)',
-    cursor: 'pointer', fontSize: 14, fontWeight: 600,
+    cursor: 'pointer', fontSize: 'var(--text-base)', fontWeight: 600,
     color: 'var(--color-text)',
     transition: 'all 0.15s', fontFamily: 'inherit',
   } as React.CSSProperties,
@@ -482,7 +482,7 @@ const S = {
 
   infoNote: {
     display: 'flex', alignItems: 'center', gap: '0.4rem',
-    fontSize: 13, color: 'var(--color-text-muted)',
+    fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)',
     background: 'var(--color-surface-alt)',
     borderRadius: '8px', padding: '8px 12px',
     marginBottom: 14,
@@ -490,12 +490,12 @@ const S = {
 
   summaryRow: {
     display: 'flex', justifyContent: 'space-between',
-    fontSize: 14, marginBottom: 8,
+    fontSize: 'var(--text-base)', marginBottom: 8,
   } as React.CSSProperties,
 
   totalRow: {
     display: 'flex', justifyContent: 'space-between',
-    fontWeight: 800, fontSize: 18,
+    fontWeight: 800, fontSize: 'var(--text-lg)',
     color: 'var(--color-text)',
     borderTop: '2px solid var(--color-border)',
     paddingTop: 12, marginTop: 8,
@@ -504,21 +504,21 @@ const S = {
   promoApplied: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     background: 'var(--color-success-bg)',
-    borderRadius: 10, padding: '10px 14px', fontSize: 14,
+    borderRadius: 10, padding: '10px 14px', fontSize: 'var(--text-base)',
     border: '1px solid rgba(22,163,74,0.2)',
   } as React.CSSProperties,
 
   removeBtn: {
     background: 'none', border: 'none',
     color: 'var(--color-error)',
-    cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+    cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600, fontFamily: 'inherit',
   } as React.CSSProperties,
 
   primaryBtn: {
     background: 'var(--color-primary)',
     color: '#fff', border: 'none',
     borderRadius: '12px', padding: '12px 24px',
-    fontSize: 15, fontWeight: 700,
+    fontSize: 'var(--text-body)', fontWeight: 700,
     cursor: 'pointer', fontFamily: 'inherit',
     transition: 'all 0.15s',
     boxShadow: '0 4px 14px var(--color-primary-glow)',
@@ -529,7 +529,7 @@ const S = {
     color: 'var(--color-primary)',
     border: '1.5px solid var(--color-primary)',
     borderRadius: '10px', padding: '0 16px',
-    fontSize: 14, fontWeight: 600,
+    fontSize: 'var(--text-base)', fontWeight: 600,
     cursor: 'pointer', whiteSpace: 'nowrap' as const,
     fontFamily: 'inherit', height: 'var(--input-height)',
   } as React.CSSProperties,
@@ -539,7 +539,7 @@ const S = {
     padding: '0.5rem 1rem',
     background: '#25d366', color: 'white',
     borderRadius: '8px', fontWeight: 600,
-    fontSize: 13, textDecoration: 'none',
+    fontSize: 'var(--text-sm)', textDecoration: 'none',
     transition: 'all 0.15s',
   } as React.CSSProperties,
 
@@ -548,7 +548,7 @@ const S = {
     padding: '0.5rem 1rem',
     background: '#7360f2', color: 'white',
     borderRadius: '8px', fontWeight: 600,
-    fontSize: 13, textDecoration: 'none',
+    fontSize: 'var(--text-sm)', textDecoration: 'none',
     transition: 'all 0.15s',
   } as React.CSSProperties,
 

@@ -215,6 +215,7 @@ export function MenuPage() {
               open={isOpen}
               today={todayHours}
               closedDetail={closedMessage}
+              timeDisplay="12h"
               className="opening-status-badge-menu"
             />
           </div>

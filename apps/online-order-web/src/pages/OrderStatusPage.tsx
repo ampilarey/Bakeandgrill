@@ -691,7 +691,7 @@ export function OrderStatusPage() {
         marginTop: 'auto',
         textAlign: 'center',
       }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.625rem', alignItems: 'center' }}>
+        <div style={{ maxWidth: 'min(600px, 100%)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.625rem', alignItems: 'center' }}>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
             Need help?{' '}
             <a href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
@@ -720,7 +720,7 @@ const S = {
   } as React.CSSProperties,
 
   container: {
-    maxWidth: '600px', margin: '0 auto',
+    maxWidth: 'min(600px, 100%)', margin: '0 auto',
     padding: '1.25rem var(--page-gutter) 2.5rem',
     display: 'flex', flexDirection: 'column' as const, gap: '1rem',
   } as React.CSSProperties,
