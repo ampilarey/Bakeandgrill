@@ -43,6 +43,10 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
+// Public order tracking — no auth required, token in URL acts as shared secret
+Route::get('/orders/track/{token}', [OrderController::class, 'trackByToken'])
+    ->middleware('throttle:60,1');
+
 // ── Prayer Times (public, throttled) ─────────────────────────────────────────
 Route::middleware('throttle:60,1')
     ->prefix('prayer-times')

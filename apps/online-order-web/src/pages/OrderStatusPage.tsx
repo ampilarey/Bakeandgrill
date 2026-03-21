@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -242,6 +242,7 @@ export function OrderStatusPage() {
   const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
 
   const paymentState = searchParams.get("payment") as PaymentState;
+  const trackingToken = searchParams.get("tok");
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -256,7 +257,11 @@ export function OrderStatusPage() {
   const loadOrder = useCallback(async () => {
     if (!orderId) return;
     try {
-      if (token) {
+      if (trackingToken) {
+        // Public link — no login required
+        const res = await getOrderByTrackingToken(trackingToken);
+        setOrder(res.order);
+      } else if (token) {
         const res = await getOrderDetail(token, parseInt(orderId, 10));
         setOrder(res.order);
       } else {
@@ -267,7 +272,7 @@ export function OrderStatusPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, orderId]);
+  }, [token, trackingToken, orderId]);
 
   useEffect(() => {
     document.title = order?.order_number

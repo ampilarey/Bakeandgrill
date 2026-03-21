@@ -373,6 +373,12 @@ export async function getOrderDetail(
   });
 }
 
+export async function getOrderByTrackingToken(
+  trackingToken: string,
+): Promise<{ order: OrderDetail }> {
+  return request<{ order: OrderDetail }>(`/api/orders/track/${trackingToken}`);
+}
+
 // ── BML Payment ───────────────────────────────────────────────────────────────
 
 export async function initiateOnlinePayment(

@@ -9,12 +9,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
     use SoftDeletes;
     protected $fillable = [
         'order_number',
+        'tracking_token',
         'offline_id',
         'type',
         'status',
@@ -87,6 +89,15 @@ class Order extends Model
         'tip_amount'              => 'decimal:2',
         'estimated_wait_minutes'  => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order) {
+            if (empty($order->tracking_token)) {
+                $order->tracking_token = Str::lower(Str::random(16));
+            }
+        });
+    }
 
     public function items(): HasMany
     {

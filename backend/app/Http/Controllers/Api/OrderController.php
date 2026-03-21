@@ -222,4 +222,39 @@ class OrderController extends Controller
             'paid_total' => $paidTotal,
         ]);
     }
+
+    /**
+     * GET /api/orders/track/{token}
+     *
+     * Public order tracking — no authentication required.
+     * Only exposes status and items, not customer PII.
+     */
+    public function trackByToken(string $token): JsonResponse
+    {
+        $order = Order::with(['items:id,order_id,item_name,quantity,unit_price,total_price,modifiers'])
+            ->where('tracking_token', $token)
+            ->first();
+
+        if (! $order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        return response()->json([
+            'order' => [
+                'id'             => $order->id,
+                'order_number'   => $order->order_number,
+                'status'         => $order->status,
+                'type'           => $order->type,
+                'total'          => $order->total,
+                'paid_at'        => $order->paid_at,
+                'estimated_wait_minutes' => $order->estimated_wait_minutes,
+                // Delivery info (customer already knows their own address)
+                'delivery_address_line1'  => $order->delivery_address_line1,
+                'delivery_island'         => $order->delivery_island,
+                'delivery_contact_name'   => $order->delivery_contact_name,
+                'delivery_contact_phone'  => $order->delivery_contact_phone,
+                'items'          => $order->items,
+            ],
+        ]);
+    }
 }
