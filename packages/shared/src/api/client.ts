@@ -53,9 +53,11 @@ export function createApiClient(config: ApiClientConfig) {
       let message = 'Request failed';
       try {
         const body = JSON.parse(text) as ApiError;
+        // Prefer the first field-level error (e.g. "Invalid OTP code. 4 attempts remaining.")
+        // over the generic Laravel validation message ("The given data was invalid.").
         message =
-          body.message ??
           Object.values(body.errors ?? {})[0]?.[0] ??
+          body.message ??
           'Request failed';
       } catch {
         message = `Server error (${response.status})`;
