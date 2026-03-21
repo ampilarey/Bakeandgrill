@@ -8,6 +8,7 @@ import {
   getLoyaltyAccount,
   getCustomerMe,
   initiateOnlinePayment,
+  syncBladeSession,
 } from "../api";
 import type { LoyaltyAccount } from "../api";
 
@@ -286,6 +287,9 @@ export function useCheckout() {
     window.dispatchEvent(new Event("auth_change"));
     setToken(tok);
     setCustomerName(name);
+    // Establish a Blade session so the token can be recovered if localStorage
+    // is cleared by the mobile browser during a cross-origin redirect (e.g. BML payment).
+    syncBladeSession(tok).catch(() => {});
   };
 
   return {

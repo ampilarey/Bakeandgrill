@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { syncBladeSession } from '../api';
+import { syncBladeSession, checkSession } from '../api';
 
 interface AuthState {
   token: string | null;
@@ -90,8 +90,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCustomerName(handoff.name || null);
       bladeSyncedRef.current = true;
       window.dispatchEvent(new Event('auth_change'));
+      setAuthReady(true);
+      return;
     }
-    setAuthReady(true);
+
+    // Fallback: try to recover session from Blade cookie (e.g. after BML payment redirect
+    // cleared localStorage on mobile Safari). If the customer logged in via React OTP and
+    // syncBladeSession was called, the session cookie survives cross-origin navigation.
+    checkSession()
+      .then((res) => {
+        if (res.authenticated && res.token) {
+          const name = res.customer?.name ?? res.customer?.phone ?? '';
+          localStorage.setItem('online_token', res.token);
+          if (name) localStorage.setItem('online_customer_name', name);
+          setToken(res.token);
+          setCustomerName(name || null);
+          bladeSyncedRef.current = true;
+          window.dispatchEvent(new Event('auth_change'));
+        }
+      })
+      .catch(() => { /* no session — user is a guest */ })
+      .finally(() => setAuthReady(true));
   }, []);
 
   // ── Sync with localStorage changes (other tabs / auth_change events) ────────
