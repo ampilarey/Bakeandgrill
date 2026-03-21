@@ -23,27 +23,20 @@ class CustomerAuthController extends Controller
 {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
-    private function linkGuestOrders(Customer $customer): void
-    {
-        Order::where('guest_phone', $customer->phone)
-            ->whereNull('customer_id')
-            ->update(['customer_id' => $customer->id]);
-    }
-
     private function normalizePhone(string $phone): string
     {
-        return \App\Rules\MaldivesPhone::normalize($phone);
+        return MaldivesPhone::normalize($phone);
     }
 
     private function customerResponse(Customer $customer, string $token): array
     {
         return [
-            'id'                  => $customer->id,
-            'phone'               => $customer->phone,
-            'name'                => $customer->name,
-            'email'               => $customer->email,
-            'loyalty_points'      => $customer->loyalty_points,
-            'tier'                => $customer->tier,
+            'id' => $customer->id,
+            'phone' => $customer->phone,
+            'name' => $customer->name,
+            'email' => $customer->email,
+            'loyalty_points' => $customer->loyalty_points,
+            'tier' => $customer->tier,
             'is_profile_complete' => (bool) $customer->is_profile_complete,
         ];
     }
@@ -53,10 +46,10 @@ class CustomerAuthController extends Controller
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         OtpVerification::create([
-            'phone'      => $phone,
-            'code_hash'  => Hash::make($otpCode),
+            'phone' => $phone,
+            'code_hash' => Hash::make($otpCode),
             'expires_at' => now()->addMinutes(10),
-            'attempts'   => 0,
+            'attempts' => 0,
         ]);
 
         $smsService = app(SmsService::class);
@@ -82,7 +75,7 @@ class CustomerAuthController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (! $otpRecord) {
+        if (!$otpRecord) {
             throw ValidationException::withMessages([
                 'otp' => ['OTP expired or invalid. Please request a new one.'],
             ]);
@@ -94,7 +87,7 @@ class CustomerAuthController extends Controller
             ]);
         }
 
-        if (! Hash::check($code, $otpRecord->code_hash)) {
+        if (!Hash::check($code, $otpRecord->code_hash)) {
             $otpRecord->increment('attempts');
             throw ValidationException::withMessages([
                 'otp' => ['Invalid OTP code. ' . (5 - $otpRecord->attempts) . ' attempts remaining.'],
@@ -113,15 +106,15 @@ class CustomerAuthController extends Controller
     public function checkPhone(Request $request)
     {
         $request->validate([
-            'phone' => ['required', 'string', new MaldivesPhone()],
+            'phone' => ['required', 'string', new MaldivesPhone],
         ]);
 
-        $phone    = $this->normalizePhone($request->phone);
+        $phone = $this->normalizePhone($request->phone);
         $customer = Customer::where('phone', $phone)->first();
 
         return response()->json([
-            'exists'       => $customer !== null,
-            'has_password' => $customer !== null && ! empty($customer->password),
+            'exists' => $customer !== null,
+            'has_password' => $customer !== null && !empty($customer->password),
         ]);
     }
 
@@ -131,34 +124,33 @@ class CustomerAuthController extends Controller
     public function passwordLogin(Request $request)
     {
         $input = $request->validate([
-            'phone'    => ['required', 'string', new MaldivesPhone()],
+            'phone' => ['required', 'string', new MaldivesPhone],
             'password' => 'required|string',
         ]);
 
-        $phone    = $this->normalizePhone($input['phone']);
+        $phone = $this->normalizePhone($input['phone']);
         $customer = Customer::where('phone', $phone)->first();
 
-        if (! $customer || empty($customer->password) || ! Hash::check($input['password'], $customer->password)) {
+        if (!$customer || empty($customer->password) || !Hash::check($input['password'], $customer->password)) {
             throw ValidationException::withMessages([
                 'phone' => ['Invalid phone number or password.'],
             ]);
         }
 
-        if (! $customer->is_active) {
+        if (!$customer->is_active) {
             throw ValidationException::withMessages([
                 'phone' => ['This account has been deactivated. Please contact support.'],
             ]);
         }
 
         $customer->update(['last_login_at' => now()]);
-        $this->linkGuestOrders($customer);
 
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
-            'message'  => 'Login successful',
-            'token'    => $token,
+            'message' => 'Login successful',
+            'token' => $token,
             'customer' => $this->customerResponse($customer, $token),
         ]);
     }
@@ -169,11 +161,11 @@ class CustomerAuthController extends Controller
     public function requestOtp(Request $request)
     {
         $request->validate([
-            'phone'   => ['required', 'string', new MaldivesPhone()],
+            'phone' => ['required', 'string', new MaldivesPhone],
             'purpose' => 'nullable|string|in:register,reset_password',
         ]);
 
-        $phone   = $this->normalizePhone($request->phone);
+        $phone = $this->normalizePhone($request->phone);
         $purpose = $request->input('purpose', 'register');
 
         // Block returning customers with a password from using OTP to "register" —
@@ -181,7 +173,7 @@ class CustomerAuthController extends Controller
         // Soft-deleted customers are allowed through OTP so they can recover their account.
         if ($purpose === 'register') {
             $customer = Customer::where('phone', $phone)->first();
-            if ($customer && ! empty($customer->password)) {
+            if ($customer && !empty($customer->password)) {
                 throw ValidationException::withMessages([
                     'phone' => ['This number already has an account. Please log in with your password, or use "Forgot password?" to reset it.'],
                 ]);
@@ -201,12 +193,12 @@ class CustomerAuthController extends Controller
 
         $otpCode = $this->sendOtp($phone, $purpose);
 
-        if (! app()->environment('production')) {
+        if (!app()->environment('production')) {
             logger()->info('OTP requested', ['phone' => $phone, 'otp' => $otpCode, 'purpose' => $purpose]);
         }
 
         $response = [
-            'message'    => 'OTP sent successfully',
+            'message' => 'OTP sent successfully',
             'expires_in' => 600,
         ];
 
@@ -223,9 +215,9 @@ class CustomerAuthController extends Controller
     public function verifyOtp(Request $request)
     {
         $input = $request->validate([
-            'phone' => ['required', 'string', new MaldivesPhone()],
-            'otp'   => 'required|string|size:6',
-            'name'  => 'nullable|string|max:100',
+            'phone' => ['required', 'string', new MaldivesPhone],
+            'otp' => 'required|string|size:6',
+            'name' => 'nullable|string|max:100',
             'email' => 'nullable|email|max:100',
         ]);
 
@@ -244,18 +236,18 @@ class CustomerAuthController extends Controller
             $customer = $existing;
         } elseif ($existing) {
             $customer = $existing;
-            if (! $customer->is_active) {
+            if (!$customer->is_active) {
                 throw ValidationException::withMessages([
                     'phone' => ['This account has been deactivated. Please contact support.'],
                 ]);
             }
         } else {
             $customer = Customer::create([
-                'phone'          => $phone,
-                'name'           => $input['name'] ?? null,
-                'email'          => $input['email'] ?? null,
+                'phone' => $phone,
+                'name' => $input['name'] ?? null,
+                'email' => $input['email'] ?? null,
                 'loyalty_points' => 0,
-                'tier'           => 'bronze',
+                'tier' => 'bronze',
             ]);
         }
 
@@ -270,16 +262,15 @@ class CustomerAuthController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
-        $this->linkGuestOrders($customer);
 
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
-            'message'         => 'Verified successfully',
-            'token'           => $token,
+            'message' => 'Verified successfully',
+            'token' => $token,
             'is_new_customer' => $isNew,
-            'customer'        => $this->customerResponse($customer, $token),
+            'customer' => $this->customerResponse($customer, $token),
         ]);
     }
 
@@ -292,11 +283,11 @@ class CustomerAuthController extends Controller
     {
         $customer = Auth::guard('customer')->user();
 
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['authenticated' => false], 401);
         }
 
-        if (! $customer->is_active) {
+        if (!$customer->is_active) {
             return response()->json(['authenticated' => false, 'message' => 'Account deactivated.'], 403);
         }
 
@@ -305,8 +296,8 @@ class CustomerAuthController extends Controller
 
         return response()->json([
             'authenticated' => true,
-            'token'         => $token,
-            'customer'      => $this->customerResponse($customer, $token),
+            'token' => $token,
+            'customer' => $this->customerResponse($customer, $token),
         ]);
     }
 
@@ -327,7 +318,7 @@ class CustomerAuthController extends Controller
     public function forgotPassword(Request $request)
     {
         $request->validate([
-            'phone' => ['required', 'string', new MaldivesPhone()],
+            'phone' => ['required', 'string', new MaldivesPhone],
         ]);
 
         $phone = $this->normalizePhone($request->phone);
@@ -345,12 +336,12 @@ class CustomerAuthController extends Controller
 
         $otpCode = $this->sendOtp($phone, 'reset_password');
 
-        if (! app()->environment('production')) {
+        if (!app()->environment('production')) {
             logger()->info('Password reset OTP requested', ['phone' => $phone, 'otp' => $otpCode]);
         }
 
         $response = [
-            'message'    => 'Password reset code sent',
+            'message' => 'Password reset code sent',
             'expires_in' => 600,
         ];
 
@@ -367,9 +358,9 @@ class CustomerAuthController extends Controller
     public function resetPassword(Request $request)
     {
         $input = $request->validate([
-            'phone'                 => ['required', 'string', new MaldivesPhone()],
-            'otp'                   => 'required|string|size:6',
-            'password'              => 'required|string|min:6|confirmed',
+            'phone' => ['required', 'string', new MaldivesPhone],
+            'otp' => 'required|string|size:6',
+            'password' => 'required|string|min:6|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 
@@ -379,24 +370,23 @@ class CustomerAuthController extends Controller
 
         $customer = Customer::where('phone', $phone)->first();
 
-        if (! $customer) {
+        if (!$customer) {
             throw ValidationException::withMessages([
                 'phone' => ['No account found for this phone number.'],
             ]);
         }
 
         $customer->update([
-            'password'        => Hash::make($input['password']),
-            'last_login_at'   => now(),
+            'password' => Hash::make($input['password']),
+            'last_login_at' => now(),
         ]);
-        $this->linkGuestOrders($customer);
 
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
 
         return response()->json([
-            'message'  => 'Password reset successfully',
-            'token'    => $token,
+            'message' => 'Password reset successfully',
+            'token' => $token,
             'customer' => $this->customerResponse($customer, $token),
         ]);
     }

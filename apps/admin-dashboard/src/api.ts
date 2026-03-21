@@ -621,6 +621,10 @@ export async function voidInvoice(id: number): Promise<{ invoice: Invoice }> {
   return req(`/invoices/${id}/void`, { method: 'POST' });
 }
 
+export async function sendInvoiceToCustomer(id: number, phone: string): Promise<{ invoice: Invoice; link: string }> {
+  return req(`/invoices/${id}/send`, { method: 'POST', body: JSON.stringify({ phone }) });
+}
+
 // ── Expenses ──────────────────────────────────────────────────────────────────
 
 export type ExpenseCategory = { id: number; name: string; icon: string; slug: string };

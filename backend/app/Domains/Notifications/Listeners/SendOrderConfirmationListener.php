@@ -15,10 +15,10 @@ use Illuminate\Support\Facades\Mail;
 
 class SendOrderConfirmationListener implements ShouldQueue
 {
-    public bool   $afterCommit = true;
-    public string $queue       = 'default';
-    public int    $tries       = 3;
-    public int    $backoff     = 5;
+    public bool $afterCommit = true;
+    public string $queue = 'default';
+    public int $tries = 3;
+    public int $backoff = 5;
 
     public function __construct(private SmsService $sms) {}
 
@@ -39,41 +39,36 @@ class SendOrderConfirmationListener implements ShouldQueue
 
         $order = Order::with(['items.item', 'customer'])->find($data->orderId);
 
-        if (! $order) {
+        if (!$order) {
             return;
         }
 
-        // Resolve recipient — authenticated customer or guest
-        $phone = $order->customer?->phone ?? $order->guest_phone;
-        $email = $order->customer?->email ?? $order->guest_email;
-        $name  = $order->customer?->name  ?? $order->guest_name ?? 'Customer';
+        $phone = $order->customer?->phone;
+        $email = $order->customer?->email;
+        $name = $order->customer?->name ?? 'Customer';
 
-        // Staff/POS orders with no linked customer and no guest phone — skip
-        if (! $phone) {
+        // Orders with no linked customer phone — skip
+        if (!$phone) {
             return;
         }
 
-        // Build tracking URL — guests need the token to access the status page
-        $base = rtrim(config('app.url'), '/') . '/order/status/' . $order->id;
-        $url  = $order->guest_token
-            ? $base . '?guest_token=' . $order->guest_token
-            : $base;
+        $url = rtrim(config('app.url'), '/') . '/order/orders/' . $order->id . '?tok=' . $order->tracking_token;
 
         // SMS — idempotency key prevents duplicate sends on queue retry
         try {
             $this->sms->send(new SmsMessage(
-                to:             $phone,
-                message:        "Bake & Grill: Order #{$order->order_number} confirmed! Track your order: {$url}",
-                type:           'transactional',
-                customerId:     $data->customerId,
-                referenceType:  'order',
-                referenceId:    (string) $order->id,
+                to: $phone,
+                message: "Bake & Grill: Order #{$order->order_number} confirmed! Track your order: {$url}",
+                type: 'transactional',
+                customerId: $data->customerId,
+                referenceType: 'order',
+                referenceId: (string) $order->id,
                 idempotencyKey: 'order:confirm:' . $order->id,
             ));
         } catch (\Throwable $e) {
             Log::error('SendOrderConfirmationListener: SMS failed', [
                 'order_id' => $order->id,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -84,7 +79,7 @@ class SendOrderConfirmationListener implements ShouldQueue
             } catch (\Throwable $e) {
                 Log::error('SendOrderConfirmationListener: email failed', [
                     'order_id' => $order->id,
-                    'error'    => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
         }

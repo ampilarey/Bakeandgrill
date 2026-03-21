@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Invoice extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'invoice_number', 'type', 'status',
+        'invoice_number', 'token', 'type', 'status',
         'order_id', 'purchase_id', 'customer_id', 'supplier_id', 'created_by',
         'recipient_name', 'recipient_phone', 'recipient_email', 'recipient_address',
         'subtotal_laar', 'tax_laar', 'discount_laar', 'total_laar',
@@ -24,11 +25,22 @@ class Invoice extends Model
         'notes', 'terms', 'pdf_path', 'parent_invoice_id',
     ];
 
+    protected $hidden = ['token'];
+
     protected $casts = [
         'issue_date' => 'date',
-        'due_date'   => 'date',
-        'paid_at'    => 'datetime',
+        'due_date' => 'date',
+        'paid_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Invoice $invoice): void {
+            if (empty($invoice->token)) {
+                $invoice->token = Str::random(48);
+            }
+        });
+    }
 
     public function items(): HasMany
     {

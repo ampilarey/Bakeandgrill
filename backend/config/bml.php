@@ -45,4 +45,10 @@ return [
 
     'webhook_signature_header' => env('BML_WEBHOOK_SIGNATURE_HEADER', 'X-BML-Signature'),
     'webhook_hmac_algo'        => env('BML_WEBHOOK_HMAC_ALGO', 'sha256'),
+
+    /*
+    | In production, reject webhooks that fail signature verification.
+    | Set BML_ENFORCE_SIGNATURE=false to disable (e.g. staging without a secret configured).
+    */
+    'enforce_signature' => env('BML_ENFORCE_SIGNATURE', true),
 ];

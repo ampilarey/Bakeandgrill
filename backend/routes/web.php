@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImageThumbController;
+use App\Http\Controllers\InvoicePageController;
 use App\Http\Controllers\MenuAdminController;
 use App\Http\Controllers\ReceiptPageController;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +82,10 @@ Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])->name('r
 Route::get('/receipts/{token}/pdf', [ReceiptPageController::class, 'pdf'])->name('receipts.pdf');
 Route::post('/receipts/{token}/feedback', [ReceiptPageController::class, 'feedback'])->name('receipts.feedback');
 Route::post('/receipts/{token}/resend', [ReceiptPageController::class, 'resend'])->name('receipts.resend');
+
+// Invoice public pages (no auth — token-gated)
+Route::get('/invoices/{token}', [InvoicePageController::class, 'show'])->name('invoices.show');
+Route::get('/invoices/{token}/pdf', [InvoicePageController::class, 'pdf'])->name('invoices.pdf');
 
 // BML Return URL (non-authoritative — redirects to frontend)
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');

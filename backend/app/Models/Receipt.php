@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Receipt extends Model
 {
@@ -25,6 +26,15 @@ class Receipt extends Model
         'sent_at' => 'datetime',
         'last_sent_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Receipt $receipt): void {
+            if (empty($receipt->token)) {
+                $receipt->token = Str::random(48);
+            }
+        });
+    }
 
     public function order(): BelongsTo
     {

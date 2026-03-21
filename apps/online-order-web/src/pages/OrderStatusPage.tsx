@@ -271,6 +271,16 @@ export function OrderStatusPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentState]);
 
+  // Clear cart once the order has a confirmed/paid status —
+  // covers the case where the user arrives via SMS tracking link (?tok=)
+  // after a successful payment redirect, without the ?payment=CONFIRMED param.
+  useEffect(() => {
+    if (order && ['pending', 'paid', 'preparing', 'ready', 'completed'].includes(order.status)) {
+      clearCart();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.status]);
+
   useEffect(() => { void loadOrder(); }, [loadOrder]);
 
   // SSE real-time tracking

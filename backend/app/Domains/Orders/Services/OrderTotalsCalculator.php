@@ -65,6 +65,53 @@ class OrderTotalsCalculator
         );
     }
 
+    /**
+     * Recalculate all total fields from the order's current state and persist them.
+     *
+     * Reads existing discount laari values from the order record (promo, loyalty, manual),
+     * recalculates subtotal and tax from line items, then updates all total columns.
+     * Use this after any discount change or item add/remove on an existing order.
+     */
+    public function recalculateAndPersist(Order $order): Order
+    {
+        $order->loadMissing('items.item');
+
+        $subtotalLaar = 0;
+        $taxAmount = 0.0;
+
+        foreach ($order->items as $orderItem) {
+            $subtotalLaar += (int) round((float) $orderItem->total_price * 100);
+
+            $item = $orderItem->item;
+            if ($item && (float) $orderItem->total_price > 0) {
+                $rate = (float) ($item->tax_rate ?? 0);
+                $taxAmount += (float) $orderItem->total_price * ($rate / 100);
+            }
+        }
+
+        $taxLaar = (int) round($taxAmount * 100);
+
+        $promoLaar = $order->promo_discount_laar ?? 0;
+        $loyaltyLaar = $order->loyalty_discount_laar ?? 0;
+        $manualLaar = $order->manual_discount_laar ?? 0;
+        $deliveryFeeLaar = $order->delivery_fee_laar ?? 0;
+
+        $totalDiscountLaar = $promoLaar + $loyaltyLaar + $manualLaar;
+        $totalLaar = max(0, $subtotalLaar - $totalDiscountLaar + $taxLaar + $deliveryFeeLaar);
+
+        $order->update([
+            'subtotal' => round($subtotalLaar / 100, 2),
+            'subtotal_laar' => $subtotalLaar,
+            'tax_amount' => round($taxAmount, 2),
+            'tax_laar' => $taxLaar,
+            'discount_amount' => round($totalDiscountLaar / 100, 2),
+            'total_laar' => $totalLaar,
+            'total' => round($totalLaar / 100, 2),
+        ]);
+
+        return $order->load(['items.modifiers']);
+    }
+
     private function calculateSubtotalFromItems(Order $order): Money
     {
         $order->loadMissing('items');

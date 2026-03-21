@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Http\Controllers\Controller;
@@ -16,9 +18,11 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\AuditLogService;
 use App\Services\OrderCreationService;
+use App\Support\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+
 class OrderController extends Controller
 {
     /**
@@ -26,7 +30,7 @@ class OrderController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -131,7 +135,7 @@ class OrderController extends Controller
 
     public function hold(Request $request, int $id): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -150,7 +154,7 @@ class OrderController extends Controller
 
     public function resume(Request $request, int $id): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -169,7 +173,7 @@ class OrderController extends Controller
 
     public function addPayments(StoreOrderPaymentsRequest $request, int $id): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -195,12 +199,18 @@ class OrderController extends Controller
                 app(AuditLogService::class)->log('payment.created', 'Payment', $payment->id, [], $payment->toArray(), ['order_id' => $order->id], $request);
             }
 
-            // Re-sum inside the lock so we see all newly inserted payments
-            $paidTotal = $order->payments()
+            // Re-sum inside the lock so we see all newly inserted payments.
+            // Use integer laari to avoid float precision issues (COALESCE covers legacy
+            // POS payments that may only have 'amount' populated, not 'amount_laar').
+            $paidTotalLaar = (int) $order->payments()
                 ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                ->sum('amount');
+                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+                ->value('total_laar');
 
-            if ((float) $paidTotal >= (float) $order->total) {
+            $orderTotalLaar = $order->total_laar ?? (int) round($order->total * 100);
+            $paidTotal = round($paidTotalLaar / 100, 2);
+
+            if ($paidTotalLaar >= $orderTotalLaar) {
                 $order->update(['status' => 'paid', 'paid_at' => now()]);
 
                 app(AuditLogService::class)->log('order.paid', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'paid'], ['paid_total' => $paidTotal], $request);
@@ -235,26 +245,83 @@ class OrderController extends Controller
             ->where('tracking_token', $token)
             ->first();
 
-        if (! $order) {
+        if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
         return response()->json([
             'order' => [
-                'id'             => $order->id,
-                'order_number'   => $order->order_number,
-                'status'         => $order->status,
-                'type'           => $order->type,
-                'total'          => $order->total,
-                'paid_at'        => $order->paid_at,
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'type' => $order->type,
+                'total' => $order->total,
+                'paid_at' => $order->paid_at,
                 'estimated_wait_minutes' => $order->estimated_wait_minutes,
                 // Delivery info (customer already knows their own address)
-                'delivery_address_line1'  => $order->delivery_address_line1,
-                'delivery_island'         => $order->delivery_island,
-                'delivery_contact_name'   => $order->delivery_contact_name,
-                'delivery_contact_phone'  => $order->delivery_contact_phone,
-                'items'          => $order->items,
+                'delivery_address_line1' => $order->delivery_address_line1,
+                'delivery_island' => $order->delivery_island,
+                'delivery_contact_name' => $order->delivery_contact_name,
+                'delivery_contact_phone' => $order->delivery_contact_phone,
+                'items' => $order->items,
             ],
+        ]);
+    }
+
+    /**
+     * POST /api/orders/{id}/send-bill
+     *
+     * Cashier enters customer phone → link customer to order, create invoice, send SMS bill.
+     * Used for dine-in before payment so customer can review their bill.
+     */
+    public function sendBill(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $request->validate([
+            'phone' => ['required', 'string', 'max:30'],
+        ]);
+
+        $order = Order::with(['items.item', 'customer'])->findOrFail($id);
+        $phone = PhoneNormalizer::normalize($request->phone);
+
+        // Link customer to order if not already linked
+        $customer = Customer::firstOrCreate(
+            ['phone' => $phone],
+            ['loyalty_points' => 0, 'tier' => 'bronze'],
+        );
+        if (!$order->customer_id) {
+            $order->update(['customer_id' => $customer->id]);
+            $order->setRelation('customer', $customer);
+        }
+
+        // Create invoice from order (idempotent — returns existing if already created)
+        $invoice = app(InvoiceController::class)->createFromOrderInternal($order, $request->user());
+
+        // Send SMS with invoice link
+        $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
+        app(SmsService::class)->send(new SmsMessage(
+            to: $phone,
+            message: 'Bake & Grill: Your bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
+            type: 'transactional',
+            referenceType: 'invoice',
+            referenceId: (string) $invoice->id,
+            idempotencyKey: 'invoice:bill:' . $invoice->id,
+        ));
+
+        $invoice->update([
+            'recipient_phone' => $phone,
+            'status' => 'sent',
+        ]);
+
+        app(AuditLogService::class)->log('order.bill_sent', 'Order', $order->id, [], ['phone' => $phone, 'invoice_id' => $invoice->id], [], $request);
+
+        return response()->json([
+            'order' => $order->fresh('customer'),
+            'invoice' => $invoice->fresh('items'),
+            'link' => $link,
         ]);
     }
 }

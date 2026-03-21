@@ -51,3 +51,6 @@ Schedule::command('inventory:check-expiry --days=7')->dailyAt('08:05');
 
 // Housekeeping: prune expired OTP records daily
 Schedule::command('otp:prune')->dailyAt('02:00');
+
+// Orders: cancel stale payment_pending orders every 5 minutes
+Schedule::command('orders:cancel-stale')->everyFiveMinutes();

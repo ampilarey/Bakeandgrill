@@ -8,15 +8,17 @@ import { useCart }          from "./hooks/useCart";
 import { useOrderCreation } from "./hooks/useOrderCreation";
 import { useOps }           from "./hooks/useOps";
 
-import { LoginPage } from "./pages/LoginPage";
-import { MenuGrid }  from "./components/MenuGrid";
-import { OrderCart } from "./components/OrderCart";
-import { OpsPanel }  from "./components/OpsPanel";
+import { LoginPage }      from "./pages/LoginPage";
+import { MenuGrid }       from "./components/MenuGrid";
+import { OrderCart }      from "./components/OrderCart";
+import { OpsPanel }       from "./components/OpsPanel";
+import { SendBillPanel }  from "./components/SendBillPanel";
 
 const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
 
 function App() {
+  const [showSendBill, setShowSendBill] = useState(false);
   // ── Auth ────────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn]   = useState(false);
   const [pin, setPin]                 = useState("");
@@ -206,9 +208,30 @@ function App() {
               onResumeLastHold={order.handleResumeLastHold}
               onCheckout={order.handleCheckout}
             />
+            {order.lastCreatedOrderId && (
+              <div className="col-span-12" style={{ textAlign: "right", marginTop: -8 }}>
+                <button
+                  onClick={() => setShowSendBill(true)}
+                  style={{
+                    padding: "8px 18px", borderRadius: 8,
+                    background: "#1C1408", color: "#fff",
+                    border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  }}
+                >
+                  📱 Send Bill
+                </button>
+              </div>
+            )}
           </>
         )}
       </main>
+
+      {showSendBill && (
+        <SendBillPanel
+          orderId={order.lastCreatedOrderId}
+          onClose={() => setShowSendBill(false)}
+        />
+      )}
     </div>
   );
 }

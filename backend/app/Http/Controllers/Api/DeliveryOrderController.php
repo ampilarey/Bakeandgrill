@@ -48,7 +48,7 @@ class DeliveryOrderController extends Controller
             'delivery_address_line2' => 'nullable|string|max:255',
             'delivery_island' => 'required|string|max:100',
             'delivery_contact_name' => 'required|string|max:100',
-            'delivery_contact_phone' => 'required|string|max:30',
+            'delivery_contact_phone' => ['required', 'string', 'max:30', 'regex:/^(\+?960)?[379]\d{6}$/'],
             'delivery_notes' => 'nullable|string|max:500',
             'desired_eta' => 'nullable|date|after:now',
             'branch_id' => 'nullable|integer',
@@ -120,7 +120,7 @@ class DeliveryOrderController extends Controller
             'delivery_address_line2' => 'nullable|string|max:255',
             'delivery_island' => 'sometimes|string|max:100',
             'delivery_contact_name' => 'sometimes|string|max:100',
-            'delivery_contact_phone' => 'sometimes|string|max:30',
+            'delivery_contact_phone' => ['sometimes', 'string', 'max:30', 'regex:/^(\+?960)?[379]\d{6}$/'],
             'delivery_notes' => 'nullable|string|max:500',
             'delivery_eta_at' => 'nullable|date|after:now',
         ]);

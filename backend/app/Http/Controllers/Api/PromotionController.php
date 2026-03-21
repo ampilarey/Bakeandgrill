@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
@@ -16,7 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 class PromotionController extends Controller
 {
-    public function __construct(private PromotionEvaluator $evaluator) {}
+    public function __construct(
+        private PromotionEvaluator $evaluator,
+        private OrderTotalsCalculator $calculator = new OrderTotalsCalculator,
+    ) {}
 
     /**
      * Validate a promo code (public / customer).
@@ -103,24 +107,15 @@ class PromotionController extends Controller
                 ->where('status', 'draft')
                 ->sum('discount_laar');
 
-            $order->update([
-                'promo_discount_laar' => $totalPromoDiscount,
-                'discount_amount' => round(($order->manual_discount_laar + $totalPromoDiscount) / 100, 2),
-                'total' => max(0, round((
-                    ($order->subtotal_laar ?? (int) round($order->subtotal * 100))
-                    - $totalPromoDiscount
-                    - ($order->loyalty_discount_laar ?? 0)
-                    - ($order->manual_discount_laar ?? 0)
-                    + ($order->tax_laar ?? (int) round($order->tax_amount * 100))
-                ) / 100, 2)),
-            ]);
+            $order->update(['promo_discount_laar' => $totalPromoDiscount]);
+            $this->calculator->recalculateAndPersist($order);
         });
 
         return response()->json([
-            'message'       => $result['message'],
+            'message' => $result['message'],
             'discount_laar' => $result['discount_laar'],
-            'discount_mvr'  => number_format($result['discount_laar'] / 100, 2),
-            'promotion_id'  => $promotion->id,
+            'discount_mvr' => number_format($result['discount_laar'] / 100, 2),
+            'promotion_id' => $promotion->id,
         ]);
     }
 
@@ -151,6 +146,7 @@ class PromotionController extends Controller
                 ->sum('discount_laar');
 
             $order->update(['promo_discount_laar' => $totalPromoDiscount]);
+            $this->calculator->recalculateAndPersist($order);
         });
 
         return response()->json(['message' => 'Promo removed.']);

@@ -23,6 +23,7 @@ Route::middleware(['auth:sanctum', 'permission:finance.invoices'])->prefix('invo
     Route::post('/{id}/void',                 [App\Http\Controllers\Api\InvoiceController::class, 'voidInvoice']);
     Route::post('/{id}/credit-note',          [App\Http\Controllers\Api\InvoiceController::class, 'createCreditNote']);
     Route::get('/{id}/pdf',                   [App\Http\Controllers\Api\InvoiceController::class, 'generatePdf']);
+    Route::post('/{id}/send',                 [App\Http\Controllers\Api\InvoiceController::class, 'sendToCustomer']);
     Route::post('/from-order/{orderId}',      [App\Http\Controllers\Api\InvoiceController::class, 'createFromOrder']);
     Route::post('/from-purchase/{purchaseId}',[App\Http\Controllers\Api\InvoiceController::class, 'createFromPurchase']);
 });

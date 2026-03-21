@@ -319,3 +319,13 @@ export async function sendSmsPromotion(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export async function sendBill(
+  orderId: number,
+  phone: string,
+): Promise<{ order: unknown; invoice: unknown; link: string }> {
+  return request(`/orders/${orderId}/send-bill`, {
+    method: "POST",
+    body: JSON.stringify({ phone }),
+  });
+}

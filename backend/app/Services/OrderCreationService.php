@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
+use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\DB;
 
 class OrderCreationService
 {
+    public function __construct(
+        private OrderTotalsCalculator $calculator = new OrderTotalsCalculator,
+    ) {}
+
     public function createFromPayload(array $payload, ?object $user): Order
     {
         $device = null;
@@ -39,11 +44,6 @@ class OrderCreationService
                 'total' => 0,
                 'notes' => $payload['notes'] ?? null,
                 'customer_notes' => $payload['customer_notes'] ?? null,
-                // Guest order fields (null for authenticated orders)
-                'guest_phone' => $payload['guest_phone'] ?? null,
-                'guest_name'  => $payload['guest_name'] ?? null,
-                'guest_email' => $payload['guest_email'] ?? null,
-                'guest_token' => $payload['guest_token'] ?? null,
             ]);
 
             $subtotal = $this->addOrderItems($order, $payload['items'] ?? []);
@@ -61,6 +61,12 @@ class OrderCreationService
             $discountAmount = (float) ($payload['discount_amount'] ?? 0);
             $discountAmount = max(0, min($discountAmount, $subtotal));
             $total = max(0, $subtotal + $taxAmount - $discountAmount);
+
+            // Enforce minimum order value (not applicable to dine-in)
+            $minOrderMvr = (float) config('ordering.minimum_order_mvr', 0);
+            if ($minOrderMvr > 0 && $total < $minOrderMvr && ($payload['type'] ?? '') !== 'dine_in') {
+                abort(422, 'Minimum order amount is MVR ' . number_format($minOrderMvr, 2));
+            }
 
             $order->update([
                 'subtotal' => $subtotal,
@@ -82,25 +88,15 @@ class OrderCreationService
     public function addItemsToOrder(Order $order, array $items, bool $print = true): Order
     {
         return DB::transaction(function () use ($order, $items): Order {
-            $additionalSubtotal = $this->addOrderItems($order, $items);
-            $order->update([
-                'subtotal' => ($order->subtotal ?? 0) + $additionalSubtotal,
-                'total' => ($order->total ?? 0) + $additionalSubtotal,
-            ]);
+            $this->addOrderItems($order, $items);
 
-            return $order->load(['items.modifiers']);
+            return $this->calculator->recalculateAndPersist($order);
         });
     }
 
     public function recalculateTotals(Order $order): Order
     {
-        $subtotal = $order->items()->sum('total_price');
-        $order->update([
-            'subtotal' => $subtotal,
-            'total' => $subtotal,
-        ]);
-
-        return $order->load(['items.modifiers']);
+        return $this->calculator->recalculateAndPersist($order);
     }
 
     private function addOrderItems(Order $order, array $items): float

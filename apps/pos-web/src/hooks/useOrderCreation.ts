@@ -42,6 +42,7 @@ export function useOrderCreation(params: Params) {
     const raw = localStorage.getItem("pos_last_held_order");
     return raw ? Number(raw) : null;
   });
+  const [lastCreatedOrderId, setLastCreatedOrderId] = useState<number | null>(null);
   const [barcode, setBarcode] = useState("");
 
   const buildPayload = () => {
@@ -79,6 +80,7 @@ export function useOrderCreation(params: Params) {
       createOrder(payload)
         .then((response) => {
           orderCreated = true;
+          setLastCreatedOrderId(response.order.id);
           const parsedPayments = params.payments
             .map((p) => ({ method: p.method, amount: Number.parseFloat(p.amount) }))
             .filter((p) => Number.isFinite(p.amount) && p.amount > 0);
@@ -250,6 +252,7 @@ export function useOrderCreation(params: Params) {
     setStatusMessage,
     isSubmitting,
     lastHeldOrderId,
+    lastCreatedOrderId,
     barcode,
     setBarcode,
     handleCheckout,

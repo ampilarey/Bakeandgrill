@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, type Invoice } from '../api';
+import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer, type Invoice } from '../api';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -12,9 +12,14 @@ export function InvoicesPage() {
   const [error, setError]           = useState('');
   const [typeFilter, setType]       = useState('');
   const [statusFilter, setStatus]   = useState('');
-  const [selected, setSelected]     = useState<Invoice | null>(null);
-  const [paying, setPaying]         = useState(false);
-  const [payMethod, setPayMethod]   = useState('cash');
+  const [selected, setSelected]           = useState<Invoice | null>(null);
+  const [paying, setPaying]               = useState(false);
+  const [payMethod, setPayMethod]         = useState('cash');
+  const [sendSmsInv, setSendSmsInv]       = useState<Invoice | null>(null);
+  const [smsPhone, setSmsPhone]           = useState('');
+  const [smsSending, setSmsSending]       = useState(false);
+  const [smsResult, setSmsResult]         = useState<{ link: string } | null>(null);
+  const [smsError, setSmsError]           = useState('');
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const load = async () => {
@@ -50,6 +55,24 @@ export function InvoicesPage() {
         catch (e) { setError((e as Error).message); }
       },
     });
+  };
+
+  const openSmsModal = (inv: Invoice) => {
+    setSendSmsInv(inv);
+    setSmsPhone(inv.recipient_phone ?? inv.customer?.phone ?? '');
+    setSmsResult(null);
+    setSmsError('');
+  };
+
+  const handleSendSms = async () => {
+    if (!sendSmsInv) return;
+    setSmsSending(true); setSmsError('');
+    try {
+      const res = await sendInvoiceToCustomer(sendSmsInv.id, smsPhone);
+      setSmsResult({ link: res.link });
+      void load();
+    } catch (e) { setSmsError((e as Error).message); }
+    finally { setSmsSending(false); }
   };
 
   const selectStyle = {
@@ -112,12 +135,15 @@ export function InvoicesPage() {
                     {inv.due_date ?? '—'}
                   </td>
                   <td style={TD}>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {inv.status === 'draft' && (
                         <Btn small variant="secondary" onClick={() => handleSent(inv.id)}>Mark Sent</Btn>
                       )}
                       {['sent', 'overdue'].includes(inv.status) && (
                         <Btn small onClick={() => { setSelected(inv); setPaying(true); }}>Mark Paid</Btn>
+                      )}
+                      {!['void', 'cancelled'].includes(inv.status) && inv.type === 'sale' && (
+                        <Btn small variant="secondary" onClick={() => openSmsModal(inv)}>📱 SMS</Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && (
                         <Btn small variant="danger" onClick={() => handleVoid(inv.id)}>Void</Btn>
@@ -160,6 +186,51 @@ export function InvoicesPage() {
             <Btn variant="ghost" onClick={() => { setPaying(false); setSelected(null); }}>Cancel</Btn>
             <Btn onClick={handlePaid}>Confirm Payment</Btn>
           </ModalActions>
+        </Modal>
+      )}
+
+      {/* Send Invoice via SMS Modal */}
+      {sendSmsInv && (
+        <Modal title={`Send Invoice ${sendSmsInv.invoice_number}`} onClose={() => setSendSmsInv(null)} maxWidth={400}>
+          {smsResult ? (
+            <>
+              <p style={{ color: '#047857', fontWeight: 600, marginBottom: 8 }}>✓ Invoice sent!</p>
+              <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 4 }}>Public link:</p>
+              <div style={{ background: '#F9F5F0', borderRadius: 8, padding: '10px 12px', fontSize: 12, wordBreak: 'break-all', marginBottom: 16, color: '#1C1408' }}>
+                {smsResult.link}
+              </div>
+              <ModalActions>
+                <Btn variant="secondary" onClick={() => { void navigator.clipboard.writeText(smsResult.link); }}>Copy Link</Btn>
+                <Btn onClick={() => setSendSmsInv(null)}>Done</Btn>
+              </ModalActions>
+            </>
+          ) : (
+            <>
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 13, color: '#6B5D4F' }}>
+                  MVR {parseFloat(String(sendSmsInv.total ?? 0)).toFixed(2)}
+                  {sendSmsInv.recipient_phone && <> · Last sent to: <strong>{sendSmsInv.recipient_phone}</strong></>}
+                </span>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Customer Phone</label>
+                <input
+                  type="tel"
+                  value={smsPhone}
+                  onChange={(e) => setSmsPhone(e.target.value)}
+                  placeholder="7654321"
+                  style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              {smsError && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 8 }}>{smsError}</p>}
+              <ModalActions>
+                <Btn variant="ghost" onClick={() => setSendSmsInv(null)}>Cancel</Btn>
+                <Btn onClick={() => void handleSendSms()} disabled={smsSending || !smsPhone.trim()}>
+                  {smsSending ? 'Sending…' : 'Send SMS'}
+                </Btn>
+              </ModalActions>
+            </>
+          )}
         </Modal>
       )}
     </>

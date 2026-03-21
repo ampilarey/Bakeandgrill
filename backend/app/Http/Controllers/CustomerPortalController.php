@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OtpVerification;
-use App\Domains\Notifications\DTOs\SmsMessage;
-use App\Domains\Notifications\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -35,13 +35,13 @@ class CustomerPortalController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        if (! preg_match('/^\+960[0-9]{7}$/', $phone)) {
+        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
             return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
         }
 
         // Returning customer with a password → show password form (no SMS cost)
         $customer = Customer::where('phone', $phone)->first();
-        if ($customer && ! empty($customer->password)) {
+        if ($customer && !empty($customer->password)) {
             return back()
                 ->with('password_step', true)
                 ->with('phone', $phone);
@@ -61,18 +61,18 @@ class CustomerPortalController extends Controller
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         OtpVerification::create([
-            'phone'      => $phone,
-            'code_hash'  => Hash::make($otpCode),
+            'phone' => $phone,
+            'code_hash' => Hash::make($otpCode),
             'expires_at' => now()->addMinutes(10),
-            'attempts'   => 0,
+            'attempts' => 0,
         ]);
 
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes.";
-        $log        = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
-        $smsSent    = in_array($log->status, ['sent', 'demo'], true);
+        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
+        $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
-        if (! app()->environment('production') && ! $smsSent) {
+        if (!app()->environment('production') && !$smsSent) {
             session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
@@ -92,7 +92,7 @@ class CustomerPortalController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        if (! preg_match('/^\+960[0-9]{7}$/', $phone)) {
+        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
             return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
         }
 
@@ -100,6 +100,7 @@ class CustomerPortalController extends Controller
 
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
+
             return back()->withErrors(['phone' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
         }
 
@@ -108,18 +109,18 @@ class CustomerPortalController extends Controller
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         OtpVerification::create([
-            'phone'      => $phone,
-            'code_hash'  => Hash::make($otpCode),
+            'phone' => $phone,
+            'code_hash' => Hash::make($otpCode),
             'expires_at' => now()->addMinutes(10),
-            'attempts'   => 0,
+            'attempts' => 0,
         ]);
 
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill password reset code is {$otpCode}. Valid for 10 minutes.";
-        $log        = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
-        $smsSent    = in_array($log->status, ['sent', 'demo'], true);
+        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
+        $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
-        if (! app()->environment('production') && ! $smsSent) {
+        if (!app()->environment('production') && !$smsSent) {
             session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
@@ -132,7 +133,7 @@ class CustomerPortalController extends Controller
     {
         $request->validate([
             'phone' => 'required|string',
-            'otp'   => 'required|string|size:6',
+            'otp' => 'required|string|size:6',
         ]);
 
         $phone = $this->normalizePhone($request->phone);
@@ -143,7 +144,7 @@ class CustomerPortalController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (! $otpRecord || ! Hash::check($request->otp, $otpRecord->code_hash)) {
+        if (!$otpRecord || !Hash::check($request->otp, $otpRecord->code_hash)) {
             return back()->withErrors(['otp' => 'Invalid or expired code']);
         }
 
@@ -157,20 +158,19 @@ class CustomerPortalController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'phone'                 => 'required|string',
-            'password'              => 'required|string|min:6|confirmed',
+            'phone' => 'required|string',
+            'password' => 'required|string|min:6|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 
-        $phone    = $this->normalizePhone($request->phone);
+        $phone = $this->normalizePhone($request->phone);
         $customer = Customer::where('phone', $phone)->first();
 
-        if (! $customer) {
+        if (!$customer) {
             return back()->withErrors(['phone' => 'No account found for this phone number.']);
         }
 
         $customer->update(['password' => Hash::make($request->password)]);
-        $this->linkGuestOrders($customer);
 
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
@@ -186,7 +186,7 @@ class CustomerPortalController extends Controller
     {
         $request->validate([
             'phone' => 'required|string',
-            'otp'   => 'required|string|size:6',
+            'otp' => 'required|string|size:6',
         ]);
 
         $phone = $this->normalizePhone($request->phone);
@@ -194,6 +194,7 @@ class CustomerPortalController extends Controller
         $verifyKey = 'otp-web-verify:' . $phone;
         if (RateLimiter::tooManyAttempts($verifyKey, 5)) {
             $seconds = RateLimiter::availableIn($verifyKey);
+
             return back()->withErrors(['otp' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
         }
         RateLimiter::hit($verifyKey, 600);
@@ -204,7 +205,7 @@ class CustomerPortalController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (! $otpRecord || ! Hash::check($request->otp, $otpRecord->code_hash)) {
+        if (!$otpRecord || !Hash::check($request->otp, $otpRecord->code_hash)) {
             return back()->withErrors(['otp' => 'Invalid or expired OTP']);
         }
 
@@ -215,12 +216,11 @@ class CustomerPortalController extends Controller
             ['loyalty_points' => 0, 'tier' => 'bronze'],
         );
 
-        if (! $customer->wasRecentlyCreated && ! $customer->is_active) {
+        if (!$customer->wasRecentlyCreated && !$customer->is_active) {
             return back()->withErrors(['otp' => 'This account has been deactivated. Please contact support.']);
         }
 
         $customer->update(['last_login_at' => now()]);
-        $this->linkGuestOrders($customer);
 
         // Use the customer guard so the session cookie works for both
         // the Blade site and the React order app.
@@ -228,8 +228,9 @@ class CustomerPortalController extends Controller
         $request->session()->regenerate();
 
         // Redirect to profile setup if this is a first-time customer
-        if (! $customer->is_profile_complete) {
+        if (!$customer->is_profile_complete) {
             $this->queueHandoffCookies($customer);
+
             return redirect()->route('customer.complete-profile');
         }
 
@@ -237,7 +238,7 @@ class CustomerPortalController extends Controller
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
-        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
+        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
             $intendedUrl = '/';
         }
 
@@ -249,29 +250,29 @@ class CustomerPortalController extends Controller
     public function passwordLogin(Request $request)
     {
         $request->validate([
-            'phone'    => 'required|string',
+            'phone' => 'required|string',
             'password' => 'required|string',
         ]);
 
-        $phone    = $this->normalizePhone($request->phone);
+        $phone = $this->normalizePhone($request->phone);
         $customer = Customer::where('phone', $phone)->first();
 
-        if (! $customer || empty($customer->password) || ! Hash::check($request->password, $customer->password)) {
+        if (!$customer || empty($customer->password) || !Hash::check($request->password, $customer->password)) {
             return back()->withErrors(['password' => 'Invalid phone number or password.'])->withInput(['phone' => $request->phone]);
         }
 
-        if (! $customer->is_active) {
+        if (!$customer->is_active) {
             return back()->withErrors(['phone' => 'This account has been deactivated. Please contact support.'])->withInput(['phone' => $request->phone]);
         }
 
         $customer->update(['last_login_at' => now()]);
-        $this->linkGuestOrders($customer);
 
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
-        if (! $customer->is_profile_complete) {
+        if (!$customer->is_profile_complete) {
             $this->queueHandoffCookies($customer);
+
             return redirect()->route('customer.complete-profile');
         }
 
@@ -279,7 +280,7 @@ class CustomerPortalController extends Controller
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
-        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
+        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
             $intendedUrl = '/';
         }
 
@@ -290,7 +291,7 @@ class CustomerPortalController extends Controller
 
     public function showCompleteProfile()
     {
-        if (! Auth::guard('customer')->check()) {
+        if (!Auth::guard('customer')->check()) {
             return redirect()->route('customer.login');
         }
 
@@ -299,14 +300,14 @@ class CustomerPortalController extends Controller
 
     public function completeProfile(Request $request)
     {
-        if (! Auth::guard('customer')->check()) {
+        if (!Auth::guard('customer')->check()) {
             return redirect()->route('customer.login');
         }
 
         $request->validate([
-            'name'                  => 'required|string|max:100',
-            'email'                 => 'nullable|email|max:100',
-            'password'              => 'required|string|min:6|confirmed',
+            'name' => 'required|string|max:100',
+            'email' => 'nullable|email|max:100',
+            'password' => 'required|string|min:6|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 
@@ -314,9 +315,9 @@ class CustomerPortalController extends Controller
         $customer = Auth::guard('customer')->user();
 
         $customer->update([
-            'name'                => $request->name,
-            'email'               => $request->email,
-            'password'            => Hash::make($request->password),
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
             'is_profile_complete' => true,
         ]);
 
@@ -324,7 +325,7 @@ class CustomerPortalController extends Controller
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
-        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
+        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
             $intendedUrl = '/';
         }
 
@@ -344,7 +345,7 @@ class CustomerPortalController extends Controller
         /** @var Customer $customer */
         $customer = $request->user();
 
-        if (! $customer->is_active) {
+        if (!$customer->is_active) {
             return response()->json(['message' => 'This account has been deactivated.'], 403);
         }
 
@@ -387,36 +388,19 @@ class CustomerPortalController extends Controller
     private function queueHandoffCookies(Customer $customer): void
     {
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token  = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
         // Always show the short phone number (strip +960) so both apps show the same thing
-        $name   = str_replace('+960', '', $customer->phone ?? '');
+        $name = str_replace('+960', '', $customer->phone ?? '');
         $domain = config('session.domain'); // .bakeandgrill.mv
         $secure = request()->isSecure();
 
         // non-httponly so React JS can read with document.cookie
-        Cookie::queue('_cauth',      $token, 1440, '/', $domain, $secure, false, false, 'Lax');
-        Cookie::queue('_cauth_name', $name,  1440, '/', $domain, $secure, false, false, 'Lax');
-    }
-
-    private function linkGuestOrders(Customer $customer): void
-    {
-        Order::where('guest_phone', $customer->phone)
-            ->whereNull('customer_id')
-            ->update(['customer_id' => $customer->id]);
+        Cookie::queue('_cauth', $token, 1440, '/', $domain, $secure, false, false, 'Lax');
+        Cookie::queue('_cauth_name', $name, 1440, '/', $domain, $secure, false, false, 'Lax');
     }
 
     private function normalizePhone(string $phone): string
     {
-        $digitsOnly = preg_replace('/[^0-9]/', '', $phone);
-
-        if (str_starts_with($digitsOnly, '960') && strlen($digitsOnly) === 10) {
-            return '+' . $digitsOnly;
-        }
-
-        if (strlen($digitsOnly) === 7) {
-            return '+960' . $digitsOnly;
-        }
-
-        return '+960' . substr($digitsOnly, -7);
+        return \App\Support\PhoneNormalizer::normalize($phone);
     }
 }

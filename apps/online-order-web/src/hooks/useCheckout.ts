@@ -280,10 +280,9 @@ export function useCheckout() {
         localStorage.setItem(historyKey, JSON.stringify(updated));
       } catch { /* ignore */ }
 
-      // Clear the cart before leaving — payment is initiated, order is placed
-      localStorage.removeItem("bakegrill_cart");
-      window.dispatchEvent(new CustomEvent("cart_cleared"));
-
+      // Do NOT clear the cart here — cart is cleared in OrderStatusPage once
+      // the order status is confirmed as paid/pending. If the user cancels
+      // payment or the gateway fails, their cart will still be intact.
       window.location.href = payment.payment_url;
     } catch (e) {
       setGlobalError((e as Error).message);

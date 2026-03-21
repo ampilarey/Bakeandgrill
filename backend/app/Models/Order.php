@@ -58,43 +58,36 @@ class Order extends Model
         'picked_up_at',
         'delivered_at',
         'store_id',
-        // Guest order fields
-        'guest_phone',
-        'guest_name',
-        'guest_email',
-        'guest_token',
     ];
 
-    protected $hidden = [
-        'guest_token',
-    ];
+    protected $hidden = [];
 
     protected $casts = [
         // FK integer columns — MySQL PDO returns these as strings without explicit casts
-        'customer_id'          => 'integer',
-        'restaurant_table_id'  => 'integer',
-        'delivery_driver_id'   => 'integer',
+        'customer_id' => 'integer',
+        'restaurant_table_id' => 'integer',
+        'delivery_driver_id' => 'integer',
         // Datetimes
-        'held_at'              => 'datetime',
-        'paid_at'              => 'datetime',
-        'completed_at'         => 'datetime',
-        'delivery_eta_at'      => 'datetime',
-        'driver_assigned_at'   => 'datetime',
-        'picked_up_at'         => 'datetime',
-        'delivered_at'         => 'datetime',
+        'held_at' => 'datetime',
+        'paid_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'delivery_eta_at' => 'datetime',
+        'driver_assigned_at' => 'datetime',
+        'picked_up_at' => 'datetime',
+        'delivered_at' => 'datetime',
         // Scalars
-        'tax_inclusive'           => 'boolean',
-        'delivery_fee'            => 'decimal:2',
-        'delivery_fee_laar'       => 'integer',
-        'tip_amount'              => 'decimal:2',
-        'estimated_wait_minutes'  => 'integer',
+        'tax_inclusive' => 'boolean',
+        'delivery_fee' => 'decimal:2',
+        'delivery_fee_laar' => 'integer',
+        'tip_amount' => 'decimal:2',
+        'estimated_wait_minutes' => 'integer',
     ];
 
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
             if (empty($order->tracking_token)) {
-                $order->tracking_token = Str::lower(Str::random(16));
+                $order->tracking_token = Str::random(32);
             }
         });
     }
