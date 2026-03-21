@@ -794,8 +794,11 @@
                 </a>
             </div>
             @auth('customer')
-                @php $cust = Auth::guard('customer')->user(); @endphp
-                <span style="font-size:0.875rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', $cust->phone) }}</span>
+                @php
+                    $cust = Auth::guard('customer')->user();
+                    $dispPhoneDesk = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
+                @endphp
+                <a href="/order/account" style="font-size:0.875rem;color:var(--muted);font-weight:500;text-decoration:none;">Hi, {{ $dispPhoneDesk }}</a>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
                     <button type="submit" class="hdr-logout-btn">Log out</button>
@@ -831,8 +834,13 @@
         </a>
         <div class="mob-hdr-btns">
             @auth('customer')
-                @php $cust = Auth::guard('customer')->user(); @endphp
-                <span style="font-size:0.75rem;color:var(--muted);font-weight:500;">Hi, {{ str_replace('+960', '', $cust->phone) }}</span>
+                @php
+                    $cust = Auth::guard('customer')->user();
+                    $dispPhone = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
+                @endphp
+                <a href="/order/account" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.65rem;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:0.75rem;font-weight:600;color:var(--muted);text-decoration:none;white-space:nowrap;">
+                    👤 {{ $dispPhone }}
+                </a>
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endauth
@@ -958,24 +966,12 @@
         <a href="/order/pre-order" class="mob-nav-item mob-nav-preorder">
             <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Pre-order
         </a>
-        @auth('customer')
-            <a href="/contact" class="mob-nav-item">
-                <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
-            </a>
-            <form method="POST" action="{{ route('customer.logout') }}" style="margin:0;padding:0;display:contents;">
-                @csrf
-                <button type="submit" class="mob-nav-item" style="background:none;border:none;cursor:pointer;font-family:inherit;color:var(--danger-text, #991b1b);">
-                    <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-logout"/></svg>Log out
-                </button>
-            </form>
-        @else
-            <a href="/hours" class="mob-nav-item">
-                <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-clock"/></svg>Hours
-            </a>
-            <a href="/contact" class="mob-nav-item">
-                <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
-            </a>
-        @endauth
+        <a href="/hours" class="mob-nav-item">
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-clock"/></svg>Hours
+        </a>
+        <a href="/contact" class="mob-nav-item">
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
+        </a>
     </div>
 </nav>
 
