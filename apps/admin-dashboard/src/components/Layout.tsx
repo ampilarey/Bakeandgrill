@@ -9,6 +9,7 @@ import {
   ChevronLeft, ChevronRight,
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Tag, RotateCcw, Trash2,
+  Boxes, LayoutGrid, Wallet, Clock, Monitor,
 } from 'lucide-react';
 
 // ── Navigation structure ──────────────────────────────────────────────────────
@@ -20,6 +21,8 @@ const NAV_GROUPS = [
       { to: '/orders',     icon: ClipboardList,   label: 'Orders',     permission: 'orders.view'   },
       { to: '/kds',        icon: ChefHat,         label: 'Kitchen',    permission: 'orders.view'   },
       { to: '/delivery',   icon: Truck,           label: 'Delivery',   permission: 'delivery.view' },
+      { to: '/tables',     icon: LayoutGrid,      label: 'Tables',     permission: 'orders.view'   },
+      { to: '/shifts',     icon: Wallet,          label: 'Shifts',     permission: 'orders.view'   },
     ],
   },
   {
@@ -27,6 +30,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/menu',            icon: UtensilsCrossed, label: 'Menu Items',    permission: 'menu.view'           },
       { to: '/specials',        icon: Tag,             label: 'Daily Specials',permission: 'menu.manage'         },
+      { to: '/inventory',       icon: Boxes,           label: 'Inventory',     permission: 'inventory.manage'    },
       { to: '/purchase-orders', icon: Package,         label: 'Stock & POs',   permission: 'suppliers.purchases' },
       { to: '/waste-logs',      icon: Trash2,          label: 'Waste Tracking',permission: 'menu.manage'         },
     ],
@@ -63,10 +67,12 @@ const NAV_GROUPS = [
   {
     label: 'MANAGEMENT',
     items: [
-      { to: '/staff',     icon: Users,    label: 'Staff',     permission: 'staff.view'              },
-      { to: '/analytics', icon: BarChart2, label: 'Analytics', permission: 'customers.analytics'     },
-      { to: '/settings',  icon: Settings, label: 'Settings',  permission: 'website.manage'           },
-      { to: '/webhooks',  icon: Webhook,  label: 'Webhooks',  permission: 'integrations.webhooks'   },
+      { to: '/staff',      icon: Users,    label: 'Staff',         permission: 'staff.view'              },
+      { to: '/time-clock', icon: Clock,    label: 'Time Clock',    permission: 'staff.view'              },
+      { to: '/analytics',  icon: BarChart2, label: 'Analytics',   permission: 'customers.analytics'     },
+      { to: '/devices',    icon: Monitor,  label: 'Devices',       permission: 'device.manage'           },
+      { to: '/settings',   icon: Settings, label: 'Settings',      permission: 'website.manage'          },
+      { to: '/webhooks',   icon: Webhook,  label: 'Webhooks',      permission: 'integrations.webhooks'   },
     ],
   },
 ];

@@ -32,6 +32,11 @@ const SpecialsPage            = lazy(() => import('./pages/SpecialsPage'));
 const RefundsPage             = lazy(() => import('./pages/RefundsPage'));
 const WasteLogsPage           = lazy(() => import('./pages/WasteLogsPage'));
 const CustomersPage           = lazy(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
+const InventoryPage           = lazy(() => import('./pages/InventoryPage'));
+const TablesPage              = lazy(() => import('./pages/TablesPage'));
+const ShiftsPage              = lazy(() => import('./pages/ShiftsPage'));
+const TimeClockPage           = lazy(() => import('./pages/TimeClockPage'));
+const DevicesPage             = lazy(() => import('./pages/DevicesPage'));
 
 function PageFallback() {
   return (
@@ -263,6 +268,31 @@ export default function App() {
                 <Route path="customers" element={
                   <PermissionGuard user={user} permission="customers.manage">
                     <CustomersPage />
+                  </PermissionGuard>
+                } />
+                <Route path="inventory" element={
+                  <PermissionGuard user={user} permission="inventory.manage">
+                    <InventoryPage />
+                  </PermissionGuard>
+                } />
+                <Route path="tables" element={
+                  <PermissionGuard user={user} permission="orders.view">
+                    <TablesPage />
+                  </PermissionGuard>
+                } />
+                <Route path="shifts" element={
+                  <PermissionGuard user={user} permission="orders.view">
+                    <ShiftsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="time-clock" element={
+                  <PermissionGuard user={user} permission="staff.view">
+                    <TimeClockPage />
+                  </PermissionGuard>
+                } />
+                <Route path="devices" element={
+                  <PermissionGuard user={user} permission="device.manage">
+                    <DevicesPage />
                   </PermissionGuard>
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
   getUserPermissions, updateUserPermissions,
-  type StaffMember, type StaffRole, type PermissionItem,
+  fetchSchedules, createSchedule, updateSchedule, deleteSchedule,
+  type StaffMember, type StaffRole, type PermissionItem, type StaffSchedule,
 } from '../api';
 import { Badge, Btn, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { Toggle, useToast } from '../components/ui';
@@ -357,10 +358,208 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
   );
 }
 
+// ── Schedules sub-section ─────────────────────────────────────────────────────
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function getWeekStart(offset = 0): string {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun
+  const diff = (day === 0 ? -6 : 1 - day) + offset * 7;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function SchedulesTab({ staff }: { staff: StaffMember[] }) {
+  const [weekStart, setWeekStart] = useState(getWeekStart());
+  const [schedules, setSchedules] = useState<StaffSchedule[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [modal, setModal] = useState(false);
+  const [editSched, setEditSched] = useState<StaffSchedule | null>(null);
+  const [form, setForm] = useState({ staff_id: '', date: '', start_time: '', end_time: '', notes: '' });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchSchedules({ week: weekStart });
+      setSchedules(res.data);
+    } catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { void load(); }, [weekStart]);
+
+  const openModal = (sched?: StaffSchedule) => {
+    setEditSched(sched ?? null);
+    setForm(sched ? {
+      staff_id: String(sched.staff_id),
+      date: sched.date,
+      start_time: sched.start_time,
+      end_time: sched.end_time,
+      notes: sched.notes ?? '',
+    } : { staff_id: '', date: weekStart, start_time: '09:00', end_time: '17:00', notes: '' });
+    setFormError('');
+    setModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.staff_id || !form.date || !form.start_time || !form.end_time) {
+      setFormError('Staff, date, start and end times are required.'); return;
+    }
+    setSaving(true); setFormError('');
+    try {
+      const data = { staff_id: Number(form.staff_id), date: form.date, start_time: form.start_time, end_time: form.end_time, notes: form.notes || undefined };
+      if (editSched) { await updateSchedule(editSched.id, data); }
+      else           { await createSchedule(data); }
+      setModal(false);
+      void load();
+    } catch (e) { setFormError((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Remove this schedule entry?')) return;
+    try { await deleteSchedule(id); void load(); }
+    catch (e) { setError((e as Error).message); }
+  };
+
+  // Build week dates
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart + 'T00:00:00');
+    d.setDate(d.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
+
+  const FS: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
+  const LS: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 };
+
+  return (
+    <div>
+      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+
+      {/* Week navigation */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <Btn small variant="ghost" onClick={() => setWeekStart(getWeekStart(-1))}>← Prev</Btn>
+        <span style={{ fontWeight: 700, fontSize: 15 }}>
+          Week of {new Date(weekStart + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+        </span>
+        <Btn small variant="ghost" onClick={() => setWeekStart(getWeekStart(1))}>Next →</Btn>
+        <Btn small variant="ghost" onClick={() => setWeekStart(getWeekStart())}>This Week</Btn>
+        <div style={{ marginLeft: 'auto' }}>
+          <Btn small onClick={() => openModal()}>+ Add Shift</Btn>
+        </div>
+      </div>
+
+      {loading ? (
+        <p style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={{ ...TH, minWidth: 120 }}>Day</th>
+                {staff.filter(s => s.is_active).map(s => (
+                  <th key={s.id} style={{ ...TH, minWidth: 140 }}>{s.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {weekDates.map((date, di) => {
+                const daySchedules = schedules.filter(sc => sc.date === date);
+                return (
+                  <tr key={date} style={{ background: di % 2 === 0 ? '#FAFAF9' : '#fff' }}>
+                    <td style={{ ...TD, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {DAYS[di]}<br />
+                      <span style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 400 }}>
+                        {new Date(date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    </td>
+                    {staff.filter(s => s.is_active).map(s => {
+                      const shift = daySchedules.find(sc => sc.staff_id === s.id);
+                      return (
+                        <td key={s.id} style={{ ...TD, verticalAlign: 'top', padding: 8 }}>
+                          {shift ? (
+                            <div style={{ background: '#FEF3E8', border: '1px solid #D4813A', borderRadius: 8, padding: '6px 10px' }}>
+                              <div style={{ fontWeight: 700, color: '#D4813A', fontSize: 12 }}>
+                                {shift.start_time.slice(0, 5)} – {shift.end_time.slice(0, 5)}
+                              </div>
+                              {shift.notes && <div style={{ fontSize: 11, color: '#6B5D4F', marginTop: 2 }}>{shift.notes}</div>}
+                              <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                                <button onClick={() => openModal(shift)} style={{ fontSize: 11, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>edit</button>
+                                <button onClick={() => handleDelete(shift.id)} style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>remove</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setForm({ staff_id: String(s.id), date, start_time: '09:00', end_time: '17:00', notes: '' }); setEditSched(null); setFormError(''); setModal(true); }}
+                              style={{ fontSize: 11, color: '#C8BEB6', background: 'none', border: '1px dashed #E8E0D8', borderRadius: 6, cursor: 'pointer', padding: '4px 8px', width: '100%' }}
+                            >
+                              + Add
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {schedules.length === 0 && !loading && (
+        <EmptyState message="No schedules this week. Click '+ Add Shift' to get started." />
+      )}
+
+      {modal && (
+        <Modal title={editSched ? 'Edit Shift' : 'Add Shift'} onClose={() => setModal(false)}>
+          {formError && <ErrorMsg message={formError} />}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label>
+              <span style={LS}>Staff Member *</span>
+              <select value={form.staff_id} onChange={e => setForm(f => ({ ...f, staff_id: e.target.value }))} style={{ ...FS, border: '1px solid #E8E0D8', borderRadius: 8 }}>
+                <option value="">Select staff…</option>
+                {staff.filter(s => s.is_active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={LS}>Date *</span>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={FS} />
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <label>
+                <span style={LS}>Start Time *</span>
+                <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={FS} />
+              </label>
+              <label>
+                <span style={LS}>End Time *</span>
+                <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={FS} />
+              </label>
+            </div>
+            <label>
+              <span style={LS}>Notes</span>
+              <input type="text" placeholder="Optional note…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={FS} />
+            </label>
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setModal(false)}>Cancel</Btn>
+            <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function StaffPage() {
     usePageTitle('Staff');
+  const [activeTab, setActiveTab] = useState<'staff' | 'schedules'>('staff');
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -413,14 +612,31 @@ export function StaffPage() {
     await load();
   };
 
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer',
+    fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
+    background: active ? '#D4813A' : 'transparent',
+    color: active ? '#fff' : '#6B5D4F',
+  });
+
   return (
     <>
       <PageHeader
         title="Staff Management"
         subtitle="Manage staff accounts and PINs"
-        action={<Btn onClick={() => setCreating(true)}>+ Add Staff</Btn>}
+        action={activeTab === 'staff' ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
       />
 
+      {/* Tab switcher */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+        <button style={tabStyle(activeTab === 'staff')} onClick={() => setActiveTab('staff')}>Staff</button>
+        <button style={tabStyle(activeTab === 'schedules')} onClick={() => setActiveTab('schedules')}>Schedules</button>
+      </div>
+
+      {activeTab === 'schedules' && <SchedulesTab staff={staff} />}
+
+      {activeTab === 'staff' && (
+        <>
       {error && <ErrorMsg message={error} />}
 
       {loading && staff.length === 0 ? <Spinner /> :
@@ -487,6 +703,8 @@ export function StaffPage() {
       )}
       {permissionsUser && (
         <PermissionsModal member={permissionsUser} onClose={() => setPermissionsUser(null)} />
+      )}
+        </>
       )}
     </>
   );

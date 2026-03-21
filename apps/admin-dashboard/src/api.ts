@@ -1070,3 +1070,257 @@ export async function updateAdminCustomer(
 export async function deleteAdminCustomer(id: number): Promise<void> {
   await req(`/admin/customers/${id}`, { method: 'DELETE' });
 }
+
+// ── Inventory ─────────────────────────────────────────────────────────────────
+
+export interface InventoryItem {
+  id: number;
+  name: string;
+  sku: string | null;
+  unit: string;
+  quantity_on_hand: number;
+  reorder_level: number | null;
+  cost_per_unit: number | null;
+  category: { id: number; name: string } | null;
+  is_active: boolean;
+  last_counted_at: string | null;
+  created_at: string;
+}
+
+export interface InventoryCategory {
+  id: number;
+  name: string;
+  slug: string | null;
+  created_at: string;
+}
+
+export async function fetchInventoryItems(params?: {
+  search?: string; category_id?: number; low_stock?: boolean; page?: number;
+}): Promise<{ data: InventoryItem[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.search)      qs.set('search',      params.search);
+  if (params?.category_id) qs.set('category_id', String(params.category_id));
+  if (params?.low_stock)   qs.set('low_stock',   '1');
+  if (params?.page)        qs.set('page',        String(params.page));
+  return req(`/inventory?${qs}`);
+}
+
+export async function fetchLowStockItems(): Promise<{ data: InventoryItem[] }> {
+  return req('/inventory/low-stock');
+}
+
+export async function adjustInventoryStock(
+  id: number,
+  data: { type: 'add' | 'remove' | 'set'; quantity: number; reason?: string },
+): Promise<{ item: InventoryItem }> {
+  return req(`/inventory/${id}/adjust`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function fetchInventoryCategories(): Promise<{ data: InventoryCategory[] }> {
+  return req('/inventory-categories');
+}
+
+export async function createInventoryCategory(data: { name: string }): Promise<{ category: InventoryCategory }> {
+  return req('/inventory-categories', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateInventoryCategory(id: number, data: { name: string }): Promise<{ category: InventoryCategory }> {
+  return req(`/inventory-categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// ── Tables ────────────────────────────────────────────────────────────────────
+
+export interface RestaurantTable {
+  id: number;
+  number: string;
+  capacity: number;
+  zone: string | null;
+  status: 'available' | 'occupied' | 'reserved' | 'closed';
+  current_order_id: number | null;
+  is_active: boolean;
+}
+
+export async function fetchTables(): Promise<{ data: RestaurantTable[] }> {
+  return req('/tables');
+}
+
+export async function createTable(data: { number: string; capacity: number; zone?: string }): Promise<{ table: RestaurantTable }> {
+  return req('/tables', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateTable(id: number, data: Partial<{ number: string; capacity: number; zone: string; is_active: boolean }>): Promise<{ table: RestaurantTable }> {
+  return req(`/tables/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function openTable(id: number): Promise<{ table: RestaurantTable }> {
+  return req(`/tables/${id}/open`, { method: 'POST' });
+}
+
+export async function closeTable(id: number): Promise<{ table: RestaurantTable }> {
+  return req(`/tables/${id}/close`, { method: 'POST' });
+}
+
+export async function mergeTables(tableIds: number[]): Promise<{ table: RestaurantTable }> {
+  return req('/tables/merge', { method: 'POST', body: JSON.stringify({ table_ids: tableIds }) });
+}
+
+export async function splitTable(id: number, into: number): Promise<{ tables: RestaurantTable[] }> {
+  return req(`/tables/${id}/split`, { method: 'POST', body: JSON.stringify({ into }) });
+}
+
+// ── Shifts & Cash Drawer ──────────────────────────────────────────────────────
+
+export interface CashMovement {
+  id: number;
+  type: 'in' | 'out';
+  amount: number;
+  reason: string;
+  created_at: string;
+  user?: { name: string };
+}
+
+export interface Shift {
+  id: number;
+  status: 'open' | 'closed';
+  opening_cash: number;
+  closing_cash: number | null;
+  total_cash_in: number;
+  total_cash_out: number;
+  expected_cash: number | null;
+  variance: number | null;
+  notes: string | null;
+  opened_at: string;
+  closed_at: string | null;
+  opened_by: string | null;
+  closed_by: string | null;
+  cash_movements: CashMovement[];
+}
+
+export async function getCurrentShift(): Promise<{ shift: Shift | null }> {
+  return req('/shifts/current');
+}
+
+export async function openShift(data: { opening_cash: number }): Promise<{ shift: Shift }> {
+  return req('/shifts/open', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function closeShift(id: number, data: { closing_cash: number; notes?: string }): Promise<{ shift: Shift }> {
+  return req(`/shifts/${id}/close`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function addCashMovement(
+  shiftId: number,
+  data: { type: 'in' | 'out'; amount: number; reason: string },
+): Promise<{ movement: CashMovement }> {
+  return req(`/shifts/${shiftId}/cash-movements`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ── Time Clock ────────────────────────────────────────────────────────────────
+
+export interface TimeEntry {
+  id: number;
+  staff_id: number;
+  staff?: { id: number; name: string };
+  clocked_in_at: string;
+  clocked_out_at: string | null;
+  hours_worked: number | null;
+  notes: string | null;
+}
+
+export async function getTimeClockStatus(): Promise<{ clocked_in: boolean; entry: TimeEntry | null }> {
+  return req('/time-clock/status');
+}
+
+export async function clockIn(): Promise<{ entry: TimeEntry }> {
+  return req('/time-clock/in', { method: 'POST' });
+}
+
+export async function clockOut(): Promise<{ entry: TimeEntry }> {
+  return req('/time-clock/out', { method: 'POST' });
+}
+
+export async function getTimeClockHistory(params?: {
+  staff_id?: number; from?: string; to?: string; page?: number;
+}): Promise<{ data: TimeEntry[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.staff_id) qs.set('staff_id', String(params.staff_id));
+  if (params?.from)     qs.set('from', params.from);
+  if (params?.to)       qs.set('to', params.to);
+  if (params?.page)     qs.set('page', String(params.page));
+  return req(`/time-clock/history?${qs}`);
+}
+
+export async function getTimeClockSummary(params: {
+  from: string; to: string;
+}): Promise<{ data: Array<{ staff: { id: number; name: string }; total_hours: number; entries_count: number }> }> {
+  const qs = new URLSearchParams({ from: params.from, to: params.to });
+  return req(`/time-clock/summary?${qs}`);
+}
+
+// ── Devices ───────────────────────────────────────────────────────────────────
+
+export interface Device {
+  id: number;
+  name: string;
+  type: 'pos' | 'kds' | 'display' | string;
+  token: string | null;
+  is_active: boolean;
+  last_seen_at: string | null;
+  registered_by: string | null;
+  created_at: string;
+}
+
+export async function fetchDevices(): Promise<{ data: Device[] }> {
+  return req('/devices');
+}
+
+export async function registerDevice(data: { name: string; type: string }): Promise<{ device: Device; token: string }> {
+  return req('/devices/register', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function disableDevice(id: number): Promise<{ device: Device }> {
+  return req(`/devices/${id}/disable`, { method: 'PATCH' });
+}
+
+export async function enableDevice(id: number): Promise<{ device: Device }> {
+  return req(`/devices/${id}/enable`, { method: 'PATCH' });
+}
+
+// ── Staff Schedules ───────────────────────────────────────────────────────────
+
+export interface StaffSchedule {
+  id: number;
+  staff_id: number;
+  staff?: { id: number; name: string };
+  date: string;
+  start_time: string;
+  end_time: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export async function fetchSchedules(params?: {
+  week?: string; staff_id?: number;
+}): Promise<{ data: StaffSchedule[] }> {
+  const qs = new URLSearchParams();
+  if (params?.week)     qs.set('week', params.week);
+  if (params?.staff_id) qs.set('staff_id', String(params.staff_id));
+  return req(`/admin/schedules?${qs}`);
+}
+
+export async function createSchedule(data: {
+  staff_id: number; date: string; start_time: string; end_time: string; notes?: string;
+}): Promise<{ schedule: StaffSchedule }> {
+  return req('/admin/schedules', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSchedule(
+  id: number,
+  data: Partial<{ date: string; start_time: string; end_time: string; notes: string }>,
+): Promise<{ schedule: StaffSchedule }> {
+  return req(`/admin/schedules/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteSchedule(id: number): Promise<void> {
+  await req(`/admin/schedules/${id}`, { method: 'DELETE' });
+}
