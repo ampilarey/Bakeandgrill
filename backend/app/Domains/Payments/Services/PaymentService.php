@@ -101,12 +101,9 @@ class PaymentService
             ]);
         }
 
-        $returnUrl = config('frontend.order_status_url') . '/' . $order->id . '?payment=pending';
-
         $result = $this->bml->createPayment(
             $payment->amount_laar,
             $localId,
-            returnUrl: $returnUrl,
         );
 
         $this->payments->update($payment->id, [

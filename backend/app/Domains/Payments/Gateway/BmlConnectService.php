@@ -95,7 +95,7 @@ class BmlConnectService
             'Authorization' => $this->authorizationHeader(),
         ])
             ->timeout(30)
-            ->retry(2, 500)
+            ->retry(2, 500, null, false)
             ->post($url, $payload);
 
         $body = $response->json() ?? [];
