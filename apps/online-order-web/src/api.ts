@@ -376,7 +376,16 @@ export async function getOrderDetail(
 export async function getOrderByTrackingToken(
   trackingToken: string,
 ): Promise<{ order: OrderDetail }> {
-  return request<{ order: OrderDetail }>(`/orders/track/${trackingToken}`);
+  // Use fetch directly — this is a public endpoint with no auth, and bypassing
+  // the shared request() helper avoids any baseUrl concatenation issues.
+  const res = await fetch(`${API_ORIGIN}/api/orders/track/${trackingToken}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body.message ?? 'Order not found');
+  }
+  return res.json() as Promise<{ order: OrderDetail }>;
 }
 
 // ── BML Payment ───────────────────────────────────────────────────────────────
