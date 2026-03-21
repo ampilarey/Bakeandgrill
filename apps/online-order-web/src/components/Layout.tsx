@@ -238,9 +238,10 @@ export function Layout() {
           </div>
         </div>
 
-      {/* ── Order status bar — shown when logged in and has a recent order ── */}
-      <OrderStatusBar />
       </header>
+
+      {/* ── Order status bar — below header, same as main website on mobile ── */}
+      <OrderStatusBar />
 
       {/* Mobile prayer strip portal target */}
       <div id="prayer-strip-root" />
