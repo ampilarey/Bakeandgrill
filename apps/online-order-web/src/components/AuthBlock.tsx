@@ -25,7 +25,9 @@ type Props = {
 };
 
 function persistAuth(token: string, customer: AuthCustomer) {
-  const display = customer.name ?? customer.phone ?? "";
+  // Show phone without +960 prefix (e.g. "7972434") — shorter than full name in header
+  const stripped = (customer.phone ?? "").replace(/^\+?960/, "").replace(/\D/g, "");
+  const display = stripped.length === 7 ? stripped : (customer.name ?? customer.phone ?? "");
   localStorage.setItem("online_token", token);
   if (display) localStorage.setItem("online_customer_name", display);
   window.dispatchEvent(new Event("auth_change"));

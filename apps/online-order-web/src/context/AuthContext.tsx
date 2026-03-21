@@ -18,6 +18,14 @@ const AuthContext = createContext<AuthState>({
   clearAuth: () => {},
 });
 
+/** Derive a short display name: phone without +960 prefix, else first name. */
+function toDisplayName(name?: string | null, phone?: string | null): string {
+  const stripped = (phone ?? '').replace(/^\+?960/, '').replace(/\D/g, '');
+  if (stripped.length === 7) return stripped;
+  if (name) return name.split(' ')[0]; // first name only
+  return '';
+}
+
 const COOKIE_DOMAIN = (() => {
   if (typeof window === 'undefined') return '';
   const h = window.location.hostname;
@@ -100,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession()
       .then((res) => {
         if (res.authenticated && res.token) {
-          const name = res.customer?.name ?? res.customer?.phone ?? '';
+          const name = toDisplayName(res.customer?.name, res.customer?.phone);
           localStorage.setItem('online_token', res.token);
           if (name) localStorage.setItem('online_customer_name', name);
           setToken(res.token);
