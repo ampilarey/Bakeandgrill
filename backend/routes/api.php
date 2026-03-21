@@ -58,15 +58,27 @@ Route::middleware('throttle:60,1')
 
 // Opening hours status (public - for online order app)
 Route::get('/opening-hours/status', function () {
-    $service = app(App\Services\OpeningHoursService::class);
-    $open    = $service->isOpenNow();
-    $message = null;
+    $service   = app(App\Services\OpeningHoursService::class);
+    $open      = $service->isOpenNow();
+    $message   = null;
     if (! $open) {
         $message = $service->getClosureReason()
             ?? config('opening_hours.closed_message', 'We are currently closed. Please check our opening hours.');
     }
 
-    return response()->json(['open' => $open, 'message' => $message]);
+    // Enrich with today's schedule so the front-end can show "Closes HH:MM" / "Opens HH:MM"
+    $todayRow = $service->getTodayHours();
+    $today    = null;
+    if ($todayRow !== null) {
+        $closed = (bool) ($todayRow['closed'] ?? false);
+        $today  = [
+            'closed' => $closed,
+            'open'   => $closed ? null : ($todayRow['open']  ?? null),
+            'close'  => $closed ? null : ($todayRow['close'] ?? null),
+        ];
+    }
+
+    return response()->json(['open' => $open, 'message' => $message, 'today' => $today]);
 });
 
 // Full weekly schedule (public - for HoursPage in React app)

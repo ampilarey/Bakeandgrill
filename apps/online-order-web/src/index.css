@@ -315,6 +315,71 @@ a { text-decoration: none; color: inherit; }
 .status-closed .status-chip-dot { background: var(--color-error); }
 
 /* ════════════════════════════════════════════════════════════
+   OPENING STATUS BADGE  (matches main-site hero pill)
+════════════════════════════════════════════════════════════ */
+.opening-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
+.opening-status-badge.open {
+  background: rgba(29, 94, 56, 0.85);
+  color: #6EE7A0;
+  border: 1px solid rgba(110, 231, 160, 0.25);
+}
+.opening-status-badge.closed {
+  background: rgba(120, 20, 15, 0.85);
+  color: #FCA5A5;
+  border: 1px solid rgba(252, 165, 165, 0.25);
+}
+.opening-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.opening-status-badge.open  .opening-status-dot { background: #4ADE80; box-shadow: 0 0 6px #4ADE80; animation: pulse-dot 2s infinite; }
+.opening-status-badge.closed .opening-status-dot { background: #FCA5A5; }
+
+/* hero variant: absolute top-right (HomePage) */
+.opening-status-badge-hero {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
+}
+
+/* menu-bar variant: inline inside normal flow row */
+.opening-status-badge-menu {
+  /* nothing extra; positioning handled by parent flex container */
+}
+
+@media (max-width: 768px) {
+  .opening-status-badge-hero {
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.72rem;
+    padding: 0.35rem 0.75rem;
+  }
+  .opening-status-badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.875rem;
+  }
+}
+
+/* dark theme: colours stay the same intentionally (badge is always dark-bg pill) */
+
+/* ════════════════════════════════════════════════════════════
    FORM INPUTS
 ════════════════════════════════════════════════════════════ */
 .field-label {

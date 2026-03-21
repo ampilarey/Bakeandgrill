@@ -42,4 +42,9 @@ export type LoyaltyHoldPreview = {
 export type OpeningHoursStatus = {
   open: boolean;
   message: string | null;
+  today: {
+    closed: boolean;
+    open: string | null;
+    close: string | null;
+  } | null;
 };

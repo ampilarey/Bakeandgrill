@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchItems, fetchOpeningHoursStatus, API_ORIGIN } from '../api';
-import type { Item } from '../api';
+import type { Item, OpeningHoursStatus } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 
 // ─── Category shortcuts data ──────────────────────────────────────────────────
 const CATEGORIES = [
@@ -25,6 +26,7 @@ export function HomePage() {
   const [featuredItems, setFeaturedItems] = useState<Item[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
+  const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
   const s = useSiteSettings();
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
@@ -37,9 +39,10 @@ export function HomePage() {
       setFeaturedItems(res.data.slice(0, 4));
     }).catch((e: unknown) => { console.error('Failed to load featured items', e); });
 
-    fetchOpeningHoursStatus().then(({ open, message }) => {
+    fetchOpeningHoursStatus().then(({ open, message, today }) => {
       setIsOpen(open);
       setHoursMsg(message ?? null);
+      setTodayHours(today ?? null);
     }).catch(() => setIsOpen(true));
   }, []);
 
@@ -55,17 +58,17 @@ export function HomePage() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+        {/* Opening status badge — absolute top-right, matching main website hero */}
+        {isOpen !== null && (
+          <OpeningStatusBadge
+            open={isOpen}
+            today={todayHours}
+            closedDetail={hoursMsg}
+            className="opening-status-badge-hero"
+          />
+        )}
 
-          {/* Status badge */}
-          {isOpen !== null && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <span className={`status-chip ${isOpen ? 'status-open' : 'status-closed'}`}>
-                <span className="status-chip-dot" />
-                {isOpen ? 'Open now' : (hoursMsg ?? 'Currently closed')}
-              </span>
-            </div>
-          )}
+        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
 
           <h1 style={{
             fontSize: 'clamp(1.875rem, 6vw, 3rem)',

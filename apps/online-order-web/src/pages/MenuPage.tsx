@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOpeningHoursStatus } from '../api';
-import type { Category, Item, Modifier } from '../api';
+import type { Category, Item, Modifier, OpeningHoursStatus } from '../api';
+import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { MenuCard } from '../components/MenuCard';
 import { ItemModal } from '../components/ItemModal';
 import { CartDrawer } from '../components/CartDrawer';
@@ -31,6 +32,7 @@ export function MenuPage() {
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
+  const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -65,6 +67,7 @@ export function MenuPage() {
         setItems(its.data);
         setIsOpen(hours.open);
         setClosedMessage(hours.open ? null : (hours.message ?? 'We are currently closed.'));
+        setTodayHours(hours.today ?? null);
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -204,6 +207,18 @@ export function MenuPage() {
 
       {/* ── Main content ──────────────────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0 }}>
+
+        {/* Opening status badge — top of main column, right-aligned */}
+        {isOpen !== null && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.75rem 1.5rem 0' }}>
+            <OpeningStatusBadge
+              open={isOpen}
+              today={todayHours}
+              closedDetail={closedMessage}
+              className="opening-status-badge-menu"
+            />
+          </div>
+        )}
 
         {/* Mobile sticky category bar */}
         <div className="mobile-category-pills sticky-cat-bar">
