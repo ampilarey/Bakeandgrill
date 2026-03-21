@@ -178,8 +178,9 @@ class CustomerAuthController extends Controller
 
         // Block returning customers with a password from using OTP to "register" —
         // they should use password login instead. For password reset it's always allowed.
+        // Also check soft-deleted customers (deleted_at set) so we don't silently skip them.
         if ($purpose === 'register') {
-            $customer = Customer::where('phone', $phone)->first();
+            $customer = Customer::withTrashed()->where('phone', $phone)->first();
             if ($customer && ! empty($customer->password)) {
                 throw ValidationException::withMessages([
                     'phone' => ['This number already has an account. Please log in with your password, or use "Forgot password?" to reset it.'],
@@ -232,23 +233,35 @@ class CustomerAuthController extends Controller
 
         $this->verifyAndConsumeOtp($phone, $input['otp']);
 
-        $customer = Customer::firstOrCreate(
-            ['phone' => $phone],
-            [
+        // Include soft-deleted rows so we don't hit a unique constraint violation
+        // when a customer who was admin-deleted tries to log back in via OTP.
+        $existing = Customer::withTrashed()->where('phone', $phone)->first();
+
+        if ($existing && $existing->trashed()) {
+            // Restore the soft-deleted account — OTP proves ownership of the phone.
+            $existing->restore();
+            $existing->update(['is_active' => true]);
+            $customer = $existing;
+        } elseif ($existing) {
+            $customer = $existing;
+            if (! $customer->is_active) {
+                throw ValidationException::withMessages([
+                    'phone' => ['This account has been deactivated. Please contact support.'],
+                ]);
+            }
+        } else {
+            $customer = Customer::create([
+                'phone'          => $phone,
                 'name'           => $input['name'] ?? null,
                 'email'          => $input['email'] ?? null,
                 'loyalty_points' => 0,
                 'tier'           => 'bronze',
-            ],
-        );
-
-        if (! $customer->wasRecentlyCreated && ! $customer->is_active) {
-            throw ValidationException::withMessages([
-                'phone' => ['This account has been deactivated. Please contact support.'],
             ]);
         }
 
-        if ($customer->wasRecentlyCreated) {
+        $isNew = $customer->wasRecentlyCreated;
+
+        if ($isNew) {
             event(new CustomerCreated(new CustomerCreatedData(
                 customerId: $customer->id,
                 phone: $customer->phone,
@@ -265,7 +278,7 @@ class CustomerAuthController extends Controller
         return response()->json([
             'message'         => 'Verified successfully',
             'token'           => $token,
-            'is_new_customer' => $customer->wasRecentlyCreated,
+            'is_new_customer' => $isNew,
             'customer'        => $this->customerResponse($customer, $token),
         ]);
     }
