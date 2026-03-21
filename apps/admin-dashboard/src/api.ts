@@ -1328,3 +1328,31 @@ export async function updateSchedule(
 export async function deleteSchedule(id: number): Promise<void> {
   await req(`/admin/schedules/${id}`, { method: 'DELETE' });
 }
+
+// ── Referrals ─────────────────────────────────────────────────────────────────
+
+export interface Referral {
+  id: number;
+  referrer_id: number;
+  referred_id: number | null;
+  code: string;
+  status: string;
+  reward_amount: number | null;
+  reward_issued_at: string | null;
+  created_at: string;
+  referrer?: { id: number; name: string; phone: string };
+  referred?: { id: number; name: string; phone: string } | null;
+}
+
+export async function fetchAdminReferrals(params?: {
+  page?: number; status?: string;
+}): Promise<{ data: Referral[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page)   qs.set('page', String(params.page));
+  if (params?.status) qs.set('status', params.status);
+  return req(`/admin/referrals${qs.toString() ? '?' + qs : ''}`);
+}
+
+export async function validateReferralCode(code: string): Promise<{ valid: boolean; referrer?: { name: string; phone: string }; message?: string }> {
+  return req('/referrals/validate', { method: 'POST', body: JSON.stringify({ code }) });
+}

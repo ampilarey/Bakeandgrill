@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight,
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Tag, RotateCcw, Trash2,
-  Boxes, LayoutGrid, Wallet, Clock, Monitor,
+  Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
 } from 'lucide-react';
 
 // ── Navigation structure ──────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ const NAV_GROUPS = [
       { to: '/reservations',    icon: CalendarDays,    label: 'Reservations',  permission: 'reservations.view'   },
       { to: '/reviews',         icon: Star,            label: 'Reviews',       permission: 'customers.manage'    },
       { to: '/gift-cards',      icon: Gift,            label: 'Gift Cards',    permission: 'promotions.manage'   },
+      { to: '/referrals',       icon: Share2,          label: 'Referrals',     permission: 'customers.manage'    },
     ],
   },
   {
