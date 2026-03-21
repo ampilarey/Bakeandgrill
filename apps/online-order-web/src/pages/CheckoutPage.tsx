@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 import { AuthBlock } from "../components/AuthBlock";
+import { BrandedHeader } from "../components/BrandedHeader";
 import { CartSummary } from "../components/CartSummary";
 
 // ── Viewport hook ──────────────────────────────────────────────────────────────
@@ -122,16 +123,16 @@ export function CheckoutPage() {
 
   return (
     <div style={S.page}>
-      {/* ── Header ─────────────────────────────────────────── */}
-      <header style={S.header}>
-        <button style={S.backBtn} onClick={() => navigate(-1)} aria-label="Go back">
-          ← Back
-        </button>
-        <span style={S.headerTitle}>Checkout</span>
-        {customerName && (
-          <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Hi, {customerName}</span>
-        )}
-      </header>
+      {/* ── Branded header ─────────────────────────────────── */}
+      <BrandedHeader
+        onBack={() => navigate(-1)}
+        backLabel="← Back"
+        rightSlot={customerName ? (
+          <span style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 500 }}>
+            Hi, {customerName}
+          </span>
+        ) : undefined}
+      />
 
       <div style={{ ...S.layout, gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(300px,380px)' }}>
 
@@ -417,28 +418,6 @@ const S = {
     minHeight: '100vh',
     background: 'var(--color-bg)',
     fontFamily: "'Plus Jakarta Sans', sans-serif",
-  } as React.CSSProperties,
-
-  header: {
-    position: 'sticky' as const, top: 0,
-    background: 'var(--color-header-bg)',
-    backdropFilter: 'blur(12px)',
-    borderBottom: '1px solid var(--color-border)',
-    padding: '12px 20px',
-    display: 'flex', alignItems: 'center', gap: 16,
-    zIndex: 'var(--z-header)' as unknown as number,
-    boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
-  } as React.CSSProperties,
-
-  backBtn: {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: 'var(--color-primary)', fontSize: 15, fontWeight: 600,
-    padding: '4px 8px', borderRadius: '6px', fontFamily: 'inherit',
-  } as React.CSSProperties,
-
-  headerTitle: {
-    fontWeight: 700, fontSize: 17,
-    color: 'var(--color-text)', flex: 1,
   } as React.CSSProperties,
 
   layout: {
