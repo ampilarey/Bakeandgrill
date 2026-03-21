@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { getOrderDetail, getOrderByTrackingToken, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
+import { BrandedHeader } from "../components/BrandedHeader";
 import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useSiteSettings } from "../context/SiteSettingsContext";
@@ -238,8 +239,6 @@ export function OrderStatusPage() {
   const navigate = useNavigate();
   const { clearCart } = useCart();
   const s = useSiteSettings();
-  const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
-  const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
 
   const paymentState = searchParams.get("payment") as PaymentState;
   const trackingToken = searchParams.get("tok");
@@ -346,22 +345,27 @@ export function OrderStatusPage() {
 
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe } = usePushNotifications(token);
 
+  const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
+  const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
+  const phone     = s.business_phone   || '+960 912 0011';
+  const phoneTel  = 'tel:' + phone.replace(/[^+\d]/g, '');
+
+  const liveIndicator = liveConnected ? (
+    <span style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block', animation: 'pulse-dot 2s infinite' }} />
+      Live
+    </span>
+  ) : null;
+
   return (
     <div style={S.page}>
 
-      {/* ── Header ───────────────────────────────────────── */}
-      <header style={S.header}>
-        <button style={S.backBtn} onClick={() => navigate("/")} aria-label="Back to menu">
-          ← Back to menu
-        </button>
-        <span style={S.headerTitle}>Order Status</span>
-        {liveConnected && (
-          <span style={{ fontSize: 11, color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block', animation: 'pulse-dot 2s infinite' }} />
-            Live
-          </span>
-        )}
-      </header>
+      {/* ── Branded header ───────────────────────────────── */}
+      <BrandedHeader
+        onBack={() => navigate('/')}
+        backLabel="← Menu"
+        rightSlot={liveIndicator ?? undefined}
+      />
 
       <div style={S.container}>
 
@@ -691,6 +695,29 @@ export function OrderStatusPage() {
           </div>
         )}
       </div>
+
+      {/* ── Footer ───────────────────────────────────────── */}
+      <footer style={{
+        borderTop: '1px solid var(--color-border)',
+        background: 'var(--color-surface)',
+        padding: '20px 20px 28px',
+        marginTop: 'auto',
+        textAlign: 'center',
+      }}>
+        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+            Need help?{' '}
+            <a href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+              WhatsApp us
+            </a>
+            {' · '}
+            <a href={phoneTel} style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{phone}</a>
+          </p>
+          <a href="/" style={{ fontSize: 12, color: 'var(--color-text-muted)', textDecoration: 'none' }}>
+            ← Back to main website
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -701,27 +728,8 @@ const S = {
     minHeight: '100vh',
     background: 'var(--color-bg)',
     fontFamily: "'Plus Jakarta Sans', sans-serif",
-  } as React.CSSProperties,
-
-  header: {
-    position: 'sticky' as const, top: 0,
-    background: 'var(--color-header-bg)',
-    backdropFilter: 'blur(12px)',
-    borderBottom: '1px solid var(--color-border)',
-    padding: '12px 20px',
-    display: 'flex', alignItems: 'center', gap: 16,
-    zIndex: 100, boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
-  } as React.CSSProperties,
-
-  backBtn: {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: 'var(--color-primary)', fontSize: 14, fontWeight: 600,
-    padding: '4px 8px', borderRadius: '6px', fontFamily: 'inherit',
-  } as React.CSSProperties,
-
-  headerTitle: {
-    fontWeight: 700, fontSize: 17,
-    color: 'var(--color-text)', flex: 1,
+    display: 'flex',
+    flexDirection: 'column' as const,
   } as React.CSSProperties,
 
   container: {

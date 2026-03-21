@@ -6,32 +6,32 @@
    DESIGN TOKENS
 ════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Semantic colors ─────────────────────────────────── */
-  --color-bg:            #fffbf5;
+  /* ── Semantic colors — matched to layout.blade.php :root ─ */
+  --color-bg:            #FFFDF9;
   --color-surface:       #ffffff;
-  --color-surface-alt:   #f7f3ec;
-  --color-text:          #3d2314;
-  --color-text-muted:    #6b6560;
-  --color-primary:       #d97706;
-  --color-primary-hover: #b45309;
-  --color-primary-light: #fef3e8;
-  --color-primary-glow:  rgba(217, 119, 6, 0.22);
-  --color-border:        #e7e0d8;
+  --color-surface-alt:   #FEF3E8;
+  --color-text:          #2A1E0C;
+  --color-text-muted:    #8B7355;
+  --color-primary:       #D4813A;
+  --color-primary-hover: #B86820;
+  --color-primary-light: #FEF3E8;
+  --color-primary-glow:  rgba(212, 129, 58, 0.22);
+  --color-border:        #EDE4D4;
   --color-success:       #16a34a;
-  --color-success-bg:    #dcfce7;
+  --color-success-bg:    #D6F0E2;
   --color-warning:       #ca8a04;
   --color-warning-bg:    #fef9c3;
   --color-error:         #dc2626;
-  --color-error-bg:      #fee2e2;
+  --color-error-bg:      #FCE4E1;
   /** Heading / logo text (flips in dark mode) — do NOT use for footer backgrounds */
-  --color-dark:          #1c1408;
+  --color-dark:          #1C1408;
   /** Always-dark strip behind footer (independent of --color-dark) */
-  --color-footer-bg:     #1c1408;
-  /** Sticky header / mobile nav scrim */
-  --color-header-bg:     rgba(255, 251, 245, 0.94);
+  --color-footer-bg:     #1C1408;
+  /** Sticky header / mobile nav scrim — matches Blade rgba(255,253,249,0.92) */
+  --color-header-bg:     rgba(255, 253, 249, 0.94);
   --color-mobile-nav-bg: rgba(255, 253, 249, 0.97);
   /** Skeleton shimmer mid-stop */
-  --color-skeleton-mid:  #ede8e0;
+  --color-skeleton-mid:  #EDE4D4;
 
   /* ── Aliases for backward compat (point to canonical tokens) ── */
   --amber:        var(--color-primary);
@@ -89,21 +89,22 @@
    DARK MODE TOKEN OVERRIDES
 ════════════════════════════════════════════════════════════ */
 [data-theme="dark"] {
+  /* Matched to layout.blade.php [data-theme="dark"] */
   --color-bg:            #1a1208;
   --color-surface:       #231809;
   --color-surface-alt:   #2a1e0e;
-  --color-text:          #f5ede0;
-  --color-text-muted:    #a89880;
-  --color-border:        #3d2e18;
-  --color-primary:       #e28a1a;
-  --color-primary-hover: #c97715;
-  --color-primary-light: rgba(226,138,26,0.15);
-  --color-primary-glow:  rgba(226,138,26,0.25);
-  --color-dark:          #f5ede0;
+  --color-text:          #e8d5b5;
+  --color-text-muted:    #9c8060;
+  --color-border:        #3a2a12;
+  --color-primary:       #e09242;
+  --color-primary-hover: #c97a2a;
+  --color-primary-light: rgba(224, 146, 66, 0.15);
+  --color-primary-glow:  rgba(224, 146, 66, 0.22);
+  --color-dark:          #f5e6cc;
   --color-footer-bg:     #0e0a04;
   --color-header-bg:     rgba(26, 18, 8, 0.94);
   --color-mobile-nav-bg: rgba(26, 18, 8, 0.97);
-  --color-skeleton-mid:  #3d3428;
+  --color-skeleton-mid:  #3a2a12;
   /* Semantic states — tuned for dark surfaces */
   --color-success:       #4ade80;
   --color-success-bg:    rgba(34, 197, 94, 0.14);
