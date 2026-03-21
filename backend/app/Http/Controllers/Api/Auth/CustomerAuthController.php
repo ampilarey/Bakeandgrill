@@ -178,9 +178,9 @@ class CustomerAuthController extends Controller
 
         // Block returning customers with a password from using OTP to "register" —
         // they should use password login instead. For password reset it's always allowed.
-        // Also check soft-deleted customers (deleted_at set) so we don't silently skip them.
+        // Soft-deleted customers are allowed through OTP so they can recover their account.
         if ($purpose === 'register') {
-            $customer = Customer::withTrashed()->where('phone', $phone)->first();
+            $customer = Customer::where('phone', $phone)->first();
             if ($customer && ! empty($customer->password)) {
                 throw ValidationException::withMessages([
                     'phone' => ['This number already has an account. Please log in with your password, or use "Forgot password?" to reset it.'],
