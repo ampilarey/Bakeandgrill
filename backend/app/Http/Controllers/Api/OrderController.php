@@ -231,7 +231,7 @@ class OrderController extends Controller
      */
     public function trackByToken(string $token): JsonResponse
     {
-        $order = Order::with(['items:id,order_id,item_name,quantity,unit_price,total_price,modifiers'])
+        $order = Order::with(['items'])
             ->where('tracking_token', $token)
             ->first();
 
