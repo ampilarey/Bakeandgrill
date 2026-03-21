@@ -34,6 +34,7 @@ const NAV_GROUPS = [
   {
     label: 'CUSTOMERS',
     items: [
+      { to: '/customers',       icon: Users,           label: 'Customers',     permission: 'customers.manage'    },
       { to: '/loyalty',         icon: Heart,           label: 'Loyalty',       permission: 'loyalty.view'        },
       { to: '/reservations',    icon: CalendarDays,    label: 'Reservations',  permission: 'reservations.view'   },
       { to: '/reviews',         icon: Star,            label: 'Reviews',       permission: 'customers.manage'    },

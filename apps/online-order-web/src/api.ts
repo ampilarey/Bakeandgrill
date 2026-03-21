@@ -225,6 +225,38 @@ export async function changePassword(
   });
 }
 
+/** Update the logged-in customer's profile (name / email). */
+export async function updateCustomerProfile(
+  token: string,
+  data: { name?: string; email?: string },
+): Promise<{ customer: AuthCustomer }> {
+  return request(ENDPOINTS.CUSTOMER_PROFILE, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Change password for a logged-in customer (new flow: current + new + confirm).
+ * Re-uses the CUSTOMER_CHANGE_PASSWORD endpoint with different field names than
+ * `changePassword` (which uses `password` / `password_confirmation`).
+ */
+export async function changeCustomerPassword(
+  token: string,
+  data: { current_password: string; new_password: string },
+): Promise<void> {
+  await request(ENDPOINTS.CUSTOMER_CHANGE_PASSWORD, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      current_password: data.current_password,
+      password: data.new_password,
+      password_confirmation: data.new_password,
+    }),
+  });
+}
+
 // ── Opening hours ─────────────────────────────────────────────────────────────
 
 export async function fetchOpeningHoursStatus(): Promise<OpeningHoursStatus> {

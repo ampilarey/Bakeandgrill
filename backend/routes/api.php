@@ -567,6 +567,14 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admi
     Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
 });
 
+// Admin: customer management
+Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admin/customers')->group(function () {
+    Route::get('/',        [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
+    Route::get('/{id}',    [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
+    Route::patch('/{id}',  [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
+    Route::delete('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'destroy']);
+});
+
 // ─── Reservations ────────────────────────────────────────────────────────────
 // Public: check slot availability
 Route::get('/reservations/availability', [ReservationController::class, 'availability'])

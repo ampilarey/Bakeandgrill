@@ -204,6 +204,13 @@ export function Layout() {
                     Hi, {customerName}
                   </span>
                 ) : null}
+                <Link
+                  to="/account"
+                  style={{ padding: '0.35rem 0.7rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap', textDecoration: 'none' }}
+                  className="show-desktop"
+                >
+                  My Account
+                </Link>
                 <button
                   onClick={handleLogout}
                   style={{ padding: '0.35rem 0.7rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' }}
@@ -281,6 +288,7 @@ export function Layout() {
             <Link to="/menu">Order Online</Link>
             <Link to="/pre-order">Pre-Order (Events)</Link>
             <Link to="/order-history">Order History</Link>
+            <Link to="/account">My Account</Link>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
           </div>
@@ -362,6 +370,12 @@ export function Layout() {
               Hours
             </a>
           )}
+          {token ? (
+            <Link to="/account" className="order-mob-item" onClick={() => setMoreOpen(false)}>
+              <span className="order-mob-icon">👤</span>
+              My Account
+            </Link>
+          ) : null}
           {token ? (
             <button
               type="button"

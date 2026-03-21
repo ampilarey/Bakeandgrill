@@ -31,6 +31,7 @@ const ReviewsPage             = lazy(() => import('./pages/ReviewsPage'));
 const SpecialsPage            = lazy(() => import('./pages/SpecialsPage'));
 const RefundsPage             = lazy(() => import('./pages/RefundsPage'));
 const WasteLogsPage           = lazy(() => import('./pages/WasteLogsPage'));
+const CustomersPage           = lazy(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
 
 function PageFallback() {
   return (
@@ -257,6 +258,11 @@ export default function App() {
                 <Route path="waste-logs" element={
                   <PermissionGuard user={user} permission="menu.manage">
                     <WasteLogsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="customers" element={
+                  <PermissionGuard user={user} permission="customers.manage">
+                    <CustomersPage />
                   </PermissionGuard>
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />

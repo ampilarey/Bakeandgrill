@@ -1023,3 +1023,50 @@ export async function fetchAdminRefunds(params?: { page?: number; status?: strin
 export async function issueRefund(orderId: number, data: { amount: number; reason?: string }): Promise<{ refund: AdminRefund }> {
   return req(`/orders/${orderId}/refunds`, { method: 'POST', body: JSON.stringify(data) });
 }
+
+// ── Customers ─────────────────────────────────────────────────────────────────
+
+export interface AdminCustomer {
+  id: number;
+  name: string | null;
+  phone: string;
+  email: string | null;
+  tier: string | null;
+  loyalty_points: number;
+  is_active: boolean;
+  is_profile_complete: boolean;
+  sms_opt_out: boolean;
+  internal_notes: string | null;
+  preferred_language: string | null;
+  orders_count: number;
+  last_login_at: string | null;
+  last_order_at: string | null;
+  created_at: string;
+}
+
+export async function fetchAdminCustomers(params?: {
+  search?: string;
+  is_active?: boolean;
+  page?: number;
+}): Promise<{ data: AdminCustomer[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.search)                        qs.set('search', params.search);
+  if (params?.is_active !== undefined)       qs.set('is_active', String(params.is_active));
+  if (params?.page)                          qs.set('page', String(params.page));
+  return req(`/admin/customers?${qs}`);
+}
+
+export async function getAdminCustomer(id: number): Promise<{ customer: AdminCustomer; orders: Order[] }> {
+  return req(`/admin/customers/${id}`);
+}
+
+export async function updateAdminCustomer(
+  id: number,
+  data: Partial<Pick<AdminCustomer, 'name' | 'email' | 'internal_notes' | 'is_active' | 'sms_opt_out'>>,
+): Promise<{ customer: AdminCustomer }> {
+  return req(`/admin/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteAdminCustomer(id: number): Promise<void> {
+  await req(`/admin/customers/${id}`, { method: 'DELETE' });
+}
