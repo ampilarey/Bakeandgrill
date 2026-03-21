@@ -29,7 +29,7 @@ class CancelStaleOrders extends Command
         }
 
         foreach ($stale as $order) {
-            DB::transaction(function () use ($order): void {
+            DB::transaction(function () use ($order, $ttl): void {
                 $order->update(['status' => 'cancelled']);
 
                 // Release any active loyalty hold
