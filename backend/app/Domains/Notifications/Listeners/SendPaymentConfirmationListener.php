@@ -52,7 +52,7 @@ class SendPaymentConfirmationListener implements ShouldQueue
             return;
         }
 
-        $url = rtrim(config('app.url'), '/') . '/order/status/' . $order->id;
+        $url = rtrim(config('frontend.order_status_url', config('app.url') . '/order/orders'), '/') . '/' . $order->id;
 
         // SMS
         try {
