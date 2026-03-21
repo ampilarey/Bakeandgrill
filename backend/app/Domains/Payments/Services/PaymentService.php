@@ -267,17 +267,17 @@ class PaymentService
             return;
         }
 
-        if (!$this->bml->verifyWebhookSignature($rawBody, $signature)) {
-            Log::warning('BML: Webhook signature mismatch. Verify BML_WEBHOOK_SECRET matches the portal.', [
-                'idempotency_key' => $idempotencyKey,
-            ]);
-
-            if (config('app.env') === 'production' && config('bml.enforce_signature', true)) {
-                throw new \RuntimeException('BML webhook signature verification failed — rejecting payload.');
-            }
-        }
-
         try {
+            if (!$this->bml->verifyWebhookSignature($rawBody, $signature)) {
+                Log::warning('BML: Webhook signature mismatch. Verify BML_WEBHOOK_SECRET matches the portal.', [
+                    'idempotency_key' => $idempotencyKey,
+                ]);
+
+                if (config('app.env') === 'production' && config('bml.enforce_signature', true)) {
+                    throw new \RuntimeException('BML webhook signature verification failed — rejecting payload.');
+                }
+            }
+
             $this->processWebhookPayload($payload, $log);
             $log->update(['status' => 'processed', 'processed_at' => now()]);
         } catch (\Throwable $e) {
