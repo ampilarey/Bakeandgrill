@@ -140,7 +140,7 @@ export function AccountPage() {
 
   if (!authReady) {
     return (
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '3rem 1.25rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '3rem var(--page-gutter)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
         Loading…
       </div>
     );
@@ -148,7 +148,7 @@ export function AccountPage() {
 
   if (!token) {
     return (
-      <div style={{ maxWidth: 480, margin: '0 auto', padding: '2rem 1.25rem' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '2rem var(--page-gutter)' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>My Account</h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.375rem 0 0' }}>
@@ -161,7 +161,7 @@ export function AccountPage() {
   }
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '2rem 1.25rem', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ maxWidth: 560, margin: '0 auto', padding: '2rem var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
       <div>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>My Account</h1>

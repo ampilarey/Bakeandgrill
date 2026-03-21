@@ -21,7 +21,7 @@ export function ContactPage() {
   ];
 
   return (
-    <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+    <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem var(--page-gutter)' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '0.875rem' }}>

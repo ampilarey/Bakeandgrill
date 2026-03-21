@@ -210,7 +210,7 @@ export function MenuPage() {
 
         {/* Opening status badge — top of main column, right-aligned */}
         {isOpen !== null && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.75rem 1.5rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.75rem var(--page-gutter) 0' }}>
             <OpeningStatusBadge
               open={isOpen}
               today={todayHours}
@@ -243,7 +243,7 @@ export function MenuPage() {
         </div>
 
         {/* Search + sort */}
-        <div style={{ display: 'flex', gap: '0.75rem', padding: '1.25rem 1.5rem 0', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', padding: '1.25rem var(--page-gutter) 0', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
             <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.875rem', pointerEvents: 'none', opacity: 0.4 }}>🔍</span>
             <input
@@ -289,7 +289,7 @@ export function MenuPage() {
 
         {/* Category heading on desktop */}
         {!loading && activeCategoryId !== null && (
-          <div style={{ padding: '1rem 1.5rem 0' }}>
+          <div style={{ padding: '1rem var(--page-gutter) 0' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
               {categories.find((c) => c.id === activeCategoryId)?.name ?? ''}
             </h2>
@@ -298,7 +298,7 @@ export function MenuPage() {
 
         {/* Loading skeletons */}
         {loading && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '1.25rem 1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '1.25rem var(--page-gutter)' }}>
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '300px' }} />
             ))}
@@ -328,7 +328,7 @@ export function MenuPage() {
 
         {/* Items grid */}
         {!loading && filteredItems.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '1.25rem 1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '1.25rem var(--page-gutter)' }}>
             {filteredItems.map((item) => (
               <div key={item.id} className="menu-item-anim">
                 <MenuCard
@@ -345,7 +345,7 @@ export function MenuPage() {
       {/* ── Desktop cart sidebar ─────────────────────────────────── */}
       <aside
         className="cart-sidebar"
-        style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', padding: '1.5rem 1.5rem 1.5rem 0' }}
+        style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', padding: '1.5rem 0' }}
       >
         <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />
       </aside>
@@ -364,7 +364,7 @@ export function MenuPage() {
               position: 'absolute', bottom: 0, left: 0, right: 0,
               background: 'var(--color-surface)',
               borderRadius: '20px 20px 0 0',
-              padding: '1.25rem 1.5rem',
+              padding: '1.25rem var(--page-gutter)',
               paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
               maxHeight: '85vh', overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',

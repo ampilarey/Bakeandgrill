@@ -57,6 +57,7 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
 
           <a
             href="/"
+            className="order-header-brand"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -71,11 +72,13 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
               alt={siteName}
               width={38}
               height={38}
+              className="order-header-brand-logo"
               style={{ borderRadius: '9px', objectFit: 'cover' }}
               fetchPriority="high"
               decoding="async"
             />
             <span
+              className="order-header-brand-name"
               style={{
                 fontSize: '1.2rem',
                 fontWeight: 800,

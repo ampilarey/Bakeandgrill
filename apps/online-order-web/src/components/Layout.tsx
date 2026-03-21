@@ -111,9 +111,9 @@ export function Layout() {
         <div className="order-header-inner" style={{ justifyContent: 'space-between' }}>
 
           {/* Logo — links to main website */}
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}>
-            <img src={logoUrl} alt={siteName} style={{ width: '38px', height: '38px', borderRadius: '9px' }} fetchPriority="high" decoding="async" />
-            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.02em' }}>{siteName}</span>
+          <a href="/" className="order-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', flexShrink: 0 }}>
+            <img src={logoUrl} alt={siteName} className="order-header-brand-logo" style={{ width: '38px', height: '38px', borderRadius: '9px' }} fetchPriority="high" decoding="async" />
+            <span className="order-header-brand-name" style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.02em' }}>{siteName}</span>
           </a>
 
           {/* Desktop Nav */}

@@ -28,7 +28,7 @@
   /** Always-dark strip behind footer (independent of --color-dark) */
   --color-footer-bg:     #1C1408;
   /** Sticky header / mobile nav scrim — matches Blade rgba(255,253,249,0.92) */
-  --color-header-bg:     rgba(255, 253, 249, 0.94);
+  --color-header-bg:     rgba(255, 253, 249, 0.92);
   --color-mobile-nav-bg: rgba(255, 253, 249, 0.97);
   /** Skeleton shimmer mid-stop */
   --color-skeleton-mid:  #EDE4D4;
@@ -73,7 +73,7 @@
   /* ── Z-index scale ──────────────────────────────── */
   --z-sticky-bar:  50;    /* sticky category bar */
   --z-fab:         60;    /* back-to-top FAB */
-  --z-header:      100;   /* sticky app header */
+  --z-header:      300;   /* sticky app header — matches Blade .site-header z-index */
   --z-dropdown:    200;   /* inline dropdowns (More menu) */
   --z-bottom-nav:  300;   /* fixed mobile bottom nav */
   --z-pay-bar:     320;   /* checkout pay bar (above bottom-nav) */
@@ -113,7 +113,7 @@
   --color-primary-glow:  rgba(224, 146, 66, 0.22);
   --color-dark:          #f5e6cc;
   --color-footer-bg:     #0e0a04;
-  --color-header-bg:     rgba(26, 18, 8, 0.94);
+  --color-header-bg:     rgba(26, 18, 8, 0.92);
   --color-mobile-nav-bg: rgba(26, 18, 8, 0.97);
   --color-skeleton-mid:  #3a2a12;
   /* Semantic states — tuned for dark surfaces */
@@ -138,6 +138,44 @@
 }
 
 /* ════════════════════════════════════════════════════════════
+   MOBILE HEADER PARITY (≤768px)
+   Matches Blade .mobile-header: padding 0.75rem 1rem,
+   no fixed 68px bar, logo 32×32, wordmark 1.05rem, blur 12px.
+════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Override fixed 68px height → flexible bar like Blade */
+  .order-header-inner {
+    height: auto;
+    min-height: 0;
+    padding: 0.75rem var(--page-gutter);
+    gap: 0.5rem;
+  }
+
+  /* Logo image: 38px → 32px + tighter radius (Blade .mob-logo img) */
+  .order-header-brand-logo {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 7px !important;
+  }
+
+  /* Wordmark: 1.2rem → 1.05rem (Blade .mob-logo) */
+  .order-header-brand-name {
+    font-size: 1.05rem !important;
+  }
+
+  /* Tighten brand link gap to match Blade .mob-logo gap: 0.45rem */
+  .order-header-brand {
+    gap: 0.45rem !important;
+  }
+
+  /* Backdrop blur: 14px → 12px (matches Blade .mobile-header) */
+  .order-app-header {
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
    LAYOUT UTILITIES (mirrors Blade .container / .header-inner)
 ════════════════════════════════════════════════════════════ */
 /* Single inner row used by both Layout.tsx and BrandedHeader.tsx */
@@ -159,6 +197,23 @@
   margin-right: auto;
   padding-left: var(--page-gutter);
   padding-right: var(--page-gutter);
+}
+
+/* HomePage marketing section vertical rhythm — mirrors Blade .section */
+.home-section {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+@media (max-width: 600px) {
+  .home-section {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+}
+
+/* Hero mobile: mirror Blade .hero-banner mobile (≤768px: explicit min-height + tighter top pad) */
+@media (max-width: 768px) {
+  .home-hero { min-height: 420px; padding-top: 2rem; padding-bottom: 2rem; }
 }
 
 /* ════════════════════════════════════════════════════════════

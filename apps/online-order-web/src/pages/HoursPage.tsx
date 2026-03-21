@@ -52,7 +52,7 @@ export function HoursPage() {
   const openBg          = isOpen ? 'rgba(72,199,142,0.1)' : isOpen === false ? 'rgba(255,112,67,0.1)' : 'var(--color-surface-alt)';
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '3rem var(--page-gutter)' }}>
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>

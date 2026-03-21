@@ -50,10 +50,10 @@ export function HomePage() {
     <div>
 
       {/* ── Hero ──────────────────────────────────────────────── */}
-      <section style={{
+      <section className="home-hero" style={{
         background: 'linear-gradient(135deg, var(--color-primary-light) 0%, #fff7ed 40%, var(--color-surface-alt) 100%)',
         borderBottom: '1px solid var(--color-border)',
-        padding: '3.5rem 1.5rem 3rem',
+        padding: '3.5rem var(--page-gutter) 3rem',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
@@ -152,7 +152,7 @@ export function HomePage() {
       </div>
 
       {/* ── Category shortcuts ────────────────────────────────── */}
-      <section style={{ padding: '2.5rem var(--page-gutter)', maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+      <section className="home-section" style={{ paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.4rem' }}>
             What we're known for
@@ -193,7 +193,7 @@ export function HomePage() {
 
       {/* ── Popular Items ─────────────────────────────────────── */}
       {featuredItems.length > 0 && (
-        <section style={{ background: 'var(--color-surface-alt)', padding: '2.5rem var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
+        <section className="home-section" style={{ background: 'var(--color-surface-alt)', paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
           <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
@@ -260,8 +260,9 @@ export function HomePage() {
       )}
 
       {/* ── Chat with us ──────────────────────────────────────── */}
-      <section style={{
-        padding: '2.5rem var(--page-gutter)',
+      <section className="home-section" style={{
+        paddingLeft: 'var(--page-gutter)',
+        paddingRight: 'var(--page-gutter)',
         borderTop: '1px solid var(--color-border)',
         background: 'var(--color-surface)',
       }}>
@@ -293,7 +294,7 @@ export function HomePage() {
       </section>
 
       {/* ── Browse menu CTA ───────────────────────────────────── */}
-      <section style={{ background: 'var(--color-footer-bg)', padding: '3rem var(--page-gutter)', textAlign: 'center' }}>
+      <section className="home-section" style={{ background: 'var(--color-footer-bg)', paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', textAlign: 'center' }}>
         <div style={{ maxWidth: '520px', margin: '0 auto' }}>
           <h2 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'white', marginBottom: '0.75rem', letterSpacing: '-0.03em' }}>
             Hungry? Browse the menu.
