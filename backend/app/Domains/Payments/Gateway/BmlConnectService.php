@@ -59,16 +59,24 @@ class BmlConnectService
         $localId     = $this->normalizeLocalId($localId);
         $redirectUrl = $returnUrl ?? config('bml.return_url') ?? config('frontend.order_status_url');
 
+        // paymentPortalExperience is required by BML Connect v2 API
+        $portalExp = config('bml.payment_portal_experience', []);
+
         $payload = [
             'amount'      => $amountLaar,
             'currency'    => $currency,
             'localId'     => $localId,
             'redirectUrl' => $redirectUrl,
+            'paymentPortalExperience' => [
+                'externalWebsiteTermsAccepted' => (bool) ($portalExp['external_website_terms_accepted'] ?? true),
+                'externalWebsiteTermsUrl'      => $portalExp['external_website_terms_url']
+                                                    ?: rtrim(config('app.url', ''), '/') . '/terms',
+            ],
         ];
 
-        // Include appId in payload — required by some BML Connect environments
-        if ($this->appId) {
-            $payload['appId'] = $this->appId;
+        // Optional: include webhook URL so BML can push status updates
+        if ($webhookUrl = config('bml.webhook_url')) {
+            $payload['webhook'] = $webhookUrl;
         }
 
         $url = "{$this->baseUrl}/v2/transactions";
