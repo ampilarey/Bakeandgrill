@@ -18,6 +18,13 @@ class EloquentPaymentRepository implements PaymentRepositoryInterface
         return Payment::where('local_id', $localId)->first();
     }
 
+    public function findByOrderId(int $orderId): ?Payment
+    {
+        return Payment::where('order_id', $orderId)
+            ->orderByDesc('id')
+            ->first();
+    }
+
     public function findByIdempotencyKey(string $key): ?Payment
     {
         return Payment::where('idempotency_key', $key)->first();
@@ -36,8 +43,8 @@ class EloquentPaymentRepository implements PaymentRepositoryInterface
     }
 
     /**
-     * @param  array<string, mixed>  $match
-     * @param  array<string, mixed>  $values
+     * @param array<string, mixed> $match
+     * @param array<string, mixed> $values
      */
     public function firstOrCreate(array $match, array $values): Payment
     {

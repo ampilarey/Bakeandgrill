@@ -108,14 +108,28 @@ class PaymentController extends Controller
     }
 
     /**
-     * BML return URL handler (non-authoritative).
-     * Always redirects to the order status page.
-     * Payment status is only confirmed via webhook.
+     * BML return URL handler.
+     * When state=CONFIRMED, verify with BML and confirm payment as a fallback
+     * for environments where webhooks are unreliable (e.g. UAT).
+     * The authoritative path is still the webhook — this is a safety net.
      */
     public function bmlReturn(Request $request): \Illuminate\Http\RedirectResponse
     {
         $orderId = $request->query('orderId');
         $state = $request->query('state', 'UNKNOWN');
+        $transactionId = $request->query('transactionId');
+
+        if ($state === 'CONFIRMED' && $orderId && $transactionId) {
+            try {
+                $this->paymentService->confirmFromReturnUrl((int) $orderId, $transactionId);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('BML return: fallback confirmation failed', [
+                    'order_id' => $orderId,
+                    'transaction_id' => $transactionId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return redirect(
             config('frontend.order_status_url') . '/' . $orderId . '?payment=' . $state,

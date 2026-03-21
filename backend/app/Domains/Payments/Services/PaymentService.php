@@ -174,6 +174,64 @@ class PaymentService
     }
 
     /**
+     * Fallback confirmation triggered from the BML return URL.
+     * Used when webhooks are unreliable (e.g. UAT). Verifies the transaction
+     * directly with BML's API, then runs the same confirmation logic as the webhook.
+     * Safe to call multiple times — confirmPayment() is idempotent.
+     */
+    public function confirmFromReturnUrl(int $orderId, string $transactionId): void
+    {
+        $payment = $this->payments->findByOrderId($orderId);
+        if (!$payment) {
+            Log::info('BML return: no payment record for order', ['order_id' => $orderId]);
+
+            return;
+        }
+
+        // Already confirmed — nothing to do.
+        if (in_array($payment->status, ['confirmed', 'paid', 'completed'], true)) {
+            Log::info('BML return: payment already confirmed', ['payment_id' => $payment->id]);
+
+            return;
+        }
+
+        // Verify with BML.
+        try {
+            $bmlStatus = $this->bml->getTransactionStatus($transactionId);
+        } catch (\Throwable $e) {
+            Log::warning('BML return: could not verify transaction status', [
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        $state = $bmlStatus['state'] ?? $bmlStatus['status'] ?? null;
+
+        if ($state !== 'CONFIRMED') {
+            Log::info('BML return: transaction not confirmed via API', [
+                'transaction_id' => $transactionId,
+                'state' => $state,
+            ]);
+
+            return;
+        }
+
+        Log::info('BML return: confirming payment via fallback', [
+            'order_id' => $orderId,
+            'transaction_id' => $transactionId,
+            'payment_id' => $payment->id,
+        ]);
+
+        $this->confirmPayment($payment, array_merge($bmlStatus, [
+            'transactionId' => $transactionId,
+            'localId' => $payment->local_id,
+            'source' => 'return_url_fallback',
+        ]));
+    }
+
+    /**
      * Handle incoming BML webhook.
      * Idempotent: protected by unique idempotency_key on webhook_logs.
      */
