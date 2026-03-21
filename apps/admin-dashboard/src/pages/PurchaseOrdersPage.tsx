@@ -51,7 +51,10 @@ export function PurchaseOrdersPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await req<{ data: Purchase[] }>(`/purchases${statusFilter ? `?status=${statusFilter}` : ''}`);
+      const qs = new URLSearchParams();
+      if (statusFilter) qs.set('status', statusFilter);
+      const query = qs.toString();
+      const res = await req<{ data: Purchase[] }>(`/purchases${query ? `?${query}` : ''}`);
       setPurchases(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }

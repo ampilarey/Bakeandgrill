@@ -31,7 +31,7 @@ export function ProfitLossPage() {
       const [pnlRes, cfRes, dailyRes] = await Promise.all([
         getProfitAndLoss(from, to),
         getCashFlow(from, to),
-        getDailySummary(today()),
+        getDailySummary(to),
       ]);
       setPnl(pnlRes); setCashFlow(cfRes); setDaily(dailyRes);
     } catch (e) { setError((e as Error).message); }
@@ -58,14 +58,14 @@ export function ProfitLossPage() {
       {loading ? <Spinner /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-          {/* Today snapshot */}
+          {/* End-date daily snapshot */}
           {daily && (
             <div style={{ background: '#fffbeb', border: '1px solid #fef08a', borderRadius: 14, padding: 20 }}>
               <p style={{ fontWeight: 700, marginBottom: 16, color: '#92400e', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
-                Today's Snapshot
+                Snapshot — {to}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-                <StatCard label="Today Revenue" value={`MVR ${parseFloat(String(daily.revenue ?? 0)).toFixed(2)}`} accent="#D4813A" />
+                <StatCard label="Revenue" value={`MVR ${parseFloat(String(daily.revenue ?? 0)).toFixed(2)}`} accent="#D4813A" />
                 <StatCard label="Orders" value={String(daily.orders)} sub={`Avg MVR ${parseFloat(String(daily.avg_order ?? 0)).toFixed(2)}`} accent="#8b5cf6" />
                 <StatCard label="Net Profit" value={`MVR ${parseFloat(String(daily.net_profit ?? 0)).toFixed(2)}`} accent={daily.net_profit >= 0 ? '#22c55e' : '#ef4444'} />
               </div>

@@ -12,11 +12,11 @@ function elapsed(iso: string): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
-function urgencyColor(iso: string): string {
+function urgencyColor(iso: string): { solid: string; faint: string } {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m >= 15) return '#ef4444';
-  if (m >= 8) return '#f97316';
-  return '#22c55e';
+  if (m >= 15) return { solid: '#ef4444', faint: 'rgba(239,68,68,0.13)' };
+  if (m >= 8)  return { solid: '#f97316', faint: 'rgba(249,115,22,0.13)' };
+  return        { solid: '#22c55e', faint: 'rgba(34,197,94,0.13)' };
 }
 
 export function KDSPage() {
@@ -76,7 +76,7 @@ export function KDSPage() {
           : items.map((t) => (
             <div key={t.id} style={{
               background: '#fff', borderRadius: 14, padding: '16px',
-              border: `2px solid ${urgencyColor(t.created_at)}22`,
+              border: `2px solid ${urgencyColor(t.created_at).faint}`,
               boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
             }}>
               {children(t)}
@@ -173,7 +173,7 @@ function TicketHeader({ ticket }: { ticket: KdsTicket }) {
           )}
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ color: urgencyColor(ticket.created_at), fontSize: 13, fontWeight: 700 }}>
+          <div style={{ color: urgencyColor(ticket.created_at).solid, fontSize: 13, fontWeight: 700 }}>
             {elapsed(ticket.created_at)}
           </div>
           <Badge label={ticket.type} color={statColor(ticket.status)} />
