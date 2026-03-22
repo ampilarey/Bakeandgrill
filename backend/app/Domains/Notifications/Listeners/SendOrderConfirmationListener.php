@@ -25,7 +25,7 @@ class SendOrderConfirmationListener implements ShouldQueue
     /**
      * Online orders require BML payment before confirmation — handled by SendPaymentConfirmationListener.
      */
-    private const DEFERRED_TYPES = ['online_pickup', 'online_delivery'];
+    private const DEFERRED_TYPES = ['online_pickup', 'online_delivery', 'delivery'];
 
     public function handle(OrderCreated $event): void
     {
