@@ -37,6 +37,11 @@ export const EMPTY_DELIVERY: DeliveryForm = {
   contact_name: "", contact_phone: "", notes: "",
 };
 
+/** Strip Maldivian country code for display — +9607972434 → 7972434 */
+function localPhone(phone: string): string {
+  return phone.replace(/^\+?960/, "");
+}
+
 function readCart(): CartItem[] {
   try {
     const raw = localStorage.getItem("bakegrill_cart");
@@ -106,18 +111,18 @@ export function useCheckout() {
     getCustomerMe(token)
       .then((r) => {
         if (cancelled) return;
-        const display = r.customer.phone ?? r.customer.name ?? "";
+        const raw = r.customer.phone ?? r.customer.name ?? "";
+        const display = r.customer.phone ? localPhone(r.customer.phone) : raw;
         setCustomerName(display);
         if (display) {
           localStorage.setItem("online_customer_name", display);
           window.dispatchEvent(new Event("auth_change"));
         }
-        // Pre-fill delivery contact phone with the customer's registered number
-        // only if the field hasn't been touched yet
+        // Pre-fill delivery contact phone (local format, no +960 prefix)
         if (r.customer.phone) {
           setDelivery((prev) => ({
             ...prev,
-            contact_phone: prev.contact_phone || r.customer.phone!,
+            contact_phone: prev.contact_phone || localPhone(r.customer.phone!),
           }));
         }
       })

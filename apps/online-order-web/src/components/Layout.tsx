@@ -48,7 +48,8 @@ export function Layout() {
       getCustomerMe(existingToken)
         .then((r) => {
           if (cancelled) return;
-          const n = r.customer.phone ?? r.customer.name ?? '';
+          const raw = r.customer.phone ?? r.customer.name ?? '';
+          const n = r.customer.phone ? raw.replace(/^\+?960/, '') : raw;
           if (n) {
             localStorage.setItem('online_customer_name', n);
             window.dispatchEvent(new Event('auth_change'));
