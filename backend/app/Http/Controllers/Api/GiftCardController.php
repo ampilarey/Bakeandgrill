@@ -18,16 +18,18 @@ class GiftCardController extends Controller
 
     public function balance(string $code): JsonResponse
     {
-        $card = GiftCard::where('code', strtoupper($code))->firstOrFail();
+        $card = GiftCard::where('code', strtoupper($code))->first();
 
-        if ($card->status !== 'active') {
-            return response()->json(['error' => 'This gift card is ' . $card->status . '.'], 422);
+        // Return a generic 404 for both not-found and non-active cards to prevent
+        // enumeration attacks that could reveal card status from error messages.
+        if (!$card || $card->status !== 'active') {
+            return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
 
         if ($card->expires_at && $card->expires_at->isPast()) {
             $card->update(['status' => 'expired']);
 
-            return response()->json(['error' => 'This gift card has expired.'], 422);
+            return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
 
         return response()->json([

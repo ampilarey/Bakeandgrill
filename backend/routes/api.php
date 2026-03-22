@@ -45,7 +45,7 @@ Route::get('/health', function () {
 
 // Public order tracking — no auth required, token in URL acts as shared secret
 Route::get('/orders/track/{token}', [OrderController::class, 'trackByToken'])
-    ->middleware('throttle:60,1');
+    ->middleware('throttle:10,1');
 
 // ── Prayer Times (public, throttled) ─────────────────────────────────────────
 Route::middleware('throttle:60,1')
@@ -474,11 +474,11 @@ Route::middleware(['auth:sanctum', 'permission:customers.analytics'])->prefix('a
 
 // Public: validate referral code
 Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController::class, 'validate'])
-    ->middleware('throttle:20,1');
+    ->middleware('throttle:5,1');
 
 // Public: gift card balance check
 Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
-    ->middleware('throttle:20,1');
+    ->middleware('throttle:5,1');
 
 // Customer: referral management
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {

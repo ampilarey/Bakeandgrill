@@ -106,7 +106,7 @@ export function useOrderCreation(params: Params) {
           setStatusMessage("Order paid and sent to kitchen.");
           setTimeout(() => setStatusMessage(""), 5000);
         })
-        .catch((err: unknown) => {
+        .catch(async (err: unknown) => {
           const status = (err as { status?: number })?.status;
           if (status && status >= 400 && status < 500) {
             setStatusMessage(`Order failed: ${(err as Error).message}`);
@@ -114,7 +114,7 @@ export function useOrderCreation(params: Params) {
           }
           // Only queue for offline sync if the order was never successfully created
           if (!orderCreated) {
-            enqueue(payload);
+            await enqueue(payload);
             params.setOfflineQueueCount(getQueueCount());
             setStatusMessage("Network error. Order queued for sync.");
           } else {
@@ -126,8 +126,7 @@ export function useOrderCreation(params: Params) {
       return;
     }
 
-    enqueue(payload);
-    params.setOfflineQueueCount(getQueueCount());
+    void enqueue(payload).then(() => params.setOfflineQueueCount(getQueueCount()));
     params.clearCart();
     params.setSelectedItem(null);
     setStatusMessage("Offline order queued. Sync when online.");

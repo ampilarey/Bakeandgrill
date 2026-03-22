@@ -100,8 +100,8 @@ export async function fetchOrders(params?: {
   return req(`/orders?${qs}`);
 }
 
-export async function fetchOrder(id: number): Promise<{ order: Order }> {
-  return req(`/orders/${id}`);
+export async function fetchOrder(id: number, signal?: AbortSignal): Promise<{ order: Order }> {
+  return req(`/orders/${id}`, { signal });
 }
 
 // ── KDS ──────────────────────────────────────────────────────────────────────

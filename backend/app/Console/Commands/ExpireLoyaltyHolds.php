@@ -29,7 +29,7 @@ class ExpireLoyaltyHolds extends Command
                 DB::table('loyalty_accounts')
                     ->where('customer_id', $hold->customer_id)
                     ->update([
-                        'points_held' => DB::raw("MAX(0, points_held - {$pointsHeld})"),
+                        'points_held' => DB::raw("GREATEST(0, points_held - {$pointsHeld})"),
                     ]);
             });
             $count++;

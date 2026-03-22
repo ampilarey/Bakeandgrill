@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../context/SiteSettingsContext';
 
 function resolveImg(src: string | undefined, apiOrigin: string): string | null {
@@ -103,13 +104,13 @@ export function HeroCarousel({ slides, apiOrigin, fallback, statusSlot }: Props)
                 {slide.title && (
                   <h1
                     className="home-banner-title order-banner-title-on-photo"
-                    dangerouslySetInnerHTML={{ __html: slide.title }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(slide.title, { ALLOWED_TAGS: ['br', 'em', 'strong'] }) }}
                   />
                 )}
                 {slide.subtitle && (
                   <p
                     className="home-banner-sub order-banner-sub-on-photo"
-                    dangerouslySetInnerHTML={{ __html: slide.subtitle }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(slide.subtitle, { ALLOWED_TAGS: ['br', 'em', 'strong'] }) }}
                   />
                 )}
                 <div className="home-banner-ctas order-banner-ctas-on-photo">

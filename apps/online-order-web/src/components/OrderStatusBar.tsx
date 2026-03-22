@@ -45,24 +45,23 @@ export function OrderStatusBar() {
   useEffect(() => {
     if (skip) { setOrder(null); return; }
 
-    let cancelled = false;
+    const controller = new AbortController();
 
     const load = () => {
-      fetchCustomerOrders(token!)
+      fetchCustomerOrders(token!, controller.signal)
         .then((res) => {
-          if (cancelled) return;
           const orders = normalizeOrders(res);
           const active = orders.find((o) => ACTIVE.has(o.status));
           setOrder(active ?? orders[0] ?? null);
         })
-        .catch(() => { if (!cancelled) setOrder(null); });
+        .catch((err) => { if (err.name !== 'AbortError') setOrder(null); });
     };
 
     load();
     timerRef.current = setInterval(load, 30_000);
 
     return () => {
-      cancelled = true;
+      controller.abort();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [token, authReady, skip]);
@@ -70,13 +69,15 @@ export function OrderStatusBar() {
   // Re-load when returning to the page
   useEffect(() => {
     if (skip || order === undefined) return;
-    fetchCustomerOrders(token!)
+    const controller = new AbortController();
+    fetchCustomerOrders(token!, controller.signal)
       .then((res) => {
         const orders = normalizeOrders(res);
         const active = orders.find((o) => ACTIVE.has(o.status));
         setOrder(active ?? orders[0] ?? null);
       })
-      .catch(() => {});
+      .catch((err) => { if (err.name !== 'AbortError') setOrder(null); });
+    return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 

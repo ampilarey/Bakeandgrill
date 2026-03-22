@@ -324,9 +324,11 @@ export async function getCustomerMe(
 
 export async function fetchCustomerOrders(
   token: string,
+  signal?: AbortSignal,
 ): Promise<{ data: Order[] }> {
   return request<{ data: Order[] }>(ENDPOINTS.CUSTOMER_ORDERS, {
     headers: { Authorization: `Bearer ${token}` },
+    signal,
   });
 }
 

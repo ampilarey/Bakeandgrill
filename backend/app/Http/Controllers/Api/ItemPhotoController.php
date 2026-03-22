@@ -82,9 +82,12 @@ class ItemPhotoController extends Controller
     {
         $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
 
-        // Delete from storage
-        $relativePath = ltrim(str_replace(Storage::url(''), '', $photo->url), '/');
-        Storage::disk('public')->delete($relativePath);
+        // Delete from storage — derive relative path robustly from the public disk URL base
+        $diskUrl = rtrim(Storage::disk('public')->url('/'), '/');
+        if (str_starts_with($photo->url, $diskUrl)) {
+            $relativePath = ltrim(substr($photo->url, strlen($diskUrl)), '/');
+            Storage::disk('public')->delete($relativePath);
+        }
 
         $photo->delete();
 

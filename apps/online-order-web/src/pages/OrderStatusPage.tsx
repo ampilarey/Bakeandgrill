@@ -286,7 +286,7 @@ export function OrderStatusPage() {
   // SSE real-time tracking
   useEffect(() => {
     if (!orderId) return;
-    let cancelled = false;
+    const controller = new AbortController();
     const startStream = async () => {
       let ticketParam = "";
       if (token) {
@@ -294,14 +294,17 @@ export function OrderStatusPage() {
           const res = await fetch(`${API_ORIGIN}/api/orders/${orderId}/stream-ticket`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            signal: controller.signal,
           });
           if (res.ok) {
             const data = await res.json() as { ticket: string };
             ticketParam = `?ticket=${encodeURIComponent(data.ticket)}`;
           }
-        } catch { /* ignore */ }
+        } catch (err) {
+          if ((err as Error).name === 'AbortError') return;
+        }
       }
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
       const sseUrl = `${API_ORIGIN}/api/stream/order-status/${orderId}${ticketParam}`;
       const es = new EventSource(sseUrl, { withCredentials: false });
       const handleStatus = (e: MessageEvent) => {
@@ -320,7 +323,7 @@ export function OrderStatusPage() {
     };
     void startStream();
     return () => {
-      cancelled = true;
+      controller.abort();
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
     };
   }, [orderId, token]);

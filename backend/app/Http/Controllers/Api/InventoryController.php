@@ -35,7 +35,8 @@ class InventoryController extends Controller
         }
 
         if ($request->has('search')) {
-            $search = $request->query('search');
+            $request->validate(['search' => 'sometimes|string|max:100']);
+            $search = substr((string) $request->query('search', ''), 0, 100);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('sku', 'like', "%{$search}%");

@@ -227,7 +227,9 @@ export function WebhooksPage() {
 
   const handleCopySecret = () => {
     if (!newSecret) return;
-    navigator.clipboard.writeText(newSecret.secret).then(() => setCopied(true));
+    navigator.clipboard.writeText(newSecret.secret)
+      .then(() => setCopied(true))
+      .catch(() => setError('Could not copy to clipboard. Please copy the secret manually.'));
   };
 
   return (

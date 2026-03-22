@@ -49,7 +49,11 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchOrder(orderId).then((r) => { setOrder(r.order); setLoading(false); }).catch(() => setLoading(false));
+    const controller = new AbortController();
+    fetchOrder(orderId, controller.signal)
+      .then((r) => { setOrder(r.order); setLoading(false); })
+      .catch((err) => { if (err.name !== 'AbortError') setLoading(false); });
+    return () => controller.abort();
   }, [orderId]);
 
   return (
