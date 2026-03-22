@@ -1356,3 +1356,405 @@ export async function fetchAdminReferrals(params?: {
 export async function validateReferralCode(code: string): Promise<{ valid: boolean; referrer?: { name: string; phone: string }; message?: string }> {
   return req('/referrals/validate', { method: 'POST', body: JSON.stringify({ code }) });
 }
+
+// ── Missing Report functions ──────────────────────────────────────────────────
+
+export interface SalesBreakdown {
+  from: string;
+  to: string;
+  by_category: { category: string; revenue: number; orders: number }[];
+  by_type: { type: string; revenue: number; orders: number }[];
+  by_hour: { hour: number; revenue: number; orders: number }[];
+  top_items: { id: number; name: string; qty: number; revenue: number }[];
+}
+
+export async function getSalesBreakdown(params: { from: string; to: string }): Promise<SalesBreakdown> {
+  const qs = new URLSearchParams(params);
+  return req(`/reports/sales-breakdown?${qs}`);
+}
+
+export interface XReport {
+  generated_at: string;
+  from: string;
+  to: string;
+  totals: { orders: number; revenue: number; tax: number; discounts: number };
+  by_type: { type: string; count: number; total: number }[];
+  by_payment: Record<string, number>;
+}
+
+export async function getXReport(): Promise<XReport> {
+  return req('/reports/x-report');
+}
+
+export interface ZReport extends XReport {
+  shift_id: number | null;
+  closed_at: string | null;
+}
+
+export async function getZReport(): Promise<ZReport> {
+  return req('/reports/z-report');
+}
+
+export interface InventoryValuation {
+  total_value: number;
+  items: { id: number; name: string; unit: string; quantity: number; cost_per_unit: number; total_value: number }[];
+}
+
+export async function getInventoryValuation(): Promise<InventoryValuation> {
+  return req('/reports/inventory-valuation');
+}
+
+export interface TaxReport {
+  from: string;
+  to: string;
+  total_tax_collected: number;
+  by_rate: { rate_bp: number; rate_pct: number; net_sales: number; tax_amount: number }[];
+}
+
+export async function getTaxReport(params: { from: string; to: string }): Promise<TaxReport> {
+  const qs = new URLSearchParams(params);
+  return req(`/reports/finance/tax?${qs}`);
+}
+
+export interface AccountsPayable {
+  supplier_id: number;
+  supplier_name: string;
+  outstanding_amount: number;
+  invoices: { id: number; invoice_number: string; amount: number; due_date: string | null }[];
+}
+
+export async function getAccountsPayable(): Promise<{ data: AccountsPayable[] }> {
+  return req('/reports/finance/accounts-payable');
+}
+
+export interface AccountsReceivable {
+  customer_id: number | null;
+  customer_name: string | null;
+  outstanding_amount: number;
+  invoices: { id: number; invoice_number: string; amount: number; due_date: string | null }[];
+}
+
+export async function getAccountsReceivable(): Promise<{ data: AccountsReceivable[] }> {
+  return req('/reports/finance/accounts-receivable');
+}
+
+// ── Missing Invoice functions ─────────────────────────────────────────────────
+
+export async function updateInvoice(id: number, data: Partial<{
+  recipient_name: string;
+  recipient_phone: string;
+  due_date: string | null;
+  notes: string | null;
+  items: { description: string; quantity: number; unit_price: number; tax_rate_bp?: number }[];
+}>): Promise<{ invoice: Invoice }> {
+  return req(`/invoices/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export interface CreditNote {
+  id: number;
+  invoice_number: string;
+  total: number;
+  status: string;
+  created_at: string;
+}
+
+export async function createCreditNote(invoiceId: number, data: {
+  reason: string;
+  amount: number;
+  items?: { description: string; quantity: number; unit_price: number }[];
+}): Promise<{ credit_note: CreditNote }> {
+  return req(`/invoices/${invoiceId}/credit-note`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function generateInvoicePdf(id: number): Promise<Blob> {
+  const token = localStorage.getItem('admin_token');
+  const res = await fetch(`${BASE}/invoices/${id}/pdf`, {
+    headers: {
+      Accept: 'application/pdf',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`PDF generation failed (${res.status})`);
+  return res.blob();
+}
+
+export async function createInvoiceFromOrder(orderId: number): Promise<{ invoice: Invoice }> {
+  return req(`/invoices/from-order/${orderId}`, { method: 'POST' });
+}
+
+export async function createInvoiceFromPurchase(purchaseId: number): Promise<{ invoice: Invoice }> {
+  return req(`/invoices/from-purchase/${purchaseId}`, { method: 'POST' });
+}
+
+// ── Missing Expense functions ─────────────────────────────────────────────────
+
+export async function uploadExpenseReceipt(id: number, file: File): Promise<{ expense: Expense }> {
+  const token = localStorage.getItem('admin_token');
+  const form = new FormData();
+  form.append('receipt', file);
+  const res = await fetch(`${BASE}/expenses/${id}/receipt`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body.message ?? `Upload failed (${res.status})`);
+  }
+  return res.json() as Promise<{ expense: Expense }>;
+}
+
+export async function approveExpense(id: number): Promise<{ expense: Expense }> {
+  return req(`/expenses/${id}/approve`, { method: 'POST' });
+}
+
+// ── Missing Purchase functions ────────────────────────────────────────────────
+
+export async function rejectPurchase(id: number, reason: string): Promise<void> {
+  await req(`/purchases/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+export async function receivePurchase(id: number, data: {
+  items: { purchase_item_id: number; received_quantity: number }[];
+  notes?: string;
+}): Promise<void> {
+  await req(`/purchases/${id}/receive`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function createPurchaseFromSuggest(data: {
+  supplier_id: number;
+  items: { inventory_item_id: number; quantity: number; unit_price?: number }[];
+  expected_delivery?: string;
+  notes?: string;
+}): Promise<{ purchase: unknown }> {
+  return req('/purchases/from-suggest', { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ── Missing Supplier functions ────────────────────────────────────────────────
+
+export interface SupplierRating {
+  id: number;
+  purchase_id: number | null;
+  quality_score: number;
+  delivery_score: number;
+  pricing_score: number;
+  overall_score: number;
+  comment: string | null;
+  rated_by: string | null;
+  created_at: string;
+}
+
+export async function getSupplierRatings(supplierId: number): Promise<{ data: SupplierRating[] }> {
+  return req(`/suppliers/${supplierId}/ratings`);
+}
+
+export async function getSupplierPerformanceSingle(supplierId: number): Promise<{
+  supplier: { id: number; name: string };
+  purchase_count: number;
+  total_spend: number;
+  avg_quality: number | null;
+  avg_delivery: number | null;
+  avg_pricing: number | null;
+  on_time_rate: number | null;
+}> {
+  return req(`/suppliers/${supplierId}/performance`);
+}
+
+export async function refreshSupplierCache(supplierId: number): Promise<void> {
+  await req(`/suppliers/${supplierId}/performance/refresh`, { method: 'POST' });
+}
+
+export interface PriceHistory {
+  unit_price: number;
+  unit: string;
+  recorded_at: string;
+  purchase_id: number | null;
+}
+
+export async function getSupplierPriceHistory(supplierId: number, itemId: number): Promise<{ data: PriceHistory[] }> {
+  return req(`/suppliers/${supplierId}/price-history/${itemId}`);
+}
+
+// ── Missing Order functions ───────────────────────────────────────────────────
+
+export async function holdOrder(id: number): Promise<{ order: Order }> {
+  return req(`/orders/${id}/hold`, { method: 'POST' });
+}
+
+export async function resumeOrder(id: number): Promise<{ order: Order }> {
+  return req(`/orders/${id}/resume`, { method: 'POST' });
+}
+
+export async function addOrderPayments(id: number, data: {
+  payments: { method: string; amount: number; reference?: string }[];
+}): Promise<{ order: Order }> {
+  return req(`/orders/${id}/payments`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ── Missing Reservation Settings ─────────────────────────────────────────────
+
+export interface ReservationSettings {
+  max_party_size: number;
+  booking_window_days: number;
+  slot_duration_minutes: number;
+  slots_per_interval: number;
+  advance_notice_hours: number;
+  auto_confirm: boolean;
+  confirmation_sms: boolean;
+  reminder_sms: boolean;
+  reminder_hours_before: number;
+}
+
+export async function getReservationSettings(): Promise<{ settings: ReservationSettings }> {
+  return req('/admin/reservations/settings');
+}
+
+export async function updateReservationSettings(data: Partial<ReservationSettings>): Promise<void> {
+  await req('/admin/reservations/settings', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// ── Missing Forecast function ─────────────────────────────────────────────────
+
+export interface ItemForecast {
+  item_id: number;
+  item_name: string;
+  forecast: { date: string; predicted_qty: number; predicted_revenue: number }[];
+}
+
+export async function getItemForecast(params: { item_id: number; days?: number }): Promise<ItemForecast> {
+  const qs = new URLSearchParams({ item_id: String(params.item_id) });
+  if (params.days) qs.set('days', String(params.days));
+  return req(`/forecasts/items?${qs}`);
+}
+
+// ── Xero Integration ──────────────────────────────────────────────────────────
+
+export interface XeroStatus {
+  connected: boolean;
+  organisation_name: string | null;
+  connected_at: string | null;
+  last_sync_at: string | null;
+}
+
+export async function getXeroStatus(): Promise<XeroStatus> {
+  return req('/xero/status');
+}
+
+export async function getXeroConnectUrl(): Promise<{ redirect_url: string }> {
+  return req('/xero/connect');
+}
+
+export async function disconnectXero(): Promise<void> {
+  await req('/xero/disconnect', { method: 'POST' });
+}
+
+export async function pushInvoiceToXero(id: number): Promise<{ xero_invoice_id: string }> {
+  return req(`/xero/invoices/${id}/push`, { method: 'POST' });
+}
+
+export async function pushExpenseToXero(id: number): Promise<{ xero_id: string }> {
+  return req(`/xero/expenses/${id}/push`, { method: 'POST' });
+}
+
+export interface XeroLog {
+  id: number;
+  action: string;
+  entity_type: string;
+  entity_id: number | null;
+  status: 'success' | 'failed';
+  message: string | null;
+  created_at: string;
+}
+
+export async function getXeroLogs(params?: { page?: number }): Promise<{ data: XeroLog[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  return req(`/xero/logs?${qs}`);
+}
+
+// ── Print Jobs ────────────────────────────────────────────────────────────────
+
+export interface PrintJob {
+  id: number;
+  type: string;
+  status: 'pending' | 'printed' | 'failed';
+  printer_name: string | null;
+  copies: number;
+  payload: Record<string, unknown>;
+  error_message: string | null;
+  created_at: string;
+  printed_at: string | null;
+  retry_count: number;
+}
+
+export async function fetchPrintJobs(params?: {
+  status?: string;
+  page?: number;
+}): Promise<{ data: PrintJob[]; meta: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set('status', params.status);
+  if (params?.page)   qs.set('page', String(params.page));
+  return req(`/print-jobs?${qs}`);
+}
+
+export async function retryPrintJob(id: number): Promise<{ print_job: PrintJob }> {
+  return req(`/print-jobs/${id}/retry`, { method: 'POST' });
+}
+
+// ── SMS Promotions ────────────────────────────────────────────────────────────
+
+export interface SmsPromotion {
+  id: number;
+  name: string;
+  message: string;
+  promotion_code: string | null;
+  trigger_type: string;
+  trigger_config: Record<string, unknown> | null;
+  is_active: boolean;
+  total_sent: number;
+  total_cost_mvr: string;
+  created_at: string;
+}
+
+export async function fetchSmsPromotions(): Promise<{ data: SmsPromotion[] }> {
+  return req('/admin/sms/promotions');
+}
+
+export async function createSmsPromotion(data: {
+  name: string;
+  message: string;
+  promotion_code?: string | null;
+  trigger_type: string;
+  trigger_config?: Record<string, unknown>;
+  is_active?: boolean;
+}): Promise<{ promotion: SmsPromotion }> {
+  return req('/admin/sms/promotions', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSmsPromotion(id: number, data: Partial<{
+  name: string;
+  message: string;
+  promotion_code: string | null;
+  is_active: boolean;
+}>): Promise<{ promotion: SmsPromotion }> {
+  return req(`/admin/sms/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function previewSmsPromotion(data: {
+  message: string;
+  trigger_type: string;
+  trigger_config?: Record<string, unknown>;
+}): Promise<{ recipient_count: number; sample: string[]; estimated_cost_mvr: string }> {
+  return req('/admin/sms/promotions/preview', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function sendSmsPromotion(id: number): Promise<void> {
+  await req(`/admin/sms/promotions/${id}/send`, { method: 'POST' });
+}
+
+export async function deleteSmsPromotion(id: number): Promise<void> {
+  await req(`/admin/sms/promotions/${id}`, { method: 'DELETE' });
+}

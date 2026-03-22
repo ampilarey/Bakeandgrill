@@ -10,6 +10,7 @@ import {
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Tag, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
+  Printer, Link,
 } from 'lucide-react';
 
 // ── Navigation structure ──────────────────────────────────────────────────────
@@ -72,8 +73,10 @@ const NAV_GROUPS = [
       { to: '/time-clock', icon: Clock,    label: 'Time Clock',    permission: 'staff.view'              },
       { to: '/analytics',  icon: BarChart2, label: 'Analytics',   permission: 'customers.analytics'     },
       { to: '/devices',    icon: Monitor,  label: 'Devices',       permission: 'device.manage'           },
+      { to: '/print-jobs', icon: Printer,  label: 'Print Queue',   permission: 'device.manage'           },
       { to: '/settings',   icon: Settings, label: 'Settings',      permission: 'website.manage'          },
       { to: '/webhooks',   icon: Webhook,  label: 'Webhooks',      permission: 'integrations.webhooks'   },
+      { to: '/xero',       icon: Link,     label: 'Xero',          permission: 'finance.invoices'        },
     ],
   },
 ];

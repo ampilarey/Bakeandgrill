@@ -38,6 +38,8 @@ const ShiftsPage              = lazy(() => import('./pages/ShiftsPage'));
 const TimeClockPage           = lazy(() => import('./pages/TimeClockPage'));
 const DevicesPage             = lazy(() => import('./pages/DevicesPage'));
 const ReferralsPage           = lazy(() => import('./pages/ReferralsPage'));
+const PrintJobsPage           = lazy(() => import('./pages/PrintJobsPage'));
+const XeroPage                = lazy(() => import('./pages/XeroPage'));
 
 function PageFallback() {
   return (
@@ -299,6 +301,16 @@ export default function App() {
                 <Route path="referrals" element={
                   <PermissionGuard user={user} permission="customers.manage">
                     <ReferralsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="print-jobs" element={
+                  <PermissionGuard user={user} permission="device.manage">
+                    <PrintJobsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="xero" element={
+                  <PermissionGuard user={user} permission="finance.invoices">
+                    <XeroPage />
                   </PermissionGuard>
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />
