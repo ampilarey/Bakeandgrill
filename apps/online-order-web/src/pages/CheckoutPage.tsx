@@ -137,7 +137,7 @@ export function CheckoutPage() {
       <div style={{ ...S.layout, gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(300px,380px)' }}>
 
         {/* ── Left: form sections ──────────────────────────── */}
-        <div style={{ ...S.col, order: isMobile ? 1 : 0, paddingBottom: isMobile ? '120px' : 0 }}>
+        <div style={{ ...S.col, order: isMobile ? 1 : 0, paddingBottom: isMobile ? '100px' : 0 }}>
 
           {/* Auth */}
           {!token && (
@@ -283,7 +283,7 @@ export function CheckoutPage() {
         </div>
 
         {/* ── Right: order summary ─────────────────────────── */}
-        <div style={{ ...S.col, order: isMobile ? 0 : 1 }}>
+        <div style={{ ...S.col, order: isMobile ? 0 : 1, paddingBottom: isMobile ? '100px' : 0 }}>
           <CartSummary cart={cart} />
 
           <div style={S.card}>
@@ -305,9 +305,8 @@ export function CheckoutPage() {
           </div>
 
           {token && (
-            <div style={isMobile ? S.stickyPayBar : {}}>
-
-              {/* ── BML Compliance block ─────────────────────── */}
+            <>
+              {/* ── BML Compliance block — scrollable content (not in sticky bar) ── */}
               <div style={S.complianceBox}>
                 {/* Req 1: Card brand marks in full colour */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
@@ -335,7 +334,7 @@ export function CheckoutPage() {
                 <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
                   Before completing your purchase, please read:
                 </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.875rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   {[
                     { href: '/terms',   label: 'Terms & Conditions' },
                     { href: '/refund',  label: 'Refund Policy' },
@@ -348,8 +347,24 @@ export function CheckoutPage() {
                   ))}
                 </div>
 
+                {/* Req 10+11: Security + retain records */}
+                <p style={{ ...S.secureNote, textAlign: 'left', marginTop: '0.5rem' }}>
+                  🔒 Payment processed securely by Bank of Maldives. We do not store your card details.
+                </p>
+
+                {/* Req 3: Corporate info */}
+                <div style={{ ...S.corporateInfo, textAlign: 'left', borderTop: 'none', paddingTop: 0, marginTop: '0.375rem' }}>
+                  <strong>{siteName}</strong> · {address} ·{' '}
+                  <a href={phoneTel} style={{ color: 'inherit' }}>{phone}</a> ·{' '}
+                  <a href={`mailto:${email}`} style={{ color: 'inherit' }}>{email}</a>
+                </div>
+              </div>
+
+              {/* ── Sticky pay bar (mobile) — T&C + Pay button only ─── */}
+              <div style={isMobile ? S.stickyPayBar : {}}>
+
                 {/* Req 13: Affirmative acceptance checkbox */}
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.625rem' }}>
                   <input
                     type="checkbox"
                     checked={acceptTerms}
@@ -362,49 +377,37 @@ export function CheckoutPage() {
                     <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
                   </span>
                 </label>
-              </div>
 
-              {globalError && (
-                <div className="banner banner-error" style={{ marginBottom: 12 }}>
-                  <span className="banner-icon">⚠️</span>
-                  <div>
-                    <p className="banner-title">Payment failed</p>
-                    <p className="banner-sub">{globalError}</p>
+                {globalError && (
+                  <div className="banner banner-error" style={{ marginBottom: 12 }}>
+                    <span className="banner-icon">⚠️</span>
+                    <div>
+                      <p className="banner-title">Payment failed</p>
+                      <p className="banner-sub">{globalError}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <button
-                style={{
-                  ...S.primaryBtn,
-                  width: '100%',
-                  padding: '1rem var(--page-gutter)',
-                  fontSize: 'var(--text-md)',
-                  opacity: (isPlacing || !acceptTerms) ? 0.55 : 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                  cursor: !acceptTerms ? 'not-allowed' : 'pointer',
-                }}
-                onClick={handlePlaceAndPay}
-                disabled={isPlacing || !acceptTerms}
-                aria-busy={isPlacing}
-                title={!acceptTerms ? 'Please agree to the terms to continue' : undefined}
-              >
-                {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
-                {placeLabel}
-              </button>
-
-              {/* Req 10+11: Security + retain records */}
-              <p style={S.secureNote}>
-                🔒 Payment processed securely by Bank of Maldives. We do not store your card details. We recommend retaining your order receipt.
-              </p>
-
-              {/* Req 3: Corporate info */}
-              <div style={S.corporateInfo}>
-                <strong>{siteName}</strong> · {address} ·{' '}
-                <a href={phoneTel} style={{ color: 'inherit' }}>{phone}</a> ·{' '}
-                <a href={`mailto:${email}`} style={{ color: 'inherit' }}>{email}</a>
+                <button
+                  style={{
+                    ...S.primaryBtn,
+                    width: '100%',
+                    padding: '1rem var(--page-gutter)',
+                    fontSize: 'var(--text-md)',
+                    opacity: (isPlacing || !acceptTerms) ? 0.55 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                    cursor: !acceptTerms ? 'not-allowed' : 'pointer',
+                  }}
+                  onClick={handlePlaceAndPay}
+                  disabled={isPlacing || !acceptTerms}
+                  aria-busy={isPlacing}
+                  title={!acceptTerms ? 'Please agree to the terms to continue' : undefined}
+                >
+                  {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
+                  {placeLabel}
+                </button>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
