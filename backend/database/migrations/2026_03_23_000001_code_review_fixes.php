@@ -36,12 +36,23 @@ return new class extends Migration
                 ->whereNotIn('supplier_id', DB::table('suppliers')->pluck('id'))
                 ->update(['supplier_id' => null]);
 
-            Schema::table('purchases', function (Blueprint $table) {
-                $table->foreign('supplier_id')
-                    ->references('id')
-                    ->on('suppliers')
-                    ->nullOnDelete();
-            });
+            // Only add the FK if it doesn't already exist (prevents errno 121 on re-run)
+            $fkExists = count(DB::select(
+                "SELECT 1 FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'purchases'
+                   AND CONSTRAINT_NAME = 'purchases_supplier_id_foreign'
+                 LIMIT 1"
+            )) > 0;
+
+            if (!$fkExists) {
+                Schema::table('purchases', function (Blueprint $table) {
+                    $table->foreign('supplier_id')
+                        ->references('id')
+                        ->on('suppliers')
+                        ->nullOnDelete();
+                });
+            }
         }
 
         // ── H-7: Missing indexes on date columns used in reports ──────────────
@@ -93,9 +104,18 @@ return new class extends Migration
         }
 
         if (Schema::hasTable('purchases')) {
-            Schema::table('purchases', function (Blueprint $table) {
-                $table->dropForeign(['supplier_id']);
-            });
+            $fkExists = count(DB::select(
+                "SELECT 1 FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'purchases'
+                   AND CONSTRAINT_NAME = 'purchases_supplier_id_foreign'
+                 LIMIT 1"
+            )) > 0;
+            if ($fkExists) {
+                Schema::table('purchases', function (Blueprint $table) {
+                    $table->dropForeign(['supplier_id']);
+                });
+            }
         }
 
         if (Schema::hasTable('orders')) {
