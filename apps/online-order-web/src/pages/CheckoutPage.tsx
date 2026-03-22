@@ -86,7 +86,7 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
   handlePlaceAndPay: () => void;
 }) {
   return (
-    <div style={S.card}>
+    <div style={{ ...S.card, background: 'var(--color-surface-alt)', border: '1.5px solid rgba(212,129,58,0.35)', borderTop: '3px solid var(--color-primary)', boxShadow: '0 4px 16px rgba(212,129,58,0.12)' }}>
       {/* Req 13: Affirmative acceptance checkbox */}
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
         <input
@@ -299,7 +299,7 @@ export function CheckoutPage() {
       )}
       <div style={S.totalRow}>
         <span>Total</span>
-        <span>MVR {laarToMvr(totalLaar)}</span>
+        <span style={S.totalRowAmount}>MVR {laarToMvr(totalLaar)}</span>
       </div>
     </div>
   );
@@ -389,6 +389,21 @@ export function CheckoutPage() {
         ) : undefined}
       />
 
+      {/* ── Page heading ───────────────────────────────────── */}
+      <div style={{ background: 'var(--color-surface-alt)', borderBottom: '1px solid rgba(212,129,58,0.18)', padding: '0.875rem var(--page-gutter)' }}>
+        <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <span style={{ fontSize: '1.25rem' }}>🧾</span>
+          <div>
+            <h1 style={{ fontSize: 'var(--text-md)', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
+              Complete your order
+            </h1>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0, marginTop: '0.125rem' }}>
+              Review, pay, and we'll get it ready
+            </p>
+          </div>
+        </div>
+      </div>
+
       {isMobile ? (
         /* ── Mobile: single column, sections in logical order ─────────── */
         <div style={{ ...S.layout, gridTemplateColumns: '1fr' }}>
@@ -468,19 +483,20 @@ const S = {
     background: 'var(--color-surface)',
     borderRadius: '16px',
     padding: '18px 20px',
-    boxShadow: 'var(--shadow-sm)',
+    boxShadow: '0 2px 8px rgba(212,129,58,0.06), var(--shadow-sm)',
     border: '1px solid var(--color-border)',
+    borderTop: '3px solid var(--color-primary)',
   } as React.CSSProperties,
 
   sectionTitle: {
-    fontSize: 'var(--text-base)',
+    fontSize: 'var(--text-md)',
     fontWeight: 700,
     color: 'var(--color-text)',
     margin: '0 0 14px',
     paddingBottom: 10,
+    paddingLeft: '0.625rem',
     borderBottom: '1px solid var(--color-border)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.06em',
+    borderLeft: '3px solid var(--color-primary)',
   } as React.CSSProperties,
 
   fieldLabel: {
@@ -526,11 +542,16 @@ const S = {
   } as React.CSSProperties,
 
   totalRow: {
-    display: 'flex', justifyContent: 'space-between',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
     fontWeight: 800, fontSize: 'var(--text-lg)',
     color: 'var(--color-text)',
     borderTop: '2px solid var(--color-border)',
     paddingTop: 12, marginTop: 8,
+  } as React.CSSProperties,
+
+  totalRowAmount: {
+    color: 'var(--color-primary)',
+    fontSize: '1.2rem',
   } as React.CSSProperties,
 
   promoApplied: {
@@ -586,7 +607,8 @@ const S = {
 
   complianceBox: {
     background: 'var(--color-surface-alt)',
-    border: '1px solid var(--color-border)',
+    border: '1px solid rgba(212,129,58,0.25)',
+    borderTop: '3px solid var(--color-primary)',
     borderRadius: '12px',
     padding: '1rem 1.125rem',
     marginBottom: '12px',

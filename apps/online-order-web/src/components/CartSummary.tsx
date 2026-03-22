@@ -33,7 +33,7 @@ export function CartSummary({ cart }: Props) {
 }
 
 const styles = {
-  card:         { background: 'var(--color-surface)', borderRadius: '0.75rem', padding: '1.25rem', marginBottom: '1rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border)' },
-  sectionTitle: { fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', paddingBottom: '0.625rem', borderBottom: '1px solid var(--color-border)' },
+  card:         { background: 'var(--color-surface)', borderRadius: '16px', padding: '18px 20px', marginBottom: 0, boxShadow: '0 2px 8px rgba(212,129,58,0.06), 0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--color-border)', borderTop: '3px solid var(--color-primary)' },
+  sectionTitle: { fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', paddingBottom: '0.625rem', paddingLeft: '0.625rem', borderBottom: '1px solid var(--color-border)', borderLeft: '3px solid var(--color-primary)' },
   cartRow:      { display: 'flex', alignItems: 'center', paddingBottom: '0.625rem', borderBottom: '1px solid var(--color-border)', marginBottom: '0.625rem' },
 } as const;
