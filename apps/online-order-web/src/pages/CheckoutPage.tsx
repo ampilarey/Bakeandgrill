@@ -179,6 +179,203 @@ export function CheckoutPage() {
 
   const placeLabel = isPlacing ? 'Processing…' : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
 
+  // ── Reusable section blocks (shared between mobile and desktop layouts) ──────
+  const sectionOrderType = (
+    <SectionCard title="Order Type">
+      <div style={{ display: 'flex', gap: 12 }}>
+        {(['takeaway', 'delivery'] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setOrderType(type)}
+            style={{ ...S.typeBtn, ...(orderType === type ? S.typeBtnActive : {}) }}
+            aria-pressed={orderType === type}
+          >
+            {type === 'takeaway' ? '🥡 Takeaway' : '🛵 Delivery'}
+          </button>
+        ))}
+      </div>
+    </SectionCard>
+  );
+
+  const sectionDelivery = orderType === 'delivery' && (
+    <SectionCard title="Delivery Details">
+      <div style={S.infoNote}>
+        <span>🛵</span> Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong> · Estimated {deliveryEta}
+      </div>
+      <Field label="Address *" placeholder="House / Flat number, Street"
+        value={delivery.address_line1} onChange={(v) => setDelivery({ ...delivery, address_line1: v })} error={errors.address_line1} />
+      <Field label="Address line 2" placeholder="Building name (optional)"
+        value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
+      <Field label="Island *" placeholder="Malé"
+        value={delivery.island} onChange={(v) => setDelivery({ ...delivery, island: v })} error={errors.island} />
+      <div style={S.fieldRow}>
+        <Field label="Contact name *" placeholder="Full name"
+          value={delivery.contact_name} onChange={(v) => setDelivery({ ...delivery, contact_name: v })} error={errors.contact_name} />
+        <Field label="Contact phone *" placeholder="7xxxxxxx"
+          value={delivery.contact_phone} onChange={(v) => setDelivery({ ...delivery, contact_phone: v })} error={errors.contact_phone} />
+      </div>
+      <Field label="Delivery notes" placeholder="Any special instructions for the rider"
+        value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
+    </SectionCard>
+  );
+
+  const sectionNotes = (
+    <SectionCard title="Special Instructions">
+      <textarea
+        className="field-input"
+        placeholder="Allergies, special requests, or notes for the kitchen"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{ height: 80, resize: 'vertical' }}
+      />
+    </SectionCard>
+  );
+
+  const sectionPromo = (
+    <SectionCard title="Promo Code">
+      {promoApplied ? (
+        <div style={S.promoApplied}>
+          <span style={{ fontSize: 'var(--text-base)' }}>
+            {promoApplied.pending
+              ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — applied at checkout</>
+              : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
+            }
+          </span>
+          <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>Remove</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="field-input"
+              style={{ flex: 1 }}
+              placeholder="Enter promo code"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              aria-label="Promo code"
+            />
+            <button style={S.secondaryBtn} onClick={handleApplyPromo} disabled={promoLoading || !promoCode}>
+              {promoLoading ? '…' : 'Apply'}
+            </button>
+          </div>
+          {promoError && <p className="field-error" style={{ marginTop: 6 }}>{promoError}</p>}
+        </>
+      )}
+    </SectionCard>
+  );
+
+  const sectionLoyalty = loyaltyAccount && loyaltyAccount.points_balance > 0 && (
+    <SectionCard title="Loyalty Points">
+      <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 12 }}>
+        You have <strong>{loyaltyAccount.points_balance} pts</strong> available
+        {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {laarToMvr(loyaltyAccount.points_balance)}</span> value).
+      </p>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-base)', color: 'var(--color-text)', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={useLoyalty}
+          onChange={(e) => setUseLoyalty(e.target.checked)}
+          style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
+        />
+        Use {loyaltyAccount.points_balance} pts to save MVR {laarToMvr(loyaltyPoints)}
+      </label>
+    </SectionCard>
+  );
+
+  const sectionCartSummary = <CartSummary cart={cart} />;
+
+  const sectionOrderSummary = (
+    <div style={S.card}>
+      <h2 style={S.sectionTitle}>Order Summary</h2>
+      <SummaryRow label="Subtotal" value={`MVR ${laarToMvr(subtotalLaar)}`} />
+      {orderType === 'delivery' && (
+        <SummaryRow label="Delivery fee" value={`MVR ${laarToMvr(deliveryFeeLaar)}`} />
+      )}
+      {promoApplied && !promoApplied.pending && (
+        <SummaryRow label={`Promo (${promoApplied.code})`} value={`− MVR ${laarToMvr(promoDelta)}`} highlight />
+      )}
+      {useLoyalty && loyaltyDelta > 0 && (
+        <SummaryRow label="Loyalty discount" value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
+      )}
+      <div style={S.totalRow}>
+        <span>Total</span>
+        <span>MVR {laarToMvr(totalLaar)}</span>
+      </div>
+    </div>
+  );
+
+  const sectionCompliance = (
+    <div style={S.complianceBox}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
+        <svg viewBox="0 0 48 16" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Visa" role="img">
+          <rect width="48" height="16" rx="3" fill="#1A1F71"/>
+          <text x="24" y="11.5" textAnchor="middle" fill="#FFF" fontFamily="Arial,sans-serif" fontSize="9" fontWeight="bold">VISA</text>
+        </svg>
+        <svg viewBox="0 0 38 24" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard" role="img">
+          <circle cx="14" cy="12" r="10" fill="#EB001B"/>
+          <circle cx="24" cy="12" r="10" fill="#F79E1B" fillOpacity="0.9"/>
+          <path d="M19 4.8a10 10 0 0 1 0 14.4A10 10 0 0 1 19 4.8" fill="#FF5F00"/>
+        </svg>
+        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>+ other BML cards</span>
+      </div>
+      <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
+        Amount charged in <strong>MVR (Maldivian Rufiyaa)</strong>. Merchant located in the <strong>Maldives</strong>.
+      </p>
+      <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+        Before completing your purchase, please read:
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        {[
+          { href: '/terms',   label: 'Terms & Conditions' },
+          { href: '/refund',  label: 'Refund Policy' },
+          { href: '/privacy', label: 'Privacy Policy' },
+        ].map(({ href, label }) => (
+          <a key={href} href={href} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
+            {label}
+          </a>
+        ))}
+      </div>
+      <p style={{ ...S.secureNote, textAlign: 'left', marginTop: '0.5rem' }}>
+        🔒 Payment processed securely by Bank of Maldives. We do not store your card details.
+      </p>
+      <div style={{ ...S.corporateInfo, textAlign: 'left', borderTop: 'none', paddingTop: 0, marginTop: '0.375rem' }}>
+        <strong>{siteName}</strong> · {address} ·{' '}
+        <a href={phoneTel} style={{ color: 'inherit' }}>{phone}</a> ·{' '}
+        <a href={`mailto:${email}`} style={{ color: 'inherit' }}>{email}</a>
+      </div>
+    </div>
+  );
+
+  const paySectionEl = (
+    <PaySection
+      acceptTerms={acceptTerms}
+      setAcceptTerms={setAcceptTerms}
+      globalError={globalError}
+      isPlacing={isPlacing}
+      placeLabel={placeLabel}
+      handlePlaceAndPay={handlePlaceAndPay}
+    />
+  );
+
+  const sectionHelp = (
+    <div style={{ ...S.card, textAlign: 'center', padding: '1.25rem' }}>
+      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem', fontWeight: 600 }}>
+        Need help with your order?
+      </p>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+        <a href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`} target="_blank" rel="noopener noreferrer"
+          style={S.chatBtnWa} aria-label="Contact us on WhatsApp">
+          <WhatsAppIcon /> WhatsApp
+        </a>
+        <a href={viberLink} style={S.chatBtnViber} aria-label="Contact us on Viber">
+          <ViberIcon /> Viber
+        </a>
+      </div>
+    </div>
+  );
+
   return (
     <div style={S.page}>
       {/* ── Branded header ─────────────────────────────────── */}
@@ -192,253 +389,57 @@ export function CheckoutPage() {
         ) : undefined}
       />
 
-      <div style={{ ...S.layout, gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(300px,380px)' }}>
-
-        {/* ── Left: form sections ──────────────────────────── */}
-        <div style={{ ...S.col, order: isMobile ? 1 : 0 }}>
-
-          {/* Auth */}
-          {!token && (
-            <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />
-          )}
-
-          {token && (
-            <>
-              {/* Order type */}
-              <SectionCard title="Order Type">
-                <div style={{ display: 'flex', gap: 12 }}>
-                  {(['takeaway', 'delivery'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setOrderType(type)}
-                      style={{
-                        ...S.typeBtn,
-                        ...(orderType === type ? S.typeBtnActive : {}),
-                      }}
-                      aria-pressed={orderType === type}
-                    >
-                      {type === 'takeaway' ? '🥡 Takeaway' : '🛵 Delivery'}
-                    </button>
-                  ))}
-                </div>
-              </SectionCard>
-
-              {/* Delivery details */}
-              {orderType === 'delivery' && (
-                <SectionCard title="Delivery Details">
-                  <div style={S.infoNote}>
-                    <span>🛵</span> Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong> · Estimated {deliveryEta}
-                  </div>
-                  <Field label="Address *" placeholder="House / Flat number, Street"
-                    value={delivery.address_line1} onChange={(v) => setDelivery({ ...delivery, address_line1: v })} error={errors.address_line1} />
-                  <Field label="Address line 2" placeholder="Building name (optional)"
-                    value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
-                  <Field label="Island *" placeholder="Malé"
-                    value={delivery.island} onChange={(v) => setDelivery({ ...delivery, island: v })} error={errors.island} />
-                  <div style={S.fieldRow}>
-                    <Field label="Contact name *" placeholder="Full name"
-                      value={delivery.contact_name} onChange={(v) => setDelivery({ ...delivery, contact_name: v })} error={errors.contact_name} />
-                    <Field label="Contact phone *" placeholder="7xxxxxxx"
-                      value={delivery.contact_phone} onChange={(v) => setDelivery({ ...delivery, contact_phone: v })} error={errors.contact_phone} />
-                  </div>
-                  <Field label="Delivery notes" placeholder="Any special instructions for the rider"
-                    value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
-                </SectionCard>
-              )}
-
-              {/* Order notes */}
-              <SectionCard title="Special Instructions">
-                <textarea
-                  className="field-input"
-                  placeholder="Allergies, special requests, or notes for the kitchen"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  style={{ height: 80, resize: 'vertical' }}
-                />
-              </SectionCard>
-
-              {/* Promo code */}
-              <SectionCard title="Promo Code">
-                {promoApplied ? (
-                  <div style={S.promoApplied}>
-                    <span style={{ fontSize: 'var(--text-base)' }}>
-                      {promoApplied.pending
-                        ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — applied at checkout</>
-                        : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
-                      }
-                    </span>
-                    <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>Remove</button>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        className="field-input"
-                        style={{ flex: 1 }}
-                        placeholder="Enter promo code"
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                        aria-label="Promo code"
-                      />
-                      <button
-                        style={S.secondaryBtn}
-                        onClick={handleApplyPromo}
-                        disabled={promoLoading || !promoCode}
-                      >
-                        {promoLoading ? '…' : 'Apply'}
-                      </button>
-                    </div>
-                    {promoError && <p className="field-error" style={{ marginTop: 6 }}>{promoError}</p>}
-                  </>
-                )}
-              </SectionCard>
-
-              {/* Loyalty points */}
-              {loyaltyAccount && loyaltyAccount.points_balance > 0 && (
-                <SectionCard title="Loyalty Points">
-                  <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 12 }}>
-                    You have <strong>{loyaltyAccount.points_balance} pts</strong> available
-                    {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {laarToMvr(loyaltyAccount.points_balance)}</span> value).
-                  </p>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-base)', color: 'var(--color-text)', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={useLoyalty}
-                      onChange={(e) => setUseLoyalty(e.target.checked)}
-                      style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
-                    />
-                    Use {loyaltyAccount.points_balance} pts to save MVR {laarToMvr(loyaltyPoints)}
-                  </label>
-                </SectionCard>
-              )}
-
-              {/* Help */}
-              <div style={{ ...S.card, textAlign: 'center', padding: '1.25rem' }}>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem', fontWeight: 600 }}>
-                  Need help with your order?
-                </p>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <a
-                    href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={S.chatBtnWa}
-                    aria-label="Contact us on WhatsApp"
-                  >
-                    <WhatsAppIcon /> WhatsApp
-                  </a>
-                  <a
-                    href={viberLink}
-                    style={S.chatBtnViber}
-                    aria-label="Contact us on Viber"
-                  >
-                    <ViberIcon /> Viber
-                  </a>
-                </div>
-              </div>
-
-              {/* Mobile only: T&C + Pay appears here, after promo code in the natural scroll flow */}
-              {isMobile && <PaySection
-                acceptTerms={acceptTerms}
-                setAcceptTerms={setAcceptTerms}
-                globalError={globalError}
-                isPlacing={isPlacing}
-                placeLabel={placeLabel}
-                handlePlaceAndPay={handlePlaceAndPay}
-              />}
-            </>
-          )}
-        </div>
-
-        {/* ── Right: order summary ─────────────────────────── */}
-        <div style={{ ...S.col, order: isMobile ? 0 : 1 }}>
-          <CartSummary cart={cart} />
-
-          <div style={S.card}>
-            <h2 style={S.sectionTitle}>Order Summary</h2>
-            <SummaryRow label="Subtotal" value={`MVR ${laarToMvr(subtotalLaar)}`} />
-            {orderType === 'delivery' && (
-              <SummaryRow label="Delivery fee" value={`MVR ${laarToMvr(deliveryFeeLaar)}`} />
+      {isMobile ? (
+        /* ── Mobile: single column, sections in logical order ─────────── */
+        <div style={{ ...S.layout, gridTemplateColumns: '1fr' }}>
+          <div style={S.col}>
+            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
+            {token && (
+              <>
+                {sectionOrderType}
+                {sectionDelivery}
+                {sectionNotes}
+                {sectionPromo}
+                {sectionLoyalty}
+                {sectionCartSummary}
+                {sectionOrderSummary}
+                {sectionCompliance}
+                {paySectionEl}
+                {sectionHelp}
+              </>
             )}
-            {promoApplied && !promoApplied.pending && (
-              <SummaryRow label={`Promo (${promoApplied.code})`} value={`− MVR ${laarToMvr(promoDelta)}`} highlight />
-            )}
-            {useLoyalty && loyaltyDelta > 0 && (
-              <SummaryRow label="Loyalty discount" value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
-            )}
-            <div style={S.totalRow}>
-              <span>Total</span>
-              <span>MVR {laarToMvr(totalLaar)}</span>
-            </div>
           </div>
-
-          {token && (
-            <>
-              {/* ── BML Compliance block ─────────────────────── */}
-              <div style={S.complianceBox}>
-                {/* Req 1: Card brand marks in full colour */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
-                  <svg viewBox="0 0 48 16" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Visa" role="img">
-                    <rect width="48" height="16" rx="3" fill="#1A1F71"/>
-                    <text x="24" y="11.5" textAnchor="middle" fill="#FFF" fontFamily="Arial,sans-serif" fontSize="9" fontWeight="bold">VISA</text>
-                  </svg>
-                  <svg viewBox="0 0 38 24" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard" role="img">
-                    <circle cx="14" cy="12" r="10" fill="#EB001B"/>
-                    <circle cx="24" cy="12" r="10" fill="#F79E1B" fillOpacity="0.9"/>
-                    <path d="M19 4.8a10 10 0 0 1 0 14.4A10 10 0 0 1 19 4.8" fill="#FF5F00"/>
-                  </svg>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>+ other BML cards</span>
-                </div>
-
-                {/* Req 4+5: Currency + merchant country */}
-                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
-                  Amount charged in <strong>MVR (Maldivian Rufiyaa)</strong>. Merchant located in the <strong>Maldives</strong>.
-                </p>
-
-                {/* Req 6+8+12: Policy links before checkout */}
-                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                  Before completing your purchase, please read:
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  {[
-                    { href: '/terms',   label: 'Terms & Conditions' },
-                    { href: '/refund',  label: 'Refund Policy' },
-                    { href: '/privacy', label: 'Privacy Policy' },
-                  ].map(({ href, label }) => (
-                    <a key={href} href={href} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
-                      {label}
-                    </a>
-                  ))}
-                </div>
-
-                {/* Req 10+11: Security + retain records */}
-                <p style={{ ...S.secureNote, textAlign: 'left', marginTop: '0.5rem' }}>
-                  🔒 Payment processed securely by Bank of Maldives. We do not store your card details.
-                </p>
-
-                {/* Req 3: Corporate info */}
-                <div style={{ ...S.corporateInfo, textAlign: 'left', borderTop: 'none', paddingTop: 0, marginTop: '0.375rem' }}>
-                  <strong>{siteName}</strong> · {address} ·{' '}
-                  <a href={phoneTel} style={{ color: 'inherit' }}>{phone}</a> ·{' '}
-                  <a href={`mailto:${email}`} style={{ color: 'inherit' }}>{email}</a>
-                </div>
-              </div>
-
-              {/* Desktop only: T&C + Pay in the summary column */}
-              {!isMobile && <PaySection
-                acceptTerms={acceptTerms}
-                setAcceptTerms={setAcceptTerms}
-                globalError={globalError}
-                isPlacing={isPlacing}
-                placeLabel={placeLabel}
-                handlePlaceAndPay={handlePlaceAndPay}
-              />}
-            </>
-          )}
         </div>
-      </div>
+      ) : (
+        /* ── Desktop: two-column grid ──────────────────────────────────── */
+        <div style={{ ...S.layout, gridTemplateColumns: 'minmax(0,1fr) minmax(300px,380px)' }}>
+          {/* Left: form */}
+          <div style={S.col}>
+            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
+            {token && (
+              <>
+                {sectionOrderType}
+                {sectionDelivery}
+                {sectionNotes}
+                {sectionPromo}
+                {sectionLoyalty}
+                {sectionHelp}
+              </>
+            )}
+          </div>
+          {/* Right: summary + pay */}
+          <div style={S.col}>
+            {sectionCartSummary}
+            {sectionOrderSummary}
+            {token && (
+              <>
+                {sectionCompliance}
+                {paySectionEl}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
