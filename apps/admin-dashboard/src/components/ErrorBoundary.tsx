@@ -22,12 +22,20 @@ export class ErrorBoundary extends Component<Props, State> {
           <p style={{ color: '#6B7280', marginBottom: '1.5rem', maxWidth: 400 }}>
             {this.state.message || 'An unexpected error occurred. Please refresh the page.'}
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{ background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
-          >
-            Reload page
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <button
+              onClick={() => this.setState({ hasError: false, message: '' })}
+              style={{ background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              style={{ background: 'transparent', color: '#6B7280', border: '1px solid #D1D5DB', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Reload page
+            </button>
+          </div>
         </div>
       );
     }

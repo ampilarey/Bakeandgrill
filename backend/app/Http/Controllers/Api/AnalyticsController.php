@@ -52,37 +52,52 @@ class AnalyticsController extends Controller
 
     /**
      * Customer retention: new vs returning customers per week.
+     *
+     * Uses 2 queries total (regardless of week count) instead of 2N queries.
      */
     public function retention(Request $request): JsonResponse
     {
-        $weeks = min((int) ($request->query('weeks', 12)), 52);
+        $weeks     = min((int) ($request->query('weeks', 12)), 52);
+        $rangeStart = Carbon::now()->startOfWeek()->subWeeks($weeks - 1);
+        $rangeEnd   = Carbon::now()->endOfWeek();
 
+        // Query 1: all non-cancelled orders with a customer in the date range
+        $orders = DB::table('orders')
+            ->whereBetween('created_at', [$rangeStart, $rangeEnd])
+            ->whereNotNull('customer_id')
+            ->whereNotIn('status', ['cancelled'])
+            ->select('customer_id', 'created_at')
+            ->get();
+
+        // Query 2: first-ever order date per customer (for all customers seen in the range)
+        $customerIds = $orders->pluck('customer_id')->unique()->values();
+        $firstOrderDates = $customerIds->isNotEmpty()
+            ? DB::table('orders')
+                ->whereIn('customer_id', $customerIds)
+                ->whereNotIn('status', ['cancelled'])
+                ->groupBy('customer_id')
+                ->selectRaw('customer_id, MIN(created_at) as first_order_at')
+                ->pluck('first_order_at', 'customer_id')
+            : collect();
+
+        // Build week buckets in PHP — O(orders × weeks), no additional queries
         $data = [];
         for ($i = $weeks - 1; $i >= 0; $i--) {
             $start = Carbon::now()->startOfWeek()->subWeeks($i);
             $end   = $start->copy()->endOfWeek();
 
-            $customerIds = DB::table('orders')
-                ->whereBetween('created_at', [$start, $end])
-                ->whereNotNull('customer_id')
-                ->whereNotIn('status', ['cancelled'])
-                ->pluck('customer_id')
-                ->unique()
-                ->values();
-
-            // Single query for first-order dates — avoids N+1
-            $firstOrderDates = DB::table('orders')
-                ->whereIn('customer_id', $customerIds)
-                ->whereNotIn('status', ['cancelled'])
-                ->groupBy('customer_id')
-                ->selectRaw('customer_id, MIN(created_at) as first_order_at')
-                ->pluck('first_order_at', 'customer_id');
-
-            $newCount = 0;
+            $seenThisWeek  = [];
+            $newCount      = 0;
             $returningCount = 0;
 
-            foreach ($customerIds as $customerId) {
-                $firstOrder = $firstOrderDates[$customerId] ?? null;
+            foreach ($orders as $order) {
+                $orderDate = Carbon::parse($order->created_at);
+                if (!$orderDate->between($start, $end)) continue;
+                $cid = $order->customer_id;
+                if (isset($seenThisWeek[$cid])) continue; // count each customer once per week
+                $seenThisWeek[$cid] = true;
+
+                $firstOrder = $firstOrderDates[$cid] ?? null;
                 if ($firstOrder && Carbon::parse($firstOrder)->between($start, $end)) {
                     $newCount++;
                 } else {
@@ -91,10 +106,10 @@ class AnalyticsController extends Controller
             }
 
             $data[] = [
-                'week'          => $start->format('M d'),
-                'new'           => $newCount,
-                'returning'     => $returningCount,
-                'total_customers' => $customerIds->count(),
+                'week'            => $start->format('M d'),
+                'new'             => $newCount,
+                'returning'       => $returningCount,
+                'total_customers' => $newCount + $returningCount,
             ];
         }
 

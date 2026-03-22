@@ -66,6 +66,7 @@ export function ReviewForm({ orderId, token, onDone }: Props) {
         onChange={e => setComment(e.target.value)}
         placeholder="Share your experience (optional)…"
         rows={3}
+        maxLength={500}
       />
 
       <label style={s.checkRow}>

@@ -78,7 +78,7 @@ function CreateModal({ roles, onSave, onClose }: {
   const handleSave = async () => {
     if (!name.trim()) { setError('Name is required.'); return; }
     if (!email.trim()) { setError('Email is required.'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError('Please enter a valid email address.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim().toLowerCase())) { setError('Please enter a valid email address.'); return; }
     if (!roleId) { setError('Select a role.'); return; }
     if (pin.length < 4) { setError('PIN must be at least 4 digits.'); return; }
     if (pin !== confirmPin) { setError('PINs do not match.'); return; }

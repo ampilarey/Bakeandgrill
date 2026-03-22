@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +16,8 @@ use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
+    public function __construct(private readonly AuditLogService $audit) {}
+
     // ─── Internal authorization guard (defense-in-depth) ─────────────────────
     private function authorizePermission(Request $request, string $permission): void
     {
@@ -68,7 +71,7 @@ class StaffController extends Controller
 
         $user = User::create([
             'name'      => $validated['name'],
-            'email'     => $validated['email'],
+            'email'     => strtolower(trim($validated['email'])),
             'password'  => Hash::make(str()->random(32)),
             'role_id'   => $validated['role_id'],
             'pin_hash'  => Hash::make($validated['pin']),
@@ -94,6 +97,10 @@ class StaffController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
+        if (isset($validated['email'])) {
+            $validated['email'] = strtolower(trim($validated['email']));
+        }
+
         $user->update($validated);
         $user->load('role');
 
@@ -111,6 +118,8 @@ class StaffController extends Controller
 
         $user = User::findOrFail($id);
         $user->update(['pin_hash' => Hash::make($validated['pin'])]);
+
+        $this->audit->log('staff.pin_reset', 'User', $user->id, [], ['reset_by' => $request->user()?->id], [], $request);
 
         return response()->json(['message' => 'PIN updated successfully.']);
     }

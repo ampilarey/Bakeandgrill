@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { CartItem, Item, Modifier } from "../types";
 
 export type PaymentRow = {
@@ -32,19 +32,19 @@ export function useCart() {
     [cartItems],
   );
 
-  const handleSelectItem = (item: Item) => {
+  const handleSelectItem = useCallback((item: Item) => {
     setSelectedItem(item);
     setSelectedModifiers([]);
-  };
+  }, []);
 
-  const toggleModifier = (modifier: Modifier) => {
+  const toggleModifier = useCallback((modifier: Modifier) => {
     setSelectedModifiers((curr) => {
       const exists = curr.find((m) => m.id === modifier.id);
       return exists ? curr.filter((m) => m.id !== modifier.id) : [...curr, modifier];
     });
-  };
+  }, []);
 
-  const addToCart = (item: Item) => {
+  const addToCart = useCallback((item: Item) => {
     const modifiers = selectedItem?.id === item.id ? selectedModifiers : [];
     const key = makeCartKey(item.id, modifiers);
     setCartItems((curr) => {
@@ -54,14 +54,13 @@ export function useCart() {
           ci === existing ? { ...ci, quantity: ci.quantity + 1 } : ci,
         );
       }
-      // Parse prices here so MySQL string decimals never reach the cart arithmetic
       const parsedPrice = parseFloat(String(item.base_price ?? 0));
       const parsedModifiers = modifiers.map((m) => ({ ...m, price: parseFloat(String(m.price ?? 0)) }));
       return [...curr, { id: item.id, name: item.name, price: parsedPrice, quantity: 1, modifiers: parsedModifiers }];
     });
-  };
+  }, [selectedItem, selectedModifiers]);
 
-  const updateQuantity = (itemKey: string, delta: number) => {
+  const updateQuantity = useCallback((itemKey: string, delta: number) => {
     setCartItems((curr) =>
       curr
         .map((item) =>
@@ -71,24 +70,24 @@ export function useCart() {
         )
         .filter((item) => item.quantity > 0),
     );
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCartItems([]);
     setSelectedItem(null);
     setSelectedModifiers([]);
     setDiscountAmount("");
     setPayments([{ id: crypto.randomUUID(), method: "cash", amount: "" }]);
-  };
+  }, []);
 
-  const addPaymentRow = () =>
-    setPayments((curr) => [...curr, { id: crypto.randomUUID(), method: "cash", amount: "" }]);
+  const addPaymentRow = useCallback(() =>
+    setPayments((curr) => [...curr, { id: crypto.randomUUID(), method: "cash", amount: "" }]), []);
 
-  const updatePaymentRow = (id: string, changes: Partial<PaymentRow>) =>
-    setPayments((curr) => curr.map((p) => (p.id === id ? { ...p, ...changes } : p)));
+  const updatePaymentRow = useCallback((id: string, changes: Partial<PaymentRow>) =>
+    setPayments((curr) => curr.map((p) => (p.id === id ? { ...p, ...changes } : p))), []);
 
-  const removePaymentRow = (id: string) =>
-    setPayments((curr) => curr.filter((p) => p.id !== id));
+  const removePaymentRow = useCallback((id: string) =>
+    setPayments((curr) => curr.filter((p) => p.id !== id)), []);
 
   return {
     cartItems,

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchCustomerOrders } from '../api';
@@ -16,16 +16,23 @@ const STATUS: Record<string, { label: string; color: string; dot: string }> = {
 
 const ACTIVE = new Set(['payment_pending', 'pending', 'paid', 'preparing', 'ready']);
 
+function isOrder(v: unknown): v is Order {
+  return typeof v === 'object' && v !== null && 'id' in v && 'status' in v;
+}
+
 function normalizeOrders(res: unknown): Order[] {
-  if (Array.isArray(res)) return res as Order[];
+  const toOrders = (arr: unknown): Order[] =>
+    Array.isArray(arr) ? arr.filter(isOrder) : [];
+
+  if (Array.isArray(res)) return toOrders(res);
   if (!res || typeof res !== 'object') return [];
   const o = res as Record<string, unknown>;
-  if (Array.isArray(o.data)) return o.data as Order[];
+  if (Array.isArray(o.data)) return toOrders(o.data);
   if (o.data && typeof o.data === 'object') {
     const inner = (o.data as Record<string, unknown>).data;
-    if (Array.isArray(inner)) return inner as Order[];
+    if (Array.isArray(inner)) return toOrders(inner);
   }
-  if (Array.isArray(o.orders)) return o.orders as Order[];
+  if (Array.isArray(o.orders)) return toOrders(o.orders);
   return [];
 }
 
@@ -66,20 +73,26 @@ export function OrderStatusBar() {
     };
   }, [token, authReady, skip]);
 
-  // Re-load when returning to the page
-  useEffect(() => {
-    if (skip || order === undefined) return;
+  // Stable callback for reloading on pathname change — avoids exhaustive-deps suppression
+  const reloadOnNav = useCallback(() => {
+    if (!token || !authReady) return undefined;
     const controller = new AbortController();
-    fetchCustomerOrders(token!, controller.signal)
+    fetchCustomerOrders(token, controller.signal)
       .then((res) => {
         const orders = normalizeOrders(res);
         const active = orders.find((o) => ACTIVE.has(o.status));
         setOrder(active ?? orders[0] ?? null);
       })
       .catch((err) => { if (err.name !== 'AbortError') setOrder(null); });
-    return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+    return controller;
+  }, [token, authReady]);
+
+  // Re-load when returning to the page
+  useEffect(() => {
+    if (skip || order === undefined) return;
+    const controller = reloadOnNav();
+    return () => controller?.abort();
+  }, [location.pathname, skip, order, reloadOnNav]);
 
   // Nothing to show
   if (!token || order === undefined || order === null) return null;

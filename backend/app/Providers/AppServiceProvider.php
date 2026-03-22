@@ -8,6 +8,7 @@ use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\Providers\DhiraaguSmsProvider;
 use App\Models\Order;
 use App\Observers\OrderObserver;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,5 +27,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Order::observe(OrderObserver::class);
+
+        // Force HTTPS scheme in production so generated URLs and redirects are always secure.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
 }

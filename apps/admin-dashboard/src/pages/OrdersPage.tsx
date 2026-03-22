@@ -70,7 +70,7 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
           <h2 style={{ fontWeight: 800, fontSize: 18, color: '#0f172a' }}>
             {order ? `#${order.order_number}` : 'Order Details'}
           </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+          <button onClick={onClose} aria-label="Close order details" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
         </div>
 
         {loading && <Spinner />}
@@ -85,7 +85,7 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <Row label="Order #" value={order.order_number} />
               <Row label="Type" value={typeLabel(order.type)} />
-              <Row label="Time" value={new Date(order.created_at).toLocaleString()} />
+              <Row label="Time" value={new Date(order.created_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })} />
               {order.table_number && <Row label="Table" value={order.table_number} />}
               {(order.customer?.name ?? order.customer_name) && (
                 <Row label="Customer" value={(order.customer?.name ?? order.customer_name)!} />

@@ -47,11 +47,14 @@ export const api = {
   getDeliveries: () =>
     request<{ deliveries: import('./types').Delivery[] }>('GET', '/driver/deliveries'),
 
-  getHistory: (page = 1, date?: string) =>
-    request<{
+  getHistory: (page = 1, date?: string) => {
+    // Validate ISO 8601 date format before interpolating into URL (L-15)
+    const safeDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
+    return request<{
       deliveries: import('./types').Delivery[];
       meta: { current_page: number; last_page: number; total: number };
-    }>('GET', `/driver/deliveries/history?page=${page}${date ? `&date=${date}` : ''}`),
+    }>('GET', `/driver/deliveries/history?page=${page}${safeDate ? `&date=${safeDate}` : ''}`);
+  },
 
   getDelivery: (id: number) =>
     request<{ delivery: import('./types').Delivery }>('GET', `/driver/deliveries/${id}`),

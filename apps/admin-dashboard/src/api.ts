@@ -10,7 +10,7 @@ const BASE =
 
 if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   // eslint-disable-next-line no-console
-  console.warn('[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api');
+  console.error('[CONFIG] VITE_API_BASE_URL is not set in production — all API calls will fail if the app is not served from the same origin as the API.');
 }
 
 const { request: req } = createApiClient({

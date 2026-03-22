@@ -7,6 +7,7 @@ namespace App\Observers;
 use App\Domains\Notifications\Services\PushNotificationService;
 use App\Domains\Realtime\Services\RedisEventPublisher;
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -18,6 +19,20 @@ class OrderObserver
         private PushNotificationService $push,
         private RedisEventPublisher $redis,
     ) {}
+
+    /** Cascade soft-delete to order_items when an order is soft-deleted. */
+    public function deleted(Order $order): void
+    {
+        if ($order->trashed()) {
+            OrderItem::where('order_id', $order->id)->delete();
+        }
+    }
+
+    /** Restore order_items when a soft-deleted order is restored. */
+    public function restored(Order $order): void
+    {
+        OrderItem::withTrashed()->where('order_id', $order->id)->restore();
+    }
 
     public function updated(Order $order): void
     {

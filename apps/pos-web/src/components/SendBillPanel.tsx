@@ -66,7 +66,7 @@ export function SendBillPanel({ orderId, onClose }: Props) {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <span style={{ fontWeight: 700, fontSize: 16, color: "#1C1408" }}>Send Bill via SMS</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#8B7355" }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#8B7355" }}>×</button>
         </div>
 
         {result ? (

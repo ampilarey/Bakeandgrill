@@ -124,7 +124,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
 
         {import.meta.env.DEV && (
           <p style={{ fontSize: 11, color: '#C4A882', marginTop: 12, textAlign: 'center', lineHeight: 1.6 }}>
-            Dev PINs: Owner (1111) · Admin (2222) · Manager (3333) · Cashier (4444)
+            Dev mode — check your local DB for staff PINs.
           </p>
         )}
       </div>

@@ -131,4 +131,9 @@ class Order extends Model
     {
         return $this->belongsTo(DeliveryDriver::class, 'delivery_driver_id');
     }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Store::class);
+    }
 }

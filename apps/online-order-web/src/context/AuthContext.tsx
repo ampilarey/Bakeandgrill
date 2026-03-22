@@ -29,7 +29,8 @@ function toDisplayName(name?: string | null, phone?: string | null): string {
 const COOKIE_DOMAIN = (() => {
   if (typeof window === 'undefined') return '';
   const h = window.location.hostname;
-  return h.includes('.') ? '.' + h.split('.').slice(-2).join('.') : h;
+  // Return '' for localhost/127.x so no domain is set (avoids browser cookie rejection on localhost)
+  return h.includes('.') && !h.startsWith('127.') ? '.' + h.split('.').slice(-2).join('.') : '';
 })();
 
 function getCookie(name: string): string | null {
