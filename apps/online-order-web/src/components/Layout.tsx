@@ -48,7 +48,7 @@ export function Layout() {
       getCustomerMe(existingToken)
         .then((r) => {
           if (cancelled) return;
-          const n = r.customer.name ?? r.customer.phone ?? '';
+          const n = r.customer.phone ?? r.customer.name ?? '';
           if (n) {
             localStorage.setItem('online_customer_name', n);
             window.dispatchEvent(new Event('auth_change'));

@@ -86,7 +86,7 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
   handlePlaceAndPay: () => void;
 }) {
   return (
-    <div style={{ ...S.card, background: 'var(--color-surface-alt)', border: '1.5px solid rgba(212,129,58,0.35)', borderTop: '3px solid var(--color-primary)', boxShadow: '0 4px 16px rgba(212,129,58,0.12)' }}>
+    <div style={{ ...S.cardWarm, border: '1.5px solid rgba(212,129,58,0.35)', boxShadow: '0 4px 16px rgba(212,129,58,0.12)' }}>
       {/* Req 13: Affirmative acceptance checkbox */}
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
         <input
@@ -285,7 +285,7 @@ export function CheckoutPage() {
   const sectionCartSummary = <CartSummary cart={cart} />;
 
   const sectionOrderSummary = (
-    <div style={S.card}>
+    <div style={S.cardWarm}>
       <h2 style={S.sectionTitle}>Order Summary</h2>
       <SummaryRow label="Subtotal" value={`MVR ${laarToMvr(subtotalLaar)}`} />
       {orderType === 'delivery' && (
@@ -390,7 +390,7 @@ export function CheckoutPage() {
       />
 
       {/* ── Page heading ───────────────────────────────────── */}
-      <div style={{ background: 'var(--color-surface-alt)', borderBottom: '1px solid rgba(212,129,58,0.18)', padding: '0.875rem var(--page-gutter)' }}>
+      <div style={{ background: 'linear-gradient(135deg, var(--color-surface-alt) 0%, var(--color-surface) 100%)', borderBottom: '1px solid rgba(212,129,58,0.2)', padding: '0.875rem var(--page-gutter)' }}>
         <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
           <span style={{ fontSize: '1.25rem' }}>🧾</span>
           <div>
@@ -483,20 +483,26 @@ const S = {
     background: 'var(--color-surface)',
     borderRadius: '16px',
     padding: '18px 20px',
-    boxShadow: '0 2px 8px rgba(212,129,58,0.06), var(--shadow-sm)',
+    boxShadow: 'var(--shadow-sm)',
     border: '1px solid var(--color-border)',
-    borderTop: '3px solid var(--color-primary)',
+  } as React.CSSProperties,
+
+  /* Warm tinted variant — used for Order Summary and Pay section */
+  cardWarm: {
+    background: 'var(--color-surface-alt)',
+    borderRadius: '16px',
+    padding: '18px 20px',
+    boxShadow: '0 2px 10px rgba(212,129,58,0.08)',
+    border: '1px solid rgba(212,129,58,0.22)',
   } as React.CSSProperties,
 
   sectionTitle: {
     fontSize: 'var(--text-md)',
     fontWeight: 700,
-    color: 'var(--color-text)',
+    color: 'var(--color-primary)',
     margin: '0 0 14px',
     paddingBottom: 10,
-    paddingLeft: '0.625rem',
     borderBottom: '1px solid var(--color-border)',
-    borderLeft: '3px solid var(--color-primary)',
   } as React.CSSProperties,
 
   fieldLabel: {
@@ -607,8 +613,7 @@ const S = {
 
   complianceBox: {
     background: 'var(--color-surface-alt)',
-    border: '1px solid rgba(212,129,58,0.25)',
-    borderTop: '3px solid var(--color-primary)',
+    border: '1px solid rgba(212,129,58,0.22)',
     borderRadius: '12px',
     padding: '1rem 1.125rem',
     marginBottom: '12px',

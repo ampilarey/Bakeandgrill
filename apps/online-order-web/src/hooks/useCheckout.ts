@@ -106,11 +106,19 @@ export function useCheckout() {
     getCustomerMe(token)
       .then((r) => {
         if (cancelled) return;
-        const display = r.customer.name ?? r.customer.phone ?? "";
+        const display = r.customer.phone ?? r.customer.name ?? "";
         setCustomerName(display);
         if (display) {
           localStorage.setItem("online_customer_name", display);
           window.dispatchEvent(new Event("auth_change"));
+        }
+        // Pre-fill delivery contact phone with the customer's registered number
+        // only if the field hasn't been touched yet
+        if (r.customer.phone) {
+          setDelivery((prev) => ({
+            ...prev,
+            contact_phone: prev.contact_phone || r.customer.phone!,
+          }));
         }
       })
       .catch(() => {
