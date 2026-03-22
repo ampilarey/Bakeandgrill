@@ -11,10 +11,10 @@
 | Severity | Frontend | Backend / DB | Total |
 |----------|----------|-------------|-------|
 | Critical | 1        | 4           | **5** |
-| High     | 5        | 8           | **13** |
-| Medium   | 7        | 9           | **16** |
-| Low      | 9        | 6           | **15** |
-| **Total**| **22**   | **27**      | **49** |
+| High     | 5        | 12          | **17** |
+| Medium   | 7        | 13          | **20** |
+| Low      | 9        | 10          | **19** |
+| **Total**| **22**   | **39**      | **61** |
 
 ---
 
@@ -131,6 +131,34 @@ Route::get('/orders/track/{token}', ...)->middleware('throttle:60,1');
 **Issue:** `order_id` has a UNIQUE constraint, meaning only one loyalty hold per order. If an order needs both loyalty + promo, only one can be tracked.
 **Fix:** Remove the unique constraint or redesign as a one-to-many relationship.
 
+### H-11. Missing Input Length Validation on Search Endpoints
+**File:** `backend/app/Http/Controllers/Api/InventoryController.php:37-42`
+**Issue:** Search parameter used in `LIKE` queries has no max length validation. Extremely long strings can cause resource exhaustion.
+```php
+$q->where('name', 'like', "%{$search}%")
+```
+**Fix:** Add `$request->validate(['search' => 'string|max:100'])` before query.
+
+### H-12. Insecure File Path Derivation in ItemPhotoController
+**File:** `backend/app/Http/Controllers/Api/ItemPhotoController.php:85-87`
+**Issue:** File deletion path is derived from URL string manipulation rather than stored disk path.
+```php
+$relativePath = ltrim(str_replace(Storage::url(''), '', $photo->url), '/');
+Storage::disk('public')->delete($relativePath);
+```
+**Risk:** If `Storage::url()` returns unexpected values, path traversal may be possible.
+**Fix:** Store the disk-relative path in the database and use that directly.
+
+### H-13. Inadequate Rate Limiting on Gift Card and Referral Endpoints
+**File:** `backend/routes/api.php`
+**Issue:** Public endpoints for gift card balance (`throttle:20,1`) and referral validation (`throttle:20,1`) allow 20 req/min — enough for code enumeration attacks.
+**Fix:** Reduce to `throttle:5,1` and consider CAPTCHA after repeated failures.
+
+### H-14. Missing Resource-Level Authorization on Invoice PDF
+**File:** `backend/routes/api_finance.php:25`
+**Issue:** `/{id}/pdf` endpoint is protected by `permission:finance.invoices` but doesn't verify the user has access to *this specific* invoice. Any user with the permission can download any invoice PDF.
+**Fix:** Add `$this->authorize('view', $invoice)` policy check in the controller.
+
 ---
 
 ## MEDIUM Issues
@@ -205,6 +233,28 @@ No middleware to enforce HTTPS. Payment info and OTPs could be sent over HTTP.
 **File:** `backend/database/migrations/2026_02_09_300100_create_sms_logs_table.php`
 No composite index on `(customer_id, created_at)` for SMS history queries.
 
+### M-17. Weak Password Minimum Length
+**File:** `backend/app/Http/Controllers/Api/CustomerProfileController.php:28`
+**Issue:** Customer passwords only require 6 characters (`min:6`). NIST recommends minimum 8 characters.
+**Fix:** Change to `min:8`.
+
+### M-18. Case-Sensitive Email Uniqueness
+**File:** `backend/app/Http/Controllers/Api/StaffController.php:64`
+**Issue:** Email uniqueness check is case-sensitive. `Admin@Example.com` and `admin@example.com` could be registered as separate accounts.
+**Fix:** Normalize to lowercase before storage, or use a case-insensitive unique rule.
+
+### M-19. N+1 Query Pattern in Analytics Retention
+**File:** `backend/app/Http/Controllers/Api/AnalyticsController.php:65-91`
+**Issue:** Retention calculation iterates 12+ weeks with per-week lookups. Could be a single query using window functions.
+
+### M-20. Information Disclosure via Gift Card Error Messages
+**File:** `backend/app/Http/Controllers/Api/GiftCardController.php:24`
+```php
+return response()->json(['error' => 'This gift card is ' . $card->status . '.'], 422);
+```
+**Issue:** Reveals exact card status (active/expired/disabled), enabling enumeration.
+**Fix:** Use generic message: `'This gift card cannot be used.'`
+
 ---
 
 ## LOW Issues
@@ -266,6 +316,44 @@ Has `store_id` column but no `store()` relationship method defined.
 ### L-15. Missing Date Validation on Query Parameters
 **File:** `apps/delivery-web/src/api.ts:50-54`
 User-provided date string is interpolated into URL without ISO format validation.
+
+### L-16. Inline Route Closures Bypass Controller Patterns
+**File:** `backend/routes/api_finance.php:78-82`
+**Issue:** Some admin routes use inline closures instead of controllers. Harder to maintain and lacks centralized error handling.
+**Fix:** Extract to dedicated controller methods.
+
+### L-17. Missing Audit Logging on Staff PIN Resets
+**File:** `backend/app/Http/Controllers/Api/StaffController.php`
+**Issue:** Sensitive operations like PIN resets may not be logged via `AuditLogService`.
+**Fix:** Add audit logging for all staff credential changes.
+
+### L-18. Inconsistent Authorization Patterns (tokenCan vs Policies)
+**Multiple controllers** mix middleware-based auth with inline `tokenCan()` checks. Consider standardizing on Laravel Policies for resource-level authorization.
+
+### L-19. `selectRaw` Pattern Fragile to Future Refactoring
+**Files:**
+- `backend/app/Http/Controllers/Api/AnalyticsController.php:25-35`
+- `backend/app/Http/Controllers/Api/FinanceReportController.php:163-174`
+- `backend/app/Http/Controllers/Api/ForecastController.php:27-38`
+
+**Issue:** Database-driver-specific expressions via `match(DB::getDriverName())` are interpolated into `selectRaw()`/`groupByRaw()`. Currently safe (hardcoded values), but the pattern is one refactor away from SQL injection if user input is ever added.
+**Fix:** Add code comments marking these as security-sensitive; consider using query builder abstractions.
+
+---
+
+## Positive Findings
+
+The codebase demonstrates several strong security practices:
+- Proper Sanctum token abilities (staff vs customer separation)
+- Good middleware layering (EnsureStaffToken, EnsureCustomerToken, permission middleware)
+- Mass assignment protection via `$fillable` arrays
+- Password hashing via `Hash::make()`
+- One-time-use stream tickets for SSE security
+- HMAC signature verification for BML webhooks
+- SQL parameterization via query builder (no direct string concatenation in user-facing queries)
+- Proper use of DB transactions with row locking for payment race conditions
+- Request validation through FormRequest classes
+- Comprehensive audit logging for order/payment operations
 
 ---
 
