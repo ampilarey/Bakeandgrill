@@ -396,7 +396,8 @@ Route::middleware(['auth:sanctum', 'permission:loyalty.manage'])->prefix('admin'
 });
 
 // ─── Delivery Orders ─────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
+// auth:sanctum only — controller handles both customer tokens and staff tokens
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'store']);
     Route::patch('/orders/{order}/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'update']);
 });
