@@ -76,6 +76,64 @@ function SectionCard({ title, children }: { title: string; children: React.React
   );
 }
 
+// ── T&C + Pay button (reused in both columns depending on viewport) ───────────
+function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay }: {
+  acceptTerms: boolean;
+  setAcceptTerms: (v: boolean) => void;
+  globalError: string | null;
+  isPlacing: boolean;
+  placeLabel: string;
+  handlePlaceAndPay: () => void;
+}) {
+  return (
+    <div style={S.card}>
+      {/* Req 13: Affirmative acceptance checkbox */}
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
+        <input
+          type="checkbox"
+          checked={acceptTerms}
+          onChange={(e) => setAcceptTerms(e.target.checked)}
+          style={{ marginTop: '2px', width: 16, height: 16, accentColor: 'var(--color-primary)', flexShrink: 0 }}
+        />
+        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+          I agree to the <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Terms &amp; Conditions</a>,{' '}
+          <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Refund Policy</a>, and{' '}
+          <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
+        </span>
+      </label>
+
+      {globalError && (
+        <div className="banner banner-error" style={{ marginBottom: 12 }}>
+          <span className="banner-icon">⚠️</span>
+          <div>
+            <p className="banner-title">Payment failed</p>
+            <p className="banner-sub">{globalError}</p>
+          </div>
+        </div>
+      )}
+
+      <button
+        style={{
+          ...S.primaryBtn,
+          width: '100%',
+          padding: '1rem var(--page-gutter)',
+          fontSize: 'var(--text-md)',
+          opacity: (isPlacing || !acceptTerms) ? 0.55 : 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+          cursor: !acceptTerms ? 'not-allowed' : 'pointer',
+        }}
+        onClick={handlePlaceAndPay}
+        disabled={isPlacing || !acceptTerms}
+        aria-busy={isPlacing}
+        title={!acceptTerms ? 'Please agree to the terms to continue' : undefined}
+      >
+        {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
+        {placeLabel}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function CheckoutPage() {
   const navigate  = useNavigate();
@@ -137,7 +195,7 @@ export function CheckoutPage() {
       <div style={{ ...S.layout, gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(300px,380px)' }}>
 
         {/* ── Left: form sections ──────────────────────────── */}
-        <div style={{ ...S.col, order: isMobile ? 1 : 0, paddingBottom: isMobile ? '100px' : 0 }}>
+        <div style={{ ...S.col, order: isMobile ? 1 : 0 }}>
 
           {/* Auth */}
           {!token && (
@@ -278,12 +336,22 @@ export function CheckoutPage() {
                   </a>
                 </div>
               </div>
+
+              {/* Mobile only: T&C + Pay appears here, after promo code in the natural scroll flow */}
+              {isMobile && <PaySection
+                acceptTerms={acceptTerms}
+                setAcceptTerms={setAcceptTerms}
+                globalError={globalError}
+                isPlacing={isPlacing}
+                placeLabel={placeLabel}
+                handlePlaceAndPay={handlePlaceAndPay}
+              />}
             </>
           )}
         </div>
 
         {/* ── Right: order summary ─────────────────────────── */}
-        <div style={{ ...S.col, order: isMobile ? 0 : 1, paddingBottom: isMobile ? '100px' : 0 }}>
+        <div style={{ ...S.col, order: isMobile ? 0 : 1 }}>
           <CartSummary cart={cart} />
 
           <div style={S.card}>
@@ -306,17 +374,15 @@ export function CheckoutPage() {
 
           {token && (
             <>
-              {/* ── BML Compliance block — scrollable content (not in sticky bar) ── */}
+              {/* ── BML Compliance block ─────────────────────── */}
               <div style={S.complianceBox}>
                 {/* Req 1: Card brand marks in full colour */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
-                  {/* Visa — full colour */}
                   <svg viewBox="0 0 48 16" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Visa" role="img">
                     <rect width="48" height="16" rx="3" fill="#1A1F71"/>
                     <text x="24" y="11.5" textAnchor="middle" fill="#FFF" fontFamily="Arial,sans-serif" fontSize="9" fontWeight="bold">VISA</text>
                   </svg>
-                  {/* Mastercard — full colour */}
                   <svg viewBox="0 0 38 24" height="20" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard" role="img">
                     <circle cx="14" cy="12" r="10" fill="#EB001B"/>
                     <circle cx="24" cy="12" r="10" fill="#F79E1B" fillOpacity="0.9"/>
@@ -360,53 +426,15 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              {/* ── Sticky pay bar (mobile) — T&C + Pay button only ─── */}
-              <div style={isMobile ? S.stickyPayBar : {}}>
-
-                {/* Req 13: Affirmative acceptance checkbox */}
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.625rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                    style={{ marginTop: '2px', width: 16, height: 16, accentColor: 'var(--color-primary)', flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
-                    I agree to the <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Terms &amp; Conditions</a>,{' '}
-                    <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Refund Policy</a>, and{' '}
-                    <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
-                  </span>
-                </label>
-
-                {globalError && (
-                  <div className="banner banner-error" style={{ marginBottom: 12 }}>
-                    <span className="banner-icon">⚠️</span>
-                    <div>
-                      <p className="banner-title">Payment failed</p>
-                      <p className="banner-sub">{globalError}</p>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  style={{
-                    ...S.primaryBtn,
-                    width: '100%',
-                    padding: '1rem var(--page-gutter)',
-                    fontSize: 'var(--text-md)',
-                    opacity: (isPlacing || !acceptTerms) ? 0.55 : 1,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                    cursor: !acceptTerms ? 'not-allowed' : 'pointer',
-                  }}
-                  onClick={handlePlaceAndPay}
-                  disabled={isPlacing || !acceptTerms}
-                  aria-busy={isPlacing}
-                  title={!acceptTerms ? 'Please agree to the terms to continue' : undefined}
-                >
-                  {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
-                  {placeLabel}
-                </button>
-              </div>
+              {/* Desktop only: T&C + Pay in the summary column */}
+              {!isMobile && <PaySection
+                acceptTerms={acceptTerms}
+                setAcceptTerms={setAcceptTerms}
+                globalError={globalError}
+                isPlacing={isPlacing}
+                placeLabel={placeLabel}
+                handlePlaceAndPay={handlePlaceAndPay}
+              />}
             </>
           )}
         </div>
@@ -553,18 +581,6 @@ const S = {
     borderRadius: '8px', fontWeight: 600,
     fontSize: 'var(--text-sm)', textDecoration: 'none',
     transition: 'all 0.15s',
-  } as React.CSSProperties,
-
-  stickyPayBar: {
-    position: 'fixed' as const,
-    bottom: 0, left: 0, right: 0,
-    background: 'var(--color-header-bg)',
-    backdropFilter: 'blur(12px)',
-    borderTop: '1px solid var(--color-border)',
-    padding: '12px 16px',
-    /* Above .order-mobile-nav (--z-bottom-nav: 300) so Pay button is tappable */
-    paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-    zIndex: 'var(--z-pay-bar)' as unknown as number,
   } as React.CSSProperties,
 
   complianceBox: {
