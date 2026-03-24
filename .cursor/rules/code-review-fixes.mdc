@@ -1,0 +1,330 @@
+---
+description: Comprehensive code review — all critical bugs, logic errors, security issues, and frontend problems found across the entire Bake & Grill codebase. Use this as the master fix list.
+alwaysApply: true
+---
+
+# Bake & Grill — Full Code Review Fix Prompt
+
+You are fixing bugs across a Laravel + React monorepo for a restaurant POS/ordering platform. The repo structure:
+
+```
+backend/              # Laravel 11 API (PHP 8.3)
+apps/
+  pos-web/            # React POS terminal (Vite + TypeScript)
+  online-order-web/   # React customer ordering app
+  kds-web/            # React kitchen display system
+  delivery-web/       # React delivery driver app
+  admin-dashboard/    # React admin panel
+print-proxy/          # Node.js ESC/POS print server
+docker-compose.yml    # PostgreSQL 15, Redis, Laravel, Vite apps
+```
+
+Database is **PostgreSQL 15** (NOT MySQL). All monetary values should use **integer laari** (1 MVR = 100 laari) to avoid floating-point errors.
+
+---
+
+## PRIORITY 1 — CRITICAL BUGS (data loss, money errors, security)
+
+### 1. Race condition: double payment confirmation
+**File:** `backend/app/Services/PaymentService.php` ~lines 325-327
+**Problem:** `confirmPayment()` checks status on a stale in-memory model with no DB lock. Two concurrent webhooks can both confirm the same payment → double `OrderPaid` event dispatch, double inventory deduction, double loyalty point consumption.
+**Fix:** Wrap in `DB::transaction()` with `Payment::where('id', $payment->id)->lockForUpdate()->first()`. Re-check status after acquiring lock. Return early if already confirmed.
+
+### 2. Floating-point comparison marks fully-paid orders as unpaid
+**File:** `backend/app/Services/PaymentService.php` ~line 363
+**Problem:** `$paidTotal >= $order->total` compares floats. Values like `49.999999999` vs `50.00` cause fully-paid orders to stay in unpaid status.
+**Fix:** Use the existing integer laari comparison: `$this->sumAmountLaarForOrder($order) >= $order->total_laar`. If `total_laar` column doesn't exist, add it.
+
+### 3. Loyalty `earnPointsForOrder` race condition — points silently lost
+**File:** `backend/app/Services/LoyaltyLedgerService.php` ~lines 192-213
+**Problem:** `$account` is fetched outside the transaction without `lockForUpdate()`. Concurrent order completions for the same customer overwrite each other's earnings.
+**Fix:** Move `$account` fetch inside the `DB::transaction()` closure and add `->lockForUpdate()`.
+
+### 4. Loyalty `createOrRefreshHold` over-commits points
+**File:** `backend/app/Services/LoyaltyLedgerService.php` ~lines 47-101
+**Problem:** `accountFor()` uses `firstOrCreate` without `lockForUpdate()`. Two concurrent holds can both pass availability check and over-commit points.
+**Fix:** Use `DB::transaction()` with `lockForUpdate()` when reading the account balance before creating a hold.
+
+### 5. Inventory deduction idempotency key collision — shared ingredients under-deducted
+**File:** `backend/app/Services/InventoryDeductionService.php` ~line 43
+**Problem:** Key is `'order:' . $order->id . ':inv:' . $inventoryItem->id`. If two different menu items use the same ingredient, only the first deduction is recorded.
+**Fix:** Include `$orderItem->id` in the idempotency key: `'order:' . $order->id . ':item:' . $orderItem->id . ':inv:' . $inventoryItem->id`.
+
+### 6. Customer.password in $fillable — mass assignment vulnerability
+**File:** `backend/app/Models/Customer.php` ~line 22
+**Problem:** `password` is listed in `$fillable`, allowing `Customer::create($request->all())` to set passwords via mass assignment.
+**Fix:** Remove `password` from `$fillable`. Set it explicitly: `$customer->password = Hash::make($value)`.
+
+### 7. GiftCard.code exposed in API responses
+**File:** `backend/app/Models/GiftCard.php`
+**Problem:** Full gift card code is not in `$hidden`, so it's returned in every API response. Equivalent to leaking credit card numbers.
+**Fix:** Add `protected $hidden = ['code'];` and create a masked accessor `getLastFourAttribute()` for display.
+
+### 8. Print proxy API key comparison is not timing-safe
+**File:** `print-proxy/src/index.ts` ~line 55
+**Problem:** `===` string comparison is vulnerable to timing attacks for API key validation.
+**Fix:** Use `crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))` with length check first.
+
+---
+
+## PRIORITY 2 — SIGNIFICANT LOGIC BUGS
+
+### 9. Two tax calculation methods produce different results
+**File:** `backend/app/Services/OrderTotalsCalculator.php`
+**Problem:** `calculate()` (lines 29-66) uses per-item tax rates and applies tax after discounts. `recalculateAndPersist()` (lines 75-113) uses a single global rate and applies tax before discounts. They produce different totals for the same order.
+**Fix:** Unify both methods to use per-item rates and apply tax after discounts. Extract shared logic into a private method.
+
+### 10. `recalculateAndPersist` includes delivery fee but `calculate` does not
+**File:** `backend/app/Services/OrderTotalsCalculator.php` ~line 100
+**Fix:** Both methods must include delivery fee in the total, or neither should (and it's added at checkout).
+
+### 11. `Money::extractTax` integer division bug — zero tax always
+**File:** `backend/app/ValueObjects/Money.php` ~line 99
+**Problem:** `$rateBp / 10000` performs integer division when both operands are int, yielding 0 for any rate < 10000 bp (i.e., < 100%).
+**Fix:** Change to `$rateBp / 10000.0` to force float division.
+
+### 12. Order state machine missing `payment_pending` state
+**File:** `backend/app/StateMachines/OrderStateMachine.php` ~lines 29-41
+**Problem:** `PaymentService` transitions orders to/from `payment_pending`, but the state machine doesn't list it as a valid state.
+**Fix:** Add `'payment_pending'` to the states array and define its allowed transitions.
+
+### 13. Payment state machine defined but never used
+**File:** `backend/app/StateMachines/PaymentStateMachine.php` + `backend/app/Services/PaymentService.php`
+**Problem:** `PaymentService` directly updates status with raw assignments, bypassing validation. It does `initiated -> confirmed` but the state machine only allows `initiated -> pending -> confirmed`.
+**Fix:** Use `$payment->status->transitionTo('confirmed')` instead of raw assignment. Update state machine transitions to match actual business flow.
+
+### 14. `confirmPayment` dispatches event with stale order status
+**File:** `backend/app/Services/PaymentService.php` ~line 361
+**Problem:** `PaymentConfirmedData` is created before order status is updated. Listeners see old status.
+**Fix:** Move event dispatch to after the order status update, or refresh the order model before creating the event data.
+
+### 15. `confirmFromReturnUrl` finds wrong payment
+**File:** `backend/app/Services/PaymentService.php` ~line 184
+**Problem:** Looks up the latest payment by order ID, but `transactionId` from the return URL may belong to an older attempt.
+**Fix:** Look up payment by `transaction_id` directly: `Payment::where('transaction_id', $transactionId)->firstOrFail()`.
+
+### 16. `Money::subtract` silently clamps to zero
+**File:** `backend/app/ValueObjects/Money.php` ~line 63
+**Problem:** Discounts exceeding subtotal are silently truncated. No audit trail. Inconsistent with constructor that throws on negative.
+**Fix:** Throw an exception or return a result object that indicates clamping occurred, so callers can log it.
+
+### 17. `DiscountsInput` allows negative values
+**File:** `backend/app/DTOs/DiscountsInput.php` ~lines 13-17
+**Problem:** No validation. Negative `promoDiscountLaar` increases the subtotal.
+**Fix:** Add `max(0, $value)` clamping or throw on negative values in the constructor.
+
+### 18. Inventory stock can go negative
+**File:** `backend/app/Services/InventoryDeductionService.php` ~lines 68-70
+**Problem:** No guard that `current_stock >= $neededQuantity` before decrementing.
+**Fix:** Add a check. If insufficient stock, either throw or log a low-stock alert instead of going negative.
+
+### 19. Migrations use MySQL syntax on PostgreSQL database
+**Files:** Multiple migration files using `SHOW INDEX FROM`, `DATABASE()` function
+**Problem:** `docker-compose.yml` runs PostgreSQL 15 but migrations contain MySQL-specific SQL. These will fail.
+**Fix:** Replace with PostgreSQL equivalents or use Laravel schema builder methods. For index checks, use `Schema::hasIndex()` or query `pg_indexes`.
+
+### 20. `enum()` column type in migrations behaves differently on PostgreSQL
+**Files:** `create_marketing_tables.php` lines 48, 62; `add_tip_to_orders.php` line 41
+**Fix:** Use `$table->string()` with a CHECK constraint, or explicitly handle the PostgreSQL enum type.
+
+### 21. Refund cascade deletes destroy audit trail
+**File:** `database/migrations/create_refunds_table.php` ~line 19
+**Problem:** `user_id` FK with `cascadeOnDelete` — deleting a user permanently deletes all their refund records.
+**Fix:** Change to `nullOnDelete()` so refund records survive user deletion.
+
+### 22. SoftDeletes on Order but cascade-delete on OrderItem
+**File:** `backend/app/Models/Order.php` line 16 + `create_order_items_table.php` line 18
+**Problem:** Soft-deleting an Order doesn't trigger DB cascade, but hard-delete would bypass OrderItem's SoftDeletes.
+**Fix:** Remove DB-level cascade, handle item cleanup in Order's `deleting` event or override `delete()`.
+
+---
+
+## PRIORITY 3 — FRONTEND BUGS (POS, Online Order, KDS, Delivery)
+
+### 23. POS: No logout function exists
+**File:** `apps/pos-web/src/App.tsx` ~lines 97-110
+**Problem:** Token stored in `localStorage` is never cleared. No logout button. Session persists forever.
+**Fix:** Add a `logout()` function that clears `localStorage`, resets `_token`, and redirects to login. Add a logout button to the UI.
+
+### 24. POS: Token lost on page refresh
+**Files:** `apps/pos-web/src/api.ts` lines 22-25; `App.tsx` lines 103-104
+**Problem:** Module-level `_token` resets to `null` on refresh. App never reads from `localStorage` to restore it.
+**Fix:** Initialize `_token` from `localStorage.getItem('pos_token')` at module load time.
+
+### 25. POS: `addToCart` stale closure over selectedItem and selectedModifiers
+**File:** `apps/pos-web/src/hooks/useCart.ts` ~lines 47-61
+**Problem:** When called from barcode lookup, modifiers may be dropped or incorrectly attached.
+**Fix:** Use `useRef` for `selectedItem`/`selectedModifiers` or pass them as parameters to `addToCart`.
+
+### 26. POS: Cart total does not subtract discount
+**File:** `apps/pos-web/src/components/OrderCart.tsx` ~line 164
+**Problem:** Displayed `cartTotal` ignores discount amount. User sees wrong total.
+**Fix:** Subtract `discountAmount` from the displayed total.
+
+### 27. POS: `handleCheckout` double-submission in React 18 concurrent mode
+**File:** `apps/pos-web/src/hooks/useOrderCreation.ts` ~lines 66-134
+**Problem:** `isSubmitting` read from stale closure, not via functional updater.
+**Fix:** Use a `useRef` for `isSubmitting` or use the functional updater pattern with `setState`.
+
+### 28. POS: `handleHoldOrder` and `handleCheckout` can fire simultaneously
+**File:** `apps/pos-web/src/hooks/useOrderCreation.ts` ~lines 136-159
+**Problem:** Hold doesn't check `isSubmitting`. User can submit order-and-pay and order-and-hold concurrently.
+**Fix:** Have both functions check and set the same `isSubmitting` guard.
+
+### 29. POS: Offline queue race condition across tabs
+**File:** `apps/pos-web/src/offlineQueue.ts` ~lines 34-36
+**Problem:** `setQueue` bypasses Web Locks API. Another tab can overwrite, losing an order.
+**Fix:** Use the Web Locks API (`navigator.locks.request`) when reading/writing the queue.
+
+### 30. POS: `OrderCart` directly mutates cart via `setCartItems`
+**File:** `apps/pos-web/src/components/OrderCart.tsx` ~lines 66-76, 83-91
+**Problem:** Bypasses `updateQuantity` from `useCart`, duplicating logic.
+**Fix:** Use `updateQuantity` and `removeItem` from the cart hook instead of direct `setCartItems`.
+
+### 31. Online Order: `useCheckout` reads cart from localStorage, not CartContext
+**File:** `apps/online-order-web/src/hooks/useCheckout.ts` ~lines 45-61
+**Problem:** Cart modifications after checkout page loads are never reflected.
+**Fix:** Read cart from `CartContext` instead of `localStorage`.
+
+### 32. Online Order: `clearCart` called on every matching status re-render
+**File:** `apps/online-order-web/src/pages/OrderStatusPage.tsx` ~lines 277-282
+**Problem:** ESLint suppression hides potential infinite loop if `clearCart` becomes unstable.
+**Fix:** Use a ref flag `hasCleared` to ensure `clearCart` is called only once.
+
+### 33. Online Order: OrderStatusBar fires duplicate requests on navigation
+**File:** `apps/online-order-web/src/components/OrderStatusBar.tsx` ~lines 52-95
+**Problem:** Both interval callback and pathname effect fire simultaneously. `order` in dependency array cascades.
+**Fix:** Remove `order` from the dependency array. Use a ref for the interval. Deduplicate requests.
+
+### 34. Online Order: `auth_expired` event not handled
+**File:** `apps/online-order-web/src/context/AuthContext.tsx`
+**Fix:** Add `window.addEventListener('auth_expired', logout)` alongside existing event listeners.
+
+### 35. Online Order: `SiteSettingsProvider` uses relative URL
+**File:** `apps/online-order-web/src/context/SiteSettingsContext.tsx` ~line 112
+**Problem:** `fetch('/api/site-settings/public')` hits Vite dev server, not Laravel backend.
+**Fix:** Use the configured API base URL from environment variables.
+
+### 36. Online Order: Checkout reads token from localStorage, ignoring AuthContext
+**File:** `apps/online-order-web/src/hooks/useCheckout.ts` ~lines 63-64
+**Fix:** Read token from `AuthContext` to ensure the latest (possibly refreshed) token is used.
+
+### 37. KDS: Dev PINs may be exposed in production
+**File:** `apps/kds-web/src/App.tsx` ~lines 281-285
+**Problem:** Default PINs (1111/2222/3333/4444) guarded by `import.meta.env.DEV`, but if production DB ships with these defaults, system is vulnerable.
+**Fix:** Add a startup check / migration that rejects default PINs in production. Or remove hardcoded PINs entirely.
+
+### 38. KDS: No audio/visual alert for new orders
+**File:** `apps/kds-web/src/App.tsx`
+**Problem:** Polls every 5 seconds but no notification mechanism. Kitchen staff miss orders.
+**Fix:** Play an audio chime and/or flash the screen when new orders arrive since last poll.
+
+### 39. Delivery app: 204 No Content response crashes
+**File:** `apps/delivery-web/src/api.ts` ~line 36
+**Problem:** `res.json()` called unconditionally. 204 responses have no body, causing a parse error.
+**Fix:** Check `if (res.status === 204) return null;` before calling `res.json()`.
+
+### 40. Delivery app: Hard redirect on 401 loses SPA state
+**File:** `apps/delivery-web/src/api.ts` ~line 27
+**Problem:** `window.location.href = '/login'` causes full page reload. SPA state and `LocationTracker` buffer are lost.
+**Fix:** Use React Router navigation or dispatch an `auth_expired` event instead.
+
+### 41. Delivery app: LocationTracker buffer race condition
+**File:** `apps/delivery-web/src/components/LocationTracker.tsx` ~lines 51-58
+**Problem:** Failed payloads merged with current buffer can truncate newest positions in favor of old ones.
+**Fix:** Append failed payload to end of buffer (not beginning). Use timestamps to sort.
+
+---
+
+## PRIORITY 4 — MODEL & DATABASE ISSUES
+
+### 42. Missing indexes on frequently queried columns
+Add indexes to:
+- `refunds`: `order_id`, `user_id`, `status`, `created_at` (has NO indexes at all)
+- `gift_card_transactions`: `order_id`
+- `orders`: `delivery_driver_id`
+- `cash_movements`: `shift_id`, `user_id`, `created_at`
+
+### 43. Missing foreign key constraints
+Add FK constraints to:
+- `cash_movements.shift_id`
+- `order_item_modifiers.order_item_id`
+- `print_jobs.printer_id`
+
+### 44. Order model does not cast monetary columns
+**File:** `backend/app/Models/Order.php` ~lines 65-84
+**Fix:** Add `'subtotal' => 'decimal:2', 'tax_amount' => 'decimal:2', 'discount_amount' => 'decimal:2', 'total' => 'decimal:2'` to `$casts`. Better yet, migrate to integer laari columns.
+
+### 45. InventoryItem unit_cost cast precision mismatch
+**File:** `backend/app/Models/InventoryItem.php` line 23
+**Problem:** Cast is `decimal:4` but migration column is `decimal(10,2)`. Extra precision silently lost on save.
+**Fix:** Align cast to `decimal:2` to match the column, or alter the column to `decimal(10,4)`.
+
+### 46. Payment model: `gateway_response` in casts but not in fillable
+**File:** `backend/app/Models/Payment.php`
+**Fix:** Add `gateway_response` to `$fillable` if it needs mass assignment, or remove from casts if unused. Also add `provider_transaction_id` to the model.
+
+### 47. Item model missing spice_level cast
+**File:** `backend/app/Models/Item.php`
+**Fix:** Add `'spice_level' => 'integer'` to `$casts`.
+
+### 48. Config files use `(float)` cast for monetary values
+**Files:** `config/loyalty.php` lines 19-20, `config/delivery.php` line 14
+**Fix:** Cast to `(int)` and use laari values, or parse with `bcmul($value, '100', 0)`.
+
+---
+
+## PRIORITY 5 — EVENT LISTENER ISSUES
+
+### 49. All four listeners swallow exceptions — retries never happen
+**Files:**
+- `backend/app/Listeners/ConsumeLoyaltyHoldListener.php` ~lines 47-53
+- `backend/app/Listeners/EarnPointsFromOrderListener.php` ~lines 56-64
+- `backend/app/Listeners/ReleaseLoyaltyHoldListener.php` ~lines 37-45
+- `backend/app/Listeners/DeductInventoryListener.php` ~lines 41-47
+
+**Problem:** All catch `Throwable` and log instead of re-throwing. This defeats the `$tries = 3` retry mechanism. Loyalty holds are never consumed, earned points are lost, inventory drifts.
+**Fix:** Re-throw the exception after logging so the queue worker retries. Optionally add a `failed()` method for dead-letter handling.
+
+---
+
+## PRIORITY 6 — INFRASTRUCTURE / DOCKER
+
+### 50. `php artisan serve` used in production container
+**File:** `docker-compose.yml` ~line 65
+**Fix:** Use PHP-FPM + Nginx or FrankenPHP/RoadRunner for concurrent request handling.
+
+### 51. PostgreSQL, Redis, and print-proxy ports exposed to host
+**File:** `docker-compose.yml` lines 12, 28-29, 78
+**Fix:** Remove `ports` mappings for services that only need internal network access. Use `expose` instead.
+
+### 52. Redis has no authentication
+**File:** `docker-compose.yml`
+**Fix:** Add `--requirepass` to the Redis command and set `REDIS_PASSWORD` in the app env.
+
+### 53. Source code mounted as volume in production container
+**File:** `docker-compose.yml` ~lines 51-52
+**Fix:** Copy source into the image at build time. Remove volume mount for production.
+
+### 54. Print proxy writes ESC/POS binary as UTF-8
+**File:** `print-proxy/src/index.ts` ~line 231
+**Fix:** Use `Buffer` with `'binary'` or `'latin1'` encoding instead of UTF-8 string.
+
+### 55. Print proxy IS_PROD defaults to true when NODE_ENV is unset
+**File:** `print-proxy/src/index.ts` ~line 8
+**Fix:** Default to `false` or throw if `NODE_ENV` is not explicitly set.
+
+---
+
+## GENERAL RULES FOR ALL FIXES
+
+1. **Always use `DB::transaction()` + `lockForUpdate()`** for any read-then-write on financial data (payments, loyalty, inventory).
+2. **Never compare monetary floats** — use integer laari or `bccomp()`.
+3. **Never swallow exceptions in queue listeners** — re-throw so the retry mechanism works.
+4. **Use the state machine** for all status transitions. Never raw-assign status fields.
+5. **All new migrations must be PostgreSQL-compatible** — no MySQL syntax.
+6. **Frontend: avoid stale closures** — use `useRef` or functional updaters for values read in async callbacks.
+7. **Frontend: always handle `auth_expired`** — listen for the event and redirect to login.
+8. **Test each fix** — write or update a test that would have caught the original bug.
+9. **One fix per commit** — keep changes atomic and reviewable.
+10. **Do not refactor unrelated code** — fix only the listed issue in each change.
