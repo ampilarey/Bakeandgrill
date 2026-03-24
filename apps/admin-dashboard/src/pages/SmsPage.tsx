@@ -51,7 +51,7 @@ function LogsTab() {
         </div>
       )}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
           <StatCard label="Total SMS" value={stats.total.toLocaleString()} accent="#D4813A" />
           <StatCard label="Sent"      value={stats.sent.toLocaleString()}  accent="#22c55e" />
           <StatCard label="Failed"    value={stats.failed.toLocaleString()} accent="#ef4444" />

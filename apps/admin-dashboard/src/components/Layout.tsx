@@ -336,7 +336,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
                       <p style={{ fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.08em', marginBottom: 8, margin: '0 0 8px' }}>
                         {group.label}
                       </p>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                      <div className="more-drawer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                         {visibleItems.map(({ to, icon: Icon, label }) => {
                           const isActive = location.pathname.startsWith(to);
                           return (

@@ -1758,3 +1758,49 @@ export async function sendSmsPromotion(id: number): Promise<void> {
 export async function deleteSmsPromotion(id: number): Promise<void> {
   await req(`/admin/sms/promotions/${id}`, { method: 'DELETE' });
 }
+
+// ── Item Photos ───────────────────────────────────────────────────────────────
+
+export interface ItemPhoto {
+  id: number;
+  item_id: number;
+  url: string;
+  sort_order: number;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export async function getItemPhotos(itemId: number): Promise<{ data: ItemPhoto[] }> {
+  return req(`/items/${itemId}/photos`);
+}
+
+export async function uploadItemPhoto(itemId: number, file: File): Promise<{ photo: ItemPhoto }> {
+  const token = localStorage.getItem('admin_token');
+  const form = new FormData();
+  form.append('photo', file);
+  const res = await fetch(`${BASE}/items/${itemId}/photos`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body.message ?? `Upload failed (${res.status})`);
+  }
+  return res.json() as Promise<{ photo: ItemPhoto }>;
+}
+
+export async function updateItemPhoto(
+  itemId: number,
+  photoId: number,
+  data: { sort_order?: number; is_primary?: boolean },
+): Promise<{ photo: ItemPhoto }> {
+  return req(`/items/${itemId}/photos/${photoId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteItemPhoto(itemId: number, photoId: number): Promise<void> {
+  await req(`/items/${itemId}/photos/${photoId}`, { method: 'DELETE' });
+}

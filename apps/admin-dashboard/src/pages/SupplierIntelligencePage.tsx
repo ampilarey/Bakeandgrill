@@ -93,7 +93,7 @@ export function SupplierIntelligencePage() {
                   </div>
                 </div>
 
-                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, minWidth: 0 }}>
+                <div className="stat-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, minWidth: 0 }}>
                   <div>
                     <div style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Purchases</div>
                     <div style={{ fontWeight: 700, color: '#1C1408' }}>{sup.purchase_count}</div>

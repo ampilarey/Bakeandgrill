@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { Star, Trash2, Upload } from 'lucide-react';
 import {
   fetchAdminCategories, createCategory, updateCategory, deleteCategory,
   fetchAdminItems, createItem, updateItem, deleteItem, toggleItemAvailability,
-  uploadMenuImage,
-  type MenuCategory, type MenuItem, type MenuItemPayload,
+  uploadMenuImage, getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto,
+  type MenuCategory, type MenuItem, type MenuItemPayload, type ItemPhoto,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
@@ -216,14 +217,16 @@ function formToPayload(form: ItemForm): MenuItemPayload {
 }
 
 function ItemFormModal({
-  initial, title, categories, onSave, onClose,
+  initial, title, categories, onSave, onClose, itemId,
 }: {
   initial: ItemForm;
   title: string;
   categories: MenuCategory[];
   onSave: (f: ItemForm) => Promise<void>;
   onClose: () => void;
+  itemId?: number;
 }) {
+  const [activeTab, setActiveTab] = useState<'details' | 'photos'>('details');
   const [form, setForm] = useState<ItemForm>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -239,69 +242,217 @@ function ItemFormModal({
     finally { setLoading(false); }
   };
 
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: '7px 16px', fontSize: 13, fontWeight: 600, border: 'none',
+    borderBottom: active ? '2px solid #D4813A' : '2px solid transparent',
+    background: 'none', cursor: 'pointer',
+    color: active ? '#D4813A' : '#64748b',
+  });
+
   return (
     <Modal onClose={onClose} wide>
-      <h3 style={{ fontWeight: 800, fontSize: 17, marginBottom: 20, color: '#0f172a' }}>{title}</h3>
-      {error && <ErrorMsg message={error} />}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Name (English) *">
-            <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Chicken Grill" />
-          </Field>
-          <Field label="Name (Dhivehi) — optional">
-            <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
-          </Field>
+      <h3 style={{ fontWeight: 800, fontSize: 17, marginBottom: 16, color: '#0f172a' }}>{title}</h3>
+
+      {itemId && (
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', marginBottom: 20 }}>
+          <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
+          <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')}>Photos</button>
         </div>
-        <Field label="Description">
-          <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Describe the item…" />
-        </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <Field label="Price (MVR) *">
-            <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
-          </Field>
-          <Field label="Tax Rate (%)">
-            <Input value={form.tax_rate} onChange={(v) => set('tax_rate', v)} type="number" placeholder="0" />
-          </Field>
-          <Field label="Sort Order">
-            <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
-          </Field>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
-          <Field label="Category">
-            <select
-              value={form.category_id}
-              onChange={(e) => set('category_id', e.target.value)}
-              style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
-            >
-              <option value="">— No category —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={String(c.id)}>{c.name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="SKU / Internal Code">
-            <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
-          </Field>
-        </div>
-        <Field label="Image">
-          <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
-        </Field>
-        <div style={{ display: 'flex', gap: 20 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-            <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
-            Active (exists in system)
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-            <input type="checkbox" checked={form.is_available} onChange={(e) => set('is_available', e.target.checked)} />
-            Available (orderable today)
-          </label>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-        <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Item'}</Btn>
-      </div>
+      )}
+
+      {activeTab === 'details' && (
+        <>
+          {error && <ErrorMsg message={error} />}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Name (English) *">
+                <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Chicken Grill" />
+              </Field>
+              <Field label="Name (Dhivehi) — optional">
+                <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
+              </Field>
+            </div>
+            <Field label="Description">
+              <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Describe the item…" />
+            </Field>
+            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <Field label="Price (MVR) *">
+                <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
+              </Field>
+              <Field label="Tax Rate (%)">
+                <Input value={form.tax_rate} onChange={(v) => set('tax_rate', v)} type="number" placeholder="0" />
+              </Field>
+              <Field label="Sort Order">
+                <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
+              </Field>
+            </div>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+              <Field label="Category">
+                <select
+                  value={form.category_id}
+                  onChange={(e) => set('category_id', e.target.value)}
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                >
+                  <option value="">— No category —</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={String(c.id)}>{c.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="SKU / Internal Code">
+                <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
+              </Field>
+            </div>
+            <Field label="Image">
+              <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
+            </Field>
+            <div style={{ display: 'flex', gap: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
+                Active (exists in system)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.is_available} onChange={(e) => set('is_available', e.target.checked)} />
+                Available (orderable today)
+              </label>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+            <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+            <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Item'}</Btn>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'photos' && itemId && (
+        <>
+          <PhotosTab itemId={itemId} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+            <Btn variant="ghost" onClick={onClose}>Close</Btn>
+          </div>
+        </>
+      )}
     </Modal>
+  );
+}
+
+// ── Photos tab ────────────────────────────────────────────────────────────────
+
+function PhotosTab({ itemId }: { itemId: number }) {
+  const [photos, setPhotos] = useState<ItemPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try { setPhotos((await getItemPhotos(itemId)).data); }
+    catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { void load(); }, [itemId]);
+
+  const handleUpload = async (file: File) => {
+    setUploading(true); setError('');
+    try {
+      const { photo } = await uploadItemPhoto(itemId, file);
+      setPhotos((p) => [...p, photo]);
+    } catch (e) { setError((e as Error).message); }
+    finally { setUploading(false); }
+  };
+
+  const setPrimary = async (photoId: number) => {
+    try {
+      await updateItemPhoto(itemId, photoId, { is_primary: true });
+      setPhotos((p) => p.map((ph) => ({ ...ph, is_primary: ph.id === photoId })));
+    } catch (e) { setError((e as Error).message); }
+  };
+
+  const remove = async (photoId: number) => {
+    try {
+      await deleteItemPhoto(itemId, photoId);
+      setPhotos((p) => p.filter((ph) => ph.id !== photoId));
+    } catch (e) { setError((e as Error).message); }
+  };
+
+  if (loading) return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>Loading photos…</div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
+
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '10px 16px', background: '#f1f5f9', border: '2px dashed #cbd5e1',
+          borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
+          fontSize: 13, fontWeight: 600, color: '#475569',
+        }}
+      >
+        <Upload size={15} />
+        {uploading ? 'Uploading…' : 'Upload Photo'}
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleUpload(f);
+          e.target.value = '';
+        }}
+      />
+
+      {photos.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px 0', fontSize: 13 }}>
+          No photos yet. Upload one above.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
+          {photos.map((ph) => (
+            <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #e2e8f0' }}>
+              <img
+                src={ph.url}
+                alt=""
+                style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              {ph.is_primary && (
+                <div style={{ position: 'absolute', top: 4, left: 4, background: '#D4813A', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
+                  Primary
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 4, padding: '6px 6px 6px' }}>
+                {!ph.is_primary && (
+                  <button
+                    type="button"
+                    title="Set as primary"
+                    onClick={() => void setPrimary(ph.id)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 6, cursor: 'pointer' }}
+                  >
+                    <Star size={13} color="#d97706" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  title="Delete"
+                  onClick={() => void remove(ph.id)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  <Trash2 size={13} color="#dc2626" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -673,6 +824,7 @@ export function MenuPage() {
           categories={categories}
           onSave={handleUpdateItem}
           onClose={() => setEditingItem(null)}
+          itemId={editingItem.id}
         />
       )}
     </>

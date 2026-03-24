@@ -133,7 +133,7 @@ export function ForecastPage() {
                   {forecast.growth_rate_pct >= 0 ? '+' : ''}{parseFloat(String(forecast.growth_rate_pct ?? 0)).toFixed(2)}%/wk
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+              <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
                 {forecast.forecast.map((wk, i) => (
                   <div key={wk.week_start} style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                     <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Week {i + 1}</div>

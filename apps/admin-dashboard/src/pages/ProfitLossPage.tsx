@@ -124,7 +124,7 @@ export function ProfitLossPage() {
           {cashFlow && (
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 16, margin: '0 0 16px' }}>Cash Flow Summary</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+              <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
                 <StatCard label="Total Inflow"   value={`MVR ${parseFloat(String(cashFlow.total_inflow ?? 0)).toFixed(2)}`}   accent="#22c55e" />
                 <StatCard label="Total Outflow"  value={`MVR ${parseFloat(String(cashFlow.total_outflow ?? 0)).toFixed(2)}`}  accent="#ef4444" />
                 <StatCard label="Net Cash Flow"  value={`MVR ${parseFloat(String(cashFlow.net_cash_flow ?? 0)).toFixed(2)}`}  accent={cashFlow.net_cash_flow >= 0 ? '#22c55e' : '#ef4444'} />
