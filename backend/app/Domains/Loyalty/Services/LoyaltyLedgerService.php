@@ -45,7 +45,11 @@ class LoyaltyLedgerService
     public function createOrRefreshHold(Customer $customer, Order $order, int $pointsToRedeem): LoyaltyHold
     {
         return DB::transaction(function () use ($customer, $order, $pointsToRedeem): LoyaltyHold {
-            $account = $this->accountFor($customer);
+            // Ensure the account row exists before locking it.
+            $this->accountFor($customer);
+            // Lock the account row to prevent concurrent holds from over-committing
+            // the same points balance (C-3: race condition).
+            $account = LoyaltyAccount::where('customer_id', $customer->id)->lockForUpdate()->firstOrFail();
 
             $minRedeem = $this->calculator->minRedeemPoints();
             if ($pointsToRedeem < $minRedeem) {
@@ -180,16 +184,21 @@ class LoyaltyLedgerService
      */
     public function earnPointsForOrder(Customer $customer, Order $order): void
     {
-        $account = $this->accountFor($customer);
-        $points  = $this->calculator->pointsForOrder($order, $account);
-
-        if ($points <= 0) {
-            return;
-        }
-
         $idempotencyKey = 'loyalty:earn:' . $order->id . ':' . $customer->id;
 
-        DB::transaction(function () use ($customer, $order, $points, $idempotencyKey, $account): void {
+        DB::transaction(function () use ($customer, $order, $idempotencyKey): void {
+            // Ensure account exists before acquiring the lock.
+            $this->accountFor($customer);
+            // Lock the account row so concurrent OrderPaid events (e.g. webhook +
+            // return-URL) can't both compute the same balance and corrupt it (C-3).
+            $account = LoyaltyAccount::where('customer_id', $customer->id)->lockForUpdate()->firstOrFail();
+
+            $points = $this->calculator->pointsForOrder($order, $account);
+
+            if ($points <= 0) {
+                return;
+            }
+
             if ($this->ledgerRepo->existsByIdempotencyKey($idempotencyKey)) {
                 Log::info('Loyalty earn already recorded, skipping', ['key' => $idempotencyKey]);
 

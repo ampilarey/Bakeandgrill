@@ -181,9 +181,18 @@ class PaymentService
      */
     public function confirmFromReturnUrl(int $orderId, string $transactionId): void
     {
-        $payment = $this->payments->findByOrderId($orderId);
+        // Prefer lookup by transactionId so we confirm the exact payment attempt
+        // the customer completed, not just "the latest one for this order".
+        // If the customer retried payment, findByOrderId() would return the newer
+        // (not-yet-confirmed) attempt and then confirm the wrong record (L-4).
+        $payment = $this->payments->findByProviderTransactionId($transactionId)
+            ?? $this->payments->findByOrderId($orderId);
+
         if (!$payment) {
-            Log::info('BML return: no payment record for order', ['order_id' => $orderId]);
+            Log::info('BML return: no payment record for order', [
+                'order_id'       => $orderId,
+                'transaction_id' => $transactionId,
+            ]);
 
             return;
         }
@@ -324,43 +333,50 @@ class PaymentService
 
     private function confirmPayment(Payment $payment, array $payload): void
     {
-        if ($payment->status === 'confirmed') {
-            Log::info('BML: Payment already confirmed, skipping', ['payment_id' => $payment->id]);
-
-            return;
-        }
-
         DB::transaction(function () use ($payment, $payload): void {
-            $this->payments->update($payment->id, [
-                'status' => 'confirmed',
-                'gateway_response' => $payload,
-            ]);
+            // Re-fetch with a row lock inside the transaction so two concurrent
+            // webhooks / return-URL callbacks can't both pass the status check
+            // (C-1: TOCTOU race condition → double loyalty earn, double inventory deduction).
+            $locked = Payment::where('id', $payment->id)->lockForUpdate()->first();
 
-            $order = $this->orders->findById($payment->order_id);
-            if (!$order) {
-                Log::error('BML: Order not found during payment confirmation', [
+            if (!$locked || $locked->status === 'confirmed') {
+                Log::info('BML: Payment already confirmed or not found (concurrent request), skipping', [
                     'payment_id' => $payment->id,
-                    'order_id' => $payment->order_id,
                 ]);
 
                 return;
             }
 
-            $paidTotal = $this->payments->sumAmountForOrder(
-                $order->id,
-                ['paid', 'confirmed', 'completed'],
-            );
-
-            Log::info('BML: Payment confirmed', [
-                'payment_id' => $payment->id,
-                'order_id' => $order->id,
-                'paid_total' => $paidTotal,
-                'order_total' => $order->total,
+            $this->payments->update($locked->id, [
+                'status' => 'confirmed',
+                'gateway_response' => $payload,
             ]);
 
-            PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($payment, $order));
+            $order = $this->orders->findById($locked->order_id);
+            if (!$order) {
+                Log::error('BML: Order not found during payment confirmation', [
+                    'payment_id' => $locked->id,
+                    'order_id' => $locked->order_id,
+                ]);
 
-            if ($paidTotal >= $order->total && !in_array($order->status, ['paid', 'completed'], true)) {
+                return;
+            }
+
+            // C-2: Compare in laari (integer) to avoid float precision errors where
+            // e.g. 100.00 (float) >= 100.00 (float) could fail with 99.9999... representation.
+            $paidLaar  = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
+            $orderLaar = (int) round((float) $order->total * 100);
+
+            Log::info('BML: Payment confirmed', [
+                'payment_id'  => $locked->id,
+                'order_id'    => $order->id,
+                'paid_laar'   => $paidLaar,
+                'order_laar'  => $orderLaar,
+            ]);
+
+            PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($locked, $order));
+
+            if ($paidLaar >= $orderLaar && !in_array($order->status, ['paid', 'completed'], true)) {
                 // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
                 // POS orders already in the kitchen queue go straight to paid.
                 $newStatus = $order->status === 'payment_pending' ? 'pending' : 'paid';

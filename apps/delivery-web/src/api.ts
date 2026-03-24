@@ -24,7 +24,9 @@ async function request<T>(
 
   if (res.status === 401) {
     localStorage.removeItem('driver_token');
-    window.location.href = '/driver/login';
+    // Dispatch a custom event instead of a full-page redirect so the React
+    // SPA can handle the transition via state (preserving LocationTracker buffer).
+    window.dispatchEvent(new Event('auth_expired'));
     throw new Error('Unauthenticated');
   }
 
@@ -32,6 +34,9 @@ async function request<T>(
     const err = await res.json().catch(() => ({ message: 'Server error.' }));
     throw new Error((err as { message?: string }).message ?? 'Server error.');
   }
+
+  // 204 No Content — return null without attempting JSON parse (which would throw).
+  if (res.status === 204) return null as T;
 
   return res.json() as Promise<T>;
 }

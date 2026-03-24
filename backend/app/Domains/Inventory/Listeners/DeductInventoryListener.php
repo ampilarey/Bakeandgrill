@@ -43,7 +43,10 @@ class DeductInventoryListener
                 'order_id' => $event->data->orderId,
                 'error'    => $e->getMessage(),
             ]);
-            // Do NOT re-throw — other listeners must still run
+            // Re-throw so the queue worker retries this job (respects $tries = 3).
+            // Each listener is dispatched as its own independent queue job when
+            // ShouldQueue is implemented, so re-throwing here does NOT affect other listeners.
+            throw $e;
         }
     }
 }

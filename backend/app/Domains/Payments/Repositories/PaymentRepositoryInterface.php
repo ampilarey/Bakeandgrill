@@ -14,6 +14,8 @@ interface PaymentRepositoryInterface
 
     public function findByOrderId(int $orderId): ?Payment;
 
+    public function findByProviderTransactionId(string $transactionId): ?Payment;
+
     public function findByIdempotencyKey(string $key): ?Payment;
 
     /** @param array<string, mixed> $data */

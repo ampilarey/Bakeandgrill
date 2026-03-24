@@ -25,6 +25,11 @@ class EloquentPaymentRepository implements PaymentRepositoryInterface
             ->first();
     }
 
+    public function findByProviderTransactionId(string $transactionId): ?Payment
+    {
+        return Payment::where('provider_transaction_id', $transactionId)->first();
+    }
+
     public function findByIdempotencyKey(string $key): ?Payment
     {
         return Payment::where('idempotency_key', $key)->first();

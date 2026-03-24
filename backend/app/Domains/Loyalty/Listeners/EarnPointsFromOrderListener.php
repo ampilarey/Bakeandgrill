@@ -61,6 +61,9 @@ class EarnPointsFromOrderListener implements ShouldQueue
                 'customer_id' => $customerId,
                 'error'       => $e->getMessage(),
             ]);
+            // Re-throw so the queue worker retries this job (respects $tries = 3).
+            // Swallowing silently marks the job as succeeded → earned points are lost.
+            throw $e;
         }
     }
 }

@@ -10,14 +10,15 @@ use App\Domains\Shared\Support\StateMachine;
  * Order status state machine.
  *
  * Statuses:
- *   pending      — created, not yet in kitchen
- *   in_progress  — kitchen is working on it
- *   held         — temporarily held (POS)
- *   partial      — partially paid
- *   paid         — fully paid (triggers promo/loyalty consumption, inventory deduction)
- *   completed    — fully paid AND kitchen bumped (or online fulfilled)
- *   cancelled    — cancelled before payment
- *   refunded     — refund issued after completion
+ *   payment_pending — online order created, awaiting BML payment (customer on redirect)
+ *   pending         — payment confirmed; order visible to kitchen
+ *   in_progress     — kitchen is working on it
+ *   held            — temporarily held (POS)
+ *   partial         — partially paid
+ *   paid            — fully paid (triggers promo/loyalty consumption, inventory deduction)
+ *   completed       — fully paid AND kitchen bumped (or online fulfilled)
+ *   cancelled       — cancelled before payment
+ *   refunded        — refund issued after completion
  */
 class OrderStateMachine extends StateMachine
 {
@@ -29,6 +30,7 @@ class OrderStateMachine extends StateMachine
     protected function transitions(): array
     {
         return [
+            'payment_pending' => ['pending', 'paid', 'cancelled'],
             'pending' => ['in_progress', 'held', 'partial', 'paid', 'cancelled'],
             'in_progress' => ['held', 'partial', 'paid', 'completed', 'cancelled'],
             'held' => ['pending', 'cancelled'],

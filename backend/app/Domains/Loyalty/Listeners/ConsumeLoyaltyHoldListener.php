@@ -50,6 +50,10 @@ class ConsumeLoyaltyHoldListener implements ShouldQueue
                 'order_id' => $orderId,
                 'error'    => $e->getMessage(),
             ]);
+            // Re-throw so the queue worker retries this job (respects $tries = 3).
+            // Swallowing the exception would mark the job as succeeded and silently
+            // skip the retry — leaving points stuck in held state permanently.
+            throw $e;
         }
     }
 }

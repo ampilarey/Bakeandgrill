@@ -24,6 +24,15 @@ function App() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Listen for the auth_expired event dispatched by api.ts on 401 responses.
+  // Clearing driver state causes React Router to redirect to /login without a
+  // full page reload, preserving the LocationTracker buffer.
+  useEffect(() => {
+    const onAuthExpired = () => setDriver(null);
+    window.addEventListener('auth_expired', onAuthExpired);
+    return () => window.removeEventListener('auth_expired', onAuthExpired);
+  }, []);
+
   if (loading) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>

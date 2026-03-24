@@ -18,7 +18,9 @@ class Customer extends Model implements AuthenticatableContract
         'name',
         'phone',
         'email',
-        'password',
+        // 'password' is intentionally excluded from $fillable to prevent mass-assignment.
+        // Set it explicitly: $customer->password = $plain; $customer->save();
+        // The 'hashed' cast (below) handles bcrypt automatically.
         'is_profile_complete',
         'loyalty_points',
         'tier',

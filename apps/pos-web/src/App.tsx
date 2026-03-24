@@ -20,7 +20,8 @@ type OrderType = (typeof orderTypes)[number];
 function App() {
   const [showSendBill, setShowSendBill] = useState(false);
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const [isLoggedIn, setIsLoggedIn]   = useState(false);
+  // Restore session from localStorage so page refresh doesn't log out the POS.
+  const [isLoggedIn, setIsLoggedIn]   = useState(() => !!localStorage.getItem('pos_token'));
   const [pin, setPin]                 = useState("");
   const [deviceId, setDeviceId]       = useState(() => {
       const stored = localStorage.getItem("pos_device_id");
@@ -109,6 +110,13 @@ function App() {
     }
   };
 
+  // ── Logout handler ──────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    localStorage.removeItem("pos_token");
+    setAuthToken(null);
+    setIsLoggedIn(false);
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
   if (!isLoggedIn) {
     return (
@@ -149,6 +157,9 @@ function App() {
           <span className="text-xs" style={{ color: '#8B7355' }}>Queue: {offlineQueueCount}</span>
           <button className="text-xs font-semibold" style={{ color: '#8B7355', background: 'none', border: 'none', cursor: 'pointer' }} onClick={order.handleSyncQueue}>
             Sync
+          </button>
+          <button className="text-xs font-semibold" style={{ color: '#8B7355', background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleLogout}>
+            Log out
           </button>
           <a href="/" className="text-xs" style={{ color: '#8B7355', textDecoration: 'none' }}>← Site</a>
         </div>

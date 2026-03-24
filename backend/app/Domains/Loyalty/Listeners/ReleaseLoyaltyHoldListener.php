@@ -42,6 +42,8 @@ class ReleaseLoyaltyHoldListener implements ShouldQueue
                 'order_id' => $orderId,
                 'error'    => $e->getMessage(),
             ]);
+            // Re-throw so the queue worker retries this job (respects $tries = 3).
+            throw $e;
         }
     }
 }

@@ -376,10 +376,11 @@ class CustomerAuthController extends Controller
             ]);
         }
 
-        $customer->update([
-            'password' => Hash::make($input['password']),
-            'last_login_at' => now(),
-        ]);
+        // Direct attribute assignment — 'password' is excluded from $fillable.
+        // The 'hashed' cast handles bcrypt; do NOT pass Hash::make() here or it double-hashes.
+        $customer->password = $input['password'];
+        $customer->last_login_at = now();
+        $customer->save();
 
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
         $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;

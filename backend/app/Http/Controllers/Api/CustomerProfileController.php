@@ -73,7 +73,10 @@ class CustomerProfileController extends Controller
             ]);
         }
 
-        $customer->update(['password' => $input['password']]);
+        // Use direct attribute assignment — 'password' is excluded from $fillable
+        // to prevent mass-assignment. The 'hashed' cast handles bcrypt automatically.
+        $customer->password = $input['password'];
+        $customer->save();
 
         return response()->json(['message' => 'Password changed successfully']);
     }

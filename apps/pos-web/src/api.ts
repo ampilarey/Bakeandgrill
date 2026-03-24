@@ -18,8 +18,9 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   console.warn("[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api");
 }
 
-// Module-level token — set once after login, cleared on logout.
-let _token: string | null = null;
+// Module-level token — initialised from localStorage so page refresh
+// doesn't silently log out the POS. Cleared on explicit logout.
+let _token: string | null = localStorage.getItem('pos_token');
 export function setAuthToken(t: string | null): void {
   _token = t;
 }

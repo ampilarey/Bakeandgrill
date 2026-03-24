@@ -40,7 +40,10 @@ class InventoryDeductionService
                         continue;
                     }
 
-                    $idempotencyKey = 'order:' . $order->id . ':inv:' . $inventoryItem->id;
+                    // Include orderItem->id so two menu items sharing the same ingredient
+                    // each produce a distinct key — without it only the first deduction
+                    // is recorded and subsequent items silently skip.
+                    $idempotencyKey = 'order:' . $order->id . ':item:' . $orderItem->id . ':inv:' . $inventoryItem->id;
 
                     // Lock the inventory row first to close the TOCTOU window.
                     // Without lockForUpdate(), two concurrent requests can both

@@ -1,5 +1,6 @@
 import express from 'express';
 import net from 'net';
+import { timingSafeEqual } from 'crypto';
 
 const app = express();
 app.use(express.json({ limit: '256kb' })); // Conservative limit — receipts are small
@@ -51,8 +52,13 @@ const requireApiKey = (req: express.Request, res: express.Response, next: expres
     return;
   }
 
-  const providedKey = req.header('X-Print-Key');
-  if (providedKey !== PRINT_API_KEY) {
+  const providedKey = req.header('X-Print-Key') ?? '';
+  // Use constant-time comparison to prevent timing attacks that could reveal
+  // key length or content via response-time differences.
+  const keyValid =
+    providedKey.length === PRINT_API_KEY!.length &&
+    timingSafeEqual(Buffer.from(providedKey), Buffer.from(PRINT_API_KEY!));
+  if (!keyValid) {
     // Do not log the provided key — it may be a real key from a different env
     console.warn(`[WARN] Invalid API key attempt from ${req.ip}`);
     res.status(401).json({ success: false, error: 'Unauthorized' });
