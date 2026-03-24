@@ -32,7 +32,7 @@ class PaymentStateMachine extends StateMachine
     {
         return [
             'created' => ['initiated', 'confirmed', 'cancelled'],
-            'initiated' => ['pending', 'cancelled', 'failed'],
+            'initiated' => ['pending', 'confirmed', 'cancelled', 'failed'],
             'pending' => ['confirmed', 'failed', 'cancelled', 'expired'],
             'confirmed' => ['refunded'],
             'failed' => [],
