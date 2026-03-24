@@ -37,9 +37,13 @@ export const EMPTY_DELIVERY: DeliveryForm = {
   contact_name: "", contact_phone: "", notes: "",
 };
 
-/** Strip Maldivian country code for display — +9607972434 → 7972434 */
+/**
+ * Strip Maldivian country code — +9607972434 / 009607972434 → 7972434.
+ * Used for both display and submission so the backend regex always receives
+ * the canonical 7-digit local format.
+ */
 function localPhone(phone: string): string {
-  return phone.replace(/^\+?960/, "");
+  return phone.trim().replace(/^(?:00960|\+?960)/, "");
 }
 
 function readCart(): CartItem[] {
@@ -231,7 +235,7 @@ export function useCheckout() {
           delivery_address_line2: delivery.address_line2 || undefined,
           delivery_island: delivery.island,
           delivery_contact_name: delivery.contact_name,
-          delivery_contact_phone: delivery.contact_phone,
+          delivery_contact_phone: localPhone(delivery.contact_phone),
           delivery_notes: delivery.notes || undefined,
           customer_notes: notes || undefined,
         });

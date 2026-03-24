@@ -16,6 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust all proxies so that HTTPS is detected correctly behind nginx/Cloudflare.
+        // Without this, CSRF cookie SameSite + Secure attributes mismatch causes 419.
+        $middleware->trustProxies(at: '*', headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
+            \Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
+
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
         // Use our custom EncryptCookies so _cauth/_cauth_name stay plain-text

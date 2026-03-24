@@ -7,6 +7,7 @@ namespace App\Domains\Notifications\Listeners;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\Events\OrderPaid;
+use App\Enums\OrderType;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
 use App\Models\Receipt;
@@ -18,7 +19,7 @@ use Illuminate\Support\Str;
 /**
  * Sends a payment confirmation SMS + optional email after any order is paid.
  *
- * Online orders (online_pickup, online_delivery, delivery):
+ * Online orders (online_pickup, delivery):
  *   → tracking link so customer can watch order progress
  *
  * Dine-in / takeaway orders:
@@ -34,7 +35,11 @@ class SendPaymentConfirmationListener implements ShouldQueue
     public int $tries = 3;
     public int $backoff = 5;
 
-    private const ONLINE_TYPES = ['online_pickup', 'online_delivery', 'delivery'];
+    /** Real OrderType enum values that get a tracking-link SMS on payment. */
+    private const ONLINE_TYPES = [
+        OrderType::OnlinePickup->value,  // 'online_pickup'
+        OrderType::Delivery->value,      // 'delivery'
+    ];
 
     public function __construct(private SmsService $sms) {}
 

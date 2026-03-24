@@ -7,6 +7,7 @@ namespace App\Domains\Notifications\Listeners;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\Events\OrderCreated;
+use App\Enums\OrderType;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,8 +25,12 @@ class SendOrderConfirmationListener implements ShouldQueue
 
     /**
      * Online orders require BML payment before confirmation — handled by SendPaymentConfirmationListener.
+     * These map to the real OrderType enum values written to the DB.
      */
-    private const DEFERRED_TYPES = ['online_pickup', 'online_delivery', 'delivery'];
+    private const DEFERRED_TYPES = [
+        OrderType::OnlinePickup->value,  // 'online_pickup'
+        OrderType::Delivery->value,      // 'delivery'
+    ];
 
     public function handle(OrderCreated $event): void
     {

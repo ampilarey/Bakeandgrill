@@ -9,12 +9,12 @@ alwaysApply: true
 
 **Full deploy** (new migrations or PHP deps):
 ```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart
 ```
 
 **Quick pull** (frontend/small fixes only — no new migrations):
 ```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart
 ```
 
 ## Server Details
@@ -29,3 +29,5 @@ cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend
 | Branch | `main` |
 
 Always use the **quick pull** for UI-only changes, **full deploy** when PHP files or migrations changed.
+
+> `queue:restart` signals the queue workers to gracefully restart after their current job, ensuring they pick up new PHP code. Without it, stale workers run old bytecode until the server reboots.
