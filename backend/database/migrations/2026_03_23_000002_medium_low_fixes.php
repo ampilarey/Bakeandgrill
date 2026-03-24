@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -40,10 +39,7 @@ return new class extends Migration
 
         // ── M-12: Standalone index on webhook_logs.gateway_event_id ──────────
         if (Schema::hasTable('webhook_logs') && Schema::hasColumn('webhook_logs', 'gateway_event_id')) {
-            $indexExists = count(DB::select(
-                "SHOW INDEX FROM `webhook_logs` WHERE Key_name = 'webhook_logs_gateway_event_id_index'"
-            )) > 0;
-            if (!$indexExists) {
+            if (!Schema::hasIndex('webhook_logs', 'webhook_logs_gateway_event_id_index')) {
                 Schema::table('webhook_logs', function (Blueprint $table) {
                     $table->index('gateway_event_id');
                 });
@@ -52,10 +48,7 @@ return new class extends Migration
 
         // ── M-13: Reverse lookup index on promotion_targets ──────────────────
         if (Schema::hasTable('promotion_targets')) {
-            $indexExists = count(DB::select(
-                "SHOW INDEX FROM `promotion_targets` WHERE Key_name = 'promotion_targets_target_type_target_id_index'"
-            )) > 0;
-            if (!$indexExists) {
+            if (!Schema::hasIndex('promotion_targets', 'promotion_targets_target_type_target_id_index')) {
                 Schema::table('promotion_targets', function (Blueprint $table) {
                     $table->index(['target_type', 'target_id']);
                 });

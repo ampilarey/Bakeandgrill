@@ -11,6 +11,7 @@ use App\Domains\Payments\DTOs\PaymentConfirmedData;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Gateway\BmlConnectService;
 use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
+use App\Domains\Payments\StateMachine\PaymentStateMachine;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\WebhookLog;
@@ -111,9 +112,10 @@ class PaymentService
             returnUrl: $bmlReturnUrl,
         );
 
-        $this->payments->update($payment->id, [
+        // Persist transaction ID and advance state via the state machine so all
+        // payment status changes go through a single, validated transition path.
+        PaymentStateMachine::for($payment)->transition('initiated', [
             'provider_transaction_id' => $result['transaction_id'],
-            'status' => 'initiated',
         ]);
 
         Log::info('BML: Payment initiated', [
@@ -322,13 +324,24 @@ class PaymentService
             return;
         }
 
-        match ($state) {
-            'CONFIRMED' => $this->confirmPayment($payment, $payload),
-            'FAILED' => $this->payments->update($payment->id, ['status' => 'failed',    'gateway_response' => $payload]),
-            'CANCELLED' => $this->payments->update($payment->id, ['status' => 'cancelled', 'gateway_response' => $payload]),
-            'EXPIRED' => $this->payments->update($payment->id, ['status' => 'expired',   'gateway_response' => $payload]),
-            default => Log::info('BML: Unknown state', ['state' => $state]),
-        };
+        if ($state === 'CONFIRMED') {
+            $this->confirmPayment($payment, $payload);
+        } elseif (in_array($state, ['FAILED', 'CANCELLED', 'EXPIRED'], true)) {
+            $target = strtolower($state);
+            $sm = PaymentStateMachine::for($payment);
+            if ($sm->can($target)) {
+                $sm->transition($target, ['gateway_response' => $payload]);
+            } else {
+                // Late or duplicate webhook — payment already in a terminal state; ignore.
+                Log::info('BML: Payment cannot transition to terminal state (late/duplicate webhook)', [
+                    'payment_id'     => $payment->id,
+                    'current_status' => $payment->status,
+                    'webhook_state'  => $state,
+                ]);
+            }
+        } else {
+            Log::info('BML: Unknown state', ['state' => $state]);
+        }
     }
 
     private function confirmPayment(Payment $payment, array $payload): void
@@ -338,19 +351,19 @@ class PaymentService
             // webhooks / return-URL callbacks can't both pass the status check
             // (C-1: TOCTOU race condition → double loyalty earn, double inventory deduction).
             $locked = Payment::where('id', $payment->id)->lockForUpdate()->first();
+            $sm = $locked ? PaymentStateMachine::for($locked) : null;
 
-            if (!$locked || $locked->status === 'confirmed') {
-                Log::info('BML: Payment already confirmed or not found (concurrent request), skipping', [
-                    'payment_id' => $payment->id,
+            if (!$locked || !$sm->can('confirmed')) {
+                Log::info('BML: Payment already confirmed or cannot transition (concurrent request), skipping', [
+                    'payment_id'     => $payment->id,
+                    'current_status' => $locked?->status ?? 'not found',
                 ]);
 
                 return;
             }
 
-            $this->payments->update($locked->id, [
-                'status' => 'confirmed',
-                'gateway_response' => $payload,
-            ]);
+            // Advance status via state machine — single validated transition path.
+            $sm->transition('confirmed', ['gateway_response' => $payload]);
 
             $order = $this->orders->findById($locked->order_id);
             if (!$order) {

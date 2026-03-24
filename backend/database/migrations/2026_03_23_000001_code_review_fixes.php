@@ -37,13 +37,8 @@ return new class extends Migration
                 ->update(['supplier_id' => null]);
 
             // Only add the FK if it doesn't already exist (prevents errno 121 on re-run)
-            $fkExists = count(DB::select(
-                "SELECT 1 FROM information_schema.KEY_COLUMN_USAGE
-                 WHERE TABLE_SCHEMA = DATABASE()
-                   AND TABLE_NAME = 'purchases'
-                   AND CONSTRAINT_NAME = 'purchases_supplier_id_foreign'
-                 LIMIT 1"
-            )) > 0;
+            $fkExists = collect(Schema::getForeignKeys('purchases'))
+                ->contains('name', 'purchases_supplier_id_foreign');
 
             if (!$fkExists) {
                 Schema::table('purchases', function (Blueprint $table) {
@@ -104,13 +99,8 @@ return new class extends Migration
         }
 
         if (Schema::hasTable('purchases')) {
-            $fkExists = count(DB::select(
-                "SELECT 1 FROM information_schema.KEY_COLUMN_USAGE
-                 WHERE TABLE_SCHEMA = DATABASE()
-                   AND TABLE_NAME = 'purchases'
-                   AND CONSTRAINT_NAME = 'purchases_supplier_id_foreign'
-                 LIMIT 1"
-            )) > 0;
+            $fkExists = collect(Schema::getForeignKeys('purchases'))
+                ->contains('name', 'purchases_supplier_id_foreign');
             if ($fkExists) {
                 Schema::table('purchases', function (Blueprint $table) {
                     $table->dropForeign(['supplier_id']);
@@ -147,8 +137,6 @@ return new class extends Migration
     /** Check whether a named index already exists on a table. */
     private function indexExists(string $table, string $indexName): bool
     {
-        $indexes = DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName]);
-
-        return count($indexes) > 0;
+        return Schema::hasIndex($table, $indexName);
     }
 };

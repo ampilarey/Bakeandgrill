@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Adds indexes on frequently-queried FK and filter columns that were missing.
- * Uses raw SHOW INDEX queries (MySQL-safe) to skip already-existing indexes.
+ * Uses Schema::hasIndex() (database-agnostic) to skip already-existing indexes.
  */
 return new class extends Migration
 {
@@ -35,12 +35,7 @@ return new class extends Migration
                 continue;
             }
 
-            $exists = collect(DB::select(
-                "SHOW INDEX FROM `{$table}` WHERE Key_name = ?",
-                [$indexName]
-            ))->isNotEmpty();
-
-            if ($exists) {
+            if (Schema::hasIndex($table, $indexName)) {
                 continue;
             }
 
@@ -57,12 +52,7 @@ return new class extends Migration
                 continue;
             }
 
-            $exists = collect(DB::select(
-                "SHOW INDEX FROM `{$table}` WHERE Key_name = ?",
-                [$indexName]
-            ))->isNotEmpty();
-
-            if (!$exists) {
+            if (!Schema::hasIndex($table, $indexName)) {
                 continue;
             }
 

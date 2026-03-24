@@ -8,8 +8,10 @@ services:
       POSTGRES_DB: bakegrill
       POSTGRES_USER: bakegrill
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set — generate with: openssl rand -base64 32}
-    ports:
-      - "5432:5432"
+    # expose makes the port reachable inside the Docker network but NOT on the host.
+    # Use 'ports' only for local dev; in production the DB must not be reachable from outside.
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,8 +27,9 @@ services:
     container_name: bakegrill-redis
     restart: unless-stopped
     mem_limit: 128m
-    ports:
-      - "6379:6379"
+    # expose only — Redis must not be reachable from the host in production.
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -45,8 +48,10 @@ services:
     restart: unless-stopped
     mem_limit: 512m
     cpus: '1.0'
-    ports:
-      - "8000:8000"
+    # php-fpm listens on 9000 inside the container; nginx (or a sidecar) proxies to it.
+    # php artisan serve is single-threaded and not suitable for concurrent production traffic.
+    expose:
+      - "9000"
     volumes:
       - ./backend:/var/www/html
       - ./backend/storage:/var/www/html/storage
@@ -62,7 +67,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    command: php-fpm
     networks:
       - bakegrill-network
 

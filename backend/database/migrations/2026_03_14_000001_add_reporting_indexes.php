@@ -10,11 +10,7 @@ return new class extends Migration
 {
     private function indexExists(string $table, string $indexName): bool
     {
-        $results = \Illuminate\Support\Facades\DB::select(
-            "SHOW INDEX FROM `{$table}` WHERE Key_name = ?",
-            [$indexName]
-        );
-        return count($results) > 0;
+        return Schema::hasIndex($table, $indexName);
     }
 
     public function up(): void

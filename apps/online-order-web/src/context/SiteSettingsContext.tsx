@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+// Use the same base URL resolution as api.ts so the fetch works in both dev
+// (proxied through Vite) and production (same-origin /api).
+const SITE_SETTINGS_URL =
+  ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+    (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api')) +
+  '/site-settings/public';
+
 export interface SiteSettings {
   site_name?: string;
   site_tagline?: string;
@@ -109,7 +116,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
-    fetch('/api/site-settings/public')
+    fetch(SITE_SETTINGS_URL)
       .then((r) => r.json())
       .then(({ settings: s }: { settings: Record<string, string | null> }) => {
         if (s && typeof s === 'object') {

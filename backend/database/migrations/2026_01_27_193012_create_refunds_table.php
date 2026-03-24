@@ -16,7 +16,9 @@ return new class extends Migration
         Schema::create('refunds', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            // nullOnDelete instead of cascadeOnDelete — deleting a staff account must
+            // not destroy the refund audit trail (financial record).
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->decimal('amount', 10, 2)->default(0);
             $table->string('status')->default('pending');
             $table->text('reason')->nullable();

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -23,12 +22,7 @@ return new class extends Migration
             return;
         }
 
-        $singleExists = collect(DB::select(
-            "SHOW INDEX FROM `orders` WHERE Key_name = ?",
-            ['orders_customer_id_index']
-        ))->isNotEmpty();
-
-        if ($singleExists) {
+        if (Schema::hasIndex('orders', 'orders_customer_id_index')) {
             Schema::table('orders', function (Blueprint $table): void {
                 $table->dropIndex('orders_customer_id_index');
             });
@@ -41,12 +35,7 @@ return new class extends Migration
             return;
         }
 
-        $exists = collect(DB::select(
-            "SHOW INDEX FROM `orders` WHERE Key_name = ?",
-            ['orders_customer_id_index']
-        ))->isNotEmpty();
-
-        if (!$exists) {
+        if (!Schema::hasIndex('orders', 'orders_customer_id_index')) {
             Schema::table('orders', function (Blueprint $table): void {
                 $table->index('customer_id', 'orders_customer_id_index');
             });

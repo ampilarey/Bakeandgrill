@@ -19,14 +19,9 @@ return new class extends Migration
             return;
         }
 
-        // Drop FK only if it actually exists (MySQL-safe check)
-        $hasFk = collect(DB::select(
-            "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-             WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME = 'inventory_items'
-               AND COLUMN_NAME = 'preferred_supplier_id'
-               AND REFERENCED_TABLE_NAME IS NOT NULL"
-        ))->isNotEmpty();
+        // Drop FK only if it actually exists — portable check via Schema builder.
+        $hasFk = collect(Schema::getForeignKeys('inventory_items'))
+            ->contains(fn (array $fk) => in_array('preferred_supplier_id', $fk['columns'], true));
 
         Schema::table('inventory_items', function (Blueprint $table) use ($hasFk): void {
             if ($hasFk) {

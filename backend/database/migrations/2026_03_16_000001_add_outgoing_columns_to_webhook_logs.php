@@ -53,10 +53,7 @@ return new class extends Migration
         });
 
         // Add composite index for outgoing-log queries if it does not already exist
-        $indexes = collect(
-            DB::select("SHOW INDEX FROM webhook_logs WHERE Key_name = 'webhook_logs_subscription_created_idx'")
-        );
-        if ($indexes->isEmpty()) {
+        if (!Schema::hasIndex('webhook_logs', 'webhook_logs_subscription_created_idx')) {
             Schema::table('webhook_logs', function (Blueprint $table): void {
                 $table->index(['webhook_subscription_id', 'created_at'], 'webhook_logs_subscription_created_idx');
             });

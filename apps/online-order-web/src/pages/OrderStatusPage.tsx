@@ -238,6 +238,9 @@ export function OrderStatusPage() {
 
   const token = readToken();
   const esRef = useRef<EventSource | null>(null);
+  // Guard so clearCart() is called at most once per page visit, regardless of
+  // how many times order.status re-renders in a confirmed state (F-4).
+  const cartClearedRef = useRef(false);
 
   // useCallback gives a stable reference so polling intervals don't capture stale closures
   const loadOrder = useCallback(async () => {
@@ -267,7 +270,10 @@ export function OrderStatusPage() {
   }, [order?.order_number]);
 
   useEffect(() => {
-    if (paymentState === "CONFIRMED") clearCart();
+    if (paymentState === "CONFIRMED" && !cartClearedRef.current) {
+      cartClearedRef.current = true;
+      clearCart();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentState]);
 
@@ -275,7 +281,12 @@ export function OrderStatusPage() {
   // covers the case where the user arrives via SMS tracking link (?tok=)
   // after a successful payment redirect, without the ?payment=CONFIRMED param.
   useEffect(() => {
-    if (order && ['pending', 'paid', 'preparing', 'ready', 'completed'].includes(order.status)) {
+    if (
+      order &&
+      ['pending', 'paid', 'preparing', 'ready', 'completed'].includes(order.status) &&
+      !cartClearedRef.current
+    ) {
+      cartClearedRef.current = true;
       clearCart();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
