@@ -161,6 +161,10 @@ export function CheckoutPage() {
     deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
+    giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
+    giftCardBalance, giftCardDelta,
+    handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
+    myReferralCode,
   } = useCheckout();
 
   if (cart.length === 0) {
@@ -282,6 +286,64 @@ export function CheckoutPage() {
     </SectionCard>
   );
 
+  const sectionGiftCard = (
+    <SectionCard title="Gift Card">
+      {giftCardApplied ? (
+        <div style={S.promoApplied}>
+          <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+            {giftCardApplied.pending
+              ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — applied at checkout</>
+              : <><span>🎁</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — MVR {laarToMvr(giftCardApplied.discountLaar)} off</>}
+          </span>
+          <button style={S.removeBtn} onClick={() => void handleRemoveGiftCard()}>Remove</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              placeholder="XXXX-XXXX-XXXX"
+              value={giftCardCode}
+              onChange={(e) => { setGiftCardCode(e.target.value.toUpperCase()); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleCheckGiftCard(); }}
+              style={{ flex: 1, padding: '9px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 'var(--text-base)', fontFamily: 'monospace', textTransform: 'uppercase', minWidth: 0 }}
+              aria-label="Gift card code"
+            />
+            <button
+              style={{ ...S.secondaryBtn, whiteSpace: 'nowrap' }}
+              onClick={giftCardBalance !== null ? () => void handleApplyGiftCard() : () => void handleCheckGiftCard()}
+              disabled={giftCardLoading || !giftCardCode.trim()}
+            >
+              {giftCardLoading ? '…' : giftCardBalance !== null ? 'Apply' : 'Check'}
+            </button>
+          </div>
+          {giftCardBalance !== null && !giftCardError && (
+            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-success)', fontWeight: 600 }}>
+              Balance: MVR {giftCardBalance.toFixed(2)} — click Apply to use it
+            </p>
+          )}
+          {giftCardError && <p className="field-error" style={{ marginTop: 0 }}>{giftCardError}</p>}
+        </div>
+      )}
+    </SectionCard>
+  );
+
+  const sectionReferral = myReferralCode && (
+    <div style={{ background: 'var(--color-surface-alt)', border: '1px dashed var(--color-border)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+      <p style={{ margin: '0 0 6px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+        Share your referral code with friends
+      </p>
+      <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '1.1rem', letterSpacing: '0.1em', color: 'var(--color-primary)', fontWeight: 700 }}>
+        {myReferralCode}
+      </p>
+      <button
+        style={{ marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textDecoration: 'underline' }}
+        onClick={() => { void navigator.clipboard?.writeText(myReferralCode); }}
+      >
+        Copy code
+      </button>
+    </div>
+  );
+
   const sectionCartSummary = <CartSummary cart={cart} />;
 
   const sectionOrderSummary = (
@@ -296,6 +358,9 @@ export function CheckoutPage() {
       )}
       {useLoyalty && loyaltyDelta > 0 && (
         <SummaryRow label="Loyalty discount" value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
+      )}
+      {giftCardApplied && !giftCardApplied.pending && giftCardDelta > 0 && (
+        <SummaryRow label={`Gift Card (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
       )}
       <div style={S.totalRow}>
         <span>Total</span>
@@ -416,8 +481,10 @@ export function CheckoutPage() {
                 {sectionNotes}
                 {sectionPromo}
                 {sectionLoyalty}
+                {sectionGiftCard}
                 {sectionCartSummary}
                 {sectionOrderSummary}
+                {sectionReferral}
                 {sectionCompliance}
                 {paySectionEl}
                 {sectionHelp}
@@ -438,6 +505,7 @@ export function CheckoutPage() {
                 {sectionNotes}
                 {sectionPromo}
                 {sectionLoyalty}
+                {sectionGiftCard}
                 {sectionHelp}
               </>
             )}
@@ -446,6 +514,7 @@ export function CheckoutPage() {
           <div style={S.col}>
             {sectionCartSummary}
             {sectionOrderSummary}
+            {myReferralCode && sectionReferral}
             {token && (
               <>
                 {sectionCompliance}

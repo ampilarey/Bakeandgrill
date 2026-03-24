@@ -33,6 +33,8 @@ class Order extends Model
         'promo_discount_laar',
         'loyalty_discount_laar',
         'manual_discount_laar',
+        'gift_card_code',
+        'gift_card_discount_laar',
         'total_laar',
         'tax_inclusive',
         'tax_rate_bp',

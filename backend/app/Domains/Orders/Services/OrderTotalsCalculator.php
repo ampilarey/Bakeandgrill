@@ -79,6 +79,7 @@ class OrderTotalsCalculator
             promoDiscountLaar: (int) ($order->promo_discount_laar ?? 0),
             loyaltyDiscountLaar: (int) ($order->loyalty_discount_laar ?? 0),
             manualDiscountLaar: (int) ($order->manual_discount_laar ?? 0),
+            giftCardDiscountLaar: (int) ($order->gift_card_discount_laar ?? 0),
         );
 
         $breakdown = $this->calculate($order, $discounts);

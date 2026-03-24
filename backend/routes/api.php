@@ -481,9 +481,11 @@ Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController:
 Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
     ->middleware('throttle:5,1');
 
-// Customer: referral management
+// Customer: referral management + gift card on orders
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
+    Route::post('/orders/{orderId}/apply-gift-card',  [App\Http\Controllers\Api\GiftCardController::class, 'applyToOrder']);
+    Route::delete('/orders/{orderId}/gift-card',      [App\Http\Controllers\Api\GiftCardController::class, 'removeFromOrder']);
 });
 
 // Admin: gift cards and referral overview

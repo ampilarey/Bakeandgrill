@@ -561,3 +561,43 @@ export async function submitReview(
     body: JSON.stringify(payload),
   });
 }
+
+// ── Gift Card (customer checkout) ─────────────────────────────────────────────
+
+export async function checkGiftCardBalance(
+  code: string,
+): Promise<{ code: string; current_balance: number; expires_at: string | null }> {
+  return request(`/gift-cards/${encodeURIComponent(code.toUpperCase())}/balance`);
+}
+
+export async function applyGiftCard(
+  token: string,
+  orderId: number,
+  code: string,
+): Promise<{ discount_laar: number; discount_mvr: string; card_balance: number }> {
+  return request(`/orders/${orderId}/apply-gift-card`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ code: code.toUpperCase() }),
+  });
+}
+
+export async function removeGiftCard(
+  token: string,
+  orderId: number,
+): Promise<void> {
+  await request(`/orders/${orderId}/gift-card`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── Referral (customer) ───────────────────────────────────────────────────────
+
+export async function getMyReferralCode(
+  token: string,
+): Promise<{ code: string; uses_count: number; referee_discount_mvr: number }> {
+  return request('/customer/referral-code', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}

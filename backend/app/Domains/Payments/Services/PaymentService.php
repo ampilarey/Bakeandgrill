@@ -389,6 +389,34 @@ class PaymentService
 
             PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($locked, $order));
 
+            // Deduct gift card balance now that payment is confirmed.
+            // Skip if no gift card was used or discount is zero.
+            if (!empty($order->gift_card_code) && (int) ($order->gift_card_discount_laar ?? 0) > 0) {
+                $giftCard = \App\Models\GiftCard::where('code', $order->gift_card_code)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($giftCard) {
+                    $deductLaar    = (int) $order->gift_card_discount_laar;
+                    $deductMvr     = round($deductLaar / 100, 2);
+                    $newBalance    = max(0, (float) $giftCard->current_balance - $deductMvr);
+
+                    $giftCard->update([
+                        'current_balance' => $newBalance,
+                        'status'          => $newBalance <= 0 ? 'redeemed' : 'active',
+                    ]);
+
+                    \App\Models\GiftCardTransaction::create([
+                        'gift_card_id'  => $giftCard->id,
+                        'amount'        => -$deductMvr,
+                        'type'          => 'redeem',
+                        'balance_after' => $newBalance,
+                        'order_id'      => $order->id,
+                    ]);
+                }
+            }
+
             if ($paidLaar >= $orderLaar && !in_array($order->status, ['paid', 'completed'], true)) {
                 // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
                 // POS orders already in the kitchen queue go straight to paid.

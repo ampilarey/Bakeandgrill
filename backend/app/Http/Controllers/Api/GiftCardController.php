@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
+use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -37,6 +39,67 @@ class GiftCardController extends Controller
             'current_balance' => (float) $card->current_balance,
             'expires_at'      => $card->expires_at?->toDateString(),
         ]);
+    }
+
+    // ── Customer: apply gift card to order ───────────────────────────────────
+
+    public function applyToOrder(Request $request, int $orderId, OrderTotalsCalculator $calc): JsonResponse
+    {
+        $validated = $request->validate(['code' => ['required', 'string', 'max:20']]);
+
+        $order = Order::where('id', $orderId)
+            ->where('customer_id', $request->user()->id)
+            ->whereIn('status', ['payment_pending', 'pending'])
+            ->firstOrFail();
+
+        return DB::transaction(function () use ($validated, $order, $calc): JsonResponse {
+            $card = GiftCard::where('code', strtoupper($validated['code']))
+                ->where('status', 'active')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$card) {
+                return response()->json(['message' => 'Invalid or unavailable gift card.'], 422);
+            }
+
+            if ($card->expires_at && $card->expires_at->isPast()) {
+                $card->update(['status' => 'expired']);
+                return response()->json(['message' => 'This gift card has expired.'], 422);
+            }
+
+            // Apply up to the order subtotal (before delivery) so we never over-discount
+            $maxDiscount = (int) round((float) $card->current_balance * 100);
+            $subtotalLaar = (int) ($order->subtotal_laar ?? 0);
+            $discountLaar = min($maxDiscount, max(0, $subtotalLaar));
+
+            $order->update([
+                'gift_card_code'           => $card->code,
+                'gift_card_discount_laar'  => $discountLaar,
+            ]);
+
+            $calc->recalculateAndPersist($order->fresh());
+
+            return response()->json([
+                'discount_laar' => $discountLaar,
+                'discount_mvr'  => number_format($discountLaar / 100, 2),
+                'card_balance'  => (float) $card->current_balance,
+            ]);
+        });
+    }
+
+    // ── Customer: remove gift card from order ─────────────────────────────────
+
+    public function removeFromOrder(Request $request, int $orderId, OrderTotalsCalculator $calc): JsonResponse
+    {
+        $order = Order::where('id', $orderId)
+            ->where('customer_id', $request->user()->id)
+            ->whereIn('status', ['payment_pending', 'pending'])
+            ->firstOrFail();
+
+        $order->update(['gift_card_code' => null, 'gift_card_discount_laar' => 0]);
+        $calc->recalculateAndPersist($order->fresh());
+
+        return response()->json(['message' => 'Gift card removed.']);
     }
 
     // ── Admin: issue a gift card ──────────────────────────────────────────────

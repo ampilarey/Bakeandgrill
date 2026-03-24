@@ -10,6 +10,10 @@ import {
   getCustomerMe,
   initiateOnlinePayment,
   syncBladeSession,
+  checkGiftCardBalance,
+  applyGiftCard,
+  removeGiftCard,
+  getMyReferralCode,
 } from "../api";
 import type { LoyaltyAccount } from "../api";
 
@@ -91,6 +95,16 @@ export function useCheckout() {
   const [useLoyalty, setUseLoyalty]   = useState(false);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
 
+  const [giftCardCode, setGiftCardCode]     = useState("");
+  const [giftCardApplied, setGiftCardApplied] = useState<{
+    code: string; discountLaar: number; pending?: boolean;
+  } | null>(null);
+  const [giftCardError, setGiftCardError]   = useState("");
+  const [giftCardLoading, setGiftCardLoading] = useState(false);
+  const [giftCardBalance, setGiftCardBalance] = useState<number | null>(null);
+
+  const [myReferralCode, setMyReferralCode] = useState<string | null>(null);
+
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [isPlacing, setIsPlacing]     = useState(false);
@@ -145,6 +159,10 @@ export function useCheckout() {
       }
     }).catch(() => {});
 
+    getMyReferralCode(token).then((r) => {
+      if (!cancelled) setMyReferralCode(r.code);
+    }).catch(() => {});
+
     return () => { cancelled = true; };
   }, [token]);
 
@@ -165,7 +183,8 @@ export function useCheckout() {
   const deliveryFeeLaar  = orderType === "delivery" ? deliveryFee : 0;
   const promoDelta       = promoApplied?.discountLaar ?? 0;
   const loyaltyDelta     = useLoyalty && loyaltyAccount ? loyaltyPoints : 0;
-  const totalLaar        = Math.max(0, subtotalLaar + deliveryFeeLaar - promoDelta - loyaltyDelta);
+  const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
+  const totalLaar        = Math.max(0, subtotalLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta);
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
@@ -186,6 +205,51 @@ export function useCheckout() {
     } finally {
       setPromoLoading(false);
     }
+  };
+
+  // ── Gift Card ──────────────────────────────────────────────────────────────
+  const handleCheckGiftCard = async () => {
+    if (!giftCardCode.trim()) return;
+    setGiftCardError(""); setGiftCardBalance(null); setGiftCardLoading(true);
+    try {
+      const res = await checkGiftCardBalance(giftCardCode.trim().toUpperCase());
+      setGiftCardBalance(res.current_balance);
+    } catch (e) {
+      setGiftCardError((e as Error).message);
+    } finally {
+      setGiftCardLoading(false);
+    }
+  };
+
+  const handleApplyGiftCard = async () => {
+    if (!token) { setGiftCardError("Please sign in first."); return; }
+    if (!giftCardCode.trim()) return;
+
+    if (!pendingOrderId) {
+      // Store as pending — will be applied after order creation
+      setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: giftCardBalance ? Math.round(giftCardBalance * 100) : 0, pending: true });
+      setGiftCardError("");
+      return;
+    }
+    setGiftCardError(""); setGiftCardLoading(true);
+    try {
+      const res = await applyGiftCard(token, pendingOrderId, giftCardCode.trim().toUpperCase());
+      setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: res.discount_laar });
+      setGiftCardCode("");
+    } catch (e) {
+      setGiftCardError((e as Error).message);
+    } finally {
+      setGiftCardLoading(false);
+    }
+  };
+
+  const handleRemoveGiftCard = async () => {
+    if (token && pendingOrderId && giftCardApplied && !giftCardApplied.pending) {
+      try { await removeGiftCard(token, pendingOrderId); } catch { /* ignore */ }
+    }
+    setGiftCardApplied(null);
+    setGiftCardCode("");
+    setGiftCardBalance(null);
   };
 
   const handleRemovePromo = async () => {
@@ -277,6 +341,17 @@ export function useCheckout() {
         }
       }
 
+      const giftCardToApply = giftCardApplied?.pending ? giftCardApplied.code : (giftCardCode.trim().toUpperCase() || null);
+      if (giftCardToApply && (!giftCardApplied || giftCardApplied.pending)) {
+        try {
+          const gcRes = await applyGiftCard(token, orderId, giftCardToApply);
+          setGiftCardApplied({ code: giftCardToApply, discountLaar: gcRes.discount_laar });
+          setGiftCardCode("");
+        } catch (e) {
+          if (import.meta.env.DEV) console.warn("Gift card application failed:", (e as Error).message);
+        }
+      }
+
       const payment = await initiateOnlinePayment(token, orderId);
       if (!payment.payment_url) {
         throw new Error("Payment could not be started. Please try again in a moment.");
@@ -330,5 +405,9 @@ export function useCheckout() {
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
+    giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
+    giftCardBalance, giftCardDelta,
+    handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
+    myReferralCode,
   };
 }

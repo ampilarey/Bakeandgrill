@@ -14,6 +14,7 @@ final readonly class DiscountsInput
         public int $promoDiscountLaar = 0,
         public int $loyaltyDiscountLaar = 0,
         public int $manualDiscountLaar = 0,
+        public int $giftCardDiscountLaar = 0,
     ) {}
 
     public static function none(): self
@@ -23,6 +24,9 @@ final readonly class DiscountsInput
 
     public function totalDiscountLaar(): int
     {
-        return $this->promoDiscountLaar + $this->loyaltyDiscountLaar + $this->manualDiscountLaar;
+        return $this->promoDiscountLaar
+            + $this->loyaltyDiscountLaar
+            + $this->manualDiscountLaar
+            + $this->giftCardDiscountLaar;
     }
 }
