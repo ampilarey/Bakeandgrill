@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Payments\Services;
 
+use App\Domains\Notifications\Services\PaymentConfirmationNotifier;
 use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
@@ -25,6 +26,7 @@ class PaymentService
         private BmlConnectService $bml,
         private PaymentRepositoryInterface $payments,
         private OrderRepositoryInterface $orders,
+        private PaymentConfirmationNotifier $confirmationNotifier,
     ) {}
 
     /**
@@ -400,6 +402,11 @@ class PaymentService
                 DB::afterCommit(function () use ($order): void {
                     $freshOrder = $this->orders->findById($order->id);
                     if ($freshOrder) {
+                        // Send confirmation SMS/email synchronously — no queue dependency.
+                        // The queued SendPaymentConfirmationListener is a no-op if this succeeds
+                        // (idempotency key 'order:paid:confirm:{id}' blocks duplicate sends).
+                        $this->confirmationNotifier->notify($freshOrder);
+
                         OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
                     }
                 });
@@ -480,6 +487,7 @@ class PaymentService
             DB::afterCommit(function () use ($dispatchId): void {
                 $fresh = $this->orders->findById($dispatchId);
                 if ($fresh) {
+                    $this->confirmationNotifier->notify($fresh);
                     OrderPaid::dispatch(OrderPaidData::fromOrder($fresh, true));
                 }
             });
