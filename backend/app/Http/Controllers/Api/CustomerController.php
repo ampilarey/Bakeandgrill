@@ -81,10 +81,13 @@ class CustomerController extends Controller
                 'status'                    => $order->status,
                 'type'                      => $order->type,
                 'total'                     => (float) $order->total,
+                'total_laar'                => (int) ($order->total_laar ?? round((float) $order->total * 100)),
                 'subtotal'                  => (float) ($order->subtotal ?? $order->total),
                 'delivery_fee'              => (float) ($order->delivery_fee ?? 0),
                 'promo_discount_laar'       => (int) ($order->promo_discount_laar ?? 0),
                 'loyalty_discount_laar'     => (int) ($order->loyalty_discount_laar ?? 0),
+                'gift_card_discount_laar'   => (int) ($order->gift_card_discount_laar ?? 0),
+                'referral_discount_laar'    => (int) ($order->referral_discount_laar ?? 0),
                 'paid_at'                   => $order->paid_at?->toIso8601String(),
                 'created_at'               => $order->created_at->toIso8601String(),
                 // Delivery fields

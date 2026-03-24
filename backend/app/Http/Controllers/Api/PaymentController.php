@@ -34,6 +34,14 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Order already paid'], 422);
         }
 
+        $dueLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        if ($dueLaar <= 0) {
+            return response()->json([
+                'message' => 'Nothing to pay. Your order is fully covered — use “Place order” again to confirm without card.',
+                'code'    => 'zero_balance',
+            ], 422);
+        }
+
         $result = $this->paymentService->initiateBmlPayment($order);
 
         // Hold the order in payment_pending until BML webhook confirms.
@@ -134,5 +142,28 @@ class PaymentController extends Controller
         return redirect(
             config('frontend.order_status_url') . '/' . $orderId . '?payment=' . $state,
         );
+    }
+
+    /**
+     * Customer: confirm order when total due is 0 (gift card / discounts cover full amount).
+     */
+    public function completeZeroBalance(Request $request, int $orderId): JsonResponse
+    {
+        if (!$request->user()->tokenCan('customer')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $order = Order::findOrFail($orderId);
+        if ($order->customer_id !== $request->user()->id) {
+            return response()->json(['message' => 'Not your order'], 403);
+        }
+
+        try {
+            $order = $this->paymentService->completeZeroBalanceOnlineOrder($orderId, (int) $request->user()->id);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['order' => $order]);
     }
 }

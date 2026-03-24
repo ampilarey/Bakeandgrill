@@ -389,33 +389,7 @@ class PaymentService
 
             PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($locked, $order));
 
-            // Deduct gift card balance now that payment is confirmed.
-            // Skip if no gift card was used or discount is zero.
-            if (!empty($order->gift_card_code) && (int) ($order->gift_card_discount_laar ?? 0) > 0) {
-                $giftCard = \App\Models\GiftCard::where('code', $order->gift_card_code)
-                    ->where('status', 'active')
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($giftCard) {
-                    $deductLaar    = (int) $order->gift_card_discount_laar;
-                    $deductMvr     = round($deductLaar / 100, 2);
-                    $newBalance    = max(0, (float) $giftCard->current_balance - $deductMvr);
-
-                    $giftCard->update([
-                        'current_balance' => $newBalance,
-                        'status'          => $newBalance <= 0 ? 'redeemed' : 'active',
-                    ]);
-
-                    \App\Models\GiftCardTransaction::create([
-                        'gift_card_id'  => $giftCard->id,
-                        'amount'        => -$deductMvr,
-                        'type'          => 'redeem',
-                        'balance_after' => $newBalance,
-                        'order_id'      => $order->id,
-                    ]);
-                }
-            }
+            $this->redeemGiftCardForOrder($order);
 
             if ($paidLaar >= $orderLaar && !in_array($order->status, ['paid', 'completed'], true)) {
                 // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
@@ -430,6 +404,87 @@ class PaymentService
                     }
                 });
             }
+        });
+    }
+
+    /**
+     * Deduct gift card balance for an order. Must run inside an outer DB transaction.
+     */
+    private function redeemGiftCardForOrder(Order $order): void
+    {
+        if (empty($order->gift_card_code) || (int) ($order->gift_card_discount_laar ?? 0) <= 0) {
+            return;
+        }
+
+        $giftCard = \App\Models\GiftCard::where('code', $order->gift_card_code)
+            ->where('status', 'active')
+            ->lockForUpdate()
+            ->first();
+
+        if (!$giftCard) {
+            return;
+        }
+
+        $deductLaar = (int) $order->gift_card_discount_laar;
+        $deductMvr  = round($deductLaar / 100, 2);
+        $newBalance = max(0, (float) $giftCard->current_balance - $deductMvr);
+
+        $giftCard->update([
+            'current_balance' => $newBalance,
+            'status'          => $newBalance <= 0 ? 'redeemed' : 'active',
+        ]);
+
+        \App\Models\GiftCardTransaction::create([
+            'gift_card_id'  => $giftCard->id,
+            'amount'        => -$deductMvr,
+            'type'          => 'redeem',
+            'balance_after' => $newBalance,
+            'order_id'      => $order->id,
+        ]);
+    }
+
+    /**
+     * Finalize an online customer order when nothing is owed (gift card / discounts cover 100%).
+     * Skips BML; fires the same OrderPaid path as a confirmed card payment.
+     *
+     * @throws \InvalidArgumentException When the order is not eligible
+     */
+    public function completeZeroBalanceOnlineOrder(int $orderId, int $customerId): Order
+    {
+        return DB::transaction(function () use ($orderId, $customerId): Order {
+            $locked = Order::where('id', $orderId)->lockForUpdate()->firstOrFail();
+
+            if ((int) $locked->customer_id !== $customerId) {
+                throw new \InvalidArgumentException('Not your order.');
+            }
+
+            $orderLaar = (int) ($locked->total_laar ?? round((float) $locked->total * 100));
+            if ($orderLaar > 0) {
+                throw new \InvalidArgumentException('Order still has an amount due. Pay with card.');
+            }
+
+            if (in_array($locked->status, ['paid', 'completed', 'cancelled'], true)) {
+                throw new \InvalidArgumentException('Order already finalized.');
+            }
+
+            $this->redeemGiftCardForOrder($locked);
+
+            $online = in_array($locked->type, ['online_pickup', 'delivery'], true);
+            $newStatus = ($online && in_array($locked->status, ['pending', 'payment_pending'], true))
+                ? 'pending'
+                : ($locked->status === 'payment_pending' ? 'pending' : 'paid');
+
+            $this->orders->updateStatus($locked->id, $newStatus, ['paid_at' => now()]);
+
+            $dispatchId = $locked->id;
+            DB::afterCommit(function () use ($dispatchId): void {
+                $fresh = $this->orders->findById($dispatchId);
+                if ($fresh) {
+                    OrderPaid::dispatch(OrderPaidData::fromOrder($fresh, true));
+                }
+            });
+
+            return $this->orders->findById($locked->id) ?? $locked;
         });
     }
 }

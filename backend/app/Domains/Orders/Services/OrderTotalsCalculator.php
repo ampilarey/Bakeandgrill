@@ -39,8 +39,14 @@ class OrderTotalsCalculator
         $promoDisco = new Money($discounts->promoDiscountLaar);
         $loyaltyDisco = new Money($discounts->loyaltyDiscountLaar);
         $manualDisco = new Money($discounts->manualDiscountLaar);
+        $giftCardDisco = new Money($discounts->giftCardDiscountLaar);
+        $referralDisco = new Money($discounts->referralDiscountLaar);
 
-        $totalDiscount = $promoDisco->add($loyaltyDisco)->add($manualDisco);
+        $totalDiscount = $promoDisco
+            ->add($loyaltyDisco)
+            ->add($manualDisco)
+            ->add($giftCardDisco)
+            ->add($referralDisco);
         $discountedSubtotal = $subtotal->subtract($totalDiscount);
 
         if ($taxInclusive) {
@@ -56,6 +62,8 @@ class OrderTotalsCalculator
             promoDiscount: $promoDisco,
             loyaltyDiscount: $loyaltyDisco,
             manualDiscount: $manualDisco,
+            giftCardDiscount: $giftCardDisco,
+            referralDiscount: $referralDisco,
             totalDiscount: $totalDiscount,
             discountedSubtotal: $discountedSubtotal,
             tax: $tax,
@@ -80,6 +88,7 @@ class OrderTotalsCalculator
             loyaltyDiscountLaar: (int) ($order->loyalty_discount_laar ?? 0),
             manualDiscountLaar: (int) ($order->manual_discount_laar ?? 0),
             giftCardDiscountLaar: (int) ($order->gift_card_discount_laar ?? 0),
+            referralDiscountLaar: (int) ($order->referral_discount_laar ?? 0),
         );
 
         $breakdown = $this->calculate($order, $discounts);

@@ -356,6 +356,7 @@ Route::post('/payments/bml/webhook', [BmlWebhookController::class, 'handle'])
 // Initiate BML payment (customer only)
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/{orderId}/pay/bml', [PaymentController::class, 'initiateOnline']);
+    Route::post('/orders/{orderId}/complete-zero-balance', [PaymentController::class, 'completeZeroBalance']);
 });
 
 // ─── Promotions ──────────────────────────────────────────────────────────────
@@ -486,6 +487,8 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
     Route::post('/orders/{orderId}/apply-gift-card',  [App\Http\Controllers\Api\GiftCardController::class, 'applyToOrder']);
     Route::delete('/orders/{orderId}/gift-card',      [App\Http\Controllers\Api\GiftCardController::class, 'removeFromOrder']);
+    Route::post('/orders/{orderId}/apply-referral',   [App\Http\Controllers\Api\ReferralController::class, 'applyToOrder']);
+    Route::delete('/orders/{orderId}/referral',       [App\Http\Controllers\Api\ReferralController::class, 'removeFromOrder']);
 });
 
 // Admin: gift cards and referral overview

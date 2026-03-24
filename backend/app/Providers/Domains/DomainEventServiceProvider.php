@@ -7,6 +7,7 @@ namespace App\Providers\Domains;
 use App\Domains\Inventory\Events\LowStockReached;
 use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Domains\Inventory\Listeners\DeductInventoryListener;
+use App\Domains\Marketing\Listeners\RecordReferralRedemptionListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
@@ -52,6 +53,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             DispatchReceiptPrintListener::class,
             ConsumePromoRedemptionsListener::class,
             ConsumeLoyaltyHoldListener::class,
+            RecordReferralRedemptionListener::class,
             SendPaymentConfirmationListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],

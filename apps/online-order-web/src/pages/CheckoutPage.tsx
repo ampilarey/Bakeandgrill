@@ -159,12 +159,15 @@ export function CheckoutPage() {
     promoError, promoLoading,
     useLoyalty, setUseLoyalty,
     deliveryFee, errors, isPlacing, globalError,
-    subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
+    subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardDelta,
     handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
     myReferralCode,
+    friendReferralCode, setFriendReferralCode, friendReferralApplied, friendReferralError,
+    friendReferralLoading,
+    handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
 
   if (cart.length === 0) {
@@ -181,7 +184,11 @@ export function CheckoutPage() {
     );
   }
 
-  const placeLabel = isPlacing ? 'Processing…' : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
+  const placeLabel = isPlacing
+    ? 'Processing…'
+    : totalLaar <= 0
+      ? 'Place order (no payment due)'
+      : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
 
   // ── Reusable section blocks (shared between mobile and desktop layouts) ──────
   const sectionOrderType = (
@@ -286,6 +293,45 @@ export function CheckoutPage() {
     </SectionCard>
   );
 
+  const sectionFriendReferral = (
+    <SectionCard title="Friend's referral code">
+      {friendReferralApplied ? (
+        <div style={S.promoApplied}>
+          <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+            {friendReferralApplied.pending
+              ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — applied at checkout</>
+              : <><span>🤝</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — MVR {laarToMvr(friendReferralApplied.discountLaar)} off</>}
+          </span>
+          <button style={S.removeBtn} onClick={() => void handleRemoveFriendReferral()}>Remove</button>
+        </div>
+      ) : (
+        <>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
+            Have a code from a friend? Enter it for a discount on your first order with that code.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="field-input"
+              style={{ flex: 1, fontFamily: 'monospace' }}
+              placeholder="Referral code"
+              value={friendReferralCode}
+              onChange={(e) => setFriendReferralCode(e.target.value.toUpperCase())}
+              aria-label="Friend referral code"
+            />
+            <button
+              style={S.secondaryBtn}
+              onClick={() => void handleApplyFriendReferral()}
+              disabled={friendReferralLoading || !friendReferralCode.trim()}
+            >
+              {friendReferralLoading ? '…' : 'Apply'}
+            </button>
+          </div>
+          {friendReferralError && <p className="field-error" style={{ marginTop: 6 }}>{friendReferralError}</p>}
+        </>
+      )}
+    </SectionCard>
+  );
+
   const sectionGiftCard = (
     <SectionCard title="Gift Card">
       {giftCardApplied ? (
@@ -361,6 +407,9 @@ export function CheckoutPage() {
       )}
       {giftCardApplied && !giftCardApplied.pending && giftCardDelta > 0 && (
         <SummaryRow label={`Gift Card (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
+      )}
+      {friendReferralApplied && !friendReferralApplied.pending && referralDelta > 0 && (
+        <SummaryRow label={`Referral (${friendReferralApplied.code})`} value={`− MVR ${laarToMvr(referralDelta)}`} highlight />
       )}
       <div style={S.totalRow}>
         <span>Total</span>
@@ -481,6 +530,7 @@ export function CheckoutPage() {
                 {sectionNotes}
                 {sectionPromo}
                 {sectionLoyalty}
+                {sectionFriendReferral}
                 {sectionGiftCard}
                 {sectionCartSummary}
                 {sectionOrderSummary}
@@ -505,6 +555,7 @@ export function CheckoutPage() {
                 {sectionNotes}
                 {sectionPromo}
                 {sectionLoyalty}
+                {sectionFriendReferral}
                 {sectionGiftCard}
                 {sectionHelp}
               </>

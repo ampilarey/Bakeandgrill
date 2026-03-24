@@ -15,6 +15,7 @@ final readonly class DiscountsInput
         public int $loyaltyDiscountLaar = 0,
         public int $manualDiscountLaar = 0,
         public int $giftCardDiscountLaar = 0,
+        public int $referralDiscountLaar = 0,
     ) {}
 
     public static function none(): self
@@ -27,6 +28,7 @@ final readonly class DiscountsInput
         return $this->promoDiscountLaar
             + $this->loyaltyDiscountLaar
             + $this->manualDiscountLaar
-            + $this->giftCardDiscountLaar;
+            + $this->giftCardDiscountLaar
+            + $this->referralDiscountLaar;
     }
 }

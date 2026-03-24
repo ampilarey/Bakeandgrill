@@ -8,12 +8,16 @@ import {
   createLoyaltyHold,
   getLoyaltyAccount,
   getCustomerMe,
+  getOrderDetail,
   initiateOnlinePayment,
+  completeZeroBalanceOrder,
   syncBladeSession,
   checkGiftCardBalance,
   applyGiftCard,
   removeGiftCard,
   getMyReferralCode,
+  applyReferralToOrder,
+  removeReferralFromOrder,
 } from "../api";
 import type { LoyaltyAccount } from "../api";
 
@@ -105,6 +109,13 @@ export function useCheckout() {
 
   const [myReferralCode, setMyReferralCode] = useState<string | null>(null);
 
+  const [friendReferralCode, setFriendReferralCode] = useState("");
+  const [friendReferralApplied, setFriendReferralApplied] = useState<{
+    code: string; discountLaar: number; pending?: boolean;
+  } | null>(null);
+  const [friendReferralError, setFriendReferralError] = useState("");
+  const [friendReferralLoading, setFriendReferralLoading] = useState(false);
+
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [isPlacing, setIsPlacing]     = useState(false);
@@ -184,7 +195,11 @@ export function useCheckout() {
   const promoDelta       = promoApplied?.discountLaar ?? 0;
   const loyaltyDelta     = useLoyalty && loyaltyAccount ? loyaltyPoints : 0;
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
-  const totalLaar        = Math.max(0, subtotalLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta);
+  const referralDelta    = friendReferralApplied?.discountLaar ?? 0;
+  const totalLaar        = Math.max(
+    0,
+    subtotalLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta,
+  );
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
@@ -250,6 +265,42 @@ export function useCheckout() {
     setGiftCardApplied(null);
     setGiftCardCode("");
     setGiftCardBalance(null);
+  };
+
+  const handleApplyFriendReferral = async () => {
+    if (!token) { setFriendReferralError("Please sign in first."); return; }
+    const raw = friendReferralCode.trim().toUpperCase();
+    if (!raw) return;
+    if (myReferralCode && raw === myReferralCode.toUpperCase()) {
+      setFriendReferralError("You cannot use your own referral code.");
+      return;
+    }
+
+    if (!pendingOrderId) {
+      setFriendReferralError("");
+      setFriendReferralApplied({ code: raw, discountLaar: 0, pending: true });
+      return;
+    }
+    setFriendReferralError("");
+    setFriendReferralLoading(true);
+    try {
+      const res = await applyReferralToOrder(token, pendingOrderId, raw);
+      setFriendReferralApplied({ code: res.code, discountLaar: res.discount_laar });
+      setFriendReferralCode("");
+    } catch (e) {
+      setFriendReferralError((e as Error).message);
+      setFriendReferralApplied(null);
+    } finally {
+      setFriendReferralLoading(false);
+    }
+  };
+
+  const handleRemoveFriendReferral = async () => {
+    if (token && pendingOrderId && friendReferralApplied && !friendReferralApplied.pending) {
+      try { await removeReferralFromOrder(token, pendingOrderId); } catch { /* ignore */ }
+    }
+    setFriendReferralApplied(null);
+    setFriendReferralCode("");
   };
 
   const handleRemovePromo = async () => {
@@ -352,6 +403,49 @@ export function useCheckout() {
         }
       }
 
+      const referralToApply = friendReferralApplied?.pending
+        ? friendReferralApplied.code
+        : friendReferralCode.trim().toUpperCase();
+      if (referralToApply && (!friendReferralApplied || friendReferralApplied.pending)) {
+        if (!myReferralCode || referralToApply !== myReferralCode.toUpperCase()) {
+          try {
+            const refRes = await applyReferralToOrder(token, orderId, referralToApply);
+            setFriendReferralApplied({ code: refRes.code, discountLaar: refRes.discount_laar });
+            setFriendReferralCode("");
+          } catch (e) {
+            if (import.meta.env.DEV) console.warn("Referral application failed:", (e as Error).message);
+            setFriendReferralError((e as Error).message);
+            setFriendReferralApplied(null);
+          }
+        }
+      }
+
+      const { order: freshOrder } = await getOrderDetail(token, orderId);
+      const dueLaar =
+        typeof freshOrder.total_laar === "number"
+          ? freshOrder.total_laar
+          : Math.round(Number(freshOrder.total) * 100);
+
+      if (dueLaar <= 0) {
+        await completeZeroBalanceOrder(token, orderId);
+        try {
+          const historyKey = 'bakegrill_order_history';
+          const existing = JSON.parse(localStorage.getItem(historyKey) ?? '[]');
+          const entry = {
+            orderId,
+            orderType,
+            totalLaar: dueLaar,
+            itemCount: cart.reduce((s, i) => s + i.quantity, 0),
+            placedAt: new Date().toISOString(),
+          };
+          const updated = [entry, ...existing].slice(0, 20);
+          localStorage.setItem(historyKey, JSON.stringify(updated));
+        } catch { /* ignore */ }
+        navigate(`/orders/${orderId}`);
+        setIsPlacing(false);
+        return;
+      }
+
       const payment = await initiateOnlinePayment(token, orderId);
       if (!payment.payment_url) {
         throw new Error("Payment could not be started. Please try again in a moment.");
@@ -364,7 +458,7 @@ export function useCheckout() {
         const entry = {
           orderId,
           orderType,
-          totalLaar,
+          totalLaar: dueLaar,
           itemCount: cart.reduce((s, i) => s + i.quantity, 0),
           placedAt: new Date().toISOString(),
         };
@@ -403,11 +497,14 @@ export function useCheckout() {
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
-    subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, totalLaar,
+    subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardDelta,
     handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
     myReferralCode,
+    friendReferralCode, setFriendReferralCode, friendReferralApplied, friendReferralError,
+    friendReferralLoading,
+    handleApplyFriendReferral, handleRemoveFriendReferral,
   };
 }

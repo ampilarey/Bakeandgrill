@@ -27,8 +27,11 @@ export const ENDPOINTS = {
   ORDERS:             '/orders',
   ORDER_BY_ID:        (id: number) => `/orders/${id}`,
   ORDER_PAY_BML:      (id: number) => `/orders/${id}/pay/bml`,
+  ORDER_COMPLETE_ZERO_BALANCE: (id: number) => `/orders/${id}/complete-zero-balance`,
   ORDER_APPLY_PROMO:  (id: number) => `/orders/${id}/apply-promo`,
   ORDER_REMOVE_PROMO: (orderId: number, promoId: number) => `/orders/${orderId}/promo/${promoId}`,
+  ORDER_APPLY_REFERRAL: (id: number) => `/orders/${id}/apply-referral`,
+  ORDER_REMOVE_REFERRAL: (id: number) => `/orders/${id}/referral`,
 
   // Delivery
   DELIVERY_ORDER:     '/orders/delivery',

@@ -23,45 +23,67 @@ class SmsService
     public function send(SmsMessage $sms): SmsLog
     {
         $estimate = $this->estimate($sms->message);
+        $normalized = $this->normalizePhone($sms->to);
 
-        // Check for duplicate send (idempotency)
-        if ($sms->idempotencyKey) {
-            $existing = SmsLog::where('idempotency_key', $sms->idempotencyKey)->first();
-            if ($existing) {
-                Log::info('SMS: Duplicate send prevented', ['key' => $sms->idempotencyKey]);
+        $existing = $sms->idempotencyKey
+            ? SmsLog::where('idempotency_key', $sms->idempotencyKey)->first()
+            : null;
 
-                return $existing;
-            }
+        // Only treat a carrier-confirmed send as final — allow retries after failed/demo/queued.
+        if ($existing !== null && $existing->status === 'sent') {
+            Log::info('SMS: Duplicate send prevented (already sent)', ['key' => $sms->idempotencyKey]);
+
+            return $existing;
         }
 
-        $log = SmsLog::create([
-            'message' => $sms->message,
-            'to' => $this->normalizePhone($sms->to),
-            'type' => $sms->type,
-            'status' => 'queued',
-            'encoding' => $estimate['encoding'],
-            'segments' => $estimate['segments'],
-            'cost_estimate_mvr' => $estimate['cost_mvr'],
-            'provider' => 'dhiraagu',
-            'customer_id' => $sms->customerId,
-            'campaign_id' => $sms->campaignId,
-            'reference_type' => $sms->referenceType,
-            'reference_id' => $sms->referenceId,
-            'idempotency_key' => $sms->idempotencyKey,
-        ]);
-
-        $normalized = $this->normalizePhone($sms->to);
+        if ($existing !== null) {
+            $existing->update([
+                'message' => $sms->message,
+                'to' => $normalized,
+                'type' => $sms->type,
+                'status' => 'queued',
+                'encoding' => $estimate['encoding'],
+                'segments' => $estimate['segments'],
+                'cost_estimate_mvr' => $estimate['cost_mvr'],
+                'customer_id' => $sms->customerId,
+                'campaign_id' => $sms->campaignId,
+                'reference_type' => $sms->referenceType,
+                'reference_id' => $sms->referenceId,
+                'gateway_response' => null,
+                'error_message' => null,
+                'sent_at' => null,
+            ]);
+            $log = $existing->fresh();
+        } else {
+            $log = SmsLog::create([
+                'message' => $sms->message,
+                'to' => $normalized,
+                'type' => $sms->type,
+                'status' => 'queued',
+                'encoding' => $estimate['encoding'],
+                'segments' => $estimate['segments'],
+                'cost_estimate_mvr' => $estimate['cost_mvr'],
+                'provider' => 'dhiraagu',
+                'customer_id' => $sms->customerId,
+                'campaign_id' => $sms->campaignId,
+                'reference_type' => $sms->referenceType,
+                'reference_id' => $sms->referenceId,
+                'idempotency_key' => $sms->idempotencyKey,
+            ]);
+        }
 
         [$success, $response, $error] = $this->provider->send($normalized, $sms->message);
 
+        $status = $success ? 'sent' : ($response === 'demo' ? 'demo' : 'failed');
+
         $log->update([
-            'status' => $success ? 'sent' : ($response === 'demo' ? 'demo' : 'failed'),
+            'status' => $status,
             'gateway_response' => is_array($response) ? $response : ['raw' => $response],
             'error_message' => $error,
             'sent_at' => $success ? now() : null,
         ]);
 
-        return $log;
+        return $log->fresh();
     }
 
     /**

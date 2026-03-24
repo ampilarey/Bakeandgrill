@@ -422,6 +422,16 @@ export async function initiateOnlinePayment(
   });
 }
 
+export async function completeZeroBalanceOrder(
+  token: string,
+  orderId: number,
+): Promise<{ order: OrderDetail }> {
+  return request<{ order: OrderDetail }>(ENDPOINTS.ORDER_COMPLETE_ZERO_BALANCE(orderId), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 // ── Promotions ────────────────────────────────────────────────────────────────
 
 export async function validatePromoCode(
@@ -598,6 +608,31 @@ export async function getMyReferralCode(
   token: string,
 ): Promise<{ code: string; uses_count: number; referee_discount_mvr: number }> {
   return request('/customer/referral-code', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function applyReferralToOrder(
+  token: string,
+  orderId: number,
+  code: string,
+): Promise<{ code: string; discount_laar: number; discount_mvr: string }> {
+  return request<{ code: string; discount_laar: number; discount_mvr: string }>(
+    ENDPOINTS.ORDER_APPLY_REFERRAL(orderId),
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code: code.trim().toUpperCase() }),
+    },
+  );
+}
+
+export async function removeReferralFromOrder(
+  token: string,
+  orderId: number,
+): Promise<void> {
+  await request<void>(ENDPOINTS.ORDER_REMOVE_REFERRAL(orderId), {
+    method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
 }

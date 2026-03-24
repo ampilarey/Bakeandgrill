@@ -38,12 +38,16 @@ export type Order = {
   status: OrderStatus | string;
   type: string;
   total: number;
+  /** Integer laari (1 MVR = 100) when provided by the API */
+  total_laar?: number;
   subtotal?: number;
   tax_amount?: number;
   discount_amount?: number;
   delivery_fee?: number;
   promo_discount_laar?: number;
   loyalty_discount_laar?: number;
+  gift_card_discount_laar?: number;
+  referral_discount_laar?: number;
   notes?: string | null;
   customer_notes?: string | null;
   paid_at?: string | null;

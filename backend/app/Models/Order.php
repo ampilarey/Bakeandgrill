@@ -35,6 +35,9 @@ class Order extends Model
         'manual_discount_laar',
         'gift_card_code',
         'gift_card_discount_laar',
+        'referral_code',
+        'referral_discount_laar',
+        'referral_redemption_recorded',
         'total_laar',
         'tax_inclusive',
         'tax_rate_bp',
@@ -79,6 +82,7 @@ class Order extends Model
         'delivered_at' => 'datetime',
         // Scalars
         'tax_inclusive' => 'boolean',
+        'referral_redemption_recorded' => 'boolean',
         'delivery_fee' => 'decimal:2',
         'delivery_fee_laar' => 'integer',
         'tip_amount' => 'decimal:2',

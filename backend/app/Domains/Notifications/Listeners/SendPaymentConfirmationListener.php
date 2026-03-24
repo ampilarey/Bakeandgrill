@@ -19,6 +19,9 @@ use Illuminate\Support\Str;
 /**
  * Sends a payment confirmation SMS + optional email after any order is paid.
  *
+ * Queued (`ShouldQueue`) — a running worker is required, e.g. `php artisan queue:work`
+ * or Supervisor. Without it, SMS stays in the `jobs` table and is never sent.
+ *
  * Online orders (online_pickup, delivery):
  *   → tracking link so customer can watch order progress
  *

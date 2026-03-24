@@ -97,8 +97,9 @@ class DhiraaguSmsProvider implements SmsProviderInterface
 
     private function demoSend(string $phone, string $message): array
     {
-        Log::info('SMS: Demo mode — not sent', ['to' => $phone, 'message' => $message]);
+        Log::info('SMS: Demo mode — not sent via carrier', ['to' => $phone, 'preview' => mb_substr($message, 0, 80)]);
 
-        return [true, 'demo', null];
+        // success=false so sms_logs show status "demo", not "sent" (avoids false "delivered" in admin).
+        return [false, 'demo', null];
     }
 }
