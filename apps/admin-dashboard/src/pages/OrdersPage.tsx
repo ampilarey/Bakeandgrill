@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchOrders, fetchOrder, holdOrder, resumeOrder, sendOrderBill,
-  kdsStart, kdsBump,
+  kdsStart, kdsBump, addOrderPayments,
   type Order,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -58,6 +58,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [acting, setActing] = useState('');
   const [actionErr, setActionErr] = useState('');
   const [toast, setToast] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
+  const [payRows, setPayRows] = useState([{ method: 'cash', amount: '' }]);
+  const [paymentSaving, setPaymentSaving] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -83,6 +86,25 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
       onOrderUpdated();
     } catch (e) { setActionErr((e as Error).message); }
     finally { setActing(''); }
+  };
+
+  const handleAddPayment = async () => {
+    if (!order) return;
+    const payments = payRows
+      .filter((r) => r.amount.trim())
+      .map((r) => ({ method: r.method, amount: parseFloat(r.amount) }))
+      .filter((r) => !isNaN(r.amount) && r.amount > 0);
+    if (payments.length === 0) { setActionErr('Enter at least one payment amount.'); return; }
+    setPaymentSaving(true); setActionErr('');
+    try {
+      await addOrderPayments(order.id, { payments });
+      showToast('Payment recorded.');
+      setShowPayment(false);
+      setPayRows([{ method: 'cash', amount: '' }]);
+      reload();
+      onOrderUpdated();
+    } catch (e) { setActionErr((e as Error).message); }
+    finally { setPaymentSaving(false); }
   };
 
   return (
@@ -145,6 +167,11 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   {acting === 'bill' ? '…' : '🧾 Send Bill'}
                 </Btn>
               )}
+              {!['paid', 'completed', 'cancelled'].includes(order.status) && (
+                <Btn small variant="secondary" onClick={() => { setShowPayment(true); setPayRows([{ method: 'cash', amount: String(parseFloat(String(order.total ?? 0)).toFixed(2)) }]); }}>
+                  💵 Record Payment
+                </Btn>
+              )}
             </div>
 
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
@@ -186,6 +213,55 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, paddingTop: 8 }}>
                   <span>Total</span>
                   <span>MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            {showPayment && (
+              <div style={{ background: '#F9F5F0', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', marginBottom: 12 }}>Record Payment</div>
+                {payRows.map((row, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                    <select
+                      value={row.method}
+                      onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, method: e.target.value } : r))}
+                      style={{ height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: '#fff', flex: '0 0 110px' }}
+                    >
+                      {['cash', 'card', 'bml_pay', 'bank_transfer', 'other'].map((m) => (
+                        <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number" min="0" step="0.01"
+                      placeholder="0.00"
+                      value={row.amount}
+                      onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, amount: e.target.value } : r))}
+                      style={{ flex: 1, height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}
+                    />
+                    {payRows.length > 1 && (
+                      <button onClick={() => setPayRows((rs) => rs.filter((_, j) => j !== i))}
+                        style={{ background: 'none', border: 'none', fontSize: 16, color: '#9C8E7E', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <button
+                    onClick={() => setPayRows((rs) => [...rs, { method: 'cash', amount: '' }])}
+                    style={{ fontSize: 12, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+                  >
+                    + Split payment
+                  </button>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                    <button onClick={() => { setShowPayment(false); setPayRows([{ method: 'cash', amount: '' }]); }}
+                      style={{ fontSize: 12, color: '#9C8E7E', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                    <button
+                      onClick={() => void handleAddPayment()}
+                      disabled={paymentSaving}
+                      style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#D4813A', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', opacity: paymentSaving ? 0.6 : 1 }}
+                    >
+                      {paymentSaving ? '…' : 'Confirm'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

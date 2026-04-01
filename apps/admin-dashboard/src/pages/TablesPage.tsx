@@ -4,7 +4,7 @@ import {
   PageHeader, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
 import {
-  fetchTables, createTable, updateTable, openTable, closeTable, mergeTables,
+  fetchTables, createTable, updateTable, openTable, closeTable, mergeTables, splitTable,
   type RestaurantTable,
 } from '../api';
 
@@ -47,6 +47,11 @@ export default function TablesPage() {
   const [formError, setFormError] = useState('');
 
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [splitTableId, setSplitTableId]   = useState<number | null>(null);
+  const [splitInto, setSplitInto]         = useState('2');
+  const [splitting, setSplitting]         = useState(false);
+  const [toast, setToast]                 = useState('');
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -106,6 +111,20 @@ export default function TablesPage() {
     finally { setActionLoading(null); }
   };
 
+  const handleSplit = async () => {
+    if (!splitTableId) return;
+    const into = parseInt(splitInto, 10);
+    if (isNaN(into) || into < 2) { setError('Must split into at least 2 tables.'); return; }
+    setSplitting(true);
+    try {
+      await splitTable(splitTableId, into);
+      setSplitTableId(null);
+      showToast(`Table split into ${into}.`);
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setSplitting(false); }
+  };
+
   const toggleSelect = (id: number) => {
     setSelected(sel => sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id]);
   };
@@ -117,6 +136,7 @@ export default function TablesPage() {
     <div>
       <PageHeader title="Table Management" action={<Btn onClick={() => openModal()}>+ Add Table</Btn>} />
 
+      {toast && <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{toast}</div>}
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -157,11 +177,37 @@ export default function TablesPage() {
                 {t.status === 'occupied' && (
                   <Btn small variant="secondary" onClick={() => handleClose(t.id)} disabled={actionLoading === t.id}>Close</Btn>
                 )}
+                {t.status === 'occupied' && (
+                  <Btn small variant="secondary" onClick={() => { setSplitTableId(t.id); setSplitInto('2'); }}>Split</Btn>
+                )}
                 <Btn small variant="secondary" onClick={() => openModal(t)}>Edit</Btn>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {splitTableId && (
+        <Modal title="Split Table" onClose={() => setSplitTableId(null)} maxWidth={360}>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+            Split this table into multiple smaller tables. The original table will be closed.
+          </p>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 6 }}>
+            Number of tables to split into *
+          </label>
+          <input
+            type="number" min="2" max="10"
+            value={splitInto}
+            onChange={(e) => setSplitInto(e.target.value)}
+            style={{ ...S.input, marginBottom: 4 }}
+          />
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setSplitTableId(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleSplit()} disabled={splitting}>
+              {splitting ? 'Splitting…' : 'Split Table'}
+            </Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {modal && (
