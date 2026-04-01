@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
-import { getCustomerMe, updateCustomerProfile, changeCustomerPassword, revokeCustomerToken, logoutCustomerWebSession } from '../api';
+import { getCustomerMe, updateCustomerProfile, changeCustomerPassword, revokeCustomerToken, logoutCustomerWebSession, getLoyaltyAccount } from '../api';
 import type { AuthCustomer } from '../api';
+import type { LoyaltyAccount } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -62,6 +63,13 @@ function SectionCard({ title, children }: { title: string; children: React.React
   );
 }
 
+const TIER_COLOR: Record<string, { bg: string; text: string; border: string }> = {
+  bronze:   { bg: '#FEF3E2', text: '#92400E', border: '#FCD34D' },
+  silver:   { bg: '#F1F5F9', text: '#475569', border: '#CBD5E1' },
+  gold:     { bg: '#FFFBEB', text: '#92400E', border: '#FCD34D' },
+  platinum: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
+};
+
 export function AccountPage() {
   usePageTitle('My Account');
   const navigate = useNavigate();
@@ -69,6 +77,7 @@ export function AccountPage() {
 
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [loyalty, setLoyalty] = useState<LoyaltyAccount | null>(null);
 
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '' });
@@ -90,6 +99,9 @@ export function AccountPage() {
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false));
+    getLoyaltyAccount(token)
+      .then(({ account }) => setLoyalty(account))
+      .catch(() => {});
   }, [token, authReady]);
 
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
@@ -182,6 +194,56 @@ export function AccountPage() {
         <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.375rem 0 0' }}>
           Hi, {customerName ?? customer?.name ?? 'there'} — manage your profile and password.
         </p>
+      </div>
+
+      {/* Quick links */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Link
+          to="/orders"
+          style={{
+            display: 'flex', flexDirection: 'column', gap: 4,
+            padding: '16px 18px',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 14,
+            textDecoration: 'none',
+          }}
+        >
+          <span style={{ fontSize: 22 }}>🧾</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Order History</span>
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>View past orders</span>
+        </Link>
+
+        {loyalty ? (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 4,
+            padding: '16px 18px',
+            background: TIER_COLOR[loyalty.tier]?.bg ?? '#FEF3E2',
+            border: `1px solid ${TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D'}`,
+            borderRadius: 14,
+          }}>
+            <span style={{ fontSize: 22 }}>⭐</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }}>
+              {loyalty.points_balance.toLocaleString()} pts
+            </span>
+            <span style={{ fontSize: 12, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.75, textTransform: 'capitalize' }}>
+              {loyalty.tier} member
+              {loyalty.lifetime_points != null ? ` · ${loyalty.lifetime_points.toLocaleString()} lifetime` : ''}
+            </span>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 4,
+            padding: '16px 18px',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 14,
+          }}>
+            <span style={{ fontSize: 22 }}>⭐</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Loyalty Points</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Earn 1 pt per MVR 1</span>
+          </div>
+        )}
       </div>
 
       {/* Profile section */}
