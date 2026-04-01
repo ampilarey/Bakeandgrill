@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, type Expense, type ExpenseCategory } from '../api';
+import { useEffect, useRef, useState } from 'react';
+import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -26,6 +26,12 @@ export function ExpensesPage() {
 
   const emptyForm = { expense_category_id: '', description: '', amount: '', expense_date: today(), payment_method: 'cash', notes: '' };
   const [form, setForm] = useState(emptyForm);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [toast, setToast] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [receiptExpenseId, setReceiptExpenseId] = useState<number | null>(null);
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -109,6 +115,43 @@ export function ExpensesPage() {
     });
   };
 
+  const handleApprove = async (exp: Expense) => {
+    setActionLoading(exp.id);
+    try {
+      const { expense } = await approveExpense(exp.id);
+      setExpenses((prev) => prev.map((e) => e.id === exp.id ? expense : e));
+      showToast('Expense approved.');
+    } catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(null); }
+  };
+
+  const handlePushXero = async (exp: Expense) => {
+    setActionLoading(exp.id);
+    try {
+      await pushExpenseToXero(exp.id);
+      showToast('Expense pushed to Xero.');
+    } catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(null); }
+  };
+
+  const triggerReceiptUpload = (id: number) => {
+    setReceiptExpenseId(id);
+    fileInputRef.current?.click();
+  };
+
+  const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || receiptExpenseId === null) return;
+    e.target.value = '';
+    setActionLoading(receiptExpenseId);
+    try {
+      const { expense } = await uploadExpenseReceipt(receiptExpenseId, file);
+      setExpenses((prev) => prev.map((ex) => ex.id === expense.id ? expense : ex));
+      showToast('Receipt uploaded.');
+    } catch (err) { setError((err as Error).message); }
+    finally { setActionLoading(null); setReceiptExpenseId(null); }
+  };
+
   const fieldStyle = {
     width: '100%', height: 36, padding: '0 10px',
     border: '1.5px solid #E8E0D8', borderRadius: 10,
@@ -119,6 +162,7 @@ export function ExpensesPage() {
   return (
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
+      <input ref={fileInputRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={handleReceiptFile} />
       <PageHeader
         title="Expenses"
         subtitle="Track operating costs and overheads"
@@ -129,6 +173,11 @@ export function ExpensesPage() {
           </div>
         }
       />
+      {toast && (
+        <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+          {toast}
+        </div>
+      )}
       {error && <ErrorMsg message={error} />}
 
       {/* Date range */}
@@ -166,7 +215,18 @@ export function ExpensesPage() {
                         <Badge label={exp.status} color={STATUS_COLOR[exp.status] ?? 'gray'} />
                       </td>
                       <td style={{ ...TD, whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {exp.status === 'pending' && (
+                            <Btn small onClick={() => void handleApprove(exp)} disabled={actionLoading === exp.id}>
+                              {actionLoading === exp.id ? '…' : '✓ Approve'}
+                            </Btn>
+                          )}
+                          <Btn small variant="secondary" onClick={() => triggerReceiptUpload(exp.id)} disabled={actionLoading === exp.id}>
+                            {actionLoading === exp.id ? '…' : '📎 Receipt'}
+                          </Btn>
+                          <Btn small variant="secondary" onClick={() => void handlePushXero(exp)} disabled={actionLoading === exp.id}>
+                            {actionLoading === exp.id ? '…' : 'Xero ↑'}
+                          </Btn>
                           <Btn small variant="secondary" onClick={() => handleEdit(exp)}>Edit</Btn>
                           <Btn small variant="danger" onClick={() => handleDelete(exp.id)}>Delete</Btn>
                         </div>

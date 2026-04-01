@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer, type Invoice } from '../api';
+import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer, generateInvoicePdf, pushInvoiceToXero, type Invoice } from '../api';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -20,7 +20,12 @@ export function InvoicesPage() {
   const [smsSending, setSmsSending]       = useState(false);
   const [smsResult, setSmsResult]         = useState<{ link: string } | null>(null);
   const [smsError, setSmsError]           = useState('');
+  const [pdfLoading, setPdfLoading]       = useState<number | null>(null);
+  const [xeroLoading, setXeroLoading]     = useState<number | null>(null);
+  const [toast, setToast]                 = useState('');
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -57,6 +62,29 @@ export function InvoicesPage() {
     });
   };
 
+  const handleDownloadPdf = async (inv: Invoice) => {
+    setPdfLoading(inv.id);
+    try {
+      const blob = await generateInvoicePdf(inv.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${inv.invoice_number}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError((e as Error).message); }
+    finally { setPdfLoading(null); }
+  };
+
+  const handlePushXero = async (inv: Invoice) => {
+    setXeroLoading(inv.id);
+    try {
+      await pushInvoiceToXero(inv.id);
+      showToast(`${inv.invoice_number} pushed to Xero.`);
+    } catch (e) { setError((e as Error).message); }
+    finally { setXeroLoading(null); }
+  };
+
   const openSmsModal = (inv: Invoice) => {
     setSendSmsInv(inv);
     setSmsPhone(inv.recipient_phone ?? inv.customer?.phone ?? '');
@@ -90,6 +118,11 @@ export function InvoicesPage() {
         subtitle="Manage sale and purchase invoices"
         action={<Btn onClick={load} variant="secondary">↻ Refresh</Btn>}
       />
+      {toast && (
+        <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+          {toast}
+        </div>
+      )}
       {error && <ErrorMsg message={error} />}
 
       {/* Filters */}
@@ -144,6 +177,14 @@ export function InvoicesPage() {
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && inv.type === 'sale' && (
                         <Btn small variant="secondary" onClick={() => openSmsModal(inv)}>📱 SMS</Btn>
+                      )}
+                      <Btn small variant="secondary" onClick={() => void handleDownloadPdf(inv)} disabled={pdfLoading === inv.id}>
+                        {pdfLoading === inv.id ? '…' : '↓ PDF'}
+                      </Btn>
+                      {!['void', 'cancelled'].includes(inv.status) && (
+                        <Btn small variant="secondary" onClick={() => void handlePushXero(inv)} disabled={xeroLoading === inv.id}>
+                          {xeroLoading === inv.id ? '…' : 'Xero ↑'}
+                        </Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && (
                         <Btn small variant="danger" onClick={() => handleVoid(inv.id)}>Void</Btn>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { approvePurchase, getPurchaseSuggestions, apiRequest as req, type PurchaseSuggestions } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, apiRequest as req, type PurchaseSuggestions } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -47,6 +47,15 @@ export function PurchaseOrdersPage() {
   const [sugLoading, setSugLoading]       = useState(false);
   const [statusFilter, setStatus]         = useState('');
   const [detail, setDetail]               = useState<Purchase | null>(null);
+  const [rejectId, setRejectId]           = useState<number | null>(null);
+  const [rejectReason, setRejectReason]   = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast]                 = useState('');
+  // per-item receive quantities (purchase_item_id → qty)
+  const [receiveQtys, setReceiveQtys]     = useState<Record<number, number>>({});
+  const [receiveNotes, setReceiveNotes]   = useState('');
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -74,9 +83,52 @@ export function PurchaseOrdersPage() {
     catch (e) { setError((e as Error).message); }
   };
 
+  const handleReject = async () => {
+    if (rejectId === null || !rejectReason.trim()) return;
+    setActionLoading(true);
+    try {
+      await rejectPurchase(rejectId, rejectReason);
+      setRejectId(null); setRejectReason('');
+      showToast('Purchase order rejected.');
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(false); }
+  };
+
+  const openDetail = (po: Purchase) => {
+    setDetail(po);
+    const initial: Record<number, number> = {};
+    po.items.forEach((item) => { initial[item.id] = item.quantity - item.received_quantity; });
+    setReceiveQtys(initial);
+    setReceiveNotes('');
+  };
+
+  const handleReceive = async () => {
+    if (!detail) return;
+    setActionLoading(true);
+    try {
+      await receivePurchase(detail.id, {
+        items: detail.items.map((item) => ({
+          purchase_item_id: item.id,
+          received_quantity: receiveQtys[item.id] ?? 0,
+        })),
+        notes: receiveNotes || undefined,
+      });
+      setDetail(null);
+      showToast('Stock received and recorded.');
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(false); }
+  };
+
   return (
     <>
       <PageHeader title="Purchase Orders" subtitle="Manage procurement workflow" />
+      {toast && (
+        <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+          {toast}
+        </div>
+      )}
       {error && <ErrorMsg message={error} />}
 
       {/* Filters */}
@@ -140,7 +192,7 @@ export function PurchaseOrdersPage() {
                 <tr key={po.id}>
                   <td style={{ ...TD, fontWeight: 700 }}>
                     <button
-                      onClick={() => setDetail(po)}
+                      onClick={() => openDetail(po)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: '#D4813A', fontSize: 14, fontFamily: 'inherit', padding: 0 }}
                     >
                       {po.purchase_number}
@@ -157,9 +209,17 @@ export function PurchaseOrdersPage() {
                   </td>
                   <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{po.items?.length ?? 0}</td>
                   <td style={TD}>
-                    {po.status === 'draft' && (
-                      <Btn small onClick={() => handleApprove(po.id)}>Approve</Btn>
-                    )}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {po.status === 'draft' && (
+                        <Btn small onClick={() => void handleApprove(po.id)}>Approve</Btn>
+                      )}
+                      {['ordered', 'partial'].includes(po.status) && (
+                        <Btn small onClick={() => openDetail(po)}>Receive</Btn>
+                      )}
+                      {['draft', 'ordered'].includes(po.status) && (
+                        <Btn small variant="danger" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Reject</Btn>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -168,9 +228,9 @@ export function PurchaseOrdersPage() {
         </TableCard>
       )}
 
-      {/* Detail modal */}
+      {/* Detail / Receive modal */}
       {detail && (
-        <Modal title={detail.purchase_number} onClose={() => setDetail(null)} maxWidth={560}>
+        <Modal title={detail.purchase_number} onClose={() => setDetail(null)} maxWidth={580}>
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
             Supplier: <strong style={{ color: '#1C1408' }}>{detail.supplier?.name ?? '—'}</strong>
             {' · '}Status: <strong style={{ color: '#1C1408' }}>{detail.status}</strong>
@@ -180,7 +240,10 @@ export function PurchaseOrdersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
-                  {['Item', 'Ordered', 'Received', 'Status'].map((h) => (
+                  {['Item', 'Ordered', 'Already Rcvd',
+                    ...(['ordered', 'partial'].includes(detail.status) ? ['Receiving Now'] : []),
+                    'Status',
+                  ].map((h) => (
                     <th key={h} style={TH}>{h}</th>
                   ))}
                 </tr>
@@ -196,6 +259,18 @@ export function PurchaseOrdersPage() {
                     }}>
                       {item.received_quantity}
                     </td>
+                    {['ordered', 'partial'].includes(detail.status) && (
+                      <td style={{ ...TD, textAlign: 'center' }}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={item.quantity - item.received_quantity}
+                          value={receiveQtys[item.id] ?? 0}
+                          onChange={(e) => setReceiveQtys((q) => ({ ...q, [item.id]: Number(e.target.value) }))}
+                          style={{ width: 70, height: 30, padding: '0 6px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', textAlign: 'center' }}
+                        />
+                      </td>
+                    )}
                     <td style={TD}>
                       <Badge
                         label={item.receive_status}
@@ -207,8 +282,49 @@ export function PurchaseOrdersPage() {
               </tbody>
             </table>
           </TableCard>
+
+          {['ordered', 'partial'].includes(detail.status) && (
+            <div style={{ marginTop: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+              <textarea
+                rows={2}
+                value={receiveNotes}
+                onChange={(e) => setReceiveNotes(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+              />
+            </div>
+          )}
+
           <ModalActions>
             <Btn variant="secondary" onClick={() => setDetail(null)}>Close</Btn>
+            {['ordered', 'partial'].includes(detail.status) && (
+              <Btn onClick={() => void handleReceive()} disabled={actionLoading}>
+                {actionLoading ? 'Saving…' : '✓ Confirm Receipt'}
+              </Btn>
+            )}
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Reject modal */}
+      {rejectId !== null && (
+        <Modal title="Reject Purchase Order" onClose={() => setRejectId(null)} maxWidth={420}>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+            Please provide a reason for rejecting this purchase order.
+          </p>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Reason *</label>
+          <textarea
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="e.g. Price too high, wrong items, supplier issue…"
+            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 4 }}
+          />
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setRejectId(null)}>Cancel</Btn>
+            <Btn variant="danger" onClick={() => void handleReject()} disabled={actionLoading || !rejectReason.trim()}>
+              {actionLoading ? 'Rejecting…' : 'Reject Order'}
+            </Btn>
           </ModalActions>
         </Modal>
       )}
