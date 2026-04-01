@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchOrders, fetchOrder, type Order } from '../api';
+import {
+  fetchOrders, fetchOrder, holdOrder, resumeOrder, sendOrderBill,
+  kdsStart, kdsBump,
+  type Order,
+} from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg,
@@ -44,17 +48,42 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => void }) {
+function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
+  orderId: number;
+  onClose: () => void;
+  onOrderUpdated: () => void;
+}) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState('');
+  const [actionErr, setActionErr] = useState('');
+  const [toast, setToast] = useState('');
 
-  useEffect(() => {
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const reload = () => {
     const controller = new AbortController();
     fetchOrder(orderId, controller.signal)
       .then((r) => { setOrder(r.order); setLoading(false); })
       .catch((err) => { if (err.name !== 'AbortError') setLoading(false); });
     return () => controller.abort();
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    return reload();
   }, [orderId]);
+
+  const doAction = async (key: string, fn: () => Promise<unknown>, label: string) => {
+    setActing(key); setActionErr('');
+    try {
+      await fn();
+      showToast(`${label} done.`);
+      reload();
+      onOrderUpdated();
+    } catch (e) { setActionErr((e as Error).message); }
+    finally { setActing(''); }
+  };
 
   return (
     <div style={{
@@ -73,13 +102,49 @@ function OrderDrawer({ orderId, onClose }: { orderId: number; onClose: () => voi
           <button onClick={onClose} aria-label="Close order details" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
         </div>
 
+        {toast && (
+          <div style={{ background: '#DCFCE7', color: '#166534', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{toast}</div>
+        )}
+        {actionErr && (
+          <div style={{ background: '#FEE2E2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{actionErr}</div>
+        )}
+
         {loading && <Spinner />}
         {!loading && !order && <EmptyState message="Order not found." />}
         {order && (
           <>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               <Badge label={order.status} color={statColor(order.status)} />
               <Badge label={typeLabel(order.type)} color="blue" />
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {order.status === 'pending' && (
+                <Btn small onClick={() => doAction('start', () => kdsStart(order.id), 'Start preparing')}>
+                  {acting === 'start' ? '…' : '▶ Start Preparing'}
+                </Btn>
+              )}
+              {order.status === 'preparing' && (
+                <Btn small onClick={() => doAction('bump', () => kdsBump(order.id), 'Mark ready')}>
+                  {acting === 'bump' ? '…' : '✓ Mark Ready'}
+                </Btn>
+              )}
+              {order.status === 'on_hold' && (
+                <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
+                  {acting === 'resume' ? '…' : '▶ Resume Order'}
+                </Btn>
+              )}
+              {['pending', 'preparing', 'ready'].includes(order.status) && (
+                <Btn small variant="secondary" onClick={() => doAction('hold', () => holdOrder(order.id), 'Order held')}>
+                  {acting === 'hold' ? '…' : '⏸ Hold'}
+                </Btn>
+              )}
+              {order.type === 'dine_in' && ['ready', 'preparing'].includes(order.status) && (
+                <Btn small variant="secondary" onClick={() => doAction('bill', () => sendOrderBill(order.id), 'Bill sent')}>
+                  {acting === 'bill' ? '…' : '🧾 Send Bill'}
+                </Btn>
+              )}
             </div>
 
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
@@ -274,7 +339,13 @@ export function OrdersPage() {
         </Card>
       )}
 
-      {selectedId && <OrderDrawer orderId={selectedId} onClose={() => setSelectedId(null)} />}
+      {selectedId && (
+        <OrderDrawer
+          orderId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onOrderUpdated={() => void load()}
+        />
+      )}
     </>
   );
 }

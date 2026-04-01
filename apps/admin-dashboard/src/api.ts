@@ -1594,6 +1594,10 @@ export async function addOrderPayments(id: number, data: {
   return req(`/orders/${id}/payments`, { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function sendOrderBill(id: number): Promise<void> {
+  await req(`/orders/${id}/send-bill`, { method: 'POST' });
+}
+
 // ── Missing Reservation Settings ─────────────────────────────────────────────
 
 export interface ReservationSettings {

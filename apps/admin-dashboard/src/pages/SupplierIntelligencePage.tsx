@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getSupplierPerformance, rateSupplier, type SupplierPerf } from '../api';
-import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner } from '../components/Layout';
+import {
+  getSupplierPerformance, rateSupplier,
+  getSupplierRatings, getSupplierPerformanceSingle, refreshSupplierCache,
+  getSupplierPriceHistory, fetchInventoryItems,
+  type SupplierPerf, type SupplierRating, type PriceHistory,
+} from '../api';
+import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
@@ -16,6 +21,8 @@ function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
 
 type ScoreField = 'quality_score' | 'delivery_score' | 'accuracy_score' | 'price_score';
 
+type DrillDown = { supplierId: number; supplierName: string };
+
 export function SupplierIntelligencePage() {
   usePageTitle('Supplier Intelligence');
   const [perfs, setPerfs]       = useState<SupplierPerf[]>([]);
@@ -25,6 +32,18 @@ export function SupplierIntelligencePage() {
   const [rateForm, setRateForm] = useState({ quality_score: 3, delivery_score: 3, accuracy_score: 3, price_score: 3, notes: '' });
   const [saving, setSaving]     = useState(false);
 
+  // Drill-down state
+  const [drill, setDrill]               = useState<DrillDown | null>(null);
+  const [drillTab, setDrillTab]         = useState<'ratings' | 'prices'>('ratings');
+  const [drillRatings, setDrillRatings] = useState<SupplierRating[]>([]);
+  const [drillLoading, setDrillLoading] = useState(false);
+  const [drillRefreshing, setDrillRefreshing] = useState(false);
+  // Price history
+  const [invItems, setInvItems]         = useState<{ id: number; name: string }[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
+  const [priceLoading, setPriceLoading] = useState(false);
+
   const load = async () => {
     setLoading(true); setError('');
     try { setPerfs((await getSupplierPerformance()).suppliers); }
@@ -33,6 +52,50 @@ export function SupplierIntelligencePage() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  const openDrill = async (sup: SupplierPerf) => {
+    setDrill({ supplierId: sup.supplier_id, supplierName: sup.supplier_name });
+    setDrillTab('ratings');
+    setDrillRatings([]);
+    setPriceHistory([]);
+    setSelectedItemId(null);
+    setDrillLoading(true);
+    try {
+      const [ratingsRes, itemsRes] = await Promise.all([
+        getSupplierRatings(sup.supplier_id),
+        fetchInventoryItems({ page: 1 }),
+      ]);
+      setDrillRatings(ratingsRes.data);
+      setInvItems(itemsRes.data.map((i) => ({ id: i.id, name: i.name })));
+    } catch (e) { setError((e as Error).message); }
+    finally { setDrillLoading(false); }
+  };
+
+  const handleRefreshCache = async () => {
+    if (!drill) return;
+    setDrillRefreshing(true);
+    try {
+      await refreshSupplierCache(drill.supplierId);
+      const res = await getSupplierPerformanceSingle(drill.supplierId);
+      setPerfs((prev) => prev.map((p) =>
+        p.supplier_id === drill.supplierId
+          ? { ...p, avg_quality: res.avg_quality, avg_delivery: res.avg_delivery, total_spend: res.total_spend, purchase_count: res.purchase_count }
+          : p,
+      ));
+    } catch (e) { setError((e as Error).message); }
+    finally { setDrillRefreshing(false); }
+  };
+
+  const loadPriceHistory = async (itemId: number) => {
+    if (!drill) return;
+    setSelectedItemId(itemId);
+    setPriceLoading(true);
+    try {
+      const res = await getSupplierPriceHistory(drill.supplierId, itemId);
+      setPriceHistory(res.data);
+    } catch (e) { setError((e as Error).message); }
+    finally { setPriceLoading(false); }
+  };
 
   const handleRate = async () => {
     if (!rating) return;
@@ -116,16 +179,143 @@ export function SupplierIntelligencePage() {
                   </div>
                 </div>
 
-                <Btn
-                  variant="secondary"
-                  onClick={() => setRating({ supplierId: sup.supplier_id, supplierName: sup.supplier_name })}
-                >
-                  Rate Supplier
-                </Btn>
+                <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                  <Btn
+                    variant="secondary"
+                    onClick={() => setRating({ supplierId: sup.supplier_id, supplierName: sup.supplier_name })}
+                  >
+                    Rate Supplier
+                  </Btn>
+                  <Btn
+                    variant="secondary"
+                    onClick={() => void openDrill(sup)}
+                  >
+                    View History
+                  </Btn>
+                </div>
               </div>
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Drill-down Modal */}
+      {drill && (
+        <Modal title={drill.supplierName} onClose={() => setDrill(null)} maxWidth={620}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8E0D8', marginBottom: 20 }}>
+            {(['ratings', 'prices'] as const).map((t) => (
+              <button key={t} onClick={() => setDrillTab(t)} style={{
+                padding: '8px 18px', border: 'none',
+                borderBottom: drillTab === t ? '2px solid #D4783A' : '2px solid transparent',
+                background: 'transparent', fontSize: 14,
+                fontWeight: drillTab === t ? 700 : 500,
+                color: drillTab === t ? '#D4783A' : '#6B5D4F',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                {t === 'ratings' ? 'Rating History' : 'Price History'}
+              </button>
+            ))}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+              <Btn small variant="secondary" onClick={() => void handleRefreshCache()} disabled={drillRefreshing}>
+                {drillRefreshing ? '…' : '↻ Refresh Cache'}
+              </Btn>
+            </div>
+          </div>
+
+          {drillLoading ? <Spinner /> : drillTab === 'ratings' ? (
+            drillRatings.length === 0 ? (
+              <EmptyState message="No ratings yet for this supplier." />
+            ) : (
+              <TableCard>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      {['Date', 'Quality', 'Delivery', 'Pricing', 'Overall', 'Comment'].map((h) => (
+                        <th key={h} style={TH}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drillRatings.map((r) => (
+                      <tr key={r.id}>
+                        <td style={{ ...TD, whiteSpace: 'nowrap', color: '#9C8E7E', fontSize: 12 }}>
+                          {new Date(r.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ ...TD, textAlign: 'center' }}>
+                          <span style={{ color: '#f59e0b' }}>{'★'.repeat(Math.round(r.quality_score))}</span>
+                        </td>
+                        <td style={{ ...TD, textAlign: 'center' }}>
+                          <span style={{ color: '#f59e0b' }}>{'★'.repeat(Math.round(r.delivery_score))}</span>
+                        </td>
+                        <td style={{ ...TD, textAlign: 'center' }}>
+                          <span style={{ color: '#f59e0b' }}>{'★'.repeat(Math.round(r.pricing_score))}</span>
+                        </td>
+                        <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#D4813A' }}>
+                          {parseFloat(String(r.overall_score ?? 0)).toFixed(1)}
+                        </td>
+                        <td style={{ ...TD, color: '#6B5D4F', maxWidth: 180, fontSize: 12 }}>
+                          {r.comment ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableCard>
+            )
+          ) : (
+            <div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>
+                  Select inventory item to see price history
+                </label>
+                <select
+                  value={selectedItemId ?? ''}
+                  onChange={(e) => { if (e.target.value) void loadPriceHistory(Number(e.target.value)); }}
+                  style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none', minWidth: 240, cursor: 'pointer' }}
+                >
+                  <option value="">Choose an item…</option>
+                  {invItems.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
+              </div>
+              {priceLoading ? <Spinner /> : priceHistory.length === 0 ? (
+                <EmptyState message={selectedItemId ? 'No price history for this item from this supplier.' : 'Select an item above.'} />
+              ) : (
+                <TableCard>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Date', 'Unit Price (MVR)', 'Unit', 'Purchase #'].map((h) => (
+                          <th key={h} style={TH}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {priceHistory.map((ph, i) => (
+                        <tr key={i}>
+                          <td style={{ ...TD, whiteSpace: 'nowrap', color: '#9C8E7E', fontSize: 12 }}>
+                            {new Date(ph.recorded_at).toLocaleDateString()}
+                          </td>
+                          <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>
+                            {parseFloat(String(ph.unit_price ?? 0)).toFixed(2)}
+                          </td>
+                          <td style={{ ...TD, color: '#6B5D4F' }}>{ph.unit}</td>
+                          <td style={{ ...TD, color: '#9C8E7E' }}>{ph.purchase_id ? `#${ph.purchase_id}` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableCard>
+              )}
+            </div>
+          )}
+
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setDrill(null)}>Close</Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {/* Rate Supplier Modal */}
