@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   getSupplierPerformance, rateSupplier,
   getSupplierRatings, getSupplierPerformanceSingle, refreshSupplierCache,
-  getSupplierPriceHistory, fetchInventoryItems,
+  getSupplierPriceHistory, getPriceComparison, fetchInventoryItems,
   type SupplierPerf, type SupplierRating, type PriceHistory,
 } from '../api';
 import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
@@ -33,6 +33,12 @@ export function SupplierIntelligencePage() {
   const [saving, setSaving]     = useState(false);
 
   // Drill-down state
+  // Global price comparison (not per-supplier)
+  const [showCompare, setShowCompare]   = useState(false);
+  const [compareItemId, setCompareItemId] = useState<number | null>(null);
+  const [compareData, setCompareData]   = useState<{ inventory_item_id: number; prices: { supplier_id: number; supplier_name: string; unit_price: number; unit: string; recorded_at: string }[]; cheapest: { supplier_id: number; supplier_name: string; unit_price: number } | null } | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+
   const [drill, setDrill]               = useState<DrillDown | null>(null);
   const [drillTab, setDrillTab]         = useState<'ratings' | 'prices'>('ratings');
   const [drillRatings, setDrillRatings] = useState<SupplierRating[]>([]);
@@ -52,6 +58,23 @@ export function SupplierIntelligencePage() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  useEffect(() => {
+    fetchInventoryItems({ page: 1 })
+      .then((res) => setInvItems(res.data.map((i) => ({ id: i.id, name: i.name }))))
+      .catch(() => {});
+  }, []);
+
+  const openCompare = async (itemId: number) => {
+    setCompareItemId(itemId);
+    setCompareData(null);
+    setCompareLoading(true);
+    try {
+      const res = await getPriceComparison(itemId);
+      setCompareData(res);
+    } catch (e) { setError((e as Error).message); }
+    finally { setCompareLoading(false); }
+  };
 
   const openDrill = async (sup: SupplierPerf) => {
     setDrill({ supplierId: sup.supplier_id, supplierName: sup.supplier_name });
@@ -137,7 +160,14 @@ export function SupplierIntelligencePage() {
       <PageHeader
         title="Supplier Intelligence"
         subtitle="Ratings, performance and price comparison"
-        action={<Btn onClick={load} variant="secondary">↻ Refresh</Btn>}
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="secondary" onClick={() => { setShowCompare(true); setCompareItemId(null); setCompareData(null); }}>
+              ⚖ Price Compare
+            </Btn>
+            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+          </div>
+        }
       />
       {error && <ErrorMsg message={error} />}
 
@@ -197,6 +227,77 @@ export function SupplierIntelligencePage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Price Comparison Modal */}
+      {showCompare && (
+        <Modal title="Price Comparison by Item" onClose={() => setShowCompare(false)} maxWidth={580}>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 14 }}>
+            Select an inventory item to compare prices across all suppliers.
+          </p>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Inventory Item</label>
+            <select
+              value={compareItemId ?? ''}
+              onChange={(e) => { if (e.target.value) void openCompare(Number(e.target.value)); }}
+              style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none', minWidth: 280, cursor: 'pointer' }}
+            >
+              <option value="">Choose an item…</option>
+              {invItems.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {compareLoading ? <Spinner /> : compareData ? (
+            <>
+              {compareData.cheapest && (
+                <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+                  ✓ Cheapest: {compareData.cheapest.supplier_name} — MVR {parseFloat(String(compareData.cheapest.unit_price ?? 0)).toFixed(2)}
+                </div>
+              )}
+              {compareData.prices.length === 0 ? (
+                <EmptyState message="No price history found for this item from any supplier." />
+              ) : (
+                <TableCard>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Supplier', 'Unit Price (MVR)', 'Unit', 'Last Recorded'].map((h) => (
+                          <th key={h} style={TH}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...compareData.prices]
+                        .sort((a, b) => a.unit_price - b.unit_price)
+                        .map((p, i) => (
+                          <tr key={p.supplier_id} style={{ background: i === 0 ? '#F0FDF4' : undefined }}>
+                            <td style={{ ...TD, fontWeight: i === 0 ? 700 : 400, color: i === 0 ? '#166534' : '#1C1408' }}>
+                              {i === 0 && '🏆 '}{p.supplier_name}
+                            </td>
+                            <td style={{ ...TD, fontWeight: 700, color: i === 0 ? '#166534' : '#D4813A' }}>
+                              {parseFloat(String(p.unit_price ?? 0)).toFixed(2)}
+                            </td>
+                            <td style={{ ...TD, color: '#6B5D4F' }}>{p.unit}</td>
+                            <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>
+                              {new Date(p.recorded_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </TableCard>
+              )}
+            </>
+          ) : !compareItemId ? (
+            <p style={{ color: '#9C8E7E', fontSize: 13 }}>Select an item above to see price comparison.</p>
+          ) : null}
+
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setShowCompare(false)}>Close</Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {/* Drill-down Modal */}

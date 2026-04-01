@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer, generateInvoicePdf, pushInvoiceToXero, type Invoice } from '../api';
+import {
+  getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
+  generateInvoicePdf, pushInvoiceToXero,
+  createInvoiceFromOrder, createInvoiceFromPurchase,
+  createCreditNote, updateInvoice,
+  type Invoice,
+} from '../api';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -24,6 +30,21 @@ export function InvoicesPage() {
   const [xeroLoading, setXeroLoading]     = useState<number | null>(null);
   const [toast, setToast]                 = useState('');
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
+
+  // Create from order/purchase
+  const [createFrom, setCreateFrom]       = useState<'order' | 'purchase' | null>(null);
+  const [createRefId, setCreateRefId]     = useState('');
+  const [creating, setCreating]           = useState(false);
+
+  // Edit invoice
+  const [editInv, setEditInv]             = useState<Invoice | null>(null);
+  const [editForm, setEditForm]           = useState({ recipient_name: '', recipient_phone: '', due_date: '', notes: '' });
+  const [editSaving, setEditSaving]       = useState(false);
+
+  // Credit note
+  const [cnInv, setCnInv]                 = useState<Invoice | null>(null);
+  const [cnForm, setCnForm]               = useState({ reason: '', amount: '' });
+  const [cnSaving, setCnSaving]           = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -85,6 +106,65 @@ export function InvoicesPage() {
     finally { setXeroLoading(null); }
   };
 
+  const handleCreateFrom = async () => {
+    const id = parseInt(createRefId, 10);
+    if (isNaN(id) || id <= 0) { setError('Enter a valid ID.'); return; }
+    setCreating(true); setError('');
+    try {
+      const res = createFrom === 'order'
+        ? await createInvoiceFromOrder(id)
+        : await createInvoiceFromPurchase(id);
+      showToast(`Invoice ${res.invoice.invoice_number} created.`);
+      setCreateFrom(null); setCreateRefId('');
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setCreating(false); }
+  };
+
+  const openEdit = (inv: Invoice) => {
+    setEditInv(inv);
+    setEditForm({
+      recipient_name: inv.recipient_name ?? inv.customer?.name ?? '',
+      recipient_phone: inv.recipient_phone ?? inv.customer?.phone ?? '',
+      due_date: inv.due_date ?? '',
+      notes: (inv as Invoice & { notes?: string }).notes ?? '',
+    });
+  };
+
+  const handleEdit = async () => {
+    if (!editInv) return;
+    setEditSaving(true); setError('');
+    try {
+      await updateInvoice(editInv.id, {
+        recipient_name: editForm.recipient_name || undefined,
+        recipient_phone: editForm.recipient_phone || undefined,
+        due_date: editForm.due_date || null,
+        notes: editForm.notes || null,
+      });
+      showToast('Invoice updated.');
+      setEditInv(null);
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setEditSaving(false); }
+  };
+
+  const handleCreditNote = async () => {
+    if (!cnInv) return;
+    const amount = parseFloat(cnForm.amount);
+    if (!cnForm.reason.trim() || isNaN(amount) || amount <= 0) {
+      setError('Please provide a reason and valid amount.');
+      return;
+    }
+    setCnSaving(true); setError('');
+    try {
+      const res = await createCreditNote(cnInv.id, { reason: cnForm.reason.trim(), amount });
+      showToast(`Credit note ${res.credit_note.invoice_number} created.`);
+      setCnInv(null); setCnForm({ reason: '', amount: '' });
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setCnSaving(false); }
+  };
+
   const openSmsModal = (inv: Invoice) => {
     setSendSmsInv(inv);
     setSmsPhone(inv.recipient_phone ?? inv.customer?.phone ?? '');
@@ -116,7 +196,13 @@ export function InvoicesPage() {
       <PageHeader
         title="Invoices"
         subtitle="Manage sale and purchase invoices"
-        action={<Btn onClick={load} variant="secondary">↻ Refresh</Btn>}
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="secondary" onClick={() => { setCreateFrom('order'); setCreateRefId(''); }}>+ From Order</Btn>
+            <Btn variant="secondary" onClick={() => { setCreateFrom('purchase'); setCreateRefId(''); }}>+ From Purchase</Btn>
+            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+          </div>
+        }
       />
       {toast && (
         <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
@@ -185,6 +271,12 @@ export function InvoicesPage() {
                         <Btn small variant="secondary" onClick={() => void handlePushXero(inv)} disabled={xeroLoading === inv.id}>
                           {xeroLoading === inv.id ? '…' : 'Xero ↑'}
                         </Btn>
+                      )}
+                      {inv.status === 'draft' && (
+                        <Btn small variant="secondary" onClick={() => openEdit(inv)}>Edit</Btn>
+                      )}
+                      {inv.type === 'sale' && ['sent', 'paid'].includes(inv.status) && (
+                        <Btn small variant="secondary" onClick={() => { setCnInv(inv); setCnForm({ reason: '', amount: '' }); }}>Credit Note</Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && (
                         <Btn small variant="danger" onClick={() => handleVoid(inv.id)}>Void</Btn>
@@ -272,6 +364,105 @@ export function InvoicesPage() {
               </ModalActions>
             </>
           )}
+        </Modal>
+      )}
+      {/* Create from Order / Purchase Modal */}
+      {createFrom && (
+        <Modal
+          title={createFrom === 'order' ? 'Create Invoice from Order' : 'Create Invoice from Purchase'}
+          onClose={() => setCreateFrom(null)}
+          maxWidth={380}
+        >
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+            Enter the {createFrom === 'order' ? 'order' : 'purchase'} ID to generate an invoice from it.
+          </p>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>
+            {createFrom === 'order' ? 'Order ID' : 'Purchase ID'} *
+          </label>
+          <input
+            type="number" min="1"
+            value={createRefId}
+            onChange={(e) => setCreateRefId(e.target.value)}
+            placeholder="e.g. 42"
+            style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', marginBottom: 4 }}
+          />
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setCreateFrom(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleCreateFrom()} disabled={creating || !createRefId.trim()}>
+              {creating ? 'Creating…' : 'Create Invoice'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Edit Invoice Modal */}
+      {editInv && (
+        <Modal title={`Edit — ${editInv.invoice_number}`} onClose={() => setEditInv(null)} maxWidth={440}>
+          {([
+            { key: 'recipient_name',  label: 'Recipient Name',  type: 'text' },
+            { key: 'recipient_phone', label: 'Recipient Phone', type: 'tel' },
+            { key: 'due_date',        label: 'Due Date',        type: 'date' },
+          ] as { key: keyof typeof editForm; label: string; type: string }[]).map(({ key, label, type }) => (
+            <div key={key} style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 5 }}>{label}</label>
+              <input
+                type={type}
+                value={editForm[key]}
+                onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
+                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+          ))}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 5 }}>Notes</label>
+            <textarea
+              value={editForm.notes}
+              onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+              rows={3}
+              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setEditInv(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleEdit()} disabled={editSaving}>
+              {editSaving ? 'Saving…' : 'Save Changes'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Credit Note Modal */}
+      {cnInv && (
+        <Modal title={`Credit Note — ${cnInv.invoice_number}`} onClose={() => setCnInv(null)} maxWidth={420}>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+            Invoice total: <strong style={{ color: '#D4813A' }}>MVR {parseFloat(String(cnInv.total ?? 0)).toFixed(2)}</strong>
+          </p>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 5 }}>Reason *</label>
+            <input
+              type="text"
+              value={cnForm.reason}
+              onChange={(e) => setCnForm((f) => ({ ...f, reason: e.target.value }))}
+              placeholder="e.g. Overcharge, returned item…"
+              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 5 }}>Credit Amount (MVR) *</label>
+            <input
+              type="number" min="0.01" step="0.01"
+              value={cnForm.amount}
+              onChange={(e) => setCnForm((f) => ({ ...f, amount: e.target.value }))}
+              placeholder="0.00"
+              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setCnInv(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleCreditNote()} disabled={cnSaving || !cnForm.reason.trim() || !cnForm.amount}>
+              {cnSaving ? 'Creating…' : 'Issue Credit Note'}
+            </Btn>
+          </ModalActions>
         </Modal>
       )}
     </>

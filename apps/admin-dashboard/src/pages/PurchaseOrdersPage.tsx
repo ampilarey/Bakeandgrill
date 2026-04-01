@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, apiRequest as req, type PurchaseSuggestions } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, apiRequest as req, type PurchaseSuggestions } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -55,6 +55,8 @@ export function PurchaseOrdersPage() {
   const [receiveQtys, setReceiveQtys]     = useState<Record<number, number>>({});
   const [receiveNotes, setReceiveNotes]   = useState('');
 
+  const [creatingPoFor, setCreatingPoFor] = useState<number | null>(null);
+
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const load = async () => {
@@ -81,6 +83,23 @@ export function PurchaseOrdersPage() {
   const handleApprove = async (id: number) => {
     try { await approvePurchase(id); void load(); }
     catch (e) { setError((e as Error).message); }
+  };
+
+  const handleCreatePoFromSuggest = async (group: { supplier_id: number | null; items: { name: string; current_stock: number; unit: string; suggested_quantity: number; inventory_item_id?: number }[] }) => {
+    if (!group.supplier_id) { setError('Cannot create PO — no supplier assigned to this group.'); return; }
+    setCreatingPoFor(group.supplier_id);
+    try {
+      await createPurchaseFromSuggest({
+        supplier_id: group.supplier_id,
+        items: group.items
+          .filter((i) => i.inventory_item_id)
+          .map((i) => ({ inventory_item_id: i.inventory_item_id!, quantity: i.suggested_quantity })),
+      });
+      showToast('Purchase order created from suggestions.');
+      setSuggestions(null);
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setCreatingPoFor(null); }
   };
 
   const handleReject = async () => {
@@ -154,22 +173,40 @@ export function PurchaseOrdersPage() {
           {suggestions.by_supplier.length === 0 ? (
             <p style={{ color: '#6B5D4F', fontSize: 13, margin: 0 }}>All items are above reorder points. No purchases needed.</p>
           ) : (
-            suggestions.by_supplier.map((group) => (
-              <div key={group.supplier_id ?? 'unknown'} style={{ marginBottom: 16 }}>
-                <p style={{ fontWeight: 700, marginBottom: 8, color: '#1C1408', fontSize: 13, margin: '0 0 8px' }}>
-                  {group.supplier_name} — Est. MVR {parseFloat(String(group.estimated_total ?? 0)).toFixed(2)}
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {(group.items as { name: string; current_stock: number; unit: string; suggested_quantity: number }[]).map((item) => (
-                    <div key={item.name} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
-                      <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.name}</span>
-                      <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
-                      <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
-                    </div>
-                  ))}
+            suggestions.by_supplier.map((group) => {
+              // Enrich group items with inventory_item_id from the top-level items list
+              const enriched = (group.items as { name: string; current_stock: number; unit: string; suggested_quantity: number }[]).map((gi) => {
+                const match = suggestions.items.find((si) => si.name === gi.name);
+                return { ...gi, inventory_item_id: match?.inventory_item_id };
+              });
+              return (
+                <div key={group.supplier_id ?? 'unknown'} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12, flexWrap: 'wrap' }}>
+                    <p style={{ fontWeight: 700, color: '#1C1408', fontSize: 13, margin: 0 }}>
+                      {group.supplier_name} — Est. MVR {parseFloat(String(group.estimated_total ?? 0)).toFixed(2)}
+                    </p>
+                    {group.supplier_id && (
+                      <Btn
+                        small
+                        onClick={() => void handleCreatePoFromSuggest({ ...group, items: enriched })}
+                        disabled={creatingPoFor === group.supplier_id}
+                      >
+                        {creatingPoFor === group.supplier_id ? 'Creating…' : '+ Create PO'}
+                      </Btn>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {enriched.map((item) => (
+                      <div key={item.name} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
+                        <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.name}</span>
+                        <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
+                        <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </Card>
       )}
