@@ -1,229 +1,464 @@
-import { useEffect, useState } from 'react';
-import { getDailySummary, fetchSalesSummary } from '../api';
-import { Card, DateInput, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
+import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, ChefHat, Clock, Package, Zap } from 'lucide-react';
+import {
+  fetchOrders,
+  fetchLowStockItems,
+  getCurrentShift,
+  getDailySummary,
+  type InventoryItem,
+  type Order,
+  type Shift,
+} from '../api';
+import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function fmt(val: unknown) { return 'MVR ' + parseFloat(String(val ?? 0)).toFixed(2); }
+
+function elapsed(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ${m % 60}m ago`;
+}
+
+function useNow() {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  pending:    '#f59e0b',
+  confirmed:  '#3b82f6',
+  preparing:  '#8b5cf6',
+  ready:      '#22c55e',
+  delivering: '#0ea5e9',
+  delivered:  '#10b981',
+  completed:  '#6B5D4F',
+  cancelled:  '#ef4444',
+};
+
+const STATUS_BG: Record<string, string> = {
+  pending:    '#FEF3C7',
+  confirmed:  '#DBEAFE',
+  preparing:  '#EDE9FE',
+  ready:      '#DCFCE7',
+  delivering: '#E0F2FE',
+  delivered:  '#D1FAE5',
+  completed:  '#F8F6F3',
+  cancelled:  '#FEE2E2',
+};
+
 type DailySummary = {
-  date: string;
-  revenue: number;
-  tax: number;
-  orders: number;
-  avg_order: number;
-  expenses: number;
-  purchases: number;
-  waste_cost: number;
-  net_profit: number;
+  date: string; revenue: number; tax: number; orders: number;
+  avg_order: number; expenses: number; purchases: number;
+  waste_cost: number; net_profit: number;
   by_type: { type: string; count: number; revenue: number }[];
   top_items: { name: string; qty: number; revenue: number }[];
 };
 
-type PeriodSummary = {
-  total_revenue: number;
-  order_count: number;
-  average_order_value: number;
-  period: string;
-  payments?: Record<string, number>;
-};
+// ── sub-components ────────────────────────────────────────────────────────────
 
-function fmt(val: unknown) { return 'MVR ' + parseFloat(String(val ?? 0)).toFixed(2); }
 
-const PRESET_LABELS: { label: string; days: number }[] = [
-  { label: '7 days',  days: 7  },
-  { label: '14 days', days: 14 },
-  { label: '30 days', days: 30 },
-  { label: '90 days', days: 90 },
-];
-
-function daysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+function OrderCard({ order, now }: { order: Order; now: number }) {
+  void now; // triggers re-render for elapsed time
+  const color  = STATUS_COLOR[order.status] ?? '#9C8E7E';
+  const bg     = STATUS_BG[order.status]    ?? '#F8F6F3';
+  const urgent = ['pending', 'confirmed'].includes(order.status) &&
+    (Date.now() - new Date(order.created_at).getTime()) > 10 * 60 * 1000;
+  return (
+    <div style={{
+      background: '#fff',
+      border: `1.5px solid ${urgent ? '#ef4444' : '#E8E0D8'}`,
+      borderRadius: 12,
+      padding: '12px 14px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>#{order.order_number}</span>
+        <span style={{
+          fontSize: 11, fontWeight: 700, color, background: bg,
+          borderRadius: 20, padding: '2px 9px', textTransform: 'capitalize',
+        }}>{order.status}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#6B5D4F' }}>
+        <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
+          {order.type.replace('_', ' ')}
+          {order.table_number ? ` · T${order.table_number}` : ''}
+        </span>
+        <span style={{ marginLeft: 'auto', color: urgent ? '#ef4444' : '#9C8E7E' }}>
+          {urgent && <AlertTriangle size={11} style={{ marginRight: 3, verticalAlign: 'middle' }} />}
+          {elapsed(order.created_at)}
+        </span>
+      </div>
+      <div style={{ fontWeight: 700, fontSize: 13, color: '#D4813A' }}>{fmt(order.total)}</div>
+    </div>
+  );
 }
+
+function ShiftBanner({ shift }: { shift: Shift | null }) {
+  if (!shift) return (
+    <div style={{
+      background: '#FEF3C7', border: '1.5px solid #fbbf24', borderRadius: 12,
+      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
+    }}>
+      <AlertTriangle size={16} color="#d97706" />
+      <span style={{ color: '#92400e', fontWeight: 600 }}>No shift open — cash drawer is untracked.</span>
+    </div>
+  );
+  if (shift.status === 'closed') return (
+    <div style={{
+      background: '#F8F6F3', border: '1.5px solid #E8E0D8', borderRadius: 12,
+      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
+    }}>
+      <Clock size={16} color="#9C8E7E" />
+      <span style={{ color: '#6B5D4F', fontWeight: 600 }}>Last shift closed.</span>
+    </div>
+  );
+  const opened = new Date(shift.opened_at);
+  const dur = Math.floor((Date.now() - opened.getTime()) / 60000);
+  const hrs = Math.floor(dur / 60), mins = dur % 60;
+  return (
+    <div style={{
+      background: '#F0FDF4', border: '1.5px solid #86efac', borderRadius: 12,
+      padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <CheckCircle2 size={16} color="#22c55e" />
+        <span style={{ fontWeight: 700, fontSize: 13, color: '#166534' }}>Shift Open</span>
+        <span style={{ fontSize: 12, color: '#15803d' }}>
+          {hrs > 0 ? `${hrs}h ` : ''}{mins}m · by {shift.opened_by ?? 'Unknown'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 16, marginLeft: 'auto', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: '#15803d' }}>
+          <strong>Opening: </strong>{fmt(shift.opening_cash)}
+        </span>
+        <span style={{ fontSize: 12, color: '#15803d' }}>
+          <strong>Expected: </strong>{fmt(shift.expected_cash ?? shift.opening_cash)}
+        </span>
+        {shift.cash_movements.length > 0 && (
+          <span style={{ fontSize: 12, color: '#15803d' }}>
+            <strong>Movements: </strong>{shift.cash_movements.length}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── main component ────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
   usePageTitle('Dashboard');
+  const now = useNow();
   const today = new Date().toISOString().slice(0, 10);
-  const [date, setDate] = useState(today);
-  const [data, setData] = useState<DailySummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  // Period comparison panel
-  const [periodFrom, setPeriodFrom] = useState(daysAgo(7));
-  const [periodTo,   setPeriodTo]   = useState(today);
-  const [periodData, setPeriodData] = useState<PeriodSummary | null>(null);
-  const [periodLoading, setPeriodLoading] = useState(false);
-  const [periodError,   setPeriodError]   = useState('');
-  const [activePreset, setActivePreset] = useState(7);
+  const [summary, setSummary]       = useState<DailySummary | null>(null);
+  const [summaryErr, setSummaryErr] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
-  const load = (d: string) => {
-    setLoading(true); setError('');
-    getDailySummary(d)
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+  const [activeOrders, setActiveOrders]   = useState<Order[]>([]);
+  const [ordersErr, setOrdersErr]         = useState('');
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  const [lowStock, setLowStock]       = useState<InventoryItem[]>([]);
+  const [lowStockErr, setLowStockErr] = useState('');
+
+  const [shift, setShift]     = useState<Shift | null>(null);
+  const [shiftErr, setShiftErr] = useState('');
+
+  // Tracks orders that changed status since the last poll — drives the "recent changes" panel
+  const [liveEvents, setLiveEvents] = useState<{ id: number; order_number: string; status: string; ts: number }[]>([]);
+  const prevOrdersRef = useRef<Record<number, string>>({});
+
+  // ── load today's summary ──
+  useEffect(() => {
+    setSummaryLoading(true);
+    getDailySummary(today)
+      .then(setSummary)
+      .catch((e: Error) => setSummaryErr(e.message))
+      .finally(() => setSummaryLoading(false));
+  }, [today]);
+
+  // ── load active orders (poll every 10s) — diff drives the live feed ──
+  const loadOrders = () => {
+    fetchOrders({ status: 'active', per_page: 50 })
+      .then((r) => {
+        setActiveOrders(r.data);
+        setOrdersErr('');
+        // Detect status changes since last poll
+        const changed: typeof liveEvents = [];
+        r.data.forEach((o) => {
+          if (prevOrdersRef.current[o.id] !== undefined && prevOrdersRef.current[o.id] !== o.status) {
+            changed.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
+          }
+          prevOrdersRef.current[o.id] = o.status;
+        });
+        if (changed.length > 0) {
+          setLiveEvents((prev) => [...changed, ...prev].slice(0, 20));
+        }
+      })
+      .catch((e: Error) => setOrdersErr(e.message))
+      .finally(() => setOrdersLoading(false));
   };
+  useEffect(() => {
+    loadOrders();
+    const t = setInterval(loadOrders, 10_000);
+    return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const loadPeriod = (from: string, to: string) => {
-    setPeriodLoading(true); setPeriodError('');
-    fetchSalesSummary({ from, to })
-      .then(setPeriodData)
-      .catch((e: Error) => setPeriodError(e.message))
-      .finally(() => setPeriodLoading(false));
-  };
+  // ── load low stock ──
+  useEffect(() => {
+    fetchLowStockItems()
+      .then((r) => setLowStock(r.data.slice(0, 8)))
+      .catch((e: Error) => setLowStockErr(e.message));
+  }, []);
 
-  useEffect(() => { load(date); }, [date]);
-  useEffect(() => { loadPeriod(periodFrom, periodTo); }, [periodFrom, periodTo]);
+  // ── load shift ──
+  useEffect(() => {
+    getCurrentShift()
+      .then((r) => setShift(r.shift))
+      .catch((e: Error) => setShiftErr(e.message));
+  }, []);
+
+
+  // ── derived ──
+  const pendingCount   = activeOrders.filter((o) => o.status === 'pending').length;
+  const preparingCount = activeOrders.filter((o) => ['confirmed', 'preparing'].includes(o.status)).length;
+  const readyCount     = activeOrders.filter((o) => o.status === 'ready').length;
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        subtitle="Daily snapshot for operations at a glance"
-        action={<DateInput value={date} max={today} onChange={(v) => setDate(v)} />}
+        subtitle={new Date().toLocaleDateString('en-MV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       />
 
-      {error && <ErrorMsg message={error} />}
+      {/* ── Shift banner ── */}
+      {shiftErr ? <ErrorMsg message={shiftErr} /> : <ShiftBanner shift={shift} />}
 
-      {/* ── Period Summary Panel ── */}
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginRight: 4 }}>Period Summary</span>
-          {PRESET_LABELS.map(({ label, days }) => (
-            <button
-              key={days}
-              onClick={() => { setActivePreset(days); setPeriodFrom(daysAgo(days)); setPeriodTo(today); }}
-              style={{
-                padding: '4px 12px', borderRadius: 20, border: '1.5px solid',
-                borderColor: activePreset === days ? '#D4813A' : '#E8E0D8',
-                background: activePreset === days ? '#FEF3E8' : '#fff',
-                color: activePreset === days ? '#D4813A' : '#6B5D4F',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              }}
-            >{label}</button>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-            <DateInput value={periodFrom} max={periodTo} onChange={(v) => { setActivePreset(0); setPeriodFrom(v); }} />
-            <span style={{ fontSize: 12, color: '#9C8E7E' }}>→</span>
-            <DateInput value={periodTo} max={today} onChange={(v) => { setActivePreset(0); setPeriodTo(v); }} />
+      <div style={{ height: 20 }} />
+
+      {/* ── Today KPIs ── */}
+      <SectionLabel>Today at a glance</SectionLabel>
+      {summaryErr && <ErrorMsg message={summaryErr} />}
+      {summaryLoading ? <Spinner /> : summary && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
+          <StatCard label="Revenue"    value={fmt(summary.revenue)}   accent="#D4813A" />
+          <StatCard label="Net Profit" value={fmt(summary.net_profit)} accent={summary.net_profit >= 0 ? '#22c55e' : '#ef4444'} />
+          <StatCard label="Orders"     value={String(summary.orders)}  sub={`Avg ${fmt(summary.avg_order)}`} accent="#8b5cf6" />
+          <StatCard label="Tax"        value={fmt(summary.tax)}        accent="#f59e0b" />
+          <StatCard label="Expenses"   value={fmt(summary.expenses)}   accent="#f97316" />
+          <StatCard label="Waste Cost" value={fmt(summary.waste_cost)} accent="#ef4444" />
+        </div>
+      )}
+
+      {/* ── Two-column grid: active orders + live feed ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20, marginBottom: 24 }}>
+
+        {/* Active orders */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active Orders</span>
+            <span style={{ fontSize: 12, color: '#9C8E7E', marginLeft: 'auto' }}>
+              {ordersLoading ? '…' : `${activeOrders.length} orders`}
+            </span>
           </div>
+
+          {/* Status quick-counts */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Pending',   count: pendingCount,   color: '#f59e0b', bg: '#FEF3C7', icon: <Clock size={12} /> },
+              { label: 'Preparing', count: preparingCount, color: '#8b5cf6', bg: '#EDE9FE', icon: <ChefHat size={12} /> },
+              { label: 'Ready',     count: readyCount,     color: '#22c55e', bg: '#DCFCE7', icon: <CheckCircle2 size={12} /> },
+            ].map(({ label, count, color, bg, icon }) => (
+              <div key={label} style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: bg, borderRadius: 20, padding: '4px 10px',
+                fontSize: 12, fontWeight: 700, color,
+              }}>
+                {icon} {count} {label}
+              </div>
+            ))}
+          </div>
+
+          {ordersErr && <ErrorMsg message={ordersErr} />}
+          {ordersLoading ? <Spinner /> : activeOrders.length === 0 ? (
+            <Card>
+              <div style={{ textAlign: 'center', padding: '28px 0', color: '#9C8E7E', fontSize: 13 }}>
+                No active orders right now.
+              </div>
+            </Card>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 480, overflowY: 'auto' }}>
+              {activeOrders.map((o) => <OrderCard key={o.id} order={o} now={now} />)}
+            </div>
+          )}
         </div>
 
-        {periodLoading ? <Spinner /> : periodError ? <ErrorMsg message={periodError} /> : periodData ? (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-              <StatCard label="Total Revenue"  value={fmt(periodData.total_revenue)}         accent="#D4813A" />
-              <StatCard label="Orders"         value={String(periodData.order_count)}         accent="#8b5cf6" />
-              <StatCard label="Avg Order Value" value={fmt(periodData.average_order_value)}   accent="#f59e0b" />
-            </div>
-            {periodData.payments && Object.keys(periodData.payments).length > 0 && (
-              <>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                  Payment Methods
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {Object.entries(periodData.payments).sort((a, b) => b[1] - a[1]).map(([method, amount]) => (
-                    <div key={method} style={{
-                      background: '#fff', border: '1px solid #E8E0D8', borderRadius: 10,
-                      padding: '8px 14px', display: 'flex', gap: 10, alignItems: 'center',
-                    }}>
-                      <span style={{ fontSize: 12, color: '#6B5D4F', textTransform: 'capitalize', fontWeight: 600 }}>
-                        {method.replace('_', ' ')}
-                      </span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#D4813A' }}>{fmt(amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+        {/* Live event feed */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Recent Changes</span>
+            <span style={{ fontSize: 11, color: '#9C8E7E', marginLeft: 'auto' }}>polls every 10s</span>
           </div>
-        ) : null}
-      </Card>
-
-      {loading ? <Spinner /> : data ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-          {/* Revenue KPIs */}
-          <div>
-            <SectionLabel>Revenue & Sales</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
-              <StatCard label="Total Revenue"  value={fmt(data.revenue)}   accent="#D4813A" />
-              <StatCard label="Net Profit"     value={fmt(data.net_profit)} accent={data.net_profit >= 0 ? '#22c55e' : '#ef4444'} />
-              <StatCard label="Orders"         value={String(data.orders)} sub={`Avg: ${fmt(data.avg_order)}`} accent="#8b5cf6" />
-              <StatCard label="Tax Collected"  value={fmt(data.tax)}       accent="#f59e0b" />
-            </div>
-          </div>
-
-          {/* Cost KPIs */}
-          <div>
-            <SectionLabel>Costs</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
-              <StatCard label="Expenses"   value={fmt(data.expenses)}  accent="#f97316" />
-              <StatCard label="Purchases"  value={fmt(data.purchases)} accent="#6366f1" />
-              <StatCard label="Waste Cost" value={fmt(data.waste_cost)} accent="#ef4444" />
-            </div>
-          </div>
-
-          {/* Orders by channel */}
-          {data.by_type.length > 0 && (
-            <div>
-              <SectionLabel>Orders by Channel</SectionLabel>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 440 }}>
-                {data.by_type.map((t) => (
-                  <div key={t.type} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    background: '#fff', borderRadius: 10, padding: '11px 16px',
-                    border: '1px solid #E8E0D8',
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            {liveEvents.length === 0 ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center', color: '#9C8E7E', fontSize: 13 }}>
+                <Zap size={20} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                Waiting for order events…
+              </div>
+            ) : (
+              <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+                {liveEvents.map((ev) => (
+                  <div key={`${ev.id}-${ev.ts}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 16px', borderBottom: '1px solid #F3EDE4',
+                    animation: 'fadeSlideIn 0.25s ease',
                   }}>
-                    <span style={{ flex: 1, fontSize: 13, textTransform: 'capitalize', color: '#1C1408', fontWeight: 600 }}>{t.type.replace('_', ' ')}</span>
-                    <span style={{ fontSize: 13, color: '#9C8E7E' }}>{t.count} orders</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', minWidth: 90, textAlign: 'right' }}>
-                      {fmt(t.revenue)}
+                    <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', minWidth: 70 }}>
+                      #{ev.order_number}
+                    </span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700,
+                      color: STATUS_COLOR[ev.status] ?? '#6B5D4F',
+                      background: STATUS_BG[ev.status] ?? '#F8F6F3',
+                      borderRadius: 20, padding: '2px 8px', textTransform: 'capitalize',
+                    }}>{ev.status}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9C8E7E' }}>
+                      {elapsed(new Date(ev.ts).toISOString())}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </Card>
+        </div>
+      </div>
 
-          {/* Top items */}
-          {data.top_items.length > 0 && (
-            <div>
-              <SectionLabel>Top Selling Items</SectionLabel>
-              <TableCard>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                  <thead>
-                    <tr>
-                      <th style={TH}>Item</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Qty</th>
-                      <th style={{ ...TH, textAlign: 'right' }}>Revenue</th>
+      {/* ── Bottom row: top items + low stock ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+
+        {/* Top selling items */}
+        {summary && summary.top_items.length > 0 && (
+          <div>
+            <SectionLabel>Top Selling Today</SectionLabel>
+            <TableCard>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={TH}>#</th>
+                    <th style={TH}>Item</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Qty</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.top_items.slice(0, 8).map((item, i) => (
+                    <tr key={i}>
+                      <td style={{ ...TD, color: '#9C8E7E', width: 28 }}>{i + 1}</td>
+                      <td style={TD}>{item.name}</td>
+                      <td style={{ ...TD, textAlign: 'right', color: '#6B5D4F' }}>{item.qty}</td>
+                      <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: '#D4813A' }}>
+                        {fmt(item.revenue)}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {data.top_items.map((item, i) => (
-                      <tr key={i}>
-                        <td style={TD}>{item.name}</td>
-                        <td style={{ ...TD, textAlign: 'right', color: '#6B5D4F' }}>{item.qty}</td>
-                        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: '#D4813A' }}>
-                          {fmt(item.revenue)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TableCard>
-            </div>
-          )}
+                  ))}
+                </tbody>
+              </table>
+            </TableCard>
+          </div>
+        )}
 
-          {data.by_type.length === 0 && data.top_items.length === 0 && (
+        {/* Low stock alerts */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Low Stock Alerts</span>
+            {lowStock.length > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, color: '#ef4444',
+                background: '#FEE2E2', borderRadius: 20, padding: '2px 8px',
+              }}>{lowStock.length} items</span>
+            )}
+          </div>
+          {lowStockErr && <ErrorMsg message={lowStockErr} />}
+          {lowStock.length === 0 && !lowStockErr ? (
             <Card>
-              <div style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>
-                No orders recorded for this date.
+              <div style={{ textAlign: 'center', padding: '28px 0', color: '#22c55e', fontSize: 13 }}>
+                <Package size={20} style={{ display: 'block', margin: '0 auto 8px' }} />
+                All stock levels are healthy.
               </div>
             </Card>
+          ) : (
+            <TableCard>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={TH}>Item</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>On Hand</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Reorder At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lowStock.map((item) => {
+                    const critical = item.reorder_level !== null && item.quantity_on_hand <= 0;
+                    return (
+                      <tr key={item.id}>
+                        <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
+                        <td style={{ ...TD, textAlign: 'right', color: critical ? '#ef4444' : '#f97316', fontWeight: 700 }}>
+                          {item.quantity_on_hand} {item.unit}
+                        </td>
+                        <td style={{ ...TD, textAlign: 'right', color: '#9C8E7E' }}>
+                          {item.reorder_level ?? '—'} {item.reorder_level ? item.unit : ''}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableCard>
           )}
         </div>
-      ) : null}
+
+        {/* Orders by channel */}
+        {summary && summary.by_type.length > 0 && (
+          <div>
+            <SectionLabel>Today by Channel</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {summary.by_type.map((t) => {
+                const pct = summary.revenue > 0 ? (t.revenue / summary.revenue) * 100 : 0;
+                return (
+                  <div key={t.type} style={{
+                    background: '#fff', borderRadius: 10, padding: '11px 16px',
+                    border: '1px solid #E8E0D8',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <span style={{ flex: 1, fontSize: 13, textTransform: 'capitalize', color: '#1C1408', fontWeight: 600 }}>
+                        {t.type.replace(/_/g, ' ')}
+                      </span>
+                      <span style={{ fontSize: 12, color: '#9C8E7E' }}>{t.count} orders</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#D4813A' }}>{fmt(t.revenue)}</span>
+                    </div>
+                    <div style={{ height: 4, background: '#F3EDE4', borderRadius: 4 }}>
+                      <div style={{ height: 4, background: '#D4813A', borderRadius: 4, width: `${pct}%`, transition: 'width 0.4s ease' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }
