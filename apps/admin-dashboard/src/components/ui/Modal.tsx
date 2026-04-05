@@ -31,7 +31,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: P
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-enter"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 overlay-enter"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'ui-modal-title' : undefined}

@@ -20,9 +20,9 @@ const variantStyles: Record<Variant, string> = {
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: 'h-8 px-3 text-xs gap-1.5',
-  md: 'h-9 px-4 text-sm gap-2',
-  lg: 'h-11 px-6 text-base gap-2',
+  sm: 'h-8 min-h-[44px] px-3 text-xs gap-1.5',
+  md: 'h-9 min-h-[44px] px-4 text-sm gap-2',
+  lg: 'h-11 min-h-[44px] px-6 text-base gap-2',
 };
 
 export function Button({ variant = 'primary', size = 'md', loading, icon, children, className = '', disabled, ...props }: Props) {
