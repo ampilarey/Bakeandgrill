@@ -259,7 +259,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="refunds" element={
-                  <PermissionGuard user={user} permission="orders.manage">
+                  <PermissionGuard user={user} permission="orders.refund">
                     <RefundsPage />
                   </PermissionGuard>
                 } />
@@ -294,7 +294,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="devices" element={
-                  <PermissionGuard user={user} permission="device.manage">
+                  <PermissionGuard user={user} permission="devices.manage">
                     <DevicesPage />
                   </PermissionGuard>
                 } />
@@ -304,7 +304,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="print-jobs" element={
-                  <PermissionGuard user={user} permission="device.manage">
+                  <PermissionGuard user={user} permission="devices.manage">
                     <PrintJobsPage />
                   </PermissionGuard>
                 } />
