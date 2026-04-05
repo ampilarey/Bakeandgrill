@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
-  getInventoryValuation,
+  getInventoryValuation, getAccountsPayable, getAccountsReceivable,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
-  type TaxReport, type InventoryValuation,
+  type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { downloadCSV } from '../utils/csvExport';
 
 function today()        { return new Date().toISOString().slice(0, 10); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
@@ -18,7 +19,7 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
   takeaway: 'Takeaway', pos: 'POS',
 };
 
-const TABS = ['Summary', 'Breakdown', 'X / Z Report', 'Tax', 'Inventory'] as const;
+const TABS = ['Summary', 'Breakdown', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -59,6 +60,8 @@ export function ReportsPage() {
   const [zReport,   setZReport]   = useState<ZReport | null>(null);
   const [taxReport, setTaxReport] = useState<TaxReport | null>(null);
   const [inventory, setInventory] = useState<InventoryValuation | null>(null);
+  const [ap,        setAp]        = useState<AccountsPayable[] | null>(null);
+  const [ar,        setAr]        = useState<AccountsReceivable[] | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -73,7 +76,9 @@ export function ReportsPage() {
         const [x, z] = await Promise.all([getXReport(), getZReport()]);
         setXReport(x); setZReport(z);
       }
-      if (tab === 'Inventory') setInventory(await getInventoryValuation());
+      if (tab === 'Inventory')           setInventory(await getInventoryValuation());
+      if (tab === 'Accounts Payable')    setAp((await getAccountsPayable()).data);
+      if (tab === 'Accounts Receivable') setAr((await getAccountsReceivable()).data);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -82,9 +87,33 @@ export function ReportsPage() {
 
   const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Tax';
 
+  const handleExportCSV = () => {
+    if (tab === 'Summary' && summary) {
+      downloadCSV('sales-summary', [{ Period: summary.period, Revenue: mvr(summary.total_revenue), Orders: summary.order_count, 'Avg Order': mvr(summary.average_order_value ?? 0) }]);
+    } else if (tab === 'Breakdown' && breakdown) {
+      downloadCSV('sales-breakdown-items', breakdown.top_items.map(i => ({ Item: i.name, Qty: i.qty, Revenue: mvr(i.revenue) })));
+    } else if (tab === 'Tax' && taxReport) {
+      downloadCSV('tax-report', taxReport.by_rate.map(r => ({ 'Rate %': r.rate_pct, 'Net Sales': mvr(r.net_sales), 'Tax Amount': mvr(r.tax_amount) })));
+    } else if (tab === 'Inventory' && inventory) {
+      downloadCSV('inventory-valuation', inventory.items.map(i => ({ Item: i.name, Unit: i.unit, Qty: i.quantity, 'Cost/Unit': mvr(i.cost_per_unit), 'Total Value': mvr(i.total_value) })));
+    } else if (tab === 'Accounts Payable' && ap) {
+      downloadCSV('accounts-payable', ap.map(s => ({ Supplier: s.supplier_name, 'Outstanding (MVR)': mvr(s.outstanding_amount), 'Open Invoices': s.invoices.length })));
+    } else if (tab === 'Accounts Receivable' && ar) {
+      downloadCSV('accounts-receivable', ar.map(c => ({ Customer: c.customer_name ?? 'Unknown', 'Outstanding (MVR)': mvr(c.outstanding_amount), 'Open Invoices': c.invoices.length })));
+    }
+  };
+
+  const canExport = (tab === 'Summary' && summary) || (tab === 'Breakdown' && breakdown) ||
+    (tab === 'Tax' && taxReport) || (tab === 'Inventory' && inventory) ||
+    (tab === 'Accounts Payable' && ap) || (tab === 'Accounts Receivable' && ar);
+
   return (
     <>
-      <PageHeader title="Reports" subtitle="Sales, breakdowns, tax, and inventory" />
+      <PageHeader
+        title="Reports"
+        subtitle="Sales, breakdowns, tax, and inventory"
+        action={canExport ? <Btn small variant="secondary" onClick={handleExportCSV}>Export CSV</Btn> : undefined}
+      />
 
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -353,6 +382,86 @@ export function ReportsPage() {
               </tbody>
             </table>
           </Card>
+        </>
+      )}
+
+      {/* ── Accounts Payable ── */}
+      {!loading && tab === 'Accounts Payable' && ap && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Suppliers Owed"      value={String(ap.length)}                                                                accent="#f97316" />
+            <StatCard label="Total Outstanding"   value={mvr(ap.reduce((s, x) => s + x.outstanding_amount, 0))}                           accent="#ef4444" />
+            <StatCard label="Open Invoices"       value={String(ap.reduce((s, x) => s + x.invoices.length, 0))}                           accent="#6366f1" />
+          </div>
+          {ap.length === 0 ? (
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding payables.</p></Card>
+          ) : ap.map(supplier => (
+            <Card key={supplier.supplier_id} style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{supplier.supplier_name}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#ef4444' }}>{mvr(supplier.outstanding_amount)}</span>
+              </div>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Invoice #</th>
+                  <th style={S.th}>Amount</th>
+                  <th style={S.th}>Due Date</th>
+                </tr></thead>
+                <tbody>
+                  {supplier.invoices.map(inv => (
+                    <tr key={inv.id}>
+                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>{inv.invoice_number}</td>
+                      <td style={S.td}>{mvr(inv.amount)}</td>
+                      <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? '#ef4444' : '#6B5D4F' }}>
+                        {inv.due_date ?? '—'}
+                        {inv.due_date && inv.due_date < today() && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#ef4444' }}>OVERDUE</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          ))}
+        </>
+      )}
+
+      {/* ── Accounts Receivable ── */}
+      {!loading && tab === 'Accounts Receivable' && ar && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Customers with Balance" value={String(ar.length)}                                                             accent="#8b5cf6" />
+            <StatCard label="Total Outstanding"      value={mvr(ar.reduce((s, x) => s + x.outstanding_amount, 0))}                        accent="#D4813A" />
+            <StatCard label="Open Invoices"          value={String(ar.reduce((s, x) => s + x.invoices.length, 0))}                        accent="#f59e0b" />
+          </div>
+          {ar.length === 0 ? (
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding receivables.</p></Card>
+          ) : ar.map((customer, i) => (
+            <Card key={customer.customer_id ?? i} style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{customer.customer_name ?? 'Unknown Customer'}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#D4813A' }}>{mvr(customer.outstanding_amount)}</span>
+              </div>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Invoice #</th>
+                  <th style={S.th}>Amount</th>
+                  <th style={S.th}>Due Date</th>
+                </tr></thead>
+                <tbody>
+                  {customer.invoices.map(inv => (
+                    <tr key={inv.id}>
+                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>{inv.invoice_number}</td>
+                      <td style={S.td}>{mvr(inv.amount)}</td>
+                      <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? '#ef4444' : '#6B5D4F' }}>
+                        {inv.due_date ?? '—'}
+                        {inv.due_date && inv.due_date < today() && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#ef4444' }}>OVERDUE</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          ))}
         </>
       )}
     </>

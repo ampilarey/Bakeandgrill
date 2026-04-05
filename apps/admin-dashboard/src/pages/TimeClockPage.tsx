@@ -3,6 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
+import { downloadCSV } from '../utils/csvExport';
 import {
   getTimeClockStatus, clockIn, clockOut, getTimeClockHistory, getTimeClockSummary,
   type TimeEntry,
@@ -117,7 +118,20 @@ export default function TimeClockPage() {
 
   return (
     <div>
-      <PageHeader title="Time Clock" />
+      <PageHeader
+        title="Time Clock"
+        action={
+          tab === 'history' && entries.length > 0 ? (
+            <Btn variant="secondary" onClick={() => downloadCSV('time-clock-history', entries.map(e => ({ Staff: e.staff?.name ?? '', 'Clock In': e.clocked_in_at ?? '', 'Clock Out': e.clocked_out_at ?? '—', Hours: e.hours_worked != null ? Number(e.hours_worked).toFixed(2) : '' })))}>
+              Export CSV
+            </Btn>
+          ) : tab === 'summary' && summary.length > 0 ? (
+            <Btn variant="secondary" onClick={() => downloadCSV('time-clock-summary', summary.map(r => ({ Staff: r.staff.name, 'Total Hours': Number(r.total_hours).toFixed(2), Entries: r.entries_count })))}>
+              Export CSV
+            </Btn>
+          ) : undefined
+        }
+      />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         <button style={S.tab(tab === 'clock')} onClick={() => setTab('clock')}>Clock In/Out</button>

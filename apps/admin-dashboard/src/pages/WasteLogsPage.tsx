@@ -4,6 +4,7 @@ import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
 import { fetchWasteLogs, createWasteLog, fetchAdminItems, type WasteLog, type MenuItem } from '../api';
+import { downloadCSV } from '../utils/csvExport';
 
 const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other'] as const;
 type Reason = typeof REASONS[number];
@@ -60,7 +61,19 @@ export default function WasteLogsPage() {
 
   return (
     <div>
-      <PageHeader title="Waste Tracking" action={<Btn onClick={() => { setLogOpen(true); setFormError(''); }}>+ Log Waste</Btn>} />
+      <PageHeader
+        title="Waste Tracking"
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            {logs.length > 0 && (
+              <Btn variant="secondary" onClick={() => downloadCSV('waste-logs', logs.map(l => ({ Date: l.created_at?.slice(0, 10) ?? '', Item: l.item?.name ?? '', Qty: l.quantity, Unit: l.unit ?? '', Reason: l.reason, 'Cost (MVR)': l.cost_estimate ?? '', Notes: l.notes ?? '' })))}>
+                Export CSV
+              </Btn>
+            )}
+            <Btn onClick={() => { setLogOpen(true); setFormError(''); }}>+ Log Waste</Btn>
+          </div>
+        }
+      />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
