@@ -1,102 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { StaffUser } from '../api';
-import {
-  LayoutDashboard, ClipboardList, ChefHat, Truck,
-  UtensilsCrossed, Package, Target, CalendarDays,
-  BarChart3, DollarSign, Receipt, TrendingDown, PieChart,
-  Users, Settings, LogOut, Menu, X,
-  ChevronLeft, ChevronRight,
-  Heart, MessageSquare, BarChart2, Factory, Webhook,
-  Gift, Star, Tag, RotateCcw, Trash2,
-  Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link,
-} from 'lucide-react';
-
-// ── Navigation structure ──────────────────────────────────────────────────────
-const NAV_GROUPS = [
-  {
-    label: 'OPERATIONS',
-    items: [
-      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard',  permission: 'dashboard.view' },
-      { to: '/orders',     icon: ClipboardList,   label: 'Orders',     permission: 'orders.view'   },
-      { to: '/kds',        icon: ChefHat,         label: 'Kitchen',    permission: 'orders.view'   },
-      { to: '/delivery',   icon: Truck,           label: 'Delivery',   permission: 'delivery.view' },
-      { to: '/tables',     icon: LayoutGrid,      label: 'Tables',     permission: 'orders.view'   },
-      { to: '/shifts',     icon: Wallet,          label: 'Shifts',     permission: 'orders.view'   },
-    ],
-  },
-  {
-    label: 'MENU & INVENTORY',
-    items: [
-      { to: '/menu',            icon: UtensilsCrossed, label: 'Menu Items',    permission: 'menu.view'           },
-      { to: '/specials',        icon: Tag,             label: 'Daily Specials',permission: 'menu.manage'         },
-      { to: '/inventory',       icon: Boxes,           label: 'Inventory',     permission: 'inventory.manage'    },
-      { to: '/purchase-orders', icon: Package,         label: 'Stock & POs',   permission: 'suppliers.purchases' },
-      { to: '/waste-logs',      icon: Trash2,          label: 'Waste Tracking',permission: 'menu.manage'         },
-    ],
-  },
-  {
-    label: 'CUSTOMERS',
-    items: [
-      { to: '/customers',       icon: Users,           label: 'Customers',     permission: 'customers.manage'    },
-      { to: '/loyalty',         icon: Heart,           label: 'Loyalty',       permission: 'loyalty.view'        },
-      { to: '/reservations',    icon: CalendarDays,    label: 'Reservations',  permission: 'reservations.view'   },
-      { to: '/reviews',         icon: Star,            label: 'Reviews',       permission: 'customers.manage'    },
-      { to: '/gift-cards',      icon: Gift,            label: 'Gift Cards',    permission: 'promotions.manage'   },
-      { to: '/referrals',       icon: Share2,          label: 'Referrals',     permission: 'customers.manage'    },
-    ],
-  },
-  {
-    label: 'MARKETING',
-    items: [
-      { to: '/promotions',      icon: Target,          label: 'Promotions',    permission: 'promotions.view'     },
-      { to: '/sms',             icon: MessageSquare,   label: 'SMS Campaigns', permission: 'integrations.sms'   },
-    ],
-  },
-  {
-    label: 'FINANCE',
-    items: [
-      { to: '/reports',               icon: BarChart3,    label: 'Reports',        permission: 'reports.view'       },
-      { to: '/invoices',              icon: DollarSign,   label: 'Invoices',       permission: 'finance.invoices'   },
-      { to: '/expenses',              icon: Receipt,      label: 'Expenses',       permission: 'finance.expenses'   },
-      { to: '/refunds',               icon: RotateCcw,    label: 'Refunds',        permission: 'orders.manage'      },
-      { to: '/profit-loss',           icon: PieChart,     label: 'Profit & Loss',  permission: 'finance.profit_loss'},
-      { to: '/forecasts',             icon: TrendingDown, label: 'Forecasts',      permission: 'reports.financial'  },
-      { to: '/supplier-intelligence', icon: Factory,      label: 'Suppliers',      permission: 'suppliers.view'     },
-    ],
-  },
-  {
-    label: 'MANAGEMENT',
-    items: [
-      { to: '/staff',      icon: Users,    label: 'Staff',         permission: 'staff.view'              },
-      { to: '/time-clock', icon: Clock,    label: 'Time Clock',    permission: 'staff.view'              },
-      { to: '/analytics',  icon: BarChart2, label: 'Analytics',   permission: 'customers.analytics'     },
-      { to: '/devices',    icon: Monitor,  label: 'Devices',       permission: 'device.manage'           },
-      { to: '/print-jobs', icon: Printer,  label: 'Print Queue',   permission: 'device.manage'           },
-      { to: '/settings',   icon: Settings, label: 'Settings',      permission: 'website.manage'          },
-      { to: '/webhooks',   icon: Webhook,  label: 'Webhooks',      permission: 'integrations.webhooks'   },
-      { to: '/xero',       icon: Link,     label: 'Xero',          permission: 'finance.invoices'        },
-    ],
-  },
-];
-
-const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
-
-const BOTTOM_TABS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dash',   permission: 'dashboard.view' },
-  { to: '/orders',    icon: ClipboardList,   label: 'Orders' },
-  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu'   },
-  { to: '/reports',   icon: PieChart,        label: 'Money'  },
-  { to: '#more',      icon: Menu,            label: 'More'   },
-];
-
-// ── Permission helper ─────────────────────────────────────────────────────────
-function can(user: StaffUser, permission?: string): boolean {
-  if (!permission) return true;
-  if (user.role === 'owner') return true;
-  return user.permissions?.includes(permission) ?? false;
-}
+import { Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { NAV_GROUPS, ALL_NAV_ITEMS, BOTTOM_TABS, can, LogOut } from './navConfig';
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
 function useWindowWidth() {
@@ -197,7 +103,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, [moreOpen]);
 
-  const currentPage = ALL_ITEMS.find((i) => location.pathname.startsWith(i.to))?.label ?? 'Admin';
+  const currentPage = ALL_NAV_ITEMS.find((i) => location.pathname.startsWith(i.to))?.label ?? 'Admin';
   const sidebarW = collapsed ? 64 : 240;
 
   // ── MOBILE ─────────────────────────────────────────────────────────────────

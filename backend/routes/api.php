@@ -39,9 +39,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Health check endpoint
-Route::get('/health', function () {
-    return response()->json(['status' => 'ok']);
-});
+Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
 
 // Public order tracking — no auth required, token in URL acts as shared secret
 Route::get('/orders/track/{token}', [OrderController::class, 'trackByToken'])
@@ -57,41 +55,10 @@ Route::middleware('throttle:60,1')
     });
 
 // Opening hours status (public - for online order app)
-Route::get('/opening-hours/status', function () {
-    $service   = app(App\Services\OpeningHoursService::class);
-    $open      = $service->isOpenNow();
-    $message   = null;
-    if (! $open) {
-        $message = $service->getClosureReason()
-            ?? config('opening_hours.closed_message', 'We are currently closed. Please check our opening hours.');
-    }
-
-    // Enrich with today's schedule so the front-end can show "Closes HH:MM" / "Opens HH:MM"
-    $todayRow = $service->getTodayHours();
-    $today    = null;
-    if ($todayRow !== null) {
-        $closed = (bool) ($todayRow['closed'] ?? false);
-        $today  = [
-            'closed' => $closed,
-            'open'   => $closed ? null : ($todayRow['open']  ?? null),
-            'close'  => $closed ? null : ($todayRow['close'] ?? null),
-        ];
-    }
-
-    return response()->json(['open' => $open, 'message' => $message, 'today' => $today]);
-});
+Route::get('/opening-hours/status', [App\Http\Controllers\Api\OpeningHoursController::class, 'status']);
 
 // Full weekly schedule (public - for HoursPage in React app)
-Route::get('/opening-hours', function () {
-    $service  = app(App\Services\OpeningHoursService::class);
-    $schedule = config('opening_hours.hours', []);
-
-    return response()->json([
-        'schedule'       => $schedule,
-        'open'           => $service->isOpenNow(),
-        'closure_reason' => $service->getClosureReason(),
-    ]);
-});
+Route::get('/opening-hours', [App\Http\Controllers\Api\OpeningHoursController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
@@ -687,19 +654,11 @@ Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function
 });
 
 // ─── System Health ─────────────────────────────────────────────────────────
-Route::get('/system/health', function () {
-    return response()->json(['status' => 'ok']);
-});
+Route::get('/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
 
 // Protected admin health — returns full details for internal monitoring
-Route::middleware(['auth:sanctum', 'permission:website.manage'])->get('/admin/system/health', function () {
-    return response()->json([
-        'status'      => 'ok',
-        'environment' => config('app.env'),
-        'database'    => 'connected',
-        'timestamp'   => now()->toIso8601String(),
-    ]);
-});
+Route::middleware(['auth:sanctum', 'permission:website.manage'])
+    ->get('/admin/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'admin']);
 
 // ─── Driver Auth (public — PIN login) ──────────────────────────────────────
 Route::post('/auth/driver/pin-login', [App\Http\Controllers\Api\DriverAuthController::class, 'pinLogin'])

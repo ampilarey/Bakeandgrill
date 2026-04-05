@@ -18,6 +18,7 @@ use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Payments\Events\PaymentConfirmed;
+use App\Domains\Payments\Listeners\PaymentConfirmedListener;
 use App\Domains\Printing\Listeners\DispatchKitchenPrintListener;
 use App\Domains\Printing\Listeners\DispatchReceiptPrintListener;
 use App\Domains\Promotions\Listeners\ConsumePromoRedemptionsListener;
@@ -70,8 +71,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         ],
 
         PaymentConfirmed::class => [
-            // PaymentConfirmedListener checks if order is fully paid → fires OrderPaid
-            // Implemented in Phase 7
+            PaymentConfirmedListener::class,
         ],
 
         ReservationCreated::class => [
