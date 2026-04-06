@@ -95,3 +95,7 @@ export async function fetchWebhookLogs(id: number): Promise<{ data: WebhookLog[]
 export async function fetchSupportedWebhookEvents(): Promise<{ events: string[] }> {
   return req('/webhooks/events');
 }
+
+export async function getWebhook(id: number): Promise<{ subscription: WebhookSubscription }> {
+  return req(`/webhooks/${id}`);
+}

@@ -84,7 +84,14 @@ class PromotionController extends Controller
         $promotion = $result['promotion'];
         $idempotencyKey = 'order-promo:' . $orderId . ':' . $promotion->id;
 
-        DB::transaction(function () use ($order, $promotion, $result, $idempotencyKey): void {
+        DB::transaction(function () use ($order, $orderId, $promotion, $result, $idempotencyKey): void {
+            // Re-lock the order row inside the transaction to prevent race conditions.
+            $order = Order::lockForUpdate()->findOrFail($orderId);
+
+            if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+                return;
+            }
+
             $existing = OrderPromotion::where('order_id', $order->id)
                 ->whereNotIn('status', ['released'])
                 ->first();

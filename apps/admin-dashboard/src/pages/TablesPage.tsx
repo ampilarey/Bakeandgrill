@@ -51,6 +51,7 @@ export default function TablesPage() {
   const [splitInto, setSplitInto]         = useState('2');
   const [splitting, setSplitting]         = useState(false);
   const [toast, setToast]                 = useState('');
+  const [confirmMerge, setConfirmMerge]   = useState(false);
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const load = async () => {
@@ -105,8 +106,9 @@ export default function TablesPage() {
 
   const handleMerge = async () => {
     if (selected.length < 2) { setError('Select at least 2 tables to merge.'); return; }
+    setConfirmMerge(false);
     setActionLoading(-1);
-    try { await mergeTables(selected); setSelected([]); void load(); }
+    try { await mergeTables(selected); setSelected([]); showToast('Tables merged.'); void load(); }
     catch (e) { setError((e as Error).message); }
     finally { setActionLoading(null); }
   };
@@ -146,12 +148,25 @@ export default function TablesPage() {
       </div>
 
       {selected.length >= 2 && (
-        <div style={{ background: '#FEF3E8', border: '1px solid #D4813A', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 13, color: '#D4813A', fontWeight: 600 }}>{selected.length} tables selected</span>
-          <Btn small onClick={handleMerge} disabled={actionLoading === -1}>
-            {actionLoading === -1 ? 'Merging…' : 'Merge Selected'}
-          </Btn>
-          <Btn small variant="secondary" onClick={() => setSelected([])}>Clear</Btn>
+        <div style={{ background: '#FEF3E8', border: '1px solid #D4813A', borderRadius: 10, padding: '10px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span style={{ fontSize: 13, color: '#D4813A', fontWeight: 600 }}>{selected.length} tables selected</span>
+            <Btn small onClick={() => setConfirmMerge(true)} disabled={actionLoading === -1}>
+              {actionLoading === -1 ? 'Merging…' : 'Merge Selected'}
+            </Btn>
+            <Btn small variant="secondary" onClick={() => { setSelected([]); setConfirmMerge(false); }}>Clear</Btn>
+          </div>
+          {confirmMerge && (
+            <div style={{ marginTop: 10, background: '#fff', border: '1.5px solid #ef4444', borderRadius: 8, padding: '10px 14px' }}>
+              <p style={{ fontSize: 13, color: '#dc2626', fontWeight: 600, marginBottom: 8 }}>
+                Merge {selected.length} tables? This cannot be undone mid-service.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn small variant="danger" onClick={() => void handleMerge()}>Yes, Merge</Btn>
+                <Btn small variant="secondary" onClick={() => setConfirmMerge(false)}>Cancel</Btn>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

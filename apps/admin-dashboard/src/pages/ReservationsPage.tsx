@@ -74,6 +74,7 @@ function ReservationsList() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [confirmAction, setConfirmAction] = useState<{ id: number; status: string } | null>(null);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -89,6 +90,20 @@ function ReservationsList() {
   useEffect(() => { void load(); }, [dateFilter, statusFilter, page]);
 
   const handleStatus = async (id: number, status: string) => {
+    if (status === 'cancelled' || status === 'no_show') {
+      setConfirmAction({ id, status });
+      return;
+    }
+    try {
+      const res = await updateReservationStatus(id, status);
+      setReservations((prev) => prev.map((r) => r.id === id ? res.reservation : r));
+    } catch (e) { setError((e as Error).message); }
+  };
+
+  const confirmAndExecute = async () => {
+    if (!confirmAction) return;
+    const { id, status } = confirmAction;
+    setConfirmAction(null);
     try {
       const res = await updateReservationStatus(id, status);
       setReservations((prev) => prev.map((r) => r.id === id ? res.reservation : r));
@@ -98,6 +113,18 @@ function ReservationsList() {
   return (
     <>
       {error && <ErrorMsg message={error} />}
+
+      {confirmAction && (
+        <div style={{ background: '#FEF2F2', border: '1.5px solid #ef4444', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 10 }}>
+            Mark reservation as <strong>{confirmAction.status.replace('_', ' ')}</strong>? This cannot be reversed.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn small variant="danger" onClick={() => void confirmAndExecute()}>Confirm</Btn>
+            <Btn small variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Btn>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-end' }}>
         <DateInput value={dateFilter} onChange={(v) => { setDateFilter(v); setPage(1); }} label="Date" />

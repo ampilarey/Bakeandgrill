@@ -380,7 +380,7 @@ class PaymentService
             // C-2: Compare in laari (integer) to avoid float precision errors where
             // e.g. 100.00 (float) >= 100.00 (float) could fail with 99.9999... representation.
             $paidLaar  = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
-            $orderLaar = (int) round((float) $order->total * 100);
+            $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
 
             Log::info('BML: Payment confirmed', [
                 'payment_id'  => $locked->id,
@@ -432,20 +432,22 @@ class PaymentService
             return;
         }
 
-        $deductLaar = (int) $order->gift_card_discount_laar;
-        $deductMvr  = round($deductLaar / 100, 2);
-        $newBalance = max(0, (float) $giftCard->current_balance - $deductMvr);
+        $deductLaar       = (int) $order->gift_card_discount_laar;
+        $currentLaar      = (int) round((float) $giftCard->current_balance * 100);
+        $newBalanceLaar   = max(0, $currentLaar - $deductLaar);
+        $newBalanceMvr    = round($newBalanceLaar / 100, 2);
+        $deductMvr        = round($deductLaar / 100, 2);
 
         $giftCard->update([
-            'current_balance' => $newBalance,
-            'status'          => $newBalance <= 0 ? 'redeemed' : 'active',
+            'current_balance' => $newBalanceMvr,
+            'status'          => $newBalanceLaar <= 0 ? 'redeemed' : 'active',
         ]);
 
         \App\Models\GiftCardTransaction::create([
             'gift_card_id'  => $giftCard->id,
             'amount'        => -$deductMvr,
             'type'          => 'redeem',
-            'balance_after' => $newBalance,
+            'balance_after' => $newBalanceMvr,
             'order_id'      => $order->id,
         ]);
     }

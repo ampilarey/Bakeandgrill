@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchSchedules, createSchedule, updateSchedule, deleteSchedule, type StaffMember, type StaffSchedule } from '../../api';
-import { Btn, EmptyState, ErrorMsg, Modal, ModalActions } from '../../components/Layout';
+import { Btn, ErrorMsg, Modal, ModalActions } from '../../components/Layout';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -151,10 +151,6 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
             </tbody>
           </table>
         </div>
-      )}
-
-      {schedules.length === 0 && !loading && (
-        <EmptyState message="No schedules this week. Click '+ Add Shift' to get started." />
       )}
 
       {modal && (

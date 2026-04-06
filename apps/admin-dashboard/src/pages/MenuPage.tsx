@@ -406,31 +406,35 @@ export function MenuPage() {
   useEffect(() => { void loadCategories(); }, []);
   useEffect(() => {
     if (view === 'items') { setPage(1); void loadItems(1); }
-  }, [view, selectedCat, search]);
+  }, [view, selectedCat, search, perPage]);
 
   // ── Category actions ──
   const handleCreateCat = async (form: CatForm) => {
-    await createCategory({
-      name: form.name.trim(), name_dv: form.name_dv.trim() || null,
-      description: form.description.trim() || null,
-      image_url: form.image_url.trim() || null,
-      sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
-    });
-    setCreatingCat(false);
-    await loadCategories();
+    try {
+      await createCategory({
+        name: form.name.trim(), name_dv: form.name_dv.trim() || null,
+        description: form.description.trim() || null,
+        image_url: form.image_url.trim() || null,
+        sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
+      });
+      setCreatingCat(false);
+      await loadCategories();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const handleUpdateCat = async (form: CatForm) => {
     if (!editingCat) return;
-    await updateCategory(editingCat.id, {
-      name: form.name.trim(), name_dv: form.name_dv.trim() || null,
-      description: form.description.trim() || null,
-      image_url: form.image_url.trim() || null,
-      sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
-      is_active: form.is_active,
-    });
-    setEditingCat(null);
-    await loadCategories();
+    try {
+      await updateCategory(editingCat.id, {
+        name: form.name.trim(), name_dv: form.name_dv.trim() || null,
+        description: form.description.trim() || null,
+        image_url: form.image_url.trim() || null,
+        sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
+        is_active: form.is_active,
+      });
+      setEditingCat(null);
+      await loadCategories();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const handleDeleteCat = async (id: number) => {
@@ -440,22 +444,28 @@ export function MenuPage() {
   };
 
   const handleToggleCat = async (cat: MenuCategory) => {
-    await updateCategory(cat.id, { is_active: !cat.is_active });
-    await loadCategories();
+    try {
+      await updateCategory(cat.id, { is_active: !cat.is_active });
+      await loadCategories();
+    } catch (e) { setError((e as Error).message); }
   };
 
   // ── Item actions ──
   const handleCreateItem = async (form: ItemForm) => {
-    await createItem(formToPayload(form));
-    setCreatingItem(false);
-    await loadItems();
+    try {
+      await createItem(formToPayload(form));
+      setCreatingItem(false);
+      await loadItems();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const handleUpdateItem = async (form: ItemForm) => {
     if (!editingItem) return;
-    await updateItem(editingItem.id, formToPayload(form));
-    setEditingItem(null);
-    await loadItems();
+    try {
+      await updateItem(editingItem.id, formToPayload(form));
+      setEditingItem(null);
+      await loadItems();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const handleDeleteItem = async (id: number) => {
@@ -465,8 +475,10 @@ export function MenuPage() {
   };
 
   const handleToggleAvail = async (item: MenuItem) => {
-    await toggleItemAvailability(item.id);
-    await loadItems();
+    try {
+      await toggleItemAvailability(item.id);
+      await loadItems();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const EMPTY_ITEM_FORM: ItemForm = {

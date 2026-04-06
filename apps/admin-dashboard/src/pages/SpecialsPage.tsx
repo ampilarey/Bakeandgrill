@@ -86,13 +86,18 @@ export default function SpecialsPage() {
   const handleSave = async () => {
     if (!form.item_id) { setFormError('Select a menu item.'); return; }
     if (!form.start_date || !form.end_date) { setFormError('Start and end dates are required.'); return; }
+    if (form.end_date < form.start_date) { setFormError('End date must be on or after start date.'); return; }
+    const discountPct = form.discount_pct ? parseInt(form.discount_pct, 10) : undefined;
+    if (discountPct !== undefined && (isNaN(discountPct) || discountPct < 0 || discountPct > 100)) {
+      setFormError('Discount % must be between 0 and 100.'); return;
+    }
     setSaving(true); setFormError('');
     try {
       const payload = {
         item_id: Number(form.item_id),
         badge_label: form.badge_label || undefined,
         special_price: form.special_price ? parseFloat(form.special_price) : undefined,
-        discount_pct: form.discount_pct ? parseInt(form.discount_pct, 10) : undefined,
+        discount_pct: discountPct,
         start_date: form.start_date,
         end_date: form.end_date,
         start_time: form.start_time || undefined,

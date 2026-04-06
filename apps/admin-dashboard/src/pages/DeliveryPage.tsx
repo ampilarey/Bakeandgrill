@@ -37,11 +37,14 @@ export function DeliveryPage() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<Order | null>(null);
   const [tab, setTab] = useState<'orders' | 'drivers'>('orders');
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
 
-  const loadOrders = async () => {
+  const loadOrders = async (p = page) => {
     try {
-      const res = await fetchOrders({ type: 'delivery' });
+      const res = await fetchOrders({ type: 'delivery', page: p, per_page: 30 });
       setOrders(res.data);
+      setLastPage((res as unknown as { last_page?: number }).last_page ?? 1);
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -58,11 +61,11 @@ export function DeliveryPage() {
   };
 
   useEffect(() => {
-    void loadOrders();
+    void loadOrders(page);
     void loadDrivers();
-    const t = setInterval(() => void loadOrders(), 30_000);
+    const t = setInterval(() => void loadOrders(page), 30_000);
     return () => clearInterval(t);
-  }, []);
+  }, [page]);
 
   const active   = orders.filter((o) => !['completed', 'cancelled'].includes(o.status));
   const finished = orders.filter((o) => ['completed', 'cancelled'].includes(o.status));
@@ -72,14 +75,16 @@ export function DeliveryPage() {
       <PageHeader
         title="Delivery Orders"
         subtitle="Manage delivery orders and assign drivers"
-        action={<Btn onClick={loadOrders} variant="secondary">↻ Refresh</Btn>}
+        action={<Btn onClick={() => void loadOrders(page)} variant="secondary">↻ Refresh</Btn>}
       />
 
       {/* Tab switcher */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {(['orders', 'drivers'] as const).map((t) => (
           <button
             key={t}
+            role="tab"
+            aria-selected={tab === t}
             onClick={() => setTab(t)}
             style={{
               padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
@@ -111,7 +116,7 @@ export function DeliveryPage() {
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginBottom: 28 }}>
                   {active.map((o) => (
-                    <DeliveryCard key={o.id} order={o} drivers={drivers} onSelect={setSelected} onDriverAssigned={loadOrders} />
+                    <DeliveryCard key={o.id} order={o} drivers={drivers} onSelect={setSelected} onDriverAssigned={() => void loadOrders(page)} />
                   ))}
                 </div>
               </>
@@ -123,11 +128,19 @@ export function DeliveryPage() {
                   COMPLETED ({finished.length})
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                  {finished.slice(0, 10).map((o) => (
-                    <DeliveryCard key={o.id} order={o} drivers={drivers} onSelect={setSelected} onDriverAssigned={loadOrders} />
+                  {finished.map((o) => (
+                    <DeliveryCard key={o.id} order={o} drivers={drivers} onSelect={setSelected} onDriverAssigned={() => void loadOrders(page)} />
                   ))}
                 </div>
               </>
+            )}
+
+            {lastPage > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
+                <Btn variant="secondary" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</Btn>
+                <span style={{ lineHeight: '36px', fontSize: 13, color: '#6b7280' }}>Page {page} / {lastPage}</span>
+                <Btn variant="secondary" disabled={page >= lastPage} onClick={() => setPage(p => p + 1)}>Next →</Btn>
+              </div>
             )}
           </>
         )
@@ -279,10 +292,12 @@ function DriverLocationBadge({ orderId }: { orderId: number }) {
 
 function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drivers: Driver[]; onAssigned: () => void }) {
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
 
   const handleChange = async (driverId: string) => {
     if (!driverId) return;
     setSaving(true);
+    setErr('');
     try {
       await adminRequest(`/delivery/orders/${order.id}/assign-driver`, {
         method: 'POST',
@@ -290,7 +305,7 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
       });
       onAssigned();
     } catch (e: unknown) {
-      console.error('Failed to assign driver', e);
+      setErr((e as Error).message || 'Failed to assign driver');
     } finally {
       setSaving(false);
     }
@@ -298,6 +313,7 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
 
   return (
     <div style={{ marginTop: 8 }}>
+      {err && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 4 }}>{err}</p>}
       <select
         disabled={saving}
         defaultValue=""
@@ -328,9 +344,11 @@ function AssignDriverInline({
   const currentDriverId = (order as Order & { delivery_driver_id?: number }).delivery_driver_id;
   const [driverId, setDriverId] = useState<string>(currentDriverId?.toString() ?? '');
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
 
   const save = async () => {
     setSaving(true);
+    setErr('');
     try {
       const res = await adminRequest<{ order: Order }>(`/delivery/orders/${order.id}/assign-driver`, {
         method: 'POST',
@@ -338,7 +356,7 @@ function AssignDriverInline({
       });
       onAssigned(res.order);
     } catch (e: unknown) {
-      console.error('Failed to assign driver', e);
+      setErr((e as Error).message || 'Failed to assign driver');
     } finally {
       setSaving(false);
     }
@@ -347,6 +365,7 @@ function AssignDriverInline({
   return (
     <div style={{ marginTop: 16, background: '#f8fafc', borderRadius: 10, padding: 14, border: '1.5px solid #e5e7eb' }}>
       <p style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Assign Driver</p>
+      {err && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 6 }}>{err}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
         <select
           value={driverId}

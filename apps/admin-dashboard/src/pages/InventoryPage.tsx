@@ -51,7 +51,7 @@ export default function InventoryPage() {
     try {
       const res = await fetchLowStockItems();
       setLowCount(res.data.length);
-    } catch { /* ignore */ }
+    } catch (e) { console.error('Low stock check failed', e); }
   };
 
   useEffect(() => { void loadItems(); }, [search]);
@@ -82,8 +82,8 @@ export default function InventoryPage() {
 
   const loadCats = async () => {
     setCatsLoading(true);
-    try { const r = await fetchInventoryCategories(); setCats(r.data); }
-    catch { /* ignore */ }
+    try { const r = await fetchInventoryCategories(); setCats(r.categories); }
+    catch (e) { setCatError((e as Error).message); }
     finally { setCatsLoading(false); }
   };
 

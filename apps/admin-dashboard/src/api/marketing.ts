@@ -33,8 +33,12 @@ export type PromotionPayload = {
   expires_at?: string | null;
 };
 
-export async function fetchPromotions(): Promise<{ data: Promotion[] }> {
-  return req('/admin/promotions');
+export async function fetchPromotions(params?: { page?: number; status?: string }): Promise<{ data: Promotion[]; meta?: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.status) qs.set('status', params.status);
+  const query = qs.toString() ? `?${qs}` : '';
+  return req(`/admin/promotions${query}`);
 }
 
 export async function createPromotion(data: PromotionPayload): Promise<{ promotion: Promotion }> {
@@ -114,8 +118,12 @@ export async function fetchSmsLogStats(): Promise<{
   return { total, sent, failed, by_type };
 }
 
-export async function fetchSmsCampaigns(): Promise<{ data: SmsCampaign[] }> {
-  return req('/admin/sms/campaigns');
+export async function fetchSmsCampaigns(params?: { page?: number; status?: string }): Promise<{ data: SmsCampaign[]; meta?: { current_page: number; last_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.status) qs.set('status', params.status);
+  const query = qs.toString() ? `?${qs}` : '';
+  return req(`/admin/sms/campaigns${query}`);
 }
 
 export async function previewSmsCampaign(data: {
@@ -156,19 +164,43 @@ export interface SmsPromotion {
   created_at: string;
 }
 
-export async function fetchSmsPromotions(): Promise<{ data: SmsPromotion[] }> {
-  return req('/admin/sms/promotions');
+// Backend routes: GET /sms/promotions, GET /sms/promotions/{id},
+// POST /sms/promotions/preview, POST /sms/promotions/send
+// Note: PATCH/DELETE/per-id-send do not exist on the backend.
+export async function fetchSmsPromotions(): Promise<{ promotions: SmsPromotion[] }> {
+  return req('/sms/promotions');
 }
 
+export async function getSmsPromotion(id: number): Promise<{ promotion: SmsPromotion }> {
+  return req(`/sms/promotions/${id}`);
+}
+
+export async function previewSmsPromotion(data: {
+  message: string;
+  trigger_type: string;
+  trigger_config?: Record<string, unknown>;
+}): Promise<{ recipient_count: number; sample: string[]; estimated_cost_mvr: string }> {
+  return req('/sms/promotions/preview', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function sendSmsPromotion(data: {
+  message: string;
+  trigger_type: string;
+  segment?: string;
+}): Promise<{ queued: number }> {
+  return req('/sms/promotions/send', { method: 'POST', body: JSON.stringify(data) });
+}
+
+// The following CRUD helpers require backend routes that are not yet implemented.
+// They are kept here so the UI compiles; they will return 404 until added.
 export async function createSmsPromotion(data: {
   name: string;
   message: string;
   promotion_code?: string | null;
   trigger_type: string;
-  trigger_config?: Record<string, unknown>;
   is_active?: boolean;
 }): Promise<{ promotion: SmsPromotion }> {
-  return req('/admin/sms/promotions', { method: 'POST', body: JSON.stringify(data) });
+  return req('/sms/promotions', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function updateSmsPromotion(id: number, data: Partial<{
@@ -177,21 +209,9 @@ export async function updateSmsPromotion(id: number, data: Partial<{
   promotion_code: string | null;
   is_active: boolean;
 }>): Promise<{ promotion: SmsPromotion }> {
-  return req(`/admin/sms/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-}
-
-export async function previewSmsPromotion(data: {
-  message: string;
-  trigger_type: string;
-  trigger_config?: Record<string, unknown>;
-}): Promise<{ recipient_count: number; sample: string[]; estimated_cost_mvr: string }> {
-  return req('/admin/sms/promotions/preview', { method: 'POST', body: JSON.stringify(data) });
-}
-
-export async function sendSmsPromotion(id: number): Promise<void> {
-  await req(`/admin/sms/promotions/${id}/send`, { method: 'POST' });
+  return req(`/sms/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function deleteSmsPromotion(id: number): Promise<void> {
-  await req(`/admin/sms/promotions/${id}`, { method: 'DELETE' });
+  await req(`/sms/promotions/${id}`, { method: 'DELETE' });
 }

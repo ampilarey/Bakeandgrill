@@ -38,8 +38,11 @@ class ExpenseController extends Controller
                 'last_page'    => $paginator->lastPage(),
                 'total'        => $paginator->total(),
             ],
-            'total_amount' => Expense::when($request->filled('from'), fn($q) => $q->whereDate('expense_date', '>=', $request->query('from')))
-                ->when($request->filled('to'), fn($q) => $q->whereDate('expense_date', '<=', $request->query('to')))
+            'total_amount' => Expense::when($request->filled('category_id'), fn($q) => $q->where('expense_category_id', $request->query('category_id')))
+                ->when($request->filled('supplier_id'),  fn($q) => $q->where('supplier_id', $request->query('supplier_id')))
+                ->when($request->filled('from'), fn($q) => $q->whereDate('expense_date', '>=', $request->query('from')))
+                ->when($request->filled('to'),   fn($q) => $q->whereDate('expense_date', '<=', $request->query('to')))
+                ->when($request->filled('recurring'), fn($q) => $q->where('is_recurring', filter_var($request->query('recurring'), FILTER_VALIDATE_BOOLEAN)))
                 ->where('status', 'approved')
                 ->sum('amount'),
         ]);
@@ -206,12 +209,14 @@ class ExpenseController extends Controller
 
     private function nextRecurrenceDate(string $fromDate, string $interval): string
     {
+        $date = \Illuminate\Support\Carbon::parse($fromDate);
+
         return match ($interval) {
-            'daily'     => now()->parse($fromDate)->addDay()->toDateString(),
-            'weekly'    => now()->parse($fromDate)->addWeek()->toDateString(),
-            'quarterly' => now()->parse($fromDate)->addMonths(3)->toDateString(),
-            'yearly'    => now()->parse($fromDate)->addYear()->toDateString(),
-            default     => now()->parse($fromDate)->addMonth()->toDateString(),
+            'daily'     => $date->addDay()->toDateString(),
+            'weekly'    => $date->addWeek()->toDateString(),
+            'quarterly' => $date->addMonths(3)->toDateString(),
+            'yearly'    => $date->addYear()->toDateString(),
+            default     => $date->addMonth()->toDateString(),
         };
     }
 

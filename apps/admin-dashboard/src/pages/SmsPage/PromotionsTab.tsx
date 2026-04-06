@@ -49,7 +49,7 @@ export function PromotionsTab() {
     setError('');
     try {
       const res = await fetchSmsPromotions();
-      setPromos(res.data);
+      setPromos(res.promotions ?? []);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -68,7 +68,7 @@ export function PromotionsTab() {
     try {
       const res = await previewSmsPromotion({ message: form.message, trigger_type: form.trigger_type });
       setPreview(res);
-    } catch (_) { /* ignore */ } finally {
+    } catch (e) { setError((e as Error).message); } finally {
       setPreviewing(false);
     }
   };

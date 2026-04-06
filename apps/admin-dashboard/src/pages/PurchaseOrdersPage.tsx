@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, apiRequest as req, type PurchaseSuggestions } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, fetchPurchases, type PurchaseSuggestions } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -62,11 +62,8 @@ export function PurchaseOrdersPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const qs = new URLSearchParams();
-      if (statusFilter) qs.set('status', statusFilter);
-      const query = qs.toString();
-      const res = await req<{ data: Purchase[] }>(`/purchases${query ? `?${query}` : ''}`);
-      setPurchases(res.data ?? []);
+      const res = await fetchPurchases({ status: statusFilter || undefined });
+      setPurchases((res.purchases?.data as unknown as Purchase[]) ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -93,7 +90,7 @@ export function PurchaseOrdersPage() {
         supplier_id: group.supplier_id,
         items: group.items
           .filter((i) => i.inventory_item_id)
-          .map((i) => ({ inventory_item_id: i.inventory_item_id!, quantity: i.suggested_quantity })),
+          .map((i) => ({ inventory_item_id: i.inventory_item_id!, quantity: i.suggested_quantity, unit_cost: 0 })),
       });
       showToast('Purchase order created from suggestions.');
       setSuggestions(null);

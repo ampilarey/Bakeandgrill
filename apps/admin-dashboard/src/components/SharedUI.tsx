@@ -133,7 +133,8 @@ export function Btn({ variant = 'primary', small, children, style, ...rest }: Bt
       {...rest}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-        height: small ? '2rem' : '2.25rem',
+        minHeight: small ? '2rem' : '2.75rem',
+        height: small ? '2rem' : '2.75rem',
         padding: small ? '0 0.75rem' : '0 1rem',
         borderRadius: 10, fontWeight: 600,
         fontSize: small ? '0.8125rem' : '0.875rem',
@@ -449,7 +450,7 @@ export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; clo
       aria-modal="true"
       aria-labelledby={titleId}
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
+        position: 'fixed', inset: 0, zIndex: 60,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,0,0,0.45)',
       }}

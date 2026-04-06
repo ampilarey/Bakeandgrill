@@ -194,7 +194,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
 
         {/* "More" slide-up drawer */}
         {moreOpen && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }}>
             <div
               style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }}
               onClick={() => setMoreOpen(false)}

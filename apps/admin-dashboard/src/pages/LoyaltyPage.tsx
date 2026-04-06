@@ -20,14 +20,18 @@ function LedgerModal({ customerId, name, onClose }: {
   const [entries, setEntries] = useState<Array<{ id: number; delta: number; reason: string; created_at: string }>>([]);
   const [loading, setLoading] = useState(true);
 
+  const [ledgerError, setLedgerError] = useState('');
+
   useEffect(() => {
     fetchLoyaltyLedger(customerId)
       .then((r) => setEntries(r.data))
+      .catch((e: Error) => setLedgerError(e.message))
       .finally(() => setLoading(false));
   }, [customerId]);
 
   return (
     <Modal title={`Ledger — ${name}`} onClose={onClose} maxWidth={520}>
+      {ledgerError && <p style={{ color: '#dc2626', fontSize: 13, padding: 8 }}>{ledgerError}</p>}
       {loading ? <Spinner /> : entries.length === 0 ? (
         <EmptyState message="No transactions yet." />
       ) : (

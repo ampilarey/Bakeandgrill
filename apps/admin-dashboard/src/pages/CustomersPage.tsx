@@ -170,7 +170,10 @@ export function CustomersPage() {
             ) : customers.map((c) => (
               <tr
                 key={c.id}
+                tabIndex={0}
+                role="button"
                 onClick={() => void openDetail(c)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void openDetail(c); } }}
                 style={{ cursor: 'pointer', borderTop: '1px solid #F0EBE3' }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#FAF7F3'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ''; }}

@@ -27,11 +27,6 @@ export async function adminRequest<T = unknown>(
   return req(path, options);
 }
 
-/** Alias used by pages that need dynamic paths. */
-export async function apiRequest<T>(path: string, opts?: RequestInit): Promise<T> {
-  return req(path, opts);
-}
-
 /** Generic passthrough used by AnalyticsPage for dynamic report paths. */
 export async function getAnalytics<T>(path: string): Promise<T> {
   return req(path);

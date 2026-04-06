@@ -309,14 +309,16 @@ class InvoiceController extends Controller
      */
     public function createFromOrderInternal(Order $order, ?User $actor): Invoice
     {
-        $order->loadMissing(['items.item', 'customer']);
-
-        $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
-        if ($existing) {
-            return $existing;
-        }
-
         return DB::transaction(function () use ($order, $actor) {
+            // Lock the order row to prevent concurrent calls creating duplicate invoices.
+            Order::lockForUpdate()->findOrFail($order->id);
+
+            $order->loadMissing(['items.item', 'customer']);
+
+            $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
+            if ($existing) {
+                return $existing;
+            }
             $inv = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'type' => 'sale',
@@ -400,12 +402,14 @@ class InvoiceController extends Controller
     {
         $purchase = Purchase::with(['items.inventoryItem', 'supplier'])->findOrFail($purchaseId);
 
-        $existing = Invoice::where('purchase_id', $purchaseId)->where('type', 'purchase')->first();
-        if ($existing) {
-            return response()->json(['invoice' => $this->format($existing->load('items'))]);
-        }
+        $invoice = DB::transaction(function () use ($purchase, $request, $purchaseId) {
+            // Lock the purchase row to prevent concurrent calls creating duplicate invoices.
+            Purchase::lockForUpdate()->findOrFail($purchaseId);
 
-        $invoice = DB::transaction(function () use ($purchase, $request) {
+            $existing = Invoice::where('purchase_id', $purchaseId)->where('type', 'purchase')->first();
+            if ($existing) {
+                return $existing->load('items');
+            }
             $inv = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'type' => 'purchase',

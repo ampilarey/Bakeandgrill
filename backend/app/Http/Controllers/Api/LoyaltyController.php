@@ -197,10 +197,11 @@ class LoyaltyController extends Controller
         ]);
 
         $customer = Customer::findOrFail($customerId);
-        $account  = $this->service->accountFor($customer);
         $delta    = $request->integer('delta');
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($account, $customer, $delta, $request): void {
+        $accountId = \Illuminate\Support\Facades\DB::transaction(function () use ($customer, $delta, $request): int {
+            $account    = $this->service->accountFor($customer);
+            $account    = \App\Models\LoyaltyAccount::lockForUpdate()->findOrFail($account->id);
             $newBalance = max(0, $account->points_balance + $delta);
 
             LoyaltyLedger::create([
@@ -219,11 +220,13 @@ class LoyaltyController extends Controller
                     ? $account->lifetime_points + $delta
                     : $account->lifetime_points,
             ]);
+
+            return $account->id;
         });
 
         return response()->json([
             'message'     => 'Points adjusted.',
-            'new_balance' => $account->fresh()?->points_balance,
+            'new_balance' => \App\Models\LoyaltyAccount::find($accountId)?->points_balance,
         ]);
     }
 

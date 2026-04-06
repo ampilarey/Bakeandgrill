@@ -49,10 +49,14 @@ export function ForecastPage() {
       getRevenueForecast(8, 4),
       getInventoryForecast(),
     ]);
+    const errs: string[] = [];
     if (t.status === 'fulfilled') setTrends(t.value);
-    else setError(`Sales trends: ${(t.reason as Error).message}`);
+    else errs.push(`Sales trends: ${(t.reason as Error).message}`);
     if (f.status === 'fulfilled') setForecast((f.value as typeof f.value & { insufficient_data?: boolean }).insufficient_data ? null : f.value);
+    else errs.push(`Revenue forecast: ${(f.reason as Error).message}`);
     if (i.status === 'fulfilled') setInv(i.value);
+    else errs.push(`Inventory forecast: ${(i.reason as Error).message}`);
+    if (errs.length) setError(errs.join(' | '));
     setLoading(false);
   };
 

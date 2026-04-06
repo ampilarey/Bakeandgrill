@@ -164,6 +164,10 @@ export async function deleteExpense(id: number): Promise<void> {
   return req(`/expenses/${id}`, { method: 'DELETE' });
 }
 
+export async function getExpense(id: number): Promise<{ expense: Expense }> {
+  return req(`/expenses/${id}`);
+}
+
 export async function getExpenseSummary(from: string, to: string): Promise<{ total: number; by_category: { category: string; icon: string; total: number; count: number; pct: number }[] }> {
   return req(`/expenses/summary?from=${from}&to=${to}`);
 }
@@ -336,9 +340,26 @@ export async function getAccountsReceivable(): Promise<{ data: AccountsReceivabl
 
 // ── Purchase Orders ───────────────────────────────────────────────────────────
 
-export async function fetchPurchases(params?: { status?: string }): Promise<{ data: unknown[] }> {
-  const qs = params?.status ? `?status=${params.status}` : '';
-  return req(`/purchases${qs}`);
+export interface Purchase {
+  id: number;
+  purchase_number: string;
+  supplier_id: number;
+  supplier?: { id: number; name: string };
+  status: string;
+  total: number;
+  expected_delivery?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export async function fetchPurchases(params?: { status?: string; page?: number }): Promise<{
+  purchases: { data: Purchase[]; current_page: number; last_page: number; total: number };
+}> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set('status', params.status);
+  if (params?.page) qs.set('page', String(params.page));
+  const query = qs.toString() ? `?${qs}` : '';
+  return req(`/purchases${query}`);
 }
 
 export async function approvePurchase(id: number): Promise<void> {
@@ -347,6 +368,10 @@ export async function approvePurchase(id: number): Promise<void> {
 
 export async function rejectPurchase(id: number, reason: string): Promise<void> {
   await req(`/purchases/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+export async function getPurchase(id: number): Promise<{ purchase: Purchase }> {
+  return req(`/purchases/${id}`);
 }
 
 export async function receivePurchase(id: number, data: {
@@ -358,10 +383,10 @@ export async function receivePurchase(id: number, data: {
 
 export async function createPurchaseFromSuggest(data: {
   supplier_id: number;
-  items: { inventory_item_id: number; quantity: number; unit_price?: number }[];
+  items: { inventory_item_id: number; quantity: number; unit_cost: number }[];
   expected_delivery?: string;
   notes?: string;
-}): Promise<{ purchase: unknown }> {
+}): Promise<{ purchase: Purchase }> {
   return req('/purchases/from-suggest', { method: 'POST', body: JSON.stringify(data) });
 }
 
@@ -384,7 +409,7 @@ export type PurchaseSuggestions = {
 };
 
 export async function getPurchaseSuggestions(): Promise<PurchaseSuggestions> {
-  return req('/inventory/low-stock?suggestions=true');
+  return req('/purchases/suggest');
 }
 
 // ── Forecasts ─────────────────────────────────────────────────────────────────

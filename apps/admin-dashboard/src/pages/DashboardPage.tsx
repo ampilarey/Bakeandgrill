@@ -145,7 +145,7 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
         <span style={{ fontSize: 12, color: '#15803d' }}>
           <strong>Expected: </strong>{fmt(shift.expected_cash ?? shift.opening_cash)}
         </span>
-        {shift.cash_movements.length > 0 && (
+        {(shift.cash_movements?.length ?? 0) > 0 && (
           <span style={{ fontSize: 12, color: '#15803d' }}>
             <strong>Movements: </strong>{shift.cash_movements.length}
           </span>

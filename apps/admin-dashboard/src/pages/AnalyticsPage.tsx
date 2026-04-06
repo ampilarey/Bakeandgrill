@@ -193,7 +193,7 @@ export default function AnalyticsPage() {
         <div style={{ marginTop: 24 }}>
           <SectionLabel>Summary</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-            <StatCard label="Top Customer Spend" value={`MVR ${parseFloat(String(ltvCustomers[0]?.total_spent ?? 0)).toFixed(2) ?? '0'}`} accent="#D4813A" />
+            <StatCard label="Top Customer Spend" value={`MVR ${parseFloat(String(ltvCustomers[0]?.total_spent ?? 0)).toFixed(2)}`} accent="#D4813A" />
             <StatCard label="Unique Customers" value={String(ltvCustomers.length)} accent="#8b5cf6" />
             <StatCard label="Menu Items Tracked" value={String(profitItems.length)} accent="#22c55e" />
           </div>

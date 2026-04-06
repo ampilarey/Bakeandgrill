@@ -36,16 +36,23 @@ class KdsController extends Controller
 
     public function start(Request $request, int $id): JsonResponse
     {
-        $order = Order::findOrFail($id);
-        if ($order->status !== 'pending') {
-            return response()->json(['message' => 'Only pending orders can be started.'], 422);
+        $result = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+            if ($order->status !== 'pending') {
+                return ['error' => 'Only pending orders can be started.'];
+            }
+
+            $order->update(['status' => 'in_progress']);
+            app(AuditLogService::class)->log('order.started', 'Order', $order->id, ['status' => 'pending'], ['status' => 'in_progress'], ['source' => 'kds'], $request);
+
+            return ['order' => $order];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
         }
 
-        $order->update(['status' => 'in_progress']);
-
-        app(AuditLogService::class)->log('order.started', 'Order', $order->id, ['status' => 'pending'], ['status' => 'in_progress'], ['source' => 'kds'], $request);
-
-        return response()->json(['order' => $order]);
+        return response()->json(['order' => $result['order']]);
     }
 
     public function bump(Request $request, int $id): JsonResponse
@@ -86,15 +93,22 @@ class KdsController extends Controller
 
     public function recall(Request $request, int $id): JsonResponse
     {
-        $order = Order::findOrFail($id);
-        if ($order->status !== 'completed') {
-            return response()->json(['message' => 'Only completed orders can be recalled.'], 422);
+        $result = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+            if ($order->status !== 'completed') {
+                return ['error' => 'Only completed orders can be recalled.'];
+            }
+
+            $order->update(['status' => 'pending', 'completed_at' => null]);
+            app(AuditLogService::class)->log('order.recalled', 'Order', $order->id, ['status' => 'completed'], ['status' => 'pending'], ['source' => 'kds'], $request);
+
+            return ['order' => $order];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
         }
 
-        $order->update(['status' => 'pending', 'completed_at' => null]);
-
-        app(AuditLogService::class)->log('order.recalled', 'Order', $order->id, ['status' => 'completed'], ['status' => 'pending'], ['source' => 'kds'], $request);
-
-        return response()->json(['order' => $order]);
+        return response()->json(['order' => $result['order']]);
     }
 }

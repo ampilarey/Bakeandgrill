@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall } from '../api';
 import type { KdsTicket } from '../api';
-import { Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, statColor } from '../components/Layout';
+import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function elapsed(iso: string): string {
@@ -97,7 +97,7 @@ export function KDSPage() {
       {error && <ErrorMsg message={error} />}
 
       {loading && tickets.length === 0 ? (
-        <Card><EmptyState message="Loading kitchen tickets…" /></Card>
+        <Card style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
           <Column title="Pending" items={pending} color="#f59e0b">

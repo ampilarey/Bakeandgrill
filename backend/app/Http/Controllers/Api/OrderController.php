@@ -101,6 +101,9 @@ class OrderController extends Controller
         $processed = 0;
         $failed = [];
 
+        // Intentional partial-success: each order is processed individually so
+        // a single failure (e.g. duplicate idempotency key) does not block all
+        // other orders in the batch. The caller inspects `failed` to retry.
         foreach ($payloads as $index => $payload) {
             try {
                 $order = app(OrderCreationService::class)->createFromPayload($payload, $user);

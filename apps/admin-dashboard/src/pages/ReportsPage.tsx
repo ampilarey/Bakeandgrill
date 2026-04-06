@@ -222,7 +222,7 @@ export function ReportsPage() {
               </tr></thead>
               <tbody>
                 {breakdown.by_type.map(t => {
-                  const max = Math.max(...breakdown.by_type.map(x => x.revenue));
+                  const max = breakdown.by_type.length ? Math.max(...breakdown.by_type.map(x => x.revenue)) : 0;
                   return (
                     <tr key={t.type}>
                       <td style={S.td}>{ORDER_TYPE_LABELS[t.type] ?? t.type}</td>
@@ -246,7 +246,7 @@ export function ReportsPage() {
               </tr></thead>
               <tbody>
                 {breakdown.by_hour.filter(h => h.orders > 0).map(h => {
-                  const max = Math.max(...breakdown.by_hour.map(x => x.revenue));
+                  const max = breakdown.by_hour.length ? Math.max(...breakdown.by_hour.map(x => x.revenue)) : 0;
                   const label = `${String(h.hour).padStart(2, '0')}:00`;
                   return (
                     <tr key={h.hour}>

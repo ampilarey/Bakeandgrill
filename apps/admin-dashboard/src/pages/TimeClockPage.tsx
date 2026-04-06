@@ -52,7 +52,7 @@ export default function TimeClockPage() {
       const res = await getTimeClockStatus();
       setClockedIn(res.clocked_in);
       setSinceTime(res.entry?.clocked_in_at ?? null);
-    } catch { /* ignore */ }
+    } catch (e) { setClockError((e as Error).message); }
     finally { setStatusLoading(false); }
   };
 
@@ -87,12 +87,13 @@ export default function TimeClockPage() {
   const [histFrom, setHistFrom] = useState(today);
   const [histTo, setHistTo] = useState(today);
 
+  const [histError, setHistError] = useState('');
   const loadHistory = async () => {
-    setHistLoading(true);
+    setHistLoading(true); setHistError('');
     try {
       const res = await getTimeClockHistory({ from: histFrom, to: histTo });
       setEntries(res.data);
-    } catch { /* ignore */ }
+    } catch (e) { setHistError((e as Error).message); }
     finally { setHistLoading(false); }
   };
 
@@ -105,12 +106,13 @@ export default function TimeClockPage() {
   const [sumFrom, setSumFrom] = useState(today);
   const [sumTo, setSumTo] = useState(today);
 
+  const [sumError, setSumError] = useState('');
   const loadSummary = async () => {
-    setSumLoading(true);
+    setSumLoading(true); setSumError('');
     try {
       const res = await getTimeClockSummary({ from: sumFrom, to: sumTo });
       setSummary(res.data);
-    } catch { /* ignore */ }
+    } catch (e) { setSumError((e as Error).message); }
     finally { setSumLoading(false); }
   };
 
@@ -133,10 +135,10 @@ export default function TimeClockPage() {
         }
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
-        <button style={S.tab(tab === 'clock')} onClick={() => setTab('clock')}>Clock In/Out</button>
-        <button style={S.tab(tab === 'history')} onClick={() => setTab('history')}>History</button>
-        <button style={S.tab(tab === 'summary')} onClick={() => setTab('summary')}>Summary</button>
+      <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+        <button role="tab" aria-selected={tab === 'clock'} style={S.tab(tab === 'clock')} onClick={() => setTab('clock')}>Clock In/Out</button>
+        <button role="tab" aria-selected={tab === 'history'} style={S.tab(tab === 'history')} onClick={() => setTab('history')}>History</button>
+        <button role="tab" aria-selected={tab === 'summary'} style={S.tab(tab === 'summary')} onClick={() => setTab('summary')}>Summary</button>
       </div>
 
       {/* ── Clock Tab ── */}
@@ -193,6 +195,7 @@ export default function TimeClockPage() {
             <DateInput label="From" value={histFrom} onChange={v => { setHistFrom(v); }} />
             <DateInput label="To" value={histTo} onChange={v => { setHistTo(v); }} />
           </div>
+          {histError && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13 }}>{histError}</p>}
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -229,6 +232,8 @@ export default function TimeClockPage() {
             <DateInput label="From" value={sumFrom} onChange={v => setSumFrom(v)} />
             <DateInput label="To" value={sumTo} onChange={v => setSumTo(v)} />
           </div>
+
+          {sumError && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13 }}>{sumError}</p>}
 
           {summary.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 20 }}>

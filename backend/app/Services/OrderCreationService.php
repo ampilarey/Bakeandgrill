@@ -123,9 +123,12 @@ class OrderCreationService
             $quantity = (int) $itemPayload['quantity'];
 
             if ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
-                $stockOk = app(StockManagementService::class)->checkStock($itemModel, $quantity);
+                // Re-fetch with a row lock so concurrent orders don't both pass the
+                // stock check and then race to decrement below zero (oversell).
+                $lockedItem = \App\Models\Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
+                $stockOk    = app(StockManagementService::class)->checkStock($lockedItem, $quantity);
                 if (!$stockOk) {
-                    abort(422, "Insufficient stock for {$itemModel->name}. Available: {$itemModel->stock_quantity}, requested: {$quantity}");
+                    abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$lockedItem->stock_quantity}, requested: {$quantity}");
                 }
             }
 

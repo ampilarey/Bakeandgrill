@@ -45,7 +45,7 @@ export async function adjustInventoryStock(
   return req(`/inventory/${id}/adjust`, { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function fetchInventoryCategories(): Promise<{ data: InventoryCategory[] }> {
+export async function fetchInventoryCategories(): Promise<{ categories: InventoryCategory[] }> {
   return req('/inventory-categories');
 }
 
@@ -227,4 +227,23 @@ export async function fetchPrintJobs(params?: {
 
 export async function retryPrintJob(id: number): Promise<{ print_job: PrintJob }> {
   return req(`/print-jobs/${id}/retry`, { method: 'POST' });
+}
+
+export interface UnitConversion {
+  id: number;
+  from_unit: string;
+  to_unit: string;
+  factor: number;
+}
+
+export async function getUnitConversions(): Promise<{ conversions: UnitConversion[] }> {
+  return req('/unit-conversions');
+}
+
+export async function createUnitConversion(data: { from_unit: string; to_unit: string; factor: number }): Promise<{ conversion: UnitConversion }> {
+  return req('/unit-conversions', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteUnitConversion(id: number): Promise<void> {
+  await req(`/unit-conversions/${id}`, { method: 'DELETE' });
 }

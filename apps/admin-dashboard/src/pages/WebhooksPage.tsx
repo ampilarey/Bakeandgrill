@@ -102,10 +102,12 @@ function LogsDrawer({
 }) {
   const [logs, setLogs] = useState<WebhookLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [logsError, setLogsError] = useState('');
 
   useEffect(() => {
     fetchWebhookLogs(subscription.id)
       .then((r) => setLogs(r.data ?? []))
+      .catch((e: Error) => setLogsError(e.message))
       .finally(() => setLoading(false));
   }, [subscription.id]);
 
@@ -133,6 +135,7 @@ function LogsDrawer({
           </button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {logsError && <p style={{ color: '#dc2626', fontSize: 13 }}>{logsError}</p>}
           {loading ? <Spinner /> : logs.length === 0 ? (
             <EmptyState message="No delivery attempts yet." />
           ) : logs.map((log) => (

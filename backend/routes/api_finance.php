@@ -9,7 +9,7 @@ declare(strict_types=1);
 | Invoices, Expenses, Finance Reports, Supplier Intelligence,
 | Purchase Workflow, Inventory Categories, Unit Conversions, Forecasting.
 |
-| All routes require auth:sanctum + role:manager,owner
+| All routes require auth:sanctum + permission-based middleware (see individual route groups)
 */
 
 // ─── Invoices ──────────────────────────────────────────────────────────────

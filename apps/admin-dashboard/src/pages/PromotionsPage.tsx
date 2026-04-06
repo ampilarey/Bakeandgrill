@@ -97,7 +97,11 @@ function PromotionForm({
         <Field label="Max Uses">
           <Input
             value={form.max_uses != null ? String(form.max_uses) : ''}
-            onChange={(v) => set('max_uses', v ? parseInt(v) : null)}
+            onChange={(v) => {
+              const n = v ? parseInt(v, 10) : null;
+              if (n !== null && (!Number.isFinite(n) || n < 0)) return;
+              set('max_uses', n);
+            }}
             type="number" placeholder="Unlimited"
           />
         </Field>

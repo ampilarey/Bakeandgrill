@@ -133,6 +133,7 @@ function EditModal({ member, roles, onSave, onClose }: {
 
   const handleSave = async () => {
     if (!name.trim()) { setError('Name is required.'); return; }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim().toLowerCase())) { setError('Please enter a valid email address.'); return; }
     if (!roleId) { setError('Select a role.'); return; }
     setError(''); setLoading(true);
     try { await onSave({ name: name.trim(), email: email.trim(), role_id: parseInt(roleId), is_active: isActive }); }
@@ -242,7 +243,8 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
 
   const toggle = (slug: string) => {
     setOverrides((prev) => {
-      const perm = perms.find((p) => p.slug === slug)!;
+      const perm = perms.find((p) => p.slug === slug);
+      if (!perm) return prev;
       const current = prev[slug] !== undefined && prev[slug] !== null ? prev[slug] : perm.granted;
       return { ...prev, [slug]: !current };
     });
@@ -386,22 +388,28 @@ export function StaffPage() {
   useEffect(() => { void load(); }, []);
 
   const handleCreate = async (data: { name: string; email: string; role_id: number; pin: string }) => {
-    await createStaff(data);
-    setCreating(false);
-    await load();
+    try {
+      await createStaff(data);
+      setCreating(false);
+      await load();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const handleUpdate = async (data: { name: string; email: string; role_id: number; is_active: boolean }) => {
     if (!editing) return;
-    await updateStaff(editing.id, data);
-    setEditing(null);
-    await load();
+    try {
+      await updateStaff(editing.id, data);
+      setEditing(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const handlePinChange = async (pin: string) => {
     if (!changingPin) return;
-    await resetStaffPin(changingPin.id, pin);
-    setChangingPin(null);
+    try {
+      await resetStaffPin(changingPin.id, pin);
+      setChangingPin(null);
+    } catch (e) { setError((e as Error).message); }
   };
 
   const handleDelete = async (member: StaffMember) => {
@@ -411,8 +419,10 @@ export function StaffPage() {
   };
 
   const handleToggleActive = async (member: StaffMember) => {
-    await updateStaff(member.id, { is_active: !member.is_active });
-    await load();
+    try {
+      await updateStaff(member.id, { is_active: !member.is_active });
+      await load();
+    } catch (e) { setError((e as Error).message); }
   };
 
   const tabStyle = (active: boolean): React.CSSProperties => ({

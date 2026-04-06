@@ -136,3 +136,11 @@ export async function fetchAdminRefunds(params?: { page?: number; status?: strin
 export async function issueRefund(orderId: number, data: { amount: number; reason?: string }): Promise<{ refund: AdminRefund }> {
   return req(`/orders/${orderId}/refunds`, { method: 'POST', body: JSON.stringify(data) });
 }
+
+export async function getRefund(id: number): Promise<{ refund: AdminRefund }> {
+  return req(`/refunds/${id}`);
+}
+
+export async function sendReceiptForOrder(orderId: number, phone: string): Promise<void> {
+  await req(`/receipts/${orderId}/send`, { method: 'POST', body: JSON.stringify({ phone }) });
+}

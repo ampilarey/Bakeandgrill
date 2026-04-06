@@ -48,16 +48,18 @@ class RefundController extends Controller
 
         $validated = $request->validated();
         $amount = (float) $validated['amount'];
+        $amountLaar = (int) round($amount * 100);
 
-        [$refund, $order] = DB::transaction(function () use ($validated, $amount, $orderId, $request) {
+        [$refund, $order] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request) {
             $order = Order::lockForUpdate()->findOrFail($orderId);
 
-            $alreadyRefunded = $order->refunds()
-                ->where('status', '!=', 'rejected')
-                ->sum('amount');
+            $orderTotalLaar     = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
+            $alreadyRefundedLaar = (int) round(
+                (float) $order->refunds()->where('status', '!=', 'rejected')->sum('amount') * 100
+            );
 
-            if ($amount + $alreadyRefunded > ($order->total ?? 0)) {
-                abort(422, 'Refund would exceed order total. Already refunded: ' . number_format($alreadyRefunded, 2));
+            if ($amountLaar + $alreadyRefundedLaar > $orderTotalLaar) {
+                abort(422, 'Refund would exceed order total. Already refunded: ' . number_format($alreadyRefundedLaar / 100, 2));
             }
 
             $refund = Refund::create([
@@ -68,7 +70,7 @@ class RefundController extends Controller
                 'reason' => $validated['reason'] ?? null,
             ]);
 
-            if ($amount >= ($order->total ?? 0)) {
+            if ($amountLaar + $alreadyRefundedLaar >= $orderTotalLaar) {
                 $order->update(['status' => 'refunded']);
             }
 
