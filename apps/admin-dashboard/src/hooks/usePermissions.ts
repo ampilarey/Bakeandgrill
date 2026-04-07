@@ -4,6 +4,7 @@ import { getUserPermissions, type PermissionItem } from '../api';
 interface UsePermissionsResult {
   permissions: PermissionItem[];
   loading: boolean;
+  error: boolean;
   can: (slug: string) => boolean;
   refresh: () => void;
 }
@@ -15,6 +16,7 @@ interface UsePermissionsResult {
 export function usePermissions(userId: number | null, role?: string | null): UsePermissionsResult {
   const [permissions, setPermissions] = useState<PermissionItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
 
   const fetch = useCallback(() => {
     if (!userId || role === 'owner') {
@@ -23,9 +25,14 @@ export function usePermissions(userId: number | null, role?: string | null): Use
       return;
     }
     setLoading(true);
+    setError(false);
     getUserPermissions(userId)
-      .then(({ permissions: p }) => setPermissions(p))
-      .catch(() => setPermissions([]))
+      .then(({ permissions: p }) => { setPermissions(p); setError(false); })
+      .catch(() => {
+        // On fetch failure keep previously-loaded permissions so the UI isn't
+        // locked out by a transient network error; just mark the error state.
+        setError(true);
+      })
       .finally(() => setLoading(false));
   }, [userId, role]);
 
@@ -36,5 +43,5 @@ export function usePermissions(userId: number | null, role?: string | null): Use
     return permissions.find((p) => p.slug === slug)?.granted ?? false;
   }, [permissions, role]);
 
-  return { permissions, loading, can, refresh: fetch };
+  return { permissions, loading, error, can, refresh: fetch };
 }

@@ -24,7 +24,9 @@ class PointsCalculator
 
     public function redeemRatePerPoint(): float
     {
-        return 1 / (float) config('app.loyalty_redeem_rate', 100);
+        $rate = (float) config('app.loyalty_redeem_rate', 100);
+
+        return $rate > 0 ? (1 / $rate) : (1 / 100);
     }
 
     /**

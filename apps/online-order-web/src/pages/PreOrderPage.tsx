@@ -53,12 +53,17 @@ export function PreOrderPage() {
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!token) return;
+    const parsedDate = Date.parse(fulfillmentDate);
+    if (!fulfillmentDate || !Number.isFinite(parsedDate)) {
+      setError('Please select a valid fulfillment date and time.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const res = await createPreOrder(token, {
         items: selectedLines.map(i => ({ item_id: i.id, quantity: quantities[i.id] })),
-        fulfillment_date: new Date(fulfillmentDate).toISOString(),
+        fulfillment_date: new Date(parsedDate).toISOString(),
         customer_notes: notes || undefined,
       });
       setResult(res.pre_order);

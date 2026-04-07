@@ -68,7 +68,9 @@ class ConsumePromoRedemptionsListener
                 'order_id' => $orderId,
                 'error'    => $e->getMessage(),
             ]);
-            // Do NOT re-throw — other listeners must still run
+            // Re-throw so the queue worker retries; promo redemption is critical
+            // for usage-limit enforcement and revenue accounting.
+            throw $e;
         }
     }
 }

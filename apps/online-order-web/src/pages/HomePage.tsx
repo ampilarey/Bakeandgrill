@@ -173,8 +173,8 @@ export function HomePage() {
                 const imgSrc = sp.item.image_url
                   ? sp.item.image_url.startsWith('http') ? sp.item.image_url : `${API_ORIGIN}${sp.item.image_url.startsWith('/') ? '' : '/'}${sp.item.image_url}`
                   : null;
-                const price = sp.special_price ?? sp.item.base_price;
-                const wasPrice = sp.special_price ? sp.item.base_price : null;
+                const price = Number(sp.special_price ?? sp.item.base_price);
+                const wasPrice = sp.special_price ? Number(sp.item.base_price) : null;
                 return (
                   <Link
                     key={sp.id}

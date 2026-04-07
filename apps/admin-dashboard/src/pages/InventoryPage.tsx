@@ -188,6 +188,7 @@ export default function InventoryPage() {
     const counts = countItems
       .filter((i) => countQtys[i.id] !== '' && countQtys[i.id] !== undefined)
       .map((i) => ({ inventory_item_id: i.id, quantity: parseFloat(countQtys[i.id] ?? '0'), notes: countNotes[i.id] }));
+    if (counts.some((c) => isNaN(c.quantity) || c.quantity < 0)) { setCountError('One or more quantities are invalid.'); return; }
     if (!counts.length) { setCountError('No counts entered.'); return; }
     setCountSaving(true); setCountError('');
     try {

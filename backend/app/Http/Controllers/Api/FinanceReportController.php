@@ -207,6 +207,7 @@ class FinanceReportController extends Controller
 
     public function dailySummary(Request $request): JsonResponse
     {
+        $request->validate(['date' => 'nullable|date_format:Y-m-d']);
         $date = $request->query('date', now()->toDateString());
         $from = Carbon::parse($date)->startOfDay();
         $to   = Carbon::parse($date)->endOfDay();

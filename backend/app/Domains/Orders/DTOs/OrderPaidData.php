@@ -25,7 +25,7 @@ readonly class OrderPaidData
     {
         return new self(
             orderId: $order->id,
-            orderNumber: $order->order_number,
+            orderNumber: (string) ($order->order_number ?? $order->id),
             orderType: $order->type,
             customerId: $order->customer_id,
             total: (float) $order->total,

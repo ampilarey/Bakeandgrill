@@ -109,7 +109,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
               {photos.length > 1 && (
                 <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
                   {photos.map((_, i) => (
-                    <button key={i} onClick={() => setActivePhoto(i)}
+                    <button key={i} onClick={() => setActivePhoto(i)} aria-label={`Photo ${i + 1} of ${photos.length}`}
                       style={{ width: i === activePhoto ? 16 : 8, height: 8, borderRadius: 99, border: 'none', background: i === activePhoto ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: 0, transition: 'all 0.2s' }} />
                   ))}
                 </div>

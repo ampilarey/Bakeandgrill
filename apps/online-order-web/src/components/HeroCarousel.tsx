@@ -91,7 +91,7 @@ export function HeroCarousel({ slides, apiOrigin, fallback, statusSlot }: Props)
               className={`order-banner-slide${i === idx ? ' active' : ''}`}
             >
               {img ? (
-                <img src={img} alt="" className="order-banner-slide-img" />
+                <img src={img} alt={slide.title ? String(slide.title).replace(/<[^>]+>/g, '') : 'Promotional banner'} className="order-banner-slide-img" />
               ) : (
                 <div className="order-banner-slide-placeholder" />
               )}

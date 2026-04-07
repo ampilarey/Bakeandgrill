@@ -59,7 +59,9 @@ export default function WasteLogsPage() {
       const payload = itemType === 'menu'
         ? { item_id: Number(form.item_id) }
         : { inventory_item_id: Number(form.item_id) };
-      await createWasteLog({ ...payload, quantity: qty, unit: form.unit || undefined, cost_estimate: form.cost_estimate ? parseFloat(form.cost_estimate) : undefined, reason: form.reason, notes: form.notes || undefined });
+      const costRaw = form.cost_estimate ? parseFloat(form.cost_estimate) : undefined;
+      if (costRaw !== undefined && isNaN(costRaw)) { setFormError('Enter a valid cost estimate.'); setSaving(false); return; }
+      await createWasteLog({ ...payload, quantity: qty, unit: form.unit || undefined, cost_estimate: costRaw, reason: form.reason, notes: form.notes || undefined });
       setLogOpen(false);
       setForm({ item_id: '', quantity: '', unit: '', cost_estimate: '', reason: 'spoilage', notes: '' });
       void load();

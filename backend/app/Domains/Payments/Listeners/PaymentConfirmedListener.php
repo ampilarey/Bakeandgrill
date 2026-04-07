@@ -10,6 +10,7 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
+use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -59,7 +60,7 @@ class PaymentConfirmedListener implements ShouldQueue
         }
 
         $paidLaar  = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
-        $orderLaar = (int) round((float) $order->total * 100);
+        $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
 
         Log::info('PaymentConfirmedListener: checking full payment', [
             'payment_id' => $data->paymentId,
@@ -74,8 +75,8 @@ class PaymentConfirmedListener implements ShouldQueue
 
         // Order is now fully paid — transition status and fire OrderPaid.
         DB::transaction(function () use ($order): void {
-            // Re-lock the order row to prevent concurrent status transitions.
-            $locked = $this->orders->findById($order->id);
+            // Lock the row before reading status to prevent concurrent transitions.
+            $locked = Order::lockForUpdate()->find($order->id);
             if (!$locked || in_array($locked->status, ['paid', 'completed', 'cancelled'], true)) {
                 return;
             }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { submitReview } from "../api";
 
 interface Props {
@@ -15,6 +15,9 @@ export function ReviewForm({ orderId, token, onDone }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const [done, setDone]       = useState(false);
+  const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (doneTimer.current) clearTimeout(doneTimer.current); }, []);
 
   const submit = async () => {
     if (!rating) { setError("Please select a rating."); return; }
@@ -23,7 +26,7 @@ export function ReviewForm({ orderId, token, onDone }: Props) {
     try {
       await submitReview(token, { order_id: orderId, rating, comment, is_anonymous: anon });
       setDone(true);
-      setTimeout(onDone, 2000);
+      doneTimer.current = setTimeout(onDone, 2000);
     } catch (e) {
       setError((e as Error).message);
     } finally {

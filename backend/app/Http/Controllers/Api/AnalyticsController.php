@@ -128,7 +128,7 @@ class AnalyticsController extends Controller
             ->join('items as i', 'i.id', '=', 'oi.item_id')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->whereBetween('o.created_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
-            ->whereNotIn('o.status', ['cancelled'])
+            ->where('o.status', 'completed')
             ->selectRaw('
                 i.id,
                 i.name,

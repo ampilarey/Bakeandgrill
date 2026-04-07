@@ -44,7 +44,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLang = (l: Lang) => {
     setLangState(l);
-    localStorage.setItem("bakegrill_lang", l);
+    try { localStorage.setItem("bakegrill_lang", l); } catch { /* private mode / quota */ }
   };
 
   const t = (key: string): string => {

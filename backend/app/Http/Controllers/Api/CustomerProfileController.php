@@ -32,12 +32,13 @@ class CustomerProfileController extends Controller
         /** @var Customer $customer */
         $customer = $request->user();
 
-        $customer->update([
-            'name'                => $input['name'],
-            'email'               => $input['email'] ?? $customer->email,
-            'password'            => $input['password'],
-            'is_profile_complete' => true,
-        ]);
+        // 'password' is excluded from $fillable — must be set directly so the
+        // 'hashed' cast encrypts it; mass-assignment would silently drop it.
+        $customer->name                = $input['name'];
+        $customer->email               = $input['email'] ?? $customer->email;
+        $customer->password            = $input['password'];
+        $customer->is_profile_complete = true;
+        $customer->save();
 
         return response()->json([
             'message'  => 'Profile completed successfully',

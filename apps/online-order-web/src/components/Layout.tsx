@@ -55,9 +55,13 @@ export function Layout() {
             window.dispatchEvent(new Event('auth_change'));
           }
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           if (cancelled) return;
-          clearAuth();
+          // Only log out on auth errors — don't clear session on transient network/server failures
+          const status = (err as { status?: number })?.status;
+          if (status === 401 || status === 403) {
+            clearAuth();
+          }
         });
     }
     return () => { cancelled = true; };
@@ -65,7 +69,7 @@ export function Layout() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = darkMode ? 'dark' : '';
-    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    try { localStorage.setItem('theme', darkMode ? 'dark' : 'light'); } catch { /* private mode / quota */ }
   }, [darkMode]);
 
   // Close "More" dropdown when clicking outside

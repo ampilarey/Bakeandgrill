@@ -56,7 +56,8 @@ export function CustomersPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(search, page); }, [page, search]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Single load trigger: useEffect covers page changes; handleSearch debounces search changes.
+  useEffect(() => { void load(search, page); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (v: string) => {
     setSearch(v);
