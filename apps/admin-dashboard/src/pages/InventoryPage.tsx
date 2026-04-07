@@ -54,7 +54,9 @@ export default function InventoryPage() {
     try {
       const res = await fetchLowStockItems();
       setLowCount(res.data.length);
-    } catch (e) { console.error('Low stock check failed', e); }
+    } catch {
+      // Non-critical: badge simply won't show if this fails
+    }
   };
 
   useEffect(() => { void loadItems(); }, [search]);

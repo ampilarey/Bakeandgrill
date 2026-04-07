@@ -309,7 +309,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="xero" element={
-                  <PermissionGuard user={user} permission="finance.invoices">
+                  <PermissionGuard user={user} permission="integrations.xero">
                     <XeroPage />
                   </PermissionGuard>
                 } />

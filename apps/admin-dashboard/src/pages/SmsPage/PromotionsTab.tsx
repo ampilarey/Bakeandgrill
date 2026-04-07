@@ -1,35 +1,38 @@
 import { useEffect, useState } from 'react';
 import {
-  fetchSmsPromotions, createSmsPromotion, updateSmsPromotion,
-  deleteSmsPromotion, previewSmsPromotion, type SmsPromotion,
+  fetchSmsPromotions, previewSmsPromotion, sendSmsPromotion, type SmsPromotion,
 } from '../../api';
-import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Select, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
+import { Badge, Btn, Card, EmptyState, ErrorMsg, Input, TableCard, TD, TH, statColor } from '../../components/Layout';
 import { smsSegmentInfo } from '../../utils/smsSegments';
 
-const TRIGGER_TYPES = [
-  { value: 'birthday',         label: 'Birthday (day of)' },
-  { value: 'signup',           label: 'After signup' },
-  { value: 'first_order',      label: 'After first order' },
-  { value: 'points_milestone', label: 'Points milestone' },
-  { value: 'inactive',         label: 'Re-engage inactive customers' },
-  { value: 'manual',           label: 'Manual / one-time send' },
+const SEGMENT_OPTIONS = [
+  { value: 'all',       label: 'All customers' },
+  { value: 'active',    label: 'Active customers only' },
+  { value: 'loyal',     label: 'Customers with 3+ orders' },
+  { value: 'recent',    label: 'Ordered in last 30 days' },
+  { value: 'inactive',  label: 'Inactive 60+ days' },
 ];
 
+const SEGMENT_FILTERS: Record<string, Record<string, unknown>> = {
+  all:      { active_only: false },
+  active:   { active_only: true },
+  loyal:    { active_only: true, min_orders: 3 },
+  recent:   { active_only: true, last_order_days: 30 },
+  inactive: { active_only: true, last_order_days: 9999, include_opted_out: false },
+};
 
-const EMPTY_FORM = { name: '', message: '', promotion_code: '', trigger_type: 'manual', is_active: true };
+const EMPTY_FORM = { name: '', message: '', segment: 'active' };
 
 export function PromotionsTab() {
-  const [promos, setPromos] = useState<SmsPromotion[]>([]);
+  const [history, setHistory] = useState<SmsPromotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [preview, setPreview] = useState<{ recipient_count: number; sample: string[]; estimated_cost_mvr: string } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [preview, setPreview] = useState<{ recipient_count: number; estimated_cost_mvr?: string; total_cost_mvr?: number; cost_mvr?: number } | null>(null);
   const [previewing, setPreviewing] = useState(false);
-  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -38,7 +41,9 @@ export function PromotionsTab() {
     setError('');
     try {
       const res = await fetchSmsPromotions();
-      setPromos(res.promotions ?? []);
+      // Backend returns paginated object; extract .data array
+      const data = (res.promotions as unknown as { data?: SmsPromotion[] })?.data ?? (res.promotions as unknown as SmsPromotion[]);
+      setHistory(Array.isArray(data) ? data : []);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -54,65 +59,50 @@ export function PromotionsTab() {
     if (!form.message.trim()) return;
     setPreviewing(true);
     setPreview(null);
+    setError('');
     try {
-      const res = await previewSmsPromotion({ message: form.message, trigger_type: form.trigger_type });
-      setPreview(res);
-    } catch (e) { setError((e as Error).message); } finally {
+      const filters = SEGMENT_FILTERS[form.segment] ?? SEGMENT_FILTERS.active;
+      const res = await previewSmsPromotion({ message: form.message, filters });
+      // Backend returns { estimate: { recipient_count, cost_mvr, total_cost_mvr, ... } }
+      const est = (res as unknown as { estimate?: typeof preview }).estimate ?? res;
+      setPreview(est as typeof preview);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
       setPreviewing(false);
     }
   };
 
-  const handleSubmit = async () => {
-    if (!form.name.trim() || !form.message.trim()) return;
-    setSaving(true);
+  const handleSend = async () => {
+    if (!form.message.trim()) return;
+    if (!window.confirm(`Send this SMS to the selected audience? This cannot be undone.`)) return;
+    setSending(true);
     setError('');
     try {
-      if (editId !== null) {
-        await updateSmsPromotion(editId, { name: form.name, message: form.message, promotion_code: form.promotion_code || null, is_active: form.is_active });
-        showToast('Promotion updated.');
-      } else {
-        await createSmsPromotion({ name: form.name, message: form.message, promotion_code: form.promotion_code || null, trigger_type: form.trigger_type, is_active: form.is_active });
-        showToast('Promotion created.');
-      }
+      const filters = SEGMENT_FILTERS[form.segment] ?? SEGMENT_FILTERS.active;
+      await sendSmsPromotion({ message: form.message, name: form.name || undefined, filters });
+      showToast('SMS blast queued successfully.');
       setShowForm(false);
       setForm(EMPTY_FORM);
-      setEditId(null);
       setPreview(null);
       void load();
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setSaving(false);
+      setSending(false);
     }
   };
 
-  const handleEdit = (p: SmsPromotion) => {
-    setEditId(p.id);
-    setForm({ name: p.name, message: p.message, promotion_code: p.promotion_code ?? '', trigger_type: p.trigger_type, is_active: p.is_active });
-    setPreview(null);
-    setShowForm(true);
-  };
-
-  const handleDelete = (p: SmsPromotion) => {
-    askConfirm({
-      message: `Delete "${p.name}"? This cannot be undone.`,
-      title: 'Delete Promotion',
-      danger: true,
-      onConfirm: async () => {
-        try { await deleteSmsPromotion(p.id); showToast('Promotion deleted.'); void load(); }
-        catch (e) { setError((e as Error).message); }
-      },
-    });
-  };
-
-  const handleToggle = async (p: SmsPromotion) => {
-    try { await updateSmsPromotion(p.id, { is_active: !p.is_active }); void load(); }
-    catch (e) { setError((e as Error).message); }
+  const totalCostMvr = (p: typeof preview) => {
+    if (!p) return null;
+    if (typeof p.total_cost_mvr === 'number') return p.total_cost_mvr.toFixed(2);
+    if (p.estimated_cost_mvr) return parseFloat(p.estimated_cost_mvr).toFixed(2);
+    if (p.cost_mvr && p.recipient_count) return (p.cost_mvr * p.recipient_count).toFixed(2);
+    return null;
   };
 
   return (
     <>
-      <ConfirmDialog state={dlg} close={closeDlg} />
       {toast && (
         <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
           {toast}
@@ -121,125 +111,104 @@ export function PromotionsTab() {
       {error && <ErrorMsg message={error} />}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <Btn onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY_FORM); setPreview(null); }}>
-          + New Promotion
+        <Btn onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setPreview(null); setError(''); }}>
+          + New SMS Blast
         </Btn>
       </div>
 
       {showForm && (
         <Card style={{ padding: 24, marginBottom: 20 }}>
           <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>
-            {editId !== null ? 'Edit Promotion' : 'New SMS Promotion'}
+            New SMS Blast
           </h3>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }} className="form-grid-2">
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Name *</label>
-              <Input value={form.name} onChange={(val) => setForm({ ...form, name: val })} placeholder="e.g. Birthday discount" />
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Name / Label (optional)</label>
+              <Input value={form.name} onChange={(val) => setForm({ ...form, name: val })} placeholder="e.g. Weekend special" />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Promo Code (optional)</label>
-              <Input value={form.promotion_code} onChange={(val) => setForm({ ...form, promotion_code: val })} placeholder="e.g. BDAY20" />
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Audience</label>
+              <select
+                value={form.segment}
+                onChange={(e) => { setForm({ ...form, segment: e.target.value }); setPreview(null); }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+              >
+                {SEGMENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
           </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Trigger</label>
-            <Select options={TRIGGER_TYPES} value={form.trigger_type} onChange={(val) => setForm({ ...form, trigger_type: val })} style={{ width: '100%' }} />
-          </div>
+
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Message *</label>
             <textarea
               value={form.message}
-              onChange={(e) => setForm({ ...form, message: e.target.value })}
+              onChange={(e) => { setForm({ ...form, message: e.target.value }); setPreview(null); }}
               rows={4}
-              maxLength={640}
-              placeholder="Hi {name}, here's an exclusive offer just for you…"
+              maxLength={480}
+              placeholder="Hi, here's an exclusive offer from Bake & Grill…"
               style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
               <span>{form.message.length} chars</span>
               <span>{msgInfo.segments} segment{msgInfo.segments !== 1 ? 's' : ''} ({msgInfo.charsPerSeg} chars/seg)</span>
-              <span>{msgInfo.remaining} remaining in segment</span>
+              <span>{msgInfo.remaining} remaining</span>
               {msgInfo.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600 }}>Unicode (70/seg)</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <input type="checkbox" id="promo-active" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-            <label htmlFor="promo-active" style={{ fontSize: 13, color: '#6B5D4F', cursor: 'pointer' }}>Active (send automatically on trigger)</label>
+
+          <div style={{ marginBottom: 16 }}>
+            <Btn small variant="secondary" onClick={handlePreview} disabled={previewing || !form.message.trim()}>
+              {previewing ? 'Estimating…' : 'Estimate Reach & Cost'}
+            </Btn>
+            {preview && (
+              <div style={{ marginTop: 10, padding: '10px 14px', background: '#F8F6F3', borderRadius: 8, fontSize: 13 }}>
+                <strong>{preview.recipient_count.toLocaleString()}</strong> recipient{preview.recipient_count !== 1 ? 's' : ''}
+                {totalCostMvr(preview) && <> · Est. cost: <strong>MVR {totalCostMvr(preview)}</strong></>}
+              </div>
+            )}
           </div>
 
-          {form.trigger_type !== 'manual' && (
-            <div style={{ marginBottom: 16 }}>
-              <Btn small variant="secondary" onClick={handlePreview} disabled={previewing || !form.message.trim()}>
-                {previewing ? 'Estimating…' : 'Estimate Recipients'}
-              </Btn>
-              {preview && (
-                <div style={{ marginTop: 10, padding: '10px 14px', background: '#F8F6F3', borderRadius: 8, fontSize: 13 }}>
-                  <strong>{preview.recipient_count}</strong> recipient{preview.recipient_count !== 1 ? 's' : ''} · Est. cost: <strong>MVR {preview.estimated_cost_mvr}</strong>
-                  {preview.sample.length > 0 && (
-                    <div style={{ marginTop: 6, color: '#9C8E7E', fontSize: 12 }}>
-                      Sample: {preview.sample.slice(0, 3).join(', ')}{preview.sample.length > 3 ? ' …' : ''}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           <div style={{ display: 'flex', gap: 10 }}>
-            <Btn onClick={handleSubmit} disabled={saving || !form.name.trim() || !form.message.trim()}>
-              {saving ? 'Saving…' : editId !== null ? 'Update' : 'Create'}
+            <Btn onClick={handleSend} disabled={sending || !form.message.trim()}>
+              {sending ? 'Sending…' : '📤 Send Blast'}
             </Btn>
-            <Btn variant="secondary" onClick={() => { setShowForm(false); setEditId(null); setPreview(null); }}>Cancel</Btn>
+            <Btn variant="secondary" onClick={() => { setShowForm(false); setPreview(null); }}>Cancel</Btn>
           </div>
         </Card>
       )}
 
+      <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: '#6B5D4F' }}>Past Blasts</h4>
       {loading ? (
-        <Card><EmptyState message="Loading promotions…" /></Card>
-      ) : promos.length === 0 ? (
-        <Card><EmptyState message="No SMS promotions yet. Create your first promotion above." /></Card>
+        <Card><EmptyState message="Loading history…" /></Card>
+      ) : history.length === 0 ? (
+        <Card><EmptyState message="No SMS blasts sent yet." /></Card>
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH}>Name</th>
-                <th style={TH}>Trigger</th>
-                <th style={TH}>Code</th>
+                <th style={TH}>Name / Message</th>
                 <th style={TH}>Status</th>
-                <th style={TH}>Sent</th>
-                <th style={TH}>Cost (MVR)</th>
-                <th style={TH}>Actions</th>
+                <th style={TH}>Recipients</th>
+                <th style={TH}>Date</th>
               </tr>
             </thead>
             <tbody>
-              {promos.map((p) => (
+              {history.map((p) => (
                 <tr key={p.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
                   <td style={TD}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1C1408' }}>{p.name}</div>
-                    <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.message}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1C1408' }}>{p.name ?? '—'}</div>
+                    <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.message}</div>
                   </td>
                   <td style={TD}>
-                    <span style={{ fontSize: 12, background: '#EEE9E3', color: '#6B5D4F', padding: '2px 7px', borderRadius: 4, fontWeight: 600 }}>
-                      {TRIGGER_TYPES.find((t) => t.value === p.trigger_type)?.label ?? p.trigger_type}
-                    </span>
+                    <Badge
+                      label={p.is_active !== undefined ? (p.is_active ? 'Active' : 'Done') : String((p as unknown as { status?: string }).status ?? '—')}
+                      color={statColor(p.is_active ? 'success' : 'default')}
+                    />
                   </td>
-                  <td style={TD}>
-                    {p.promotion_code
-                      ? <code style={{ fontSize: 12, background: '#F0EBE5', padding: '2px 6px', borderRadius: 4 }}>{p.promotion_code}</code>
-                      : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>
-                    }
-                  </td>
-                  <td style={TD}><Badge label={p.is_active ? 'Active' : 'Inactive'} color={statColor(p.is_active ? 'success' : 'default')} /></td>
-                  <td style={TD}><span style={{ fontSize: 13 }}>{p.total_sent.toLocaleString()}</span></td>
-                  <td style={TD}><span style={{ fontSize: 13 }}>{parseFloat(p.total_cost_mvr).toFixed(2)}</span></td>
-                  <td style={TD}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <Btn small variant="secondary" onClick={() => handleToggle(p)}>{p.is_active ? 'Pause' : 'Activate'}</Btn>
-                      <Btn small variant="secondary" onClick={() => handleEdit(p)}>Edit</Btn>
-                      <Btn small variant="danger" onClick={() => handleDelete(p)}>Delete</Btn>
-                    </div>
-                  </td>
+                  <td style={TD}><span style={{ fontSize: 13 }}>{(p.total_sent ?? 0).toLocaleString()}</span></td>
+                  <td style={TD}><span style={{ fontSize: 12, color: '#9C8E7E' }}>{new Date(p.created_at).toLocaleDateString()}</span></td>
                 </tr>
               ))}
             </tbody>

@@ -101,10 +101,10 @@ export default function PrintJobsPage() {
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }} className="stat-grid">
-        <StatCard label="Total Jobs" value={String(meta.total)} />
-        <StatCard label="Pending"    value={String(stats.pending)} accent="#F59E0B" />
-        <StatCard label="Failed"     value={String(stats.failed)}  accent="#EF4444" />
-        <StatCard label="Printed"    value={String(stats.printed)} accent="#22C55E" />
+        <StatCard label="Total Jobs"        value={String(meta.total)} />
+        <StatCard label="Pending (page)"    value={String(stats.pending)} accent="#F59E0B" />
+        <StatCard label="Failed (page)"     value={String(stats.failed)}  accent="#EF4444" />
+        <StatCard label="Printed (page)"    value={String(stats.printed)} accent="#22C55E" />
       </div>
 
       {/* Filter */}

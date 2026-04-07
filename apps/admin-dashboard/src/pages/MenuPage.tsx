@@ -649,8 +649,8 @@ export function MenuPage() {
                         <td style={{ padding: '10px 14px' }}>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <Btn small variant="secondary" onClick={() => setEditingItem(item)}>Edit</Btn>
-                            <Btn small variant="secondary" onClick={() => { getBarcodeLabel(item.id).then((res) => setBarcodeLabel(res.label)).catch(() => {}); }} title="Print barcode label">🏷</Btn>
-                            <Btn small variant="secondary" onClick={() => { getItemWithRecipe(item.id).then((res) => setRecipeItem(res.item)).catch(() => {}); }} title="View recipe">📋</Btn>
+                            <Btn small variant="secondary" onClick={() => { getBarcodeLabel(item.id).then((res) => setBarcodeLabel(res.label)).catch((e: Error) => setError(e.message)); }} title="Print barcode label">🏷</Btn>
+                            <Btn small variant="secondary" onClick={() => { getItemWithRecipe(item.id).then((res) => setRecipeItem(res.item)).catch((e: Error) => setError(e.message)); }} title="View recipe">📋</Btn>
                             <Btn small variant="danger" onClick={() => handleDeleteItem(item.id)}>Delete</Btn>
                           </div>
                         </td>

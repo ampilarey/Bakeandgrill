@@ -87,7 +87,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/print-jobs', icon: Printer,  label: 'Print Queue', permission: 'devices.manage'         },
       { to: '/settings',   icon: Settings, label: 'Settings',    permission: 'website.manage'         },
       { to: '/webhooks',   icon: Webhook,  label: 'Webhooks',    permission: 'integrations.webhooks'  },
-      { to: '/xero',       icon: Link,     label: 'Xero',        permission: 'finance.invoices'       },
+      { to: '/xero',       icon: Link,     label: 'Xero',        permission: 'integrations.xero'      },
     ],
   },
 ];

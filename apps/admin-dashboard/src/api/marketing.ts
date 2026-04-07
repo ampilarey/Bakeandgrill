@@ -177,41 +177,15 @@ export async function getSmsPromotion(id: number): Promise<{ promotion: SmsPromo
 
 export async function previewSmsPromotion(data: {
   message: string;
-  trigger_type: string;
-  trigger_config?: Record<string, unknown>;
-}): Promise<{ recipient_count: number; sample: string[]; estimated_cost_mvr: string }> {
+  filters?: Record<string, unknown>;
+}): Promise<{ estimate?: { recipient_count: number; cost_mvr: number; total_cost_mvr: number }; recipient_count?: number }> {
   return req('/sms/promotions/preview', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function sendSmsPromotion(data: {
   message: string;
-  trigger_type: string;
-  segment?: string;
-}): Promise<{ queued: number }> {
-  return req('/sms/promotions/send', { method: 'POST', body: JSON.stringify(data) });
-}
-
-// The following CRUD helpers require backend routes that are not yet implemented.
-// They are kept here so the UI compiles; they will return 404 until added.
-export async function createSmsPromotion(data: {
-  name: string;
-  message: string;
-  promotion_code?: string | null;
-  trigger_type: string;
-  is_active?: boolean;
+  name?: string;
+  filters?: Record<string, unknown>;
 }): Promise<{ promotion: SmsPromotion }> {
-  return req('/sms/promotions', { method: 'POST', body: JSON.stringify(data) });
-}
-
-export async function updateSmsPromotion(id: number, data: Partial<{
-  name: string;
-  message: string;
-  promotion_code: string | null;
-  is_active: boolean;
-}>): Promise<{ promotion: SmsPromotion }> {
-  return req(`/sms/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-}
-
-export async function deleteSmsPromotion(id: number): Promise<void> {
-  await req(`/sms/promotions/${id}`, { method: 'DELETE' });
+  return req('/sms/promotions/send', { method: 'POST', body: JSON.stringify(data) });
 }
