@@ -26,6 +26,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 class DispatchWebhookOnDomainEvent implements ShouldQueue
 {
     public bool $afterCommit = true;
+    public int  $tries       = 3;
+    public int  $backoff     = 10;
 
     private const EVENT_MAP = [
         OrderCreated::class       => 'order.created',

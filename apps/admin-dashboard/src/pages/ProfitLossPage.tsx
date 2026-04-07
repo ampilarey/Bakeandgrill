@@ -31,7 +31,7 @@ export function ProfitLossPage() {
       const [pnlRes, cfRes, dailyRes] = await Promise.all([
         getProfitAndLoss(from, to),
         getCashFlow(from, to),
-        getDailySummary(to),
+        getDailySummary(today()),
       ]);
       setPnl(pnlRes); setCashFlow(cfRes); setDaily(dailyRes);
     } catch (e) { setError((e as Error).message); }
@@ -62,7 +62,7 @@ export function ProfitLossPage() {
           {daily && (
             <div style={{ background: '#fffbeb', border: '1px solid #fef08a', borderRadius: 14, padding: 20 }}>
               <p style={{ fontWeight: 700, marginBottom: 16, color: '#92400e', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
-                Daily Snapshot (end date: {to})
+                Today's Snapshot
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
                 <StatCard label="Revenue" value={`MVR ${parseFloat(String(daily.revenue ?? 0)).toFixed(2)}`} accent="#D4813A" />

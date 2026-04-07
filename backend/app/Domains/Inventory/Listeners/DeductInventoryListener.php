@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Deducts inventory for an order when fully paid.
  *
- * Runs synchronously (critical path) — inventory must be deducted before
- * the order response is returned so stock counts stay accurate.
+ * Runs synchronously (not queued) — stock must be deducted before the
+ * payment response is returned so counts stay accurate in real time.
  * Idempotent: InventoryDeductionService checks for existing StockMovements.
  */
 class DeductInventoryListener
@@ -43,9 +43,7 @@ class DeductInventoryListener
                 'order_id' => $event->data->orderId,
                 'error'    => $e->getMessage(),
             ]);
-            // Re-throw so the queue worker retries this job (respects $tries = 3).
-            // Each listener is dispatched as its own independent queue job when
-            // ShouldQueue is implemented, so re-throwing here does NOT affect other listeners.
+            // Re-throw so any outer transaction rolls back — failure here is non-silent.
             throw $e;
         }
     }

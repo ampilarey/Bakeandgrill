@@ -78,8 +78,15 @@ class DriverLocationController extends Controller
 
         $user = $request->user();
 
-        // Authorise: customer token must own the order, staff or driver tokens always pass
+        // Authorise:
+        // - Customer tokens must own the order
+        // - DeliveryDriver tokens must be the assigned driver for this order
+        // - Staff tokens always pass
         if ($user instanceof \App\Models\Customer && (int) $order->customer_id !== $user->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if ($user instanceof DeliveryDriver && (int) $order->delivery_driver_id !== $user->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

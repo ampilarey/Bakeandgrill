@@ -96,9 +96,9 @@ export const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 export const BOTTOM_TABS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dash',   permission: 'dashboard.view' },
-  { to: '/orders',    icon: ClipboardList,   label: 'Orders' },
-  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu'   },
-  { to: '/reports',   icon: PieChart,        label: 'Money'  },
+  { to: '/orders',    icon: ClipboardList,   label: 'Orders', permission: 'orders.view'    },
+  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu',   permission: 'menu.view'      },
+  { to: '/reports',   icon: PieChart,        label: 'Money',  permission: 'reports.view'   },
   { to: '#more',      icon: Menu,            label: 'More'   },
 ];
 
