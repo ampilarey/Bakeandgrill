@@ -74,31 +74,15 @@ Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->prefix('p
 
 // ─── Inventory Categories & Unit Conversions ───────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:inventory.categories'])->prefix('inventory-categories')->group(function () {
-    Route::get('/',       fn() => response()->json(['categories' => \App\Models\InventoryCategory::orderBy('name')->get()]));
-    Route::post('/',      function (Illuminate\Http\Request $req) {
-        $validated = $req->validate(['name' => 'required|string|max:100', 'description' => 'nullable|string']);
-        $cat = \App\Models\InventoryCategory::create([...$validated, 'slug' => \Illuminate\Support\Str::slug($validated['name'])]);
-        return response()->json(['category' => $cat], 201);
-    });
-    Route::patch('/{id}', function (Illuminate\Http\Request $req, int $id) {
-        $cat = \App\Models\InventoryCategory::findOrFail($id);
-        $cat->update($req->validate(['name' => 'sometimes|string|max:100', 'description' => 'nullable|string', 'is_active' => 'sometimes|boolean']));
-        return response()->json(['category' => $cat]);
-    });
+    Route::get('/',       [App\Http\Controllers\Api\InventoryConfigController::class, 'indexCategories']);
+    Route::post('/',      [App\Http\Controllers\Api\InventoryConfigController::class, 'storeCategory']);
+    Route::patch('/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'updateCategory']);
 });
 
 Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->prefix('unit-conversions')->group(function () {
-    Route::get('/', fn() => response()->json(['conversions' => \App\Models\UnitConversion::all()]));
-    Route::post('/', function (Illuminate\Http\Request $req) {
-        $v = $req->validate(['from_unit' => 'required|string|max:20', 'to_unit' => 'required|string|max:20', 'factor' => 'required|numeric|min:0.000001']);
-        $uc = \App\Models\UnitConversion::updateOrCreate(['from_unit' => $v['from_unit'], 'to_unit' => $v['to_unit']], ['factor' => $v['factor']]);
-        return response()->json(['conversion' => $uc], 201);
-    });
-    Route::delete('/{id}', function ($id) {
-        $uc = \App\Models\UnitConversion::findOrFail($id);
-        $uc->delete();
-        return response()->json(['message' => 'Deleted.']);
-    });
+    Route::get('/',        [App\Http\Controllers\Api\InventoryConfigController::class, 'indexConversions']);
+    Route::post('/',       [App\Http\Controllers\Api\InventoryConfigController::class, 'storeConversion']);
+    Route::delete('/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'destroyConversion']);
 });
 
 // ─── Forecasting ───────────────────────────────────────────────────────────

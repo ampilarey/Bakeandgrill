@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchReservationSlots, createReservation } from "../api";
-import type { ReservationSlot, Reservation } from "../api";
+import type { ReservationSlot, CustomerReservation } from "../api";
 
 const tomorrow = () => {
   const d = new Date();
@@ -28,7 +28,7 @@ export function ReservationPage() {
 
   const [slots, setSlots] = useState<ReservationSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
-  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [reservation, setReservation] = useState<CustomerReservation | null>(null);
 
   const loadSlots = async () => {
     if (!date || partySize < 1) return;

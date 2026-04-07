@@ -12,17 +12,20 @@ use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
 use App\Domains\Notifications\Events\CustomerCreated;
+use App\Domains\Notifications\Listeners\SendOrderStatusPushListener;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Orders\Events\OrderCompleted;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Events\OrderRefunded;
+use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Listeners\PaymentConfirmedListener;
 use App\Domains\Printing\Listeners\DispatchKitchenPrintListener;
 use App\Domains\Printing\Listeners\DispatchReceiptPrintListener;
 use App\Domains\Promotions\Listeners\ConsumePromoRedemptionsListener;
 use App\Domains\Promotions\Listeners\ReleasePromoReservationListener;
+use App\Domains\Realtime\Listeners\PublishOrderStatusToRedisListener;
 use App\Domains\Reservations\Events\ReservationCreated;
 use App\Domains\Notifications\Listeners\SendOrderConfirmationListener;
 use App\Domains\Notifications\Listeners\SendPaymentConfirmationListener;
@@ -101,6 +104,12 @@ class DomainEventServiceProvider extends EventServiceProvider
 
         CustomerCreated::class => [
             DispatchWebhookOnDomainEvent::class,
+        ],
+
+        // Fires on every status change — real-time SSE and push notifications
+        OrderStatusChanged::class => [
+            PublishOrderStatusToRedisListener::class,
+            SendOrderStatusPushListener::class,
         ],
     ];
 }
