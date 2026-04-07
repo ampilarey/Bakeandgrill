@@ -52,7 +52,7 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
         DB::table('loyalty_accounts')
             ->where('customer_id', $customerId)
             ->update([
-                'points_held' => DB::raw('MAX(0, points_held - ' . (int) $points . ')'),
+                'points_held' => DB::raw('GREATEST(0, points_held - ' . (int) $points . ')'),
             ]);
     }
 }

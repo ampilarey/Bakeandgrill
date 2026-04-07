@@ -388,7 +388,9 @@ export function useCheckout() {
         try {
           await createLoyaltyHold(token, orderId, loyaltyPoints);
         } catch (e) {
-          if (import.meta.env.DEV) console.warn("Loyalty hold failed:", (e as Error).message);
+          setGlobalError("Could not apply loyalty points: " + (e as Error).message);
+          setIsPlacing(false);
+          return;
         }
       }
 
@@ -399,7 +401,9 @@ export function useCheckout() {
           setGiftCardApplied({ code: giftCardToApply, discountLaar: gcRes.discount_laar });
           setGiftCardCode("");
         } catch (e) {
-          if (import.meta.env.DEV) console.warn("Gift card application failed:", (e as Error).message);
+          setGlobalError("Could not apply gift card: " + (e as Error).message);
+          setIsPlacing(false);
+          return;
         }
       }
 

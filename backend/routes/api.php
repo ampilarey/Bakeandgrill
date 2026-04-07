@@ -595,7 +595,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 });
 
 // ─── Barcode Label Data ──────────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/items/{id}/barcode-label', [App\Http\Controllers\Api\ItemController::class, 'barcodeLabel']);
 });
 

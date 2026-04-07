@@ -67,8 +67,13 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const reload = () => {
     const controller = new AbortController();
     fetchOrder(orderId, controller.signal)
-      .then((r) => { setOrder(r.order); setLoading(false); })
-      .catch((err) => { if (err.name !== 'AbortError') setLoading(false); });
+      .then((r) => { setOrder(r.order); setLoading(false); setActionErr(''); })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setLoading(false);
+          setActionErr((err as Error).message || 'Failed to load order.');
+        }
+      });
     return () => controller.abort();
   };
 

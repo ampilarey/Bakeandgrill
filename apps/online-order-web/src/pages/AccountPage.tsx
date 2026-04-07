@@ -78,6 +78,7 @@ export function AccountPage() {
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loyalty, setLoyalty] = useState<LoyaltyAccount | null>(null);
+  const [loyaltyError, setLoyaltyError] = useState('');
 
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '' });
@@ -101,7 +102,7 @@ export function AccountPage() {
       .finally(() => setLoadingProfile(false));
     getLoyaltyAccount(token)
       .then(({ account }) => setLoyalty(account))
-      .catch(() => {});
+      .catch((e: Error) => setLoyaltyError(e.message || 'Failed to load loyalty account.'));
   }, [token, authReady]);
 
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
@@ -235,12 +236,13 @@ export function AccountPage() {
           <div style={{
             display: 'flex', flexDirection: 'column', gap: 4,
             padding: '16px 18px',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
+            background: loyaltyError ? '#FEF2F2' : 'var(--color-surface)',
+            border: loyaltyError ? '1px solid #FECACA' : '1px solid var(--color-border)',
             borderRadius: 14,
           }}>
             <span style={{ fontSize: 22 }}>⭐</span>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Loyalty Points</span>
+            {loyaltyError && <span style={{ fontSize: 12, color: '#DC2626' }}>{loyaltyError}</span>}
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Earn 1 pt per MVR 1</span>
           </div>
         )}
