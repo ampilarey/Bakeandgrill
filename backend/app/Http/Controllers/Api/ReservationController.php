@@ -80,7 +80,11 @@ class ReservationController extends Controller
             return response()->json(['data' => $items->map(fn($r) => $this->format($r))]);
         }
 
-        // Staff sees all, paginated
+        // Staff sees all, paginated — requires reservations.manage permission
+        if (!$user?->hasPermission('reservations.manage')) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
         $validated = $request->validate([
             'date'     => ['nullable', 'date'],
             'status'   => ['nullable', 'string'],

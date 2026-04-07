@@ -76,9 +76,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback((item: Item, quantity: number, modifiers: Modifier[] = []) => {
     if (quantity < 1) return;
     setCart((prev) => {
-      const key = modifiers.map((m) => m.id).join(',');
+      const key = [...modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',');
       const idx = prev.findIndex(
-        (e) => e.item.id === item.id && e.modifiers.map((m) => m.id).join(',') === key,
+        (e) => e.item.id === item.id && [...e.modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',') === key,
       );
       if (idx >= 0) {
         const next = [...prev];

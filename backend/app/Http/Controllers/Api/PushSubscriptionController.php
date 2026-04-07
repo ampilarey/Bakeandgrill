@@ -40,7 +40,10 @@ class PushSubscriptionController extends Controller
     {
         $validated = $request->validate(['endpoint' => ['required', 'string']]);
 
-        PushSubscription::where('endpoint', $validated['endpoint'])->delete();
+        // Only delete the subscription if it belongs to the authenticated customer
+        PushSubscription::where('endpoint', $validated['endpoint'])
+            ->where('customer_id', $request->user()?->id)
+            ->delete();
 
         return response()->json(['message' => 'Unsubscribed.']);
     }

@@ -13,12 +13,25 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SendSmsPromotionRecipient implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+    public int $backoff = 60; // seconds between retries
+
     public function __construct(public int $recipientId) {}
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("SendSmsPromotionRecipient failed for recipient #{$this->recipientId}: {$exception->getMessage()}");
+
+        SmsPromotionRecipient::where('id', $this->recipientId)
+            ->where('status', 'queued')
+            ->update(['status' => 'failed', 'error_message' => 'Job failed after retries: ' . $exception->getMessage()]);
+    }
 
     public function handle(SmsService $smsService): void
     {

@@ -16,6 +16,9 @@ class AutoCancelNoShowReservations implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
+    public int $tries = 3;
+    public int $backoff = 30;
+
     public function handle(ReservationService $service): void
     {
         $settings = ReservationSetting::current();
@@ -24,5 +27,10 @@ class AutoCancelNoShowReservations implements ShouldQueue
         if ($marked > 0) {
             Log::info("AutoCancelNoShowReservations: marked {$marked} reservations as no-show.");
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("AutoCancelNoShowReservations job failed: {$exception->getMessage()}");
     }
 }

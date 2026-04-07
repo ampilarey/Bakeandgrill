@@ -519,7 +519,7 @@ Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/spe
 // Public: VAPID public key for subscription setup (no auth needed)
 Route::get('/push/vapid-key', [App\Http\Controllers\Api\PushSubscriptionController::class, 'vapidKey']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::post('/push/subscribe',   [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
         ->middleware('throttle:5,1');
     Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])

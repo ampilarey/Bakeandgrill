@@ -33,10 +33,14 @@ class TimeClockController extends Controller
             return response()->json(['message' => 'Already clocked in.'], 422);
         }
 
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
         $punch = TimePunch::create([
             'user_id'       => $userId,
             'clocked_in_at' => now(),
-            'notes'         => $request->input('notes'),
+            'notes'         => $validated['notes'] ?? null,
         ]);
 
         return response()->json(['punch' => $punch], 201);
@@ -55,7 +59,11 @@ class TimeClockController extends Controller
             return response()->json(['message' => 'Not clocked in.'], 422);
         }
 
-        $breakMinutes = (float) ($request->input('break_minutes', 0));
+        $clockOutValidated = $request->validate([
+            'break_minutes' => ['nullable', 'numeric', 'min:0', 'max:1440'],
+        ]);
+
+        $breakMinutes = (float) ($clockOutValidated['break_minutes'] ?? 0);
 
         $punch->clocked_out_at = now();
         $punch->break_minutes  = $breakMinutes;

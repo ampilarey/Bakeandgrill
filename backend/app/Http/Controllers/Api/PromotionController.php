@@ -37,6 +37,13 @@ class PromotionController extends Controller
         $order = $orderId ? Order::with('items.item')->findOrFail($orderId) : null;
         $customerId = $request->user()?->id;
 
+        // Prevent cross-order IDOR: customers may only validate against their own orders
+        if ($order && $customerId !== null && $request->user()?->tokenCan('customer')) {
+            if ((int) $order->customer_id !== (int) $customerId) {
+                return response()->json(['valid' => false, 'message' => 'Order not found.'], 404);
+            }
+        }
+
         if (!$order) {
             $promo = Promotion::where('code', strtoupper(trim($request->input('code'))))->first();
             if (!$promo || !$promo->isValid()) {
