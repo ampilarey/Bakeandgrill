@@ -82,8 +82,8 @@ export default function XeroPage() {
       const res = await getXeroLogs({ page: logPage });
       setLogs(res.data);
       setLogMeta(res.meta);
-    } catch (_) {
-      // Non-fatal
+    } catch (e) {
+      setError((e as Error).message || 'Failed to load sync logs.');
     } finally {
       setLogsLoading(false);
     }

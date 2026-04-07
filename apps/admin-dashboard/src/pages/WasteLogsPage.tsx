@@ -46,8 +46,8 @@ export default function WasteLogsPage() {
 
   useEffect(() => { void load(); }, [page, from, to]);
   useEffect(() => {
-    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data)).catch(() => {});
-    fetchInventoryItems({}).then(r => setInventoryItems(r.data)).catch(() => {});
+    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data)).catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
+    fetchInventoryItems({}).then(r => setInventoryItems(r.data)).catch((e: Error) => setError(e.message || 'Failed to load inventory items.'));
   }, []);
 
   const handleLog = async () => {

@@ -39,7 +39,7 @@ class OrderController extends Controller
 
         if ($request->filled('status')) {
             $statuses = explode(',', $request->input('status'));
-            $validStatuses = ['pending', 'paid', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled', 'partial', 'refunded'];
+            $validStatuses = ['pending', 'paid', 'payment_pending', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled', 'partial', 'refunded'];
             $filtered = array_intersect($statuses, $validStatuses);
             if (!empty($filtered)) {
                 count($filtered) === 1

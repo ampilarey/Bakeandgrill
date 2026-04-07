@@ -57,7 +57,7 @@ export default function SpecialsPage() {
   };
 
   useEffect(() => { void load(); }, [page]);
-  useEffect(() => { fetchAdminItems({ per_page: 200 }).then(r => setItems(r.data)).catch(() => {}); }, []);
+  useEffect(() => { fetchAdminItems({ per_page: 200 }).then(r => setItems(r.data)).catch((e: Error) => setError(e.message || 'Failed to load menu items.')); }, []);
 
   const openCreate = () => {
     setEditing(null); setForm({ ...BLANK, start_date: today(), end_date: today() });

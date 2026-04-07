@@ -25,6 +25,7 @@ type DriverLocationData = {
 
 function DriverTracker({ orderId, token }: { orderId: number; token: string | null }) {
   const [data, setData] = useState<{ location: DriverLocationData | null; driver: { name: string; phone: string } | null } | null>(null);
+  const [fetchErr, setFetchErr] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -38,8 +39,13 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
         if (res.ok) {
           const json = await res.json() as { location: DriverLocationData | null; driver: { name: string; phone: string } | null };
           setData(json);
+          setFetchErr(false);
+        } else {
+          setFetchErr(true);
         }
-      } catch { /* ignore */ }
+      } catch {
+        setFetchErr(true);
+      }
     };
     void load();
     const id = setInterval(() => void load(), 10_000);
@@ -68,6 +74,8 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
         <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>
           Last seen: {Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000)} min ago
         </p>
+      ) : fetchErr ? (
+        <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>Location unavailable</p>
       ) : (
         <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>Locating driver…</p>
       )}
@@ -245,13 +253,19 @@ export function OrderStatusPage() {
   // useCallback gives a stable reference so polling intervals don't capture stale closures
   const loadOrder = useCallback(async () => {
     if (!orderId) return;
+    const parsedId = parseInt(orderId, 10);
+    if (!trackingToken && !Number.isFinite(parsedId)) {
+      setError("Invalid order ID.");
+      setLoading(false);
+      return;
+    }
     try {
       if (trackingToken) {
         // Public link — no login required
         const res = await getOrderByTrackingToken(trackingToken);
         setOrder(res.order);
       } else if (token) {
-        const res = await getOrderDetail(token, parseInt(orderId, 10));
+        const res = await getOrderDetail(token, parsedId);
         setOrder(res.order);
       } else {
         setError("Please log in to view your order.");

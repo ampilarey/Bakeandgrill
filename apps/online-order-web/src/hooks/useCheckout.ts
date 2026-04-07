@@ -168,11 +168,15 @@ export function useCheckout() {
         setLoyaltyAccount(r.account);
         setLoyaltyPoints(r.account.points_balance);
       }
-    }).catch(() => {});
+    }).catch((e: Error) => {
+      if (import.meta.env.DEV) console.warn('Loyalty account load failed:', e.message);
+    });
 
     getMyReferralCode(token).then((r) => {
       if (!cancelled) setMyReferralCode(r.code);
-    }).catch(() => {});
+    }).catch((e: Error) => {
+      if (import.meta.env.DEV) console.warn('Referral code load failed:', e.message);
+    });
 
     return () => { cancelled = true; };
   }, [token]);

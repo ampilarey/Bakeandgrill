@@ -31,7 +31,7 @@ export function HomePage() {
   useEffect(() => {
     fetchItems().then((res) => {
       setFeaturedItems(res.data.slice(0, 4));
-    }).catch((e: unknown) => { console.error('Failed to load featured items', e); });
+    }).catch(() => { /* section simply stays hidden on failure — no action required */ });
 
     fetchOpeningHoursStatus().then(({ open, message, today }) => {
       setIsOpen(open);

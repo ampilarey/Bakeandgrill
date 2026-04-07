@@ -55,10 +55,12 @@ Route::middleware('throttle:60,1')
     });
 
 // Opening hours status (public - for online order app)
-Route::get('/opening-hours/status', [App\Http\Controllers\Api\OpeningHoursController::class, 'status']);
+Route::get('/opening-hours/status', [App\Http\Controllers\Api\OpeningHoursController::class, 'status'])
+    ->middleware('throttle:120,1');
 
 // Full weekly schedule (public - for HoursPage in React app)
-Route::get('/opening-hours', [App\Http\Controllers\Api\OpeningHoursController::class, 'index']);
+Route::get('/opening-hours', [App\Http\Controllers\Api\OpeningHoursController::class, 'index'])
+    ->middleware('throttle:60,1');
 
 /*
 |--------------------------------------------------------------------------
@@ -289,11 +291,13 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->group(functi
 */
 
 // Public menu access
-Route::get('/categories', [CategoryController::class, 'index']);
-Route::get('/categories/{id}', [CategoryController::class, 'show']);
-Route::get('/items', [ItemController::class, 'index']);
-Route::get('/items/{id}', [ItemController::class, 'show']);
-Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode']);
+Route::middleware('throttle:120,1')->group(function () {
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/categories/{id}', [CategoryController::class, 'show']);
+    Route::get('/items', [ItemController::class, 'index']);
+    Route::get('/items/{id}', [ItemController::class, 'show']);
+    Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode']);
+});
 
 // Get stock info for multiple items
 Route::post('/items/stock-check', [ItemController::class, 'bulkStockCheck'])
@@ -640,7 +644,8 @@ Route::middleware(['auth:sanctum', 'permission:integrations.webhooks'])->group(f
 });
 
 // ─── Site Settings ──────────────────────────────────────────────────────────
-Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public']);
+Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
+    ->middleware('throttle:60,1');
 Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function () {
     Route::get('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
     Route::put('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
