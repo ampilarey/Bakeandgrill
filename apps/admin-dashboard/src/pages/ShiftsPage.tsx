@@ -46,7 +46,7 @@ export default function ShiftsPage() {
   const [closeError, setCloseError] = useState('');
 
   // Cash movement form
-  const [movType, setMovType] = useState<'cash_in' | 'cash_out'>('cash_in');
+  const [movType, setMovType] = useState<'cash_in' | 'cash_out' | 'paid_in' | 'paid_out'>('cash_in');
   const [movAmount, setMovAmount] = useState('');
   const [movReason, setMovReason] = useState('');
   const [movSaving, setMovSaving] = useState(false);
@@ -98,8 +98,8 @@ export default function ShiftsPage() {
       setShift(prev => prev ? {
         ...prev,
         cash_movements: [...(prev.cash_movements ?? []), res.movement],
-        total_cash_in:  movType === 'cash_in'  ? (prev.total_cash_in ?? 0)  + amount : prev.total_cash_in,
-        total_cash_out: movType === 'cash_out' ? (prev.total_cash_out ?? 0) + amount : prev.total_cash_out,
+        total_cash_in:  ['cash_in',  'paid_in'].includes(movType)  ? (prev.total_cash_in ?? 0)  + amount : prev.total_cash_in,
+        total_cash_out: ['cash_out', 'paid_out'].includes(movType) ? (prev.total_cash_out ?? 0) + amount : prev.total_cash_out,
       } : prev);
       setMovAmount(''); setMovReason('');
     } catch (e) { setMovError((e as Error).message); }
@@ -160,7 +160,7 @@ export default function ShiftsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <label>
                 <span style={S.label}>Type</span>
-                <select value={movType} onChange={e => setMovType(e.target.value as 'cash_in' | 'cash_out')} style={S.select}>
+                <select value={movType} onChange={e => setMovType(e.target.value as 'cash_in' | 'cash_out' | 'paid_in' | 'paid_out')} style={S.select}>
                   <option value="cash_in">Cash In</option>
                   <option value="cash_out">Cash Out</option>
                   <option value="paid_in">Paid In</option>

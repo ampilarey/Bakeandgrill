@@ -56,7 +56,7 @@ export function CustomersPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(search, page); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void load(search, page); }, [page, search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (v: string) => {
     setSearch(v);

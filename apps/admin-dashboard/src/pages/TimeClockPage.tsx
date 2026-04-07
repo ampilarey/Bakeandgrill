@@ -256,7 +256,7 @@ export default function TimeClockPage() {
                   <tr><td colSpan={3}><EmptyState message="No data for this period." /></td></tr>
                 ) : summary.map((row, i) => (
                   <tr key={i}>
-                    <td style={{ ...TD, fontWeight: 600 }}>{row.staff.name}</td>
+                    <td style={{ ...TD, fontWeight: 600 }}>{row.staff?.name ?? `Staff #${row.staff?.id ?? '?'}`}</td>
                     <td style={{ ...TD, fontWeight: 700 }}>{fmtHours(row.total_hours)}</td>
                     <td style={{ ...TD, color: '#6B5D4F' }}>{row.entries_count}</td>
                   </tr>

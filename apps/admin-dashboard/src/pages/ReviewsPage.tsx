@@ -35,7 +35,7 @@ export default function ReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('');
   const [acting, setActing] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 

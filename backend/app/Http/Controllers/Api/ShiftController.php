@@ -30,8 +30,8 @@ class ShiftController extends Controller
 
         if ($shift) {
             $shift->load('cashMovements.user');
-            $cashIn  = $shift->cashMovements->where('type', 'cash_in')->sum('amount');
-            $cashOut = $shift->cashMovements->where('type', 'cash_out')->sum('amount');
+            $cashIn  = $shift->cashMovements->whereIn('type', ['cash_in',  'paid_in'])->sum('amount');
+            $cashOut = $shift->cashMovements->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
             $shift->setAttribute('total_cash_in',  $cashIn);
             $shift->setAttribute('total_cash_out', $cashOut);
             $shift->setAttribute('cash_movements', $shift->cashMovements->values());
@@ -98,10 +98,10 @@ class ShiftController extends Controller
         }
 
         $cashIn = CashMovement::where('shift_id', $shift->id)
-            ->where('type', 'cash_in')
+            ->whereIn('type', ['cash_in', 'paid_in'])
             ->sum('amount');
         $cashOut = CashMovement::where('shift_id', $shift->id)
-            ->where('type', 'cash_out')
+            ->whereIn('type', ['cash_out', 'paid_out'])
             ->sum('amount');
 
         $cashSales = Payment::where('method', 'cash')
