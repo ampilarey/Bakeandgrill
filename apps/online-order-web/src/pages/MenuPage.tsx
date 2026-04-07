@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { fetchCategories, fetchItems, fetchOpeningHoursStatus } from '../api';
+import { fetchCategories, fetchItems, fetchOpeningHoursStatus, getMyFavourites, toggleFavourite } from '../api';
 import type { Category, Item, Modifier, OpeningHoursStatus } from '../api';
+import { useAuth } from '../context/AuthContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { MenuCard } from '../components/MenuCard';
 import { ItemModal } from '../components/ItemModal';
@@ -16,12 +17,14 @@ export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const { token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
 
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +75,30 @@ export function MenuPage() {
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    getMyFavourites(token)
+      .then((res) => setFavouriteIds(new Set(res.data.map((f) => f.id))))
+      .catch(() => { /* non-blocking — favourites are a convenience feature */ });
+  }, [token]);
+
+  const handleToggleFavourite = (itemId: number) => {
+    if (!token) { showToast('Sign in to save favourites'); return; }
+    setFavouriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+      return next;
+    });
+    toggleFavourite(token, itemId).catch(() => {
+      // Revert on failure
+      setFavouriteIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+        return next;
+      });
+    });
+  };
 
   // Re-apply category / item selection whenever the URL search params change
   useEffect(() => {
@@ -336,6 +363,8 @@ export function MenuPage() {
                   item={item}
                   onSelectItem={handleSelectItem}
                   onAddToCart={(it, qty) => { addItem(it, qty); showToast(`${it.name} added to cart`); }}
+                  isFavourite={favouriteIds.has(item.id)}
+                  onToggleFavourite={handleToggleFavourite}
                 />
               </div>
             ))}

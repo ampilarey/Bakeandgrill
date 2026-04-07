@@ -2,8 +2,16 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
-import { getCustomerMe, updateCustomerProfile, changeCustomerPassword, revokeCustomerToken, logoutCustomerWebSession, getLoyaltyAccount } from '../api';
-import type { AuthCustomer } from '../api';
+import {
+  getCustomerMe, updateCustomerProfile, changeCustomerPassword,
+  revokeCustomerToken, logoutCustomerWebSession, getLoyaltyAccount,
+  getMyReservations, cancelMyReservation, getMyFavourites,
+  getMyPreOrders, getMyReviews,
+} from '../api';
+import type {
+  AuthCustomer, CustomerReservation, FavouriteItem,
+  CustomerPreOrder, CustomerReview,
+} from '../api';
 import type { LoyaltyAccount } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
 
@@ -75,10 +83,33 @@ export function AccountPage() {
   const navigate = useNavigate();
   const { token, authReady, setAuth, clearAuth, customerName } = useAuth();
 
+  const [activeTab, setActiveTab] = useState<'profile' | 'reservations' | 'favourites' | 'preorders' | 'reviews'>('profile');
+
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loyalty, setLoyalty] = useState<LoyaltyAccount | null>(null);
   const [loyaltyError, setLoyaltyError] = useState('');
+
+  // Reservations
+  const [reservations, setReservations] = useState<CustomerReservation[]>([]);
+  const [reservationsLoading, setReservationsLoading] = useState(false);
+  const [reservationsError, setReservationsError] = useState('');
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+
+  // Favourites
+  const [favourites, setFavourites] = useState<FavouriteItem[]>([]);
+  const [favouritesLoading, setFavouritesLoading] = useState(false);
+  const [favouritesError, setFavouritesError] = useState('');
+
+  // Pre-orders
+  const [preOrders, setPreOrders] = useState<CustomerPreOrder[]>([]);
+  const [preOrdersLoading, setPreOrdersLoading] = useState(false);
+  const [preOrdersError, setPreOrdersError] = useState('');
+
+  // Reviews
+  const [reviews, setReviews] = useState<CustomerReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState('');
 
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '' });
@@ -105,7 +136,56 @@ export function AccountPage() {
       .catch((e: Error) => setLoyaltyError(e.message || 'Failed to load loyalty account.'));
   }, [token, authReady]);
 
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'reservations' || reservations.length > 0) return;
+    setReservationsLoading(true);
+    getMyReservations(token)
+      .then((res) => setReservations(res.data))
+      .catch((e: Error) => setReservationsError(e.message || 'Failed to load reservations.'))
+      .finally(() => setReservationsLoading(false));
+  }, [token, authReady, activeTab]);
+
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'favourites') return;
+    setFavouritesLoading(true);
+    getMyFavourites(token)
+      .then((res) => setFavourites(res.data))
+      .catch((e: Error) => setFavouritesError(e.message || 'Failed to load favourites.'))
+      .finally(() => setFavouritesLoading(false));
+  }, [token, authReady, activeTab]);
+
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'preorders' || preOrders.length > 0) return;
+    setPreOrdersLoading(true);
+    getMyPreOrders(token)
+      .then((res) => setPreOrders(res.data))
+      .catch((e: Error) => setPreOrdersError(e.message || 'Failed to load pre-orders.'))
+      .finally(() => setPreOrdersLoading(false));
+  }, [token, authReady, activeTab]);
+
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'reviews' || reviews.length > 0) return;
+    setReviewsLoading(true);
+    getMyReviews(token)
+      .then((res) => setReviews(res.data))
+      .catch((e: Error) => setReviewsError(e.message || 'Failed to load reviews.'))
+      .finally(() => setReviewsLoading(false));
+  }, [token, authReady, activeTab]);
+
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
+
+  const handleCancelReservation = async (id: number) => {
+    if (!token) return;
+    setCancellingId(id);
+    try {
+      await cancelMyReservation(token, id);
+      setReservations((prev) => prev.map((r) => r.id === id ? { ...r, status: 'cancelled' } : r));
+    } catch (e) {
+      setReservationsError((e as Error).message || 'Could not cancel reservation.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const handleLogout = async () => {
     const currentToken = token;
@@ -187,17 +267,55 @@ export function AccountPage() {
     );
   }
 
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: '8px 16px', borderRadius: 20, border: 'none',
+    background: active ? 'var(--color-primary)' : 'transparent',
+    color: active ? '#fff' : 'var(--color-text-muted)',
+    fontSize: 13, fontWeight: active ? 700 : 500,
+    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
+  });
+
+  const statusBadge = (s: string) => {
+    const colors: Record<string, { bg: string; color: string }> = {
+      confirmed: { bg: '#DCFCE7', color: '#15803D' },
+      pending:   { bg: '#FEF3C7', color: '#92400E' },
+      cancelled: { bg: '#FEE2E2', color: '#991B1B' },
+      no_show:   { bg: '#F3F4F6', color: '#6B7280' },
+      completed: { bg: '#EFF6FF', color: '#1D4ED8' },
+    };
+    const c = colors[s] ?? { bg: '#F3F4F6', color: '#374151' };
+    return (
+      <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: c.bg, color: c.color, textTransform: 'capitalize' }}>
+        {s.replace('_', ' ')}
+      </span>
+    );
+  };
+
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '2rem var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ maxWidth: 600, margin: '0 auto', padding: '2rem var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>My Account</h1>
         <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.375rem 0 0' }}>
-          Hi, {customerName ?? customer?.name ?? 'there'} — manage your profile and password.
+          Hi, {customerName ?? customer?.name ?? 'there'}
         </p>
       </div>
 
-      {/* Quick links */}
+      {/* Tab navigation */}
+      <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
+        {([
+          { id: 'profile',      label: '👤 Profile'       },
+          { id: 'reservations', label: '🗓 Reservations'  },
+          { id: 'favourites',   label: '❤️ Favourites'    },
+          { id: 'preorders',    label: '📦 Pre-orders'    },
+          { id: 'reviews',      label: '⭐ My Reviews'    },
+        ] as const).map(({ id, label }) => (
+          <button key={id} style={tabStyle(activeTab === id)} onClick={() => setActiveTab(id)}>{label}</button>
+        ))}
+      </div>
+
+      {/* Quick links — show only on profile tab */}
+      {activeTab === 'profile' && (<>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Link
           to="/orders"
@@ -356,6 +474,177 @@ export function AccountPage() {
           Sign Out
         </button>
       </div>
+      </>)}
+
+      {/* ── Reservations tab ── */}
+      {activeTab === 'reservations' && (
+        <SectionCard title="My Reservations">
+          {reservationsLoading ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+          ) : reservationsError ? (
+            <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reservationsError}</p>
+          ) : reservations.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <p style={{ fontSize: 32, margin: '0 0 8px' }}>🗓</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No reservations yet.</p>
+              <Link to="/reservations" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
+                Book a table →
+              </Link>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {reservations.map((r) => (
+                <div key={r.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>
+                        {new Date(r.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {r.time_slot.slice(0, 5)}
+                      </span>
+                      {statusBadge(r.status)}
+                    </div>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                      Party of {r.party_size}{r.notes ? ` · ${r.notes}` : ''}
+                    </span>
+                  </div>
+                  {['confirmed', 'pending'].includes(r.status) && (
+                    <button
+                      onClick={() => void handleCancelReservation(r.id)}
+                      disabled={cancellingId === r.id}
+                      style={{ padding: '6px 14px', border: '1px solid var(--color-error, #dc2626)', borderRadius: 8, background: 'transparent', color: 'var(--color-error, #dc2626)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', opacity: cancellingId === r.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {cancellingId === r.id ? 'Cancelling…' : 'Cancel'}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* ── Favourites tab ── */}
+      {activeTab === 'favourites' && (
+        <SectionCard title="My Favourites">
+          {favouritesLoading ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+          ) : favouritesError ? (
+            <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{favouritesError}</p>
+          ) : favourites.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <p style={{ fontSize: 32, margin: '0 0 8px' }}>❤️</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No favourites yet.</p>
+              <Link to="/menu" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
+                Browse the menu →
+              </Link>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {favourites.map((item) => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 14, border: '1px solid var(--color-border)', borderRadius: 12, padding: '12px 14px' }}>
+                  {item.image_url && (
+                    <img src={item.image_url} alt={item.name} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>{item.name}</p>
+                    {item.category && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{item.category}</p>}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-primary)' }}>MVR {item.base_price.toFixed(2)}</p>
+                    {!item.is_available && <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>Unavailable</p>}
+                  </div>
+                </div>
+              ))}
+              <Link to="/menu" style={{ textAlign: 'center', display: 'block', marginTop: 8, fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
+                Add more from the menu →
+              </Link>
+            </div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* ── Pre-orders tab ── */}
+      {activeTab === 'preorders' && (
+        <SectionCard title="My Pre-orders & Catering">
+          {preOrdersLoading ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+          ) : preOrdersError ? (
+            <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{preOrdersError}</p>
+          ) : preOrders.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <p style={{ fontSize: 32, margin: '0 0 8px' }}>📦</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No pre-orders yet.</p>
+              <Link to="/pre-order" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
+                Place a pre-order →
+              </Link>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {preOrders.map((po) => (
+                <div key={po.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>
+                        {po.event_name ?? `Pre-order #${po.order_number}`}
+                      </span>
+                      {statusBadge(po.status)}
+                    </div>
+                    {po.event_date && (
+                      <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                        Event: {new Date(po.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Ordered {new Date(po.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
+                    MVR {po.total.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* ── Reviews tab ── */}
+      {activeTab === 'reviews' && (
+        <SectionCard title="My Reviews">
+          {reviewsLoading ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+          ) : reviewsError ? (
+            <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reviewsError}</p>
+          ) : reviews.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <p style={{ fontSize: 32, margin: '0 0 8px' }}>⭐</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No reviews yet.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {reviews.map((rv) => (
+                <div key={rv.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i} style={{ fontSize: 14, color: i < rv.rating ? '#F59E0B' : '#D1D5DB' }}>★</span>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {statusBadge(rv.status)}
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        {new Date(rv.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  {rv.item && <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--color-dark)' }}>{rv.item.name}</p>}
+                  {rv.comment && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>{rv.comment}</p>}
+                  {rv.is_anonymous && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>Posted anonymously</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
     </div>
   );
 }

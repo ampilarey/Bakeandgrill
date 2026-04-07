@@ -6,6 +6,8 @@ type Props = {
   item: Item;
   onSelectItem: (item: Item) => void;
   onAddToCart: (item: Item, quantity: number) => void;
+  isFavourite?: boolean;
+  onToggleFavourite?: (itemId: number) => void;
 };
 
 // Spice level to label/color
@@ -18,7 +20,7 @@ const SPICE_MAP: Record<string, { label: string; icon: string }> = {
 
 const MAX_QTY = 99;
 
-export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
+export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false, onToggleFavourite }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [imgError, setImgError] = useState(false);
 
@@ -84,6 +86,23 @@ export function MenuCard({ item, onSelectItem, onAddToCart }: Props) {
           <div className="menu-card-unavail-overlay">
             <span className="badge badge-unavail">Unavailable</span>
           </div>
+        )}
+
+        {/* Favourite button */}
+        {onToggleFavourite && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleFavourite(item.id); }}
+            style={{
+              position: 'absolute', top: '0.625rem', right: '0.625rem',
+              background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%',
+              width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: 15, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+              zIndex: 1,
+            }}
+            aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
+          >
+            {isFavourite ? '❤️' : '🤍'}
+          </button>
         )}
 
         {/* Badges */}

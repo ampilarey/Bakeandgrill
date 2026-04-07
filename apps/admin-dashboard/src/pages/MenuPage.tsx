@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import {
   fetchAdminCategories, createCategory, updateCategory, deleteCategory,
   fetchAdminItems, createItem, updateItem, deleteItem, toggleItemAvailability,
-  uploadMenuImage,
-  type MenuCategory, type MenuItem, type MenuItemPayload,
+  uploadMenuImage, getBarcodeLabel,
+  type MenuCategory, type MenuItem, type MenuItemPayload, type BarcodeLabel,
 } from '../api';
 import { PhotosTab } from './MenuPage/PhotosTab';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -378,6 +378,7 @@ export function MenuPage() {
   const [creatingCat, setCreatingCat] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
+  const [barcodeLabel, setBarcodeLabel] = useState<BarcodeLabel | null>(null);
 
   const loadCategories = async () => {
     setLoading(true);
@@ -647,6 +648,7 @@ export function MenuPage() {
                         <td style={{ padding: '10px 14px' }}>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <Btn small variant="secondary" onClick={() => setEditingItem(item)}>Edit</Btn>
+                            <Btn small variant="secondary" onClick={() => { getBarcodeLabel(item.id).then((res) => setBarcodeLabel(res.label)).catch(() => {}); }} title="Print barcode label">🏷</Btn>
                             <Btn small variant="danger" onClick={() => handleDeleteItem(item.id)}>Delete</Btn>
                           </div>
                         </td>
@@ -718,6 +720,39 @@ export function MenuPage() {
           onClose={() => setEditingItem(null)}
           itemId={editingItem.id}
         />
+      )}
+
+      {/* Barcode label preview modal */}
+      {barcodeLabel && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, maxWidth: 360, width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 800 }}>Barcode Label</h3>
+            <div style={{ border: '2px solid #E8E0D8', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 16 }}>{barcodeLabel.name}</p>
+              {barcodeLabel.barcode && (
+                <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 18, letterSpacing: 3, color: '#1C1408' }}>{barcodeLabel.barcode}</p>
+              )}
+              {barcodeLabel.sku && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#9C8E7E' }}>SKU: {barcodeLabel.sku}</p>}
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 20, color: '#D4813A' }}>
+                MVR {(barcodeLabel.price / 100).toFixed(2)}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              <button
+                onClick={() => { window.print(); }}
+                style={{ padding: '10px 20px', background: '#D4813A', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                🖨 Print
+              </button>
+              <button
+                onClick={() => setBarcodeLabel(null)}
+                style={{ padding: '10px 20px', background: 'transparent', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

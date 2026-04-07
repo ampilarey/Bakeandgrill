@@ -555,3 +555,95 @@ export async function getXeroLogs(params?: { page?: number }): Promise<{ data: X
   if (params?.page) qs.set('page', String(params.page));
   return req(`/xero/logs?${qs}`);
 }
+
+// ── Promotion Analytics ───────────────────────────────────────────────────────
+
+export interface PromotionReportItem {
+  id: number;
+  name: string;
+  code: string;
+  redemptions_count: number;
+  total_discount_laar: number;
+}
+
+export async function getPromotionReport(): Promise<{ report: PromotionReportItem[] }> {
+  return req('/reports/promotions');
+}
+
+// ── Loyalty Analytics ─────────────────────────────────────────────────────────
+
+export interface LoyaltyReport {
+  total_outstanding_points: number;
+  total_earned_lifetime: number;
+  total_accounts: number;
+  bronze_count: number;
+  silver_count: number;
+  gold_count: number;
+  platinum_count: number;
+}
+
+export async function getLoyaltyReport(): Promise<{ report: LoyaltyReport }> {
+  return req('/reports/loyalty');
+}
+
+// ── System Health ─────────────────────────────────────────────────────────────
+
+export interface SystemHealth {
+  status: string;
+  environment: string;
+  database: string;
+  timestamp: string;
+}
+
+export async function getSystemHealth(): Promise<SystemHealth> {
+  return req('/admin/system/health');
+}
+
+// ── Server-side CSV export URLs (returns URL to navigate to, token-signed) ───
+
+export function getReportCsvUrl(type: 'sales-summary' | 'sales-breakdown' | 'x-report' | 'z-report' | 'inventory-valuation', params?: { from?: string; to?: string }): string {
+  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  const token = localStorage.getItem('admin_token') ?? '';
+  if (token) qs.set('token', token);
+  return `${base}/reports/${type}/csv?${qs}`;
+}
+
+// ── Purchase Import & Receipt Upload ─────────────────────────────────────────
+
+export async function importPurchaseCsv(data: {
+  file: File;
+  supplier_id?: number;
+  purchase_date?: string;
+  notes?: string;
+}): Promise<{ purchase: { id: number; status: string } }> {
+  const form = new FormData();
+  form.append('file', data.file);
+  if (data.supplier_id) form.append('supplier_id', String(data.supplier_id));
+  if (data.purchase_date) form.append('purchase_date', data.purchase_date);
+  if (data.notes) form.append('notes', data.notes);
+  return req('/purchases/import', { method: 'POST', body: form });
+}
+
+export async function uploadPurchaseReceipt(purchaseId: number, file: File): Promise<{ receipt: { id: number; file_name: string } }> {
+  const form = new FormData();
+  form.append('receipt', file);
+  return req(`/purchases/${purchaseId}/receipts`, { method: 'POST', body: form });
+}
+
+// ── Barcode Label ─────────────────────────────────────────────────────────────
+
+export interface BarcodeLabel {
+  item_id: number;
+  name: string;
+  barcode: string | null;
+  sku: string | null;
+  price: number;
+  generated_at: string;
+}
+
+export async function getBarcodeLabel(itemId: number): Promise<{ label: BarcodeLabel }> {
+  return req(`/items/${itemId}/barcode-label`);
+}

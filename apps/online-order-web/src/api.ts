@@ -636,3 +636,91 @@ export async function removeReferralFromOrder(
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+// ── Customer Reservations ─────────────────────────────────────────────────────
+
+export interface CustomerReservation {
+  id: number;
+  customer_name: string;
+  customer_phone: string;
+  party_size: number;
+  date: string;
+  time_slot: string;
+  status: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export async function getMyReservations(token: string): Promise<{ data: CustomerReservation[] }> {
+  return request('/reservations', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function cancelMyReservation(token: string, id: number): Promise<void> {
+  await request<void>(`/reservations/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── Customer Favourites ───────────────────────────────────────────────────────
+
+export interface FavouriteItem {
+  id: number;
+  name: string;
+  base_price: number;
+  image_url: string | null;
+  category: string | null;
+  is_available: boolean;
+}
+
+export async function getMyFavourites(token: string): Promise<{ data: FavouriteItem[] }> {
+  return request('/customer/favorites', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function toggleFavourite(token: string, itemId: number): Promise<{ is_favourite: boolean }> {
+  return request(`/customer/favorites/${itemId}/toggle`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── Customer Pre-order History ────────────────────────────────────────────────
+
+export interface CustomerPreOrder {
+  id: number;
+  order_number: string;
+  event_name: string | null;
+  event_date: string | null;
+  status: string;
+  total: number;
+  created_at: string;
+}
+
+export async function getMyPreOrders(token: string): Promise<{ data: CustomerPreOrder[] }> {
+  return request('/customer/pre-orders', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── Customer Reviews ──────────────────────────────────────────────────────────
+
+export interface CustomerReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  is_anonymous: boolean;
+  status: string;
+  created_at: string;
+  item?: { id: number; name: string } | null;
+  order?: { id: number; order_number: string } | null;
+}
+
+export async function getMyReviews(token: string): Promise<{ data: CustomerReview[] }> {
+  return request('/customer/reviews', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}

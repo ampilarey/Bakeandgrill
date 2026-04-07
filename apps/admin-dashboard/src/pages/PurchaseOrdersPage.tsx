@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, fetchPurchases, type Purchase, type PurchaseSuggestions } from '../api';
+import { useEffect, useRef, useState } from 'react';
+import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, fetchPurchases, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -38,6 +38,22 @@ export function PurchaseOrdersPage() {
   const [receiveNotes, setReceiveNotes]   = useState('');
 
   const [creatingPoFor, setCreatingPoFor] = useState<number | null>(null);
+
+  // CSV import
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDate, setImportDate] = useState(new Date().toISOString().slice(0, 10));
+  const [importNotes, setImportNotes] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  // Receipt upload
+  const [receiptUploadId, setReceiptUploadId] = useState<number | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -117,6 +133,29 @@ export function PurchaseOrdersPage() {
     finally { setActionLoading(false); }
   };
 
+  const handleImportCsv = async () => {
+    if (!importFile) return;
+    setImporting(true); setImportError('');
+    try {
+      await importPurchaseCsv({ file: importFile, purchase_date: importDate, notes: importNotes || undefined });
+      showToast('Purchase order imported from CSV.');
+      setShowImport(false); setImportFile(null); setImportNotes('');
+      void load();
+    } catch (e) { setImportError((e as Error).message); }
+    finally { setImporting(false); }
+  };
+
+  const handleUploadReceipt = async () => {
+    if (!receiptUploadId || !receiptFile) return;
+    setUploadingReceipt(true); setReceiptError('');
+    try {
+      await uploadPurchaseReceipt(receiptUploadId, receiptFile);
+      showToast('Receipt uploaded successfully.');
+      setReceiptUploadId(null); setReceiptFile(null);
+    } catch (e) { setReceiptError((e as Error).message); }
+    finally { setUploadingReceipt(false); }
+  };
+
   return (
     <>
       <PageHeader title="Purchase Orders" subtitle="Manage procurement workflow" />
@@ -131,7 +170,8 @@ export function PurchaseOrdersPage() {
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <Select value={statusFilter} onChange={(v) => setStatus(v)} options={STATUS_OPTIONS} style={{ width: 180 }} />
         <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <Btn variant="secondary" onClick={() => setShowImport(true)}>⬆ Import CSV</Btn>
           <Btn onClick={loadSuggestions} disabled={sugLoading}>
             {sugLoading ? 'Loading…' : '💡 Auto-Suggest POs'}
           </Btn>
@@ -304,11 +344,83 @@ export function PurchaseOrdersPage() {
 
           <ModalActions>
             <Btn variant="secondary" onClick={() => setDetail(null)}>Close</Btn>
+            <Btn variant="secondary" onClick={() => { setReceiptUploadId(detail.id); setReceiptFile(null); }}>📎 Upload Receipt</Btn>
             {['ordered', 'partial'].includes(detail.status) && (
               <Btn onClick={() => void handleReceive()} disabled={actionLoading}>
                 {actionLoading ? 'Saving…' : '✓ Confirm Receipt'}
               </Btn>
             )}
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Receipt upload modal */}
+      {receiptUploadId !== null && (
+        <Modal title="Upload Receipt" onClose={() => setReceiptUploadId(null)} maxWidth={400}>
+          {receiptError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{receiptError}</p>}
+          <input ref={receiptInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }}
+            onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
+          <div
+            onClick={() => receiptInputRef.current?.click()}
+            style={{ border: '2px dashed #E8E0D8', borderRadius: 12, padding: '32px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 16 }}
+          >
+            {receiptFile ? (
+              <p style={{ margin: 0, fontSize: 13, color: '#1C1408', fontWeight: 600 }}>{receiptFile.name}</p>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 4px', fontSize: 22 }}>📎</p>
+                <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>Click to select a receipt (PDF, JPG, PNG)</p>
+              </>
+            )}
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setReceiptUploadId(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleUploadReceipt()} disabled={!receiptFile || uploadingReceipt}>
+              {uploadingReceipt ? 'Uploading…' : 'Upload'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* CSV import modal */}
+      {showImport && (
+        <Modal title="Import Purchase from CSV" onClose={() => setShowImport(false)} maxWidth={480}>
+          {importError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{importError}</p>}
+          <p style={{ fontSize: 12, color: '#6B5D4F', marginBottom: 12 }}>
+            CSV must have columns: <strong>name</strong>, <strong>quantity</strong>, <strong>unit_cost</strong>. Optional: <strong>inventory_item_id</strong>.
+          </p>
+          <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
+            onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
+          <div
+            onClick={() => csvInputRef.current?.click()}
+            style={{ border: '2px dashed #E8E0D8', borderRadius: 12, padding: '28px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 16 }}
+          >
+            {importFile ? (
+              <p style={{ margin: 0, fontSize: 13, color: '#1C1408', fontWeight: 600 }}>{importFile.name}</p>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 4px', fontSize: 22 }}>📂</p>
+                <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>Click to select a CSV file</p>
+              </>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Purchase Date</label>
+              <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+              <input value={importNotes} onChange={(e) => setImportNotes(e.target.value)} placeholder="e.g. Weekly stock"
+                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setShowImport(false)}>Cancel</Btn>
+            <Btn onClick={() => void handleImportCsv()} disabled={!importFile || importing}>
+              {importing ? 'Importing…' : 'Import'}
+            </Btn>
           </ModalActions>
         </Modal>
       )}

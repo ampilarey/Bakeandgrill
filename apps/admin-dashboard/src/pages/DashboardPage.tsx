@@ -5,9 +5,11 @@ import {
   fetchLowStockItems,
   getCurrentShift,
   getDailySummary,
+  getSystemHealth,
   type InventoryItem,
   type Order,
   type Shift,
+  type SystemHealth,
 } from '../api';
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -229,6 +231,13 @@ export function DashboardPage() {
     getCurrentShift()
       .then((r) => setShift(r.shift))
       .catch((e: Error) => setShiftErr(e.message));
+  }, []);
+
+  const [health, setHealth] = useState<SystemHealth | null>(null);
+  useEffect(() => {
+    getSystemHealth()
+      .then(setHealth)
+      .catch(() => { /* non-blocking — requires website.manage permission */ });
   }, []);
 
 
@@ -459,6 +468,37 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── System Health (owner/admin) ── */}
+      {health && (
+        <Card style={{ marginTop: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1C1408' }}>System Health</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: health.status === 'ok' ? '#22c55e' : '#ef4444',
+                display: 'inline-block',
+              }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: health.status === 'ok' ? '#15803D' : '#991B1B', textTransform: 'uppercase' }}>
+                {health.status}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+            {[
+              { label: 'Environment', value: health.environment },
+              { label: 'Database', value: health.database },
+              { label: 'Last Check', value: new Date(health.timestamp).toLocaleTimeString() },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ background: '#F9F5F0', borderRadius: 10, padding: '10px 14px' }}>
+                <p style={{ margin: '0 0 2px', fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1C1408', textTransform: 'capitalize' }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </>
   );
 }

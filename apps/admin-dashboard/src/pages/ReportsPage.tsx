@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
+  getPromotionReport, getLoyaltyReport,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
+  type PromotionReportItem, type LoyaltyReport,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -19,7 +21,7 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
   takeaway: 'Takeaway', pos: 'POS',
 };
 
-const TABS = ['Summary', 'Breakdown', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable'] as const;
+const TABS = ['Summary', 'Breakdown', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -62,6 +64,8 @@ export function ReportsPage() {
   const [inventory, setInventory] = useState<InventoryValuation | null>(null);
   const [ap,        setAp]        = useState<AccountsPayable[] | null>(null);
   const [ar,        setAr]        = useState<AccountsReceivable[] | null>(null);
+  const [promoReport, setPromoReport] = useState<PromotionReportItem[] | null>(null);
+  const [loyaltyReport, setLoyaltyReport] = useState<LoyaltyReport | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -79,6 +83,8 @@ export function ReportsPage() {
       if (tab === 'Inventory')           setInventory(await getInventoryValuation());
       if (tab === 'Accounts Payable')    setAp((await getAccountsPayable()).data);
       if (tab === 'Accounts Receivable') setAr((await getAccountsReceivable()).data);
+      if (tab === 'Promotions')          setPromoReport((await getPromotionReport()).report);
+      if (tab === 'Loyalty')             setLoyaltyReport((await getLoyaltyReport()).report);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -100,12 +106,17 @@ export function ReportsPage() {
       downloadCSV('accounts-payable', ap.map(s => ({ Supplier: s.supplier_name, 'Outstanding (MVR)': mvr(s.outstanding_amount), 'Open Invoices': s.invoices.length })));
     } else if (tab === 'Accounts Receivable' && ar) {
       downloadCSV('accounts-receivable', ar.map(c => ({ Customer: c.customer_name ?? 'Unknown', 'Outstanding (MVR)': mvr(c.outstanding_amount), 'Open Invoices': c.invoices.length })));
+    } else if (tab === 'Promotions' && promoReport) {
+      downloadCSV('promotions-report', promoReport.map(p => ({ Name: p.name, Code: p.code, Redemptions: p.redemptions_count, 'Total Discount (MVR)': mvr(p.total_discount_laar / 100) })));
+    } else if (tab === 'Loyalty' && loyaltyReport) {
+      downloadCSV('loyalty-report', [{ 'Total Accounts': loyaltyReport.total_accounts, 'Outstanding Pts': loyaltyReport.total_outstanding_points, 'Lifetime Pts': loyaltyReport.total_earned_lifetime, Bronze: loyaltyReport.bronze_count, Silver: loyaltyReport.silver_count, Gold: loyaltyReport.gold_count, Platinum: loyaltyReport.platinum_count }]);
     }
   };
 
   const canExport = (tab === 'Summary' && summary) || (tab === 'Breakdown' && breakdown) ||
     (tab === 'Tax' && taxReport) || (tab === 'Inventory' && inventory) ||
-    (tab === 'Accounts Payable' && ap) || (tab === 'Accounts Receivable' && ar);
+    (tab === 'Accounts Payable' && ap) || (tab === 'Accounts Receivable' && ar) ||
+    (tab === 'Promotions' && promoReport) || (tab === 'Loyalty' && loyaltyReport);
 
   return (
     <>
@@ -462,6 +473,73 @@ export function ReportsPage() {
               </table>
             </Card>
           ))}
+        </>
+      )}
+
+      {/* ── Promotions Analytics ── */}
+      {!loading && tab === 'Promotions' && promoReport && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Total Promotions"  value={String(promoReport.length)}                                                            accent="#D4813A" />
+            <StatCard label="Total Redemptions" value={String(promoReport.reduce((s, p) => s + p.redemptions_count, 0))}                      accent="#8b5cf6" />
+            <StatCard label="Total Discounts"   value={mvr(promoReport.reduce((s, p) => s + (p.total_discount_laar ?? 0), 0) / 100)}          accent="#ef4444" />
+          </div>
+          {promoReport.length === 0 ? (
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No promotion data.</p></Card>
+          ) : (
+            <Card>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Promotion</th>
+                  <th style={S.th}>Code</th>
+                  <th style={S.th}>Redemptions</th>
+                  <th style={S.th}>Total Discount</th>
+                  <th style={S.th}>Avg Discount</th>
+                </tr></thead>
+                <tbody>
+                  {promoReport.map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ ...S.td, fontWeight: 600 }}>{p.name}</td>
+                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>{p.code}</td>
+                      <td style={S.td}>{p.redemptions_count.toLocaleString()}</td>
+                      <td style={S.td}>{mvr((p.total_discount_laar ?? 0) / 100)}</td>
+                      <td style={S.td}>{p.redemptions_count > 0 ? mvr((p.total_discount_laar ?? 0) / 100 / p.redemptions_count) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ── Loyalty Analytics ── */}
+      {!loading && tab === 'Loyalty' && loyaltyReport && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Total Members"         value={loyaltyReport.total_accounts.toLocaleString()}           accent="#D4813A" />
+            <StatCard label="Outstanding Points"    value={loyaltyReport.total_outstanding_points.toLocaleString()} accent="#ef4444" />
+            <StatCard label="Lifetime Points Issued" value={loyaltyReport.total_earned_lifetime.toLocaleString()}   accent="#8b5cf6" />
+          </div>
+          <Card>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: '0 0 16px' }}>Members by Tier</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
+              {[
+                { tier: 'Bronze',   count: loyaltyReport.bronze_count,   color: '#B45309', bg: '#FEF3E2' },
+                { tier: 'Silver',   count: loyaltyReport.silver_count,   color: '#475569', bg: '#F1F5F9' },
+                { tier: 'Gold',     count: loyaltyReport.gold_count,     color: '#92400E', bg: '#FFFBEB' },
+                { tier: 'Platinum', count: loyaltyReport.platinum_count, color: '#1D4ED8', bg: '#EFF6FF' },
+              ].map(({ tier, count, color, bg }) => (
+                <div key={tier} style={{ background: bg, borderRadius: 10, padding: '16px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 22, fontWeight: 800, color, margin: 0 }}>{count}</p>
+                  <p style={{ fontSize: 12, color, opacity: 0.8, margin: '4px 0 0', textTransform: 'capitalize' }}>{tier}</p>
+                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '2px 0 0' }}>
+                    {loyaltyReport.total_accounts > 0 ? `${((count / loyaltyReport.total_accounts) * 100).toFixed(1)}%` : '0%'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
         </>
       )}
     </>
