@@ -254,8 +254,6 @@ function ReservationSettingsTab() {
   const set = <K extends keyof ReservationSettings>(key: K, value: ReservationSettings[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  if (loading) return <Spinner />;
-
   return (
     <>
       {error && <ErrorMsg message={error} />}
@@ -264,6 +262,8 @@ function ReservationSettingsTab() {
           {toast}
         </div>
       )}
+
+      {loading ? <Spinner /> : null}
 
       {/* Booking rules */}
       <div style={cardStyle}>

@@ -253,7 +253,7 @@ export function Modal({
       }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div ref={panelRef} style={{
+      <div ref={panelRef} className="modal-container" style={{
         background: '#fff', borderRadius: 16, padding: 28,
         width: '100%', maxWidth,
         boxShadow: '0 20px 60px rgba(28,20,8,0.18)',
@@ -315,7 +315,7 @@ export function TableCard({ children }: { children: ReactNode }) {
       borderRadius: 14, overflow: 'hidden',
       boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
     }}>
-      <div style={{ overflowX: 'auto' }}>
+      <div className="table-scroll" style={{ overflowX: 'auto' }}>
         {children}
       </div>
     </div>
