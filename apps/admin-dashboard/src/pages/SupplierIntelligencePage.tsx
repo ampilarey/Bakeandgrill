@@ -62,7 +62,7 @@ export function SupplierIntelligencePage() {
   useEffect(() => {
     fetchInventoryItems({ page: 1 })
       .then((res) => setInvItems(res.data.map((i) => ({ id: i.id, name: i.name }))))
-      .catch(() => {});
+      .catch((e: Error) => setError(e.message || 'Failed to load inventory items.'));
   }, []);
 
   const openCompare = async (itemId: number) => {

@@ -18,7 +18,8 @@ class KdsController extends Controller
     public function index(Request $request): JsonResponse
     {
         // 'paid' = online orders received but not yet started by kitchen
-        $allowed  = ['pending', 'in_progress', 'paid'];
+        // 'ready' = cooked and waiting for pickup/delivery
+        $allowed  = ['pending', 'in_progress', 'paid', 'ready'];
         $statuses = $request->query('status')
             ? array_intersect(explode(',', $request->query('status')), $allowed)
             : $allowed;
@@ -39,12 +40,13 @@ class KdsController extends Controller
     {
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
-            if ($order->status !== 'pending') {
-                return ['error' => 'Only pending orders can be started.'];
+            if (!in_array($order->status, ['pending', 'paid'], true)) {
+                return ['error' => 'Only pending or paid orders can be started.'];
             }
 
+            $oldStatus = $order->status;
             $order->update(['status' => 'in_progress']);
-            app(AuditLogService::class)->log('order.started', 'Order', $order->id, ['status' => 'pending'], ['status' => 'in_progress'], ['source' => 'kds'], $request);
+            app(AuditLogService::class)->log('order.started', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'in_progress'], ['source' => 'kds'], $request);
 
             return ['order' => $order];
         });
@@ -62,21 +64,29 @@ class KdsController extends Controller
             // Re-fetch with a row lock inside the transaction to prevent duplicate bumps
             $order = Order::lockForUpdate()->findOrFail($id);
 
-            if (!in_array($order->status, ['pending', 'in_progress', 'paid'], true)) {
+            if (!in_array($order->status, ['pending', 'in_progress', 'paid', 'ready'], true)) {
                 return ['error' => 'Order cannot be bumped.'];
             }
 
             $oldStatus = $order->status;
 
+            // State machine: pending/paid/in_progress → ready; ready → completed
+            $newStatus = $oldStatus === 'ready' ? 'completed' : 'ready';
+
             $order->update([
-                'status'       => 'completed',
-                'completed_at' => now(),
+                'status'       => $newStatus,
+                'completed_at' => $newStatus === 'completed' ? now() : null,
             ]);
 
-            app(AuditLogService::class)->log('order.completed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'completed'], ['source' => 'kds'], $request);
+            app(AuditLogService::class)->log(
+                $newStatus === 'completed' ? 'order.completed' : 'order.ready',
+                'Order', $order->id,
+                ['status' => $oldStatus], ['status' => $newStatus],
+                ['source' => 'kds'], $request,
+            );
 
             // If the order wasn't already paid (edge case: KDS-only flow), fire OrderPaid
-            if ($oldStatus !== 'paid') {
+            if ($newStatus === 'completed' && $oldStatus !== 'paid') {
                 DB::afterCommit(function () use ($order): void {
                     OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), false));
                 });
@@ -96,12 +106,14 @@ class KdsController extends Controller
     {
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
-            if ($order->status !== 'completed') {
-                return ['error' => 'Only completed orders can be recalled.'];
+            if (!in_array($order->status, ['ready', 'completed'], true)) {
+                return ['error' => 'Only ready or completed orders can be recalled.'];
             }
 
-            $order->update(['status' => 'pending', 'completed_at' => null]);
-            app(AuditLogService::class)->log('order.recalled', 'Order', $order->id, ['status' => 'completed'], ['status' => 'pending'], ['source' => 'kds'], $request);
+            $oldStatus = $order->status;
+            // Recall from ready → back to in_progress; recall from completed → in_progress
+            $order->update(['status' => 'in_progress', 'completed_at' => null]);
+            app(AuditLogService::class)->log('order.recalled', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'in_progress'], ['source' => 'kds'], $request);
 
             return ['order' => $order];
         });
