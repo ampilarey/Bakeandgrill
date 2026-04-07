@@ -7,7 +7,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, StatCard, TableCard, TD, TH, statColor,
-} from '../components/Layout';
+} from '../components/SharedUI';
 
 function StatusCard({ status }: { status: XeroStatus | null }) {
   if (!status) return null;
@@ -30,13 +30,13 @@ function StatusCard({ status }: { status: XeroStatus | null }) {
             <div style={{ fontWeight: 700, fontSize: 18, color: '#1C1408' }}>
               {isConnected ? 'Connected to Xero' : 'Not connected'}
             </div>
-            {isConnected && status.organisation_name && (
-              <div style={{ color: '#6B5D4F', fontSize: 14 }}>{status.organisation_name}</div>
+            {isConnected && status.tenant_name && (
+              <div style={{ color: '#6B5D4F', fontSize: 14 }}>{status.tenant_name}</div>
             )}
             {isConnected && status.connected_at && (
               <div style={{ color: '#9C8E7E', fontSize: 12, marginTop: 2 }}>
                 Connected {new Date(status.connected_at).toLocaleDateString()}
-                {status.last_sync_at && ` · Last sync ${new Date(status.last_sync_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })}`}
+                {status.token_expired && <span style={{ color: '#EF4444', marginLeft: 8 }}>· Token expired</span>}
               </div>
             )}
           </div>

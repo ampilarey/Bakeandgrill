@@ -101,7 +101,7 @@ export async function splitTable(id: number, into: number): Promise<{ tables: Re
 
 export interface CashMovement {
   id: number;
-  type: 'in' | 'out';
+  type: 'cash_in' | 'cash_out' | 'paid_in' | 'paid_out';
   amount: number;
   reason: string;
   created_at: string;
@@ -139,7 +139,7 @@ export async function closeShift(id: number, data: { closing_cash: number; notes
 
 export async function addCashMovement(
   shiftId: number,
-  data: { type: 'in' | 'out'; amount: number; reason: string },
+  data: { type: 'cash_in' | 'cash_out' | 'paid_in' | 'paid_out'; amount: number; reason: string },
 ): Promise<{ movement: CashMovement }> {
   return req(`/shifts/${shiftId}/cash-movements`, { method: 'POST', body: JSON.stringify(data) });
 }

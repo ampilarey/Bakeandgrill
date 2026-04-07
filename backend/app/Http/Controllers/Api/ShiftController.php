@@ -27,6 +27,15 @@ class ShiftController extends Controller
             ->latest('opened_at')
             ->first();
 
+        if ($shift) {
+            $shift->load('cashMovements.user');
+            $cashIn  = $shift->cashMovements->where('type', 'cash_in')->sum('amount');
+            $cashOut = $shift->cashMovements->where('type', 'cash_out')->sum('amount');
+            $shift->setAttribute('total_cash_in',  $cashIn);
+            $shift->setAttribute('total_cash_out', $cashOut);
+            $shift->setAttribute('cash_movements', $shift->cashMovements->values());
+        }
+
         return response()->json(['shift' => $shift]);
     }
 

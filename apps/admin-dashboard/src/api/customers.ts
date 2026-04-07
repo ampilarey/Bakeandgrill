@@ -100,9 +100,10 @@ export interface GiftCard {
   created_at?: string;
 }
 
-export async function fetchGiftCards(params?: { page?: number }): Promise<{ data: GiftCard[]; meta: { current_page: number; last_page: number; total: number } }> {
+export async function fetchGiftCards(params?: { page?: number; status?: string }): Promise<{ data: GiftCard[]; meta: { current_page: number; last_page: number; total: number } }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
+  if (params?.status) qs.set('status', params.status);
   return req(`/admin/gift-cards?${qs}`);
 }
 

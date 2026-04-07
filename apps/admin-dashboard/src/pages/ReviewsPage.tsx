@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Pagination, EmptyState,
+  PageHeader, TableCard, TH, TD, Badge, Btn, Pagination, EmptyState, StatCard,
 } from '../components/SharedUI';
 import { fetchAdminReviews, moderateReview, type Review } from '../api';
-import { Star } from 'lucide-react';
+import { Star, ChevronDown, ChevronUp } from 'lucide-react';
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -35,8 +35,9 @@ export default function ReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const [acting, setActing] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -58,11 +59,18 @@ export default function ReviewsPage() {
   };
 
   const pending = reviews.filter(r => r.status === 'pending').length;
+  const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
   return (
     <div>
       <PageHeader title="Reviews & Ratings" />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 20 }}>
+        <StatCard label="Total (page)" value={String(meta.total)} accent="#D4813A" />
+        <StatCard label="Avg Rating" value={reviews.length ? `${avgRating.toFixed(1)} ★` : '—'} accent="#f59e0b" />
+        <StatCard label="Pending" value={String(pending)} accent={pending > 0 ? '#f59e0b' : '#22c55e'} />
+      </div>
 
       {pending > 0 && (
         <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400e' }}>
@@ -99,13 +107,30 @@ export default function ReviewsPage() {
                 <td style={{ ...TD, fontWeight: 600 }}>{review.author}</td>
                 <td style={TD}><StarRating rating={review.rating} /></td>
                 <td style={{ ...TD, maxWidth: 260 }}>
-                  {review.comment
-                    ? <span style={{ fontSize: 13, color: '#3D2B1F', wordBreak: 'break-word' }}>{review.comment.length > 120 ? review.comment.slice(0, 120) + '…' : review.comment}</span>
-                    : <span style={{ color: '#9C8E7E', fontSize: 12 }}>No comment</span>}
+                  {review.comment ? (
+                    <div>
+                      <span style={{ fontSize: 13, color: '#3D2B1F', wordBreak: 'break-word' }}>
+                        {expandedId === review.id ? review.comment : (review.comment.length > 100 ? review.comment.slice(0, 100) + '…' : review.comment)}
+                      </span>
+                      {review.comment.length > 100 && (
+                        <button
+                          onClick={() => setExpandedId(expandedId === review.id ? null : review.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#D4813A', fontSize: 12, padding: 0, fontFamily: 'inherit' }}
+                        >
+                          {expandedId === review.id ? <><ChevronUp size={12} /> Show less</> : <><ChevronDown size={12} /> Read more</>}
+                        </button>
+                      )}
+                    </div>
+                  ) : <span style={{ color: '#9C8E7E', fontSize: 12 }}>No comment</span>}
                 </td>
                 <td style={{ ...TD, fontSize: 12 }}>
-                  {review.item ? <span>{review.item.name}</span> : null}
-                  {review.order ? <span style={{ color: '#9C8E7E' }}>{review.item ? ' · ' : ''}#{review.order.order_number}</span> : null}
+                  {review.item ? <span style={{ fontWeight: 600, color: '#1C1408' }}>{review.item.name}</span> : null}
+                  {review.order ? (
+                    <span style={{ color: '#9C8E7E', display: 'block', marginTop: 2 }}>
+                      Order #{review.order.order_number}
+                    </span>
+                  ) : null}
+                  {!review.item && !review.order && <span style={{ color: '#9C8E7E' }}>—</span>}
                 </td>
                 <td style={TD}><Badge color={STATUS_COLOR[review.status] ?? 'gray'}>{review.status}</Badge></td>
                 <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(review.created_at).toLocaleDateString()}</td>

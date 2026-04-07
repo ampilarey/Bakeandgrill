@@ -10,7 +10,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\Invoice;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -23,15 +22,16 @@ class XeroController extends Controller
     ) {}
 
     /**
-     * Redirect admin to Xero's OAuth authorization page.
+     * Return the Xero OAuth authorization URL as JSON for SPA redirect.
      */
-    public function connect(Request $request): RedirectResponse
+    public function connect(Request $request): JsonResponse
     {
         $state = Str::random(40);
-        // Store in cache (API routes don't start sessions — session()->put() silently fails)
         Cache::put('xero_oauth_state_' . $request->user()->id, $state, 300);
 
-        return redirect($this->oauth->getAuthorizationUrl($state));
+        return response()->json([
+            'redirect_url' => $this->oauth->getAuthorizationUrl($state),
+        ]);
     }
 
     /**
@@ -111,10 +111,33 @@ class XeroController extends Controller
     }
 
     /**
-     * Get recent sync logs.
+     * Get paginated sync logs, mapped to the shape expected by the admin UI.
      */
-    public function logs(): JsonResponse
+    public function logs(Request $request): JsonResponse
     {
-        return response()->json(['logs' => $this->sync->getSyncLogs()]);
+        $perPage = (int) $request->query('per_page', 20);
+        $page    = (int) $request->query('page', 1);
+
+        $paginator = \App\Models\XeroSyncLog::orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $data = $paginator->map(fn ($log) => [
+            'id'          => $log->id,
+            'action'      => $log->direction ?? 'push',
+            'entity_type' => $log->resource_type,
+            'entity_id'   => $log->resource_id,
+            'status'      => $log->status,
+            'message'     => $log->error ?? null,
+            'created_at'  => $log->created_at,
+        ])->values();
+
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+            ],
+        ]);
     }
 }

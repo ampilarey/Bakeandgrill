@@ -3,7 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
-import { fetchWasteLogs, createWasteLog, fetchAdminItems, type WasteLog, type MenuItem } from '../api';
+import { fetchWasteLogs, createWasteLog, fetchAdminItems, fetchInventoryItems, type WasteLog, type MenuItem, type InventoryItem } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 
 const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other'] as const;
@@ -26,7 +26,9 @@ export default function WasteLogsPage() {
   const [to, setTo] = useState(today);
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [logOpen, setLogOpen] = useState(false);
+  const [itemType, setItemType] = useState<'menu' | 'inventory'>('menu');
   const [form, setForm] = useState({ item_id: '', quantity: '', unit: '', cost_estimate: '', reason: 'spoilage' as Reason, notes: '' });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
@@ -43,15 +45,21 @@ export default function WasteLogsPage() {
   };
 
   useEffect(() => { void load(); }, [page, from, to]);
-  useEffect(() => { fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data)).catch(() => {}); }, []);
+  useEffect(() => {
+    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data)).catch(() => {});
+    fetchInventoryItems({}).then(r => setInventoryItems(r.data)).catch(() => {});
+  }, []);
 
   const handleLog = async () => {
-    if (!form.item_id) { setFormError('Select a menu item.'); return; }
+    if (!form.item_id) { setFormError(`Select a ${itemType === 'menu' ? 'menu item' : 'inventory item'}.`); return; }
     const qty = parseFloat(form.quantity);
     if (isNaN(qty) || qty <= 0) { setFormError('Enter a valid quantity.'); return; }
     setSaving(true); setFormError('');
     try {
-      await createWasteLog({ item_id: Number(form.item_id), quantity: qty, unit: form.unit || undefined, cost_estimate: form.cost_estimate ? parseFloat(form.cost_estimate) : undefined, reason: form.reason, notes: form.notes || undefined });
+      const payload = itemType === 'menu'
+        ? { item_id: Number(form.item_id) }
+        : { inventory_item_id: Number(form.item_id) };
+      await createWasteLog({ ...payload, quantity: qty, unit: form.unit || undefined, cost_estimate: form.cost_estimate ? parseFloat(form.cost_estimate) : undefined, reason: form.reason, notes: form.notes || undefined });
       setLogOpen(false);
       setForm({ item_id: '', quantity: '', unit: '', cost_estimate: '', reason: 'spoilage', notes: '' });
       void load();
@@ -121,11 +129,27 @@ export default function WasteLogsPage() {
         <Modal title="Log Waste" onClose={() => setLogOpen(false)}>
           {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 0, border: '1px solid #E8E0D8', borderRadius: 8, overflow: 'hidden' }}>
+              {(['menu', 'inventory'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => { setItemType(t); setForm(f => ({ ...f, item_id: '' })); }}
+                  style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: itemType === t ? 700 : 500, background: itemType === t ? '#D4813A' : '#fff', color: itemType === t ? '#fff' : '#6B5D4F', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {t === 'menu' ? 'Menu Item' : 'Inventory Item'}
+                </button>
+              ))}
+            </div>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Menu Item *</span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+                {itemType === 'menu' ? 'Menu Item' : 'Inventory Item'} *
+              </span>
               <select value={form.item_id} onChange={e => setForm(f => ({ ...f, item_id: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}>
-                <option value="">Select item…</option>
-                {menuItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                <option value="">Select…</option>
+                {itemType === 'menu'
+                  ? menuItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)
+                  : inventoryItems.map(item => <option key={item.id} value={item.id}>{item.name}{item.unit ? ` (${item.unit})` : ''}</option>)
+                }
               </select>
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>

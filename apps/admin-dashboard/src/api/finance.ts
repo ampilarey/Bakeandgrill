@@ -506,9 +506,10 @@ export async function getSupplierPriceHistory(supplierId: number, itemId: number
 
 export interface XeroStatus {
   connected: boolean;
-  organisation_name: string | null;
+  tenant_name: string | null;
   connected_at: string | null;
-  last_sync_at: string | null;
+  token_expires_at: string | null;
+  token_expired: boolean;
 }
 
 export async function getXeroStatus(): Promise<XeroStatus> {

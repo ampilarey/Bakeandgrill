@@ -4,7 +4,7 @@ import {
   PageHeader, StatCard, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
 } from '../components/SharedUI';
 import { fetchGiftCards, issueGiftCard, checkGiftCardBalance, type GiftCard } from '../api';
-import { Gift, Search } from 'lucide-react';
+import { Gift, Search, Copy, Check } from 'lucide-react';
 
 const STATUS_COLOR: Record<string, string> = {
   active: 'green', redeemed: 'orange', expired: 'red', cancelled: 'gray',
@@ -18,13 +18,16 @@ export default function GiftCardsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [issueOpen, setIssueOpen] = useState(false);
   const [amount, setAmount] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState('');
   const [issuedCard, setIssuedCard] = useState<GiftCard | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [balanceCode, setBalanceCode] = useState('');
   const [balanceResult, setBalanceResult] = useState<{ code: string; current_balance: number; expires_at: string | null } | null>(null);
@@ -35,23 +38,28 @@ export default function GiftCardsPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchGiftCards({ page });
+      const res = await fetchGiftCards({ page, status: statusFilter || undefined });
       setCards(res.data);
       setMeta(res.meta);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [page]);
+  useEffect(() => { void load(); }, [page, statusFilter]);
 
   const handleIssue = async () => {
     const amt = parseFloat(amount);
     if (!amount || isNaN(amt) || amt <= 0) { setIssueError('Enter a valid amount.'); return; }
     setIssuing(true); setIssueError('');
     try {
-      const res = await issueGiftCard({ amount: amt, expires_at: expiresAt || null });
+      const parsedCustomerId = customerId.trim() ? parseInt(customerId, 10) : null;
+      if (customerId.trim() && (isNaN(parsedCustomerId!) || parsedCustomerId! <= 0)) {
+        setIssueError('Customer ID must be a positive number.'); setIssuing(false); return;
+      }
+      const res = await issueGiftCard({ amount: amt, customer_id: parsedCustomerId, expires_at: expiresAt || null });
       setIssuedCard(res.gift_card);
-      setAmount(''); setExpiresAt('');
+      setCopied(false);
+      setAmount(''); setCustomerId(''); setExpiresAt('');
       void load();
     } catch (e) { setIssueError((e as Error).message); }
     finally { setIssuing(false); }
@@ -67,6 +75,10 @@ export default function GiftCardsPage() {
     finally { setCheckingBalance(false); }
   };
 
+  const handleCopyCode = (code: string) => {
+    void navigator.clipboard.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  };
+
   const activeCards = cards.filter(c => c.status === 'active');
   const totalValue = activeCards.reduce((s, c) => s + c.current_balance, 0);
 
@@ -77,6 +89,21 @@ export default function GiftCardsPage() {
         action={<Btn onClick={() => { setIssueOpen(true); setIssuedCard(null); setIssueError(''); }}>+ Issue Gift Card</Btn>}
       />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+
+      {/* Status filter */}
+      <div style={{ marginBottom: 20 }}>
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          style={{ padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+        >
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="redeemed">Redeemed</option>
+          <option value="expired">Expired</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Issued" value={String(meta.total)} accent="#D4813A" />
@@ -145,7 +172,16 @@ export default function GiftCardsPage() {
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
               <Gift size={40} style={{ color: '#D4813A', marginBottom: 16 }} />
               <p style={{ fontWeight: 700, color: '#1C1408', marginBottom: 8 }}>Gift card issued!</p>
-              <p style={{ fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.1em', color: '#D4813A', fontWeight: 700, marginBottom: 8 }}>{issuedCard.code}</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
+                <p style={{ fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.1em', color: '#D4813A', fontWeight: 700, margin: 0 }}>{issuedCard.code}</p>
+                <button
+                  onClick={() => handleCopyCode(issuedCard.code)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#22c55e' : '#9C8E7E', padding: 4 }}
+                  title="Copy code"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
               <p style={{ color: '#6B5D4F', fontSize: 14 }}>Balance: MVR {issuedCard.current_balance.toFixed(2)}</p>
               {issuedCard.expires_at && <p style={{ color: '#9C8E7E', fontSize: 13 }}>Expires: {issuedCard.expires_at}</p>}
               <div style={{ marginTop: 20 }}>
@@ -159,6 +195,10 @@ export default function GiftCardsPage() {
                 <label>
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Amount (MVR) *</span>
                   <Input type="number" min="1" step="0.01" placeholder="50.00" value={amount} onChange={setAmount} />
+                </label>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Customer ID (optional)</span>
+                  <Input type="number" min="1" placeholder="Leave blank for anonymous" value={customerId} onChange={setCustomerId} />
                 </label>
                 <label>
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Expiry date (optional)</span>

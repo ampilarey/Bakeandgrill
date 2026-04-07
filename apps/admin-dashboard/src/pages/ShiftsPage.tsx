@@ -46,7 +46,7 @@ export default function ShiftsPage() {
   const [closeError, setCloseError] = useState('');
 
   // Cash movement form
-  const [movType, setMovType] = useState<'in' | 'out'>('in');
+  const [movType, setMovType] = useState<'cash_in' | 'cash_out'>('cash_in');
   const [movAmount, setMovAmount] = useState('');
   const [movReason, setMovReason] = useState('');
   const [movSaving, setMovSaving] = useState(false);
@@ -98,8 +98,8 @@ export default function ShiftsPage() {
       setShift(prev => prev ? {
         ...prev,
         cash_movements: [...(prev.cash_movements ?? []), res.movement],
-        total_cash_in:  movType === 'in'  ? prev.total_cash_in  + amount : prev.total_cash_in,
-        total_cash_out: movType === 'out' ? prev.total_cash_out + amount : prev.total_cash_out,
+        total_cash_in:  movType === 'cash_in'  ? (prev.total_cash_in ?? 0)  + amount : prev.total_cash_in,
+        total_cash_out: movType === 'cash_out' ? (prev.total_cash_out ?? 0) + amount : prev.total_cash_out,
       } : prev);
       setMovAmount(''); setMovReason('');
     } catch (e) { setMovError((e as Error).message); }
@@ -146,8 +146,12 @@ export default function ShiftsPage() {
             <StatCard label="Opening Cash" value={formatMVR(shift.opening_cash)} accent="#D4813A" />
             <StatCard label="Cash In" value={formatMVR(shift.total_cash_in)} accent="#16a34a" />
             <StatCard label="Cash Out" value={formatMVR(shift.total_cash_out)} accent="#ef4444" />
-            <StatCard label="Expected Cash" value={formatMVR((shift.opening_cash ?? 0) + (shift.total_cash_in ?? 0) - (shift.total_cash_out ?? 0))} accent="#6B5D4F" />
+            <StatCard label="Expected Cash*" value={formatMVR((shift.opening_cash ?? 0) + (shift.total_cash_in ?? 0) - (shift.total_cash_out ?? 0))} accent="#6B5D4F" />
           </div>
+
+          <p style={{ fontSize: 12, color: '#9C8E7E', marginBottom: 20 }}>
+            * Expected Cash includes cash movements only. Cash sales are added automatically when the shift is closed.
+          </p>
 
           {/* ── Cash Movement Form ── */}
           <div style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 14, padding: 24, marginBottom: 24, maxWidth: 540 }}>
@@ -156,9 +160,11 @@ export default function ShiftsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <label>
                 <span style={S.label}>Type</span>
-                <select value={movType} onChange={e => setMovType(e.target.value as 'in' | 'out')} style={S.select}>
-                  <option value="in">Cash In</option>
-                  <option value="out">Cash Out</option>
+                <select value={movType} onChange={e => setMovType(e.target.value as 'cash_in' | 'cash_out')} style={S.select}>
+                  <option value="cash_in">Cash In</option>
+                  <option value="cash_out">Cash Out</option>
+                  <option value="paid_in">Paid In</option>
+                  <option value="paid_out">Paid Out</option>
                 </select>
               </label>
               <label>
@@ -187,7 +193,7 @@ export default function ShiftsPage() {
                   <tr><td colSpan={5}><EmptyState message="No movements recorded yet." /></td></tr>
                 ) : shift.cash_movements.map((m: CashMovement) => (
                   <tr key={m.id}>
-                    <td style={TD}><Badge color={m.type === 'in' ? 'green' : 'red'}>{m.type === 'in' ? 'Cash In' : 'Cash Out'}</Badge></td>
+                    <td style={TD}><Badge color={m.type === 'cash_in' || m.type === 'paid_in' ? 'green' : 'red'}>{m.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Badge></td>
                     <td style={{ ...TD, fontWeight: 700 }}>{formatMVR(m.amount)}</td>
                     <td style={TD}>{m.reason}</td>
                     <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{m.user?.name ?? '—'}</td>
@@ -205,7 +211,7 @@ export default function ShiftsPage() {
         <Modal title="Close Shift" onClose={() => setCloseModal(false)} maxWidth={420}>
           {closeError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{closeError}</p>}
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
-            Expected cash in drawer: <strong>{formatMVR((shift?.opening_cash ?? 0) + (shift?.total_cash_in ?? 0) - (shift?.total_cash_out ?? 0))}</strong>
+            The server will calculate the exact expected cash (including cash sales) when the shift closes. Enter the actual cash counted in the drawer.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
