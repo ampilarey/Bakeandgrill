@@ -208,3 +208,21 @@ export async function updateSpecial(id: number, data: Partial<DailySpecial>): Pr
 export async function deleteSpecial(id: number): Promise<void> {
   await req(`/admin/specials/${id}`, { method: 'DELETE' });
 }
+
+// ── Item Recipe ───────────────────────────────────────────────────────────────
+
+export interface RecipeItem {
+  id: number;
+  inventory_item: { id: number; name: string; unit: string } | null;
+  quantity: number;
+  unit: string | null;
+  notes: string | null;
+}
+
+export interface ItemWithRecipe extends MenuItem {
+  recipe: { id: number; recipe_items: RecipeItem[] } | null;
+}
+
+export async function getItemWithRecipe(id: number): Promise<{ item: ItemWithRecipe }> {
+  return req(`/items/${id}/recipe`);
+}

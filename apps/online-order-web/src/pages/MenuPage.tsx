@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { fetchCategories, fetchItems, fetchOpeningHoursStatus, getMyFavourites, toggleFavourite } from '../api';
+import { fetchCategories, fetchItems, fetchOpeningHoursStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
 import type { Category, Item, Modifier, OpeningHoursStatus } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
@@ -25,6 +25,7 @@ export function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
+  const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,8 +81,14 @@ export function MenuPage() {
     if (!token) return;
     getMyFavourites(token)
       .then((res) => setFavouriteIds(new Set(res.data.map((f) => f.id))))
-      .catch(() => { /* non-blocking — favourites are a convenience feature */ });
+      .catch(() => { /* non-blocking */ });
   }, [token]);
+
+  useEffect(() => {
+    getWaitTimeEstimate()
+      .then(({ wait_minutes }) => setWaitMinutes(wait_minutes))
+      .catch(() => { /* non-blocking */ });
+  }, []);
 
   const handleToggleFavourite = (itemId: number) => {
     if (!token) { showToast('Sign in to save favourites'); return; }
@@ -235,9 +242,19 @@ export function MenuPage() {
       {/* ── Main content ──────────────────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0 }}>
 
-        {/* Opening status badge — top of main column, right-aligned */}
+        {/* Opening status badge + wait time */}
         {isOpen !== null && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.75rem var(--page-gutter) 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, padding: '0.75rem var(--page-gutter) 0', flexWrap: 'wrap' }}>
+            {waitMinutes !== null && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 12, fontWeight: 600, color: waitMinutes <= 15 ? '#15803D' : waitMinutes <= 30 ? '#92400E' : '#991B1B',
+                background: waitMinutes <= 15 ? '#DCFCE7' : waitMinutes <= 30 ? '#FEF3C7' : '#FEE2E2',
+                padding: '3px 10px', borderRadius: 99,
+              }}>
+                ⏱ ~{waitMinutes} min wait
+              </span>
+            )}
             <OpeningStatusBadge
               open={isOpen}
               today={todayHours}

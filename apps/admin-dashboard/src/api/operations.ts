@@ -247,3 +247,39 @@ export async function createUnitConversion(data: { from_unit: string; to_unit: s
 export async function deleteUnitConversion(id: number): Promise<void> {
   await req(`/unit-conversions/${id}`, { method: 'DELETE' });
 }
+
+// ── Inventory price history & cheapest supplier ───────────────────────────────
+
+export interface InventoryPriceHistoryEntry {
+  purchase_id: number;
+  supplier: string | null;
+  unit_cost: number;
+  quantity: number;
+  purchase_date: string | null;
+}
+
+export async function getInventoryPriceHistory(id: number): Promise<{ history: InventoryPriceHistoryEntry[] }> {
+  return req(`/inventory/${id}/price-history`);
+}
+
+export interface CheapestSupplier {
+  id: number;
+  name: string;
+  min_cost: number;
+}
+
+export async function getInventoryCheapestSupplier(id: number): Promise<{ supplier: CheapestSupplier | null }> {
+  return req(`/inventory/${id}/cheapest-supplier`);
+}
+
+// ── Stock count ───────────────────────────────────────────────────────────────
+
+export interface StockCountEntry {
+  inventory_item_id: number;
+  quantity: number;
+  notes?: string;
+}
+
+export async function submitStockCount(counts: StockCountEntry[]): Promise<{ adjustments: { item_id: number; difference: number; balance_after: number }[] }> {
+  return req('/inventory/stock-count', { method: 'POST', body: JSON.stringify({ counts }) });
+}

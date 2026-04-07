@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
-import { fetchCustomerOrders } from '../api';
+import { fetchCustomerOrders, getReorderPayload } from '../api';
 import type { Order } from '../api';
 import { AuthBlock } from '../components/AuthBlock';
+import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   payment_pending: { label: 'Awaiting payment',  color: '#92400e', bg: '#fef3c7' },
@@ -41,9 +43,12 @@ function ordersFromResponse(res: unknown): Order[] {
 export function OrderHistoryPage() {
   usePageTitle('My Orders');
   const { token, authReady, setAuth } = useAuth();
+  const { addItem } = useCart();
+  const { showToast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
+  const [reordering, setReordering] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authReady) return; // wait for session check to resolve
@@ -58,6 +63,26 @@ export function OrderHistoryPage() {
   }, [token, authReady]);
 
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
+
+  const handleReorder = async (orderId: number) => {
+    if (!token) return;
+    setReordering(orderId);
+    try {
+      const payload = await getReorderPayload(token, orderId);
+      let added = 0;
+      for (const line of payload.items) {
+        const item = { id: line.item_id, name: line.name, base_price: line.price } as Parameters<typeof addItem>[0];
+        const mods = (line.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: m.price })) as Parameters<typeof addItem>[2];
+        addItem(item, line.quantity, mods);
+        added += line.quantity;
+      }
+      showToast(`${added} item${added !== 1 ? 's' : ''} added to cart`);
+    } catch {
+      showToast('Could not load that order. Please try again.');
+    } finally {
+      setReordering(null);
+    }
+  };
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', padding: '2rem var(--page-gutter)', minHeight: '60vh' }}>
@@ -152,7 +177,7 @@ export function OrderHistoryPage() {
                     </div>
                   )}
                 </div>
-                {isActive && (
+                {isActive ? (
                   <Link
                     to={`/orders/${order.id}`}
                     style={{
@@ -170,6 +195,26 @@ export function OrderHistoryPage() {
                   >
                     Track →
                   </Link>
+                ) : order.status === 'completed' && (
+                  <button
+                    onClick={() => void handleReorder(order.id)}
+                    disabled={reordering === order.id}
+                    style={{
+                      padding: '0.45rem 0.875rem',
+                      background: reordering === order.id ? 'var(--color-surface-alt)' : 'var(--color-surface)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      fontFamily: 'inherit',
+                      cursor: reordering === order.id ? 'not-allowed' : 'pointer',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {reordering === order.id ? '…' : '🔁 Order again'}
+                  </button>
                 )}
               </div>
             );

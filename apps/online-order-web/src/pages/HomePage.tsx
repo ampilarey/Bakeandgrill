@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchItems, fetchOpeningHoursStatus, API_ORIGIN } from '../api';
-import type { Item, OpeningHoursStatus } from '../api';
+import { fetchItems, fetchOpeningHoursStatus, fetchActiveSpecials, API_ORIGIN } from '../api';
+import type { Item, OpeningHoursStatus, DailySpecial } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
@@ -18,6 +18,7 @@ const CATEGORIES = [
 
 export function HomePage() {
   const [featuredItems, setFeaturedItems] = useState<Item[]>([]);
+  const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
   const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
@@ -31,13 +32,17 @@ export function HomePage() {
   useEffect(() => {
     fetchItems().then((res) => {
       setFeaturedItems(res.data.slice(0, 4));
-    }).catch(() => { /* section simply stays hidden on failure — no action required */ });
+    }).catch(() => { /* section simply stays hidden on failure */ });
 
     fetchOpeningHoursStatus().then(({ open, message, today }) => {
       setIsOpen(open);
       setHoursMsg(message ?? null);
       setTodayHours(today ?? null);
     }).catch(() => setIsOpen(false));
+
+    fetchActiveSpecials().then(({ specials: sp }) => {
+      setSpecials(sp.slice(0, 6));
+    }).catch(() => { /* non-blocking */ });
   }, []);
 
   const statusBadge =
@@ -150,6 +155,61 @@ export function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* ── Today's Specials ──────────────────────────────────── */}
+      {specials.length > 0 && (
+        <section className="home-section" style={{ paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>Today's Specials</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0' }}>Limited-time deals, today only</p>
+              </div>
+              <Link to="/menu" style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>View all →</Link>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+              {specials.map((sp) => {
+                if (!sp.item) return null;
+                const imgSrc = sp.item.image_url
+                  ? sp.item.image_url.startsWith('http') ? sp.item.image_url : `${API_ORIGIN}${sp.item.image_url.startsWith('/') ? '' : '/'}${sp.item.image_url}`
+                  : null;
+                const price = sp.special_price ?? sp.item.base_price;
+                const wasPrice = sp.special_price ? sp.item.base_price : null;
+                return (
+                  <Link
+                    key={sp.id}
+                    to={`/menu?item=${sp.item.id}`}
+                    style={{
+                      flexShrink: 0, width: 180, borderRadius: 'var(--radius-2xl)',
+                      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                      overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
+                    }}
+                  >
+                    <div style={{ height: 110, background: '#F9F5F0', position: 'relative', overflow: 'hidden' }}>
+                      {imgSrc
+                        ? <img src={imgSrc} alt={sp.item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.3 }}>🍽️</div>
+                      }
+                      {(sp.badge_label ?? sp.discount_pct) && (
+                        <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--color-primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99 }}>
+                          {sp.badge_label ?? `${sp.discount_pct}% OFF`}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '0.75rem', flex: 1 }}>
+                      <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item.name}</p>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
+                        {wasPrice && <span style={{ fontSize: 11, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Popular Items ─────────────────────────────────────── */}
       {featuredItems.length > 0 && (

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import {
   fetchAdminCategories, createCategory, updateCategory, deleteCategory,
   fetchAdminItems, createItem, updateItem, deleteItem, toggleItemAvailability,
-  uploadMenuImage, getBarcodeLabel,
-  type MenuCategory, type MenuItem, type MenuItemPayload, type BarcodeLabel,
+  uploadMenuImage, getBarcodeLabel, getItemWithRecipe,
+  type MenuCategory, type MenuItem, type MenuItemPayload, type BarcodeLabel, type ItemWithRecipe,
 } from '../api';
 import { PhotosTab } from './MenuPage/PhotosTab';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -379,6 +379,7 @@ export function MenuPage() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
   const [barcodeLabel, setBarcodeLabel] = useState<BarcodeLabel | null>(null);
+  const [recipeItem, setRecipeItem] = useState<ItemWithRecipe | null>(null);
 
   const loadCategories = async () => {
     setLoading(true);
@@ -649,6 +650,7 @@ export function MenuPage() {
                           <div style={{ display: 'flex', gap: 6 }}>
                             <Btn small variant="secondary" onClick={() => setEditingItem(item)}>Edit</Btn>
                             <Btn small variant="secondary" onClick={() => { getBarcodeLabel(item.id).then((res) => setBarcodeLabel(res.label)).catch(() => {}); }} title="Print barcode label">🏷</Btn>
+                            <Btn small variant="secondary" onClick={() => { getItemWithRecipe(item.id).then((res) => setRecipeItem(res.item)).catch(() => {}); }} title="View recipe">📋</Btn>
                             <Btn small variant="danger" onClick={() => handleDeleteItem(item.id)}>Delete</Btn>
                           </div>
                         </td>
@@ -720,6 +722,44 @@ export function MenuPage() {
           onClose={() => setEditingItem(null)}
           itemId={editingItem.id}
         />
+      )}
+
+      {/* Recipe modal */}
+      {recipeItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Recipe — {recipeItem.name}</h3>
+              <button onClick={() => setRecipeItem(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}>×</button>
+            </div>
+            {!recipeItem.recipe ? (
+              <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No recipe defined for this item.</p>
+            ) : recipeItem.recipe.recipe_items.length === 0 ? (
+              <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Recipe exists but has no ingredients.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>Ingredient</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>Qty</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>Unit</th>
+                </tr></thead>
+                <tbody>
+                  {recipeItem.recipe.recipe_items.map((ri) => (
+                    <tr key={ri.id}>
+                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0', fontWeight: 600 }}>
+                        {ri.inventory_item?.name ?? '—'}
+                      </td>
+                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0' }}>{ri.quantity}</td>
+                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0', color: '#9C8E7E' }}>
+                        {ri.unit ?? ri.inventory_item?.unit ?? '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Barcode label preview modal */}

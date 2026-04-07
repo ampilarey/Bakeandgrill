@@ -94,6 +94,11 @@ Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->prefix('unit
         $uc = \App\Models\UnitConversion::updateOrCreate(['from_unit' => $v['from_unit'], 'to_unit' => $v['to_unit']], ['factor' => $v['factor']]);
         return response()->json(['conversion' => $uc], 201);
     });
+    Route::delete('/{id}', function ($id) {
+        $uc = \App\Models\UnitConversion::findOrFail($id);
+        $uc->delete();
+        return response()->json(['message' => 'Deleted.']);
+    });
 });
 
 // ─── Forecasting ───────────────────────────────────────────────────────────

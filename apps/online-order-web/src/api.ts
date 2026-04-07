@@ -724,3 +724,63 @@ export async function getMyReviews(token: string): Promise<{ data: CustomerRevie
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+// ── Reorder ───────────────────────────────────────────────────────────────────
+
+export interface ReorderPayload {
+  items: { item_id: number; quantity: number; name: string; price: number; modifiers: { id: number; name: string; price: number }[] }[];
+}
+
+export async function getReorderPayload(token: string, orderId: number): Promise<ReorderPayload> {
+  return request(`/customer/orders/${orderId}/reorder`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ── Daily Specials (public) ───────────────────────────────────────────────────
+
+export interface DailySpecial {
+  id: number;
+  item: { id: number; name: string; description: string | null; image_url: string | null; base_price: number } | null;
+  badge_label: string | null;
+  special_price: number | null;
+  discount_pct: number | null;
+  start_time: string | null;
+  end_time: string | null;
+}
+
+export async function fetchActiveSpecials(): Promise<{ specials: DailySpecial[] }> {
+  return request('/specials');
+}
+
+// ── Wait time estimate (public) ───────────────────────────────────────────────
+
+export async function getWaitTimeEstimate(): Promise<{ wait_minutes: number; queue_depth: number }> {
+  return request('/wait-time');
+}
+
+// ── Item reviews (public) ─────────────────────────────────────────────────────
+
+export interface ItemReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+}
+
+export async function getItemReviews(itemId: number): Promise<{ data: ItemReview[]; avg_rating: number | null; count: number }> {
+  return request(`/items/${itemId}/reviews`);
+}
+
+// ── Item photos (public) ──────────────────────────────────────────────────────
+
+export interface ItemPhoto {
+  id: number;
+  url: string;
+  is_primary: boolean;
+  sort_order: number;
+}
+
+export async function getItemPhotos(itemId: number): Promise<{ photos: ItemPhoto[] }> {
+  return request(`/items/${itemId}/photos`);
+}

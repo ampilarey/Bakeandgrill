@@ -3,8 +3,8 @@ import {
   getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
   generateInvoicePdf, pushInvoiceToXero,
   createInvoiceFromOrder, createInvoiceFromPurchase,
-  createCreditNote, updateInvoice,
-  type Invoice,
+  createCreditNote, updateInvoice, createInvoice,
+  type Invoice, type ManualInvoiceLineItem,
 } from '../api';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -45,6 +45,14 @@ export function InvoicesPage() {
   const [cnInv, setCnInv]                 = useState<Invoice | null>(null);
   const [cnForm, setCnForm]               = useState({ reason: '', amount: '' });
   const [cnSaving, setCnSaving]           = useState(false);
+
+  // Manual invoice creation
+  const emptyLine = (): ManualInvoiceLineItem => ({ description: '', quantity: 1, unit_price: 0 });
+  const [showManual, setShowManual]       = useState(false);
+  const [manualForm, setManualForm]       = useState({ type: 'sale' as 'sale' | 'purchase' | 'credit_note', recipient_name: '', recipient_phone: '', issue_date: new Date().toISOString().slice(0, 10), due_date: '', notes: '', tax_rate_bp: '0' });
+  const [manualLines, setManualLines]     = useState<ManualInvoiceLineItem[]>([emptyLine()]);
+  const [manualSaving, setManualSaving]   = useState(false);
+  const [manualError, setManualError]     = useState('');
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -165,6 +173,30 @@ export function InvoicesPage() {
     finally { setCnSaving(false); }
   };
 
+  const handleManualCreate = async () => {
+    const lines = manualLines.filter((l) => l.description.trim());
+    if (!lines.length) { setManualError('Add at least one line item.'); return; }
+    setManualSaving(true); setManualError('');
+    try {
+      const res = await createInvoice({
+        type: manualForm.type,
+        recipient_name: manualForm.recipient_name || undefined,
+        recipient_phone: manualForm.recipient_phone || undefined,
+        issue_date: manualForm.issue_date,
+        due_date: manualForm.due_date || undefined,
+        notes: manualForm.notes || undefined,
+        tax_rate_bp: manualForm.tax_rate_bp ? parseInt(manualForm.tax_rate_bp) : undefined,
+        items: lines,
+      });
+      showToast(`Invoice ${res.invoice.invoice_number} created.`);
+      setShowManual(false);
+      setManualLines([emptyLine()]);
+      setManualForm({ type: 'sale', recipient_name: '', recipient_phone: '', issue_date: new Date().toISOString().slice(0, 10), due_date: '', notes: '', tax_rate_bp: '0' });
+      void load();
+    } catch (e) { setManualError((e as Error).message); }
+    finally { setManualSaving(false); }
+  };
+
   const openSmsModal = (inv: Invoice) => {
     setSendSmsInv(inv);
     setSmsPhone(inv.recipient_phone ?? inv.customer?.phone ?? '');
@@ -198,6 +230,7 @@ export function InvoicesPage() {
         subtitle="Manage sale and purchase invoices"
         action={
           <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={() => { setShowManual(true); setManualError(''); }}>+ New Invoice</Btn>
             <Btn variant="secondary" onClick={() => { setCreateFrom('order'); setCreateRefId(''); }}>+ From Order</Btn>
             <Btn variant="secondary" onClick={() => { setCreateFrom('purchase'); setCreateRefId(''); }}>+ From Purchase</Btn>
             <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
@@ -432,6 +465,81 @@ export function InvoicesPage() {
       )}
 
       {/* Credit Note Modal */}
+      {/* Manual Invoice Modal */}
+      {showManual && (
+        <Modal title="New Invoice" onClose={() => setShowManual(false)} maxWidth={600}>
+          {manualError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{manualError}</p>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            {([
+              { key: 'recipient_name',  label: 'Recipient Name',  type: 'text' },
+              { key: 'recipient_phone', label: 'Phone',           type: 'tel' },
+              { key: 'issue_date',      label: 'Issue Date *',    type: 'date' },
+              { key: 'due_date',        label: 'Due Date',        type: 'date' },
+            ] as { key: keyof typeof manualForm; label: string; type: string }[]).map(({ key, label, type }) => (
+              <div key={key}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>{label}</label>
+                <input type={type} value={manualForm[key]} onChange={(e) => setManualForm((f) => ({ ...f, [key]: e.target.value }))}
+                  style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+            ))}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Type *</label>
+              <select value={manualForm.type} onChange={(e) => setManualForm((f) => ({ ...f, type: e.target.value as typeof manualForm.type }))}
+                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                <option value="sale">Sale</option>
+                <option value="purchase">Purchase</option>
+                <option value="credit_note">Credit Note</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Tax Rate (basis points, e.g. 600 = 6%)</label>
+              <input type="number" min="0" max="10000" value={manualForm.tax_rate_bp} onChange={(e) => setManualForm((f) => ({ ...f, tax_rate_bp: e.target.value }))}
+                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes</label>
+            <textarea value={manualForm.notes} onChange={(e) => setManualForm((f) => ({ ...f, notes: e.target.value }))} rows={2}
+              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Line Items *</label>
+              <Btn small variant="secondary" onClick={() => setManualLines((l) => [...l, emptyLine()])}>+ Add Line</Btn>
+            </div>
+            <div style={{ display: 'flex', gap: 6, fontSize: 11, fontWeight: 700, color: '#9C8E7E', marginBottom: 4, padding: '0 2px' }}>
+              <span style={{ flex: 3 }}>Description</span>
+              <span style={{ width: 70 }}>Qty</span>
+              <span style={{ width: 90 }}>Unit Price</span>
+              <span style={{ width: 28 }}></span>
+            </div>
+            {manualLines.map((line, i) => (
+              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                <input value={line.description} onChange={(e) => setManualLines((ls) => ls.map((l, j) => j === i ? { ...l, description: e.target.value } : l))}
+                  placeholder="Description" style={{ flex: 3, height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <input type="number" min="0.001" step="0.001" value={line.quantity} onChange={(e) => setManualLines((ls) => ls.map((l, j) => j === i ? { ...l, quantity: parseFloat(e.target.value) || 0 } : l))}
+                  style={{ width: 70, height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <input type="number" min="0" step="0.01" value={line.unit_price} onChange={(e) => setManualLines((ls) => ls.map((l, j) => j === i ? { ...l, unit_price: parseFloat(e.target.value) || 0 } : l))}
+                  style={{ width: 90, height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                {manualLines.length > 1 && (
+                  <button onClick={() => setManualLines((ls) => ls.filter((_, j) => j !== i))}
+                    style={{ width: 28, height: 28, border: 'none', borderRadius: 6, background: '#FEE2E2', color: '#991B1B', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                )}
+              </div>
+            ))}
+            <p style={{ fontSize: 12, color: '#6B5D4F', fontWeight: 700, textAlign: 'right', margin: '8px 0 0' }}>
+              Subtotal: MVR {manualLines.reduce((s, l) => s + (l.quantity * l.unit_price), 0).toFixed(2)}
+            </p>
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setShowManual(false)}>Cancel</Btn>
+            <Btn onClick={() => void handleManualCreate()} disabled={manualSaving}>
+              {manualSaving ? 'Creating…' : 'Create Invoice'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
       {cnInv && (
         <Modal title={`Credit Note — ${cnInv.invoice_number}`} onClose={() => setCnInv(null)} maxWidth={420}>
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>

@@ -7,7 +7,10 @@ import {
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
-  type InventoryItem, type InventoryCategory,
+  getUnitConversions, createUnitConversion, deleteUnitConversion,
+  getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
+  type InventoryItem, type InventoryCategory, type UnitConversion,
+  type InventoryPriceHistoryEntry, type CheapestSupplier,
 } from '../api';
 
 const S = {
@@ -24,7 +27,7 @@ const S = {
 
 export default function InventoryPage() {
   usePageTitle('Inventory');
-  const [tab, setTab] = useState<'stock' | 'categories'>('stock');
+  const [tab, setTab] = useState<'stock' | 'categories' | 'conversions' | 'stock-count'>('stock');
 
   // ── Stock tab ──────────────────────────────────────────────────────────────
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -89,6 +92,97 @@ export default function InventoryPage() {
 
   useEffect(() => { if (tab === 'categories') void loadCats(); }, [tab]);
 
+  // ── Unit Conversions tab ───────────────────────────────────────────────────
+  const [conversions, setConversions] = useState<UnitConversion[]>([]);
+  const [convLoading, setConvLoading] = useState(false);
+  const [convError, setConvError] = useState('');
+  const [convForm, setConvForm] = useState({ from_unit: '', to_unit: '', factor: '' });
+  const [convSaving, setConvSaving] = useState(false);
+
+  const loadConversions = async () => {
+    setConvLoading(true);
+    try { const r = await getUnitConversions(); setConversions(r.conversions); }
+    catch (e) { setConvError((e as Error).message); }
+    finally { setConvLoading(false); }
+  };
+
+  useEffect(() => { if (tab === 'conversions') void loadConversions(); }, [tab]);
+
+  const handleAddConversion = async () => {
+    const f = parseFloat(convForm.factor);
+    if (!convForm.from_unit.trim() || !convForm.to_unit.trim() || isNaN(f) || f <= 0) {
+      setConvError('All fields are required and factor must be > 0.'); return;
+    }
+    setConvSaving(true); setConvError('');
+    try {
+      await createUnitConversion({ from_unit: convForm.from_unit.trim(), to_unit: convForm.to_unit.trim(), factor: f });
+      setConvForm({ from_unit: '', to_unit: '', factor: '' });
+      void loadConversions();
+    } catch (e) { setConvError((e as Error).message); }
+    finally { setConvSaving(false); }
+  };
+
+  const handleDeleteConversion = async (id: number) => {
+    try { await deleteUnitConversion(id); void loadConversions(); }
+    catch (e) { setConvError((e as Error).message); }
+  };
+
+  // ── Price History drawer ───────────────────────────────────────────────────
+  const [priceHistoryItem, setPriceHistoryItem] = useState<InventoryItem | null>(null);
+  const [priceHistory, setPriceHistory] = useState<InventoryPriceHistoryEntry[]>([]);
+  const [cheapestSupplier, setCheapestSupplier] = useState<CheapestSupplier | null | undefined>(undefined);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const openPriceHistory = async (item: InventoryItem) => {
+    setPriceHistoryItem(item);
+    setHistoryLoading(true);
+    try {
+      const [histRes, cheapRes] = await Promise.all([
+        getInventoryPriceHistory(item.id),
+        getInventoryCheapestSupplier(item.id),
+      ]);
+      setPriceHistory(histRes.history);
+      setCheapestSupplier(cheapRes.supplier);
+    } catch (e) { setConvError((e as Error).message); }
+    finally { setHistoryLoading(false); }
+  };
+
+  // ── Stock Count tab ────────────────────────────────────────────────────────
+  const [countItems, setCountItems] = useState<InventoryItem[]>([]);
+  const [countQtys, setCountQtys] = useState<Record<number, string>>({});
+  const [countNotes, setCountNotes] = useState<Record<number, string>>({});
+  const [countLoading, setCountLoading] = useState(false);
+  const [countSaving, setCountSaving] = useState(false);
+  const [countResult, setCountResult] = useState<{ item_id: number; difference: number; balance_after: number }[] | null>(null);
+  const [countError, setCountError] = useState('');
+
+  const loadCountItems = async () => {
+    setCountLoading(true);
+    try {
+      const r = await fetchInventoryItems({ per_page: 200 } as Parameters<typeof fetchInventoryItems>[0]);
+      setCountItems(r.data);
+      const qtys: Record<number, string> = {};
+      r.data.forEach((i) => { qtys[i.id] = String(i.quantity_on_hand ?? ''); });
+      setCountQtys(qtys);
+    } catch (e) { setCountError((e as Error).message); }
+    finally { setCountLoading(false); }
+  };
+
+  useEffect(() => { if (tab === 'stock-count') void loadCountItems(); }, [tab]);
+
+  const handleSubmitCount = async () => {
+    const counts = countItems
+      .filter((i) => countQtys[i.id] !== '' && countQtys[i.id] !== undefined)
+      .map((i) => ({ inventory_item_id: i.id, quantity: parseFloat(countQtys[i.id] ?? '0'), notes: countNotes[i.id] }));
+    if (!counts.length) { setCountError('No counts entered.'); return; }
+    setCountSaving(true); setCountError('');
+    try {
+      const res = await submitStockCount(counts);
+      setCountResult(res.adjustments);
+    } catch (e) { setCountError((e as Error).message); }
+    finally { setCountSaving(false); }
+  };
+
   const openCatModal = (cat?: InventoryCategory) => {
     setEditCat(cat ?? null);
     setCatName(cat?.name ?? '');
@@ -119,9 +213,11 @@ export default function InventoryPage() {
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
         <button style={S.tab(tab === 'stock')} onClick={() => setTab('stock')}>Stock</button>
         <button style={S.tab(tab === 'categories')} onClick={() => setTab('categories')}>Categories</button>
+        <button style={S.tab(tab === 'conversions')} onClick={() => setTab('conversions')}>Unit Conversions</button>
+        <button style={S.tab(tab === 'stock-count')} onClick={() => setTab('stock-count')}>Stock Count</button>
       </div>
 
       {/* ── Stock Tab ── */}
@@ -178,11 +274,14 @@ export default function InventoryPage() {
                         <Badge color={isLow ? 'red' : 'green'}>{isLow ? 'Low Stock' : 'OK'}</Badge>
                       </td>
                       <td style={TD}>
-                        <Btn small variant="secondary" onClick={() => {
-                          setAdjustItem(item);
-                          setAdjForm({ type: 'add', quantity: '', reason: '' });
-                          setAdjError('');
-                        }}>Adjust</Btn>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <Btn small variant="secondary" onClick={() => {
+                            setAdjustItem(item);
+                            setAdjForm({ type: 'add', quantity: '', reason: '' });
+                            setAdjError('');
+                          }}>Adjust</Btn>
+                          <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -269,6 +368,154 @@ export default function InventoryPage() {
             <Btn variant="secondary" onClick={() => setCatModal(false)}>Cancel</Btn>
             <Btn onClick={handleSaveCat} disabled={catSaving}>{catSaving ? 'Saving…' : 'Save'}</Btn>
           </ModalActions>
+        </Modal>
+      )}
+
+      {/* ── Unit Conversions Tab ── */}
+      {tab === 'conversions' && (
+        <div>
+          {convError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{convError}</p>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 20, background: '#F9F5F0', padding: 16, borderRadius: 12 }}>
+            {(['from_unit', 'to_unit', 'factor'] as const).map((k) => (
+              <div key={k}>
+                <label style={S.label}>{k === 'from_unit' ? 'From Unit' : k === 'to_unit' ? 'To Unit' : 'Factor'}</label>
+                <input value={convForm[k]} onChange={(e) => setConvForm((f) => ({ ...f, [k]: e.target.value }))}
+                  type={k === 'factor' ? 'number' : 'text'} min="0.000001" step="0.001"
+                  placeholder={k === 'factor' ? '1.0' : k === 'from_unit' ? 'kg' : 'g'}
+                  style={S.input} />
+              </div>
+            ))}
+            <Btn onClick={() => void handleAddConversion()} disabled={convSaving}>{convSaving ? '…' : '+ Add'}</Btn>
+          </div>
+          {convLoading ? <p style={{ color: '#9C8E7E', fontSize: 13 }}>Loading…</p> : conversions.length === 0 ? (
+            <EmptyState message="No conversions defined." />
+          ) : (
+            <TableCard>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  <th style={TH}>From</th><th style={TH}>To</th><th style={TH}>Factor</th><th style={TH}></th>
+                </tr></thead>
+                <tbody>
+                  {conversions.map((c) => (
+                    <tr key={c.id}>
+                      <td style={TD}>{c.from_unit}</td>
+                      <td style={TD}>{c.to_unit}</td>
+                      <td style={TD}>{c.factor}</td>
+                      <td style={TD}><Btn small variant="danger" onClick={() => void handleDeleteConversion(c.id)}>Delete</Btn></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableCard>
+          )}
+        </div>
+      )}
+
+      {/* ── Stock Count Tab ── */}
+      {tab === 'stock-count' && (
+        <div>
+          {countError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{countError}</p>}
+          {countResult ? (
+            <div>
+              <div style={{ background: '#DCFCE7', color: '#166534', padding: '12px 16px', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
+                ✓ Stock count submitted. {countResult.filter(r => r.difference !== 0).length} adjustments made.
+              </div>
+              <TableCard>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr><th style={TH}>Item</th><th style={TH}>Variance</th><th style={TH}>New Balance</th></tr></thead>
+                  <tbody>
+                    {countResult.map((r) => (
+                      <tr key={r.item_id}>
+                        <td style={TD}>{countItems.find(i => i.id === r.item_id)?.name ?? `#${r.item_id}`}</td>
+                        <td style={{ ...TD, color: r.difference > 0 ? '#15803D' : r.difference < 0 ? '#991B1B' : '#9C8E7E', fontWeight: 700 }}>
+                          {r.difference > 0 ? '+' : ''}{r.difference}
+                        </td>
+                        <td style={TD}>{r.balance_after}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableCard>
+              <Btn variant="secondary" onClick={() => { setCountResult(null); void loadCountItems(); }} style={{ marginTop: 16 }}>New Count</Btn>
+            </div>
+          ) : countLoading ? <p style={{ color: '#9C8E7E', fontSize: 13 }}>Loading items…</p> : (
+            <div>
+              <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+                Enter the actual counted quantities. Leave blank to skip an item.
+              </p>
+              <TableCard>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr>
+                    <th style={TH}>Item</th><th style={TH}>Unit</th>
+                    <th style={TH}>On Hand</th><th style={TH}>Counted Qty</th><th style={TH}>Notes</th>
+                  </tr></thead>
+                  <tbody>
+                    {countItems.map((item) => (
+                      <tr key={item.id}>
+                        <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
+                        <td style={TD}>{item.unit}</td>
+                        <td style={{ ...TD, color: '#9C8E7E' }}>{item.quantity_on_hand ?? '—'}</td>
+                        <td style={TD}>
+                          <input type="number" min="0" step="0.001"
+                            value={countQtys[item.id] ?? ''}
+                            onChange={(e) => setCountQtys((q) => ({ ...q, [item.id]: e.target.value }))}
+                            style={{ width: 90, padding: '5px 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
+                        </td>
+                        <td style={TD}>
+                          <input value={countNotes[item.id] ?? ''}
+                            onChange={(e) => setCountNotes((n) => ({ ...n, [item.id]: e.target.value }))}
+                            placeholder="Optional note"
+                            style={{ width: 160, padding: '5px 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableCard>
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                <Btn onClick={() => void handleSubmitCount()} disabled={countSaving}>
+                  {countSaving ? 'Submitting…' : '✓ Submit Stock Count'}
+                </Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Price History Modal ── */}
+      {priceHistoryItem && (
+        <Modal title={`Price History — ${priceHistoryItem.name}`} onClose={() => setPriceHistoryItem(null)} maxWidth={560}>
+          {historyLoading ? <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading…</p> : (
+            <>
+              {cheapestSupplier && (
+                <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
+                  💰 Cheapest supplier: <strong>{cheapestSupplier.name}</strong> at MVR {cheapestSupplier.min_cost.toFixed(2)}
+                </div>
+              )}
+              {priceHistory.length === 0 ? (
+                <p style={{ color: '#9C8E7E', textAlign: 'center', padding: 20, fontSize: 13 }}>No purchase history.</p>
+              ) : (
+                <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead><tr>
+                      <th style={TH}>Date</th><th style={TH}>Supplier</th>
+                      <th style={TH}>Qty</th><th style={TH}>Unit Cost</th>
+                    </tr></thead>
+                    <tbody>
+                      {priceHistory.map((h, i) => (
+                        <tr key={i}>
+                          <td style={TD}>{h.purchase_date ?? '—'}</td>
+                          <td style={TD}>{h.supplier ?? '—'}</td>
+                          <td style={TD}>{h.quantity}</td>
+                          <td style={{ ...TD, fontWeight: 600 }}>MVR {h.unit_cost.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
         </Modal>
       )}
     </div>

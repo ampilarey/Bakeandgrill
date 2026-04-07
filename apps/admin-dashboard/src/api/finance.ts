@@ -116,6 +116,30 @@ export async function pushInvoiceToXero(id: number): Promise<{ message: string }
   return req(`/xero/invoices/${id}/push`, { method: 'POST' });
 }
 
+export interface ManualInvoiceLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  unit?: string;
+  tax_rate_bp?: number;
+}
+
+export async function createInvoice(data: {
+  type: 'sale' | 'purchase' | 'credit_note';
+  recipient_name?: string;
+  recipient_phone?: string;
+  recipient_email?: string;
+  recipient_address?: string;
+  issue_date: string;
+  due_date?: string;
+  tax_rate_bp?: number;
+  notes?: string;
+  terms?: string;
+  items: ManualInvoiceLineItem[];
+}): Promise<{ invoice: Invoice }> {
+  return req('/invoices', { method: 'POST', body: JSON.stringify(data) });
+}
+
 // ── Expenses ──────────────────────────────────────────────────────────────────
 
 export type ExpenseCategory = { id: number; name: string; icon: string; slug: string };

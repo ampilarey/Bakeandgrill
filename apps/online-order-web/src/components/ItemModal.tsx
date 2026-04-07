@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
-import type { Item, Modifier } from '../api';
+import { useEffect, useRef, useState } from 'react';
+import { getItemReviews, getItemPhotos, API_ORIGIN } from '../api';
+import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 
 type Props = {
   item: Item;
@@ -15,6 +16,20 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
 
   const modifierTotal = selectedModifiers.reduce((s, m) => s + Number(m.price), 0);
   const totalPrice = Number(item.base_price) + modifierTotal;
+
+  const [reviews, setReviews] = useState<ItemReview[]>([]);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [photos, setPhotos] = useState<ItemPhoto[]>([]);
+  const [activePhoto, setActivePhoto] = useState(0);
+
+  useEffect(() => {
+    getItemReviews(item.id)
+      .then((res) => { setReviews(res.data?.slice(0, 5) ?? []); setAvgRating(res.avg_rating ?? null); })
+      .catch(() => {});
+    getItemPhotos(item.id)
+      .then((res) => setPhotos(res.photos ?? []))
+      .catch(() => {});
+  }, [item.id]);
 
   // Auto-focus close button and trap focus within modal (BUG-09)
   useEffect(() => {
@@ -78,10 +93,45 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
           </button>
         </div>
 
+        {/* Photo gallery */}
+        {photos.length > 0 && (
+          <div style={{ marginBottom: '1.25rem' }}>
+            <div style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '16/9', background: '#F9F5F0', position: 'relative' }}>
+              <img
+                src={photos[activePhoto].url.startsWith('http') ? photos[activePhoto].url : `${API_ORIGIN}${photos[activePhoto].url.startsWith('/') ? '' : '/'}${photos[activePhoto].url}`}
+                alt={item.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              {photos.length > 1 && (
+                <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
+                  {photos.map((_, i) => (
+                    <button key={i} onClick={() => setActivePhoto(i)}
+                      style={{ width: i === activePhoto ? 16 : 8, height: 8, borderRadius: 99, border: 'none', background: i === activePhoto ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: 0, transition: 'all 0.2s' }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {item.description && (
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
             {item.description}
           </p>
+        )}
+
+        {/* Rating summary */}
+        {avgRating !== null && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: 2 }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span key={i} style={{ fontSize: 14, color: i < Math.round(avgRating) ? '#F59E0B' : '#D1D5DB' }}>★</span>
+              ))}
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
+              {avgRating.toFixed(1)} ({reviews.length} review{reviews.length !== 1 ? 's' : ''})
+            </span>
+          </div>
         )}
 
         {/* Modifiers */}
@@ -150,6 +200,28 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
         >
           Add to Cart — MVR {totalPrice.toFixed(2)}
         </button>
+
+        {/* Customer reviews */}
+        {reviews.length > 0 && (
+          <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
+            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 0.75rem' }}>Customer Reviews</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: 200, overflowY: 'auto' }}>
+              {reviews.map((rv) => (
+                <div key={rv.id} style={{ background: 'var(--color-surface-alt)', borderRadius: 10, padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} style={{ fontSize: 11, color: i < rv.rating ? '#F59E0B' : '#D1D5DB' }}>★</span>
+                    ))}
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 4 }}>
+                      {new Date(rv.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {rv.comment && <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{rv.comment}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
