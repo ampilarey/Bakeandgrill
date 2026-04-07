@@ -117,7 +117,7 @@ function ReservationsList() {
       {confirmAction && (
         <div style={{ background: '#FEF2F2', border: '1.5px solid #ef4444', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 10 }}>
-            Mark reservation as <strong>{confirmAction.status.replace('_', ' ')}</strong>? This cannot be reversed.
+            Mark reservation as <strong>{confirmAction.status.split('_').join(' ')}</strong>? This cannot be reversed.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn small variant="danger" onClick={() => void confirmAndExecute()}>Confirm</Btn>
@@ -137,7 +137,7 @@ function ReservationsList() {
           >
             <option value="">All Statuses</option>
             {['pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'].map((s) => (
-              <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+              <option key={s} value={s}>{s.split('_').join(' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
             ))}
           </select>
         </div>
@@ -183,7 +183,7 @@ function ReservationsList() {
                   <td style={{ ...TD, whiteSpace: 'nowrap' }}>{r.time_slot}</td>
                   <td style={TD}>{r.table?.name ?? '—'}</td>
                   <td style={TD}>
-                    <Badge label={r.status.replace('_', ' ')} color={STATUS_COLOR[r.status] ?? 'gray'} />
+                    <Badge label={r.status.split('_').join(' ')} color={STATUS_COLOR[r.status] ?? 'gray'} />
                   </td>
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -194,7 +194,7 @@ function ReservationsList() {
                           variant={ns === 'cancelled' || ns === 'no_show' ? 'danger' : 'secondary'}
                           onClick={() => handleStatus(r.id, ns)}
                         >
-                          {ns.replace('_', ' ')}
+                          {ns.split('_').join(' ')}
                         </Btn>
                       ))}
                     </div>
@@ -369,7 +369,7 @@ function ReservationSettingsTab() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Btn onClick={() => void handleSave()} disabled={saving}>
+        <Btn onClick={() => void handleSave()} disabled={saving || loading}>
           {saving ? 'Saving…' : 'Save Settings'}
         </Btn>
       </div>

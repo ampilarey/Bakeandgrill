@@ -81,6 +81,12 @@ export function ForecastPage() {
     finally { setItemLoading(false); }
   };
 
+  // Re-run item forecast when days slider changes (only if an item is already selected)
+  useEffect(() => {
+    if (selectedItem) void handleItemForecast(selectedItem);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemForecastDays]);
+
   const filteredItems = menuItems.filter((i) =>
     !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()),
   );

@@ -44,7 +44,7 @@ export function DeliveryPage() {
     try {
       const res = await fetchOrders({ type: 'delivery', page: p, per_page: 30 });
       setOrders(res.data);
-      setLastPage((res as unknown as { last_page?: number }).last_page ?? 1);
+      setLastPage(res.meta?.last_page ?? (res as unknown as { last_page?: number }).last_page ?? 1);
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -57,7 +57,7 @@ export function DeliveryPage() {
     try {
       const res = await adminRequest<{ drivers: Driver[] }>('/delivery/drivers');
       setDrivers(res.drivers);
-    } catch (e: unknown) { console.error('Failed to load drivers', e); }
+    } catch (e: unknown) { setError((e as Error).message); }
   };
 
   useEffect(() => {
@@ -430,7 +430,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
       await adminRequest(`/delivery/drivers/${id}`, { method: 'DELETE' });
       onRefresh();
     } catch (e: unknown) {
-      console.error('Failed to delete driver', e);
+      setError((e as Error).message);
     }
   };
 
