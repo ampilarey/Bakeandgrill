@@ -58,7 +58,11 @@ function saveCart(cart: CartEntry[]): void {
       modifiers: e.modifiers,
     })),
   };
-  localStorage.setItem(CART_KEY, JSON.stringify(stored));
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(stored));
+  } catch {
+    // QuotaExceededError or Safari private mode — cart stays in memory only
+  }
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {

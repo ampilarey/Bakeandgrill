@@ -286,7 +286,7 @@ export function AccountPage() {
     const c = colors[s] ?? { bg: '#F3F4F6', color: '#374151' };
     return (
       <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: c.bg, color: c.color, textTransform: 'capitalize' }}>
-        {s.replace('_', ' ')}
+        {s.split('_').join(' ')}
       </span>
     );
   };

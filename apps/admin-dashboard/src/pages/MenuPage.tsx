@@ -693,6 +693,7 @@ export function MenuPage() {
       )}
       {editingCat && (
         <CategoryFormModal
+          key={editingCat.id}
           initial={{
             name: editingCat.name, name_dv: editingCat.name_dv ?? '',
             description: editingCat.description ?? '', image_url: editingCat.image_url ?? '',
@@ -715,6 +716,7 @@ export function MenuPage() {
       )}
       {editingItem && (
         <ItemFormModal
+          key={editingItem.id}
           initial={itemToForm(editingItem)}
           title={`Edit: ${editingItem.name}`}
           categories={categories}
@@ -774,7 +776,7 @@ export function MenuPage() {
               )}
               {barcodeLabel.sku && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#9C8E7E' }}>SKU: {barcodeLabel.sku}</p>}
               <p style={{ margin: 0, fontWeight: 700, fontSize: 20, color: '#D4813A' }}>
-                MVR {(barcodeLabel.price / 100).toFixed(2)}
+                MVR {Number(barcodeLabel.price).toFixed(2)}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>

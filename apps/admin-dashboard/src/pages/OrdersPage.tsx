@@ -15,9 +15,11 @@ const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'payment_pending', label: 'Awaiting Payment' },
   { value: 'pending', label: 'Pending' },
-  { value: 'preparing', label: 'Preparing' },
-  { value: 'ready', label: 'Ready' },
   { value: 'paid', label: 'Paid' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'preparing', label: 'Preparing' },
+  { value: 'held', label: 'On Hold' },
+  { value: 'ready', label: 'Ready' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
@@ -147,27 +149,27 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
 
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {order.status === 'pending' && (
+              {['pending', 'paid'].includes(order.status) && (
                 <Btn small onClick={() => doAction('start', () => kdsStart(order.id), 'Start preparing')}>
                   {acting === 'start' ? '…' : '▶ Start Preparing'}
                 </Btn>
               )}
-              {order.status === 'preparing' && (
+              {['preparing', 'in_progress'].includes(order.status) && (
                 <Btn small onClick={() => doAction('bump', () => kdsBump(order.id), 'Mark ready')}>
                   {acting === 'bump' ? '…' : '✓ Mark Ready'}
                 </Btn>
               )}
-              {order.status === 'on_hold' && (
+              {order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
                   {acting === 'resume' ? '…' : '▶ Resume Order'}
                 </Btn>
               )}
-              {['pending', 'preparing', 'ready'].includes(order.status) && (
+              {['pending', 'paid', 'preparing', 'in_progress', 'ready'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => doAction('hold', () => holdOrder(order.id), 'Order held')}>
                   {acting === 'hold' ? '…' : '⏸ Hold'}
                 </Btn>
               )}
-              {order.type === 'dine_in' && ['ready', 'preparing'].includes(order.status) && (
+              {order.type === 'dine_in' && ['ready', 'preparing', 'in_progress'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => doAction('bill', () => sendOrderBill(order.id), 'Bill sent')}>
                   {acting === 'bill' ? '…' : '🧾 Send Bill'}
                 </Btn>

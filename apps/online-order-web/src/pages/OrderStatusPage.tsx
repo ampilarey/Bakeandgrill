@@ -291,20 +291,10 @@ export function OrderStatusPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentState]);
 
-  // Clear cart once the order has a confirmed/paid status —
-  // covers the case where the user arrives via SMS tracking link (?tok=)
-  // after a successful payment redirect, without the ?payment=CONFIRMED param.
-  useEffect(() => {
-    if (
-      order &&
-      ['pending', 'paid', 'preparing', 'ready', 'completed'].includes(order.status) &&
-      !cartClearedRef.current
-    ) {
-      cartClearedRef.current = true;
-      clearCart();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.status]);
+  // Clear cart only when this page is the direct result of a payment redirect
+  // (i.e. ?payment=CONFIRMED is in the URL). Clearing on any active-status order
+  // would wipe a new cart if the user follows an old SMS tracking link.
+  // The ?payment=CONFIRMED effect above already handles the normal checkout flow.
 
   useEffect(() => { void loadOrder(); }, [loadOrder]);
 
