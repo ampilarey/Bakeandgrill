@@ -39,7 +39,7 @@ export default function PrintJobsPage() {
   const [toast, setToast] = useState('');
 
   const stats = {
-    total:   jobs.length,
+    total:   meta.total,
     pending: jobs.filter((j) => j.status === 'pending').length,
     failed:  jobs.filter((j) => j.status === 'failed').length,
     printed: jobs.filter((j) => j.status === 'printed').length,

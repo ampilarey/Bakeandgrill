@@ -119,11 +119,22 @@ class ReservationController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $customerId = $request->user()?->tokenCan('customer')
-            ? $request->user()->id
-            : null;
+        $isCustomer = $request->user()?->tokenCan('customer');
+        $isStaff    = $request->user()?->tokenCan('staff');
 
-        $this->service->cancel($id, $customerId);
+        if ($isCustomer) {
+            $customerId = $request->user()->id;
+        } elseif ($isStaff) {
+            // Staff must have reservations.manage permission to cancel any booking
+            if (! $request->user()->hasPermission('reservations.manage')) {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+            $customerId = null; // bypass ownership check — staff acting on behalf
+        } else {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $this->service->cancel($id, $customerId, $isStaff);
 
         return response()->json(['message' => 'Reservation cancelled.']);
     }

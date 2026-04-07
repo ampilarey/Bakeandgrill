@@ -155,11 +155,14 @@ export function useCheckout() {
           }));
         }
       })
-      .catch(() => {
+      .catch((e: Error) => {
         if (!cancelled) {
-          // Token may be expired — clear it and signal the app to re-authenticate
-          localStorage.removeItem('online_token');
-          window.dispatchEvent(new CustomEvent('auth_change'));
+          // Only clear token on 401 (expired/invalid). Transient network errors
+          // should not log the user out.
+          if (e.message.includes('401') || e.message.toLowerCase().includes('unauthenticated')) {
+            localStorage.removeItem('online_token');
+            window.dispatchEvent(new CustomEvent('auth_change'));
+          }
         }
       });
 
@@ -264,7 +267,12 @@ export function useCheckout() {
 
   const handleRemoveGiftCard = async () => {
     if (token && pendingOrderId && giftCardApplied && !giftCardApplied.pending) {
-      try { await removeGiftCard(token, pendingOrderId); } catch { /* ignore */ }
+      try {
+        await removeGiftCard(token, pendingOrderId);
+      } catch (e) {
+        setGiftCardError((e as Error).message);
+        return;
+      }
     }
     setGiftCardApplied(null);
     setGiftCardCode("");
@@ -301,7 +309,12 @@ export function useCheckout() {
 
   const handleRemoveFriendReferral = async () => {
     if (token && pendingOrderId && friendReferralApplied && !friendReferralApplied.pending) {
-      try { await removeReferralFromOrder(token, pendingOrderId); } catch { /* ignore */ }
+      try {
+        await removeReferralFromOrder(token, pendingOrderId);
+      } catch (e) {
+        setFriendReferralError((e as Error).message);
+        return;
+      }
     }
     setFriendReferralApplied(null);
     setFriendReferralCode("");
@@ -311,7 +324,10 @@ export function useCheckout() {
     if (token && pendingOrderId && promoApplied?.promotionId && !promoApplied.pending) {
       try {
         await removePromoCode(token, pendingOrderId, promoApplied.promotionId);
-      } catch { /* ignore — UI state cleared regardless */ }
+      } catch (e) {
+        setPromoError((e as Error).message);
+        return;
+      }
     }
     setPromoApplied(null);
     setPromoCode("");

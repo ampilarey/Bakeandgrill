@@ -17,6 +17,7 @@ use App\Models\Payment;
 use App\Models\Shift;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ShiftController extends Controller
 {

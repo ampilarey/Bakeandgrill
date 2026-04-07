@@ -270,14 +270,22 @@ class ItemController extends Controller
     {
         $request->validate(['item_ids' => 'required|array|max:50', 'item_ids.*' => 'integer']);
         $isStaff = $request->user()?->tokenCan('staff');
-        $columns = $isStaff
-            ? ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold']
-            : ['id', 'name', 'stock_quantity', 'track_stock', 'availability_type'];
 
         $items = Item::whereIn('id', $request->input('item_ids', []))
-            ->select($columns)
+            ->select(['id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold'])
             ->get();
 
-        return response()->json(['items' => $items]);
+        if ($isStaff) {
+            return response()->json(['items' => $items]);
+        }
+
+        // Public/customer callers receive availability booleans only — no raw stock counts
+        $public = $items->map(fn($item) => [
+            'id'           => $item->id,
+            'is_available' => $item->availability_type !== 'unavailable'
+                && (!$item->track_stock || $item->stock_quantity > 0),
+        ]);
+
+        return response()->json(['items' => $public]);
     }
 }

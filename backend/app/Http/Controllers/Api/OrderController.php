@@ -149,15 +149,16 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
-        $order = Order::findOrFail($id);
-        if ($order->status === 'completed') {
-            return response()->json(['message' => 'Completed orders cannot be held.'], 422);
-        }
-
-        $oldStatus = $order->status;
-        $order->update(['status' => 'held', 'held_at' => now()]);
-
-        app(AuditLogService::class)->log('order.held', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'held'], [], $request);
+        $order = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+            if ($order->status === 'completed') {
+                abort(422, 'Completed orders cannot be held.');
+            }
+            $oldStatus = $order->status;
+            $order->update(['status' => 'held', 'held_at' => now()]);
+            app(AuditLogService::class)->log('order.held', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'held'], [], $request);
+            return $order;
+        });
 
         return response()->json(['order' => $order]);
     }
@@ -168,15 +169,16 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
-        $order = Order::findOrFail($id);
-        if ($order->status !== 'held') {
-            return response()->json(['message' => 'Only held orders can be resumed.'], 422);
-        }
-
-        $oldStatus = $order->status;
-        $order->update(['status' => 'pending', 'held_at' => null]);
-
-        app(AuditLogService::class)->log('order.resumed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'pending'], [], $request);
+        $order = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+            if ($order->status !== 'held') {
+                abort(422, 'Only held orders can be resumed.');
+            }
+            $oldStatus = $order->status;
+            $order->update(['status' => 'pending', 'held_at' => null]);
+            app(AuditLogService::class)->log('order.resumed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'pending'], [], $request);
+            return $order;
+        });
 
         return response()->json(['order' => $order]);
     }

@@ -114,20 +114,21 @@ class ReservationService
         return $reservation->fresh();
     }
 
-    public function cancel(int $id, ?int $requestingCustomerId = null): void
+    public function cancel(int $id, ?int $requestingCustomerId = null, bool $isStaff = false): void
     {
         $reservation = $this->reservations->findById($id);
 
         if (!$reservation) {
-            throw new \InvalidArgumentException("Reservation #{$id} not found.");
+            abort(404, "Reservation #{$id} not found.");
         }
 
-        if ($requestingCustomerId !== null && $reservation->customer_id !== $requestingCustomerId) {
-            throw new \RuntimeException('Not authorised to cancel this reservation.');
+        // Customers may only cancel their own reservations; staff bypass ownership check
+        if (!$isStaff && $requestingCustomerId !== null && $reservation->customer_id !== $requestingCustomerId) {
+            abort(403, 'Not authorised to cancel this reservation.');
         }
 
         if (in_array($reservation->status, ['completed', 'no_show'], true)) {
-            throw new \RuntimeException('Cannot cancel a completed or no-show reservation.');
+            abort(422, 'Cannot cancel a completed or no-show reservation.');
         }
 
         $this->reservations->updateStatus($id, 'cancelled');
