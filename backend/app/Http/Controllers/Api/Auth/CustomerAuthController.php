@@ -180,16 +180,16 @@ class CustomerAuthController extends Controller
             }
         }
 
-        $key = 'otp-request:' . $phone;
+        $key = 'otp-request:login:' . $phone;
 
-        if (RateLimiter::tooManyAttempts($key, 3)) {
+        if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
                 'phone' => ['Too many OTP requests. Please try again in ' . ceil($seconds / 60) . ' minutes.'],
             ]);
         }
 
-        RateLimiter::hit($key, 3600);
+        RateLimiter::hit($key, 1800);
 
         $otpCode = $this->sendOtp($phone, $purpose);
 
@@ -323,16 +323,16 @@ class CustomerAuthController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        $key = 'otp-request:' . $phone;
+        $key = 'otp-request:reset:' . $phone;
 
-        if (RateLimiter::tooManyAttempts($key, 3)) {
+        if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
                 'phone' => ['Too many requests. Please try again in ' . ceil($seconds / 60) . ' minutes.'],
             ]);
         }
 
-        RateLimiter::hit($key, 3600);
+        RateLimiter::hit($key, 1800);
 
         $otpCode = $this->sendOtp($phone, 'reset_password');
 
