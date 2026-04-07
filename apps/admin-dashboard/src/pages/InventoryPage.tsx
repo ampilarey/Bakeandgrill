@@ -132,9 +132,13 @@ export default function InventoryPage() {
   const [priceHistory, setPriceHistory] = useState<InventoryPriceHistoryEntry[]>([]);
   const [cheapestSupplier, setCheapestSupplier] = useState<CheapestSupplier | null | undefined>(undefined);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
 
   const openPriceHistory = async (item: InventoryItem) => {
     setPriceHistoryItem(item);
+    setPriceHistory([]);
+    setCheapestSupplier(undefined);
+    setHistoryError('');
     setHistoryLoading(true);
     try {
       const [histRes, cheapRes] = await Promise.all([
@@ -143,7 +147,7 @@ export default function InventoryPage() {
       ]);
       setPriceHistory(histRes.history);
       setCheapestSupplier(cheapRes.supplier);
-    } catch (e) { setConvError((e as Error).message); }
+    } catch (e) { setHistoryError((e as Error).message); }
     finally { setHistoryLoading(false); }
   };
 
@@ -159,10 +163,18 @@ export default function InventoryPage() {
   const loadCountItems = async () => {
     setCountLoading(true);
     try {
-      const r = await fetchInventoryItems({ per_page: 200 } as Parameters<typeof fetchInventoryItems>[0]);
-      setCountItems(r.data);
+      // Paginate through all inventory items (API doesn't support per_page override)
+      const allItems: InventoryItem[] = [];
+      let page = 1;
+      while (true) {
+        const r = await fetchInventoryItems({ page });
+        allItems.push(...r.data);
+        if (r.meta.current_page >= r.meta.last_page) break;
+        page++;
+      }
+      setCountItems(allItems);
       const qtys: Record<number, string> = {};
-      r.data.forEach((i) => { qtys[i.id] = String(i.quantity_on_hand ?? ''); });
+      allItems.forEach((i) => { qtys[i.id] = String(i.quantity_on_hand ?? ''); });
       setCountQtys(qtys);
     } catch (e) { setCountError((e as Error).message); }
     finally { setCountLoading(false); }
@@ -485,6 +497,7 @@ export default function InventoryPage() {
       {/* ── Price History Modal ── */}
       {priceHistoryItem && (
         <Modal title={`Price History — ${priceHistoryItem.name}`} onClose={() => setPriceHistoryItem(null)} maxWidth={560}>
+          {historyError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{historyError}</p>}
           {historyLoading ? <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading…</p> : (
             <>
               {cheapestSupplier && (

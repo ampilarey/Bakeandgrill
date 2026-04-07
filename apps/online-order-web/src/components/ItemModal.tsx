@@ -23,8 +23,12 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
   const [activePhoto, setActivePhoto] = useState(0);
 
   useEffect(() => {
+    setPhotos([]);
+    setActivePhoto(0);
+    setReviews([]);
+    setAvgRating(null);
     getItemReviews(item.id)
-      .then((res) => { setReviews(res.data?.slice(0, 5) ?? []); setAvgRating(res.avg_rating ?? null); })
+      .then((res) => { setReviews(res.reviews?.slice(0, 5) ?? []); setAvgRating(res.average_rating ?? null); })
       .catch(() => {});
     getItemPhotos(item.id)
       .then((res) => setPhotos(res.photos ?? []))

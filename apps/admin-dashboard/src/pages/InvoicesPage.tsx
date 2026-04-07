@@ -464,7 +464,6 @@ export function InvoicesPage() {
         </Modal>
       )}
 
-      {/* Credit Note Modal */}
       {/* Manual Invoice Modal */}
       {showManual && (
         <Modal title="New Invoice" onClose={() => setShowManual(false)} maxWidth={600}>

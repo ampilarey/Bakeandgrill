@@ -71,8 +71,9 @@ export function OrderHistoryPage() {
       const payload = await getReorderPayload(token, orderId);
       let added = 0;
       for (const line of payload.items) {
-        const item = { id: line.item_id, name: line.name, base_price: line.price } as Parameters<typeof addItem>[0];
-        const mods = (line.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: m.price })) as Parameters<typeof addItem>[2];
+        // Backend returns item_name / unit_price
+        const item = { id: line.item_id, name: line.item_name ?? line.name, base_price: line.unit_price ?? line.price } as Parameters<typeof addItem>[0];
+        const mods = (line.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: m.price ?? 0 })) as Parameters<typeof addItem>[2];
         addItem(item, line.quantity, mods);
         added += line.quantity;
       }

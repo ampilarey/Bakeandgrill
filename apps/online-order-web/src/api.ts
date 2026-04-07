@@ -728,7 +728,8 @@ export async function getMyReviews(token: string): Promise<{ data: CustomerRevie
 // ── Reorder ───────────────────────────────────────────────────────────────────
 
 export interface ReorderPayload {
-  items: { item_id: number; quantity: number; name: string; price: number; modifiers: { id: number; name: string; price: number }[] }[];
+  items: { item_id: number; quantity: number; item_name: string; unit_price: number; name?: string; price?: number; modifiers: { id: number; name: string; price: number }[] }[];
+  original_type?: string;
 }
 
 export async function getReorderPayload(token: string, orderId: number): Promise<ReorderPayload> {
@@ -768,7 +769,7 @@ export interface ItemReview {
   created_at: string;
 }
 
-export async function getItemReviews(itemId: number): Promise<{ data: ItemReview[]; avg_rating: number | null; count: number }> {
+export async function getItemReviews(itemId: number): Promise<{ reviews: ItemReview[]; average_rating: number | null; review_count: number }> {
   return request(`/items/${itemId}/reviews`);
 }
 
