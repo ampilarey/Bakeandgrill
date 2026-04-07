@@ -403,20 +403,23 @@ export async function createPurchaseFromSuggest(data: {
   return req('/purchases/from-suggest', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export type SuggestionItem = {
+  inventory_item_id: number;
+  name: string;
+  unit: string;
+  current_stock: number;
+  reorder_point: number;
+  suggested_quantity: number;
+  last_unit_cost: number | null;
+  suggested_supplier: { id: number; name: string; price: number } | null;
+};
+
 export type PurchaseSuggestions = {
-  items: {
-    inventory_item_id: number;
-    name: string;
-    unit: string;
-    current_stock: number;
-    reorder_point: number;
-    suggested_quantity: number;
-    suggested_supplier: { id: number; name: string; price: number } | null;
-  }[];
+  items: SuggestionItem[];
   by_supplier: {
     supplier_id: number | null;
     supplier_name: string;
-    items: unknown[];
+    items: SuggestionItem[];
     estimated_total: number;
   }[];
 };

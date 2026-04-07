@@ -20,7 +20,7 @@ class StoreOrderPaymentsRequest extends FormRequest
             'print_receipt' => 'sometimes|boolean',
             'payments.*.method' => 'required|string|max:50',
             'payments.*.amount' => 'required|numeric|min:0.01',
-            'payments.*.status' => 'nullable|string|in:paid,completed,pending,failed',
+            // status is intentionally ignored — derived server-side from payment method
             'payments.*.reference_number' => 'nullable|string|max:255',
         ];
     }

@@ -33,7 +33,7 @@ export function PreOrderPage() {
 
   useEffect(() => { document.title = 'Pre-Order — Bake & Grill'; }, []);
   useEffect(() => {
-    fetchItems().then(({ data }) => setItems(data)).catch(() => {});
+    fetchItems().then(({ data }) => setItems(data)).catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
   }, []);
 
   // ── Derived ───────────────────────────────────────────────────────────────

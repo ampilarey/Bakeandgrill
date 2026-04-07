@@ -64,15 +64,13 @@ export function PurchaseOrdersPage() {
     catch (e) { setError((e as Error).message); }
   };
 
-  const handleCreatePoFromSuggest = async (group: { supplier_id: number | null; items: { name: string; current_stock: number; unit: string; suggested_quantity: number; inventory_item_id?: number }[] }) => {
+  const handleCreatePoFromSuggest = async (group: PurchaseSuggestions['by_supplier'][number]) => {
     if (!group.supplier_id) { setError('Cannot create PO — no supplier assigned to this group.'); return; }
     setCreatingPoFor(group.supplier_id);
     try {
       await createPurchaseFromSuggest({
-        supplier_id: group.supplier_id,
-        items: group.items
-          .filter((i) => i.inventory_item_id)
-          .map((i) => ({ inventory_item_id: i.inventory_item_id!, quantity: i.suggested_quantity, unit_cost: 0 })),
+        supplier_id: group.supplier_id!,
+        items: group.items.map((i) => ({ inventory_item_id: i.inventory_item_id, quantity: i.suggested_quantity, unit_cost: i.last_unit_cost ?? 0 })),
       });
       showToast('Purchase order created from suggestions.');
       setSuggestions(null);
@@ -152,40 +150,33 @@ export function PurchaseOrdersPage() {
           {suggestions.by_supplier.length === 0 ? (
             <p style={{ color: '#6B5D4F', fontSize: 13, margin: 0 }}>All items are above reorder points. No purchases needed.</p>
           ) : (
-            suggestions.by_supplier.map((group) => {
-              // Enrich group items with inventory_item_id from the top-level items list
-              const enriched = (group.items as { name: string; current_stock: number; unit: string; suggested_quantity: number }[]).map((gi) => {
-                const match = suggestions.items.find((si) => si.name === gi.name);
-                return { ...gi, inventory_item_id: match?.inventory_item_id };
-              });
-              return (
-                <div key={group.supplier_id ?? 'unknown'} style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12, flexWrap: 'wrap' }}>
-                    <p style={{ fontWeight: 700, color: '#1C1408', fontSize: 13, margin: 0 }}>
-                      {group.supplier_name} — Est. MVR {parseFloat(String(group.estimated_total ?? 0)).toFixed(2)}
-                    </p>
-                    {group.supplier_id && (
-                      <Btn
-                        small
-                        onClick={() => void handleCreatePoFromSuggest({ ...group, items: enriched })}
-                        disabled={creatingPoFor === group.supplier_id}
-                      >
-                        {creatingPoFor === group.supplier_id ? 'Creating…' : '+ Create PO'}
-                      </Btn>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {enriched.map((item) => (
-                      <div key={item.name} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
-                        <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.name}</span>
-                        <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
-                        <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
-                      </div>
-                    ))}
-                  </div>
+            suggestions.by_supplier.map((group) => (
+              <div key={group.supplier_id ?? 'unknown'} style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12, flexWrap: 'wrap' }}>
+                  <p style={{ fontWeight: 700, color: '#1C1408', fontSize: 13, margin: 0 }}>
+                    {group.supplier_name} — Est. MVR {parseFloat(String(group.estimated_total ?? 0)).toFixed(2)}
+                  </p>
+                  {group.supplier_id && (
+                    <Btn
+                      small
+                      onClick={() => void handleCreatePoFromSuggest(group)}
+                      disabled={creatingPoFor === group.supplier_id}
+                    >
+                      {creatingPoFor === group.supplier_id ? 'Creating…' : '+ Create PO'}
+                    </Btn>
+                  )}
                 </div>
-              );
-            })
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {group.items.map((item) => (
+                    <div key={item.inventory_item_id} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
+                      <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.name}</span>
+                      <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
+                      <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </Card>
       )}

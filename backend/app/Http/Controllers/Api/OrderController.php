@@ -197,11 +197,16 @@ class OrderController extends Controller
             $oldStatus = $order->status;
 
             foreach ($validated['payments'] as $paymentPayload) {
+                // Online/gateway methods require async confirmation; all other methods (cash, card POS, etc.)
+                // are treated as immediately paid. Staff cannot arbitrarily set status.
+                $gatewayMethods = ['bml_pay', 'bml', 'online'];
+                $paymentStatus = in_array($paymentPayload['method'], $gatewayMethods, true) ? 'pending' : 'paid';
+
                 $payment = Payment::create([
                     'order_id' => $order->id,
                     'method' => $paymentPayload['method'],
                     'amount' => $paymentPayload['amount'],
-                    'status' => $paymentPayload['status'] ?? 'paid',
+                    'status' => $paymentStatus,
                     'reference_number' => $paymentPayload['reference_number'] ?? null,
                     'processed_at' => now(),
                 ]);

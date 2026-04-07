@@ -128,11 +128,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(localStorage.getItem('online_token'));
       setCustomerName(localStorage.getItem('online_customer_name'));
     };
+    const handleExpired = () => {
+      localStorage.removeItem('online_token');
+      localStorage.removeItem('online_customer_name');
+      setToken(null);
+      setCustomerName(null);
+    };
     window.addEventListener('storage', sync);
     window.addEventListener('auth_change', sync);
+    window.addEventListener('auth_expired', handleExpired);
     return () => {
       window.removeEventListener('storage', sync);
       window.removeEventListener('auth_change', sync);
+      window.removeEventListener('auth_expired', handleExpired);
     };
   }, []);
 

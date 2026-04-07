@@ -151,7 +151,9 @@ function ReservationsList() {
         </div>
       </div>
 
-      {loading ? <Spinner /> : reservations.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>
+      ) : reservations.length === 0 ? (
         <TableCard><EmptyState message="No reservations found." /></TableCard>
       ) : (
         <TableCard>

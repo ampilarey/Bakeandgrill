@@ -165,7 +165,7 @@
 
     <p class="hours-note">
         Hours may vary on public holidays.<br>
-        Call us to confirm: <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('business.phone')) }}">{{ config('business.phone') }}</a> &nbsp;·&nbsp;
+        Call us to confirm: <a href="tel:{{ preg_replace('/[^0-9+]/', '', \App\Models\SiteSetting::get('business_phone', config('business.phone'))) }}">{{ \App\Models\SiteSetting::get('business_phone', config('business.phone')) }}</a> &nbsp;·&nbsp;
         <a href="/contact">Contact page →</a>
     </p>
 

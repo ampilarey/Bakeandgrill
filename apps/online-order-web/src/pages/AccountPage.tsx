@@ -97,7 +97,7 @@ export function AccountPage() {
         setCustomer(res.customer as AuthCustomer);
         setProfileForm({ name: res.customer.name ?? '', email: (res.customer as AuthCustomer).email ?? '' });
       })
-      .catch(() => {})
+      .catch((e: Error) => setProfileMsg({ type: 'error', text: e.message || 'Failed to load profile.' }))
       .finally(() => setLoadingProfile(false));
     getLoyaltyAccount(token)
       .then(({ account }) => setLoyalty(account))

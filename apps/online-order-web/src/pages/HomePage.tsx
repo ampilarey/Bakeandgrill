@@ -37,7 +37,7 @@ export function HomePage() {
       setIsOpen(open);
       setHoursMsg(message ?? null);
       setTodayHours(today ?? null);
-    }).catch(() => setIsOpen(true));
+    }).catch(() => setIsOpen(false));
   }, []);
 
   const statusBadge =

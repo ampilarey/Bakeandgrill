@@ -1,7 +1,11 @@
 @extends('layout')
 
-@section('title', 'Bake & Grill – Dhivehi Breakfast & Artisan Baking in Malé')
-@section('description', 'Real food, proper char, baked fresh at 5am daily. Order Dhivehi hedhikaa, artisan pastries and grills online. Fast delivery across Malé.')
+@php
+    $homeMetaTitle = \App\Models\SiteSetting::get('meta_title', 'Bake & Grill – Dhivehi Breakfast & Artisan Baking in Malé');
+    $homeMetaDesc  = \App\Models\SiteSetting::get('meta_description', 'Real food, proper char, baked fresh at 5am daily. Order Dhivehi hedhikaa, artisan pastries and grills online. Fast delivery across Malé.');
+@endphp
+@section('title', $homeMetaTitle)
+@section('description', $homeMetaDesc)
 
 @section('styles')
 <style>
