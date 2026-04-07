@@ -3,6 +3,8 @@ import { Globe, Shield, Smartphone, Link2 } from 'lucide-react';
 import { Button, Card } from '../components/ui';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
+import { fetchDevices, enableDevice, disableDevice } from '../api';
+import type { Device } from '../api';
 
 // ─── Sub-page cards ───────────────────────────────────────────────────────────
 const HUB_CARDS = [
@@ -12,42 +14,112 @@ const HUB_CARDS = [
   { id: 'integrations', icon: Link2,       label: 'Integrations', desc: 'Xero, Webhooks, SMS provider' },
 ];
 
-// ─── Devices sub-page (placeholder) ──────────────────────────────────────────
+// ─── Devices sub-page ────────────────────────────────────────────────────────
 function DevicesSettings() {
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [toggling, setToggling] = useState<number | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    fetchDevices()
+      .then((res) => setDevices(res.data))
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
+
+  const handleToggle = async (device: Device) => {
+    setToggling(device.id);
+    try {
+      const res = device.is_active ? await disableDevice(device.id) : await enableDevice(device.id);
+      setDevices((ds) => ds.map((d) => d.id === device.id ? res.device : d));
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  const typeIcon: Record<string, string> = { pos: '🖥️', kds: '📺', display: '📟' };
+
   return (
-    <div style={{ maxWidth: 520 }}>
-      <Card>
-        <p style={{ fontSize: 14, color: '#9C8E7E', margin: 0 }}>
-          POS and KDS devices are registered automatically on first login using a device ID stored in localStorage.
-          Manage active devices from the Devices page.
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>
+          Devices register automatically on first login. Disable to block a device from accessing the system.
         </p>
-        <div style={{ marginTop: 16 }}>
-          <Button variant="secondary" onClick={() => window.location.href = '/admin/devices'}>
-            Manage Devices →
-          </Button>
+        <Button variant="secondary" onClick={load}>↻ Refresh</Button>
+      </div>
+      {error && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      {loading ? (
+        <p style={{ fontSize: 13, color: '#9C8E7E' }}>Loading devices…</p>
+      ) : devices.length === 0 ? (
+        <Card><p style={{ margin: 0, fontSize: 13, color: '#9C8E7E', textAlign: 'center', padding: '16px 0' }}>No devices registered yet.</p></Card>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {devices.map((d) => (
+            <Card key={d.id}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 22 }}>{typeIcon[d.type] ?? '📱'}</span>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#3D2B1F' }}>{d.name}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9C8E7E' }}>
+                      {d.type.toUpperCase()}
+                      {d.last_seen_at && ` · Last seen ${new Date(d.last_seen_at).toLocaleDateString()}`}
+                      {d.registered_by && ` · Registered by ${d.registered_by}`}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: d.is_active ? '#DCFCE7' : '#FEE2E2', color: d.is_active ? '#166534' : '#991B1B' }}>
+                    {d.is_active ? 'Active' : 'Disabled'}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={() => void handleToggle(d)}
+                    disabled={toggling === d.id}
+                  >
+                    {toggling === d.id ? '…' : d.is_active ? 'Disable' : 'Enable'}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
-      </Card>
+      )}
     </div>
   );
 }
 
-// ─── Integrations sub-page (placeholder) ─────────────────────────────────────
+// ─── Integrations sub-page ────────────────────────────────────────────────────
 function IntegrationsSettings() {
+  const integrations = [
+    { label: 'Xero Accounting', desc: 'Sync invoices and expenses to Xero.', href: '/admin/xero', icon: '📊' },
+    { label: 'Webhooks', desc: 'Send real-time event payloads to external services.', href: '/admin/webhooks', icon: '🔗' },
+    { label: 'SMS Campaigns', desc: 'Send bulk SMS and manage campaigns.', href: '/admin/sms', icon: '💬' },
+  ];
   return (
-    <div style={{ maxWidth: 520 }}>
-      <Card>
-        <p style={{ fontSize: 14, color: '#9C8E7E', margin: 0 }}>
-          Configure Xero, Webhooks, and SMS integrations here.
-        </p>
-        <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Button variant="secondary" onClick={() => window.location.href = '/admin/webhooks'}>
-            Webhooks →
-          </Button>
-          <Button variant="secondary" onClick={() => window.location.href = '/admin/sms'}>
-            SMS Campaigns →
-          </Button>
-        </div>
-      </Card>
+    <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {integrations.map((intg) => (
+        <Card key={intg.href}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 24 }}>{intg.icon}</span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#3D2B1F' }}>{intg.label}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E' }}>{intg.desc}</p>
+              </div>
+            </div>
+            <Button variant="secondary" onClick={() => window.location.href = intg.href}>
+              Open →
+            </Button>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 }

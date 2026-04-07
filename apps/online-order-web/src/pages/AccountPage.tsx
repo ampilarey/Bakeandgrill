@@ -6,11 +6,11 @@ import {
   getCustomerMe, updateCustomerProfile, changeCustomerPassword,
   revokeCustomerToken, logoutCustomerWebSession, getLoyaltyAccount,
   getMyReservations, cancelMyReservation, getMyFavourites,
-  getMyPreOrders, getMyReviews,
+  getMyPreOrders, getMyReviews, submitReview, fetchCustomerOrders,
 } from '../api';
 import type {
   AuthCustomer, CustomerReservation, FavouriteItem,
-  CustomerPreOrder, CustomerReview,
+  CustomerPreOrder, CustomerReview, Order,
 } from '../api';
 import type { LoyaltyAccount } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
@@ -111,6 +111,16 @@ export function AccountPage() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState('');
 
+  // Write review state
+  const [reviewableOrders, setReviewableOrders] = useState<Order[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState<number | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewAnon, setReviewAnon] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitError, setReviewSubmitError] = useState('');
+
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '' });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -164,10 +174,21 @@ export function AccountPage() {
   }, [token, authReady, activeTab]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'reviews' || reviews.length > 0) return;
+    if (!authReady || !token || activeTab !== 'reviews') return;
     setReviewsLoading(true);
-    getMyReviews(token)
-      .then((res) => setReviews(res.data))
+    Promise.all([
+      getMyReviews(token),
+      fetchCustomerOrders(token),
+    ])
+      .then(([reviewRes, orderRes]) => {
+        const myReviews = reviewRes.data ?? [];
+        setReviews(myReviews);
+        // Completed orders that haven't been reviewed yet
+        const reviewedOrderIds = new Set(myReviews.map((r) => r.order?.id).filter(Boolean));
+        const completed = (Array.isArray(orderRes) ? orderRes : (orderRes as { data: Order[] }).data ?? [])
+          .filter((o: Order) => o.status === 'completed' && !reviewedOrderIds.has(o.id));
+        setReviewableOrders(completed.slice(0, 10));
+      })
       .catch((e: Error) => setReviewsError(e.message || 'Failed to load reviews.'))
       .finally(() => setReviewsLoading(false));
   }, [token, authReady, activeTab]);
@@ -609,41 +630,128 @@ export function AccountPage() {
 
       {/* ── Reviews tab ── */}
       {activeTab === 'reviews' && (
-        <SectionCard title="My Reviews">
-          {reviewsLoading ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
-          ) : reviewsError ? (
-            <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reviewsError}</p>
-          ) : reviews.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <p style={{ fontSize: 32, margin: '0 0 8px' }}>⭐</p>
-              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No reviews yet.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {reviews.map((rv) => (
-                <div key={rv.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <span key={i} style={{ fontSize: 14, color: i < rv.rating ? '#F59E0B' : '#D1D5DB' }}>★</span>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {statusBadge(rv.status)}
-                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                        {new Date(rv.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
+        <>
+          {/* Write a review */}
+          {reviewableOrders.length > 0 && !showReviewForm && (
+            <SectionCard title="Leave a Review">
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+                You have {reviewableOrders.length} completed order{reviewableOrders.length !== 1 ? 's' : ''} waiting for a review.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {reviewableOrders.map((o) => (
+                  <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', background: 'var(--color-surface-alt)', borderRadius: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-dark)' }}>
+                      #{o.order_number ?? o.id} · MVR {Number(o.total).toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => { setReviewOrderId(o.id); setReviewRating(5); setReviewComment(''); setReviewAnon(false); setReviewSubmitError(''); setShowReviewForm(true); }}
+                      style={{ fontSize: 12, fontWeight: 700, padding: '6px 14px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      ⭐ Review
+                    </button>
                   </div>
-                  {rv.item && <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--color-dark)' }}>{rv.item.name}</p>}
-                  {rv.comment && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>{rv.comment}</p>}
-                  {rv.is_anonymous && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>Posted anonymously</p>}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </SectionCard>
           )}
-        </SectionCard>
+
+          {/* Review form */}
+          {showReviewForm && (
+            <SectionCard title="Write a Review">
+              {reviewSubmitError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{reviewSubmitError}</p>}
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-dark)', margin: '0 0 8px' }}>Your Rating</p>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[1,2,3,4,5].map((star) => (
+                    <button key={star} onClick={() => setReviewRating(star)}
+                      style={{ fontSize: 28, background: 'none', border: 'none', cursor: 'pointer', color: star <= reviewRating ? '#F59E0B' : '#D1D5DB', padding: 0, lineHeight: 1 }}>
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-dark)', margin: '0 0 6px' }}>Comment (optional)</p>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="Tell us about your experience…"
+                  style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16, cursor: 'pointer' }}>
+                <input type="checkbox" checked={reviewAnon} onChange={(e) => setReviewAnon(e.target.checked)} />
+                Post anonymously
+              </label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => setShowReviewForm(false)}
+                  style={{ flex: 1, padding: '10px', background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-text-muted)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={submittingReview}
+                  onClick={async () => {
+                    if (!token || !reviewOrderId) return;
+                    setSubmittingReview(true); setReviewSubmitError('');
+                    try {
+                      await submitReview(token, { order_id: reviewOrderId, rating: reviewRating, comment: reviewComment, is_anonymous: reviewAnon });
+                      setShowReviewForm(false);
+                      setReviewableOrders((rs) => rs.filter((o) => o.id !== reviewOrderId));
+                      // Force refresh reviews list
+                      setReviews([]);
+                      setReviewsLoading(true);
+                      getMyReviews(token).then((res) => setReviews(res.data)).finally(() => setReviewsLoading(false));
+                    } catch (e: unknown) { setReviewSubmitError((e as Error).message || 'Failed to submit review.'); }
+                    finally { setSubmittingReview(false); }
+                  }}
+                  style={{ flex: 2, padding: '10px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: submittingReview ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: submittingReview ? 0.7 : 1 }}
+                >
+                  {submittingReview ? 'Submitting…' : 'Submit Review'}
+                </button>
+              </div>
+            </SectionCard>
+          )}
+
+          <SectionCard title="My Reviews">
+            {reviewsLoading ? (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+            ) : reviewsError ? (
+              <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reviewsError}</p>
+            ) : reviews.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ fontSize: 32, margin: '0 0 8px' }}>⭐</p>
+                <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No reviews yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {reviews.map((rv) => (
+                  <div key={rv.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span key={i} style={{ fontSize: 14, color: i < rv.rating ? '#F59E0B' : '#D1D5DB' }}>★</span>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {statusBadge(rv.status)}
+                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                          {new Date(rv.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    {rv.item && <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--color-dark)' }}>{rv.item.name}</p>}
+                    {rv.comment && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>{rv.comment}</p>}
+                    {rv.is_anonymous && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>Posted anonymously</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </>
       )}
     </div>
   );
