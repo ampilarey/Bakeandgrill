@@ -17,7 +17,8 @@ class KdsController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $allowed  = ['pending', 'in_progress'];
+        // 'paid' = online orders received but not yet started by kitchen
+        $allowed  = ['pending', 'in_progress', 'paid'];
         $statuses = $request->query('status')
             ? array_intersect(explode(',', $request->query('status')), $allowed)
             : $allowed;

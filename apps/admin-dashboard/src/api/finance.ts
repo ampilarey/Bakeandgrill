@@ -112,7 +112,7 @@ export async function createInvoiceFromPurchase(purchaseId: number): Promise<{ i
   return req(`/invoices/from-purchase/${purchaseId}`, { method: 'POST' });
 }
 
-export async function pushInvoiceToXero(id: number): Promise<{ xero_invoice_id: string }> {
+export async function pushInvoiceToXero(id: number): Promise<{ message: string }> {
   return req(`/xero/invoices/${id}/push`, { method: 'POST' });
 }
 
@@ -195,7 +195,7 @@ export async function approveExpense(id: number): Promise<{ expense: Expense }> 
   return req(`/expenses/${id}/approve`, { method: 'POST' });
 }
 
-export async function pushExpenseToXero(id: number): Promise<{ xero_id: string }> {
+export async function pushExpenseToXero(id: number): Promise<{ message: string }> {
   return req(`/xero/expenses/${id}/push`, { method: 'POST' });
 }
 
@@ -344,12 +344,25 @@ export interface Purchase {
   id: number;
   purchase_number: string;
   supplier_id: number;
-  supplier?: { id: number; name: string };
+  supplier?: { id: number; name: string } | null;
   status: string;
   total: number;
+  subtotal?: number;
+  purchase_date?: string;
   expected_delivery?: string;
+  expected_delivery_date?: string;
+  actual_delivery_date?: string | null;
+  approved_at?: string | null;
   notes?: string;
   created_at: string;
+  items?: {
+    id: number;
+    quantity: number;
+    received_quantity: number;
+    receive_status: string;
+    unit_cost: number;
+    inventory_item: { id: number; name: string } | null;
+  }[];
 }
 
 export async function fetchPurchases(params?: { status?: string; page?: number }): Promise<{

@@ -191,7 +191,7 @@ export function DashboardPage() {
 
   // ── load active orders (poll every 10s) — diff drives the live feed ──
   const loadOrders = () => {
-    fetchOrders({ status: 'active', per_page: 50 })
+    fetchOrders({ status: 'pending,paid,confirmed,preparing,ready', per_page: 50 })
       .then((r) => {
         setActiveOrders(r.data);
         setOrdersErr('');

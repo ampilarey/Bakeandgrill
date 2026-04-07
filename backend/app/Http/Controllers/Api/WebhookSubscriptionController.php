@@ -16,7 +16,9 @@ class WebhookSubscriptionController extends Controller
 {
     public function index(): JsonResponse
     {
-        $subscriptions = WebhookSubscription::orderByDesc('created_at')->get();
+        $subscriptions = WebhookSubscription::orderByDesc('created_at')
+            ->get()
+            ->map(fn ($s) => $this->safeSubscription($s));
 
         return response()->json(['subscriptions' => $subscriptions]);
     }
@@ -38,7 +40,8 @@ class WebhookSubscriptionController extends Controller
             'active' => true,
         ]);
 
-        return response()->json(['subscription' => $subscription], 201);
+        // Return secret only once on creation
+        return response()->json(['subscription' => $subscription, 'secret' => $subscription->secret], 201);
     }
 
     public function show(int $id): JsonResponse
@@ -46,7 +49,7 @@ class WebhookSubscriptionController extends Controller
         $subscription = WebhookSubscription::with(['logs' => fn($q) => $q->orderByDesc('created_at')->limit(20)])
             ->findOrFail($id);
 
-        return response()->json(['subscription' => $subscription]);
+        return response()->json(['subscription' => $this->safeSubscription($subscription)]);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -69,7 +72,7 @@ class WebhookSubscriptionController extends Controller
 
         $subscription->update($validated);
 
-        return response()->json(['subscription' => $subscription]);
+        return response()->json(['subscription' => $this->safeSubscription($subscription)]);
     }
 
     public function destroy(int $id): JsonResponse
@@ -103,5 +106,11 @@ class WebhookSubscriptionController extends Controller
         return response()->json([
             'events' => DispatchWebhookOnDomainEvent::getSupportedEventNames(),
         ]);
+    }
+
+    /** Return subscription without the signing secret. */
+    private function safeSubscription(WebhookSubscription $s): array
+    {
+        return $s->makeHidden('secret')->toArray();
     }
 }

@@ -1,25 +1,7 @@
 import { useEffect, useState } from 'react';
-import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, fetchPurchases, type PurchaseSuggestions } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, fetchPurchases, type Purchase, type PurchaseSuggestions } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
-
-type Purchase = {
-  id: number;
-  purchase_number: string;
-  status: string;
-  total: number;
-  subtotal?: number;
-  purchase_date: string;
-  expected_delivery_date: string | null;
-  actual_delivery_date: string | null;
-  approved_at: string | null;
-  supplier: { id: number; name: string } | null;
-  items: {
-    id: number; quantity: number; received_quantity: number;
-    receive_status: string; unit_cost: number;
-    inventory_item: { id: number; name: string } | null;
-  }[];
-};
 
 const STATUS_COLOR: Record<string, string> = {
   draft:    'gray',
@@ -63,7 +45,7 @@ export function PurchaseOrdersPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchPurchases({ status: statusFilter || undefined });
-      setPurchases((res.purchases?.data as unknown as Purchase[]) ?? []);
+      setPurchases(res.purchases?.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -114,7 +96,7 @@ export function PurchaseOrdersPage() {
   const openDetail = (po: Purchase) => {
     setDetail(po);
     const initial: Record<number, number> = {};
-    po.items.forEach((item) => { initial[item.id] = item.quantity - item.received_quantity; });
+    (po.items ?? []).forEach((item) => { initial[item.id] = item.quantity - item.received_quantity; });
     setReceiveQtys(initial);
     setReceiveNotes('');
   };
@@ -124,7 +106,7 @@ export function PurchaseOrdersPage() {
     setActionLoading(true);
     try {
       await receivePurchase(detail.id, {
-        items: detail.items.map((item) => ({
+        items: (detail.items ?? []).map((item) => ({
           purchase_item_id: item.id,
           received_quantity: receiveQtys[item.id] ?? 0,
         })),

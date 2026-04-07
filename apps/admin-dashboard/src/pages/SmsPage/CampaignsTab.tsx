@@ -4,6 +4,7 @@ import {
   sendSmsCampaign, cancelSmsCampaign, type SmsCampaign,
 } from '../../api';
 import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
+import { smsSegmentInfo } from '../../utils/smsSegments';
 
 export function CampaignsTab() {
   const [campaigns, setCampaigns] = useState<SmsCampaign[]>([]);
@@ -92,11 +93,8 @@ export function CampaignsTab() {
     });
   };
 
-  const charCount = message.length;
-  const isUnicode = /[^\u0000-\u007F\u00A0-\u00FF\u20AC\u0160\u0161\u017D\u017E\u0152\u0153\u0178]/.test(message);
-  const singleLimit = isUnicode ? 70 : 160;
-  const multiLimit  = isUnicode ? 67 : 153;
-  const segments = charCount <= singleLimit ? 1 : Math.ceil(charCount / multiLimit);
+  const segInfo  = smsSegmentInfo(message);
+  const segments = segInfo.segments;
 
   return (
     <>
@@ -117,8 +115,9 @@ export function CampaignsTab() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Message</label>
-              <span style={{ fontSize: 11, color: charCount > singleLimit ? '#ef4444' : '#94a3b8' }}>
-                {charCount} chars · {segments} segment{segments > 1 ? 's' : ''}
+              <span style={{ fontSize: 11, color: segments > 1 ? '#ef4444' : '#94a3b8' }}>
+                {message.length} chars · {segments} segment{segments > 1 ? 's' : ''}
+                {segInfo.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
               </span>
             </div>
             <textarea

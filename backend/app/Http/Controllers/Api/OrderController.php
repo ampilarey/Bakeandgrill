@@ -38,7 +38,14 @@ class OrderController extends Controller
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
+            $statuses = explode(',', $request->input('status'));
+            $validStatuses = ['pending', 'paid', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled', 'partial', 'refunded'];
+            $filtered = array_intersect($statuses, $validStatuses);
+            if (!empty($filtered)) {
+                count($filtered) === 1
+                    ? $query->where('status', reset($filtered))
+                    : $query->whereIn('status', $filtered);
+            }
         }
 
         if ($request->filled('type')) {

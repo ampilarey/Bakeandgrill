@@ -4,6 +4,7 @@ import {
   deleteSmsPromotion, previewSmsPromotion, type SmsPromotion,
 } from '../../api';
 import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Select, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
+import { smsSegmentInfo } from '../../utils/smsSegments';
 
 const TRIGGER_TYPES = [
   { value: 'birthday',         label: 'Birthday (day of)' },
@@ -14,18 +15,6 @@ const TRIGGER_TYPES = [
   { value: 'manual',           label: 'Manual / one-time send' },
 ];
 
-function isNonGsm(text: string): boolean {
-  // eslint-disable-next-line no-control-regex
-  return /[^\x00-\x7F\u00C0-\u00FF£$@¡¿]/.test(text);
-}
-
-function segmentInfo(msg: string): { segments: number; charsPerSeg: number; remaining: number } {
-  const unicode = isNonGsm(msg);
-  const charsPerSeg = unicode ? 70 : 160;
-  const segments = Math.max(1, Math.ceil(msg.length / charsPerSeg));
-  const used = msg.length % charsPerSeg || charsPerSeg;
-  return { segments, charsPerSeg, remaining: charsPerSeg - used };
-}
 
 const EMPTY_FORM = { name: '', message: '', promotion_code: '', trigger_type: 'manual', is_active: true };
 
@@ -59,7 +48,7 @@ export function PromotionsTab() {
 
   useEffect(() => { void load(); }, []);
 
-  const msgInfo = segmentInfo(form.message);
+  const msgInfo = smsSegmentInfo(form.message);
 
   const handlePreview = async () => {
     if (!form.message.trim()) return;
@@ -170,7 +159,7 @@ export function PromotionsTab() {
               <span>{form.message.length} chars</span>
               <span>{msgInfo.segments} segment{msgInfo.segments !== 1 ? 's' : ''} ({msgInfo.charsPerSeg} chars/seg)</span>
               <span>{msgInfo.remaining} remaining in segment</span>
-              {isNonGsm(form.message) && <span style={{ color: '#F59E0B', fontWeight: 600 }}>Unicode (70/seg)</span>}
+              {msgInfo.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600 }}>Unicode (70/seg)</span>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>

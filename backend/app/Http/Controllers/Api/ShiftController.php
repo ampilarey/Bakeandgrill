@@ -42,21 +42,30 @@ class ShiftController extends Controller
     public function open(OpenShiftRequest $request)
     {
         $userId = $request->user()?->id;
-        $existing = Shift::where('user_id', $userId)
-            ->whereNull('closed_at')
-            ->first();
 
-        if ($existing) {
+        $shift = DB::transaction(function () use ($userId, $request) {
+            // Lock any existing open shift row for this user to prevent double-open race
+            $existing = Shift::where('user_id', $userId)
+                ->whereNull('closed_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return null;
+            }
+
+            return Shift::create([
+                'user_id'      => $userId,
+                'device_id'    => $request->input('device_id'),
+                'opened_at'    => now(),
+                'opening_cash' => $request->input('opening_cash'),
+                'notes'        => $request->input('notes'),
+            ]);
+        });
+
+        if ($shift === null) {
             return response()->json(['message' => 'Shift already open.'], 422);
         }
-
-        $shift = Shift::create([
-            'user_id' => $userId,
-            'device_id' => $request->input('device_id'),
-            'opened_at' => now(),
-            'opening_cash' => $request->input('opening_cash'),
-            'notes' => $request->input('notes'),
-        ]);
 
         app(AuditLogService::class)->log(
             'shift.opened',
