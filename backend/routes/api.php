@@ -101,7 +101,8 @@ Route::prefix('auth/customer')
 
         // New: check if already authenticated via session cookie
         // React app calls this on mount to auto-login customers from Blade session
-        Route::get('/check', [CustomerAuthController::class, 'check']);
+        Route::get('/check', [CustomerAuthController::class, 'check'])
+            ->middleware('throttle:20,1');
 
         // New: password reset via OTP
         Route::post('/forgot-password', [CustomerAuthController::class, 'forgotPassword'])

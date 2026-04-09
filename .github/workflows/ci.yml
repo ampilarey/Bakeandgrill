@@ -117,13 +117,27 @@ jobs:
         run: npm ci
 
       - name: Type-check all apps
-        run: npx tsc --noEmit -p apps/online-order-web/tsconfig.json && npx tsc --noEmit -p apps/admin-dashboard/tsconfig.json && npx tsc --noEmit -p apps/pos-web/tsconfig.json && npx tsc --noEmit -p apps/kds-web/tsconfig.json
+        run: |
+          npx tsc --noEmit -p apps/online-order-web/tsconfig.json
+          npx tsc --noEmit -p apps/admin-dashboard/tsconfig.json
+          npx tsc --noEmit -p apps/pos-web/tsconfig.json
+          npx tsc --noEmit -p apps/kds-web/tsconfig.json
+          npx tsc --noEmit -p apps/delivery-web/tsconfig.json
 
       - name: Build online-order-web
         run: npm run build --workspace=apps/online-order-web
 
       - name: Build admin-dashboard
         run: npm run build --workspace=apps/admin-dashboard
+
+      - name: Build pos-web
+        run: npm run build --workspace=apps/pos-web
+
+      - name: Build kds-web
+        run: npm run build --workspace=apps/kds-web
+
+      - name: Build delivery-web
+        run: npm run build --workspace=apps/delivery-web
 
   deploy:
     name: Deploy to production
@@ -146,6 +160,7 @@ jobs:
             && php artisan config:cache \
             && php artisan route:cache \
             && php artisan view:clear \
+            && php artisan queue:restart \
             && echo "Deploy complete."
 
   contract:

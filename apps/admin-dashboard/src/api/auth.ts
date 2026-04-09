@@ -3,8 +3,8 @@ import { req } from './client';
 
 export type { StaffUser };
 
-export async function pinLogin(pin: string): Promise<{ token: string; user: StaffUser }> {
-  return req('/auth/staff/pin-login', { method: 'POST', body: JSON.stringify({ pin }) });
+export async function pinLogin(username: string, pin: string): Promise<{ token: string; user: StaffUser }> {
+  return req('/auth/staff/pin-login', { method: 'POST', body: JSON.stringify({ username, pin }) });
 }
 
 export async function getMe(): Promise<{ user: StaffUser }> {

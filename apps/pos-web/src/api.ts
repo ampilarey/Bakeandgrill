@@ -46,12 +46,13 @@ export async function lookupBarcode(barcode: string): Promise<Item | null> {
 }
 
 export async function staffLogin(
+  username: string,
   pin: string,
   deviceIdentifier: string
 ): Promise<StaffLoginResponse> {
   return request<StaffLoginResponse>("/auth/staff/pin-login", {
     method: "POST",
-    body: JSON.stringify({ pin, device_identifier: deviceIdentifier }),
+    body: JSON.stringify({ username, pin, device_identifier: deviceIdentifier }),
   });
 }
 

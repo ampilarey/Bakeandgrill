@@ -145,8 +145,9 @@ class CustomerAuthController extends Controller
 
         $customer->update(['last_login_at' => now()]);
 
-        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        // Issue a new token without revoking existing ones — customers may be
+        // logged in on multiple devices or tabs simultaneously.
+        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
@@ -263,8 +264,9 @@ class CustomerAuthController extends Controller
 
         $customer->update(['last_login_at' => now()]);
 
-        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        // Issue a new token without revoking existing ones — customers may be
+        // logged in on multiple devices or tabs simultaneously.
+        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Verified successfully',
@@ -291,8 +293,8 @@ class CustomerAuthController extends Controller
             return response()->json(['authenticated' => false, 'message' => 'Account deactivated.'], 403);
         }
 
-        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        // Bridge a Blade session to a Sanctum token without revoking other device tokens.
+        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'authenticated' => true,
@@ -382,8 +384,9 @@ class CustomerAuthController extends Controller
         $customer->last_login_at = now();
         $customer->save();
 
+        // Password reset: intentionally revoke all sessions for security.
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Password reset successfully',

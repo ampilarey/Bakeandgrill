@@ -15,16 +15,22 @@ class StaffAuthController extends Controller
 {
     /**
      * PIN login for staff users.
+     * Requires both email/username and PIN so the candidate is identified first,
+     * then exactly one Hash::check is performed — O(1) regardless of staff count.
      */
     public function pinLogin(Request $request)
     {
         $request->validate([
-            'pin' => 'required|string|min:4|max:8',
+            'username' => 'required|string|email|max:255',
+            'pin'      => 'required|string|min:4|max:8',
             'device_identifier' => 'nullable|string',
         ]);
 
-        $pin = $request->pin;
-        $rateKey = 'staff-pin:' . $request->ip();
+        $pin      = $request->pin;
+        $username = strtolower(trim($request->username));
+
+        // Rate-limit per username+IP to prevent credential stuffing.
+        $rateKey = 'staff-pin:' . $username . ':' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
@@ -33,16 +39,16 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        $user = User::where('is_active', true)
+        // Identify the candidate with a single indexed lookup, then verify one hash.
+        $user = User::where('email', $username)
+            ->where('is_active', true)
             ->whereNotNull('pin_hash')
-            ->limit(500) // safety net until PIN login requires a username
-            ->get()
-            ->first(fn (User $user) => Hash::check($pin, $user->pin_hash));
+            ->first();
 
-        if (!$user) {
-            RateLimiter::hit($rateKey, 900); // 15 minutes
+        if (!$user || !Hash::check($pin, $user->pin_hash)) {
+            RateLimiter::hit($rateKey, 900); // 15-minute decay
             throw ValidationException::withMessages([
-                'pin' => ['Invalid PIN.'],
+                'pin' => ['Invalid email or PIN.'],
             ]);
         }
 

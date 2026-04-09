@@ -35,14 +35,24 @@ class PromotionController extends Controller
         $orderId = $request->input('order_id');
         // Eager-load items.item so PromotionEvaluator doesn't trigger N+1 queries per category
         $order = $orderId ? Order::with('items.item')->findOrFail($orderId) : null;
-        $customerId = $request->user()?->id;
+
+        $user           = $request->user();
+        $isCustomerActor = $user?->tokenCan('customer');
 
         // Prevent cross-order IDOR: customers may only validate against their own orders
-        if ($order && $customerId !== null && $request->user()?->tokenCan('customer')) {
-            if ((int) $order->customer_id !== (int) $customerId) {
+        if ($order && $isCustomerActor) {
+            if ((int) $order->customer_id !== (int) $user->id) {
                 return response()->json(['valid' => false, 'message' => 'Order not found.'], 404);
             }
         }
+
+        // Resolve the customer ID for per-customer usage evaluation:
+        // - For customer actors: their own ID
+        // - For staff actors with an order: the order owner's customer_id
+        // - Otherwise null (unauthenticated / no order context)
+        $customerId = $isCustomerActor
+            ? $user->id
+            : ($order?->customer_id ?? null);
 
         if (!$order) {
             $promo = Promotion::where('code', strtoupper(trim($request->input('code'))))->first();
@@ -71,10 +81,11 @@ class PromotionController extends Controller
         $request->validate(['code' => 'required|string|max:50']);
 
         $order = Order::with('items.item')->findOrFail($orderId);
-        $customerId = $request->user()?->id;
 
-        $user = $request->user();
-        if ($user->tokenCan('customer') && $order->customer_id !== $user->id) {
+        $user            = $request->user();
+        $isCustomerActor = $user->tokenCan('customer');
+
+        if ($isCustomerActor && (int) $order->customer_id !== (int) $user->id) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -82,20 +93,29 @@ class PromotionController extends Controller
             return response()->json(['message' => 'Cannot apply promo to this order.'], 422);
         }
 
+        // Resolve customer ID for per-customer usage limit evaluation.
+        $customerId = $isCustomerActor ? $user->id : $order->customer_id;
+
         $result = $this->evaluator->evaluate($request->input('code'), $order, $customerId);
 
         if (!$result['valid']) {
             return response()->json(['message' => $result['message']], 422);
         }
 
-        $promotion = $result['promotion'];
+        $promotion      = $result['promotion'];
         $idempotencyKey = 'order-promo:' . $orderId . ':' . $promotion->id;
 
-        DB::transaction(function () use ($order, $orderId, $promotion, $result, $idempotencyKey): void {
+        // Track whether the promo was actually persisted so we can return the
+        // correct status if the order was concurrently locked into a terminal state.
+        $applied = false;
+
+        DB::transaction(function () use ($order, $orderId, $promotion, $result, $idempotencyKey, &$applied): void {
             // Re-lock the order row inside the transaction to prevent race conditions.
             $order = Order::lockForUpdate()->findOrFail($orderId);
 
             if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+                // Order transitioned to a terminal state between the pre-check and the lock.
+                // $applied stays false; caller will receive a 409.
                 return;
             }
 
@@ -110,10 +130,10 @@ class PromotionController extends Controller
             OrderPromotion::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
                 [
-                    'order_id' => $order->id,
-                    'promotion_id' => $promotion->id,
+                    'order_id'      => $order->id,
+                    'promotion_id'  => $promotion->id,
                     'discount_laar' => $result['discount_laar'],
-                    'status' => 'draft',
+                    'status'        => 'draft',
                 ],
             );
 
@@ -123,13 +143,18 @@ class PromotionController extends Controller
 
             $order->update(['promo_discount_laar' => $totalPromoDiscount]);
             $this->calculator->recalculateAndPersist($order);
+            $applied = true;
         });
 
+        if (!$applied) {
+            return response()->json(['message' => 'Order is no longer modifiable.'], 409);
+        }
+
         return response()->json([
-            'message' => $result['message'],
+            'message'       => $result['message'],
             'discount_laar' => $result['discount_laar'],
-            'discount_mvr' => number_format($result['discount_laar'] / 100, 2),
-            'promotion_id' => $promotion->id,
+            'discount_mvr'  => number_format($result['discount_laar'] / 100, 2),
+            'promotion_id'  => $promotion->id,
         ]);
     }
 

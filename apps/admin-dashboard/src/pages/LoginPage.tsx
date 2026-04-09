@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { pinLogin, type StaffUser } from '../api';
 
 export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUser) => void }) {
-  const [pin, setPin]       = useState('');
-  const [error, setError]   = useState('');
-  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState('');
+  const [pin, setPin]           = useState('');
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
 
   const submit = async () => {
-    if (pin.length < 4) return;
+    if (!username.trim() || pin.length < 4) return;
     setError('');
     setLoading(true);
     try {
-      const res = await pinLogin(pin);
+      const res = await pinLogin(username.trim(), pin);
       localStorage.setItem('admin_token', res.token);
       onLogin(res.token, res.user);
     } catch (e) {
@@ -46,7 +47,28 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
-          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>Admin — Enter your PIN</p>
+          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>Admin — Sign in with email + PIN</p>
+        </div>
+
+        {/* Email field */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Email
+          </label>
+          <input
+            type="email"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder="your@email.com"
+            autoComplete="email"
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              borderRadius: 10, padding: '10px 12px',
+              border: '1px solid #EDE4D4', fontSize: 14,
+              color: '#2A1E0C', background: '#FFFDF9', outline: 'none',
+            }}
+          />
         </div>
 
         {/* PIN dots */}
@@ -108,10 +130,10 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
           }}>
             Clear
           </button>
-          <button onClick={submit} disabled={pin.length < 4 || loading} style={{
+          <button onClick={submit} disabled={!username.trim() || pin.length < 4 || loading} style={{
             flex: 2, height: 48, borderRadius: 12, border: 'none',
-            background: loading || pin.length < 4 ? '#F5C99A' : '#D4813A',
-            fontSize: 14, fontWeight: 700, color: '#fff', cursor: pin.length < 4 ? 'default' : 'pointer',
+            background: loading || !username.trim() || pin.length < 4 ? '#F5C99A' : '#D4813A',
+            fontSize: 14, fontWeight: 700, color: '#fff', cursor: (!username.trim() || pin.length < 4) ? 'default' : 'pointer',
             transition: 'background 0.15s',
           }}>
             {loading ? 'Signing in…' : 'Sign In →'}

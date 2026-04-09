@@ -22,6 +22,7 @@ function App() {
   // ── Auth ────────────────────────────────────────────────────────────────────
   // Restore session from localStorage so page refresh doesn't log out the POS.
   const [isLoggedIn, setIsLoggedIn]   = useState(() => !!localStorage.getItem('pos_token'));
+  const [username, setUsername]       = useState("");
   const [pin, setPin]                 = useState("");
   const [deviceId, setDeviceId]       = useState(() => {
       const stored = localStorage.getItem("pos_device_id");
@@ -98,15 +99,16 @@ function App() {
   // ── Login handler ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
     setAuthError("");
+    if (!username.trim()) { setAuthError("Enter your email address."); return; }
     if (pin.trim().length < 4) { setAuthError("Enter a valid PIN."); return; }
     try {
-      const response = await staffLogin(pin.trim(), deviceId.trim());
+      const response = await staffLogin(username.trim(), pin.trim(), deviceId.trim());
       localStorage.setItem("pos_token", response.token);
       setAuthToken(response.token);
       setIsLoggedIn(true);
       setPin("");
     } catch {
-      setAuthError("Login failed. Check your PIN.");
+      setAuthError("Login failed. Check your email and PIN.");
     }
   };
 
@@ -121,6 +123,7 @@ function App() {
   if (!isLoggedIn) {
     return (
       <LoginPage
+        username={username} setUsername={setUsername}
         pin={pin} setPin={setPin}
         deviceId={deviceId} setDeviceId={setDeviceId}
         authError={authError} onLogin={handleLogin}

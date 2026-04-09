@@ -1,4 +1,6 @@
 type Props = {
+  username: string;
+  setUsername: (v: string) => void;
   pin: string;
   setPin: (v: string) => void;
   deviceId: string;
@@ -7,7 +9,7 @@ type Props = {
   onLogin: () => void;
 };
 
-export function LoginPage({ pin, setPin, deviceId, setDeviceId, authError, onLogin }: Props) {
+export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDeviceId, authError, onLogin }: Props) {
   const append = (d: string) => { if (pin.length < 8) setPin(pin + d); };
   const back   = ()          => setPin(pin.slice(0, -1));
   const clear  = ()          => setPin('');
@@ -32,7 +34,28 @@ export function LoginPage({ pin, setPin, deviceId, setDeviceId, authError, onLog
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
-          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>POS — Enter your PIN to sign in</p>
+          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>POS — Sign in with email + PIN</p>
+        </div>
+
+        {/* Email */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Email
+          </label>
+          <input
+            type="email"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && onLogin()}
+            placeholder="your@email.com"
+            autoComplete="email"
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              borderRadius: 10, padding: '10px 12px',
+              border: '1px solid #EDE4D4', fontSize: 14,
+              color: '#2A1E0C', background: '#FFFDF9', outline: 'none',
+            }}
+          />
         </div>
 
         {/* Device ID */}
@@ -111,11 +134,11 @@ export function LoginPage({ pin, setPin, deviceId, setDeviceId, authError, onLog
           }}>
             Clear
           </button>
-          <button onClick={onLogin} disabled={pin.length < 4} style={{
+          <button onClick={onLogin} disabled={!username.trim() || pin.length < 4} style={{
             flex: 2, height: 48, borderRadius: 12, border: 'none',
-            background: pin.length < 4 ? '#F5C99A' : '#D4813A',
+            background: (!username.trim() || pin.length < 4) ? '#F5C99A' : '#D4813A',
             fontSize: 14, fontWeight: 700, color: '#fff',
-            cursor: pin.length < 4 ? 'default' : 'pointer',
+            cursor: (!username.trim() || pin.length < 4) ? 'default' : 'pointer',
             transition: 'background 0.15s',
           }}>
             Sign In →
