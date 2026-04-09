@@ -154,12 +154,12 @@ export function Layout() {
                   }}
                 >
                   {[
-                    { href: '/hours',   label: '🕐  Hours' },
-                    { href: '/contact', label: '📞  Contact' },
-                  ].map(({ href, label }) => (
-                    <a
-                      key={href}
-                      href={href}
+                    { to: '/hours',   label: '🕐  Hours' },
+                    { to: '/contact', label: '📞  Contact' },
+                  ].map(({ to, label }) => (
+                    <Link
+                      key={to}
+                      to={to}
                       role="menuitem"
                       onClick={() => setMoreOpen(false)}
                       style={{ display: 'block', padding: '0.55rem 0.875rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 500, color: 'var(--color-text)', textDecoration: 'none', transition: 'background 0.12s' }}
@@ -167,7 +167,7 @@ export function Layout() {
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
                       {label}
-                    </a>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -285,8 +285,8 @@ export function Layout() {
             <Link to="/pre-order">Pre-Order (Events)</Link>
             <Link to="/order-history">Order History</Link>
             <Link to="/account">My Account</Link>
-            <a href="/hours">Opening Hours</a>
-            <a href="/contact">Contact Us</a>
+            <Link to="/hours">Opening Hours</Link>
+            <Link to="/contact">Contact Us</Link>
           </div>
 
           {/* ── Location ── */}
@@ -322,10 +322,13 @@ export function Layout() {
       {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
         <div className="order-mob-grid">
-          <a href="/" className={`order-mob-item${location.pathname === '/' ? ' order-mob-active' : ''}`}>
+          <Link
+            to="/"
+            className={`order-mob-item${location.pathname === '/' ? ' order-mob-active' : ''}`}
+          >
             <span className="order-mob-icon"><HomeIcon size={20} /></span>
             Home
-          </a>
+          </Link>
           <Link
             to="/menu"
             className={`order-mob-item${location.pathname === '/menu' ? ' order-mob-active' : ''}`}
@@ -355,14 +358,20 @@ export function Layout() {
             <span className="order-mob-icon"><PreOrderIcon size={20} /></span>
             Pre-order
           </Link>
-          <a href="/hours" className={`order-mob-item${location.pathname === '/hours' ? ' order-mob-active' : ''}`}>
+          <Link
+            to="/hours"
+            className={`order-mob-item${location.pathname === '/hours' ? ' order-mob-active' : ''}`}
+          >
             <span className="order-mob-icon"><ClockIcon size={20} /></span>
             Hours
-          </a>
-          <a href="/contact" className={`order-mob-item${location.pathname === '/contact' ? ' order-mob-active' : ''}`}>
+          </Link>
+          <Link
+            to="/contact"
+            className={`order-mob-item${location.pathname === '/contact' ? ' order-mob-active' : ''}`}
+          >
             <span className="order-mob-icon"><PhoneIcon size={20} /></span>
             Contact
-          </a>
+          </Link>
         </div>
       </nav>
     </div>

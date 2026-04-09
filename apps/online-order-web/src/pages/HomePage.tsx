@@ -134,7 +134,7 @@ export function HomePage() {
           {CATEGORIES.map((cat) => (
             <Link
               key={cat.name}
-              to={`/menu?category=${cat.slug}`}
+              to="/menu"
               className="cat-card-hover"
               style={{
                 display: 'block',

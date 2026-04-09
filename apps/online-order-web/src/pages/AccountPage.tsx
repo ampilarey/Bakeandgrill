@@ -339,7 +339,7 @@ export function AccountPage() {
       {activeTab === 'profile' && (<>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Link
-          to="/orders"
+          to="/order-history"
           style={{
             display: 'flex', flexDirection: 'column', gap: 4,
             padding: '16px 18px',
