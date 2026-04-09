@@ -11,16 +11,26 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Migrate existing guest orders: link to matching customer by phone
+        // Migrate existing guest orders: link to matching customer by phone.
+        // Uses a correlated subquery so the statement works on both MySQL and SQLite.
         DB::statement('
-            UPDATE orders o
-            JOIN customers c ON c.phone = o.guest_phone
-            SET o.customer_id = c.id
-            WHERE o.customer_id IS NULL
-              AND o.guest_phone IS NOT NULL
+            UPDATE orders
+            SET customer_id = (
+                SELECT id FROM customers
+                WHERE customers.phone = orders.guest_phone
+                LIMIT 1
+            )
+            WHERE customer_id IS NULL
+              AND guest_phone IS NOT NULL
+              AND EXISTS (
+                SELECT 1 FROM customers
+                WHERE customers.phone = orders.guest_phone
+              )
         ');
 
+        // Drop the unique index before dropping the column — required for SQLite compatibility.
         Schema::table('orders', function (Blueprint $table): void {
+            $table->dropUnique('orders_guest_token_unique');
             $table->dropColumn(['guest_phone', 'guest_name', 'guest_email', 'guest_token']);
         });
     }

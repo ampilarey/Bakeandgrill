@@ -338,7 +338,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/promotions/validate', [App\Http\Controllers\Api\PromotionController::class, 'validate'])
     ->middleware('throttle:5,1');
 
-// Authenticated customer/staff — apply/remove promo
+// Apply/remove promo — requires auth; authorization matrix enforced in the controller:
+//   - Customer token: may only modify their own order (IDOR check)
+//   - Staff token: requires promotions.discounts permission (checked in controller)
+//   - Unauthenticated: rejected by auth:sanctum
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/{orderId}/apply-promo', [App\Http\Controllers\Api\PromotionController::class, 'applyToOrder']);
     Route::delete('/orders/{orderId}/promo/{promotionId}', [App\Http\Controllers\Api\PromotionController::class, 'removeFromOrder']);

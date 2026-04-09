@@ -75,6 +75,10 @@ class PromotionController extends Controller
 
     /**
      * Apply a promo code to an order (authenticated).
+     *
+     * Authorization matrix:
+     *   - Customer token: may only apply to their own order.
+     *   - Staff token: requires 'promotions.discounts' permission.
      */
     public function applyToOrder(Request $request, int $orderId): JsonResponse
     {
@@ -85,8 +89,16 @@ class PromotionController extends Controller
         $user            = $request->user();
         $isCustomerActor = $user->tokenCan('customer');
 
-        if ($isCustomerActor && (int) $order->customer_id !== (int) $user->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        if ($isCustomerActor) {
+            // Customer IDOR guard — may only modify their own order.
+            if ((int) $order->customer_id !== (int) $user->id) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        } else {
+            // Staff actor — must have explicit promotions.discounts permission.
+            if (! $user->hasPermission('promotions.discounts')) {
+                return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
+            }
         }
 
         if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
@@ -163,18 +175,40 @@ class PromotionController extends Controller
      */
     public function removeFromOrder(Request $request, int $orderId, int $promotionId): JsonResponse
     {
+        $user            = $request->user();
+        $isCustomerActor = $user->tokenCan('customer');
+
+        // Pre-check existence (no lock yet — avoids holding a lock during auth evaluation).
         $order = Order::findOrFail($orderId);
 
-        $user = $request->user();
-        if ($user->tokenCan('customer') && $order->customer_id !== $user->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        if ($isCustomerActor) {
+            // Customer IDOR guard.
+            if ((int) $order->customer_id !== (int) $user->id) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        } else {
+            // Staff actor — must have explicit promotions.discounts permission.
+            if (! $user->hasPermission('promotions.discounts')) {
+                return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
+            }
         }
 
         if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
             return response()->json(['message' => 'Cannot modify promo on this order.'], 422);
         }
 
-        DB::transaction(function () use ($order, $promotionId): void {
+        // Mirror applyToOrder: lock the row inside the transaction so a concurrent
+        // payment cannot mark the order paid between the pre-check and the UPDATE.
+        $removed = false;
+
+        DB::transaction(function () use ($orderId, $promotionId, &$removed): void {
+            $order = Order::lockForUpdate()->findOrFail($orderId);
+
+            // Re-check terminal state under the lock.
+            if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+                return; // $removed stays false; caller returns 409.
+            }
+
             OrderPromotion::where('order_id', $order->id)
                 ->where('promotion_id', $promotionId)
                 ->where('status', 'draft')
@@ -186,7 +220,12 @@ class PromotionController extends Controller
 
             $order->update(['promo_discount_laar' => $totalPromoDiscount]);
             $this->calculator->recalculateAndPersist($order);
+            $removed = true;
         });
+
+        if (!$removed) {
+            return response()->json(['message' => 'Order is no longer modifiable.'], 409);
+        }
 
         return response()->json(['message' => 'Promo removed.']);
     }

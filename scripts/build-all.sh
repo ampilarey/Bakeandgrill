@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Build all 4 React apps and deploy their dist/ into backend/public/.
+# Build all 5 React apps and deploy their dist/ into backend/public/.
 #
 # Usage:
-#   ./scripts/build-all.sh            # build + deploy all apps
-#   ./scripts/build-all.sh order      # build + deploy only online-order-web
-#   ./scripts/build-all.sh admin kds  # build + deploy only admin + kds
+#   ./scripts/build-all.sh                  # build + deploy all apps
+#   ./scripts/build-all.sh order            # build + deploy only online-order-web
+#   ./scripts/build-all.sh admin kds        # build + deploy only admin + kds
+#   ./scripts/build-all.sh delivery         # build + deploy only delivery-web
 #
 # Mapping:
 #   apps/online-order-web  →  backend/public/order/
 #   apps/admin-dashboard   →  backend/public/admin/
 #   apps/kds-web           →  backend/public/kds/
 #   apps/pos-web           →  backend/public/pos/
+#   apps/delivery-web      →  backend/public/driver/  (Vite base is /driver/)
 
 set -euo pipefail
 
@@ -21,13 +23,23 @@ declare -A APP_DEST=(
     [admin]="admin-dashboard"
     [kds]="kds-web"
     [pos]="pos-web"
+    [delivery]="delivery-web"
+)
+
+# Destination directory name differs from target key for delivery-web
+declare -A APP_PUBLIC=(
+    [order]="order"
+    [admin]="admin"
+    [kds]="kds"
+    [pos]="pos"
+    [delivery]="driver"
 )
 
 # Which apps to build — default to all, or pass short names as args
 if [[ $# -gt 0 ]]; then
     TARGETS=("$@")
 else
-    TARGETS=("order" "admin" "kds" "pos")
+    TARGETS=("order" "admin" "kds" "pos" "delivery")
 fi
 
 echo "=== Bake & Grill — Build All React Apps ==="
@@ -37,15 +49,15 @@ echo ""
 
 for target in "${TARGETS[@]}"; do
     if [[ -z "${APP_DEST[$target]+_}" ]]; then
-        echo "ERROR: Unknown target '$target'. Valid targets: order admin kds pos"
+        echo "ERROR: Unknown target '$target'. Valid targets: order admin kds pos delivery"
         exit 1
     fi
 
     APP_DIR="${REPO_ROOT}/apps/${APP_DEST[$target]}"
-    DEST_DIR="${REPO_ROOT}/backend/public/${target}"
+    DEST_DIR="${REPO_ROOT}/backend/public/${APP_PUBLIC[$target]}"
 
     echo "──────────────────────────────────────────"
-    echo "Building: ${APP_DEST[$target]} → backend/public/${target}/"
+    echo "Building: ${APP_DEST[$target]} → backend/public/${APP_PUBLIC[$target]}/"
     echo "──────────────────────────────────────────"
 
     cd "$APP_DIR"
@@ -63,7 +75,7 @@ for target in "${TARGETS[@]}"; do
     rm -rf "${DEST_DIR:?}"/*
     cp -R dist/. "$DEST_DIR/"
 
-    echo "✓ ${APP_DEST[$target]} deployed to backend/public/${target}/"
+    echo "✓ ${APP_DEST[$target]} deployed to backend/public/${APP_PUBLIC[$target]}/"
     echo ""
 done
 

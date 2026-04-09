@@ -111,6 +111,7 @@ class PermissionSeeder extends Seeder
         'delivery.view',
         'reservations.view',
         'loyalty.view',
+        'promotions.view', 'promotions.discounts', // Cashiers must be able to apply promos at POS
     ];
 
     public function run(): void

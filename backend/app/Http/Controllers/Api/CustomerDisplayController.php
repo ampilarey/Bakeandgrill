@@ -27,7 +27,7 @@ class CustomerDisplayController extends Controller
         }])
         ->where('order_number', $orderNumber)
         ->whereIn('status', ['pending', 'open', 'preparing', 'ready'])
-        ->select('id', 'order_number', 'status', 'type', 'subtotal', 'tax', 'discount', 'tip', 'total', 'created_at')
+        ->select('id', 'order_number', 'status', 'type', 'subtotal', 'tax_amount', 'discount_amount', 'tip_amount', 'total', 'created_at')
         ->firstOrFail();
 
         return response()->json([
@@ -43,9 +43,9 @@ class CustomerDisplayController extends Controller
                     'notes'      => $i->notes,
                 ]),
                 'subtotal' => $order->subtotal,
-                'tax'      => $order->tax,
-                'discount' => $order->discount,
-                'tip'      => $order->tip,
+                'tax'      => $order->tax_amount,
+                'discount' => $order->discount_amount,
+                'tip'      => $order->tip_amount,
                 'total'    => $order->total,
             ],
         ]);

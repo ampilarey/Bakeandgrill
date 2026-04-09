@@ -194,7 +194,7 @@ class OrderController extends Controller
 
         // Single transaction with row-lock to prevent concurrent split-payment race conditions
         // where two requests both read paidTotal < total and both set status = 'partial'.
-        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request): array {
+        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt): array {
             $order = Order::with('payments')->lockForUpdate()->findOrFail($id);
             $oldStatus = $order->status;
 
