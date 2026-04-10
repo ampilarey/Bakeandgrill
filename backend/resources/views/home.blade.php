@@ -239,7 +239,6 @@
     max-width: 1280px; margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    divide-x: 1px solid var(--border);
 }
 .trust-item {
     display: flex;
@@ -695,7 +694,8 @@
             $heroSlides[] = $slide;
         }
     }
-    $slideCount = max(count($heroSlides), 1);
+    // When no slides are configured, we render 1 fallback slide — dots/nav should reflect that.
+    $slideCount = count($heroSlides) > 0 ? count($heroSlides) : 1;
 
     $trustItems  = json_decode(\App\Models\SiteSetting::get('trust_items',  '[]'), true) ?: [];
     $categories  = json_decode(\App\Models\SiteSetting::get('homepage_categories', '[]'), true) ?: [];
@@ -758,26 +758,45 @@
     @endif
 
     <div class="banner-track" id="bannerTrack">
-        @foreach($heroSlides as $sIdx => $slide)
-        <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;">
-            @if(!empty($slide['image']))
-                <img src="{{ $slide['image'] }}" loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}" alt="{{ \App\Models\SiteSetting::get('site_name', 'Bake & Grill') }}">
-            @endif
-            <div class="banner-overlay">
-                @if(!empty($slide['eyebrow']))
-                    <span class="banner-eyebrow">{{ $slide['eyebrow'] }}</span>
+        @if(count($heroSlides) > 0)
+            @foreach($heroSlides as $sIdx => $slide)
+            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;">
+                @if(!empty($slide['image']))
+                    <img src="{{ $slide['image'] }}" loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}" alt="{{ \App\Models\SiteSetting::get('site_name', 'Bake & Grill') }}">
                 @endif
-                <h2 class="banner-title">{!! $slide['title'] !!}</h2>
-                @if(!empty($slide['subtitle']))
-                    <p class="banner-sub">{{ $slide['subtitle'] }}</p>
-                @endif
-                <div class="banner-ctas">
-                    <a href="{{ $slide['cta_url']  ?? '/order/' }}" class="banner-cta-primary">{{ $slide['cta_text']  ?? 'Order Now →' }}</a>
-                    <a href="{{ $slide['cta2_url'] ?? '/order/menu'   }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
+                <div class="banner-overlay">
+                    @if(!empty($slide['eyebrow']))
+                        <span class="banner-eyebrow">{{ $slide['eyebrow'] }}</span>
+                    @endif
+                    <h2 class="banner-title">{!! $slide['title'] !!}</h2>
+                    @if(!empty($slide['subtitle']))
+                        <p class="banner-sub">{{ $slide['subtitle'] }}</p>
+                    @endif
+                    <div class="banner-ctas">
+                        <a href="{{ $slide['cta_url']  ?? '/order/' }}" class="banner-cta-primary">{{ $slide['cta_text']  ?? 'Order Now →' }}</a>
+                        <a href="{{ $slide['cta2_url'] ?? '/order/menu' }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
+                    </div>
                 </div>
             </div>
-        </div>
-        @endforeach
+            @endforeach
+        @else
+            {{-- Fallback slide when no hero slides are configured in CMS --}}
+            @php
+                $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
+                $tagline  = \App\Models\SiteSetting::get('site_tagline', 'Dhivehi Breakfast & Artisan Baking');
+            @endphp
+            <div class="banner-slide active" style="background: linear-gradient(160deg, #2D1A0A 0%, #1C1408 100%);">
+                <div class="banner-overlay">
+                    <span class="banner-eyebrow">🍞 Fresh daily from 5am</span>
+                    <h2 class="banner-title">{{ $siteName }}<br><em>{{ $tagline }}</em></h2>
+                    <p class="banner-sub">Real food, proper char — order online or visit us in Malé.</p>
+                    <div class="banner-ctas">
+                        <a href="/order/" class="banner-cta-primary">🛒 Order Now →</a>
+                        <a href="/order/menu" class="banner-cta-secondary">View Menu</a>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 
     <button class="banner-btn prev" onclick="moveBanner(-1)" aria-label="Previous slide">‹</button>
