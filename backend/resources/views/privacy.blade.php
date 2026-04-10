@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Privacy Policy - Bake & Grill')
+@section('title', \App\Models\SiteSetting::get('privacy_meta_title', 'Privacy Policy - Bake & Grill'))
 
 @section('styles')
 <style>
@@ -53,10 +53,14 @@
     $privacyBodyOverride = \App\Models\SiteSetting::get('legal_privacy_body');
     $privacyPhone        = \App\Models\SiteSetting::get('business_phone', config('business.phone'));
     $privacyAddress      = \App\Models\SiteSetting::get('business_address', config('business.address.full'));
+    $privacyLastUpdated  = \App\Models\SiteSetting::get('privacy_last_updated_label', 'Last updated:');
+    $privacyEmailLabel   = \App\Models\SiteSetting::get('privacy_email_label',   'Email:');
+    $privacyPhoneLabel   = \App\Models\SiteSetting::get('privacy_phone_label',   'Phone:');
+    $privacyAddressLabel = \App\Models\SiteSetting::get('privacy_address_label', 'Address:');
 @endphp
 <div class="privacy-content">
     <h1>{{ $privacyTitle }}</h1>
-    <p><em>Last updated: {{ date('F d, Y') }}</em></p>
+    <p><em>{{ $privacyLastUpdated }} {{ date('F d, Y') }}</em></p>
 
     @if($privacyBodyOverride)
         {{-- CMS body override: plain text, HTML-escaped, newlines converted to <br> --}}
@@ -129,9 +133,9 @@
 
         <h2>Contact Us</h2>
         <p>For privacy-related questions or requests, contact us:</p>
-        <p><strong>Email:</strong> {{ $privacyEmail }}</p>
-        <p><strong>Phone:</strong> {{ $privacyPhone }}</p>
-        <p><strong>Address:</strong> {{ $privacyAddress }}</p>
+        <p><strong>{{ $privacyEmailLabel }}</strong> {{ $privacyEmail }}</p>
+        <p><strong>{{ $privacyPhoneLabel }}</strong> {{ $privacyPhone }}</p>
+        <p><strong>{{ $privacyAddressLabel }}</strong> {{ $privacyAddress }}</p>
     @endif
 </div>
 @endsection

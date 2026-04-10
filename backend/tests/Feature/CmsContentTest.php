@@ -503,4 +503,305 @@ class CmsContentTest extends TestCase
         $value = \App\Models\SiteSetting::get('legal_privacy_body');
         $this->assertSame('We respect your privacy.', $value);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Final Content CMS — Contact page card headings & labels
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public function test_contact_page_renders_fallback_card_headings(): void
+    {
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Our Location');
+        $response->assertSee('Get in Touch');
+        $response->assertSee('Opening Hours');
+    }
+
+    public function test_contact_page_renders_cms_location_heading_override(): void
+    {
+        $this->seedSetting('contact_location_heading', 'Where to Find Us', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Where to Find Us');
+        $response->assertDontSee('Our Location');
+    }
+
+    public function test_contact_page_renders_cms_touch_heading_override(): void
+    {
+        $this->seedSetting('contact_touch_heading', 'Reach Out', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Reach Out');
+        $response->assertDontSee('Get in Touch');
+    }
+
+    public function test_contact_page_renders_cms_hours_heading_override(): void
+    {
+        $this->seedSetting('contact_hours_heading', 'We Are Open', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('We Are Open');
+        // The card heading "Opening Hours" should be replaced; the link to /hours
+        // in the nav may still contain "Opening Hours" text so we only check
+        // that the CMS override is rendered, not that every instance is gone.
+        $response->assertSeeText('We Are Open');
+    }
+
+    public function test_contact_page_renders_cms_map_heading_override(): void
+    {
+        $this->seedSetting('contact_map_heading', 'Our Location on the Map', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Our Location on the Map');
+    }
+
+    public function test_contact_page_renders_cms_maps_link_label_override(): void
+    {
+        $this->seedSetting('contact_location_maps_label', 'View on Google Maps', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('View on Google Maps');
+        $response->assertDontSee('Open in Maps');
+    }
+
+    public function test_contact_page_renders_cms_schedule_label_override(): void
+    {
+        $this->seedSetting('contact_schedule_label', 'See All Hours', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('See All Hours');
+    }
+
+    public function test_contact_page_renders_cms_phone_label_override(): void
+    {
+        $this->seedSetting('contact_phone_label', 'Call Us', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Call Us');
+    }
+
+    public function test_contact_page_renders_cms_whatsapp_label_override(): void
+    {
+        $this->seedSetting('contact_whatsapp_label', 'Message on WhatsApp', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Message on WhatsApp');
+    }
+
+    public function test_contact_meta_title_uses_cms_setting(): void
+    {
+        $this->seedSetting('contact_meta_title', 'Find Bake & Grill — Contact', 'Contact');
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Find Bake &amp; Grill', false);
+    }
+
+    public function test_contact_meta_title_falls_back_when_setting_missing(): void
+    {
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSee('Contact Us');
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Final Content CMS — Hours page meta title, special closure, CTA labels
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public function test_hours_meta_title_uses_cms_setting(): void
+    {
+        $this->seedSetting('hours_meta_title', 'Our Business Hours', 'Pages');
+
+        $response = $this->get('/hours');
+        $response->assertOk();
+        $response->assertSee('Our Business Hours');
+    }
+
+    public function test_hours_meta_title_falls_back_when_setting_missing(): void
+    {
+        $response = $this->get('/hours');
+        $response->assertOk();
+        $response->assertSee('Opening Hours');
+    }
+
+    public function test_hours_special_closure_label_uses_cms_setting(): void
+    {
+        $this->seedSetting('hours_special_closure_label', 'Closure Notice:', 'Pages');
+        // Set a closure reason so the notice block renders
+        $this->seedSetting('business_closures_json', json_encode([
+            date('Y-m-d') => 'National Holiday',
+        ]), 'Hours', 'json');
+
+        $response = $this->get('/hours');
+        $response->assertOk();
+        $response->assertSee('Closure Notice:');
+        $response->assertDontSee('Special Closure:');
+    }
+
+    public function test_hours_order_btn_label_uses_cms_setting(): void
+    {
+        $this->seedSetting('hours_order_btn_label', 'Order Now!', 'Pages');
+
+        $response = $this->get('/hours');
+        $response->assertOk();
+        $response->assertSee('Order Now!');
+        $response->assertDontSee('Order Online Now');
+    }
+
+    public function test_hours_contact_page_label_uses_cms_setting(): void
+    {
+        $this->seedSetting('hours_contact_page_label', 'Contact us →', 'Pages');
+
+        $response = $this->get('/hours');
+        $response->assertOk();
+        $response->assertSee('Contact us →');
+        $response->assertDontSee('Contact page →');
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Final Content CMS — Legal pages meta titles and last-updated labels
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public function test_terms_meta_title_uses_cms_setting(): void
+    {
+        $this->seedSetting('terms_meta_title', 'Terms of Service - Bake & Grill', 'Pages');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Terms of Service - Bake &amp; Grill', false);
+    }
+
+    public function test_terms_meta_title_falls_back_when_setting_missing(): void
+    {
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Terms');
+    }
+
+    public function test_terms_last_updated_label_uses_cms_setting(): void
+    {
+        $this->seedSetting('terms_last_updated_label', 'Revised on:', 'Pages');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Revised on:');
+        $response->assertDontSee('Last updated:');
+    }
+
+    public function test_terms_phone_label_uses_cms_setting(): void
+    {
+        $this->seedSetting('terms_phone_label', 'Tel:', 'Pages');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Tel:');
+    }
+
+    public function test_terms_email_label_uses_cms_setting(): void
+    {
+        $this->seedSetting('terms_email_label', 'E-mail:', 'Pages');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('E-mail:');
+    }
+
+    public function test_refund_meta_title_uses_cms_setting(): void
+    {
+        $this->seedSetting('refund_meta_title', 'Returns Policy - Bake & Grill', 'Pages');
+
+        $response = $this->get('/refund');
+        $response->assertOk();
+        $response->assertSee('Returns Policy - Bake &amp; Grill', false);
+    }
+
+    public function test_refund_meta_title_falls_back_when_setting_missing(): void
+    {
+        $response = $this->get('/refund');
+        $response->assertOk();
+        $response->assertSee('Refund');
+    }
+
+    public function test_refund_last_updated_label_uses_cms_setting(): void
+    {
+        $this->seedSetting('refund_last_updated_label', 'Policy date:', 'Pages');
+
+        $response = $this->get('/refund');
+        $response->assertOk();
+        $response->assertSee('Policy date:');
+        $response->assertDontSee('Last updated:');
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Final Content CMS — Privacy page labels (CMS key readability)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public function test_privacy_meta_title_cms_key_is_readable(): void
+    {
+        $this->seedSetting('privacy_meta_title', 'Data Privacy - Bake & Grill', 'Pages');
+
+        $value = \App\Models\SiteSetting::get('privacy_meta_title', 'Privacy Policy - Bake & Grill');
+        $this->assertSame('Data Privacy - Bake & Grill', $value);
+    }
+
+    public function test_privacy_last_updated_label_cms_key_is_readable(): void
+    {
+        $this->seedSetting('privacy_last_updated_label', 'Effective from:', 'Pages');
+
+        $value = \App\Models\SiteSetting::get('privacy_last_updated_label', 'Last updated:');
+        $this->assertSame('Effective from:', $value);
+    }
+
+    public function test_privacy_email_label_cms_key_is_readable(): void
+    {
+        $this->seedSetting('privacy_email_label', 'E-mail:', 'Pages');
+
+        $value = \App\Models\SiteSetting::get('privacy_email_label', 'Email:');
+        $this->assertSame('E-mail:', $value);
+    }
+
+    public function test_privacy_address_label_cms_key_is_readable(): void
+    {
+        $this->seedSetting('privacy_address_label', 'Office:', 'Pages');
+
+        $value = \App\Models\SiteSetting::get('privacy_address_label', 'Address:');
+        $this->assertSame('Office:', $value);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Final Content CMS — Missing settings do not cause 500 (fallback safety)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public function test_contact_page_does_not_crash_when_all_new_settings_missing(): void
+    {
+        // No seeds — all new contact_* and contact_meta_title keys absent
+        $response = $this->get('/contact');
+        $response->assertOk();
+    }
+
+    public function test_hours_page_does_not_crash_when_all_new_settings_missing(): void
+    {
+        $response = $this->get('/hours');
+        $response->assertOk();
+    }
+
+    public function test_terms_page_does_not_crash_when_all_new_settings_missing(): void
+    {
+        $response = $this->get('/terms');
+        $response->assertOk();
+    }
+
+    public function test_refund_page_does_not_crash_when_all_new_settings_missing(): void
+    {
+        $response = $this->get('/refund');
+        $response->assertOk();
+    }
 }

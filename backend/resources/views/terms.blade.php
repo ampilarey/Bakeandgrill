@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Terms & Conditions - Bake & Grill')
+@section('title', \App\Models\SiteSetting::get('terms_meta_title', 'Terms & Conditions - Bake & Grill'))
 
 @section('styles')
 <style>
@@ -71,6 +71,9 @@
         $termsBizPhone        = \App\Models\SiteSetting::get('business_phone',   config('business.phone'));
         $termsBizEmail        = \App\Models\SiteSetting::get('business_email',   config('business.email'));
         $termsBodyOverride    = \App\Models\SiteSetting::get('legal_terms_body');
+        $termsPhoneLabel      = \App\Models\SiteSetting::get('terms_phone_label', 'Phone:');
+        $termsEmailLabel      = \App\Models\SiteSetting::get('terms_email_label', 'Email:');
+        $termsLastUpdated     = \App\Models\SiteSetting::get('terms_last_updated_label', 'Last updated:');
     @endphp
 
     <h1>{{ $termsTitle }}</h1>
@@ -80,8 +83,8 @@
     <div class="corporate-box">
         <strong>{{ $termsBizName }}</strong><br>
         {{ $termsBizAddress }}<br>
-        Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', $termsBizPhone) }}">{{ $termsBizPhone }}</a> &nbsp;|&nbsp;
-        Email: <a href="mailto:{{ $termsBizEmail }}">{{ $termsBizEmail }}</a><br>
+        {{ $termsPhoneLabel }} <a href="tel:{{ preg_replace('/[^0-9+]/', '', $termsBizPhone) }}">{{ $termsBizPhone }}</a> &nbsp;|&nbsp;
+        {{ $termsEmailLabel }} <a href="mailto:{{ $termsBizEmail }}">{{ $termsBizEmail }}</a><br>
         {{ $termsServiceText }}
     </div>
 
@@ -139,6 +142,6 @@
         <p>These terms are governed by the laws of the Republic of Maldives. Any disputes will be resolved through the relevant Maldivian courts or authority.</p>
     @endif
 
-    <p class="updated">Last updated: {{ date('F j, Y') }}</p>
+    <p class="updated">{{ $termsLastUpdated }} {{ date('F j, Y') }}</p>
 </div>
 @endsection

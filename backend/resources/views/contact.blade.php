@@ -18,7 +18,7 @@
     $siteName    = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
 @endphp
 
-@section('title', 'Contact Us – ' . \App\Models\SiteSetting::get('site_name', 'Bake & Grill'))
+@section('title', \App\Models\SiteSetting::get('contact_meta_title', 'Contact Us – ' . \App\Models\SiteSetting::get('site_name', 'Bake & Grill')))
 @section('description', 'Find ' . \App\Models\SiteSetting::get('site_name', 'Bake & Grill') . ' in Malé. Call us, WhatsApp, or visit us at ' . \App\Models\SiteSetting::get('business_address', 'Kalaafaanu Hingun, Malé, Maldives') . '.')
 
 @section('styles')
@@ -152,36 +152,36 @@
 
     <div class="contact-card">
         <div class="contact-card-icon">📍</div>
-        <h2>Our Location</h2>
-        <p><strong>{{ $siteName }} Café</strong></p>
+        <h2>{{ \App\Models\SiteSetting::get('contact_location_heading', 'Our Location') }}</h2>
+        <p><strong>{{ $siteName }}</strong></p>
         <p>{{ $addressLine1 }}</p>
         <p>{{ $addressLine2 }}</p>
         <p>{{ $landmark }}</p>
         <a href="{{ $mapsUrl }}" target="_blank" class="contact-link-row">
-            Open in Maps →
+            {{ \App\Models\SiteSetting::get('contact_location_maps_label', 'Open in Maps →') }}
         </a>
     </div>
 
     <div class="contact-card">
         <div class="contact-card-icon">📞</div>
-        <h2>Get in Touch</h2>
-        <p><strong>Phone</strong></p>
+        <h2>{{ \App\Models\SiteSetting::get('contact_touch_heading', 'Get in Touch') }}</h2>
+        <p><strong>{{ \App\Models\SiteSetting::get('contact_phone_label', 'Phone') }}</strong></p>
         <a href="{{ $phoneTel }}">{{ $phone }}</a>
-        <p style="margin-top:0.75rem;"><strong>Email</strong></p>
+        <p style="margin-top:0.75rem;"><strong>{{ \App\Models\SiteSetting::get('contact_email_label', 'Email') }}</strong></p>
         <a href="mailto:{{ $email }}">{{ $email }}</a>
         <div class="contact-msg-btns">
             <a href="{{ $waLink }}" target="_blank" rel="noopener" class="contact-link-wa">
-                💬 WhatsApp
+                {{ \App\Models\SiteSetting::get('contact_whatsapp_label', '💬 WhatsApp') }}
             </a>
             <a href="{{ $viberLink }}" class="contact-link-viber">
-                📱 Viber
+                {{ \App\Models\SiteSetting::get('contact_viber_label', '📱 Viber') }}
             </a>
         </div>
     </div>
 
     <div class="contact-card">
         <div class="contact-card-icon">🕐</div>
-        <h2>Opening Hours</h2>
+        <h2>{{ \App\Models\SiteSetting::get('contact_hours_heading', 'Opening Hours') }}</h2>
         @if($hoursData && is_array($hoursData))
             @foreach($hoursData as $period)
                 @if(isset($period['days']) && isset($period['hours']))
@@ -190,20 +190,28 @@
                 @endif
             @endforeach
         @else
-            <p><strong>Sunday – Thursday</strong></p>
-            <p>7:00 AM – 11:00 PM</p>
-            <p style="margin-top:0.75rem;"><strong>Friday – Saturday</strong></p>
-            <p>7:00 AM – 2:00 AM</p>
+            @php
+                $fallbackHours = \App\Models\SiteSetting::get(
+                    'contact_hours_fallback',
+                    "Sunday \xe2\x80\x93 Thursday: 7:00 AM \xe2\x80\x93 11:00 PM\nFriday \xe2\x80\x93 Saturday: 7:00 AM \xe2\x80\x93 2:00 AM"
+                );
+                $fallbackLines = array_filter(array_map('trim', explode("\n", $fallbackHours)));
+            @endphp
+            @foreach($fallbackLines as $fLine)
+                @php [$fDays, $fHrs] = array_pad(explode(':', $fLine, 2), 2, ''); @endphp
+                <p {{ !$loop->first ? 'style="margin-top:0.75rem;"' : '' }}><strong>{{ trim($fDays) }}</strong></p>
+                <p>{{ trim($fHrs) }}</p>
+            @endforeach
         @endif
         <a href="/hours" class="contact-link-row" style="margin-top:1rem;">
-            Full Schedule →
+            {{ \App\Models\SiteSetting::get('contact_schedule_label', 'Full Schedule →') }}
         </a>
     </div>
 
 </div>
 
 <div class="map-section">
-    <h2>📍 Find Us on the Map</h2>
+    <h2>{{ \App\Models\SiteSetting::get('contact_map_heading', '📍 Find Us on the Map') }}</h2>
     <div class="map-wrap">
         <iframe
             src="{{ \App\Models\SiteSetting::get('maps_embed_url', 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.9!2d73.5093!3d4.1755!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTAnMzEuOCJOIDczwrAzMCczMy41IkU!5e0!3m2!1sen!2s!4v1234567890') }}"

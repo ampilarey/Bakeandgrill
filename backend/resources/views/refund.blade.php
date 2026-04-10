@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'Refund & Cancellation Policy - Bake & Grill')
+@section('title', \App\Models\SiteSetting::get('refund_meta_title', 'Refund & Cancellation Policy - Bake & Grill'))
 
 @section('styles')
 <style>
@@ -68,6 +68,7 @@
     $refundEmail        = \App\Models\SiteSetting::get('business_email',   config('business.email'));
     $refundAddress      = \App\Models\SiteSetting::get('business_address', config('business.address.full', config('business.address.line1') . ', ' . config('business.address.city')));
     $refundWaLink       = \App\Models\SiteSetting::get('business_whatsapp', config('business.social.whatsapp', 'https://wa.me/9609120011'));
+    $refundLastUpdated  = \App\Models\SiteSetting::get('refund_last_updated_label', 'Last updated:');
 @endphp
 <div class="policy-wrap">
     <h1>{{ $refundTitle }}</h1>
@@ -120,6 +121,6 @@
         <p>All transactions are in <strong>MVR (Maldivian Rufiyaa)</strong>. No import/export charges or customs duties apply to our food and beverage products.</p>
     @endif
 
-    <p class="updated">Last updated: {{ date('F j, Y') }}</p>
+    <p class="updated">{{ $refundLastUpdated }} {{ date('F j, Y') }}</p>
 </div>
 @endsection

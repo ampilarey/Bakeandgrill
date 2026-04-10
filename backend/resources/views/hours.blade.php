@@ -1,7 +1,7 @@
 @extends('layout')
 
-@section('title', 'Opening Hours – Bake & Grill')
-@section('description', 'See our opening hours. Bake & Grill is open 7 days a week in Malé, Maldives.')
+@section('title',       \App\Models\SiteSetting::get('hours_meta_title',       'Opening Hours – Bake & Grill'))
+@section('description', \App\Models\SiteSetting::get('hours_meta_description',  'See our opening hours. Bake & Grill is open 7 days a week in Malé, Maldives.'))
 
 @section('styles')
 <style>
@@ -132,7 +132,7 @@
     @if($closureReason)
         <div class="closure-notice">
             <span class="cn-icon">⚠️</span>
-            <div><strong>Special Closure:</strong> {{ $closureReason }}</div>
+            <div><strong>{{ \App\Models\SiteSetting::get('hours_special_closure_label', 'Special Closure:') }}</strong> {{ $closureReason }}</div>
         </div>
     @endif
 
@@ -165,14 +165,14 @@
 
     <p class="hours-note">
         {{ \App\Models\SiteSetting::get('hours_page_note', 'Hours may vary on public holidays.') }}<br>
-        Call us to confirm: <a href="tel:{{ preg_replace('/[^0-9+]/', '', \App\Models\SiteSetting::get('business_phone', config('business.phone'))) }}">{{ \App\Models\SiteSetting::get('business_phone', config('business.phone')) }}</a> &nbsp;·&nbsp;
-        <a href="/contact">Contact page →</a>
+        {{ \App\Models\SiteSetting::get('hours_call_confirm_label', 'Call us to confirm:') }} <a href="tel:{{ preg_replace('/[^0-9+]/', '', \App\Models\SiteSetting::get('business_phone', config('business.phone'))) }}">{{ \App\Models\SiteSetting::get('business_phone', config('business.phone')) }}</a> &nbsp;·&nbsp;
+        <a href="/contact">{{ \App\Models\SiteSetting::get('hours_contact_page_label', 'Contact page →') }}</a>
     </p>
 
     <div class="order-cta-block">
         <h3>{{ \App\Models\SiteSetting::get('hours_page_cta_title', 'Ready to order?') }}</h3>
         <p>{{ \App\Models\SiteSetting::get('hours_page_cta_subtitle', 'Place your order online and have it delivered fresh to your door') }}</p>
-        <a href="/order/" class="order-cta-link">🛒 Order Online Now</a>
+        <a href="/order/" class="order-cta-link">{{ \App\Models\SiteSetting::get('hours_order_btn_label', '🛒 Order Online Now') }}</a>
     </div>
 
 </div>
