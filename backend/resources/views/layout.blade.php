@@ -179,6 +179,23 @@
         }
         .site-header.scrolled { box-shadow: 0 4px 24px rgba(28, 20, 8, 0.08); }
 
+        /* ─── Announcement Banner ─────────────────────────────────── */
+        .site-announcement {
+            width: 100%;
+            padding: 0.6rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        .site-announcement--info    { background: #eff6ff; color: #1e40af; border-bottom: 1px solid #bfdbfe; }
+        .site-announcement--warning { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fcd34d; }
+        .site-announcement--promo   { background: #f0fdf4; color: #166534; border-bottom: 1px solid #bbf7d0; }
+        .site-announcement__inner {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            text-decoration: none; color: inherit;
+        }
+        .site-announcement__arrow { opacity: 0.7; }
+
         .header-inner {
             max-width: 1280px;
             margin: 0 auto;
@@ -824,6 +841,28 @@
     </div>
     @endif
 </header>
+
+{{-- ─── Announcement Banner ──────────────────────────────────────── --}}
+@php
+    $annEnabled = \App\Models\SiteSetting::get('announcement_enabled', 'false') === 'true';
+    $annText    = trim(\App\Models\SiteSetting::get('announcement_text', ''));
+    $annUrl     = trim(\App\Models\SiteSetting::get('announcement_url',  ''));
+    $annStyle   = \App\Models\SiteSetting::get('announcement_style', 'info');
+@endphp
+@if($annEnabled && $annText)
+<div class="site-announcement site-announcement--{{ e($annStyle) }}" role="banner" aria-label="Site announcement">
+    @if($annUrl)
+        <a href="{{ e($annUrl) }}" class="site-announcement__inner">
+            <span class="site-announcement__text">{{ $annText }}</span>
+            <span class="site-announcement__arrow">→</span>
+        </a>
+    @else
+        <div class="site-announcement__inner">
+            <span class="site-announcement__text">{{ $annText }}</span>
+        </div>
+    @endif
+</div>
+@endif
 
 {{-- ─── Mobile Top Bar ──────────────────────────────────────────── --}}
 <div class="mobile-header">

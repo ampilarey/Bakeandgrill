@@ -118,8 +118,8 @@
 @section('content')
 
 <div class="page-hero">
-    <span class="page-hero-eyebrow">🕐 Schedule</span>
-    <h1>Opening Hours</h1>
+    <span class="page-hero-eyebrow">{{ \App\Models\SiteSetting::get('hours_page_eyebrow', '🕐 Schedule') }}</span>
+    <h1>{{ \App\Models\SiteSetting::get('hours_page_title', 'Opening Hours') }}</h1>
     @if($isOpen)
         <span class="status-badge open">● We're open right now</span>
     @else
@@ -164,14 +164,14 @@
     </div>
 
     <p class="hours-note">
-        Hours may vary on public holidays.<br>
+        {{ \App\Models\SiteSetting::get('hours_page_note', 'Hours may vary on public holidays.') }}<br>
         Call us to confirm: <a href="tel:{{ preg_replace('/[^0-9+]/', '', \App\Models\SiteSetting::get('business_phone', config('business.phone'))) }}">{{ \App\Models\SiteSetting::get('business_phone', config('business.phone')) }}</a> &nbsp;·&nbsp;
         <a href="/contact">Contact page →</a>
     </p>
 
     <div class="order-cta-block">
-        <h3>Ready to order?</h3>
-        <p>Place your order online and have it delivered fresh to your door</p>
+        <h3>{{ \App\Models\SiteSetting::get('hours_page_cta_title', 'Ready to order?') }}</h3>
+        <p>{{ \App\Models\SiteSetting::get('hours_page_cta_subtitle', 'Place your order online and have it delivered fresh to your door') }}</p>
         <a href="/order/" class="order-cta-link">🛒 Order Online Now</a>
     </div>
 

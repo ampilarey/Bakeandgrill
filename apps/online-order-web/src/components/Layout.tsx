@@ -83,11 +83,62 @@ export function Layout() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Announcement banner — reads from public site settings
+  const annEnabled = s.announcement_enabled === 'true';
+  const annText    = (s.announcement_text  || '').trim();
+  const annUrl     = (s.announcement_url   || '').trim();
+  const annStyle   = s.announcement_style  || 'info';
+
+  const annBgMap: Record<string, string> = {
+    info:    '#eff6ff',
+    warning: '#fffbeb',
+    promo:   '#f0fdf4',
+  };
+  const annColorMap: Record<string, string> = {
+    info:    '#1e40af',
+    warning: '#92400e',
+    promo:   '#166534',
+  };
+  const annBorderMap: Record<string, string> = {
+    info:    '#bfdbfe',
+    warning: '#fcd34d',
+    promo:   '#bbf7d0',
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)' }}>
 
       {/* A11Y-02: Skip to content link (visible on focus) */}
       <a href="#main-content" className="skip-link">Skip to content</a>
+
+      {/* ── Announcement Banner ─────────────────────────────── */}
+      {annEnabled && annText && (
+        <div
+          role="banner"
+          aria-label="Site announcement"
+          style={{
+            width: '100%',
+            padding: '0.55rem 1.25rem',
+            background: annBgMap[annStyle] || annBgMap.info,
+            borderBottom: `1px solid ${annBorderMap[annStyle] || annBorderMap.info}`,
+            color: annColorMap[annStyle] || annColorMap.info,
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            textAlign: 'center',
+          }}
+        >
+          {annUrl ? (
+            <a
+              href={annUrl}
+              style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              {annText} <span style={{ opacity: 0.7 }}>→</span>
+            </a>
+          ) : (
+            annText
+          )}
+        </div>
+      )}
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <header

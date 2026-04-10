@@ -143,9 +143,9 @@
 @section('content')
 
 <div class="page-hero">
-    <span class="page-hero-eyebrow">📍 Find Us</span>
-    <h1>Contact Us</h1>
-    <p>We'd love to hear from you — visit, call, or message us anytime</p>
+    <span class="page-hero-eyebrow">{{ \App\Models\SiteSetting::get('contact_page_eyebrow', '📍 Find Us') }}</span>
+    <h1>{{ \App\Models\SiteSetting::get('contact_page_title', 'Contact Us') }}</h1>
+    <p>{{ \App\Models\SiteSetting::get('contact_page_subtitle', "We'd love to hear from you — visit, call, or message us anytime") }}</p>
 </div>
 
 <div class="contact-section">

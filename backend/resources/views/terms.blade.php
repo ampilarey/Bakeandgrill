@@ -66,11 +66,17 @@
     <p class="subtitle">Please read these terms before completing your purchase.</p>
 
     {{-- BML Req 3: Corporate info --}}
+    @php
+        $termsBizName    = \App\Models\SiteSetting::get('site_name',        config('business.name'));
+        $termsBizAddress = \App\Models\SiteSetting::get('business_address', config('business.address.full'));
+        $termsBizPhone   = \App\Models\SiteSetting::get('business_phone',   config('business.phone'));
+        $termsBizEmail   = \App\Models\SiteSetting::get('business_email',   config('business.email'));
+    @endphp
     <div class="corporate-box">
-        <strong>{{ config('business.name') }}</strong><br>
-        {{ config('business.address.full') }}<br>
-        Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('business.phone')) }}">{{ config('business.phone') }}</a> &nbsp;|&nbsp;
-        Email: <a href="mailto:{{ config('business.email') }}">{{ config('business.email') }}</a><br>
+        <strong>{{ $termsBizName }}</strong><br>
+        {{ $termsBizAddress }}<br>
+        Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', $termsBizPhone) }}">{{ $termsBizPhone }}</a> &nbsp;|&nbsp;
+        Email: <a href="mailto:{{ $termsBizEmail }}">{{ $termsBizEmail }}</a><br>
         Customer service: Available via WhatsApp, Viber, or the contact details above.
     </div>
 

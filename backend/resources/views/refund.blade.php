@@ -60,6 +60,12 @@
 @endsection
 
 @section('content')
+@php
+    $refundPhone   = \App\Models\SiteSetting::get('business_phone',   config('business.phone'));
+    $refundEmail   = \App\Models\SiteSetting::get('business_email',   config('business.email'));
+    $refundAddress = \App\Models\SiteSetting::get('business_address', config('business.address.full', config('business.address.line1') . ', ' . config('business.address.city')));
+    $refundWaLink  = \App\Models\SiteSetting::get('business_whatsapp', config('business.social.whatsapp', 'https://wa.me/9609120011'));
+@endphp
 <div class="policy-wrap">
     <h1>Refund &amp; Cancellation Policy</h1>
     <p class="subtitle">Please read this policy before completing your purchase.</p>
@@ -70,7 +76,7 @@
 
     <h2>Cancellation</h2>
     <ul>
-        <li><strong>Before kitchen confirmation:</strong> You may cancel your order at no charge. Contact us immediately via WhatsApp or Viber at <a href="{{ config('business.social.whatsapp') }}">{{ config('business.phone') }}</a>.</li>
+        <li><strong>Before kitchen confirmation:</strong> You may cancel your order at no charge. Contact us immediately via WhatsApp or Viber at <a href="{{ $refundWaLink }}">{{ $refundPhone }}</a>.</li>
         <li><strong>After kitchen confirmation:</strong> The order cannot be cancelled, as food preparation has already begun. No refund will be issued.</li>
         <li>Orders placed outside operating hours will be held pending and may be cancelled before the opening time.</li>
     </ul>
@@ -93,10 +99,10 @@
     <h2>How to Request a Refund</h2>
     <p>Contact us through any of the following channels with your order number:</p>
     <ul>
-        <li>WhatsApp / Viber: <a href="{{ config('business.social.whatsapp') }}">{{ config('business.phone') }}</a></li>
-        <li>Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('business.phone')) }}">{{ config('business.phone') }}</a></li>
-        <li>Email: <a href="mailto:{{ config('business.email') }}">{{ config('business.email') }}</a></li>
-        <li>In person: {{ config('business.address.line1') }}, {{ config('business.address.city') }}</li>
+        <li>WhatsApp / Viber: <a href="{{ $refundWaLink }}">{{ $refundPhone }}</a></li>
+        <li>Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', $refundPhone) }}">{{ $refundPhone }}</a></li>
+        <li>Email: <a href="mailto:{{ $refundEmail }}">{{ $refundEmail }}</a></li>
+        <li>In person: {{ $refundAddress }}</li>
     </ul>
 
     <h2>Payment Disputes</h2>

@@ -717,6 +717,24 @@
     $deliveryTime      = \App\Models\SiteSetting::get('delivery_time',      '30–45 min');
     $deliveryThreshold = \App\Models\SiteSetting::get('delivery_threshold', 'MVR 200');
     $waOrderLink       = $waLink . (str_contains($waLink, '?') ? '&' : '?') . 'text=Hi%2C+I%27d+like+to+place+an+order';
+
+    // Homepage section copy — managed in Admin → Settings → Website Settings → Homepage
+    $homeCategoriesEyebrow = \App\Models\SiteSetting::get('home_categories_eyebrow', "What we're known for");
+    $homeCategoriesTitle   = \App\Models\SiteSetting::get('home_categories_title',   'Made for Malé');
+    $homeCategoriesSubtitle= \App\Models\SiteSetting::get('home_categories_subtitle','Four things we do properly, every single day.');
+    $homeFeaturedEyebrowBs = \App\Models\SiteSetting::get('home_featured_eyebrow_bestseller', '🔥 Most Ordered');
+    $homeFeaturedEyebrowHp = \App\Models\SiteSetting::get('home_featured_eyebrow_handpicked', '⭐ Handpicked');
+    $homeFeaturedTitleBs   = \App\Models\SiteSetting::get('home_featured_title_bestseller',   'Best Sellers');
+    $homeFeaturedTitleHp   = \App\Models\SiteSetting::get('home_featured_title_handpicked',   'Featured Items');
+    $homeFeaturedSubtitle  = \App\Models\SiteSetting::get('home_featured_subtitle',  'The dishes our regulars order on repeat.');
+    $homeLocationEyebrow   = \App\Models\SiteSetting::get('home_location_eyebrow',   'Find us');
+    $homeLocationTitle     = \App\Models\SiteSetting::get('home_location_title',     'Visit or Order');
+    $homeLocationSubtitle  = \App\Models\SiteSetting::get('home_location_subtitle',  "Come in or stay in — we've got you covered either way.");
+    $homeProofEyebrow      = \App\Models\SiteSetting::get('home_proof_eyebrow',      'Loved by Malé');
+    $homeDeliveryTagline   = \App\Models\SiteSetting::get('home_delivery_tagline',   'Delivery across all of Malé');
+    $homeDeliverySubtitle  = \App\Models\SiteSetting::get('home_delivery_subtitle',  'We come to you — no exceptions within the city');
+    $homeDeliveryQualityLine  = \App\Models\SiteSetting::get('home_delivery_quality_line',  'Hot food at your door, not a cold box');
+    $homeDeliveryPaymentLine  = \App\Models\SiteSetting::get('home_delivery_payment_line',  'BML online payment or cash on delivery');
 @endphp
 
 {{-- ══════════════════════════════════════════════════════════
@@ -819,9 +837,9 @@
 <section class="section alt">
     <div class="section-inner">
         <div class="section-header">
-            <span class="section-eyebrow">What we're known for</span>
-            <h2 class="section-title">Made for Malé</h2>
-            <p class="section-sub">Four things we do properly, every single day.</p>
+            <span class="section-eyebrow">{{ $homeCategoriesEyebrow }}</span>
+            <h2 class="section-title">{{ $homeCategoriesTitle }}</h2>
+            <p class="section-sub">{{ $homeCategoriesSubtitle }}</p>
         </div>
         <div class="categories-grid">
             @foreach($categories as $cat)
@@ -856,19 +874,19 @@
         <div class="section-header">
             <span class="section-eyebrow">
                 @if($bestSellers->count() > 0 && $bestSellers->max('order_items_count') > 0)
-                    🔥 Most Ordered
+                    {{ $homeFeaturedEyebrowBs }}
                 @else
-                    ⭐ Handpicked
+                    {{ $homeFeaturedEyebrowHp }}
                 @endif
             </span>
             <h2 class="section-title">
                 @if($bestSellers->count() > 0 && $bestSellers->max('order_items_count') > 0)
-                    Best Sellers
+                    {{ $homeFeaturedTitleBs }}
                 @else
-                    Featured Items
+                    {{ $homeFeaturedTitleHp }}
                 @endif
             </h2>
-            <p class="section-sub">The dishes our regulars order on repeat.</p>
+            <p class="section-sub">{{ $homeFeaturedSubtitle }}</p>
         </div>
 
         <div class="products-grid">
@@ -929,7 +947,7 @@
 ══════════════════════════════════════════════════════════ --}}
 <section class="proof-strip">
     <div class="proof-inner">
-        <div class="proof-eyebrow">Loved by Malé</div>
+        <div class="proof-eyebrow">{{ $homeProofEyebrow }}</div>
         <div class="proof-stat">{!! $proofStat !!}</div>
         <p class="proof-label">{{ $proofLabel }}</p>
         <div class="proof-details">
@@ -950,9 +968,9 @@
 <section class="section alt">
     <div class="section-inner">
         <div class="section-header">
-            <span class="section-eyebrow">Find us</span>
-            <h2 class="section-title">Visit or Order</h2>
-            <p class="section-sub">Come in or stay in — we've got you covered either way.</p>
+            <span class="section-eyebrow">{{ $homeLocationEyebrow }}</span>
+            <h2 class="section-title">{{ $homeLocationTitle }}</h2>
+            <p class="section-sub">{{ $homeLocationSubtitle }}</p>
         </div>
         <div class="location-grid">
 
@@ -1025,8 +1043,8 @@
                 <div class="loc-detail-row">
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
-                        Delivery across all of Malé
-                        <small>We come to you — no exceptions within the city</small>
+                        {{ $homeDeliveryTagline }}
+                        <small>{{ $homeDeliverySubtitle }}</small>
                     </div>
                 </div>
 
@@ -1034,7 +1052,7 @@
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
                         {{ $deliveryTime }} average delivery time
-                        <small>Hot food at your door, not a cold box</small>
+                        <small>{{ $homeDeliveryQualityLine }}</small>
                     </div>
                 </div>
 
@@ -1042,7 +1060,7 @@
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
                         Free delivery on orders over {{ $deliveryThreshold }}
-                        <small>BML online payment or cash on delivery</small>
+                        <small>{{ $homeDeliveryPaymentLine }}</small>
                     </div>
                 </div>
 
