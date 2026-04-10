@@ -121,9 +121,9 @@
     <span class="page-hero-eyebrow">{{ \App\Models\SiteSetting::get('hours_page_eyebrow', '🕐 Schedule') }}</span>
     <h1>{{ \App\Models\SiteSetting::get('hours_page_title', 'Opening Hours') }}</h1>
     @if($isOpen)
-        <span class="status-badge open">● We're open right now</span>
+        <span class="status-badge open">{{ \App\Models\SiteSetting::get('hours_open_status_text', "● We're open right now") }}</span>
     @else
-        <span class="status-badge closed">● Currently closed</span>
+        <span class="status-badge closed">{{ \App\Models\SiteSetting::get('hours_closed_status_text', '● Currently closed') }}</span>
     @endif
 </div>
 

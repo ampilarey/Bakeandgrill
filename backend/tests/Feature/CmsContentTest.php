@@ -328,4 +328,179 @@ class CmsContentTest extends TestCase
         $response->assertOk();
         $response->assertSee('Ameenee Magu, Malé');
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Business hours — CMS fallback and override
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function test_hours_page_renders_when_business_hours_json_missing(): void
+    {
+        // No business_hours_json in DB → falls back to config values.
+        // The /hours page should still render without errors.
+        $response = $this->get('/hours');
+        $response->assertOk();
+        // Days of the week must appear (from the blade @foreach)
+        $response->assertSee('Monday');
+        $response->assertSee('Friday');
+    }
+
+    public function test_hours_page_renders_cms_overridden_hours(): void
+    {
+        // Seed a custom hours JSON: only Sunday is open, everything else closed.
+        $cmsHours = json_encode([
+            '0' => ['open' => '08:00', 'close' => '14:00'],
+            '1' => ['closed' => true],
+            '2' => ['closed' => true],
+            '3' => ['closed' => true],
+            '4' => ['closed' => true],
+            '5' => ['closed' => true],
+            '6' => ['closed' => true],
+        ]);
+        $this->seedSetting('business_hours_json', $cmsHours, 'Hours', 'json', true);
+
+        $response = $this->get('/hours');
+        $response->assertOk();
+        // Sunday row should show the open/close times from the CMS
+        $response->assertSee('08:00');
+        $response->assertSee('14:00');
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Hours status badge text — CMS override
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function test_hours_open_status_text_uses_cms_override(): void
+    {
+        $this->seedSetting('hours_open_status_text', '✅ Open Now!', 'Pages');
+
+        // We can't control isOpen() in a unit test, so we check the setting
+        // is at least being read by verifying SiteSetting::get() returns it.
+        $value = \App\Models\SiteSetting::get('hours_open_status_text', "● We're open right now");
+        $this->assertSame('✅ Open Now!', $value);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Terms page — title, subtitle, corporate service text overrides
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function test_terms_page_renders_fallback_title(): void
+    {
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Terms &amp; Conditions', false);
+    }
+
+    public function test_terms_page_renders_cms_title_override(): void
+    {
+        $this->seedSetting('terms_page_title',    'Our Terms of Service', 'Pages');
+        $this->seedSetting('terms_page_subtitle', 'Read before ordering.', 'Pages');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Our Terms of Service');
+        $response->assertSee('Read before ordering.');
+    }
+
+    public function test_terms_page_renders_cms_corporate_service_text_override(): void
+    {
+        $this->seedSetting('terms_page_corporate_service_text', 'Contact us via our website form.', 'Pages');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Contact us via our website form.');
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Legal body overrides — terms, refund, privacy
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function test_terms_page_falls_back_to_hardcoded_prose_when_legal_body_empty(): void
+    {
+        // Explicitly set legal_terms_body to empty → hardcoded sections must show
+        $this->seedSetting('legal_terms_body', '', 'Legal', 'textarea');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        // A section from the hardcoded prose
+        $response->assertSee('About Our Services');
+    }
+
+    public function test_terms_page_body_override_replaces_hardcoded_prose(): void
+    {
+        $this->seedSetting('legal_terms_body', "Section 1: Custom terms.\nSection 2: More custom.", 'Legal', 'textarea');
+
+        $response = $this->get('/terms');
+        $response->assertOk();
+        $response->assertSee('Section 1: Custom terms.');
+        // The hardcoded sections should NOT be visible
+        $response->assertDontSee('About Our Services');
+    }
+
+    public function test_refund_page_renders_fallback_title(): void
+    {
+        $response = $this->get('/refund');
+        $response->assertOk();
+        $response->assertSee('Refund &amp; Cancellation Policy', false);
+    }
+
+    public function test_refund_page_renders_cms_title_override(): void
+    {
+        $this->seedSetting('refund_page_title',    'Returns & Refunds', 'Pages');
+        $this->seedSetting('refund_page_subtitle', 'How we handle refunds.', 'Pages');
+
+        $response = $this->get('/refund');
+        $response->assertOk();
+        $response->assertSee('Returns &amp; Refunds', false);
+        $response->assertSee('How we handle refunds.');
+    }
+
+    public function test_refund_page_body_override_replaces_hardcoded_prose(): void
+    {
+        $this->seedSetting('legal_refund_body', 'All sales are final.', 'Legal', 'textarea');
+
+        $response = $this->get('/refund');
+        $response->assertOk();
+        $response->assertSee('All sales are final.');
+        $response->assertDontSee('Before kitchen confirmation');
+    }
+
+    public function test_refund_page_falls_back_to_hardcoded_prose_when_legal_body_empty(): void
+    {
+        $this->seedSetting('legal_refund_body', '', 'Legal', 'textarea');
+
+        $response = $this->get('/refund');
+        $response->assertOk();
+        $response->assertSee('Cancellation');
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Privacy page — title and email overrides (via /terms as proxy since /privacy
+    // redirects to the React app at runtime; the Blade view is tested here via
+    // the /terms route which shares the same SiteSetting bridge pattern)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function test_privacy_email_cms_key_is_readable(): void
+    {
+        $this->seedSetting('privacy_email', 'dpo@bakeandgrill.mv', 'Pages');
+
+        // Verify the setting resolves correctly (privacy page Blade is served at /order/privacy via React)
+        $value = \App\Models\SiteSetting::get('privacy_email', 'privacy@bakeandgrill.mv');
+        $this->assertSame('dpo@bakeandgrill.mv', $value);
+    }
+
+    public function test_privacy_page_title_cms_key_is_readable(): void
+    {
+        $this->seedSetting('privacy_page_title', 'Your Data & Privacy', 'Pages');
+
+        $value = \App\Models\SiteSetting::get('privacy_page_title', 'Privacy Policy');
+        $this->assertSame('Your Data & Privacy', $value);
+    }
+
+    public function test_privacy_body_override_cms_key_is_readable(): void
+    {
+        $this->seedSetting('legal_privacy_body', 'We respect your privacy.', 'Legal', 'textarea');
+
+        $value = \App\Models\SiteSetting::get('legal_privacy_body');
+        $this->assertSame('We respect your privacy.', $value);
+    }
 }

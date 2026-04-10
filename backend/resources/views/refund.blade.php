@@ -61,54 +61,64 @@
 
 @section('content')
 @php
-    $refundPhone   = \App\Models\SiteSetting::get('business_phone',   config('business.phone'));
-    $refundEmail   = \App\Models\SiteSetting::get('business_email',   config('business.email'));
-    $refundAddress = \App\Models\SiteSetting::get('business_address', config('business.address.full', config('business.address.line1') . ', ' . config('business.address.city')));
-    $refundWaLink  = \App\Models\SiteSetting::get('business_whatsapp', config('business.social.whatsapp', 'https://wa.me/9609120011'));
+    $refundTitle        = \App\Models\SiteSetting::get('refund_page_title',    'Refund & Cancellation Policy');
+    $refundSubtitle     = \App\Models\SiteSetting::get('refund_page_subtitle', 'Please read this policy before completing your purchase.');
+    $refundBodyOverride = \App\Models\SiteSetting::get('legal_refund_body');
+    $refundPhone        = \App\Models\SiteSetting::get('business_phone',   config('business.phone'));
+    $refundEmail        = \App\Models\SiteSetting::get('business_email',   config('business.email'));
+    $refundAddress      = \App\Models\SiteSetting::get('business_address', config('business.address.full', config('business.address.line1') . ', ' . config('business.address.city')));
+    $refundWaLink       = \App\Models\SiteSetting::get('business_whatsapp', config('business.social.whatsapp', 'https://wa.me/9609120011'));
 @endphp
 <div class="policy-wrap">
-    <h1>Refund &amp; Cancellation Policy</h1>
-    <p class="subtitle">Please read this policy before completing your purchase.</p>
+    <h1>{{ $refundTitle }}</h1>
+    <p class="subtitle">{{ $refundSubtitle }}</p>
 
-    <div class="callout">
-        <strong>Key point:</strong> You can cancel your order free of charge <em>before</em> the kitchen confirms it. Once preparation begins, cancellations are not accepted.
-    </div>
+    @if($refundBodyOverride)
+        {{-- CMS body override: plain text, HTML-escaped, newlines converted to <br> --}}
+        <div class="cms-body-override">
+            {!! nl2br(e($refundBodyOverride)) !!}
+        </div>
+    @else
+        <div class="callout">
+            <strong>Key point:</strong> You can cancel your order free of charge <em>before</em> the kitchen confirms it. Once preparation begins, cancellations are not accepted.
+        </div>
 
-    <h2>Cancellation</h2>
-    <ul>
-        <li><strong>Before kitchen confirmation:</strong> You may cancel your order at no charge. Contact us immediately via WhatsApp or Viber at <a href="{{ $refundWaLink }}">{{ $refundPhone }}</a>.</li>
-        <li><strong>After kitchen confirmation:</strong> The order cannot be cancelled, as food preparation has already begun. No refund will be issued.</li>
-        <li>Orders placed outside operating hours will be held pending and may be cancelled before the opening time.</li>
-    </ul>
+        <h2>Cancellation</h2>
+        <ul>
+            <li><strong>Before kitchen confirmation:</strong> You may cancel your order at no charge. Contact us immediately via WhatsApp or Viber at <a href="{{ $refundWaLink }}">{{ $refundPhone }}</a>.</li>
+            <li><strong>After kitchen confirmation:</strong> The order cannot be cancelled, as food preparation has already begun. No refund will be issued.</li>
+            <li>Orders placed outside operating hours will be held pending and may be cancelled before the opening time.</li>
+        </ul>
 
-    <h2>Refunds</h2>
-    <ul>
-        <li><strong>Order not fulfilled by us:</strong> If we are unable to prepare or deliver your order (e.g. item unavailable, delivery area not serviceable, technical issue), you will receive a full refund.</li>
-        <li><strong>Wrong or missing items:</strong> If your delivered order is incorrect or incomplete, contact us within 1 hour of delivery. We will arrange a replacement or refund for the affected items.</li>
-        <li><strong>Quality issues:</strong> If food is not up to standard on arrival, contact us with a description and photo. Refunds are at our discretion.</li>
-        <li><strong>Change of mind:</strong> Refunds are not issued for change of mind after preparation has started.</li>
-    </ul>
+        <h2>Refunds</h2>
+        <ul>
+            <li><strong>Order not fulfilled by us:</strong> If we are unable to prepare or deliver your order (e.g. item unavailable, delivery area not serviceable, technical issue), you will receive a full refund.</li>
+            <li><strong>Wrong or missing items:</strong> If your delivered order is incorrect or incomplete, contact us within 1 hour of delivery. We will arrange a replacement or refund for the affected items.</li>
+            <li><strong>Quality issues:</strong> If food is not up to standard on arrival, contact us with a description and photo. Refunds are at our discretion.</li>
+            <li><strong>Change of mind:</strong> Refunds are not issued for change of mind after preparation has started.</li>
+        </ul>
 
-    <h2>Refund Process</h2>
-    <ul>
-        <li>Approved refunds are processed back to the original payment method (BML card).</li>
-        <li>Processing time: <strong>5–7 business days</strong> depending on your bank.</li>
-        <li>You will receive confirmation once the refund has been initiated.</li>
-    </ul>
+        <h2>Refund Process</h2>
+        <ul>
+            <li>Approved refunds are processed back to the original payment method (BML card).</li>
+            <li>Processing time: <strong>5–7 business days</strong> depending on your bank.</li>
+            <li>You will receive confirmation once the refund has been initiated.</li>
+        </ul>
 
-    <h2>How to Request a Refund</h2>
-    <p>Contact us through any of the following channels with your order number:</p>
-    <ul>
-        <li>WhatsApp / Viber: <a href="{{ $refundWaLink }}">{{ $refundPhone }}</a></li>
-        <li>Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', $refundPhone) }}">{{ $refundPhone }}</a></li>
-        <li>Email: <a href="mailto:{{ $refundEmail }}">{{ $refundEmail }}</a></li>
-        <li>In person: {{ $refundAddress }}</li>
-    </ul>
+        <h2>How to Request a Refund</h2>
+        <p>Contact us through any of the following channels with your order number:</p>
+        <ul>
+            <li>WhatsApp / Viber: <a href="{{ $refundWaLink }}">{{ $refundPhone }}</a></li>
+            <li>Phone: <a href="tel:{{ preg_replace('/[^0-9+]/', '', $refundPhone) }}">{{ $refundPhone }}</a></li>
+            <li>Email: <a href="mailto:{{ $refundEmail }}">{{ $refundEmail }}</a></li>
+            <li>In person: {{ $refundAddress }}</li>
+        </ul>
 
-    <h2>Payment Disputes</h2>
-    <p>If you believe a charge on your BML card is incorrect, please contact us within <strong>7 days</strong> of the transaction date. We will investigate and respond within 3 business days. If the issue is not resolved, you may raise a dispute directly with your card issuer (Bank of Maldives).</p>
+        <h2>Payment Disputes</h2>
+        <p>If you believe a charge on your BML card is incorrect, please contact us within <strong>7 days</strong> of the transaction date. We will investigate and respond within 3 business days. If the issue is not resolved, you may raise a dispute directly with your card issuer (Bank of Maldives).</p>
 
-    <p>All transactions are in <strong>MVR (Maldivian Rufiyaa)</strong>. No import/export charges or customs duties apply to our food and beverage products.</p>
+        <p>All transactions are in <strong>MVR (Maldivian Rufiyaa)</strong>. No import/export charges or customs duties apply to our food and beverage products.</p>
+    @endif
 
     <p class="updated">Last updated: {{ date('F j, Y') }}</p>
 </div>

@@ -47,77 +47,91 @@
 @endsection
 
 @section('content')
+@php
+    $privacyTitle        = \App\Models\SiteSetting::get('privacy_page_title', 'Privacy Policy');
+    $privacyEmail        = \App\Models\SiteSetting::get('privacy_email', 'privacy@bakeandgrill.mv');
+    $privacyBodyOverride = \App\Models\SiteSetting::get('legal_privacy_body');
+    $privacyPhone        = \App\Models\SiteSetting::get('business_phone', config('business.phone'));
+    $privacyAddress      = \App\Models\SiteSetting::get('business_address', config('business.address.full'));
+@endphp
 <div class="privacy-content">
-    <h1>Privacy Policy</h1>
+    <h1>{{ $privacyTitle }}</h1>
     <p><em>Last updated: {{ date('F d, Y') }}</em></p>
 
-    <h2>Introduction</h2>
-    <p>Bake & Grill ("we", "us", "our") operates the Bake & Grill café and online ordering system. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>
+    @if($privacyBodyOverride)
+        {{-- CMS body override: plain text, HTML-escaped, newlines converted to <br> --}}
+        <div class="cms-body-override">
+            {!! nl2br(e($privacyBodyOverride)) !!}
+        </div>
+    @else
+        <h2>Introduction</h2>
+        <p>Bake & Grill ("we", "us", "our") operates the Bake & Grill café and online ordering system. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>
 
-    <h2>Information We Collect</h2>
-    <p>When you place an order or use our services, we collect:</p>
-    <ul>
-        <li><strong>Phone Number:</strong> Used for OTP authentication and order notifications via SMS</li>
-        <li><strong>Name:</strong> Optional, for personalized service</li>
-        <li><strong>Email:</strong> Optional, for e-receipts and updates</li>
-        <li><strong>Order History:</strong> To provide loyalty rewards and improve service</li>
-        <li><strong>Location/Delivery Address:</strong> If delivery service is used</li>
-    </ul>
+        <h2>Information We Collect</h2>
+        <p>When you place an order or use our services, we collect:</p>
+        <ul>
+            <li><strong>Phone Number:</strong> Used for OTP authentication and order notifications via SMS</li>
+            <li><strong>Name:</strong> Optional, for personalized service</li>
+            <li><strong>Email:</strong> Optional, for e-receipts and updates</li>
+            <li><strong>Order History:</strong> To provide loyalty rewards and improve service</li>
+            <li><strong>Location/Delivery Address:</strong> If delivery service is used</li>
+        </ul>
 
-    <h2>How We Use Your Information</h2>
-    <p>We use your information to:</p>
-    <ul>
-        <li>Process and fulfill your orders</li>
-        <li>Send OTP codes for secure login</li>
-        <li>Send order confirmations and updates via SMS or email</li>
-        <li>Provide customer support</li>
-        <li>Send promotional offers (only with your consent)</li>
-        <li>Improve our menu and services</li>
-    </ul>
+        <h2>How We Use Your Information</h2>
+        <p>We use your information to:</p>
+        <ul>
+            <li>Process and fulfill your orders</li>
+            <li>Send OTP codes for secure login</li>
+            <li>Send order confirmations and updates via SMS or email</li>
+            <li>Provide customer support</li>
+            <li>Send promotional offers (only with your consent)</li>
+            <li>Improve our menu and services</li>
+        </ul>
 
-    <h2>SMS Communications</h2>
-    <p>By providing your phone number, you consent to receive:</p>
-    <ul>
-        <li>OTP verification codes (required for login)</li>
-        <li>Order confirmation messages</li>
-        <li>Promotional offers (you can opt out anytime)</li>
-    </ul>
-    <p><strong>Opt-Out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at {{ \App\Models\SiteSetting::get('business_phone', config('business.phone')) }}.</p>
+        <h2>SMS Communications</h2>
+        <p>By providing your phone number, you consent to receive:</p>
+        <ul>
+            <li>OTP verification codes (required for login)</li>
+            <li>Order confirmation messages</li>
+            <li>Promotional offers (you can opt out anytime)</li>
+        </ul>
+        <p><strong>Opt-Out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at {{ $privacyPhone }}.</p>
 
-    <h2>Card Payment Security</h2>
-    <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page. Bake &amp; Grill does <strong>not</strong> store, view, process, or retain any payment card details (card numbers, CVV, expiry) on our servers. Card data is handled entirely by BML using SSL/TLS encryption.</p>
-    <p>We strongly recommend you retain a copy of your order confirmation and payment receipt for your records.</p>
+        <h2>Card Payment Security</h2>
+        <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page. Bake &amp; Grill does <strong>not</strong> store, view, process, or retain any payment card details (card numbers, CVV, expiry) on our servers. Card data is handled entirely by BML using SSL/TLS encryption.</p>
+        <p>We strongly recommend you retain a copy of your order confirmation and payment receipt for your records.</p>
 
-    <h2>Data Security</h2>
-    <p>We implement industry-standard security measures to protect your personal data, including:</p>
-    <ul>
-        <li>Encrypted data transmission (HTTPS / TLS)</li>
-        <li>Secure OTP hashing — OTP codes are never stored in plain text</li>
-        <li>Access controls and role-based authentication for staff</li>
-        <li>Regular security reviews to prevent unauthorised access to customer information</li>
-    </ul>
+        <h2>Data Security</h2>
+        <p>We implement industry-standard security measures to protect your personal data, including:</p>
+        <ul>
+            <li>Encrypted data transmission (HTTPS / TLS)</li>
+            <li>Secure OTP hashing — OTP codes are never stored in plain text</li>
+            <li>Access controls and role-based authentication for staff</li>
+            <li>Regular security reviews to prevent unauthorised access to customer information</li>
+        </ul>
 
-    <h2>Data Sharing</h2>
-    <p>We do not sell or share your personal information with third parties, except:</p>
-    <ul>
-        <li>Dhiraagu (our SMS provider) - only phone numbers for message delivery</li>
-        <li>Payment processors - for order payments</li>
-        <li>As required by law</li>
-    </ul>
+        <h2>Data Sharing</h2>
+        <p>We do not sell or share your personal information with third parties, except:</p>
+        <ul>
+            <li>Dhiraagu (our SMS provider) - only phone numbers for message delivery</li>
+            <li>Payment processors - for order payments</li>
+            <li>As required by law</li>
+        </ul>
 
-    <h2>Your Rights</h2>
-    <p>You have the right to:</p>
-    <ul>
-        <li>Access your personal data</li>
-        <li>Request data correction or deletion</li>
-        <li>Opt out of promotional communications</li>
-        <li>Withdraw consent at any time</li>
-    </ul>
+        <h2>Your Rights</h2>
+        <p>You have the right to:</p>
+        <ul>
+            <li>Access your personal data</li>
+            <li>Request data correction or deletion</li>
+            <li>Opt out of promotional communications</li>
+            <li>Withdraw consent at any time</li>
+        </ul>
 
-    <h2>Contact Us</h2>
-    <p>For privacy-related questions or requests, contact us:</p>
-    <p><strong>Email:</strong> privacy@bakeandgrill.mv</p>
-    <p><strong>Phone:</strong> {{ \App\Models\SiteSetting::get('business_phone', config('business.phone')) }}</p>
-    <p><strong>Address:</strong> {{ \App\Models\SiteSetting::get('business_address', config('business.address.full')) }}</p>
+        <h2>Contact Us</h2>
+        <p>For privacy-related questions or requests, contact us:</p>
+        <p><strong>Email:</strong> {{ $privacyEmail }}</p>
+        <p><strong>Phone:</strong> {{ $privacyPhone }}</p>
+        <p><strong>Address:</strong> {{ $privacyAddress }}</p>
+    @endif
 </div>
 @endsection
