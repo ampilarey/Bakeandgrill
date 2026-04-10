@@ -16,13 +16,15 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Tests for CustomerDisplayController (GET /api/display/{orderNumber}).
+ * Tests for CustomerDisplayController (GET /api/display/{token}).
  *
  * Covers:
- * - Correct column mapping (tax_amount, discount_amount, tip_amount)
- * - Only in-progress statuses are returned
- * - Non-existent order number returns 404
- * - Completed/cancelled orders are not exposed
+ * - Valid tracking_token returns order data
+ * - Correct column mapping (tax_amount, discount_amount, tip_amount → tax/discount/tip)
+ * - Only in-progress statuses are returned; terminal states return 404
+ * - order_number (guessable) no longer works as the lookup key
+ * - Non-existent token returns 404
+ * - Minimum required fields only are returned (no customer PII)
  */
 class CustomerDisplayTest extends TestCase
 {
@@ -80,11 +82,13 @@ class CustomerDisplayTest extends TestCase
         return $order->fresh();
     }
 
-    public function test_display_endpoint_returns_200_for_active_order(): void
+    // ── Access via tracking_token ─────────────────────────────────────────────
+
+    public function test_display_endpoint_returns_200_for_active_order_via_token(): void
     {
         $order = $this->createOrder('open');
 
-        $response = $this->getJson("/api/display/{$order->order_number}");
+        $response = $this->getJson("/api/display/{$order->tracking_token}");
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -92,28 +96,59 @@ class CustomerDisplayTest extends TestCase
             ]);
     }
 
-    public function test_display_endpoint_returns_correct_order_number(): void
+    public function test_display_endpoint_returns_correct_order_number_in_body(): void
     {
         $order = $this->createOrder('preparing');
 
-        $data = $this->getJson("/api/display/{$order->order_number}")->assertOk()->json('order');
+        $data = $this->getJson("/api/display/{$order->tracking_token}")->assertOk()->json('order');
 
         $this->assertSame($order->order_number, $data['order_number']);
         $this->assertSame('preparing', $data['status']);
     }
 
+    public function test_display_response_does_not_expose_tracking_token(): void
+    {
+        $order = $this->createOrder('open');
+
+        $data = $this->getJson("/api/display/{$order->tracking_token}")->assertOk()->json('order');
+
+        // The token is the URL parameter; it must not be echoed in the response body
+        $this->assertArrayNotHasKey('tracking_token', $data);
+    }
+
+    public function test_display_response_does_not_expose_customer_id(): void
+    {
+        $order = $this->createOrder('open');
+
+        $data = $this->getJson("/api/display/{$order->tracking_token}")->assertOk()->json('order');
+
+        $this->assertArrayNotHasKey('customer_id', $data);
+        $this->assertArrayNotHasKey('user_id', $data);
+    }
+
+    // ── Guessable order_number no longer works ────────────────────────────────
+
+    public function test_display_endpoint_rejects_order_number_as_lookup_key(): void
+    {
+        $order = $this->createOrder('open');
+
+        // order_number (e.g. "BG-0001") should not match any tracking_token
+        $this->getJson("/api/display/{$order->order_number}")->assertNotFound();
+    }
+
+    // ── Column mapping ────────────────────────────────────────────────────────
+
     public function test_display_endpoint_returns_non_null_numeric_totals(): void
     {
         $order = $this->createOrder('open');
 
-        // Set explicit amounts to verify the correct columns are read
         $order->update([
             'tax_amount'      => 3.50,
             'discount_amount' => 2.00,
             'tip_amount'      => 1.00,
         ]);
 
-        $data = $this->getJson("/api/display/{$order->order_number}")->assertOk()->json('order');
+        $data = $this->getJson("/api/display/{$order->tracking_token}")->assertOk()->json('order');
 
         $this->assertNotNull($data['tax'],      'tax must not be null — check column name in select()');
         $this->assertNotNull($data['discount'], 'discount must not be null — check column name in select()');
@@ -128,52 +163,72 @@ class CustomerDisplayTest extends TestCase
     {
         $order = $this->createOrder('open');
 
-        $data = $this->getJson("/api/display/{$order->order_number}")->assertOk()->json('order');
+        $data = $this->getJson("/api/display/{$order->tracking_token}")->assertOk()->json('order');
 
         $this->assertNotEmpty($data['items']);
-        $this->assertArrayHasKey('name', $data['items'][0]);
-        $this->assertArrayHasKey('quantity', $data['items'][0]);
+        $this->assertArrayHasKey('name',       $data['items'][0]);
+        $this->assertArrayHasKey('quantity',   $data['items'][0]);
         $this->assertArrayHasKey('unit_price', $data['items'][0]);
-        $this->assertArrayHasKey('total', $data['items'][0]);
+        $this->assertArrayHasKey('total',      $data['items'][0]);
     }
 
-    public function test_display_endpoint_returns_404_for_unknown_order_number(): void
+    // ── Terminal and unknown states ───────────────────────────────────────────
+
+    public function test_display_endpoint_returns_404_for_unknown_token(): void
     {
-        $this->getJson('/api/display/BG-DOESNOTEXIST')->assertNotFound();
+        $this->getJson('/api/display/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX')->assertNotFound();
     }
 
     public function test_display_endpoint_hides_completed_orders(): void
     {
         $order = $this->createOrder('completed');
 
-        $this->getJson("/api/display/{$order->order_number}")->assertNotFound();
+        $this->getJson("/api/display/{$order->tracking_token}")->assertNotFound();
     }
 
     public function test_display_endpoint_hides_cancelled_orders(): void
     {
         $order = $this->createOrder('cancelled');
 
-        $this->getJson("/api/display/{$order->order_number}")->assertNotFound();
+        $this->getJson("/api/display/{$order->tracking_token}")->assertNotFound();
     }
 
     public function test_display_endpoint_hides_paid_orders(): void
     {
         $order = $this->createOrder('paid');
 
-        $this->getJson("/api/display/{$order->order_number}")->assertNotFound();
+        $this->getJson("/api/display/{$order->tracking_token}")->assertNotFound();
     }
 
     public function test_display_endpoint_shows_pending_orders(): void
     {
         $order = $this->createOrder('pending');
 
-        $this->getJson("/api/display/{$order->order_number}")->assertOk();
+        $this->getJson("/api/display/{$order->tracking_token}")->assertOk();
     }
 
     public function test_display_endpoint_shows_ready_orders(): void
     {
         $order = $this->createOrder('ready');
 
-        $this->getJson("/api/display/{$order->order_number}")->assertOk();
+        $this->getJson("/api/display/{$order->tracking_token}")->assertOk();
+    }
+
+    // ── Tracking token must exist and be random ───────────────────────────────
+
+    public function test_order_has_tracking_token_set_on_creation(): void
+    {
+        $order = $this->createOrder('open');
+
+        $this->assertNotNull($order->tracking_token);
+        $this->assertGreaterThanOrEqual(16, strlen($order->tracking_token));
+    }
+
+    public function test_two_orders_have_different_tracking_tokens(): void
+    {
+        $order1 = $this->createOrder('open');
+        $order2 = $this->createOrder('open');
+
+        $this->assertNotSame($order1->tracking_token, $order2->tracking_token);
     }
 }

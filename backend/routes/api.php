@@ -608,7 +608,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 });
 
 // ─── Customer Display (public — no auth) ────────────────────────────────────
-Route::get('/display/{orderNumber}', [App\Http\Controllers\Api\CustomerDisplayController::class, 'show'])
+// Uses tracking_token (opaque, 32-char random) — not order_number — to prevent
+// enumeration of in-progress orders. The POS app appends /display/{token} to
+// the customer-facing screen URL at order creation time.
+Route::get('/display/{token}', [App\Http\Controllers\Api\CustomerDisplayController::class, 'show'])
     ->middleware('throttle:60,1');
 
 // ─── Offline POS Sync ────────────────────────────────────────────────────────

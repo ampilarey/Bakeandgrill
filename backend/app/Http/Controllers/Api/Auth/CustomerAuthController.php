@@ -129,13 +129,28 @@ class CustomerAuthController extends Controller
         ]);
 
         $phone = $this->normalizePhone($input['phone']);
+
+        // Controller-level rate limit (in addition to route throttle) so lockout
+        // message is friendly and consistent regardless of proxy/throttle config.
+        $rateKey = 'customer-login:' . $phone . ':' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateKey);
+            throw ValidationException::withMessages([
+                'phone' => ['Too many login attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
+            ]);
+        }
+
         $customer = Customer::where('phone', $phone)->first();
 
         if (!$customer || empty($customer->password) || !Hash::check($input['password'], $customer->password)) {
+            RateLimiter::hit($rateKey, 900); // 15-minute decay per phone+IP
             throw ValidationException::withMessages([
                 'phone' => ['Invalid phone number or password.'],
             ]);
         }
+
+        RateLimiter::clear($rateKey);
 
         if (!$customer->is_active) {
             throw ValidationException::withMessages([

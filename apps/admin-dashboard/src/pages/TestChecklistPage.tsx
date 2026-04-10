@@ -479,7 +479,7 @@ const SECTIONS = [
     title: 'Customer Display',
     icon: '📺',
     items: [
-      'Customer-facing display endpoint loads (/api/display/:orderNumber)',
+      'Customer-facing display endpoint loads (/api/display/:trackingToken)',
       'Display shows correct order number and status',
     ],
   },
