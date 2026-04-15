@@ -6,7 +6,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, StatCard, TableCard, TD, TH, statColor,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, StatCard, TableCard, TD, TH, statColor, useConfirmDialog,
 } from '../components/SharedUI';
 
 function StatusCard({ status }: { status: XeroStatus | null }) {
@@ -48,6 +48,7 @@ function StatusCard({ status }: { status: XeroStatus | null }) {
 
 export default function XeroPage() {
   usePageTitle('Xero Integration');
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
 
   const [status, setStatus] = useState<XeroStatus | null>(null);
   const [logs, setLogs] = useState<XeroLog[]>([]);
@@ -104,19 +105,26 @@ export default function XeroPage() {
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!window.confirm('Disconnect from Xero? This will stop syncing invoices and expenses.')) return;
-    setDisconnecting(true);
-    setError('');
-    try {
-      await disconnectXero();
-      showToast('Disconnected from Xero successfully.');
-      void loadStatus();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setDisconnecting(false);
-    }
+  const handleDisconnect = () => {
+    askConfirm({
+      title: 'Disconnect from Xero',
+      message: 'Disconnect from Xero? This will stop syncing invoices and expenses.',
+      confirmLabel: 'Disconnect',
+      danger: true,
+      onConfirm: async () => {
+        setDisconnecting(true);
+        setError('');
+        try {
+          await disconnectXero();
+          showToast('Disconnected from Xero successfully.');
+          void loadStatus();
+        } catch (e) {
+          setError((e as Error).message);
+        } finally {
+          setDisconnecting(false);
+        }
+      },
+    });
   };
 
   const logStatusColor = (s: string) => {
@@ -132,6 +140,7 @@ export default function XeroPage() {
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Xero Integration"
         subtitle="Sync invoices and expenses with your Xero accounting software"

@@ -8,7 +8,7 @@ import {
 import { PhotosTab } from './MenuPage/PhotosTab';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, PageHeader, Spinner, useConfirmDialog,
 } from '../components/Layout';
 
 // ── Image upload field ────────────────────────────────────────────────────────
@@ -374,6 +374,7 @@ export function MenuPage() {
   const [perPage, setPerPage] = useState(25);
 
   // Modals
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [editingCat, setEditingCat] = useState<MenuCategory | null>(null);
   const [creatingCat, setCreatingCat] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -439,10 +440,17 @@ export function MenuPage() {
     } catch (e) { setError((e as Error).message); }
   };
 
-  const handleDeleteCat = async (id: number) => {
-    if (!confirm('Delete this category? It must have no items.')) return;
-    try { await deleteCategory(id); await loadCategories(); }
-    catch (e) { setError((e as Error).message); }
+  const handleDeleteCat = (id: number) => {
+    askConfirm({
+      title: 'Delete Category',
+      message: 'Delete this category? It must have no items assigned.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try { await deleteCategory(id); await loadCategories(); }
+        catch (e) { setError((e as Error).message); }
+      },
+    });
   };
 
   const handleToggleCat = async (cat: MenuCategory) => {
@@ -470,10 +478,17 @@ export function MenuPage() {
     } catch (e) { setError((e as Error).message); }
   };
 
-  const handleDeleteItem = async (id: number) => {
-    if (!confirm('Delete this item?')) return;
-    try { await deleteItem(id); await loadItems(); }
-    catch (e) { setError((e as Error).message); }
+  const handleDeleteItem = (id: number) => {
+    askConfirm({
+      title: 'Delete Item',
+      message: 'Delete this menu item? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try { await deleteItem(id); await loadItems(); }
+        catch (e) { setError((e as Error).message); }
+      },
+    });
   };
 
   const handleToggleAvail = async (item: MenuItem) => {
@@ -492,6 +507,7 @@ export function MenuPage() {
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Menu Management"
         subtitle="Categories, items, prices and availability"

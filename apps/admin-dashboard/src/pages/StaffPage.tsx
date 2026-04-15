@@ -5,7 +5,7 @@ import {
   type StaffMember, type StaffRole, type PermissionItem,
 } from '../api';
 import { SchedulesTab } from './StaffPage/SchedulesTab';
-import { Badge, Btn, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
+import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { Toggle, useToast } from '../components/ui';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -364,6 +364,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
 
 export function StaffPage() {
     usePageTitle('Staff');
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [activeTab, setActiveTab] = useState<'staff' | 'schedules'>('staff');
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
@@ -412,10 +413,17 @@ export function StaffPage() {
     } catch (e) { setError((e as Error).message); }
   };
 
-  const handleDelete = async (member: StaffMember) => {
-    if (!confirm(`Remove ${member.name}? This cannot be undone.`)) return;
-    try { await deleteStaff(member.id); await load(); }
-    catch (e) { setError((e as Error).message); }
+  const handleDelete = (member: StaffMember) => {
+    askConfirm({
+      title: 'Remove Staff Member',
+      message: `Remove ${member.name}? This cannot be undone.`,
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        try { await deleteStaff(member.id); await load(); }
+        catch (e) { setError((e as Error).message); }
+      },
+    });
   };
 
   const handleToggleActive = async (member: StaffMember) => {
@@ -434,6 +442,7 @@ export function StaffPage() {
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Staff Management"
         subtitle="Manage staff accounts and PINs"

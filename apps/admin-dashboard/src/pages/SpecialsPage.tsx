@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Input, Pagination, EmptyState,
+  PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
 import { fetchSpecials, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type MenuItem } from '../api';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -33,6 +33,7 @@ const BLANK: SpecialForm = {
 
 export default function SpecialsPage() {
   usePageTitle('Daily Specials');
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
 
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
@@ -114,10 +115,17 @@ export default function SpecialsPage() {
     finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this special?')) return;
-    try { await deleteSpecial(id); void load(); }
-    catch (e) { setError((e as Error).message); }
+  const handleDelete = (id: number) => {
+    askConfirm({
+      title: 'Delete Special',
+      message: 'Delete this daily special? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try { await deleteSpecial(id); void load(); }
+        catch (e) { setError((e as Error).message); }
+      },
+    });
   };
 
   const toggleDay = (day: number) => {
@@ -134,6 +142,7 @@ export default function SpecialsPage() {
 
   return (
     <div>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader title="Daily Specials" action={<Btn onClick={openCreate}>+ Add Special</Btn>} />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 

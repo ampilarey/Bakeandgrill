@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { fetchOrders, type Order, adminRequest } from '../api';
-import { Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, Spinner, statColor } from '../components/Layout';
+import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, Spinner, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 type Driver = {
@@ -391,6 +391,7 @@ type DriverForm = { name: string; phone: string; is_active: boolean; vehicle_typ
 const emptyForm = (): DriverForm => ({ name: '', phone: '', is_active: true, vehicle_type: '', pin: '' });
 
 function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: () => void }) {
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [form, setForm] = useState<DriverForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -424,14 +425,21 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Remove this driver? Active orders will be unassigned.')) return;
-    try {
-      await adminRequest(`/delivery/drivers/${id}`, { method: 'DELETE' });
-      onRefresh();
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    }
+  const handleDelete = (id: number) => {
+    askConfirm({
+      title: 'Remove Driver',
+      message: 'Remove this driver? Active orders will be unassigned.',
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await adminRequest(`/delivery/drivers/${id}`, { method: 'DELETE' });
+          onRefresh();
+        } catch (e: unknown) {
+          setError((e as Error).message);
+        }
+      },
+    });
   };
 
   const startEdit = (d: Driver) => {
@@ -446,6 +454,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
 
   return (
     <div>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       {/* Add / Edit form */}
       <Card style={{ marginBottom: 20 }}>
         <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>

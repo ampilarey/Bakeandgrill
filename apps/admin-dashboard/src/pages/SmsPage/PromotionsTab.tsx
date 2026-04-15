@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   fetchSmsPromotions, previewSmsPromotion, sendSmsPromotion, type SmsPromotion,
 } from '../../api';
-import { Badge, Btn, Card, EmptyState, ErrorMsg, Input, TableCard, TD, TH, statColor } from '../../components/Layout';
+import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
 import { smsSegmentInfo } from '../../utils/smsSegments';
 
 const SEGMENT_OPTIONS = [
@@ -24,6 +24,7 @@ const SEGMENT_FILTERS: Record<string, Record<string, unknown>> = {
 const EMPTY_FORM = { name: '', message: '', segment: 'active' };
 
 export function PromotionsTab() {
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [history, setHistory] = useState<SmsPromotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -73,24 +74,32 @@ export function PromotionsTab() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!form.message.trim()) return;
-    if (!window.confirm(`Send this SMS to the selected audience? This cannot be undone.`)) return;
-    setSending(true);
-    setError('');
-    try {
-      const filters = SEGMENT_FILTERS[form.segment] ?? SEGMENT_FILTERS.active;
-      await sendSmsPromotion({ message: form.message, name: form.name || undefined, filters });
-      showToast('SMS blast queued successfully.');
-      setShowForm(false);
-      setForm(EMPTY_FORM);
-      setPreview(null);
-      void load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSending(false);
-    }
+    const recipientCount = preview?.recipient_count;
+    askConfirm({
+      title: 'Send SMS Blast',
+      message: `Send this message to ${recipientCount ? recipientCount.toLocaleString() : 'the selected'} recipient${recipientCount === 1 ? '' : 's'}? This cannot be undone.`,
+      confirmLabel: 'Send Now',
+      danger: false,
+      onConfirm: async () => {
+        setSending(true);
+        setError('');
+        try {
+          const filters = SEGMENT_FILTERS[form.segment] ?? SEGMENT_FILTERS.active;
+          await sendSmsPromotion({ message: form.message, name: form.name || undefined, filters });
+          showToast('SMS blast queued successfully.');
+          setShowForm(false);
+          setForm(EMPTY_FORM);
+          setPreview(null);
+          void load();
+        } catch (e) {
+          setError((e as Error).message);
+        } finally {
+          setSending(false);
+        }
+      },
+    });
   };
 
   const totalCostMvr = (p: typeof preview) => {
@@ -103,6 +112,7 @@ export function PromotionsTab() {
 
   return (
     <>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       {toast && (
         <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
           {toast}

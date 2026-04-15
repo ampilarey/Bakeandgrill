@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchSchedules, createSchedule, updateSchedule, deleteSchedule, type StaffMember, type StaffSchedule } from '../../api';
-import { Btn, ErrorMsg, Modal, ModalActions } from '../../components/Layout';
+import { Btn, ConfirmDialog, ErrorMsg, Modal, ModalActions, useConfirmDialog } from '../../components/Layout';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -18,6 +18,7 @@ const TH: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', fontS
 const TD: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid #F0EBE5' };
 
 export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [weekStart, setWeekStart] = useState(getWeekStart());
   const [schedules, setSchedules] = useState<StaffSchedule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,10 +68,17 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
     finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Remove this schedule entry?')) return;
-    try { await deleteSchedule(id); void load(); }
-    catch (e) { setError((e as Error).message); }
+  const handleDelete = (id: number) => {
+    askConfirm({
+      title: 'Remove Shift',
+      message: 'Remove this schedule entry?',
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        try { await deleteSchedule(id); void load(); }
+        catch (e) { setError((e as Error).message); }
+      },
+    });
   };
 
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -81,6 +89,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
 
   return (
     <div>
+      <ConfirmDialog state={dlg} close={closeDlg} />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
