@@ -188,11 +188,12 @@ export interface WasteLog {
   created_at: string;
 }
 
-export async function fetchWasteLogs(params?: { from?: string; to?: string; page?: number }): Promise<{ data: WasteLog[]; meta: { current_page: number; last_page: number; total: number }; total_cost: number }> {
+export async function fetchWasteLogs(params?: { from?: string; to?: string; page?: number; per_page?: number }): Promise<{ data: WasteLog[]; meta: { current_page: number; last_page: number; total: number }; total_cost: number }> {
   const qs = new URLSearchParams();
-  if (params?.from) qs.set('from', params.from);
-  if (params?.to)   qs.set('to', params.to);
-  if (params?.page) qs.set('page', String(params.page));
+  if (params?.from)     qs.set('from',     params.from);
+  if (params?.to)       qs.set('to',       params.to);
+  if (params?.page)     qs.set('page',     String(params.page));
+  if (params?.per_page) qs.set('per_page', String(params.per_page));
   return req(`/waste-logs?${qs}`);
 }
 

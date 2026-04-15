@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
@@ -10,28 +10,48 @@ const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other']
 type Reason = typeof REASONS[number];
 const REASON_LABELS: Record<Reason, string> = { spoilage: 'Spoilage', over_prep: 'Over Prep', drop: 'Dropped', expired: 'Expired', quality: 'Quality Issue', other: 'Other' };
 const REASON_COLOR: Record<Reason, string> = { spoilage: 'red', over_prep: 'orange', drop: 'orange', expired: 'red', quality: 'orange', other: 'gray' };
+const REASON_HEX: Record<Reason, string> = { spoilage: '#ef4444', over_prep: '#f59e0b', drop: '#f97316', expired: '#dc2626', quality: '#eab308', other: '#9C8E7E' };
+
+type Tab = 'logs' | 'summary';
+
+function mvr(n: number) {
+  return `MVR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function daysAgo(n: number) {
+  const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10);
+}
 
 export default function WasteLogsPage() {
   usePageTitle('Waste Tracking');
 
   const today = new Date().toISOString().slice(0, 10);
+  const [tab, setTab] = useState<Tab>('logs');
 
-  const [logs, setLogs] = useState<WasteLog[]>([]);
-  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  // shared date range
+  const [from, setFrom] = useState(daysAgo(29));
+  const [to, setTo]     = useState(today);
+
+  // logs tab
+  const [logs, setLogs]           = useState<WasteLog[]>([]);
+  const [meta, setMeta]           = useState({ current_page: 1, last_page: 1, total: 0 });
   const [totalCost, setTotalCost] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(today);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [page, setPage]           = useState(1);
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  // summary tab
+  const [allLogs, setAllLogs]         = useState<WasteLog[]>([]);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // log form
+  const [menuItems, setMenuItems]           = useState<MenuItem[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [logOpen, setLogOpen] = useState(false);
-  const [itemType, setItemType] = useState<'menu' | 'inventory'>('menu');
-  const [form, setForm] = useState({ item_id: '', quantity: '', unit: '', cost_estimate: '', reason: 'spoilage' as Reason, notes: '' });
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [logOpen, setLogOpen]               = useState(false);
+  const [itemType, setItemType]             = useState<'menu' | 'inventory'>('menu');
+  const [form, setForm]                     = useState({ item_id: '', quantity: '', unit: '', cost_estimate: '', reason: 'spoilage' as Reason, notes: '' });
+  const [saving, setSaving]                 = useState(false);
+  const [formError, setFormError]           = useState('');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -44,12 +64,53 @@ export default function WasteLogsPage() {
     finally { setLoading(false); }
   };
 
+  const loadSummary = async () => {
+    setSummaryLoading(true);
+    try {
+      // Fetch up to 500 rows for aggregation; enough for any real kitchen
+      const res = await fetchWasteLogs({ from, to, page: 1, per_page: 500 } as Parameters<typeof fetchWasteLogs>[0]);
+      setAllLogs(res.data);
+    } catch (e) { setError((e as Error).message); }
+    finally { setSummaryLoading(false); }
+  };
+
   useEffect(() => { void load(); }, [page, from, to]);
+  useEffect(() => { if (tab === 'summary') void loadSummary(); }, [tab, from, to]);
   useEffect(() => {
-    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data)).catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
-    fetchInventoryItems({}).then(r => setInventoryItems(r.data)).catch((e: Error) => setError(e.message || 'Failed to load inventory items.'));
+    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data)).catch(() => {});
+    fetchInventoryItems({}).then(r => setInventoryItems(r.data)).catch(() => {});
   }, []);
 
+  // ── Summary aggregations ────────────────────────────────────────────────────
+  const byReason = useMemo(() => {
+    const map: Record<string, { count: number; cost: number }> = {};
+    for (const log of allLogs) {
+      if (!map[log.reason]) map[log.reason] = { count: 0, cost: 0 };
+      map[log.reason].count++;
+      map[log.reason].cost += log.cost_estimate ?? 0;
+    }
+    return Object.entries(map)
+      .map(([reason, v]) => ({ reason: reason as Reason, ...v }))
+      .sort((a, b) => b.cost - a.cost);
+  }, [allLogs]);
+
+  const totalSummaryCost = useMemo(() => allLogs.reduce((s, l) => s + (l.cost_estimate ?? 0), 0), [allLogs]);
+
+  const topItems = useMemo(() => {
+    const map: Record<string, { name: string; count: number; cost: number }> = {};
+    for (const log of allLogs) {
+      const name = log.item?.name ?? log.inventory_item?.name ?? 'Unknown';
+      if (!map[name]) map[name] = { name, count: 0, cost: 0 };
+      map[name].count++;
+      map[name].cost += log.cost_estimate ?? 0;
+    }
+    return Object.values(map).sort((a, b) => b.cost - a.cost).slice(0, 10);
+  }, [allLogs]);
+
+  const maxItemCost = topItems[0]?.cost ?? 1;
+  const maxReasonCost = byReason[0]?.cost ?? 1;
+
+  // ── Log form handler ────────────────────────────────────────────────────────
   const handleLog = async () => {
     if (!form.item_id) { setFormError(`Select a ${itemType === 'menu' ? 'menu item' : 'inventory item'}.`); return; }
     const qty = parseFloat(form.quantity);
@@ -75,8 +136,15 @@ export default function WasteLogsPage() {
         title="Waste Tracking"
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            {logs.length > 0 && (
-              <Btn variant="secondary" onClick={() => downloadCSV('waste-logs', logs.map(l => ({ Date: l.created_at?.slice(0, 10) ?? '', Item: l.item?.name ?? '', Qty: l.quantity, Unit: l.unit ?? '', Reason: l.reason, 'Cost (MVR)': l.cost_estimate ?? '', Notes: l.notes ?? '' })))}>
+            {tab === 'logs' && logs.length > 0 && (
+              <Btn variant="secondary" onClick={() => downloadCSV('waste-logs', logs.map(l => ({
+                Date: l.created_at?.slice(0, 10) ?? '',
+                Item: l.item?.name ?? l.inventory_item?.name ?? '',
+                Qty: l.quantity, Unit: l.unit ?? '',
+                Reason: l.reason,
+                'Cost (MVR)': l.cost_estimate ?? '',
+                Notes: l.notes ?? '',
+              })))}>
                 Export CSV
               </Btn>
             )}
@@ -86,47 +154,209 @@ export default function WasteLogsPage() {
       />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard label="Total Entries" value={String(meta.total)} accent="#D4813A" />
-        <StatCard label={`Waste Cost (${from} – ${to})`} value={`MVR ${totalCost.toFixed(2)}`} accent="#ef4444" />
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '2px solid #E8E0D8', marginBottom: 24 }}>
+        {(['logs', 'summary'] as Tab[]).map((t) => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: '10px 20px', fontSize: 14,
+            fontWeight: tab === t ? 700 : 500,
+            color: tab === t ? '#D4813A' : '#9C8E7E',
+            background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            borderBottom: tab === t ? '2px solid #D4813A' : '2px solid transparent',
+            marginBottom: -2, transition: 'color 0.15s',
+          }}>
+            {t === 'logs' ? 'Log Entries' : 'Summary'}
+          </button>
+        ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap' }}>
+      {/* Shared date range */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap' }}>
         <DateInput label="From" value={from} onChange={(v) => { setFrom(v); setPage(1); }} />
-        <DateInput label="To" value={to} onChange={(v) => { setTo(v); setPage(1); }} />
+        <DateInput label="To"   value={to}   onChange={(v) => { setTo(v);   setPage(1); }} />
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[7, 30, 90].map(d => (
+            <button key={d} onClick={() => { setFrom(daysAgo(d - 1)); setTo(today); setPage(1); }}
+              style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, border: '1.5px solid #E8E0D8', borderRadius: 8, background: '#fff', color: '#6B5D4F', cursor: 'pointer', fontFamily: 'inherit' }}>
+              {d}d
+            </button>
+          ))}
+        </div>
       </div>
 
-      <TableCard>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['Item', 'Qty', 'Reason', 'Cost Est.', 'Notes', 'Logged By', 'Date'].map(h => (
-                <th key={h} style={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
-            ) : logs.length === 0 ? (
-              <tr><td colSpan={7}><EmptyState message="No waste logs for this period." /></td></tr>
-            ) : logs.map(log => (
-              <tr key={log.id}>
-                <td style={{ ...TD, fontWeight: 600 }}>{log.item?.name ?? log.inventory_item?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                <td style={TD}>{log.quantity}{log.unit ? ` ${log.unit}` : ''}</td>
-                <td style={TD}><Badge color={REASON_COLOR[log.reason as Reason] ?? 'gray'}>{REASON_LABELS[log.reason as Reason] ?? log.reason}</Badge></td>
-                <td style={TD}>{log.cost_estimate != null ? `MVR ${log.cost_estimate.toFixed(2)}` : <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                <td style={{ ...TD, fontSize: 12, color: '#6B5D4F', maxWidth: 200 }}>{log.notes ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{log.logged_by ?? '—'}</td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(log.created_at).toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableCard>
+      {/* ── LOG ENTRIES TAB ─────────────────────────────────────────────────── */}
+      {tab === 'logs' && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+            <StatCard label="Total Entries" value={String(meta.total)} accent="#D4813A" />
+            <StatCard label={`Waste Cost (${from} – ${to})`} value={mvr(totalCost)} accent="#ef4444" />
+          </div>
 
-      <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
+          <TableCard>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Item', 'Qty', 'Reason', 'Cost Est.', 'Notes', 'Logged By', 'Date'].map(h => (
+                    <th key={h} style={TH}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+                ) : logs.length === 0 ? (
+                  <tr><td colSpan={7}><EmptyState message="No waste logs for this period." /></td></tr>
+                ) : logs.map(log => (
+                  <tr key={log.id}>
+                    <td style={{ ...TD, fontWeight: 600 }}>{log.item?.name ?? log.inventory_item?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
+                    <td style={TD}>{log.quantity}{log.unit ? ` ${log.unit}` : ''}</td>
+                    <td style={TD}><Badge color={REASON_COLOR[log.reason as Reason] ?? 'gray'}>{REASON_LABELS[log.reason as Reason] ?? log.reason}</Badge></td>
+                    <td style={TD}>{log.cost_estimate != null ? mvr(log.cost_estimate) : <span style={{ color: '#9C8E7E' }}>—</span>}</td>
+                    <td style={{ ...TD, fontSize: 12, color: '#6B5D4F', maxWidth: 200 }}>{log.notes ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
+                    <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{log.logged_by ?? '—'}</td>
+                    <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(log.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableCard>
+          <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
+        </>
+      )}
 
+      {/* ── SUMMARY TAB ─────────────────────────────────────────────────────── */}
+      {tab === 'summary' && (
+        summaryLoading ? (
+          <p style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading summary…</p>
+        ) : allLogs.length === 0 ? (
+          <EmptyState message="No waste logs for this period." />
+        ) : (
+          <>
+            {/* KPI row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
+              <StatCard label="Total Entries" value={String(allLogs.length)} accent="#D4813A" />
+              <StatCard label="Total Waste Cost" value={mvr(totalSummaryCost)} accent="#ef4444" />
+              <StatCard label="Avg Cost / Entry" value={allLogs.length > 0 ? mvr(totalSummaryCost / allLogs.length) : 'MVR 0.00'} accent="#f59e0b" />
+              <StatCard label="Reason Types" value={String(byReason.length)} accent="#6B5D4F" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+
+              {/* Breakdown by reason */}
+              <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', marginBottom: 16, margin: '0 0 16px' }}>
+                  By Reason
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {byReason.map(({ reason, count, cost }) => {
+                    const pct = totalSummaryCost > 0 ? (cost / totalSummaryCost) * 100 : 0;
+                    const hex = REASON_HEX[reason] ?? '#9C8E7E';
+                    return (
+                      <div key={reason}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block', flexShrink: 0 }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>
+                              {REASON_LABELS[reason] ?? reason}
+                            </span>
+                            <span style={{ fontSize: 12, color: '#9C8E7E' }}>{count}×</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>{mvr(cost)}</span>
+                            <span style={{ fontSize: 11, color: '#9C8E7E', marginLeft: 6 }}>{pct.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                        {/* bar */}
+                        <div style={{ height: 6, background: '#F0EAE3', borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 999,
+                            background: hex,
+                            width: `${maxReasonCost > 0 ? (cost / maxReasonCost) * 100 : 0}%`,
+                            transition: 'width 0.4s ease',
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Top wasted items */}
+              <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', marginBottom: 16, margin: '0 0 16px' }}>
+                  Top Items by Cost
+                </h3>
+                {topItems.length === 0 ? (
+                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>No data.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {topItems.map((item, i) => (
+                      <div key={item.name}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', width: 16 }}>#{i + 1}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.name}
+                            </span>
+                            <span style={{ fontSize: 12, color: '#9C8E7E' }}>{item.count}×</span>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>{mvr(item.cost)}</span>
+                        </div>
+                        {/* bar */}
+                        <div style={{ height: 6, background: '#F0EAE3', borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 999,
+                            background: `hsl(${Math.round(200 - i * 15)}, 70%, 55%)`,
+                            width: `${maxItemCost > 0 ? (item.cost / maxItemCost) * 100 : 0}%`,
+                            transition: 'width 0.4s ease',
+                          }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Raw breakdown table */}
+            <TableCard>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Reason', 'Entries', 'Total Cost', '% of Total', 'Avg per Entry'].map(h => (
+                      <th key={h} style={TH}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {byReason.map(({ reason, count, cost }) => (
+                    <tr key={reason}>
+                      <td style={TD}>
+                        <Badge color={REASON_COLOR[reason] ?? 'gray'}>{REASON_LABELS[reason] ?? reason}</Badge>
+                      </td>
+                      <td style={{ ...TD, fontWeight: 600 }}>{count}</td>
+                      <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>{mvr(cost)}</td>
+                      <td style={TD}>{totalSummaryCost > 0 ? `${((cost / totalSummaryCost) * 100).toFixed(1)}%` : '—'}</td>
+                      <td style={{ ...TD, color: '#6B5D4F' }}>{count > 0 ? mvr(cost / count) : '—'}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ background: '#F8F6F3' }}>
+                    <td style={{ ...TD, fontWeight: 700 }}>Total</td>
+                    <td style={{ ...TD, fontWeight: 700 }}>{allLogs.length}</td>
+                    <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>{mvr(totalSummaryCost)}</td>
+                    <td style={{ ...TD, fontWeight: 700 }}>100%</td>
+                    <td style={{ ...TD, fontWeight: 700, color: '#6B5D4F' }}>
+                      {allLogs.length > 0 ? mvr(totalSummaryCost / allLogs.length) : '—'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </TableCard>
+          </>
+        )
+      )}
+
+      {/* ── Log Waste Modal ──────────────────────────────────────────────────── */}
       {logOpen && (
         <Modal title="Log Waste" onClose={() => setLogOpen(false)}>
           {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
