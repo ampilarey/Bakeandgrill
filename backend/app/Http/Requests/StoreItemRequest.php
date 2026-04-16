@@ -46,6 +46,7 @@ class StoreItemRequest extends FormRequest
             'sort_order' => 'nullable|integer',
             'modifier_ids' => 'sometimes|array',
             'modifier_ids.*' => 'integer|exists:modifiers,id',
+            'menu_group_id' => 'nullable|integer|exists:menu_groups,id',
         ];
     }
 }

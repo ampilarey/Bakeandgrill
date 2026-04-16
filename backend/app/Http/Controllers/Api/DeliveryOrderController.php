@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Delivery\DTOs\DeliveryDetails;
 use App\Domains\Delivery\Services\DeliveryFeeCalculator;
+use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\OrderCreationService;
@@ -24,6 +25,7 @@ class DeliveryOrderController extends Controller
     public function __construct(
         private OrderCreationService $orderCreation,
         private DeliveryFeeCalculator $feeCalculator,
+        private KitchenMenuResolver $kitchenMenuResolver,
     ) {}
 
     /**
@@ -34,6 +36,10 @@ class DeliveryOrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        if (! $this->kitchenMenuResolver->isDeliveryServiceAccepting()) {
+            abort(422, $this->kitchenMenuResolver->deliveryUnavailableMessage());
+        }
+
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|integer|exists:items,id',

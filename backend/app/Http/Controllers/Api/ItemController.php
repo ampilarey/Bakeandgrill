@@ -4,27 +4,51 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
+use App\Models\ItemChannelAvailability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class ItemController extends Controller
 {
+    private function resolvePublicChannel(Request $request, KitchenMenuResolver $resolver): string
+    {
+        $ch = $request->query('channel');
+        if (is_string($ch) && in_array($ch, KitchenMenuResolver::CHANNELS, true)) {
+            return $ch;
+        }
+
+        $ot = $request->query('for_order_type');
+        if (is_string($ot)) {
+            return $resolver->channelForOrderType($ot);
+        }
+
+        return 'online_pickup';
+    }
+
     /**
      * Display a listing of items
      */
-    public function index(Request $request)
+    public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver)
     {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
 
-        $query = Item::with(['category', 'variants', 'modifiers']);
+        $with = ['category', 'variants', 'modifiers'];
+        if ($isAdmin) {
+            $with[] = 'menuGroup';
+            $with[] = 'channelAvailabilities';
+        }
+        $query = Item::with($with);
 
         if (!$isAdmin) {
             $query->where('is_active', true);
+            $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
+            $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
         }
 
         // Filter by category
@@ -67,10 +91,24 @@ class ItemController extends Controller
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
                 'category_id' => $item->category_id,
+                'menu_group_id' => $item->menu_group_id,
                 'category' => $item->category ? [
                     'id' => $item->category->id,
                     'name' => $item->category->name,
                 ] : null,
+                'menu_group' => $item->menuGroup ? [
+                    'id' => $item->menuGroup->id,
+                    'name' => $item->menuGroup->name,
+                    'slug' => $item->menuGroup->slug,
+                ] : null,
+                'channel_availabilities' => $isAdmin
+                    ? $item->channelAvailabilities->map(fn ($r) => [
+                        'channel' => $r->channel,
+                        'is_enabled' => $r->is_enabled,
+                        'valid_from' => $r->valid_from?->toIso8601String(),
+                        'valid_until' => $r->valid_until?->toIso8601String(),
+                    ])->values()->all()
+                    : null,
                 'variants' => $item->variants->map(fn ($v) => [
                     'id' => $v->id,
                     'name' => $v->name,
@@ -110,11 +148,21 @@ class ItemController extends Controller
      * Display a specific item (PUBLIC - no recipe data)
      * For staff access with recipe data, use showWithRecipe
      */
-    public function show($id)
+    public function show(Request $request, KitchenMenuResolver $kitchenMenuResolver, $id)
     {
+        $isAdmin = $request->user() instanceof \App\Models\User
+                   && $request->user()->tokenCan('staff');
+
         $item = Item::with(['category', 'variants', 'modifiers'])
             ->where('is_active', true)
             ->findOrFail($id);
+
+        if (! $isAdmin) {
+            $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
+            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+                abort(404);
+            }
+        }
 
         // PUBLIC RESPONSE: Only customer-facing data, NO recipe/cost internals
         return response()->json([
@@ -163,16 +211,37 @@ class ItemController extends Controller
     public function update(UpdateItemRequest $request, $id)
     {
         $item = Item::findOrFail($id);
-        $item->update($request->validated());
+        $data = $request->validated();
+        unset($data['channel_availability']);
+        $item->update($data);
 
         // Update modifiers if provided
         if ($request->has('modifier_ids')) {
             $item->modifiers()->sync($request->modifier_ids);
         }
 
+        if ($request->has('channel_availability')) {
+            foreach ($request->input('channel_availability', []) as $row) {
+                if (empty($row['channel'])) {
+                    continue;
+                }
+                ItemChannelAvailability::query()->updateOrCreate(
+                    [
+                        'item_id' => $item->id,
+                        'channel' => $row['channel'],
+                    ],
+                    [
+                        'is_enabled' => (bool) ($row['is_enabled'] ?? true),
+                        'valid_from' => $row['valid_from'] ?? null,
+                        'valid_until' => $row['valid_until'] ?? null,
+                    ],
+                );
+            }
+        }
+
         return response()->json([
             'message' => 'Item updated successfully',
-            'item' => $item->load(['category', 'variants', 'modifiers']),
+            'item' => $item->load(['category', 'variants', 'modifiers', 'menuGroup', 'channelAvailabilities']),
         ]);
     }
 
@@ -195,8 +264,11 @@ class ItemController extends Controller
      *   2[item_code_5_digits][weight_5_digits_grams][check_digit]
      * When detected, the decoded weight (in grams) is returned alongside the item.
      */
-    public function lookupByBarcode($barcode)
+    public function lookupByBarcode(Request $request, KitchenMenuResolver $kitchenMenuResolver, $barcode)
     {
+        $isStaff = $request->user() instanceof \App\Models\User
+            && $request->user()->tokenCan('staff');
+
         $weightGrams = null;
         $lookupBarcode = $barcode;
 
@@ -215,6 +287,13 @@ class ItemController extends Controller
             ->where('is_active', true)
             ->where('is_available', true)
             ->firstOrFail();
+
+        if (! $isStaff) {
+            $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
+            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+                abort(404);
+            }
+        }
 
         $response = ['item' => $item];
         if ($weightGrams !== null) {

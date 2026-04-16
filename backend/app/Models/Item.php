@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,6 +17,7 @@ class Item extends Model
     use SoftDeletes;
     protected $fillable = [
         'category_id',
+        'menu_group_id',
         'name',
         'name_dv',
         'description',
@@ -46,6 +48,16 @@ class Item extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function menuGroup(): BelongsTo
+    {
+        return $this->belongsTo(MenuGroup::class, 'menu_group_id');
+    }
+
+    public function channelAvailabilities(): HasMany
+    {
+        return $this->hasMany(ItemChannelAvailability::class, 'item_id');
     }
 
     public function variants(): HasMany
@@ -98,6 +110,7 @@ class Item extends Model
 
     protected $casts = [
         'category_id' => 'integer',
+        'menu_group_id' => 'integer',
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'track_stock' => 'boolean',
@@ -115,4 +128,29 @@ class Item extends Model
         'is_combo'     => 'boolean',
         'combo_discount_pct' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Item $item): void {
+            if ($item->menu_group_id === null) {
+                $item->menu_group_id = 1;
+            }
+        });
+
+        static::created(function (Item $item): void {
+            foreach (KitchenMenuResolver::CHANNELS as $channel) {
+                ItemChannelAvailability::firstOrCreate(
+                    [
+                        'item_id' => $item->id,
+                        'channel' => $channel,
+                    ],
+                    [
+                        'is_enabled' => true,
+                        'valid_from' => null,
+                        'valid_until' => null,
+                    ],
+                );
+            }
+        });
+    }
 }

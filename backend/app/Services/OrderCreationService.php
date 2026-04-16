@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
@@ -18,6 +19,7 @@ class OrderCreationService
 {
     public function __construct(
         private OrderTotalsCalculator $calculator = new OrderTotalsCalculator,
+        private KitchenMenuResolver $kitchenMenuResolver = new KitchenMenuResolver,
     ) {}
 
     public function createFromPayload(array $payload, ?object $user): Order
@@ -111,6 +113,12 @@ class OrderCreationService
             ->whereIn('id', $itemIds)
             ->get()
             ->keyBy('id');
+
+        $this->kitchenMenuResolver->assertLineItemsAllowedForOrderType(
+            $itemMap->all(),
+            $items,
+            $order->type,
+        );
 
         foreach ($items as $itemPayload) {
             $itemId = $itemPayload['item_id'];

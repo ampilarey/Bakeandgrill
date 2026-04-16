@@ -30,10 +30,17 @@ export function HomePage() {
   usePageTitle(null);
 
   useEffect(() => {
-    fetchItems().then((res) => {
-      setFeaturedItems(res.data.slice(0, 4));
-    }).catch(() => { /* section simply stays hidden on failure */ });
+    const loadFeatured = () => {
+      fetchItems().then((res) => {
+        setFeaturedItems(res.data.slice(0, 4));
+      }).catch(() => { /* section simply stays hidden on failure */ });
+    };
+    loadFeatured();
+    window.addEventListener('sales_channel_change', loadFeatured);
+    return () => window.removeEventListener('sales_channel_change', loadFeatured);
+  }, []);
 
+  useEffect(() => {
     fetchOpeningHoursStatus().then(({ open, message, today }) => {
       setIsOpen(open);
       setHoursMsg(message ?? null);

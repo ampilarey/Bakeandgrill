@@ -5,12 +5,43 @@ import { request } from './client';
 
 export type { MenuItem };
 
+/** Sales channel for public menu API (`online_pickup` = takeaway, `delivery` = delivery). */
+export type SalesChannel = 'online_pickup' | 'delivery';
+
+const SALES_CHANNEL_KEY = 'bakegrill_sales_channel';
+
+export function getSalesChannel(): SalesChannel {
+  if (typeof localStorage === 'undefined') return 'online_pickup';
+  return localStorage.getItem(SALES_CHANNEL_KEY) === 'delivery' ? 'delivery' : 'online_pickup';
+}
+
+export function setSalesChannel(channel: SalesChannel): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(SALES_CHANNEL_KEY, channel);
+  window.dispatchEvent(new Event('sales_channel_change'));
+}
+
+export interface OrderingEligibility {
+  delivery: {
+    accepting: boolean;
+    reason: string | null;
+    message: string | null;
+  };
+  active_menu_groups: Array<{ id: number; name: string; slug: string }>;
+}
+
+export async function fetchOrderingEligibility(): Promise<OrderingEligibility> {
+  return request<OrderingEligibility>(ENDPOINTS.ORDERING_ELIGIBILITY);
+}
+
 export async function fetchCategories(): Promise<{ data: Category[] }> {
   return request<{ data: Category[] }>(ENDPOINTS.CATEGORIES);
 }
 
-export async function fetchItems(): Promise<{ data: MenuItem[] }> {
-  const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?available_only=1`);
+export async function fetchItems(channel?: SalesChannel): Promise<{ data: MenuItem[] }> {
+  const ch = channel ?? getSalesChannel();
+  const qs = new URLSearchParams({ available_only: '1', channel: ch });
+  const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?${qs}`);
   // Coerce prices to numbers at the API boundary so consumers never need parseFloat()
   res.data = res.data.map((item) => ({
     ...item,

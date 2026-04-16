@@ -64,7 +64,8 @@ export function MenuPage() {
 
   usePageTitle('Menu');
 
-  useEffect(() => {
+  const loadMenu = () => {
+    setLoading(true);
     Promise.all([fetchCategories(), fetchItems(), fetchOpeningHoursStatus()])
       .then(([cats, its, hours]) => {
         setCategories(cats.data);
@@ -75,6 +76,13 @@ export function MenuPage() {
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadMenu();
+    const onChannel = () => loadMenu();
+    window.addEventListener('sales_channel_change', onChannel);
+    return () => window.removeEventListener('sales_channel_change', onChannel);
   }, []);
 
   useEffect(() => {

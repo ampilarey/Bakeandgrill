@@ -48,6 +48,12 @@ class UpdateItemRequest extends FormRequest
             'sort_order' => 'nullable|integer',
             'modifier_ids' => 'sometimes|array',
             'modifier_ids.*' => 'integer|exists:modifiers,id',
+            'menu_group_id' => 'nullable|integer|exists:menu_groups,id',
+            'channel_availability' => 'sometimes|array',
+            'channel_availability.*.channel' => 'required_with:channel_availability|string|in:dine_in,takeaway,online_pickup,delivery',
+            'channel_availability.*.is_enabled' => 'sometimes|boolean',
+            'channel_availability.*.valid_from' => 'nullable|date',
+            'channel_availability.*.valid_until' => 'nullable|date',
         ];
     }
 }

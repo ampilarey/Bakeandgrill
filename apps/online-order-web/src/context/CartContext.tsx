@@ -13,6 +13,8 @@ interface CartContextValue {
   addItem: (item: Item, quantity: number, modifiers?: Modifier[]) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
+  /** Remove lines whose item id is not in the allowed set (e.g. after switching takeaway ↔ delivery). */
+  pruneCartToAllowedItemIds: (allowedIds: Set<number>) => void;
 }
 
 const CART_VERSION = 2;
@@ -104,6 +106,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => setCart([]), []);
 
+  const pruneCartToAllowedItemIds = useCallback((allowedIds: Set<number>) => {
+    setCart((prev) => prev.filter((e) => allowedIds.has(e.item.id)));
+  }, []);
+
   const cartTotal = useMemo(
     () =>
       cart.reduce((total, e) => {
@@ -115,7 +121,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, clearCart }}>
+    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, clearCart, pruneCartToAllowedItemIds }}>
       {children}
     </CartContext.Provider>
   );

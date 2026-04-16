@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { fetchOrderingEligibility, type OrderingEligibility } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
 import { useSiteSettings } from "../context/SiteSettingsContext";
@@ -152,6 +153,11 @@ export function CheckoutPage() {
 
   useEffect(() => { document.title = `Checkout — ${siteName}`; }, [siteName]);
 
+  const [orderElig, setOrderElig] = useState<OrderingEligibility | null>(null);
+  useEffect(() => {
+    fetchOrderingEligibility().then(setOrderElig).catch(() => setOrderElig(null));
+  }, []);
+
   const {
     cart, token, customerName, loyaltyAccount, loyaltyPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
@@ -169,6 +175,11 @@ export function CheckoutPage() {
     friendReferralLoading,
     handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
+
+  const deliveryBlocked = orderElig != null && !orderElig.delivery.accepting;
+  useEffect(() => {
+    if (deliveryBlocked && orderType === 'delivery') setOrderType('takeaway');
+  }, [deliveryBlocked, orderType, setOrderType]);
 
   if (cart.length === 0) {
     return (
@@ -193,18 +204,32 @@ export function CheckoutPage() {
   // ── Reusable section blocks (shared between mobile and desktop layouts) ──────
   const sectionOrderType = (
     <SectionCard title="Order Type">
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {(['takeaway', 'delivery'] as const).map((type) => (
           <button
             key={type}
-            onClick={() => setOrderType(type)}
-            style={{ ...S.typeBtn, ...(orderType === type ? S.typeBtnActive : {}) }}
+            type="button"
+            onClick={() => {
+              if (type === 'delivery' && deliveryBlocked) return;
+              setOrderType(type);
+            }}
+            disabled={type === 'delivery' && deliveryBlocked}
+            style={{
+              ...S.typeBtn,
+              ...(orderType === type ? S.typeBtnActive : {}),
+              ...(type === 'delivery' && deliveryBlocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
+            }}
             aria-pressed={orderType === type}
           >
             {type === 'takeaway' ? '🥡 Takeaway' : '🛵 Delivery'}
           </button>
         ))}
       </div>
+      {deliveryBlocked && (
+        <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+          {orderElig.delivery.message ?? 'Delivery is not available right now. Please choose takeaway.'}
+        </p>
+      )}
     </SectionCard>
   );
 

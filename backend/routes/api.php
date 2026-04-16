@@ -62,6 +62,10 @@ Route::get('/opening-hours/status', [App\Http\Controllers\Api\OpeningHoursContro
 Route::get('/opening-hours', [App\Http\Controllers\Api\OpeningHoursController::class, 'index'])
     ->middleware('throttle:60,1');
 
+// Delivery + chef menu eligibility (public — online order app)
+Route::get('/ordering/eligibility', [App\Http\Controllers\Api\OrderingEligibilityController::class, 'show'])
+    ->middleware('throttle:120,1');
+
 /*
 |--------------------------------------------------------------------------
 | Staff Authentication Routes
@@ -307,6 +311,10 @@ Route::post('/items/stock-check', [ItemController::class, 'bulkStockCheck'])
 
 // Protected menu management (staff only — requires menu.manage permission)
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
+    Route::get('/admin/menu-groups', [App\Http\Controllers\Api\KitchenMenuAdminController::class, 'menuGroups']);
+    Route::get('/admin/kitchen-menu-state', [App\Http\Controllers\Api\KitchenMenuAdminController::class, 'kitchenState']);
+    Route::patch('/admin/kitchen-menu-state', [App\Http\Controllers\Api\KitchenMenuAdminController::class, 'updateKitchenState']);
+
     // Categories
     Route::post('/categories', [CategoryController::class, 'store']);
     Route::patch('/categories/{id}', [CategoryController::class, 'update']);

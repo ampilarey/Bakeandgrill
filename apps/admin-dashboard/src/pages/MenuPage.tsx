@@ -3,7 +3,9 @@ import {
   fetchAdminCategories, createCategory, updateCategory, deleteCategory,
   fetchAdminItems, createItem, updateItem, deleteItem, toggleItemAvailability,
   uploadMenuImage, getBarcodeLabel, getItemWithRecipe,
+  fetchMenuGroups, getKitchenMenuState, updateKitchenMenuState,
   type MenuCategory, type MenuItem, type MenuItemPayload, type BarcodeLabel, type ItemWithRecipe,
+  type MenuGroupRow,
 } from '../api';
 import { PhotosTab } from './MenuPage/PhotosTab';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -177,12 +179,32 @@ function CategoryFormModal({
 
 // ── Item form ────────────────────────────────────────────────────────────────
 
+const SALES_CHANNELS = [
+  { id: 'dine_in', label: 'Dine-in' },
+  { id: 'takeaway', label: 'Takeaway (POS)' },
+  { id: 'online_pickup', label: 'Online takeaway' },
+  { id: 'delivery', label: 'Delivery' },
+] as const;
+
 type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
   image_url: string; base_price: string; tax_rate: string;
   sort_order: string; is_active: boolean; is_available: boolean;
   category_id: string;
+  menu_group_id: string;
+  channels: Record<string, boolean>;
 };
+
+function channelsFromItem(item: MenuItem): Record<string, boolean> {
+  const base: Record<string, boolean> = {
+    dine_in: true, takeaway: true, online_pickup: true, delivery: true,
+  };
+  if (!item.channel_availabilities?.length) return base;
+  for (const r of item.channel_availabilities) {
+    if (r.channel in base) base[r.channel] = r.is_enabled;
+  }
+  return base;
+}
 
 function itemToForm(item: MenuItem): ItemForm {
   return {
@@ -197,11 +219,13 @@ function itemToForm(item: MenuItem): ItemForm {
     is_active: item.is_active,
     is_available: item.is_available,
     category_id: item.category_id != null ? String(item.category_id) : '',
+    menu_group_id: item.menu_group_id != null ? String(item.menu_group_id) : '1',
+    channels: channelsFromItem(item),
   };
 }
 
-function formToPayload(form: ItemForm): MenuItemPayload {
-  return {
+function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayload {
+  const payload: MenuItemPayload = {
     name: form.name.trim(),
     name_dv: form.name_dv.trim() || null,
     description: form.description.trim() || null,
@@ -213,15 +237,24 @@ function formToPayload(form: ItemForm): MenuItemPayload {
     is_active: form.is_active,
     is_available: form.is_available,
     category_id: form.category_id !== '' ? parseInt(form.category_id) : null,
+    menu_group_id: form.menu_group_id !== '' ? parseInt(form.menu_group_id, 10) : null,
   };
+  if (includeChannels) {
+    payload.channel_availability = SALES_CHANNELS.map(({ id }) => ({
+      channel: id,
+      is_enabled: !!form.channels[id],
+    }));
+  }
+  return payload;
 }
 
 function ItemFormModal({
-  initial, title, categories, onSave, onClose, itemId,
+  initial, title, categories, menuGroups, onSave, onClose, itemId,
 }: {
   initial: ItemForm;
   title: string;
   categories: MenuCategory[];
+  menuGroups: MenuGroupRow[];
   onSave: (f: ItemForm) => Promise<void>;
   onClose: () => void;
   itemId?: number;
@@ -286,7 +319,7 @@ function ItemFormModal({
                 <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
               </Field>
             </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Category">
                 <select
                   value={form.category_id}
@@ -299,10 +332,46 @@ function ItemFormModal({
                   ))}
                 </select>
               </Field>
-              <Field label="SKU / Internal Code">
-                <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
+              <Field label="Menu group (chef / station)">
+                <select
+                  value={form.menu_group_id}
+                  onChange={(e) => set('menu_group_id', e.target.value)}
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                >
+                  {menuGroups.map((g) => (
+                    <option key={g.id} value={String(g.id)}>{g.name}</option>
+                  ))}
+                </select>
               </Field>
             </div>
+            <Field label="SKU / Internal Code">
+              <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
+            </Field>
+            {itemId && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>
+                  Per-channel availability
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
+                  {SALES_CHANNELS.map(({ id, label }) => (
+                    <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!form.channels[id]}
+                        onChange={(e) => setForm((f) => ({
+                          ...f,
+                          channels: { ...f.channels, [id]: e.target.checked },
+                        }))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0' }}>
+                  Delivery also requires the global delivery switch (Settings → Website) and active menu duty above.
+                </p>
+              </div>
+            )}
             <Field label="Image">
               <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
             </Field>
@@ -381,6 +450,9 @@ export function MenuPage() {
   const [creatingItem, setCreatingItem] = useState(false);
   const [barcodeLabel, setBarcodeLabel] = useState<BarcodeLabel | null>(null);
   const [recipeItem, setRecipeItem] = useState<ItemWithRecipe | null>(null);
+  const [menuGroups, setMenuGroups] = useState<MenuGroupRow[]>([]);
+  const [activeMenuGroupIds, setActiveMenuGroupIds] = useState<number[]>([1]);
+  const [kitchenSaving, setKitchenSaving] = useState(false);
 
   const loadCategories = async () => {
     setLoading(true);
@@ -407,6 +479,16 @@ export function MenuPage() {
   };
 
   useEffect(() => { void loadCategories(); }, []);
+  useEffect(() => {
+    if (view !== 'items') return;
+    void (async () => {
+      try {
+        const [mg, ks] = await Promise.all([fetchMenuGroups(), getKitchenMenuState()]);
+        setMenuGroups(mg.data);
+        setActiveMenuGroupIds(ks.kitchen_menu_state.active_menu_group_ids?.length ? ks.kitchen_menu_state.active_menu_group_ids : [1]);
+      } catch { /* ignore */ }
+    })();
+  }, [view]);
   useEffect(() => {
     if (view === 'items') { setPage(1); void loadItems(1); }
   }, [view, selectedCat, search, perPage]);
@@ -463,7 +545,7 @@ export function MenuPage() {
   // ── Item actions ──
   const handleCreateItem = async (form: ItemForm) => {
     try {
-      await createItem(formToPayload(form));
+      await createItem(formToPayload(form, false));
       setCreatingItem(false);
       await loadItems();
     } catch (e) { setError((e as Error).message); }
@@ -472,10 +554,25 @@ export function MenuPage() {
   const handleUpdateItem = async (form: ItemForm) => {
     if (!editingItem) return;
     try {
-      await updateItem(editingItem.id, formToPayload(form));
+      await updateItem(editingItem.id, formToPayload(form, true));
       setEditingItem(null);
       await loadItems();
     } catch (e) { setError((e as Error).message); }
+  };
+
+  const toggleKitchenGroup = (id: number) => {
+    setActiveMenuGroupIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      return next.length ? next : prev;
+    });
+  };
+
+  const saveKitchenDuty = async () => {
+    setKitchenSaving(true);
+    try {
+      await updateKitchenMenuState(activeMenuGroupIds);
+    } catch (e) { setError((e as Error).message); }
+    finally { setKitchenSaving(false); }
   };
 
   const handleDeleteItem = (id: number) => {
@@ -503,6 +600,8 @@ export function MenuPage() {
     base_price: '', tax_rate: '', sort_order: '',
     is_active: true, is_available: true,
     category_id: selectedCat != null ? String(selectedCat) : '',
+    menu_group_id: '1',
+    channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true },
   };
 
   return (
@@ -582,6 +681,28 @@ export function MenuPage() {
       {/* ── Items view ── */}
       {view === 'items' && (
         <>
+          <Card style={{ padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 8 }}>Chef menu on duty</div>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px', lineHeight: 1.45 }}>
+              Only items in the selected menu groups appear on the public menu (per channel rules). Choose one or more groups that are live right now.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', marginBottom: 12 }}>
+              {(menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }]).map((g) => (
+                <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={activeMenuGroupIds.includes(g.id)}
+                    onChange={() => toggleKitchenGroup(g.id)}
+                  />
+                  {g.name}
+                </label>
+              ))}
+            </div>
+            <Btn small onClick={() => void saveKitchenDuty()} disabled={kitchenSaving}>
+              {kitchenSaving ? 'Saving…' : 'Save active menus'}
+            </Btn>
+          </Card>
+
           {/* Filters */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
             <select
@@ -726,6 +847,7 @@ export function MenuPage() {
           initial={EMPTY_ITEM_FORM}
           title="New Menu Item"
           categories={categories}
+          menuGroups={menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }]}
           onSave={handleCreateItem}
           onClose={() => setCreatingItem(false)}
         />
@@ -736,6 +858,7 @@ export function MenuPage() {
           initial={itemToForm(editingItem)}
           title={`Edit: ${editingItem.name}`}
           categories={categories}
+          menuGroups={menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }]}
           onSave={handleUpdateItem}
           onClose={() => setEditingItem(null)}
           itemId={editingItem.id}

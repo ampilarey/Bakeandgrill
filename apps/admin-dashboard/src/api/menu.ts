@@ -11,6 +11,21 @@ export type MenuCategory = {
   items?: MenuItem[];
 };
 
+export type MenuGroupRow = {
+  id: number;
+  name: string;
+  slug: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type ItemChannelAvailabilityRow = {
+  channel: string;
+  is_enabled: boolean;
+  valid_from?: string | null;
+  valid_until?: string | null;
+};
+
 export type MenuItem = {
   id: number;
   name: string;
@@ -24,7 +39,10 @@ export type MenuItem = {
   is_active: boolean;
   sort_order?: number | null;
   category_id?: number | null;
+  menu_group_id?: number | null;
   category?: { id: number; name: string } | null;
+  menu_group?: { id: number; name: string; slug: string } | null;
+  channel_availabilities?: ItemChannelAvailabilityRow[] | null;
 };
 
 export type MenuItemPayload = {
@@ -36,10 +54,36 @@ export type MenuItemPayload = {
   base_price: number;
   tax_rate?: number | null;
   category_id?: number | null;
+  menu_group_id?: number | null;
   sort_order?: number | null;
   is_active?: boolean;
   is_available?: boolean;
+  channel_availability?: Array<{
+    channel: string;
+    is_enabled: boolean;
+    valid_from?: string | null;
+    valid_until?: string | null;
+  }>;
 };
+
+export async function fetchMenuGroups(): Promise<{ data: MenuGroupRow[] }> {
+  return req('/admin/menu-groups');
+}
+
+export async function getKitchenMenuState(): Promise<{
+  kitchen_menu_state: { id: number; active_menu_group_ids: number[] };
+}> {
+  return req('/admin/kitchen-menu-state');
+}
+
+export async function updateKitchenMenuState(active_menu_group_ids: number[]): Promise<{
+  kitchen_menu_state: { id: number; active_menu_group_ids: number[] };
+}> {
+  return req('/admin/kitchen-menu-state', {
+    method: 'PATCH',
+    body: JSON.stringify({ active_menu_group_ids }),
+  });
+}
 
 export async function fetchAdminCategories(): Promise<{ data: MenuCategory[] }> {
   return req('/categories?admin=1');

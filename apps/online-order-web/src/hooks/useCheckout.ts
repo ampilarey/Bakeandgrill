@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchItems, setSalesChannel, type SalesChannel } from "../api/menu";
+import { useCart } from "../context/CartContext";
 import {
   applyPromoCode,
   removePromoCode,
@@ -78,8 +80,10 @@ function readToken(): string | null {
 
 export function useCheckout() {
   const navigate = useNavigate();
+  const { pruneCartToAllowedItemIds } = useCart();
 
-  const [cart]            = useState<CartItem[]>(readCart);
+  const [cartTick, bumpCart] = useReducer((n: number) => n + 1, 0);
+  const cart = useMemo(() => readCart(), [cartTick]);
   const [token, setToken] = useState<string | null>(readToken);
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [loyaltyAccount, setLoyaltyAccount] = useState<LoyaltyAccount | null>(null);
@@ -122,6 +126,23 @@ export function useCheckout() {
   const [globalError, setGlobalError] = useState("");
 
   const hasMounted = useRef(false);
+
+  useEffect(() => {
+    const ch: SalesChannel = orderType === "delivery" ? "delivery" : "online_pickup";
+    setSalesChannel(ch);
+    let cancelled = false;
+    fetchItems(ch)
+      .then((res) => {
+        if (cancelled) return;
+        const ids = new Set(res.data.map((i) => i.id));
+        pruneCartToAllowedItemIds(ids);
+        bumpCart();
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [orderType, pruneCartToAllowedItemIds]);
 
   useEffect(() => {
     const rawFee = parseInt(import.meta.env.VITE_DELIVERY_FEE_MVR ?? '20', 10);
