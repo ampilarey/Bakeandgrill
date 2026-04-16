@@ -33,11 +33,11 @@ export default function AnalyticsPage() {
           getAnalytics<{ forecast: ForecastRow[] }>('/admin/analytics/forecast'),
           getAnalytics<{ top_customers: LtvCustomer[] }>('/admin/analytics/customer-ltv'),
         ]);
-        setPeakHours(ph.peak_hours);
-        setRetention(rt.retention);
-        setProfitItems(pr.items);
-        setForecast(fc.forecast);
-        setLtvCustomers(ltv.top_customers);
+        setPeakHours(ph.peak_hours ?? []);
+        setRetention(rt.retention ?? []);
+        setProfitItems(pr.items ?? []);
+        setForecast(fc.forecast ?? []);
+        setLtvCustomers(ltv.top_customers ?? []);
       } catch (e) {
         setError((e as Error).message ?? 'Failed to load analytics.');
       } finally {
@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
     void loadAll();
   }, []);
 
-  const maxCount = Math.max(...peakHours.map((h) => h.count), 1);
+  const maxCount = peakHours.length > 0 ? Math.max(...peakHours.map((h) => h.count), 1) : 1;
 
   if (loading) return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><Spinner /></>;
   if (error)   return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><ErrorMsg message={error} /></>;
@@ -90,7 +90,7 @@ export default function AnalyticsPage() {
               boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
             }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>{f.day}</div>
-              <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 6 }}>{f.date.slice(5)}</div>
+              <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 6 }}>{f.date?.slice(5) ?? ''}</div>
               <div style={{ fontSize: 26, fontWeight: 800, color: '#D4813A' }}>{f.avg_orders}</div>
               <div style={{ fontSize: 11, color: '#9C8E7E' }}>orders</div>
             </div>

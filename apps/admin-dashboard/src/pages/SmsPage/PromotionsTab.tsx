@@ -173,7 +173,7 @@ export function PromotionsTab() {
             </Btn>
             {preview && (
               <div style={{ marginTop: 10, padding: '10px 14px', background: '#F8F6F3', borderRadius: 8, fontSize: 13 }}>
-                <strong>{preview.recipient_count.toLocaleString()}</strong> recipient{preview.recipient_count !== 1 ? 's' : ''}
+                <strong>{(preview.recipient_count ?? 0).toLocaleString()}</strong> recipient{(preview.recipient_count ?? 0) !== 1 ? 's' : ''}
                 {totalCostMvr(preview) && <> · Est. cost: <strong>MVR {totalCostMvr(preview)}</strong></>}
               </div>
             )}

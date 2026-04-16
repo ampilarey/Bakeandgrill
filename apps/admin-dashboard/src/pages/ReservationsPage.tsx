@@ -80,9 +80,9 @@ function ReservationsList() {
     setLoading(true); setError('');
     try {
       const res = await getReservations({ date: dateFilter || undefined, status: statusFilter || undefined, page });
-      setReservations(res.data);
-      setLastPage(res.meta.last_page);
-      setTotal(res.meta.total);
+      setReservations(res.data ?? []);
+      setLastPage(res.meta?.last_page ?? 1);
+      setTotal(res.meta?.total ?? 0);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -242,6 +242,15 @@ function ReservationSettingsTab() {
   };
 
   const handleSave = async () => {
+    // Guard against NaN from empty number inputs
+    const numFields: (keyof ReservationSettings)[] = ['max_party_size', 'booking_window_days', 'advance_notice_hours', 'slot_duration_minutes', 'slots_per_interval', 'reminder_hours_before'];
+    for (const f of numFields) {
+      const v = form[f] as number;
+      if (typeof v === 'number' && isNaN(v)) {
+        setError(`Invalid value for ${f.replace(/_/g, ' ')}.`);
+        return;
+      }
+    }
     setSaving(true); setError('');
     try {
       await updateReservationSettings(form);

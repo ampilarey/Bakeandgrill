@@ -57,9 +57,11 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
     if (!form.staff_id || !form.date || !form.start_time || !form.end_time) {
       setFormError('Staff, date, start and end times are required.'); return;
     }
+    const staffIdNum = Number(form.staff_id);
+    if (isNaN(staffIdNum) || staffIdNum <= 0) { setFormError('Invalid staff member selected.'); return; }
     setSaving(true); setFormError('');
     try {
-      const data = { staff_id: Number(form.staff_id), date: form.date, start_time: form.start_time, end_time: form.end_time, notes: form.notes || undefined };
+      const data = { staff_id: staffIdNum, date: form.date, start_time: form.start_time, end_time: form.end_time, notes: form.notes || undefined };
       if (editSched) { await updateSchedule(editSched.id, data); }
       else           { await createSchedule(data); }
       setModal(false);

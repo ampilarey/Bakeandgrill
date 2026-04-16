@@ -170,8 +170,8 @@ export default function InventoryPage() {
       let page = 1;
       while (true) {
         const r = await fetchInventoryItems({ page });
-        allItems.push(...r.data);
-        if (r.meta.current_page >= r.meta.last_page) break;
+        allItems.push(...(r.data ?? []));
+        if ((r.meta?.current_page ?? 1) >= (r.meta?.last_page ?? 1)) break;
         page++;
       }
       setCountItems(allItems);

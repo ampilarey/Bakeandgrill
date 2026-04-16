@@ -144,7 +144,7 @@ export function CampaignsTab() {
             <Btn onClick={handleCreate} disabled={saving || !name || !message}>
               {saving ? 'Creating…' : 'Create Draft'}
             </Btn>
-            <Btn variant="ghost" onClick={() => { setCreating(false); setPreview(null); }}>Cancel</Btn>
+            <Btn variant="ghost" onClick={() => { setCreating(false); setPreview(null); setName(''); setMessage(''); }}>Cancel</Btn>
           </div>
         </Card>
       )}

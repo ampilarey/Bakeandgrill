@@ -91,7 +91,7 @@ export function ForecastPage() {
     !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()),
   );
 
-  const maxRevenue = trends ? Math.max(...trends.data.map(d => d.revenue), 1) : 1;
+  const maxRevenue = trends ? Math.max(...(trends.data ?? []).map(d => d.revenue), 1) : 1;
 
   return (
     <>
@@ -176,7 +176,7 @@ export function ForecastPage() {
                 </span>
               </div>
               <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-                {forecast.forecast.map((wk, i) => (
+                {(forecast.forecast ?? []).map((wk, i) => (
                   <div key={wk.week_start} style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                     <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Week {i + 1}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{wk.week_start}</div>
@@ -245,8 +245,8 @@ export function ForecastPage() {
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100, minWidth: 400 }}>
-                    {itemForecast.forecast.map((d) => {
-                      const maxQty = Math.max(...itemForecast.forecast.map((x) => x.predicted_qty), 1);
+                    {(itemForecast.forecast ?? []).map((d) => {
+                      const maxQty = Math.max(...(itemForecast.forecast ?? []).map((x) => x.predicted_qty), 1);
                       const barH = Math.max(4, (d.predicted_qty / maxQty) * 84);
                       return (
                         <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 28 }}>

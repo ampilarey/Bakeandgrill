@@ -162,7 +162,11 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
 export function DashboardPage() {
   usePageTitle('Dashboard');
   const now = useNow();
-  const today = new Date().toISOString().slice(0, 10);
+  // Use local date (not UTC) so the business day matches the venue's timezone
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   const [summary, setSummary]       = useState<DailySummary | null>(null);
   const [summaryErr, setSummaryErr] = useState('');
@@ -193,13 +197,13 @@ export function DashboardPage() {
 
   // ── load active orders (poll every 10s) — diff drives the live feed ──
   const loadOrders = () => {
-    fetchOrders({ status: 'pending,paid,confirmed,preparing,ready', per_page: 50 })
+    fetchOrders({ status: 'pending,paid,confirmed,preparing,in_progress,ready', per_page: 50 })
       .then((r) => {
-        setActiveOrders(r.data);
+        setActiveOrders(r.data ?? []);
         setOrdersErr('');
         // Detect status changes since last poll
         const changed: typeof liveEvents = [];
-        r.data.forEach((o) => {
+        (r.data ?? []).forEach((o) => {
           if (prevOrdersRef.current[o.id] !== undefined && prevOrdersRef.current[o.id] !== o.status) {
             changed.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
           }
@@ -359,7 +363,7 @@ export function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
 
         {/* Top selling items */}
-        {summary && summary.top_items.length > 0 && (
+        {summary && (summary.top_items ?? []).length > 0 && (
           <div>
             <SectionLabel>Top Selling Today</SectionLabel>
             <TableCard>
@@ -373,7 +377,7 @@ export function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {summary.top_items.slice(0, 8).map((item, i) => (
+                  {(summary.top_items ?? []).slice(0, 8).map((item, i) => (
                     <tr key={i}>
                       <td style={{ ...TD, color: '#9C8E7E', width: 28 }}>{i + 1}</td>
                       <td style={TD}>{item.name}</td>
@@ -440,11 +444,11 @@ export function DashboardPage() {
         </div>
 
         {/* Orders by channel */}
-        {summary && summary.by_type.length > 0 && (
+        {summary && (summary.by_type ?? []).length > 0 && (
           <div>
             <SectionLabel>Today by Channel</SectionLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {summary.by_type.map((t) => {
+              {(summary.by_type ?? []).map((t) => {
                 const pct = summary.revenue > 0 ? (t.revenue / summary.revenue) * 100 : 0;
                 return (
                   <div key={t.type} style={{

@@ -23,10 +23,15 @@ function LedgerModal({ customerId, name, onClose }: {
   const [ledgerError, setLedgerError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setEntries([]);
+    setLedgerError('');
     fetchLoyaltyLedger(customerId)
-      .then((r) => setEntries(r.data))
-      .catch((e: Error) => setLedgerError(e.message))
-      .finally(() => setLoading(false));
+      .then((r) => { if (!cancelled) setEntries(r.data); })
+      .catch((e: Error) => { if (!cancelled) setLedgerError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [customerId]);
 
   return (

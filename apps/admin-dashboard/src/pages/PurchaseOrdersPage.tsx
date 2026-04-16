@@ -313,7 +313,7 @@ export function PurchaseOrdersPage() {
                           min={0}
                           max={item.quantity - item.received_quantity}
                           value={receiveQtys[item.id] ?? 0}
-                          onChange={(e) => setReceiveQtys((q) => ({ ...q, [item.id]: Number(e.target.value) }))}
+                          onChange={(e) => { const v = parseFloat(e.target.value); setReceiveQtys((q) => ({ ...q, [item.id]: isNaN(v) ? 0 : Math.max(0, v) })); }}
                           style={{ width: 70, height: 30, padding: '0 6px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', textAlign: 'center' }}
                         />
                       </td>

@@ -80,10 +80,12 @@ function CreateModal({ roles, onSave, onClose }: {
     if (!email.trim()) { setError('Email is required.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim().toLowerCase())) { setError('Please enter a valid email address.'); return; }
     if (!roleId) { setError('Select a role.'); return; }
+    const roleIdNum = parseInt(roleId, 10);
+    if (isNaN(roleIdNum)) { setError('Invalid role selected.'); return; }
     if (pin.length < 4) { setError('PIN must be at least 4 digits.'); return; }
     if (pin !== confirmPin) { setError('PINs do not match.'); return; }
     setError(''); setLoading(true);
-    try { await onSave({ name: name.trim(), email: email.trim(), role_id: parseInt(roleId), pin }); }
+    try { await onSave({ name: name.trim(), email: email.trim(), role_id: roleIdNum, pin }); }
     catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -135,8 +137,10 @@ function EditModal({ member, roles, onSave, onClose }: {
     if (!name.trim()) { setError('Name is required.'); return; }
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim().toLowerCase())) { setError('Please enter a valid email address.'); return; }
     if (!roleId) { setError('Select a role.'); return; }
+    const roleIdNum = parseInt(roleId, 10);
+    if (isNaN(roleIdNum)) { setError('Invalid role selected.'); return; }
     setError(''); setLoading(true);
-    try { await onSave({ name: name.trim(), email: email.trim(), role_id: parseInt(roleId), is_active: isActive }); }
+    try { await onSave({ name: name.trim(), email: email.trim(), role_id: roleIdNum, is_active: isActive }); }
     catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

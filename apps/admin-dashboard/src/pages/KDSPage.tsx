@@ -29,7 +29,7 @@ export function KDSPage() {
   const load = async () => {
     try {
       const res = await fetchKdsOrders();
-      setTickets(res.orders);
+      setTickets(res.orders ?? []);
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -180,7 +180,7 @@ function TicketHeader({ ticket }: { ticket: KdsTicket }) {
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {ticket.items.map((item, i) => (
+        {(ticket.items ?? []).map((item, i) => (
           <div key={i} style={{ fontSize: 13, color: '#6B5D4F' }}>
             <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}
             {item.modifiers && item.modifiers.length > 0 && (
