@@ -12,6 +12,7 @@ use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
 use App\Domains\Notifications\Events\CustomerCreated;
+use App\Domains\Notifications\Listeners\SendOnlineOrderCompletionReceiptSmsListener;
 use App\Domains\Notifications\Listeners\SendOrderStatusPushListener;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Orders\Events\OrderCompleted;
@@ -110,6 +111,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         OrderStatusChanged::class => [
             PublishOrderStatusToRedisListener::class,
             SendOrderStatusPushListener::class,
+            SendOnlineOrderCompletionReceiptSmsListener::class,
         ],
     ];
 }

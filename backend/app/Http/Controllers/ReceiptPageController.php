@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ReceiptFeedbackRequest;
 use App\Mail\ReceiptMail;
+use App\Models\Order;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
 use App\Domains\Notifications\DTOs\SmsMessage;
@@ -36,6 +37,10 @@ class ReceiptPageController extends Controller
         $receipt = Receipt::with(['order.items.modifiers', 'order.payments'])
             ->where('token', $token)
             ->firstOrFail();
+
+        if (! $this->orderIsPaidForReceipt($receipt->order)) {
+            abort(403, 'PDF is available after payment is complete.');
+        }
 
         $pdf = Pdf::loadView('receipt-pdf', [
             'receipt' => $receipt,
@@ -69,7 +74,11 @@ class ReceiptPageController extends Controller
 
     public function feedback(ReceiptFeedbackRequest $request, $token)
     {
-        $receipt = Receipt::where('token', $token)->firstOrFail();
+        $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();
+
+        if (! $this->orderIsPaidForReceipt($receipt->order)) {
+            return redirect()->back()->with('error', 'Feedback is available after payment.');
+        }
 
         ReceiptFeedback::create([
             'receipt_id' => $receipt->id,
@@ -90,7 +99,7 @@ class ReceiptPageController extends Controller
         }
 
         if ($receipt->channel === 'sms') {
-            $message = 'Thanks for visiting Bake & Grill! View your receipt: ' . $this->receiptLink($receipt);
+            $message = $this->smsBodyForReceipt($receipt);
             $log = app(SmsService::class)->send(new SmsMessage(
                 to: $receipt->recipient,
                 message: $message,
@@ -115,5 +124,28 @@ class ReceiptPageController extends Controller
     private function receiptLink(Receipt $receipt): string
     {
         return rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+    }
+
+    private function orderIsPaidForReceipt(?Order $order): bool
+    {
+        if ($order === null) {
+            return false;
+        }
+
+        return $order->paid_at !== null
+            || in_array($order->status ?? '', ['paid', 'completed', 'delivered', 'refunded'], true);
+    }
+
+    private function smsBodyForReceipt(Receipt $receipt): string
+    {
+        $receipt->loadMissing('order');
+        $order = $receipt->order;
+        $link = $this->receiptLink($receipt);
+
+        if ($this->orderIsPaidForReceipt($order)) {
+            return 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
+        }
+
+        return 'Bake & Grill: Here is your invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;
     }
 }

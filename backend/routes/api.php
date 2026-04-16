@@ -231,6 +231,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/tables/{id}/split', [TableController::class, 'split']);
 
     // Receipts (staff)
+    Route::get('/orders/{orderId}/receipt-link', [ReceiptController::class, 'linkForOrder']);
     Route::post('/receipts/{orderId}/send', [ReceiptController::class, 'send']);
 
     // Refunds

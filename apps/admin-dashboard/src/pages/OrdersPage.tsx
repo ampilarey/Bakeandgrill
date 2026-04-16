@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchOrders, fetchOrder, holdOrder, resumeOrder, sendOrderBill,
   kdsStart, kdsBump, addOrderPayments,
+  getReceiptLinkForOrder, sendReceiptForOrder,
   type Order,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -63,8 +64,54 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [showPayment, setShowPayment] = useState(false);
   const [payRows, setPayRows] = useState([{ method: 'cash', amount: '' }]);
   const [paymentSaving, setPaymentSaving] = useState(false);
+  const [receiptBusy, setReceiptBusy] = useState(false);
+  const [copyLinkBusy, setCopyLinkBusy] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const phone = order?.customer?.phone ?? order?.customer_phone ?? '';
+
+  const handleCopyReceiptLink = async () => {
+    if (!order) return;
+    setCopyLinkBusy(true); setActionErr('');
+    try {
+      const { link } = await getReceiptLinkForOrder(order.id);
+      await navigator.clipboard.writeText(link);
+      showToast('Link copied to clipboard.');
+    } catch (e) {
+      setActionErr((e as Error).message);
+    } finally {
+      setCopyLinkBusy(false);
+    }
+  };
+
+  const handleSendInvoiceSms = async () => {
+    if (!order || !phone) { setActionErr('Customer phone is required.'); return; }
+    setReceiptBusy(true); setActionErr('');
+    try {
+      await sendReceiptForOrder(order.id, { recipient: phone, channel: 'sms' });
+      showToast(`Invoice link sent to ${phone}.`);
+      reload();
+    } catch (e) {
+      setActionErr((e as Error).message);
+    } finally {
+      setReceiptBusy(false);
+    }
+  };
+
+  const handleSendReceiptSms = async () => {
+    if (!order || !phone) { setActionErr('Customer phone is required.'); return; }
+    setReceiptBusy(true); setActionErr('');
+    try {
+      await sendReceiptForOrder(order.id, { recipient: phone, channel: 'sms' });
+      showToast(`Receipt link sent to ${phone}.`);
+      reload();
+    } catch (e) {
+      setActionErr((e as Error).message);
+    } finally {
+      setReceiptBusy(false);
+    }
+  };
 
   const reload = () => {
     const controller = new AbortController();
@@ -180,6 +227,28 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 </Btn>
               )}
             </div>
+
+            {phone && order.status !== 'cancelled' && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                <Btn
+                  small
+                  variant="secondary"
+                  disabled={copyLinkBusy}
+                  onClick={() => void handleCopyReceiptLink()}
+                >
+                  {copyLinkBusy ? '…' : 'Copy invoice / receipt link'}
+                </Btn>
+                {['paid', 'completed', 'refunded', 'delivered'].includes(order.status) ? (
+                  <Btn small disabled={receiptBusy} onClick={() => void handleSendReceiptSms()}>
+                    {receiptBusy ? '…' : '📱 Send receipt SMS'}
+                  </Btn>
+                ) : (
+                  <Btn small disabled={receiptBusy} onClick={() => void handleSendInvoiceSms()}>
+                    {receiptBusy ? '…' : '📱 Send invoice SMS'}
+                  </Btn>
+                )}
+              </div>
+            )}
 
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <Row label="Order #" value={order.order_number} />

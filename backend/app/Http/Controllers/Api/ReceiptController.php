@@ -14,6 +14,7 @@ use App\Models\ReceiptFeedback;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Services\AuditLogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -22,6 +23,25 @@ class ReceiptController extends Controller
 {
     private const MAX_RESENDS = 3;
     private const RESEND_COOLDOWN_SECONDS = 120;
+
+    /**
+     * Ensure a receipt token exists for the order and return the public URL (for staff "Copy link").
+     */
+    public function linkForOrder(int $orderId): JsonResponse
+    {
+        $order = Order::findOrFail($orderId);
+
+        $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
+        if (! $receipt->exists) {
+            $receipt->token = Str::random(48);
+        }
+        $receipt->customer_id = $order->customer_id;
+        $receipt->save();
+
+        return response()->json([
+            'link' => $this->receiptLink($receipt),
+        ]);
+    }
 
     public function send(StoreReceiptRequest $request, $orderId)
     {
@@ -123,7 +143,12 @@ class ReceiptController extends Controller
 
     public function feedback(ReceiptFeedbackRequest $request, $token)
     {
-        $receipt = Receipt::where('token', $token)->firstOrFail();
+        $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();
+
+        if (! $this->orderIsPaidForReceipt($receipt->order)) {
+            return response()->json(['message' => 'Feedback is available after payment.'], 403);
+        }
+
         $validated = $request->validated();
 
         $feedback = ReceiptFeedback::create([
@@ -155,7 +180,7 @@ class ReceiptController extends Controller
         }
 
         if ($receipt->channel === 'sms') {
-            $body = 'Thanks for visiting Bake & Grill! View your receipt: ' . $this->receiptLink($receipt);
+            $body = $this->smsBodyForReceipt($receipt);
             $log  = app(SmsService::class)->send(new SmsMessage(
                 to:      $receipt->recipient,
                 message: $body,
@@ -180,5 +205,28 @@ class ReceiptController extends Controller
     private function receiptLink(Receipt $receipt): string
     {
         return rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+    }
+
+    private function orderIsPaidForReceipt(?Order $order): bool
+    {
+        if ($order === null) {
+            return false;
+        }
+
+        return $order->paid_at !== null
+            || in_array($order->status ?? '', ['paid', 'completed', 'delivered', 'refunded'], true);
+    }
+
+    private function smsBodyForReceipt(Receipt $receipt): string
+    {
+        $receipt->loadMissing('order');
+        $order = $receipt->order;
+        $link = $this->receiptLink($receipt);
+
+        if ($this->orderIsPaidForReceipt($order)) {
+            return 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
+        }
+
+        return 'Bake & Grill: Here is your invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;
     }
 }

@@ -141,6 +141,19 @@ export async function getRefund(id: number): Promise<{ refund: AdminRefund }> {
   return req(`/refunds/${id}`);
 }
 
-export async function sendReceiptForOrder(orderId: number, phone: string): Promise<void> {
-  await req(`/receipts/${orderId}/send`, { method: 'POST', body: JSON.stringify({ phone }) });
+export async function getReceiptLinkForOrder(orderId: number): Promise<{ link: string }> {
+  return req(`/orders/${orderId}/receipt-link`);
+}
+
+export async function sendReceiptForOrder(
+  orderId: number,
+  data?: { recipient?: string; channel?: 'sms' | 'email' },
+): Promise<{ receipt: unknown; link: string }> {
+  return req(`/receipts/${orderId}/send`, {
+    method: 'POST',
+    body: JSON.stringify({
+      recipient: data?.recipient,
+      channel: data?.channel ?? 'sms',
+    }),
+  });
 }

@@ -47,24 +47,27 @@ class PaymentConfirmationNotifier
 
         $isOnline = in_array($order->type, self::ONLINE_TYPES, true);
 
+        // Ensure a Receipt row exists for every paid order (online: for completion SMS + web receipt; POS: SMS + email).
+        $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
+        if (!$receipt->exists) {
+            $receipt->token = Str::random(48);
+        }
+        $receipt->customer_id = $order->customer_id;
+        if (!$isOnline) {
+            $receipt->fill([
+                'channel'      => 'sms',
+                'recipient'    => $phone,
+                'sent_at'      => now(),
+                'last_sent_at' => now(),
+                'resend_count' => ($receipt->resend_count ?? 0) + 1,
+            ]);
+        }
+        $receipt->save();
+
         if ($isOnline) {
             $url     = rtrim(config('frontend.order_status_url', config('app.url') . '/order/orders'), '/') . '/' . $order->id . '?tok=' . $order->tracking_token;
             $message = 'Bake & Grill: Payment received! Order #' . $order->order_number . ' is confirmed. Track: ' . $url;
         } else {
-            $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-            if (!$receipt->exists) {
-                $receipt->token = Str::random(48);
-            }
-            $receipt->fill([
-                'customer_id'    => $order->customer_id,
-                'channel'        => 'sms',
-                'recipient'      => $phone,
-                'sent_at'        => now(),
-                'last_sent_at'   => now(),
-                'resend_count'   => ($receipt->resend_count ?? 0) + 1,
-            ]);
-            $receipt->save();
-
             $url     = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
             $message = 'Bake & Grill: Thanks for dining with us! Your receipt for order #' . $order->order_number . ': ' . $url;
         }
