@@ -7,6 +7,8 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Printer;
 use App\Models\PrintJob;
+use App\Models\Receipt;
+use Illuminate\Support\Str;
 
 class PrintJobService
 {
@@ -135,9 +137,25 @@ class PrintJobService
 
     private function buildReceiptPayload(Order $order, Printer $printer): array
     {
+        $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
+        if (! $receipt->exists) {
+            $receipt->token = Str::random(48);
+        }
+        $receipt->customer_id = $order->customer_id;
+        $receipt->save();
+
+        $receiptUrl = rtrim((string) config('app.url'), '/') . '/receipts/' . $receipt->token;
+
         return [
             'printer_name' => $printer->name,
             'type' => 'receipt',
+            /** Public web receipt URL — print proxy should render as a QR code on the slip. */
+            'receipt_url' => $receiptUrl,
+            'receipt' => [
+                'url' => $receiptUrl,
+                'token' => $receipt->token,
+                'qr_payload' => $receiptUrl,
+            ],
             'printer' => [
                 'id' => $printer->id,
                 'name' => $printer->name,
@@ -156,6 +174,7 @@ class PrintJobService
                 'discount_amount' => $order->discount_amount,
                 'total' => $order->total,
                 'created_at' => $order->created_at?->toIso8601String(),
+                'receipt_url' => $receiptUrl,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
                     'item_name' => $item->item_name,

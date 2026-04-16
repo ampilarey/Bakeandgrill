@@ -161,12 +161,19 @@ class PrintPayloadContractTest extends ContractTestCase
                 return false;
             }
 
+            $this->assertArrayHasKey('receipt_url', $payload, 'Receipt print payload missing receipt_url (for QR)');
+            $this->assertStringContainsString('/receipts/', $payload['receipt_url']);
+            $this->assertArrayHasKey('receipt', $payload);
+            $this->assertSame($payload['receipt_url'], $payload['receipt']['url'] ?? null);
+            $this->assertSame($payload['receipt_url'], $payload['receipt']['qr_payload'] ?? null);
+
             $order = $payload['order'];
             $this->assertArrayHasKey('subtotal', $order, 'Receipt payload missing subtotal');
             $this->assertArrayHasKey('tax_amount', $order, 'Receipt payload missing tax_amount');
             $this->assertArrayHasKey('discount_amount', $order, 'Receipt payload missing discount_amount');
             $this->assertArrayHasKey('total', $order, 'Receipt payload missing total');
             $this->assertArrayHasKey('payments', $order, 'Receipt payload missing payments');
+            $this->assertArrayHasKey('receipt_url', $order, 'Order block missing receipt_url');
 
             return true;
         });
