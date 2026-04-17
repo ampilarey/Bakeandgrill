@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Orders\DTOs\OrderCancelledData;
+use App\Domains\Orders\Events\OrderCancelled;
 use App\Models\Order;
+use App\Services\StockReservationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,9 +31,22 @@ class CancelStaleOrders extends Command
             return self::SUCCESS;
         }
 
-        foreach ($stale as $order) {
-            DB::transaction(function () use ($order, $ttl): void {
+        foreach ($stale as $staleOrder) {
+            DB::transaction(function () use ($staleOrder, $ttl): void {
+                // Row-lock the order inside the transaction to prevent a concurrent
+                // cron run from cancelling the same order twice.
+                $order = Order::lockForUpdate()->find($staleOrder->id);
+
+                if (!$order || $order->status !== 'payment_pending') {
+                    return; // Already processed by a concurrent run
+                }
+
                 $order->update(['status' => 'cancelled']);
+
+                // Release prepared stock reservations (belt-and-suspenders —
+                // OrderCancelled listener also fires, but inline release ensures
+                // stock is freed even if queue workers are down).
+                app(StockReservationService::class)->releaseForOrder($order->id);
 
                 // Release any active loyalty hold
                 DB::table('loyalty_holds')
@@ -39,11 +55,15 @@ class CancelStaleOrders extends Command
                     ->update(['released_at' => now(), 'status' => 'released']);
 
                 Log::info('CancelStaleOrders: cancelled stale payment_pending order', [
-                    'order_id' => $order->id,
+                    'order_id'     => $order->id,
                     'order_number' => $order->order_number,
-                    'created_at' => $order->created_at,
-                    'ttl_minutes' => $ttl,
+                    'created_at'   => $order->created_at,
+                    'ttl_minutes'  => $ttl,
                 ]);
+
+                DB::afterCommit(function () use ($order): void {
+                    OrderCancelled::dispatch(OrderCancelledData::fromOrder($order));
+                });
             });
         }
 

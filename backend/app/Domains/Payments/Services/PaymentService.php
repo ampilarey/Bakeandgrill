@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Payments\Services;
 
 use App\Domains\Notifications\Services\PaymentConfirmationNotifier;
+use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\DTOs\OrderPaidData;
+use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Domains\Payments\DTOs\PaymentConfirmedData;
@@ -341,6 +343,8 @@ class PaymentService
                     'webhook_state'  => $state,
                 ]);
             }
+
+            $this->cancelOrderOnPaymentFailure($payment->order_id, $state);
         } else {
             Log::info('BML: Unknown state', ['state' => $state]);
         }
@@ -411,6 +415,35 @@ class PaymentService
                     }
                 });
             }
+        });
+    }
+
+    /**
+     * Cancel an order that is stuck at payment_pending after a failed/expired payment.
+     *
+     * Dispatches OrderCancelled so reservation listeners (stock, promo, loyalty) fire.
+     * Row-locked to prevent race with CancelStaleOrders cron.
+     */
+    private function cancelOrderOnPaymentFailure(int $orderId, string $paymentState): void
+    {
+        DB::transaction(function () use ($orderId, $paymentState): void {
+            $order = Order::lockForUpdate()->find($orderId);
+
+            if (!$order || $order->status !== 'payment_pending') {
+                return; // Already cancelled or progressed — nothing to do
+            }
+
+            $this->orders->updateStatus($order->id, 'cancelled');
+
+            Log::info('BML: Order cancelled due to payment failure', [
+                'order_id'      => $order->id,
+                'order_number'  => $order->order_number,
+                'payment_state' => $paymentState,
+            ]);
+
+            DB::afterCommit(function () use ($order): void {
+                OrderCancelled::dispatch(OrderCancelledData::fromOrder($order));
+            });
         });
     }
 

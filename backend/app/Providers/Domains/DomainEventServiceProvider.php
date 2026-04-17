@@ -7,6 +7,7 @@ namespace App\Providers\Domains;
 use App\Domains\Inventory\Events\LowStockReached;
 use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Domains\Inventory\Listeners\DeductInventoryListener;
+use App\Domains\Inventory\Listeners\DeductPreparedStockListener;
 use App\Domains\Marketing\Listeners\RecordReferralRedemptionListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
@@ -16,6 +17,7 @@ use App\Domains\Notifications\Listeners\SendOnlineOrderCompletionReceiptSmsListe
 use App\Domains\Notifications\Listeners\SendOrderStatusPushListener;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Orders\Events\OrderCompleted;
+use App\Domains\Orders\Listeners\ReleasePreparedStockOnCancelListener;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Events\OrderRefunded;
@@ -55,6 +57,7 @@ class DomainEventServiceProvider extends EventServiceProvider
 
         OrderPaid::class => [
             DeductInventoryListener::class,
+            DeductPreparedStockListener::class,
             DispatchReceiptPrintListener::class,
             ConsumePromoRedemptionsListener::class,
             ConsumeLoyaltyHoldListener::class,
@@ -69,6 +72,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         ],
 
         OrderCancelled::class => [
+            ReleasePreparedStockOnCancelListener::class,
             ReleasePromoReservationListener::class,
             ReleaseLoyaltyHoldListener::class,
             DispatchWebhookOnDomainEvent::class,

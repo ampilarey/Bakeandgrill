@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Item;
+use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
 
 class StockReservationService
@@ -66,6 +68,104 @@ class StockReservationService
         ]);
 
         return true;
+    }
+
+    /**
+     * Reserve stock for every prepared item in an online order.
+     *
+     * Must be called inside the same DB::transaction() as order creation.
+     * Uses lockForUpdate() per item to prevent concurrent oversell.
+     * Aborts with 422 if any item cannot be fully reserved.
+     */
+    public function reserveForOrder(Order $order): void
+    {
+        $ttl = (int) config('ordering.payment_pending_ttl_minutes', 30);
+        $order->loadMissing('items.item');
+
+        foreach ($order->items as $orderItem) {
+            $item = $orderItem->item;
+            if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
+                continue;
+            }
+
+            // Lock the item row for the duration of this transaction
+            $locked = Item::lockForUpdate()->find($item->id);
+            if (!$locked) {
+                continue;
+            }
+
+            $this->releaseExpiredReservations($locked->id);
+
+            $available = $this->getAvailableStock($locked);
+
+            if ($available < $orderItem->quantity) {
+                abort(422, "Not enough stock for {$locked->name}. Available: {$available}, requested: {$orderItem->quantity}");
+            }
+
+            // Remove any stale reservation for this order+item (safe retry)
+            DB::table('stock_reservations')
+                ->where('item_id', $locked->id)
+                ->where('order_id', $order->id)
+                ->delete();
+
+            DB::table('stock_reservations')->insert([
+                'item_id'    => $locked->id,
+                'order_id'   => $order->id,
+                'session_id' => 'order:' . $order->id,
+                'quantity'   => $orderItem->quantity,
+                'expires_at' => now()->addMinutes($ttl),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Release all active reservations tied to an order.
+     * Safe to call when no reservation exists — it is a no-op.
+     */
+    public function releaseForOrder(int $orderId): void
+    {
+        DB::table('stock_reservations')
+            ->where('order_id', $orderId)
+            ->delete();
+    }
+
+    /**
+     * Convert reservations for an online order into final deductions.
+     *
+     * Called from DeductPreparedStockListener on OrderPaid.
+     * Idempotent: the StockMovement unique key blocks double-deduction;
+     * reservation delete is a no-op if already removed.
+     */
+    public function convertToDeduction(Order $order, ?int $userId = null): void
+    {
+        $order->loadMissing('items.item');
+        $stockService = app(StockManagementService::class);
+
+        DB::transaction(function () use ($order, $userId, $stockService): void {
+            foreach ($order->items as $orderItem) {
+                $item = $orderItem->item;
+                if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
+                    continue;
+                }
+
+                // Lock the item row before deducting
+                $locked = Item::lockForUpdate()->find($item->id);
+                if (!$locked) {
+                    continue;
+                }
+
+                $key = 'online:order:' . $order->id . ':item:' . $orderItem->id;
+                $stockService->deductPreparedStock($locked, (int) $orderItem->quantity, $key, $order->id, $userId);
+
+                // Release the reservation for this specific order+item
+                DB::table('stock_reservations')
+                    ->where('item_id', $locked->id)
+                    ->where('order_id', $order->id)
+                    ->delete();
+            }
+        });
     }
 
     /**

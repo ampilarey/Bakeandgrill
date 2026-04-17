@@ -8,6 +8,7 @@ use App\Domains\Inventory\DTOs\LowStockReachedData;
 use App\Domains\Inventory\Events\LowStockReached;
 use App\Models\Item;
 use App\Models\LowStockAlert;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -49,6 +50,95 @@ class StockManagementService
                 $this->triggerLowStockAlert($item);
             }
         });
+    }
+
+    /**
+     * Idempotent deduction of prepared/ready item stock (items.stock_quantity).
+     *
+     * Safe to call multiple times with the same key — the unique constraint on
+     * stock_movements.idempotency_key blocks any repeat deduction.
+     * Must be called inside an outer DB::transaction() with lockForUpdate() already
+     * held on the item row.
+     */
+    public function deductPreparedStock(
+        Item $item,
+        int $quantity,
+        string $idempotencyKey,
+        int $orderId,
+        ?int $userId = null,
+    ): void {
+        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
+            return;
+        }
+
+        $alreadyDeducted = StockMovement::where('idempotency_key', $idempotencyKey)->exists();
+        if ($alreadyDeducted) {
+            return;
+        }
+
+        $item->decrement('stock_quantity', $quantity);
+        $item->refresh();
+
+        StockMovement::create([
+            'idempotency_key'   => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id'           => $userId,
+            'type'              => 'sale',
+            'quantity'          => -$quantity,
+            'balance_after'     => $item->stock_quantity,
+            'unit_cost'         => (float) ($item->cost ?? 0),
+            'reference_type'    => 'menu_item',
+            'reference_id'      => $item->id,
+            'notes'             => "Order #{$orderId} — prepared stock deduction",
+        ]);
+
+        if ($item->stock_quantity <= ($item->low_stock_threshold ?? 0)) {
+            $this->triggerLowStockAlert($item);
+        }
+    }
+
+    /**
+     * Idempotent restoration of prepared item stock (for cancellation / refund).
+     *
+     * Uses the same StockMovement idempotency pattern to prevent double-adds.
+     */
+    public function restorePreparedStock(
+        Item $item,
+        int $quantity,
+        string $idempotencyKey,
+        int $orderId,
+        ?int $userId = null,
+    ): void {
+        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
+            return;
+        }
+
+        $alreadyRestored = StockMovement::where('idempotency_key', $idempotencyKey)->exists();
+        if ($alreadyRestored) {
+            return;
+        }
+
+        // Lock the row so concurrent restores do not race
+        $locked = Item::lockForUpdate()->find($item->id);
+        if (!$locked) {
+            return;
+        }
+
+        $locked->increment('stock_quantity', $quantity);
+        $locked->refresh();
+
+        StockMovement::create([
+            'idempotency_key'   => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id'           => $userId,
+            'type'              => 'refund',
+            'quantity'          => $quantity,
+            'balance_after'     => $locked->stock_quantity,
+            'unit_cost'         => (float) ($locked->cost ?? 0),
+            'reference_type'    => 'menu_item',
+            'reference_id'      => $locked->id,
+            'notes'             => "Order #{$orderId} — stock restore",
+        ]);
     }
 
     /**

@@ -15,6 +15,8 @@ use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
 use Illuminate\Support\Facades\DB;
 
+
+
 class OrderCreationService
 {
     public function __construct(
@@ -48,7 +50,7 @@ class OrderCreationService
                 'customer_notes' => $payload['customer_notes'] ?? null,
             ]);
 
-            $subtotal = $this->addOrderItems($order, $payload['items'] ?? []);
+            $subtotal = $this->addOrderItems($order, $payload['items'] ?? [], $user);
 
             $order->load(['items.item']);
             $taxAmount = 0;
@@ -101,9 +103,11 @@ class OrderCreationService
         return $this->calculator->recalculateAndPersist($order);
     }
 
-    private function addOrderItems(Order $order, array $items): float
+    private function addOrderItems(Order $order, array $items, ?object $user = null): float
     {
         $subtotal = 0;
+
+        $isOnlineOrder = in_array($order->type, ['online_pickup', 'delivery'], true);
 
         // Pre-load all referenced items in a single query to avoid N+1
         $itemIds = array_column($items, 'item_id');
@@ -131,13 +135,18 @@ class OrderCreationService
             $quantity = (int) $itemPayload['quantity'];
 
             if ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
-                // Re-fetch with a row lock so concurrent orders don't both pass the
-                // stock check and then race to decrement below zero (oversell).
-                $lockedItem = \App\Models\Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
-                $stockOk    = app(StockManagementService::class)->checkStock($lockedItem, $quantity);
-                if (!$stockOk) {
-                    abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$lockedItem->stock_quantity}, requested: {$quantity}");
+                // Lock the item row for the duration of this transaction so concurrent
+                // requests cannot both pass the availability check (TOCTOU prevention).
+                $lockedItem = Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
+
+                // Both POS and online check against available stock minus active online reservations
+                // so that concurrent POS and online orders share the same pool truthfully.
+                $available = app(StockReservationService::class)->getAvailableStock($lockedItem);
+                if ($available < $quantity) {
+                    abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$available}, requested: {$quantity}");
                 }
+            } else {
+                $lockedItem = $itemModel;
             }
 
             $variantId = $itemPayload['variant_id'] ?? null;
@@ -167,6 +176,20 @@ class OrderCreationService
                 'notes' => null,
                 'status' => 'pending',
             ]);
+
+            // POS only: deduct prepared stock immediately upon order creation.
+            // Online orders are handled via reserveForOrder() called after the loop
+            // (needs order_id + all item IDs to be persisted first).
+            if (!$isOnlineOrder && $itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
+                $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
+                app(StockManagementService::class)->deductPreparedStock(
+                    $lockedItem,
+                    $quantity,
+                    $key,
+                    $order->id,
+                    $user?->id,
+                );
+            }
 
             if (!empty($itemPayload['modifiers'])) {
                 foreach ($itemPayload['modifiers'] as $modifierPayload) {
@@ -199,6 +222,13 @@ class OrderCreationService
 
             $subtotal += $lineTotal;
             $orderItem->update(['total_price' => $lineTotal]);
+        }
+
+        // Online orders: reserve prepared stock after all items are persisted.
+        // This runs inside the same DB::transaction() so a failed reservation rolls
+        // back the entire order creation — no orphaned order without reserved stock.
+        if ($isOnlineOrder) {
+            app(StockReservationService::class)->reserveForOrder($order);
         }
 
         return $subtotal;

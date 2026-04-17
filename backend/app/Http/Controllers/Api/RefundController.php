@@ -11,6 +11,7 @@ use App\Http\Requests\StoreRefundRequest;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Services\AuditLogService;
+use App\Services\StockManagementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -51,7 +52,7 @@ class RefundController extends Controller
         $amountLaar = (int) round($amount * 100);
 
         [$refund, $order] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request) {
-            $order = Order::lockForUpdate()->findOrFail($orderId);
+            $order = Order::with('items.item')->lockForUpdate()->findOrFail($orderId);
 
             $orderTotalLaar     = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
             $alreadyRefundedLaar = (int) round(
@@ -70,8 +71,28 @@ class RefundController extends Controller
                 'reason' => $validated['reason'] ?? null,
             ]);
 
-            if ($amountLaar + $alreadyRefundedLaar >= $orderTotalLaar) {
+            $isFullRefund = ($amountLaar + $alreadyRefundedLaar >= $orderTotalLaar);
+
+            if ($isFullRefund) {
                 $order->update(['status' => 'refunded']);
+
+                // Restore prepared stock for each item that tracks stock.
+                // Idempotent: StockMovement unique key blocks double-restore.
+                $stockService = app(StockManagementService::class);
+                foreach ($order->items as $orderItem) {
+                    $item = $orderItem->item;
+                    if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
+                        continue;
+                    }
+                    $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id;
+                    $stockService->restorePreparedStock(
+                        $item,
+                        (int) $orderItem->quantity,
+                        $key,
+                        $order->id,
+                        $request->user()?->id,
+                    );
+                }
             }
 
             return [$refund, $order];
