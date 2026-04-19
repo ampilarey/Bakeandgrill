@@ -8,6 +8,7 @@ use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Models\Customer;
 use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
@@ -81,8 +82,16 @@ class OrderCreationService
 
             $order->load(['items.modifiers']);
 
-            DB::afterCommit(function () use ($order, $printKitchen): void {
+            DB::afterCommit(function () use ($order, $payload, $printKitchen): void {
                 OrderCreated::dispatch(OrderCreatedData::fromOrder($order->fresh(), $printKitchen));
+
+                // Unified customer history: update last_order_at regardless of POS vs online.
+                // storeCustomer() does this inline; for POS staff-created orders with a
+                // customer_id we mirror the same update so the customer's profile stays current.
+                if (!empty($payload['customer_id'])) {
+                    Customer::where('id', $payload['customer_id'])
+                        ->update(['last_order_at' => now()]);
+                }
             });
 
             return $order;

@@ -10,6 +10,7 @@ use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
+use App\Services\ItemAvailabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -33,7 +34,7 @@ class ItemController extends Controller
     /**
      * Display a listing of items
      */
-    public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver)
+    public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver, ItemAvailabilityService $availability)
     {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
@@ -45,9 +46,10 @@ class ItemController extends Controller
         }
         $query = Item::with($with);
 
+        $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
+
         if (!$isAdmin) {
             $query->where('is_active', true);
-            $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
         }
 
@@ -76,8 +78,8 @@ class ItemController extends Controller
             : 100; // public menu always gets all items
         $items = $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
 
-        // Admin gets full data; public gets stripped response
-        $transformed = $items->through(function ($item) use ($isAdmin) {
+        // Admin gets full data; public gets stripped response + availability metadata
+        $transformed = $items->through(function ($item) use ($isAdmin, $availability, $channel) {
             $data = [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -120,6 +122,19 @@ class ItemController extends Controller
                     'price' => $m->price,
                 ]),
             ];
+
+            // Additive: attach availability metadata for public callers.
+            // Admin already has channel_availabilities; this is the unified view.
+            if (!$isAdmin) {
+                $result = $availability->check($item, $channel);
+                $data['availability'] = [
+                    'available'       => $result->allowed,
+                    'reason_code'     => $result->reasonCode,
+                    'reason_message'  => $result->message ?: null,
+                    'available_stock' => $result->availableStock,
+                ];
+            }
+
             return $data;
         });
 

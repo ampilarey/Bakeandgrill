@@ -1,0 +1,235 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Models\SiteSetting;
+use Carbon\Carbon;
+
+/**
+ * Decides whether the online ordering channel is currently open.
+ *
+ * Three-layer evaluation (highest priority first):
+ *  1. Master switch  — online_ordering_enabled = false → always closed
+ *  2. Override       — online_ordering_override_until is a future datetime → force open
+ *  3. Schedule       — online_ordering_schedule defines per-day windows; if empty → always open
+ *
+ * POS orders are NEVER gated by this service.
+ * Only customer-facing endpoints call this: online_pickup and delivery.
+ */
+class OnlineOrderingGateService
+{
+    public function isOpen(?Carbon $at = null): bool
+    {
+        return $this->evaluate($at)->allowed;
+    }
+
+    public function closedMessage(): string
+    {
+        return (string) SiteSetting::get(
+            'online_ordering_closed_message',
+            'Online ordering is currently closed.',
+        );
+    }
+
+    /** Abort with 422 if online ordering is closed. Call at the start of customer order endpoints. */
+    public function assertOpen(?Carbon $at = null): void
+    {
+        $result = $this->evaluate($at);
+        if (! $result->allowed) {
+            abort(422, $result->message);
+        }
+    }
+
+    /** Returns a structured result suitable for the public status endpoint. */
+    public function status(?Carbon $at = null): array
+    {
+        $result  = $this->evaluate($at);
+        $enabled = $this->masterSwitchOn();
+        $schedule = $this->parseSchedule();
+
+        return [
+            'online_ordering_open'    => $result->allowed,
+            'message'                 => $result->allowed ? null : $result->message,
+            'master_switch'           => $enabled,
+            'override_active'         => $this->overrideIsActive($at),
+            'schedule_active'         => $schedule !== null,
+            'next_open_window'        => $schedule ? $this->nextOpenWindow($schedule, $at) : null,
+        ];
+    }
+
+    // ------------------------------------------------------------------
+    // Private evaluation logic
+    // ------------------------------------------------------------------
+
+    private function evaluate(?Carbon $at): GateResult
+    {
+        $at ??= now();
+
+        // Layer 1 — master switch
+        if (! $this->masterSwitchOn()) {
+            return GateResult::closed($this->closedMessage());
+        }
+
+        // Layer 2 — manual override: force open until a future datetime
+        if ($this->overrideIsActive($at)) {
+            return GateResult::open();
+        }
+
+        // Layer 3 — schedule (null = no schedule = always open)
+        $schedule = $this->parseSchedule();
+        if ($schedule === null) {
+            return GateResult::open();
+        }
+
+        if ($this->withinSchedule($schedule, $at)) {
+            return GateResult::open();
+        }
+
+        return GateResult::closed($this->closedMessage());
+    }
+
+    private function masterSwitchOn(): bool
+    {
+        $raw = SiteSetting::get('online_ordering_enabled', '1');
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? ($raw === '1' || $raw === 1);
+    }
+
+    private function overrideIsActive(?Carbon $at): bool
+    {
+        $raw = SiteSetting::get('online_ordering_override_until');
+        if (! $raw) {
+            return false;
+        }
+
+        try {
+            $until = Carbon::parse($raw, config('app.timezone', 'UTC'));
+
+            return ($at ?? now())->lt($until);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Parses the JSON schedule setting.
+     *
+     * Expected format:
+     * {
+     *   "mon": {"open": "07:00", "close": "22:00"},
+     *   "tue": {"open": "07:00", "close": "22:00"},
+     *   ...
+     *   "sun": {"open": "09:00", "close": "21:00"}
+     * }
+     *
+     * Returns null when the setting is empty/invalid (= no schedule, always open).
+     *
+     * @return array<string, array{open: string, close: string}>|null
+     */
+    private function parseSchedule(): ?array
+    {
+        $raw = SiteSetting::get('online_ordering_schedule');
+        if (! $raw) {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        if (! is_array($decoded) || empty($decoded)) {
+            return null;
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * @param  array<string, array{open: string, close: string}>  $schedule
+     */
+    private function withinSchedule(array $schedule, Carbon $at): bool
+    {
+        $tz  = config('app.timezone', 'UTC');
+        $now = $at->clone()->setTimezone($tz);
+
+        $dayKey = strtolower($now->format('D')); // mon, tue, …, sun
+
+        $window = $schedule[$dayKey] ?? null;
+        if (! $window) {
+            return false; // day not listed = closed
+        }
+
+        try {
+            $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+            $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $now->between($open, $close);
+    }
+
+    /**
+     * Returns the next opening datetime string (ISO 8601) or null if it cannot
+     * be determined (schedule not set, or no open day found within 7 days).
+     *
+     * @param  array<string, array{open: string, close: string}>  $schedule
+     */
+    private function nextOpenWindow(array $schedule, ?Carbon $at): ?string
+    {
+        $tz  = config('app.timezone', 'UTC');
+        $now = ($at ?? now())->clone()->setTimezone($tz);
+
+        for ($i = 0; $i <= 7; $i++) {
+            $candidate = $now->clone()->addDays($i);
+            $dayKey    = strtolower($candidate->format('D'));
+            $window    = $schedule[$dayKey] ?? null;
+
+            if (! $window) {
+                continue;
+            }
+
+            try {
+                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)
+                    ->setDateFrom($candidate);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            // Today: open must be in the future
+            if ($i === 0 && $open->lte($now)) {
+                continue;
+            }
+
+            return $open->toIso8601String();
+        }
+
+        return null;
+    }
+}
+
+/**
+ * Simple value object — avoids passing two scalars through the call chain.
+ * @internal
+ */
+final class GateResult
+{
+    private function __construct(
+        public readonly bool $allowed,
+        public readonly string $message,
+    ) {}
+
+    public static function open(): self
+    {
+        return new self(true, '');
+    }
+
+    public static function closed(string $message): self
+    {
+        return new self(false, $message);
+    }
+}

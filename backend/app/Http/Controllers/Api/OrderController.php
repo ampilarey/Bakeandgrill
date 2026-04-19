@@ -17,7 +17,9 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\AuditLogService;
+use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
+use App\Services\OrderStatusMachine;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -89,6 +91,9 @@ class OrderController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
+        // Gate: online ordering must be open (master switch + schedule + override)
+        app(OnlineOrderingGateService::class)->assertOpen();
+
         $payload = $request->validated();
         $payload['customer_id'] = $customer->id;
         $payload['type'] = $payload['type'] ?? 'online_pickup';
@@ -151,9 +156,7 @@ class OrderController extends Controller
 
         $order = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
-            if ($order->status === 'completed') {
-                abort(422, 'Completed orders cannot be held.');
-            }
+            app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'held');
             $oldStatus = $order->status;
             $order->update(['status' => 'held', 'held_at' => now()]);
             app(AuditLogService::class)->log('order.held', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'held'], [], $request);
@@ -171,9 +174,7 @@ class OrderController extends Controller
 
         $order = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
-            if ($order->status !== 'held') {
-                abort(422, 'Only held orders can be resumed.');
-            }
+            app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'pending');
             $oldStatus = $order->status;
             $order->update(['status' => 'pending', 'held_at' => null]);
             app(AuditLogService::class)->log('order.resumed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'pending'], [], $request);
@@ -196,6 +197,14 @@ class OrderController extends Controller
         // where two requests both read paidTotal < total and both set status = 'partial'.
         [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt): array {
             $order = Order::with('payments')->lockForUpdate()->findOrFail($id);
+
+            // Guard: payments cannot be added to terminal or already-paid orders
+            $machine = app(OrderStatusMachine::class);
+            $terminalStatuses = ['cancelled', 'refunded', 'paid', 'completed'];
+            if (in_array($order->status, $terminalStatuses, true)) {
+                abort(422, "Cannot add payments to a {$order->status} order.");
+            }
+
             $oldStatus = $order->status;
 
             foreach ($validated['payments'] as $paymentPayload) {

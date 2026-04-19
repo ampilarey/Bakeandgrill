@@ -66,6 +66,14 @@ Route::get('/opening-hours', [App\Http\Controllers\Api\OpeningHoursController::c
 Route::get('/ordering/eligibility', [App\Http\Controllers\Api\OrderingEligibilityController::class, 'show'])
     ->middleware('throttle:120,1');
 
+// Global online ordering gate status (public — order app banner)
+Route::get('/ordering/status', [App\Http\Controllers\Api\OnlineOrderingController::class, 'status'])
+    ->middleware('throttle:120,1');
+
+// Delivery-specific gate status (public — shows delivery schedule + zone info)
+Route::get('/ordering/delivery-status', [App\Http\Controllers\Api\DeliveryStatusController::class, 'show'])
+    ->middleware('throttle:120,1');
+
 /*
 |--------------------------------------------------------------------------
 | Staff Authentication Routes
@@ -129,6 +137,12 @@ Route::middleware(['auth:sanctum', 'customer.token'])->post('/auth/customer/logo
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // Get current user (staff)
     Route::get('/auth/me', [StaffAuthController::class, 'me']);
+
+    // Online ordering gate — toggle (owner/manager) and public status is above
+    Route::prefix('admin/ordering')->middleware('role:owner,manager')->group(function () {
+        Route::post('/toggle',   [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggle']);
+        Route::post('/override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'override']);
+    });
 
     // Device Management (Admin only)
     Route::prefix('devices')->middleware('can:device.manage')->group(function () {

@@ -9,6 +9,7 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\AuditLogService;
+use App\Services\OrderStatusMachine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,8 @@ class KdsController extends Controller
     {
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
-            if (!in_array($order->status, ['pending', 'paid'], true)) {
+            $machine = app(OrderStatusMachine::class);
+            if (! $machine->isAllowed($order->status, 'in_progress')) {
                 return ['error' => 'Only pending or paid orders can be started.'];
             }
 
@@ -64,14 +66,17 @@ class KdsController extends Controller
             // Re-fetch with a row lock inside the transaction to prevent duplicate bumps
             $order = Order::lockForUpdate()->findOrFail($id);
 
-            if (!in_array($order->status, ['pending', 'in_progress', 'paid', 'ready'], true)) {
+            // Determine target status through the machine
+            $targetStatus = $order->status === 'ready' ? 'completed' : 'ready';
+            $machine = app(OrderStatusMachine::class);
+            if (! $machine->isAllowed($order->status, $targetStatus)) {
                 return ['error' => 'Order cannot be bumped.'];
             }
 
             $oldStatus = $order->status;
 
             // State machine: pending/paid/in_progress → ready; ready → completed
-            $newStatus = $oldStatus === 'ready' ? 'completed' : 'ready';
+            $newStatus = $targetStatus;
 
             $order->update([
                 'status'       => $newStatus,

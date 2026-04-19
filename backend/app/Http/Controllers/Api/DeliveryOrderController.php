@@ -9,6 +9,8 @@ use App\Domains\Delivery\Services\DeliveryFeeCalculator;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\DeliveryGateService;
+use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +28,7 @@ class DeliveryOrderController extends Controller
         private OrderCreationService $orderCreation,
         private DeliveryFeeCalculator $feeCalculator,
         private KitchenMenuResolver $kitchenMenuResolver,
+        private DeliveryGateService $deliveryGate,
     ) {}
 
     /**
@@ -36,9 +39,16 @@ class DeliveryOrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        if (! $this->kitchenMenuResolver->isDeliveryServiceAccepting()) {
-            abort(422, $this->kitchenMenuResolver->deliveryUnavailableMessage());
-        }
+        // Global gate first (master switch + schedule + override)
+        app(OnlineOrderingGateService::class)->assertOpen();
+
+        // Validate delivery_island early so we can pass it to the delivery gate
+        $earlyIsland = $request->input('delivery_island');
+
+        // Delivery-specific gate: accepting flag + delivery schedule + zone check
+        $this->deliveryGate->assertDeliveryOpen(
+            is_string($earlyIsland) ? $earlyIsland : null,
+        );
 
         $validated = $request->validate([
             'items' => 'required|array|min:1',
