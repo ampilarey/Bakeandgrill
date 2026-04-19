@@ -633,7 +633,7 @@ export function OrderStatusPage() {
             )}
 
             {/* Review form */}
-            {token && ['completed', 'paid'].includes(order.status) && !reviewDone && (
+            {token && ['completed', 'paid', 'delivered'].includes(order.status) && !reviewDone && (
               <ReviewForm orderId={order.id} token={token} onDone={() => setReviewDone(true)} />
             )}
 

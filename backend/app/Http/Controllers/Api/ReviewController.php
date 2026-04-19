@@ -68,7 +68,7 @@ class ReviewController extends Controller
             return response()->json(['message' => 'You can only review your own orders.'], 403);
         }
 
-        if (!in_array($order->status, ['completed', 'paid'], true)) {
+        if (!in_array($order->status, ['completed', 'paid', 'delivered'], true)) {
             return response()->json(['message' => 'You can only review completed orders.'], 422);
         }
 
