@@ -45,17 +45,32 @@ class OnlineOrderingGateService
     /** Returns a structured result suitable for the public status endpoint. */
     public function status(?Carbon $at = null): array
     {
-        $result  = $this->evaluate($at);
-        $enabled = $this->masterSwitchOn();
-        $schedule = $this->parseSchedule();
+        $result        = $this->evaluate($at);
+        $masterOn      = $this->masterSwitchOn();
+        $overrideActive = $this->overrideIsActive($at);
+        $schedule      = $this->parseSchedule();
+        $overrideUntil = SiteSetting::get('online_ordering_override_until');
+
+        // Determine human-readable reason code for the frontend
+        $reason = null;
+        if (! $masterOn) {
+            $reason = 'master_switch_off';
+        } elseif ($overrideActive) {
+            $reason = 'override_active';
+        } elseif ($schedule && ! $this->withinSchedule($schedule, $at ?? now())) {
+            $reason = 'schedule';
+        }
 
         return [
-            'online_ordering_open'    => $result->allowed,
-            'message'                 => $result->allowed ? null : $result->message,
-            'master_switch'           => $enabled,
-            'override_active'         => $this->overrideIsActive($at),
-            'schedule_active'         => $schedule !== null,
-            'next_open_window'        => $schedule ? $this->nextOpenWindow($schedule, $at) : null,
+            // 'open' is the canonical key read by both the order app and admin UI
+            'open'              => $result->allowed,
+            'message'           => $result->message ?: $this->closedMessage(),
+            'reason'            => $reason,
+            'master_switch'     => $masterOn,
+            'override_until'    => $overrideUntil,
+            'override_active'   => $overrideActive,
+            'schedule_active'   => $schedule !== null,
+            'next_open_window'  => $schedule ? $this->nextOpenWindow($schedule, $at) : null,
         ];
     }
 
@@ -67,14 +82,15 @@ class OnlineOrderingGateService
     {
         $at ??= now();
 
-        // Layer 1 — master switch
-        if (! $this->masterSwitchOn()) {
-            return GateResult::closed($this->closedMessage());
-        }
-
-        // Layer 2 — manual override: force open until a future datetime
+        // Layer 1 — manual override: force open until a future datetime.
+        // Checked FIRST so it can override even a disabled master switch.
         if ($this->overrideIsActive($at)) {
             return GateResult::open();
+        }
+
+        // Layer 2 — master switch
+        if (! $this->masterSwitchOn()) {
+            return GateResult::closed($this->closedMessage());
         }
 
         // Layer 3 — schedule (null = no schedule = always open)

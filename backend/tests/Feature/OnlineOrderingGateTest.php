@@ -245,7 +245,7 @@ class OnlineOrderingGateTest extends TestCase
         $response = $this->getJson('/api/ordering/status');
         $response->assertOk()
             ->assertJsonStructure([
-                'online_ordering_open',
+                'open',
                 'message',
                 'master_switch',
                 'override_active',
@@ -260,7 +260,7 @@ class OnlineOrderingGateTest extends TestCase
         $this->setSetting('online_ordering_schedule', null);
 
         $response = $this->getJson('/api/ordering/status');
-        $response->assertOk()->assertJsonPath('online_ordering_open', true);
+        $response->assertOk()->assertJsonPath('open', true);
     }
 
     public function test_status_is_closed_when_switch_off(): void
@@ -268,7 +268,7 @@ class OnlineOrderingGateTest extends TestCase
         $this->setSetting('online_ordering_enabled', '0');
 
         $response = $this->getJson('/api/ordering/status');
-        $response->assertOk()->assertJsonPath('online_ordering_open', false);
+        $response->assertOk()->assertJsonPath('open', false);
     }
 
     public function test_admin_toggle_flips_switch(): void
