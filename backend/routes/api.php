@@ -99,9 +99,9 @@ Route::prefix('auth/customer')
     ->group(function () {
         // Existing OTP flow
         Route::post('/otp/request', [CustomerAuthController::class, 'requestOtp'])
-            ->middleware('throttle:3,5');
+            ->middleware('throttle:10,5');
         Route::post('/otp/verify', [CustomerAuthController::class, 'verifyOtp'])
-            ->middleware('throttle:5,10');
+            ->middleware('throttle:10,10');
 
         // New: check if phone exists and has a password
         Route::post('/check-phone', [CustomerAuthController::class, 'checkPhone'])
