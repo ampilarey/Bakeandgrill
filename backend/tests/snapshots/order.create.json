@@ -1,6 +1,6 @@
 {
     "order": {
-        "order_number": "BG-20260315-0001",
+        "order_number": "__VOLATILE__",
         "type": "takeaway",
         "status": "pending",
         "restaurant_table_id": null,
@@ -13,6 +13,7 @@
         "total": 22,
         "notes": null,
         "customer_notes": null,
+        "tracking_token": "__VOLATILE__",
         "updated_at": "__VOLATILE__",
         "created_at": "__VOLATILE__",
         "id": "__VOLATILE__",
@@ -25,12 +26,13 @@
                 "item_name": "Classic Burger",
                 "variant_name": null,
                 "quantity": 1,
-                "unit_price": 22,
-                "total_price": 22,
+                "unit_price": "22.00",
+                "total_price": "22.00",
                 "notes": null,
                 "status": "pending",
                 "created_at": "__VOLATILE__",
                 "updated_at": "__VOLATILE__",
+                "deleted_at": null,
                 "modifiers": []
             }
         ]

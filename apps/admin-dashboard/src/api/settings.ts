@@ -38,6 +38,28 @@ export async function uploadSiteLogo(key: string, file: File): Promise<{ url: st
   return res.json() as Promise<{ url: string }>;
 }
 
+// ── Online Ordering Gate ───────────────────────────────────────────────────────
+
+export interface OnlineOrderingGateStatus {
+  open: boolean;
+  message: string;
+  reason: string | null;
+  master_switch: boolean;
+  override_until: string | null;
+}
+
+export async function getOnlineOrderingStatus(): Promise<OnlineOrderingGateStatus> {
+  return req('/ordering/status');
+}
+
+export async function toggleOnlineOrdering(enabled: boolean): Promise<{ enabled: boolean }> {
+  return req('/admin/ordering/toggle', { method: 'POST', body: JSON.stringify({ enabled }) });
+}
+
+export async function setOnlineOrderingOverride(until: string | null): Promise<{ override_until: string | null }> {
+  return req('/admin/ordering/override', { method: 'POST', body: JSON.stringify({ until }) });
+}
+
 // ── Permissions ───────────────────────────────────────────────────────────────
 
 export interface PermissionItem {

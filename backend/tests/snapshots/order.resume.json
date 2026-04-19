@@ -1,7 +1,7 @@
 {
     "order": {
         "id": "__VOLATILE__",
-        "order_number": "BG-20260315-0001",
+        "order_number": "__VOLATILE__",
         "type": "takeaway",
         "status": "pending",
         "restaurant_table_id": null,
@@ -42,6 +42,14 @@
         "store_id": null,
         "offline_id": null,
         "delivery_driver_id": null,
-        "driver_assigned_at": null
+        "driver_assigned_at": null,
+        "picked_up_at": null,
+        "delivered_at": null,
+        "tracking_token": "__VOLATILE__",
+        "gift_card_code": null,
+        "gift_card_discount_laar": 0,
+        "referral_code": null,
+        "referral_discount_laar": 0,
+        "referral_redemption_recorded": false
     }
 }

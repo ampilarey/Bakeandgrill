@@ -9,6 +9,7 @@ use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
+use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -109,7 +110,13 @@ class PublicApiSecurityTest extends TestCase
     /** @test */
     public function staff_can_access_recipe_via_dedicated_endpoint()
     {
-        $staff = \App\Models\User::factory()->create();
+        // Owner role bypasses all permission gates, so this creates a valid staff user
+        // who can access menu-management endpoints including the recipe endpoint.
+        $ownerRole = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => '', 'is_active' => true]
+        );
+        $staff = \App\Models\User::factory()->create(['role_id' => $ownerRole->id]);
         $token = $staff->createToken('staff', ['staff'])->plainTextToken;
 
         $response = $this->getJson("/api/items/{$this->item->id}/recipe", [

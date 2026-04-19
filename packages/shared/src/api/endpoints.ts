@@ -57,8 +57,10 @@ export const ENDPOINTS = {
   OPENING_HOURS_STATUS:    '/opening-hours/status',
   OPENING_HOURS_SCHEDULE:  '/opening-hours',
 
-  // Ordering (channel / delivery eligibility)
-  ORDERING_ELIGIBILITY:   '/ordering/eligibility',
+  // Ordering (channel / delivery eligibility + admin gate)
+  ORDERING_ELIGIBILITY:      '/ordering/eligibility',
+  ORDERING_STATUS:           '/ordering/status',
+  ORDERING_DELIVERY_STATUS:  '/ordering/delivery-status',
 
   // Pre-orders
   CUSTOMER_PRE_ORDERS: '/customer/pre-orders',

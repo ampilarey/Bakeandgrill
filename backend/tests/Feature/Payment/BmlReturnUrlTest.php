@@ -53,7 +53,7 @@ class BmlReturnUrlTest extends TestCase
         config(['frontend.order_status_url' => 'https://app.example.com/orders']);
 
         Http::fake([
-            '*/v1/transactions' => Http::response([
+            '*/v2/transactions' => Http::response([
                 'transactionId' => 'TXN-TEST-BML-001',
                 'url'           => 'https://pay.bml.mv/test?orderId=xxx',
             ], 200),

@@ -49,10 +49,16 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
 
     public function decrementPointsHeld(int $customerId, int $points): void
     {
+        // CASE expression is compatible with both MySQL and SQLite (tests).
+        // GREATEST() is MySQL-only and crashes on SQLite.
         DB::table('loyalty_accounts')
             ->where('customer_id', $customerId)
             ->update([
-                'points_held' => DB::raw('GREATEST(0, points_held - ' . (int) $points . ')'),
+                'points_held' => DB::raw(
+                    'CASE WHEN points_held > ' . (int) $points
+                    . ' THEN points_held - ' . (int) $points
+                    . ' ELSE 0 END'
+                ),
             ]);
     }
 }

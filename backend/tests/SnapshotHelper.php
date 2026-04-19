@@ -47,6 +47,8 @@ trait SnapshotHelper
         'password',
         'remember_token',
         'last_order_at',
+        'tracking_token',
+        'order_number',
     ];
 
     public function assertMatchesApiSnapshot(

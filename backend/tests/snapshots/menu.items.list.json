@@ -14,12 +14,25 @@
             "is_active": true,
             "sort_order": 0,
             "category_id": 1,
+            "menu_group_id": 1,
             "category": {
                 "id": "__VOLATILE__",
                 "name": "Grills"
             },
+            "menu_group": {
+                "id": "__VOLATILE__",
+                "name": "Default",
+                "slug": "default"
+            },
+            "channel_availabilities": null,
             "variants": [],
-            "modifiers": []
+            "modifiers": [],
+            "availability": {
+                "available": true,
+                "reason_code": null,
+                "reason_message": null,
+                "available_stock": null
+            }
         }
     ],
     "first_page_url": "http://localhost:8000/api/items?page=1",

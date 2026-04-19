@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
@@ -635,9 +636,10 @@ class CmsContentTest extends TestCase
     public function test_hours_special_closure_label_uses_cms_setting(): void
     {
         $this->seedSetting('hours_special_closure_label', 'Closure Notice:', 'Pages');
-        // Set a closure reason so the notice block renders
+        // Use the same timezone as OpeningHoursService so the date key always matches.
+        $todayInMaldives = Carbon::now(config('opening_hours.timezone', 'Indian/Maldives'))->toDateString();
         $this->seedSetting('business_closures_json', json_encode([
-            date('Y-m-d') => 'National Holiday',
+            $todayInMaldives => 'National Holiday',
         ]), 'Hours', 'json');
 
         $response = $this->get('/hours');

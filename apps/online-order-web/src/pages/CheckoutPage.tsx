@@ -1,5 +1,9 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { fetchOrderingEligibility, type OrderingEligibility } from "../api";
+import { useEffect, useState, useSyncExternalStore, useCallback } from "react";
+import {
+  fetchOrderingEligibility, type OrderingEligibility,
+  fetchOnlineOrderingStatus, type OnlineOrderingStatus,
+  fetchDeliveryZoneStatus,
+} from "../api";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
 import { useSiteSettings } from "../context/SiteSettingsContext";
@@ -21,10 +25,11 @@ import { laarToMvr } from '../utils/money';
 
 // ── Field component ────────────────────────────────────────────────────────────
 function Field({
-  label, placeholder, value, onChange, error, multiline, type,
+  label, placeholder, value, onChange, onBlur, error, multiline, type,
 }: {
   label: string; placeholder?: string; value: string;
-  onChange: (v: string) => void; error?: string; multiline?: boolean; type?: string;
+  onChange: (v: string) => void; onBlur?: () => void;
+  error?: string; multiline?: boolean; type?: string;
 }) {
   const fieldId = label.toLowerCase().replace(/\s+/g, '-');
   const errorId = `${fieldId}-error`;
@@ -37,6 +42,7 @@ function Field({
           className={`field-input${error ? ' error' : ''}`}
           placeholder={placeholder} value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           style={{ height: 72, resize: 'vertical' }}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
@@ -48,6 +54,7 @@ function Field({
           className={`field-input${error ? ' error' : ''}`}
           placeholder={placeholder} value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
         />
@@ -78,16 +85,29 @@ function SectionCard({ title, children }: { title: string; children: React.React
 }
 
 // ── T&C + Pay button (reused in both columns depending on viewport) ───────────
-function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay }: {
+function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay, gateClosed, gateMessage }: {
   acceptTerms: boolean;
   setAcceptTerms: (v: boolean) => void;
   globalError: string | null;
   isPlacing: boolean;
   placeLabel: string;
   handlePlaceAndPay: () => void;
+  gateClosed?: boolean;
+  gateMessage?: string | null;
 }) {
+  const disabled = isPlacing || !acceptTerms || !!gateClosed;
   return (
     <div style={{ ...S.cardWarm, border: '1.5px solid rgba(212,129,58,0.35)', boxShadow: '0 4px 16px rgba(212,129,58,0.12)' }}>
+      {gateClosed && (
+        <div className="banner banner-warning" style={{ marginBottom: 12 }}>
+          <span className="banner-icon">🔒</span>
+          <div>
+            <p className="banner-title">Online ordering is closed</p>
+            <p className="banner-sub">{gateMessage ?? 'Online ordering is currently unavailable. Please check back later.'}</p>
+          </div>
+        </div>
+      )}
+
       {/* Req 13: Affirmative acceptance checkbox */}
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
         <input
@@ -119,14 +139,14 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
           width: '100%',
           padding: '1rem var(--page-gutter)',
           fontSize: 'var(--text-md)',
-          opacity: (isPlacing || !acceptTerms) ? 0.55 : 1,
+          opacity: disabled ? 0.55 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-          cursor: !acceptTerms ? 'not-allowed' : 'pointer',
+          cursor: disabled ? 'not-allowed' : 'pointer',
         }}
         onClick={handlePlaceAndPay}
-        disabled={isPlacing || !acceptTerms}
+        disabled={disabled}
         aria-busy={isPlacing}
-        title={!acceptTerms ? 'Please agree to the terms to continue' : undefined}
+        title={!acceptTerms ? 'Please agree to the terms to continue' : gateClosed ? 'Online ordering is currently closed' : undefined}
       >
         {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
         {placeLabel}
@@ -154,8 +174,25 @@ export function CheckoutPage() {
   useEffect(() => { document.title = `Checkout — ${siteName}`; }, [siteName]);
 
   const [orderElig, setOrderElig] = useState<OrderingEligibility | null>(null);
+  const [onlineGate, setOnlineGate] = useState<OnlineOrderingStatus | null>(null);
+  const [zoneError, setZoneError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchOrderingEligibility().then(setOrderElig).catch(() => setOrderElig(null));
+    fetchOnlineOrderingStatus().then(setOnlineGate).catch(() => setOnlineGate(null));
+  }, []);
+
+  const handleIslandBlur = useCallback(async (island: string) => {
+    if (!island.trim()) return;
+    setZoneError(null);
+    try {
+      const status = await fetchDeliveryZoneStatus(island.trim());
+      if (status.zone_eligible === false) {
+        setZoneError(status.message ?? `Delivery is not available to "${island}".`);
+      }
+    } catch {
+      // non-blocking — backend will reject at submission if needed
+    }
   }, []);
 
   const {
@@ -177,6 +214,7 @@ export function CheckoutPage() {
   } = useCheckout();
 
   const deliveryBlocked = orderElig != null && !orderElig.delivery.accepting;
+  const orderingGateClosed = onlineGate != null && !onlineGate.open;
   useEffect(() => {
     if (deliveryBlocked && orderType === 'delivery') setOrderType('takeaway');
   }, [deliveryBlocked, orderType, setOrderType]);
@@ -197,9 +235,11 @@ export function CheckoutPage() {
 
   const placeLabel = isPlacing
     ? 'Processing…'
-    : totalLaar <= 0
-      ? 'Place order (no payment due)'
-      : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
+    : orderingGateClosed
+      ? 'Online ordering is closed'
+      : totalLaar <= 0
+        ? 'Place order (no payment due)'
+        : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
 
   // ── Reusable section blocks (shared between mobile and desktop layouts) ──────
   const sectionOrderType = (
@@ -243,7 +283,10 @@ export function CheckoutPage() {
       <Field label="Address line 2" placeholder="Building name (optional)"
         value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
       <Field label="Island *" placeholder="Malé"
-        value={delivery.island} onChange={(v) => setDelivery({ ...delivery, island: v })} error={errors.island} />
+        value={delivery.island}
+        onChange={(v) => { setDelivery({ ...delivery, island: v }); setZoneError(null); }}
+        onBlur={() => void handleIslandBlur(delivery.island)}
+        error={zoneError ?? errors.island} />
       <div style={S.fieldRow}>
         <Field label="Contact name *" placeholder="Full name"
           value={delivery.contact_name} onChange={(v) => setDelivery({ ...delivery, contact_name: v })} error={errors.contact_name} />
@@ -503,6 +546,8 @@ export function CheckoutPage() {
       isPlacing={isPlacing}
       placeLabel={placeLabel}
       handlePlaceAndPay={handlePlaceAndPay}
+      gateClosed={orderingGateClosed}
+      gateMessage={onlineGate?.message}
     />
   );
 

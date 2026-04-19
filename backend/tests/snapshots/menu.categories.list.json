@@ -44,7 +44,8 @@
                     "spice_level": null,
                     "is_combo": false,
                     "combo_discount_pct": null,
-                    "store_id": null
+                    "store_id": null,
+                    "menu_group_id": 1
                 }
             ]
         }

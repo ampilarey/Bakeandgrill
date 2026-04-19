@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Item;
+use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Models\Role;
 use App\Models\User;
@@ -26,6 +27,7 @@ class DeliveryOrderTest extends TestCase
     {
         parent::setUp();
 
+        MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
         $category = Category::create(['name' => 'Food', 'slug' => 'food', 'is_active' => true]);
         $this->item = Item::create([
             'name' => 'Burger', 'slug' => 'burger',
@@ -38,8 +40,9 @@ class DeliveryOrderTest extends TestCase
         ]);
 
         $this->customer = Customer::create([
-            'name' => 'Delivery Customer',
-            'phone' => '+9607890000',
+            'name'      => 'Delivery Customer',
+            'phone'     => '+9607890000',
+            'is_active' => true,
         ]);
     }
 
@@ -52,7 +55,7 @@ class DeliveryOrderTest extends TestCase
             'delivery_address_line1' => '123 Main Street',
             'delivery_island' => 'Male',
             'delivery_contact_name' => 'Ali Ahmed',
-            'delivery_contact_phone' => '+9601234567',
+            'delivery_contact_phone' => '+9607890001',
         ], $overrides);
     }
 
@@ -156,7 +159,7 @@ class DeliveryOrderTest extends TestCase
             'delivery_address_line1' => '1 Test St',
             'delivery_island' => 'Male',
             'delivery_contact_name' => 'Test',
-            'delivery_contact_phone' => '+9601234567',
+            'delivery_contact_phone' => '+9607890001',
             'delivery_fee' => 20,
         ]);
 

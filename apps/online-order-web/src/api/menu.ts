@@ -34,6 +34,28 @@ export async function fetchOrderingEligibility(): Promise<OrderingEligibility> {
   return request<OrderingEligibility>(ENDPOINTS.ORDERING_ELIGIBILITY);
 }
 
+export interface OnlineOrderingStatus {
+  open: boolean;
+  message: string;
+  reason: string | null;
+}
+
+export async function fetchOnlineOrderingStatus(): Promise<OnlineOrderingStatus> {
+  return request<OnlineOrderingStatus>(ENDPOINTS.ORDERING_STATUS);
+}
+
+export interface DeliveryZoneStatus {
+  accepting: boolean;
+  zone_eligible: boolean | null;
+  message: string | null;
+  reason: string | null;
+}
+
+export async function fetchDeliveryZoneStatus(area: string): Promise<DeliveryZoneStatus> {
+  const qs = new URLSearchParams({ area });
+  return request<DeliveryZoneStatus>(`${ENDPOINTS.ORDERING_DELIVERY_STATUS}?${qs}`);
+}
+
 export async function fetchCategories(): Promise<{ data: Category[] }> {
   return request<{ data: Category[] }>(ENDPOINTS.CATEGORIES);
 }

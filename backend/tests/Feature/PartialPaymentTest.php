@@ -45,7 +45,7 @@ class PartialPaymentTest extends TestCase
         ]);
 
         Http::fake([
-            '*/v1/transactions' => Http::response([
+            '*/v2/transactions' => Http::response([
                 'transactionId' => 'TXN-TEST-001',
                 'url' => 'https://pay.bml.mv/test',
             ], 200),

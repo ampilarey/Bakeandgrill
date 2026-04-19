@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { fetchCategories, fetchItems, fetchOpeningHoursStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
+import { fetchCategories, fetchItems, fetchOpeningHoursStatus, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
 import type { Category, Item, Modifier, OpeningHoursStatus } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
@@ -66,13 +66,25 @@ export function MenuPage() {
 
   const loadMenu = () => {
     setLoading(true);
-    Promise.all([fetchCategories(), fetchItems(), fetchOpeningHoursStatus()])
-      .then(([cats, its, hours]) => {
+    Promise.all([
+      fetchCategories(),
+      fetchItems(),
+      fetchOpeningHoursStatus(),
+      fetchOnlineOrderingStatus().catch(() => null),
+    ])
+      .then(([cats, its, hours, gate]) => {
         setCategories(cats.data);
         setItems(its.data);
-        setIsOpen(hours.open);
-        setClosedMessage(hours.open ? null : (hours.message ?? 'We are currently closed.'));
         setTodayHours(hours.today ?? null);
+        // Combine physical hours with the admin-controlled online ordering gate.
+        // Either can independently prevent checkout.
+        if (gate && !gate.open) {
+          setIsOpen(false);
+          setClosedMessage(gate.message ?? 'Online ordering is currently closed.');
+        } else {
+          setIsOpen(hours.open);
+          setClosedMessage(hours.open ? null : (hours.message ?? 'We are currently closed.'));
+        }
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));

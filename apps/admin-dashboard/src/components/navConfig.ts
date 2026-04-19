@@ -6,7 +6,7 @@ import {
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Tag, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link,
+  Printer, Link, ShoppingBag,
   Menu,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
@@ -29,12 +29,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'OPERATIONS',
     items: [
-      { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard',  permission: 'dashboard.view' },
-      { to: '/orders',     icon: ClipboardList,   label: 'Orders',     permission: 'orders.view'   },
-      { to: '/kds',        icon: ChefHat,         label: 'Kitchen',    permission: 'orders.view'   },
-      { to: '/delivery',   icon: Truck,           label: 'Delivery',   permission: 'delivery.view' },
-      { to: '/tables',     icon: LayoutGrid,      label: 'Tables',     permission: 'orders.view'   },
-      { to: '/shifts',     icon: Wallet,          label: 'Shifts',     permission: 'orders.view'   },
+      { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard',        permission: 'dashboard.view'  },
+      { to: '/orders',           icon: ClipboardList,   label: 'Orders',           permission: 'orders.view'     },
+      { to: '/kds',              icon: ChefHat,         label: 'Kitchen',          permission: 'orders.view'     },
+      { to: '/delivery',         icon: Truck,           label: 'Delivery',         permission: 'delivery.view'   },
+      { to: '/tables',           icon: LayoutGrid,      label: 'Tables',           permission: 'orders.view'     },
+      { to: '/shifts',           icon: Wallet,          label: 'Shifts',           permission: 'orders.view'     },
+      { to: '/online-ordering',  icon: ShoppingBag,     label: 'Online Ordering',  permission: 'settings.update' },
     ],
   },
   {
