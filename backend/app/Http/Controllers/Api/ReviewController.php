@@ -81,7 +81,7 @@ class ReviewController extends Controller
             [
                 'rating'       => $validated['rating'],
                 'comment'      => $validated['comment'] ?? null,
-                'type'         => $validated['type'] ?? ($validated['item_id'] ? 'item' : 'order'),
+                'type'         => $validated['type'] ?? (($validated['item_id'] ?? null) ? 'item' : 'order'),
                 'is_anonymous' => (bool) ($validated['is_anonymous'] ?? false),
                 'status'       => 'pending',
             ],
