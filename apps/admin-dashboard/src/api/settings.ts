@@ -57,7 +57,7 @@ export async function toggleOnlineOrdering(enabled: boolean): Promise<{ enabled:
 }
 
 export async function setOnlineOrderingOverride(until: string | null): Promise<{ override_until: string | null }> {
-  return req('/admin/ordering/override', { method: 'POST', body: JSON.stringify({ until }) });
+  return req('/admin/ordering/override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
 }
 
 // ── Permissions ───────────────────────────────────────────────────────────────
