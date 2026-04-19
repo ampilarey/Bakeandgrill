@@ -81,7 +81,7 @@ export default function TablesPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchTables();
-      setTables(res.data);
+      setTables(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

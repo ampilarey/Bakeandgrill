@@ -72,7 +72,7 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
       {driver && <p style={{ fontSize: 'var(--text-body)', fontWeight: 700, margin: '0 0 0.25rem' }}>🛵 {driver.name}</p>}
       {location ? (
         <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>
-          Last seen: {Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000)} min ago
+          Last seen: {(() => { const t = Date.parse(location.recorded_at); return Number.isFinite(t) ? `${Math.floor((Date.now() - t) / 60000)} min ago` : 'Unknown'; })()}
         </p>
       ) : fetchErr ? (
         <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>Location unavailable</p>

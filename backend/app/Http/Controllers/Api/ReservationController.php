@@ -52,7 +52,8 @@ class ReservationController extends Controller
             'notes'          => ['nullable', 'string', 'max:500'],
         ]);
 
-        $customerId = $request->user()?->id; // null for guest bookings
+        $actor = $request->user();
+        $customerId = ($actor instanceof \App\Models\Customer) ? $actor->id : null;
 
         $reservation = $this->service->create(new CreateReservationData(
             customerName:  $validated['customer_name'],

@@ -60,7 +60,7 @@ export function InvoicesPage() {
     setLoading(true); setError('');
     try {
       const res = await getInvoices({ type: typeFilter || undefined, status: statusFilter || undefined });
-      setInvoices(res.data);
+      setInvoices(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

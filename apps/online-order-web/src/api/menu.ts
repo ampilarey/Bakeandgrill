@@ -65,7 +65,7 @@ export async function fetchItems(channel?: SalesChannel): Promise<{ data: MenuIt
   const qs = new URLSearchParams({ available_only: '1', channel: ch });
   const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?${qs}`);
   // Coerce prices to numbers at the API boundary so consumers never need parseFloat()
-  res.data = res.data.map((item) => ({
+  res.data = (res.data ?? []).map((item) => ({
     ...item,
     base_price: Number(item.base_price),
     modifiers: item.modifiers?.map((m) => ({ ...m, price: Number(m.price) })),

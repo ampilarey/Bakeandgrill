@@ -29,7 +29,7 @@ export default function ReferralsPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchAdminReferrals({ page, status: statusFilter || undefined });
-      setReferrals(res.data);
+      setReferrals(res.data ?? []);
       setLastPage(res.meta.last_page);
       setTotal(res.meta.total);
     } catch (e) { setError((e as Error).message); }

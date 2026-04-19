@@ -39,7 +39,7 @@ export default function GiftCardsPage() {
     setError('');
     try {
       const res = await fetchGiftCards({ page, status: statusFilter || undefined });
-      setCards(res.data);
+      setCards(res.data ?? []);
       setMeta(res.meta);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }

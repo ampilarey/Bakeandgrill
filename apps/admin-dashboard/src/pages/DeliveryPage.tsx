@@ -43,7 +43,7 @@ export function DeliveryPage() {
   const loadOrders = async (p = page) => {
     try {
       const res = await fetchOrders({ type: 'delivery', page: p, per_page: 30 });
-      setOrders(res.data);
+      setOrders(res.data ?? []);
       setLastPage(res.meta?.last_page ?? (res as unknown as { last_page?: number }).last_page ?? 1);
       setError('');
     } catch (e) {

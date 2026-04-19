@@ -183,14 +183,14 @@ export function PurchaseOrdersPage() {
         <Card style={{ marginBottom: 20, background: '#fffbeb', border: '1px solid #fef08a' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <p style={{ fontWeight: 700, color: '#92400e', margin: 0, fontSize: 14 }}>
-              Low-Stock Suggestions — {suggestions.items.length} items below reorder point
+              Low-Stock Suggestions — {(suggestions.items ?? []).length} items below reorder point
             </p>
             <Btn small variant="ghost" onClick={() => setSuggestions(null)}>Dismiss</Btn>
           </div>
-          {suggestions.by_supplier.length === 0 ? (
+          {(suggestions.by_supplier ?? []).length === 0 ? (
             <p style={{ color: '#6B5D4F', fontSize: 13, margin: 0 }}>All items are above reorder points. No purchases needed.</p>
           ) : (
-            suggestions.by_supplier.map((group) => (
+            (suggestions.by_supplier ?? []).map((group) => (
               <div key={group.supplier_id ?? 'unknown'} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12, flexWrap: 'wrap' }}>
                   <p style={{ fontWeight: 700, color: '#1C1408', fontSize: 13, margin: 0 }}>

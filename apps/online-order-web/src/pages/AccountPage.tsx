@@ -619,7 +619,7 @@ export function AccountPage() {
                     </span>
                   </div>
                   <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
-                    MVR {po.total.toFixed(2)}
+                    MVR {Number(po.total ?? 0).toFixed(2)}
                   </span>
                 </div>
               ))}

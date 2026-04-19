@@ -24,7 +24,7 @@ export function CampaignsTab() {
     setLoading(true);
     try {
       const res = await fetchSmsCampaigns();
-      setCampaigns(res.data);
+      setCampaigns(res.data ?? []);
     } catch (e) {
       setError((e as Error).message);
     } finally {

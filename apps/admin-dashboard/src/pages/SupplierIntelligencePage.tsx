@@ -61,7 +61,7 @@ export function SupplierIntelligencePage() {
 
   useEffect(() => {
     fetchInventoryItems({ page: 1 })
-      .then((res) => setInvItems(res.data.map((i) => ({ id: i.id, name: i.name }))))
+      .then((res) => setInvItems((res.data ?? []).map((i) => ({ id: i.id, name: i.name }))))
       .catch((e: Error) => setError(e.message || 'Failed to load inventory items.'));
   }, []);
 
@@ -115,7 +115,7 @@ export function SupplierIntelligencePage() {
     setPriceLoading(true);
     try {
       const res = await getSupplierPriceHistory(drill.supplierId, itemId);
-      setPriceHistory(res.data);
+      setPriceHistory(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setPriceLoading(false); }
   };

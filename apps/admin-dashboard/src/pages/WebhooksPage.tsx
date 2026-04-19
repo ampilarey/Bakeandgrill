@@ -173,7 +173,7 @@ export function WebhooksPage() {
   const load = () => {
     Promise.all([fetchWebhooks(), fetchSupportedWebhookEvents()])
       .then(([ws, evs]) => {
-        setSubs(ws.subscriptions);
+        setSubs(ws.subscriptions ?? []);
         setAllEvents(evs.events);
       })
       .catch((e: Error) => setError(e.message))
@@ -291,7 +291,7 @@ export function WebhooksPage() {
                     {sub.url}
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-                    {sub.events.map((ev) => (
+                    {(sub.events ?? []).map((ev) => (
                       <span key={ev} style={{
                         background: '#f1f5f9', color: '#64748b', fontSize: 10,
                         borderRadius: 4, padding: '2px 6px', fontFamily: 'monospace',

@@ -380,7 +380,7 @@ export function OrdersPage() {
     setError('');
     try {
       const res = await fetchOrders({ status: statusFilter || undefined, type: typeFilter || undefined, page, per_page: perPage });
-      setOrders(res.data);
+      setOrders(res.data ?? []);
       setTotalPages(res.meta?.last_page ?? 1);
     } catch (e) {
       setError((e as Error).message);

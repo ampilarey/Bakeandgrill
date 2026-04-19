@@ -43,7 +43,7 @@ export default function ReviewsPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchAdminReviews({ status: statusFilter || undefined, page });
-      setReviews(res.data);
+      setReviews(res.data ?? []);
       setMeta(res.meta);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }

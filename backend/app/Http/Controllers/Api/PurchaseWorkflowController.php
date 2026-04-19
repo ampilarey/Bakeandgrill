@@ -210,17 +210,17 @@ class PurchaseWorkflowController extends Controller
         });
 
         if ($supplierFilter) {
-            $suggested = $suggested->filter(fn($s) => ($s['suggested_supplier']['id'] ?? null) == $supplierFilter)->values();
+            $suggested = $suggested->filter(fn($s) => ($s['suggested_supplier'] ?? null) !== null && ($s['suggested_supplier']['id'] ?? null) == $supplierFilter)->values();
         }
 
         // Group by supplier for easy PO creation
-        $bySup = $suggested->groupBy(fn($s) => $s['suggested_supplier']['id'] ?? 'unknown');
+        $bySup = $suggested->groupBy(fn($s) => ($s['suggested_supplier'] ?? null)['id'] ?? 'unknown');
 
         return response()->json([
             'items'      => $suggested,
             'by_supplier'=> $bySup->map(fn($items, $supId) => [
                 'supplier_id'   => $supId !== 'unknown' ? (int) $supId : null,
-                'supplier_name' => $items->first()['suggested_supplier']['name'] ?? 'Unknown',
+                'supplier_name' => ($items->first()['suggested_supplier'] ?? null)['name'] ?? 'Unknown',
                 'items'         => $items->values(),
                 'estimated_total' => round($items->sum(fn($i) => $i['suggested_quantity'] * ($i['last_unit_cost'] ?? 0)), 2),
             ])->values(),

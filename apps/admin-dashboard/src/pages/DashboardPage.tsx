@@ -226,7 +226,7 @@ export function DashboardPage() {
   // ── load low stock ──
   useEffect(() => {
     fetchLowStockItems()
-      .then((r) => setLowStock(r.data.slice(0, 8)))
+      .then((r) => setLowStock((r.data ?? []).slice(0, 8)))
       .catch((e: Error) => setLowStockErr(e.message));
   }, []);
 

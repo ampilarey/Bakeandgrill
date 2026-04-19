@@ -35,7 +35,7 @@ export default function DevicesPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchDevices();
-      setDevices(res.data);
+      setDevices(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

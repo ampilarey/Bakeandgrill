@@ -24,7 +24,7 @@ function DevicesSettings() {
   const load = () => {
     setLoading(true);
     fetchDevices()
-      .then((res) => setDevices(res.data))
+      .then((res) => setDevices(res.data ?? []))
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   };

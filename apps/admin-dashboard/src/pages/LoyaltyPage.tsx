@@ -28,7 +28,7 @@ function LedgerModal({ customerId, name, onClose }: {
     setEntries([]);
     setLedgerError('');
     fetchLoyaltyLedger(customerId)
-      .then((r) => { if (!cancelled) setEntries(r.data); })
+      .then((r) => { if (!cancelled) setEntries(r.data ?? []); })
       .catch((e: Error) => { if (!cancelled) setLedgerError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -121,7 +121,7 @@ export function LoyaltyPage() {
     setLoading(true);
     try {
       const res = await fetchLoyaltyAccounts({ search: search || undefined });
-      setAccounts(res.data);
+      setAccounts(res.data ?? []);
     } catch (e) {
       setError((e as Error).message);
     } finally {

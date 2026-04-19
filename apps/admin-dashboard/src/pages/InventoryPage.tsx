@@ -45,7 +45,7 @@ export default function InventoryPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchInventoryItems({ search: search || undefined });
-      setItems(res.data);
+      setItems(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -53,7 +53,7 @@ export default function InventoryPage() {
   const loadLowStock = async () => {
     try {
       const res = await fetchLowStockItems();
-      setLowCount(res.data.length);
+      setLowCount((res.data ?? []).length);
     } catch {
       // Non-critical: badge simply won't show if this fails
     }
@@ -87,7 +87,7 @@ export default function InventoryPage() {
 
   const loadCats = async () => {
     setCatsLoading(true);
-    try { const r = await fetchInventoryCategories(); setCats(r.categories); }
+    try { const r = await fetchInventoryCategories(); setCats(r.categories ?? []); }
     catch (e) { setCatError((e as Error).message); }
     finally { setCatsLoading(false); }
   };

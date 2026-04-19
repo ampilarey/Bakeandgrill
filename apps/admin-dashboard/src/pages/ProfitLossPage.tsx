@@ -106,10 +106,10 @@ export function ProfitLossPage() {
                 {/* Expenses by category */}
                 <Card>
                   <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 20, margin: '0 0 20px' }}>Expenses by Category</p>
-                  {pnl.expenses.by_category.length === 0 && (
+                  {(pnl.expenses.by_category ?? []).length === 0 && (
                     <p style={{ color: '#9C8E7E', fontSize: 13 }}>No expenses in this period.</p>
                   )}
-                  {pnl.expenses.by_category.map((cat) => (
+                  {(pnl.expenses.by_category ?? []).map((cat) => (
                     <div key={cat.category} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <span style={{ fontSize: 13, color: '#6B5D4F' }}>{cat.icon} {cat.category}</span>
                       <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>MVR {parseFloat(String(cat.total ?? 0)).toFixed(2)}</span>
@@ -139,7 +139,7 @@ export function ProfitLossPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cashFlow.days.filter((d) => d.inflow > 0 || d.outflow > 0).slice(-14).map((d) => (
+                    {(cashFlow.days ?? []).filter((d) => d.inflow > 0 || d.outflow > 0).slice(-14).map((d) => (
                       <tr key={d.date}>
                         <td style={{ ...TD, textAlign: 'left', color: '#6B5D4F' }}>{d.date}</td>
                         <td style={{ ...TD, textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>+{parseFloat(String(d.inflow ?? 0)).toFixed(2)}</td>

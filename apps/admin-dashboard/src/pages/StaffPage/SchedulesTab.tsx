@@ -33,7 +33,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
     setLoading(true);
     try {
       const res = await fetchSchedules({ week: weekStart });
-      setSchedules(res.data);
+      setSchedules(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

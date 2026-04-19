@@ -23,16 +23,18 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
   const [activePhoto, setActivePhoto] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     setPhotos([]);
     setActivePhoto(0);
     setReviews([]);
     setAvgRating(null);
     getItemReviews(item.id)
-      .then((res) => { setReviews(res.reviews?.slice(0, 5) ?? []); setAvgRating(res.average_rating ?? null); })
+      .then((res) => { if (!cancelled) { setReviews(res.reviews?.slice(0, 5) ?? []); setAvgRating(res.average_rating ?? null); } })
       .catch(() => {});
     getItemPhotos(item.id)
-      .then((res) => setPhotos(res.photos ?? []))
+      .then((res) => { if (!cancelled) setPhotos(res.photos ?? []); })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [item.id]);
 
   // Auto-focus close button and trap focus within modal (BUG-09)

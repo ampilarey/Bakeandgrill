@@ -134,11 +134,11 @@ export function useCheckout() {
     fetchItems(ch)
       .then((res) => {
         if (cancelled) return;
-        const ids = new Set(res.data.map((i) => i.id));
+        const ids = new Set((res.data ?? []).map((i) => i.id));
         pruneCartToAllowedItemIds(ids);
         bumpCart();
       })
-      .catch(() => {});
+      .catch(() => { /* menu load failed — leave cart as-is rather than wiping items */ });
     return () => {
       cancelled = true;
     };
@@ -367,7 +367,7 @@ export function useCheckout() {
 
   // ── Place order + Pay ──────────────────────────────────────────────────────
   const handlePlaceAndPay = async () => {
-    if (!token) return;
+    if (!token) { setGlobalError('Please sign in to continue.'); return; }
     if (isPlacing) return; // prevent double-submission
     if (orderType === "delivery" && !validateDelivery()) return;
 

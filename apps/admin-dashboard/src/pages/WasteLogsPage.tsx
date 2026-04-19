@@ -57,7 +57,7 @@ export default function WasteLogsPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchWasteLogs({ from, to, page });
-      setLogs(res.data);
+      setLogs(res.data ?? []);
       setMeta(res.meta);
       setTotalCost(parseFloat(String(res.total_cost ?? 0)));
     } catch (e) { setError((e as Error).message); }
@@ -69,7 +69,7 @@ export default function WasteLogsPage() {
     try {
       // Fetch up to 500 rows for aggregation; enough for any real kitchen
       const res = await fetchWasteLogs({ from, to, page: 1, per_page: 500 } as Parameters<typeof fetchWasteLogs>[0]);
-      setAllLogs(res.data);
+      setAllLogs(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setSummaryLoading(false); }
   };
@@ -77,8 +77,8 @@ export default function WasteLogsPage() {
   useEffect(() => { void load(); }, [page, from, to]);
   useEffect(() => { if (tab === 'summary') void loadSummary(); }, [tab, from, to]);
   useEffect(() => {
-    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data)).catch(() => {});
-    fetchInventoryItems({}).then(r => setInventoryItems(r.data)).catch(() => {});
+    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data ?? [])).catch(() => {});
+    fetchInventoryItems({}).then(r => setInventoryItems(r.data ?? [])).catch(() => {});
   }, []);
 
   // ── Summary aggregations ────────────────────────────────────────────────────

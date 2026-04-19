@@ -32,7 +32,7 @@ export function HomePage() {
   useEffect(() => {
     const loadFeatured = () => {
       fetchItems().then((res) => {
-        setFeaturedItems(res.data.slice(0, 4));
+        setFeaturedItems((res.data ?? []).slice(0, 4));
       }).catch(() => { /* section simply stays hidden on failure */ });
     };
     loadFeatured();
@@ -48,7 +48,7 @@ export function HomePage() {
     }).catch(() => setIsOpen(false));
 
     fetchActiveSpecials().then(({ specials: sp }) => {
-      setSpecials(sp.slice(0, 6));
+      setSpecials((sp ?? []).slice(0, 6));
     }).catch(() => { /* non-blocking */ });
   }, []);
 

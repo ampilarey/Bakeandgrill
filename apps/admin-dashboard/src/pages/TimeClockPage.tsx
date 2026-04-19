@@ -92,7 +92,7 @@ export default function TimeClockPage() {
     setHistLoading(true); setHistError('');
     try {
       const res = await getTimeClockHistory({ from: histFrom, to: histTo });
-      setEntries(res.data);
+      setEntries(res.data ?? []);
     } catch (e) { setHistError((e as Error).message); }
     finally { setHistLoading(false); }
   };
@@ -111,7 +111,7 @@ export default function TimeClockPage() {
     setSumLoading(true); setSumError('');
     try {
       const res = await getTimeClockSummary({ from: sumFrom, to: sumTo });
-      setSummary(res.data);
+      setSummary(res.data ?? []);
     } catch (e) { setSumError((e as Error).message); }
     finally { setSumLoading(false); }
   };

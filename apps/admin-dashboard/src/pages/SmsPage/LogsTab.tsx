@@ -18,7 +18,7 @@ export function LogsTab() {
         fetchSmsLogs({ type: typeFilter || undefined, status: statusFilter || undefined }),
         fetchSmsLogStats(),
       ]);
-      setLogs(logsRes.data);
+      setLogs(logsRes.data ?? []);
       setStats(statsRes);
     } catch (e) {
       setLoadError((e as Error).message);

@@ -97,7 +97,7 @@ export function ReportsPage() {
     if (tab === 'Summary' && summary) {
       downloadCSV('sales-summary', [{ Period: summary.period, Revenue: mvr(summary.total_revenue), Orders: summary.order_count, 'Avg Order': mvr(summary.average_order_value ?? 0) }]);
     } else if (tab === 'Breakdown' && breakdown) {
-      downloadCSV('sales-breakdown-items', breakdown.top_items.map(i => ({ Item: i.name, Qty: i.qty, Revenue: mvr(i.revenue) })));
+      downloadCSV('sales-breakdown-items', (breakdown.top_items ?? []).map(i => ({ Item: i.name, Qty: i.qty, Revenue: mvr(i.revenue) })));
     } else if (tab === 'Tax' && taxReport) {
       downloadCSV('tax-report', taxReport.by_rate.map(r => ({ 'Rate %': r.rate_pct, 'Net Sales': mvr(r.net_sales), 'Tax Amount': mvr(r.tax_amount) })));
     } else if (tab === 'Inventory' && inventory) {

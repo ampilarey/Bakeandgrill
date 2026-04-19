@@ -91,7 +91,8 @@ class StockReservationService
             // Lock the item row for the duration of this transaction
             $locked = Item::lockForUpdate()->find($item->id);
             if (!$locked) {
-                continue;
+                // Item was deleted between loading and locking — treat as out of stock
+                abort(422, "Item {$item->name} is no longer available.");
             }
 
             $this->releaseExpiredReservations($locked->id);
@@ -153,6 +154,8 @@ class StockReservationService
                 // Lock the item row before deducting
                 $locked = Item::lockForUpdate()->find($item->id);
                 if (!$locked) {
+                    // Item deleted between payment and deduction — log and skip to avoid blocking fulfillment
+                    \Illuminate\Support\Facades\Log::warning("StockReservationService: item {$item->id} not found during convertToDeduction for order {$order->id}");
                     continue;
                 }
 

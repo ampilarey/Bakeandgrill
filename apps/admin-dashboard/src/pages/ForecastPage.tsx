@@ -65,7 +65,7 @@ export function ForecastPage() {
   // Load menu items for item-forecast selector
   useEffect(() => {
     fetchAdminItems({ per_page: 200 })
-      .then((res) => setMenuItems(res.data))
+      .then((res) => setMenuItems(res.data ?? []))
       .catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
   }, []);
 

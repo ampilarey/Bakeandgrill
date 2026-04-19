@@ -73,8 +73,8 @@ export function MenuPage() {
       fetchOnlineOrderingStatus().catch(() => null),
     ])
       .then(([cats, its, hours, gate]) => {
-        setCategories(cats.data);
-        setItems(its.data);
+        setCategories(cats.data ?? []);
+        setItems(its.data ?? []);
         setTodayHours(hours.today ?? null);
         // Combine physical hours with the admin-controlled online ordering gate.
         // Either can independently prevent checkout.
@@ -100,7 +100,7 @@ export function MenuPage() {
   useEffect(() => {
     if (!token) return;
     getMyFavourites(token)
-      .then((res) => setFavouriteIds(new Set(res.data.map((f) => f.id))))
+      .then((res) => setFavouriteIds(new Set((res.data ?? []).map((f) => f.id))))
       .catch(() => { /* non-blocking */ });
   }, [token]);
 

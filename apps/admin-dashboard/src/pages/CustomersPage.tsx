@@ -50,7 +50,7 @@ export function CustomersPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchAdminCustomers({ search: s || undefined, page: p });
-      setCustomers(res.data);
+      setCustomers(res.data ?? []);
       setMeta(res.meta);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
@@ -279,11 +279,11 @@ export function CustomersPage() {
                 </div>
               )}
 
-              {detail.orders.length > 0 && (
+              {(detail.orders ?? []).length > 0 && (
                 <div>
                   <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 10px' }}>Recent Orders</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {detail.orders.map((o) => (
+                    {(detail.orders ?? []).map((o) => (
                       <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 10px', background: '#FAF7F3', borderRadius: 8 }}>
                         <span style={{ fontWeight: 600 }}>#{o.order_number}</span>
                         <span style={{ color: '#8B7355' }}>{o.type}</span>

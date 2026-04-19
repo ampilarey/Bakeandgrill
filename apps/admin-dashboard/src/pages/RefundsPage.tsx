@@ -39,7 +39,7 @@ export default function RefundsPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchAdminRefunds({ page, status: statusFilter || undefined });
-      setRefunds(res.refunds.data);
+      setRefunds(res.refunds?.data ?? []);
       setTotal(res.refunds.total);
       setLastPage(res.refunds.last_page);
     } catch (e) { setError((e as Error).message); }

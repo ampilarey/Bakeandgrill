@@ -41,7 +41,7 @@ export function ExpensesPage() {
         getExpenseCategories(),
         getExpenseSummary(from, to),
       ]);
-      setExpenses(expRes.data);
+      setExpenses(expRes.data ?? []);
       setTotal(expRes.total_amount);
       setCats(catRes.categories);
       setSummary(sumRes);

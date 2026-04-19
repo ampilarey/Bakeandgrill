@@ -50,7 +50,7 @@ export default function PrintJobsPage() {
     setError('');
     try {
       const res = await fetchPrintJobs({ status: statusFilter || undefined, page });
-      setJobs(res.data);
+      setJobs(res.data ?? []);
       setMeta(res.meta);
     } catch (e) {
       setError((e as Error).message);

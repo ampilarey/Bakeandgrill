@@ -384,7 +384,7 @@ export function StaffPage() {
     setLoading(true);
     try {
       const res = await fetchStaff();
-      setStaff(res.staff);
+      setStaff(res.staff ?? []);
       setRoles(res.roles);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }

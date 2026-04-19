@@ -5,7 +5,9 @@ import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, statColor } from '../c
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function elapsed(iso: string): string {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return '—';
+  const s = Math.floor((Date.now() - t) / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m ${s % 60}s`;
@@ -13,7 +15,9 @@ function elapsed(iso: string): string {
 }
 
 function urgencyColor(iso: string): { solid: string; faint: string } {
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return { solid: '#22c55e', faint: 'rgba(34,197,94,0.13)' };
+  const m = Math.floor((Date.now() - t) / 60000);
   if (m >= 15) return { solid: '#ef4444', faint: 'rgba(239,68,68,0.13)' };
   if (m >= 8)  return { solid: '#f97316', faint: 'rgba(249,115,22,0.13)' };
   return        { solid: '#22c55e', faint: 'rgba(34,197,94,0.13)' };

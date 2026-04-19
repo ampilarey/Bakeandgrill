@@ -1,6 +1,6 @@
 /** Convert laar (integer cents) to MVR decimal string, e.g. 1250 → "12.50" */
 export function laarToMvr(laar: number): string {
-  return (laar / 100).toFixed(2);
+  return Number.isFinite(laar) ? (laar / 100).toFixed(2) : '0.00';
 }
 
 /** Convert a price value (number or string) to a display string in MVR, e.g. 12.5 → "12.50" */

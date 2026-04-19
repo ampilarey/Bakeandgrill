@@ -458,7 +458,7 @@ export function MenuPage() {
     setLoading(true);
     try {
       const res = await fetchAdminCategories();
-      setCategories(res.data);
+      setCategories(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -472,7 +472,7 @@ export function MenuPage() {
         page: p,
         per_page: perPage,
       });
-      setItems(res.data);
+      setItems(res.data ?? []);
       setLastPage(res.meta?.last_page ?? 1);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
@@ -875,7 +875,7 @@ export function MenuPage() {
             </div>
             {!recipeItem.recipe ? (
               <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No recipe defined for this item.</p>
-            ) : recipeItem.recipe.recipe_items.length === 0 ? (
+            ) : (recipeItem.recipe.recipe_items ?? []).length === 0 ? (
               <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Recipe exists but has no ingredients.</p>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -885,7 +885,7 @@ export function MenuPage() {
                   <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>Unit</th>
                 </tr></thead>
                 <tbody>
-                  {recipeItem.recipe.recipe_items.map((ri) => (
+                  {(recipeItem.recipe.recipe_items ?? []).map((ri) => (
                     <tr key={ri.id}>
                       <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0', fontWeight: 600 }}>
                         {ri.inventory_item?.name ?? '—'}
