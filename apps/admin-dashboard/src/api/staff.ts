@@ -32,7 +32,7 @@ export async function createStaff(data: {
 
 export async function updateStaff(
   id: number,
-  data: { name?: string; email?: string; role_id?: number; is_active?: boolean }
+  data: { name?: string; email?: string; role_id?: number; is_active?: boolean; phone?: string | null }
 ): Promise<{ staff: StaffMember }> {
   return req(`/admin/staff/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
