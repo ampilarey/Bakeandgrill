@@ -61,14 +61,14 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="reservations" element={<ReservationPage />} />
                     <Route path="pre-order" element={<PreOrderPage />} />
                     <Route path="privacy" element={<PrivacyPage />} />
-                    <Route path="order-history" element={<OrderHistoryPage />} />
-                    <Route path="account" element={<AccountPage />} />
+                    <Route path="order-history" element={<ErrorBoundary inline><OrderHistoryPage /></ErrorBoundary>} />
+                    <Route path="account" element={<ErrorBoundary inline><AccountPage /></ErrorBoundary>} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
 
                   {/* Standalone pages — no Layout wrapper */}
-                  <Route path="checkout" element={<CheckoutPage />} />
-                  <Route path="orders/:orderId" element={<OrderStatusPage />} />
+                  <Route path="checkout" element={<ErrorBoundary inline><CheckoutPage /></ErrorBoundary>} />
+                  <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                 </Routes>
               </Suspense>
             </BrowserRouter>
