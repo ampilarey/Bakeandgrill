@@ -56,20 +56,26 @@ function localPhone(phone: string): string {
   return phone.trim().replace(/^(?:00960|\+?960)/, "");
 }
 
-function readCart(): CartItem[] {
+function readCart(): (CartItem & { variantId?: number | null })[] {
   try {
     const raw = localStorage.getItem("bakegrill_cart");
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    // CartContext stores a versioned object: { version, entries: [{ item, quantity, modifiers }] }
-    const entries: Array<{ item: { id: number; name: string; base_price: number | string }; quantity: number; modifiers?: Array<{ id: number; name: string; price: number | string }> }>
-      = Array.isArray(parsed) ? parsed : (parsed?.entries ?? []);
+    // CartContext stores a versioned object: { version, entries: [{ item, quantity, modifiers, variantId }] }
+    const entries: Array<{
+      item: { id: number; name: string; base_price: number | string };
+      quantity: number;
+      modifiers?: Array<{ id: number; name: string; price: number | string }>;
+      variantId?: number | null;
+      variantPrice?: number | null;
+    }> = Array.isArray(parsed) ? parsed : (parsed?.entries ?? []);
     return entries.map((e) => ({
       id:        e.item?.id ?? (e as unknown as CartItem).id,
       name:      e.item?.name ?? (e as unknown as CartItem).name,
-      price:     Number(e.item?.base_price ?? (e as unknown as CartItem).price ?? 0),
+      price:     Number(e.variantPrice ?? e.item?.base_price ?? (e as unknown as CartItem).price ?? 0),
       quantity:  e.quantity,
       modifiers: (e.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: Number(m.price) })),
+      variantId: e.variantId ?? null,
     }));
   } catch { return []; }
 }
@@ -384,7 +390,9 @@ export function useCheckout() {
       } else if (orderType === "delivery") {
         const res = await createDeliveryOrder(token, {
           items: cart.map((item) => ({
-            item_id: item.id, quantity: item.quantity,
+            item_id: item.id,
+            quantity: item.quantity,
+            variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
             modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
           })),
           delivery_address_line1: delivery.address_line1,
@@ -399,7 +407,9 @@ export function useCheckout() {
       } else {
         const res = await createCustomerOrder(token, {
           items: cart.map((item) => ({
-            item_id: item.id, quantity: item.quantity,
+            item_id: item.id,
+            quantity: item.quantity,
+            variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
             modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
           })),
           type: "online_pickup",

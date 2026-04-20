@@ -7,6 +7,15 @@ export type Modifier = {
   quantity?: number;
 };
 
+export type Variant = {
+  id: number;
+  name: string;
+  name_dv?: string | null;
+  price: number;
+  is_active: boolean;
+  sort_order?: number;
+};
+
 export type Category = {
   id: number;
   name: string;
@@ -27,6 +36,8 @@ export type MenuItem = {
   name_dv?: string | null;
   description?: string | null;
   base_price: number;
+  has_variants?: boolean;
+  variants?: Variant[];
   image_url?: string | null;
   category_id: number | null;
   barcode?: string | null;
@@ -62,6 +73,8 @@ export type CartItem = {
   quantity: number;
   modifiers: Modifier[];
   image_url?: string | null;
+  variant_id?: number | null;
+  variant_name?: string | null;
 };
 
 export type RestaurantTable = {

@@ -49,6 +49,11 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                   <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', flex: 1 }}>
                     {entry.item.name}
+                    {entry.variantName && (
+                      <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block' }}>
+                        {entry.variantName}
+                      </span>
+                    )}
                   </p>
                   {/* Qty controls — 32px minimum touch target */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
@@ -77,7 +82,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                   </p>
                 )}
                 <p style={{ marginTop: '0.375rem', fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                  MVR {((parseFloat(String(entry.item.base_price)) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
+                  MVR {(((entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
                 </p>
               </div>
             ))}

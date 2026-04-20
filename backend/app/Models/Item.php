@@ -25,6 +25,7 @@ class Item extends Model
         'barcode',
         'image_url',
         'base_price',
+        'has_variants',
         'cost',
         'tax_rate',
         'is_active',
@@ -109,13 +110,14 @@ class Item extends Model
     }
 
     protected $casts = [
-        'category_id' => 'integer',
+        'category_id'  => 'integer',
         'menu_group_id' => 'integer',
-        'is_active' => 'boolean',
+        'is_active'    => 'boolean',
         'is_available' => 'boolean',
-        'track_stock' => 'boolean',
+        'has_variants' => 'boolean',
+        'track_stock'  => 'boolean',
         'allow_pre_order' => 'boolean',
-        'base_price' => 'decimal:2',
+        'base_price'   => 'decimal:2',
         'cost' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'stock_quantity' => 'integer',
@@ -128,6 +130,38 @@ class Item extends Model
         'is_combo'     => 'boolean',
         'combo_discount_pct' => 'decimal:2',
     ];
+
+    /** True when the item is configured to require a variant selection. */
+    public function hasVariants(): bool
+    {
+        return (bool) $this->has_variants;
+    }
+
+    /** Active variants ordered by sort_order. */
+    public function activeVariants(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->variants()->where('is_active', true)->orderBy('sort_order');
+    }
+
+    /**
+     * Price to display on menus.
+     * For variant items returns the minimum active variant price ("From X").
+     * Falls back to base_price for simple items.
+     */
+    public function displayPrice(): float
+    {
+        if ($this->has_variants) {
+            $min = $this->variants()
+                ->where('is_active', true)
+                ->min('price');
+
+            if ($min !== null) {
+                return (float) $min;
+            }
+        }
+
+        return (float) $this->base_price;
+    }
 
     protected static function booted(): void
     {

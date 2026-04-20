@@ -282,7 +282,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 <p style={{ fontWeight: 700, fontSize: 13, color: '#475569', marginBottom: 8 }}>Items</p>
                 {order.items.map((item) => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
-                    <span>{item.quantity}× {item.item_name}</span>
+                    <span>{item.quantity}× {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}</span>
                     <span style={{ color: '#D4813A', fontWeight: 600 }}>MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}</span>
                   </div>
                 ))}

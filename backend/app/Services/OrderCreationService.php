@@ -143,61 +143,93 @@ class OrderCreationService
 
             $quantity = (int) $itemPayload['quantity'];
 
-            if ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
-                // Lock the item row for the duration of this transaction so concurrent
-                // requests cannot both pass the availability check (TOCTOU prevention).
-                $lockedItem = Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
+            // ── Variant resolution ────────────────────────────────────────────
+            $variantId = $itemPayload['variant_id'] ?? null;
+            $variant   = null;
 
-                // Both POS and online check against available stock minus active online reservations
-                // so that concurrent POS and online orders share the same pool truthfully.
-                $available = app(StockReservationService::class)->getAvailableStock($lockedItem);
+            if ($itemModel->has_variants) {
+                // Variant selection is mandatory for variant products
+                if (!$variantId) {
+                    abort(422, "Please select a size/option for \"{$itemModel->name}\".");
+                }
+
+                $variant = $itemModel->variants()->where('id', $variantId)->first();
+                if (!$variant) {
+                    abort(422, "Variant {$variantId} does not belong to item {$itemId}.");
+                }
+                if (!$variant->is_active) {
+                    abort(422, "The selected option \"{$variant->name}\" for \"{$itemModel->name}\" is no longer available.");
+                }
+            } elseif ($variantId) {
+                // Non-variant product: validate if a variant was still passed
+                $variant = $itemModel->variants()->where('id', $variantId)->first();
+                if (!$variant) {
+                    abort(422, "Variant {$variantId} not found for item {$itemId}.");
+                }
+                if (!$variant->is_active) {
+                    abort(422, "The selected option \"{$variant->name}\" for \"{$itemModel->name}\" is no longer available.");
+                }
+            }
+
+            $basePrice   = $variant ? (float) $variant->price : (float) $itemModel->base_price;
+            $variantName = $variant?->name;
+
+            // ── Stock check ───────────────────────────────────────────────────
+            // Variant-level stock takes priority when the variant tracks its own stock.
+            if ($variant && $variant->track_stock) {
+                $lockedVariant = \App\Models\Variant::lockForUpdate()->find($variant->id) ?? $variant;
+                $available = app(StockReservationService::class)->getAvailableVariantStock($lockedVariant);
+                if ($available < $quantity) {
+                    abort(422, "Insufficient stock for \"{$itemModel->name} - {$variant->name}\". Available: {$available}, requested: {$quantity}");
+                }
+            } elseif ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
+                // Fall back to item-level stock for simple (non-variant-tracking) products
+                $lockedItem = Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
+                $available  = app(StockReservationService::class)->getAvailableStock($lockedItem);
                 if ($available < $quantity) {
                     abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$available}, requested: {$quantity}");
                 }
-            } else {
-                $lockedItem = $itemModel;
             }
 
-            $variantId = $itemPayload['variant_id'] ?? null;
-            if ($variantId) {
-                $variant = $itemModel->variants()->where('id', $variantId)->first();
-                if (!$variant) {
-                    abort(422, "Variant {$variantId} not found for item {$itemId}");
-                }
-                $basePrice = (float) $variant->price;
-                $variantName = $variant->name;
-            } else {
-                $basePrice = (float) $itemModel->base_price;
-                $variantName = null;
-            }
+            $lockedItem = $itemModel;
 
             $modifierTotal = 0;
 
             $orderItem = OrderItem::create([
-                'order_id' => $order->id,
-                'item_id' => $itemModel->id,
-                'variant_id' => $variantId,
-                'item_name' => $itemModel->name,
+                'order_id'     => $order->id,
+                'item_id'      => $itemModel->id,
+                'variant_id'   => $variantId,
+                'item_name'    => $itemModel->name,
                 'variant_name' => $variantName,
-                'quantity' => $quantity,
-                'unit_price' => $basePrice,
-                'total_price' => 0,
-                'notes' => null,
-                'status' => 'pending',
+                'quantity'     => $quantity,
+                'unit_price'   => $basePrice,
+                'total_price'  => 0,
+                'notes'        => null,
+                'status'       => 'pending',
             ]);
 
-            // POS only: deduct prepared stock immediately upon order creation.
-            // Online orders are handled via reserveForOrder() called after the loop
-            // (needs order_id + all item IDs to be persisted first).
-            if (!$isOnlineOrder && $itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
-                $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
-                app(StockManagementService::class)->deductPreparedStock(
-                    $lockedItem,
-                    $quantity,
-                    $key,
-                    $order->id,
-                    $user?->id,
-                );
+            // POS only: deduct stock immediately upon order creation.
+            // Online orders are handled via reserveForOrder() after the full loop.
+            if (!$isOnlineOrder) {
+                if ($variant && $variant->track_stock) {
+                    $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
+                    app(StockManagementService::class)->deductVariantStock(
+                        $lockedVariant ?? $variant,
+                        $quantity,
+                        $key,
+                        $order->id,
+                        $user?->id,
+                    );
+                } elseif ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
+                    $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
+                    app(StockManagementService::class)->deductPreparedStock(
+                        $lockedItem,
+                        $quantity,
+                        $key,
+                        $order->id,
+                        $user?->id,
+                    );
+                }
             }
 
             if (!empty($itemPayload['modifiers'])) {

@@ -1,23 +1,28 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Item, Modifier } from '../api';
+import type { Variant } from '@shared/types';
 
 export type CartEntry = {
   item: Item;
   quantity: number;
   modifiers: Modifier[];
+  variantId?: number | null;
+  variantName?: string | null;
+  /** Price snapshot captured at add-time (variant price or item base_price). */
+  variantPrice?: number | null;
 };
 
 interface CartContextValue {
   cart: CartEntry[];
   cartTotal: number;
-  addItem: (item: Item, quantity: number, modifiers?: Modifier[]) => void;
+  addItem: (item: Item, quantity: number, modifiers?: Modifier[], variant?: Variant | null) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
   /** Remove lines whose item id is not in the allowed set (e.g. after switching takeaway ↔ delivery). */
   pruneCartToAllowedItemIds: (allowedIds: Set<number>) => void;
 }
 
-const CART_VERSION = 2;
+const CART_VERSION = 3;
 const CART_KEY = 'bakegrill_cart';
 
 type StoredCart = {
@@ -26,6 +31,9 @@ type StoredCart = {
     item: Item;
     quantity: number;
     modifiers: Modifier[];
+    variantId?: number | null;
+    variantName?: string | null;
+    variantPrice?: number | null;
   }>;
 };
 
@@ -45,6 +53,9 @@ function loadCart(): CartEntry[] {
       item: e.item,
       quantity: e.quantity || 1,
       modifiers: e.modifiers ?? [],
+      variantId: e.variantId ?? null,
+      variantName: e.variantName ?? null,
+      variantPrice: e.variantPrice ?? null,
     }));
   } catch {
     return [];
@@ -58,6 +69,9 @@ function saveCart(cart: CartEntry[]): void {
       item: e.item,
       quantity: e.quantity,
       modifiers: e.modifiers,
+      variantId: e.variantId ?? null,
+      variantName: e.variantName ?? null,
+      variantPrice: e.variantPrice ?? null,
     })),
   };
   try {
@@ -75,23 +89,40 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Clear in-memory cart when payment redirects away and removes it from localStorage
   useEffect(() => {
     const handler = () => setCart([]);
-    window.addEventListener("cart_cleared", handler);
-    return () => window.removeEventListener("cart_cleared", handler);
+    window.addEventListener('cart_cleared', handler);
+    return () => window.removeEventListener('cart_cleared', handler);
   }, []);
 
-  const addItem = useCallback((item: Item, quantity: number, modifiers: Modifier[] = []) => {
+  const addItem = useCallback((item: Item, quantity: number, modifiers: Modifier[] = [], variant?: Variant | null) => {
     if (quantity < 1) return;
     setCart((prev) => {
-      const key = [...modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',');
+      const modKey = [...modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',');
+      const variantId = variant?.id ?? null;
+
       const idx = prev.findIndex(
-        (e) => e.item.id === item.id && [...e.modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',') === key,
+        (e) =>
+          e.item.id === item.id &&
+          (e.variantId ?? null) === variantId &&
+          [...e.modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',') === modKey,
       );
+
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], quantity: next[idx].quantity + quantity };
         return next;
       }
-      return [...prev, { item, quantity, modifiers }];
+
+      return [
+        ...prev,
+        {
+          item,
+          quantity,
+          modifiers,
+          variantId,
+          variantName: variant?.name ?? null,
+          variantPrice: variant ? Number(variant.price) : null,
+        },
+      ];
     });
   }, []);
 
@@ -113,7 +144,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const cartTotal = useMemo(
     () =>
       cart.reduce((total, e) => {
-        const basePrice = Number(e.item.base_price) || 0;
+        // Use variant price snapshot when available, fall back to item base_price
+        const basePrice = (e.variantPrice != null ? e.variantPrice : Number(e.item.base_price)) || 0;
         const modsTotal = e.modifiers.reduce((s, m) => s + (Number(m.price) || 0), 0);
         return total + (basePrice + modsTotal) * e.quantity;
       }, 0),

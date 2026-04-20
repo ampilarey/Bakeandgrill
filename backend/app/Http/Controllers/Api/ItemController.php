@@ -11,6 +11,7 @@ use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
 use App\Services\ItemAvailabilityService;
+use App\Services\VariantSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -111,11 +112,29 @@ class ItemController extends Controller
                         'valid_until' => $r->valid_until?->toIso8601String(),
                     ])->values()->all()
                     : null,
-                'variants' => $item->variants->map(fn ($v) => [
-                    'id' => $v->id,
-                    'name' => $v->name,
-                    'price' => $v->price,
-                ]),
+                'has_variants' => $item->has_variants,
+                'variants' => $item->variants
+                    ->sortBy('sort_order')
+                    ->map(fn ($v) => $isAdmin ? [
+                        'id'          => $v->id,
+                        'name'        => $v->name,
+                        'name_dv'     => $v->name_dv,
+                        'price'       => $v->price,
+                        'cost'        => $v->cost,
+                        'sku'         => $v->sku,
+                        'track_stock' => $v->track_stock,
+                        'stock_qty'   => $v->stock_qty,
+                        'is_active'   => $v->is_active,
+                        'sort_order'  => $v->sort_order,
+                    ] : [
+                        'id'        => $v->id,
+                        'name'      => $v->name,
+                        'name_dv'   => $v->name_dv,
+                        'price'     => $v->price,
+                        'is_active' => $v->is_active,
+                        'sort_order' => $v->sort_order,
+                    ])
+                    ->values(),
                 'modifiers' => $item->modifiers->map(fn ($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
@@ -144,13 +163,20 @@ class ItemController extends Controller
     /**
      * Store a newly created item
      */
-    public function store(StoreItemRequest $request)
+    public function store(StoreItemRequest $request, VariantSyncService $variantSync)
     {
-        $item = Item::create($request->validated());
+        $data = $request->validated();
+        $variantsData = $data['variants'] ?? null;
+        unset($data['variants'], $data['modifier_ids']);
 
-        // Attach modifiers if provided
+        $item = Item::create($data);
+
         if ($request->has('modifier_ids')) {
             $item->modifiers()->sync($request->modifier_ids);
+        }
+
+        if ($variantsData !== null) {
+            $variantSync->sync($item, $variantsData);
         }
 
         return response()->json([
@@ -195,11 +221,19 @@ class ItemController extends Controller
                     'name' => $item->category->name,
                     'name_dv' => $item->category->name_dv,
                 ] : null,
-                'variants' => $item->variants->map(fn ($v) => [
-                    'id' => $v->id,
-                    'name' => $v->name,
-                    'price' => $v->price,
-                ]),
+                'has_variants' => $item->has_variants,
+                'variants' => $item->variants
+                    ->where('is_active', true)
+                    ->sortBy('sort_order')
+                    ->map(fn ($v) => [
+                        'id'         => $v->id,
+                        'name'       => $v->name,
+                        'name_dv'    => $v->name_dv,
+                        'price'      => $v->price,
+                        'is_active'  => $v->is_active,
+                        'sort_order' => $v->sort_order,
+                    ])
+                    ->values(),
                 'modifiers' => $item->modifiers->map(fn ($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
@@ -223,16 +257,20 @@ class ItemController extends Controller
     /**
      * Update an item
      */
-    public function update(UpdateItemRequest $request, $id)
+    public function update(UpdateItemRequest $request, $id, VariantSyncService $variantSync)
     {
         $item = Item::findOrFail($id);
         $data = $request->validated();
-        unset($data['channel_availability']);
+        $variantsData = $data['variants'] ?? null;
+        unset($data['channel_availability'], $data['variants'], $data['modifier_ids']);
         $item->update($data);
 
-        // Update modifiers if provided
         if ($request->has('modifier_ids')) {
             $item->modifiers()->sync($request->modifier_ids);
+        }
+
+        if ($variantsData !== null) {
+            $variantSync->sync($item, $variantsData);
         }
 
         if ($request->has('channel_availability')) {

@@ -26,6 +26,19 @@ export type ItemChannelAvailabilityRow = {
   valid_until?: string | null;
 };
 
+export type MenuVariant = {
+  id?: number;
+  name: string;
+  name_dv?: string | null;
+  price: number;
+  cost?: number | null;
+  sku?: string | null;
+  track_stock?: boolean;
+  stock_qty?: number;
+  is_active: boolean;
+  sort_order?: number;
+};
+
 export type MenuItem = {
   id: number;
   name: string;
@@ -34,6 +47,8 @@ export type MenuItem = {
   sku?: string | null;
   image_url?: string | null;
   base_price: number;
+  has_variants?: boolean;
+  variants?: MenuVariant[];
   tax_rate?: number | null;
   is_available: boolean;
   is_active: boolean;
@@ -52,6 +67,8 @@ export type MenuItemPayload = {
   sku?: string | null;
   image_url?: string | null;
   base_price: number;
+  has_variants?: boolean;
+  variants?: MenuVariant[];
   tax_rate?: number | null;
   category_id?: number | null;
   menu_group_id?: number | null;
@@ -65,6 +82,22 @@ export type MenuItemPayload = {
     valid_until?: string | null;
   }>;
 };
+
+export async function fetchItemVariants(itemId: number): Promise<{ variants: MenuVariant[] }> {
+  return req(`/items/${itemId}/variants`);
+}
+
+export async function createVariant(itemId: number, data: Omit<MenuVariant, 'id'>): Promise<{ variant: MenuVariant }> {
+  return req(`/items/${itemId}/variants`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateVariant(itemId: number, variantId: number, data: Partial<MenuVariant>): Promise<{ variant: MenuVariant }> {
+  return req(`/items/${itemId}/variants/${variantId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteVariant(itemId: number, variantId: number): Promise<void> {
+  return req(`/items/${itemId}/variants/${variantId}`, { method: 'DELETE' });
+}
 
 export async function fetchMenuGroups(): Promise<{ data: MenuGroupRow[] }> {
   return req('/admin/menu-groups');

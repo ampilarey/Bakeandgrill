@@ -186,7 +186,7 @@ function TicketHeader({ ticket }: { ticket: KdsTicket }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {(ticket.items ?? []).map((item, i) => (
           <div key={i} style={{ fontSize: 13, color: '#6B5D4F' }}>
-            <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}
+            <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
             {item.modifiers && item.modifiers.length > 0 && (
               <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
                 + {item.modifiers.map((m) => m.modifier_name).join(', ')}

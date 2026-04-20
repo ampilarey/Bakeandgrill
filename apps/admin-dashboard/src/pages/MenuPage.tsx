@@ -5,7 +5,7 @@ import {
   uploadMenuImage, getBarcodeLabel, getItemWithRecipe,
   fetchMenuGroups, getKitchenMenuState, updateKitchenMenuState,
   type MenuCategory, type MenuItem, type MenuItemPayload, type BarcodeLabel, type ItemWithRecipe,
-  type MenuGroupRow,
+  type MenuGroupRow, type MenuVariant,
 } from '../api';
 import { PhotosTab } from './MenuPage/PhotosTab';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -186,6 +186,8 @@ const SALES_CHANNELS = [
   { id: 'delivery', label: 'Delivery' },
 ] as const;
 
+type VariantRow = MenuVariant & { _key: string };
+
 type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
   image_url: string; base_price: string; tax_rate: string;
@@ -193,7 +195,13 @@ type ItemForm = {
   category_id: string;
   menu_group_id: string;
   channels: Record<string, boolean>;
+  has_variants: boolean;
+  variants: VariantRow[];
 };
+
+function emptyVariantRow(): VariantRow {
+  return { _key: String(Date.now() + Math.random()), name: '', price: 0, cost: null, sku: null, track_stock: false, stock_qty: 0, is_active: true, sort_order: 0 };
+}
 
 function channelsFromItem(item: MenuItem): Record<string, boolean> {
   const base: Record<string, boolean> = {
@@ -221,8 +229,11 @@ function itemToForm(item: MenuItem): ItemForm {
     category_id: item.category_id != null ? String(item.category_id) : '',
     menu_group_id: item.menu_group_id != null ? String(item.menu_group_id) : '1',
     channels: channelsFromItem(item),
+    has_variants: item.has_variants ?? false,
+    variants: (item.variants ?? []).map((v) => ({ ...v, _key: String(v.id ?? Math.random()) })),
   };
 }
+
 
 function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayload {
   const payload: MenuItemPayload = {
@@ -232,12 +243,16 @@ function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayloa
     sku: form.sku.trim() || null,
     image_url: form.image_url.trim() || null,
     base_price: parseFloat(form.base_price) || 0,
+    has_variants: form.has_variants,
     tax_rate: form.tax_rate !== '' ? parseFloat(form.tax_rate) : null,
     sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
     is_active: form.is_active,
     is_available: form.is_available,
     category_id: form.category_id !== '' ? parseInt(form.category_id) : null,
     menu_group_id: form.menu_group_id !== '' ? parseInt(form.menu_group_id, 10) : null,
+    variants: form.has_variants
+      ? form.variants.map(({ _key, ...v }, i) => ({ ...v, sort_order: i }))
+      : undefined,
   };
   if (includeChannels) {
     payload.channel_availability = SALES_CHANNELS.map(({ id }) => ({
@@ -267,8 +282,12 @@ function ItemFormModal({
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Item name is required.'); return; }
-    const priceNum = parseFloat(form.base_price);
-    if (!form.base_price || !Number.isFinite(priceNum) || priceNum < 0) { setError('Price must be a valid number (0 or more).'); return; }
+    if (!form.has_variants) {
+      const priceNum = parseFloat(form.base_price);
+      if (!form.base_price || !Number.isFinite(priceNum) || priceNum < 0) { setError('Price must be a valid number (0 or more).'); return; }
+    }
+    if (form.has_variants && form.variants.length === 0) { setError('Add at least one variant, or turn off "This product has variants".'); return; }
+    if (form.has_variants && form.variants.some((v) => !v.name.trim())) { setError('All variants must have a name.'); return; }
     setError(''); setLoading(true);
     try { await onSave(form); }
     catch (e) { setError((e as Error).message); }
@@ -308,17 +327,47 @@ function ItemFormModal({
             <Field label="Description">
               <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Describe the item…" />
             </Field>
-            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <Field label="Price (MVR) *">
-                <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
-              </Field>
-              <Field label="Tax Rate (%)">
-                <Input value={form.tax_rate} onChange={(v) => set('tax_rate', v)} type="number" placeholder="0" />
-              </Field>
-              <Field label="Sort Order">
-                <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
-              </Field>
-            </div>
+            {/* Variant toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <input
+                type="checkbox"
+                checked={form.has_variants}
+                onChange={(e) => {
+                  set('has_variants', e.target.checked);
+                  if (e.target.checked && form.variants.length === 0) {
+                    set('variants', [emptyVariantRow()]);
+                  }
+                }}
+              />
+              <span style={{ fontWeight: 600 }}>This product has variants</span>
+              <span style={{ color: '#94a3b8', fontWeight: 400 }}>(e.g. sizes, portions)</span>
+            </label>
+
+            {form.has_variants ? (
+              <>
+                <VariantsEditor rows={form.variants} onChange={(rows) => set('variants', rows)} />
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <Field label="Tax Rate (%)">
+                    <Input value={form.tax_rate} onChange={(v) => set('tax_rate', v)} type="number" placeholder="0" />
+                  </Field>
+                  <Field label="Sort Order">
+                    <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
+                  </Field>
+                </div>
+              </>
+            ) : (
+              <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <Field label="Price (MVR) *">
+                  <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
+                </Field>
+                <Field label="Tax Rate (%)">
+                  <Input value={form.tax_rate} onChange={(v) => set('tax_rate', v)} type="number" placeholder="0" />
+                </Field>
+                <Field label="Sort Order">
+                  <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
+                </Field>
+              </div>
+            )}
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Category">
                 <select
@@ -402,6 +451,127 @@ function ItemFormModal({
         </>
       )}
     </Modal>
+  );
+}
+
+// ── Variants editor ────────────────────────────────────────────────────────────
+
+function VariantsEditor({
+  rows, onChange,
+}: { rows: VariantRow[]; onChange: (rows: VariantRow[]) => void }) {
+  const update = (key: string, field: keyof VariantRow, val: unknown) =>
+    onChange(rows.map((r) => (r._key === key ? { ...r, [field]: val } : r)));
+
+  const remove = (key: string) => onChange(rows.filter((r) => r._key !== key));
+
+  const addRow = () => onChange([...rows, emptyVariantRow()]);
+
+  const headerStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em',
+  };
+  const cellStyle: React.CSSProperties = { padding: '4px 0' };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Variants</label>
+        <Btn variant="ghost" onClick={addRow} style={{ fontSize: 12, padding: '3px 10px' }}>+ Add variant</Btn>
+      </div>
+      {rows.length === 0 ? (
+        <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+          No variants yet. Click "+ Add variant" to start.
+        </p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 100 }}>Name *</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Price *</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Cost</th>
+                <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 90 }}>SKU</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Stock</th>
+                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Track</th>
+                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Active</th>
+                <th style={{ paddingBottom: 6, minWidth: 30 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row._key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={cellStyle}>
+                    <input
+                      value={row.name}
+                      onChange={(e) => update(row._key, 'name', e.target.value)}
+                      placeholder="e.g. Large"
+                      style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', fontSize: 12 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={row.price}
+                      onChange={(e) => update(row._key, 'price', parseFloat(e.target.value) || 0)}
+                      style={{ width: 68, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={row.cost ?? ''}
+                      onChange={(e) => update(row._key, 'cost', e.target.value !== '' ? parseFloat(e.target.value) : null)}
+                      placeholder="—"
+                      style={{ width: 68, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      value={row.sku ?? ''}
+                      onChange={(e) => update(row._key, 'sku', e.target.value || null)}
+                      placeholder="optional"
+                      style={{ width: 86, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="1"
+                      value={row.stock_qty ?? 0}
+                      onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
+                      disabled={!row.track_stock}
+                      style={{ width: 52, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!row.track_stock}
+                      onChange={(e) => update(row._key, 'track_stock', e.target.checked)}
+                      title="Track stock for this variant"
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={row.is_active}
+                      onChange={(e) => update(row._key, 'is_active', e.target.checked)}
+                      title="Active / visible"
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => remove(row._key)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+                      title="Remove variant"
+                    >×</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -602,6 +772,7 @@ export function MenuPage() {
     category_id: selectedCat != null ? String(selectedCat) : '',
     menu_group_id: '1',
     channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true },
+    has_variants: false, variants: [],
   };
 
   return (

@@ -10,6 +10,7 @@ use App\Models\Item;
 use App\Models\LowStockAlert;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Models\Variant;
 use Illuminate\Support\Facades\DB;
 
 class StockManagementService
@@ -204,6 +205,87 @@ class StockManagementService
         $alert->update([
             'sent' => true,
             'sent_at' => now(),
+        ]);
+    }
+
+    /**
+     * Idempotent deduction of variant stock (variants.stock_qty).
+     *
+     * Mirrors deductPreparedStock() but operates on a Variant row.
+     * Must be called inside an outer DB::transaction() with lockForUpdate() already
+     * held on the variant row.
+     */
+    public function deductVariantStock(
+        Variant $variant,
+        int $quantity,
+        string $idempotencyKey,
+        int $orderId,
+        ?int $userId = null,
+    ): void {
+        if (!$variant->track_stock) {
+            return;
+        }
+
+        $alreadyDeducted = StockMovement::where('idempotency_key', $idempotencyKey)->exists();
+        if ($alreadyDeducted) {
+            return;
+        }
+
+        $variant->decrement('stock_qty', $quantity);
+        $variant->refresh();
+
+        StockMovement::create([
+            'idempotency_key'   => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id'           => $userId,
+            'type'              => 'sale',
+            'quantity'          => -$quantity,
+            'balance_after'     => $variant->stock_qty,
+            'unit_cost'         => (float) ($variant->cost ?? 0),
+            'reference_type'    => 'variant',
+            'reference_id'      => $variant->id,
+            'notes'             => "Order #{$orderId} — variant stock deduction",
+        ]);
+    }
+
+    /**
+     * Idempotent restoration of variant stock (for cancellation / refund).
+     */
+    public function restoreVariantStock(
+        Variant $variant,
+        int $quantity,
+        string $idempotencyKey,
+        int $orderId,
+        ?int $userId = null,
+    ): void {
+        if (!$variant->track_stock) {
+            return;
+        }
+
+        $alreadyRestored = StockMovement::where('idempotency_key', $idempotencyKey)->exists();
+        if ($alreadyRestored) {
+            return;
+        }
+
+        $locked = Variant::lockForUpdate()->find($variant->id);
+        if (!$locked) {
+            return;
+        }
+
+        $locked->increment('stock_qty', $quantity);
+        $locked->refresh();
+
+        StockMovement::create([
+            'idempotency_key'   => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id'           => $userId,
+            'type'              => 'refund',
+            'quantity'          => $quantity,
+            'balance_after'     => $locked->stock_qty,
+            'unit_cost'         => (float) ($locked->cost ?? 0),
+            'reference_type'    => 'variant',
+            'reference_id'      => $locked->id,
+            'notes'             => "Order #{$orderId} — variant stock restore",
         ]);
     }
 

@@ -165,10 +165,21 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         {/* Price — visually dominant */}
         <div style={{ marginTop: 'auto', paddingTop: '0.375rem' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>MVR</span>
-            <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
-              {Number(item.base_price).toFixed(2)}
-            </span>
+            {item.has_variants && item.variants && item.variants.length > 0 ? (
+              <>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>From MVR</span>
+                <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
+                  {Math.min(...item.variants.filter((v) => v.is_active).map((v) => Number(v.price))).toFixed(2)}
+                </span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>MVR</span>
+                <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
+                  {Number(item.base_price).toFixed(2)}
+                </span>
+              </>
+            )}
           </div>
 
           {/* Quantity + add — only when available */}
@@ -186,6 +197,23 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
               aria-disabled="true"
             >
               Out of stock
+            </button>
+          ) : item.has_variants ? (
+            /* Variant products: clicking any button opens the modal for selection */
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
+              className="card-add-btn"
+              style={{
+                width: '100%', padding: '0.5rem',
+                background: 'var(--color-primary)', color: 'white',
+                border: 'none', borderRadius: 'var(--radius-lg)',
+                fontSize: '0.85rem', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+              aria-label={`Choose options for ${item.name}`}
+            >
+              Choose options
             </button>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -238,8 +266,8 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
             </div>
           )}
 
-          {/* Customise link if has modifiers */}
-          {!isUnavailable && item.modifiers && item.modifiers.length > 0 && (
+          {/* Customise link if has modifiers (only for non-variant products) */}
+          {!isUnavailable && !item.has_variants && item.modifiers && item.modifiers.length > 0 && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}

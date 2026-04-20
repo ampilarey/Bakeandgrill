@@ -12,6 +12,7 @@ export type DeliveryOrderPayload = {
   items: Array<{
     item_id: number;
     quantity: number;
+    variant_id?: number;
     modifiers?: Array<{ modifier_id: number }>;
   }>;
   delivery_address_line1: string;

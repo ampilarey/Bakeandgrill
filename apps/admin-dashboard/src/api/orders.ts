@@ -3,6 +3,7 @@ import { req } from './client';
 export type OrderItem = {
   id: number;
   item_name: string;
+  variant_name?: string | null;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -86,6 +87,7 @@ export type KdsTicket = {
   type: string;
   items: Array<{
     item_name: string;
+    variant_name?: string | null;
     quantity: number;
     modifiers?: Array<{ modifier_name: string }>;
   }>;

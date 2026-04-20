@@ -516,6 +516,16 @@ Route::middleware(['auth:sanctum', 'staff.token'])->prefix('waste-logs')->group(
     Route::post('/', [App\Http\Controllers\Api\WasteLogController::class, 'store']);
 });
 
+// ─── Item Variants ────────────────────────────────────────────────────────────
+
+// Admin: full CRUD for variants (requires menu.manage permission)
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
+    Route::get('/items/{itemId}/variants',              [App\Http\Controllers\Api\VariantController::class, 'index']);
+    Route::post('/items/{itemId}/variants',             [App\Http\Controllers\Api\VariantController::class, 'store']);
+    Route::patch('/items/{itemId}/variants/{id}',       [App\Http\Controllers\Api\VariantController::class, 'update']);
+    Route::delete('/items/{itemId}/variants/{id}',      [App\Http\Controllers\Api\VariantController::class, 'destroy']);
+});
+
 // ─── Item Photo Gallery ───────────────────────────────────────────────────────
 
 // Public: list photos for an item

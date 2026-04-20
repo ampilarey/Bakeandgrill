@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { getItemReviews, getItemPhotos, API_ORIGIN } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
+import type { Variant } from '@shared/types';
 
 type Props = {
   item: Item;
   selectedModifiers: Modifier[];
   onToggleModifier: (modifier: Modifier) => void;
-  onAddToCart: () => void;
+  onAddToCart: (variant?: Variant | null) => void;
   onClose: () => void;
 };
 
@@ -14,8 +15,16 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
 
+  const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
+  const [selectedVariant, setSelectedVariant] = useState<Variant | null>(() => {
+    if (!item.has_variants || activeVariants.length === 0) return null;
+    return activeVariants.length === 1 ? activeVariants[0] : null;
+  });
+
   const modifierTotal = selectedModifiers.reduce((s, m) => s + Number(m.price), 0);
-  const totalPrice = Number(item.base_price) + modifierTotal;
+  const basePrice = selectedVariant ? Number(selectedVariant.price) : Number(item.base_price);
+  const totalPrice = basePrice + modifierTotal;
+  const canAdd = !item.has_variants || selectedVariant !== null;
 
   const [reviews, setReviews] = useState<ItemReview[]>([]);
   const [avgRating, setAvgRating] = useState<number | null>(null);
@@ -86,7 +95,10 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
               {item.name}
             </h3>
             <p style={{ fontSize: '1.1rem', color: 'var(--color-primary)', fontWeight: 700 }}>
-              MVR {totalPrice.toFixed(2)}
+              {item.has_variants && !selectedVariant
+                ? `From MVR ${Math.min(...activeVariants.map((v) => Number(v.price))).toFixed(2)}`
+                : `MVR ${totalPrice.toFixed(2)}`
+              }
             </p>
           </div>
           <button
@@ -140,6 +152,48 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
           </div>
         )}
 
+        {/* Variant selector */}
+        {item.has_variants && activeVariants.length > 0 && (
+          <div style={{ marginBottom: '1.25rem' }}>
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-dark)', marginBottom: '0.75rem' }}>
+              Choose option <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {activeVariants.map((v) => {
+                const isSelected = selectedVariant?.id === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setSelectedVariant(v)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '999px',
+                      background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                      color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                      fontWeight: isSelected ? 700 : 500,
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                    }}
+                    aria-pressed={isSelected}
+                  >
+                    {v.name}
+                    <span style={{ marginLeft: '0.35rem', fontSize: '0.8rem', fontWeight: 600, color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                      MVR {Number(v.price).toFixed(2)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {!selectedVariant && (
+              <p style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '0.4rem' }}>Please select an option to continue.</p>
+            )}
+          </div>
+        )}
+
         {/* Modifiers */}
         {item.modifiers && item.modifiers.length > 0 ? (
           <div style={{ marginBottom: '1.5rem' }}>
@@ -189,22 +243,26 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
 
         <button
           ref={addRef}
-          onClick={onAddToCart}
+          onClick={() => onAddToCart(selectedVariant)}
+          disabled={!canAdd}
           className="modal-add-btn"
           style={{
             width: '100%',
             padding: '0.9rem',
-            background: 'var(--color-primary)',
+            background: canAdd ? 'var(--color-primary)' : '#cbd5e1',
             color: 'white',
             border: 'none',
             borderRadius: '12px',
             fontSize: '1rem',
             fontWeight: 700,
-            cursor: 'pointer',
+            cursor: canAdd ? 'pointer' : 'not-allowed',
             transition: 'background 0.15s',
           }}
         >
-          Add to Cart — MVR {totalPrice.toFixed(2)}
+          {canAdd
+            ? `Add to Cart — MVR ${totalPrice.toFixed(2)}`
+            : 'Select an option first'
+          }
         </button>
 
         {/* Customer reviews */}

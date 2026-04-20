@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOpeningHoursStatus, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
 import type { Category, Item, Modifier, OpeningHoursStatus } from '../api';
+import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { MenuCard } from '../components/MenuCard';
@@ -191,10 +192,11 @@ export function MenuPage() {
       return exists ? prev.filter((m) => m.id !== mod.id) : [...prev, mod];
     });
   };
-  const handleModalAdd = () => {
+  const handleModalAdd = (variant?: Variant | null) => {
     if (!selectedItem) return;
-    addItem(selectedItem, 1, selectedModifiers);
-    showToast(`${selectedItem.name} added to cart`);
+    addItem(selectedItem, 1, selectedModifiers, variant ?? null);
+    const label = variant ? `${selectedItem.name} (${variant.name})` : selectedItem.name;
+    showToast(`${label} added to cart`);
     setSelectedItem(null);
     setSelectedModifiers([]);
   };
