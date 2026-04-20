@@ -1,0 +1,9 @@
+{
+    "user": {
+        "id": "__VOLATILE__",
+        "name": "__VOLATILE__",
+        "email": "me-test@owner.com",
+        "role": "owner",
+        "permissions": "__VOLATILE__"
+    }
+}

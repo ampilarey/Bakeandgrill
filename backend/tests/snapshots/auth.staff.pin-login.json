@@ -1,0 +1,11 @@
+{
+    "message": "Login successful",
+    "token": "__VOLATILE__",
+    "user": {
+        "id": "__VOLATILE__",
+        "name": "__VOLATILE__",
+        "email": "contract-owner@test.com",
+        "role": "owner",
+        "permissions": "__VOLATILE__"
+    }
+}

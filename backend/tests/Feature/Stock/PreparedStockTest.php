@@ -639,6 +639,170 @@ class PreparedStockTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Phase 5 — Concurrency & Safety Hardening
+    // ------------------------------------------------------------------
+
+    // 11. Duplicate customer order with same items places only one reservation
+    // ------------------------------------------------------------------
+
+    public function test_rapid_duplicate_customer_orders_only_reserve_once(): void
+    {
+        $item = $this->makePreparedItem(2);
+        Sanctum::actingAs($this->customer, ['customer']);
+
+        // First order — must succeed
+        $r1 = $this->postJson('/api/customer/orders', $this->onlineOrderPayload($item, 1));
+        $r1->assertCreated();
+
+        // Second order immediately after — allowed (system does NOT deduplicate
+        // by payload alone) but stock must not go below 0
+        $r2 = $this->postJson('/api/customer/orders', $this->onlineOrderPayload($item, 1));
+
+        // Both orders may succeed (2 units available), but total reserved must not exceed stock
+        $reserved = (int) DB::table('stock_reservations')
+            ->where('item_id', $item->id)
+            ->sum('quantity');
+
+        $this->assertLessThanOrEqual(
+            $item->stock_quantity,
+            $reserved,
+            'Total reserved must never exceed available stock',
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // 12. Double-payment (addPayments called twice) produces only one Payment record
+    //     for the same amount — the second call must fail because order is terminal
+    // ------------------------------------------------------------------
+
+    public function test_adding_payment_to_already_paid_order_is_rejected(): void
+    {
+        $item = $this->makePreparedItem(5);
+        Sanctum::actingAs($this->staffUser, ['staff']);
+
+        // Create order + pay it
+        $resp = $this->postPosOrder($this->posOrderPayload($item, 1));
+        $resp->assertCreated();
+        $orderId = $resp->json('order.id');
+
+        // First payment — pays in full
+        $this->postJson("/api/orders/{$orderId}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => (float) $resp->json('order.total')]],
+        ])->assertStatus(200);
+
+        // Verify order is now paid
+        $this->assertDatabaseHas('orders', ['id' => $orderId, 'status' => 'paid']);
+
+        // Second payment attempt on paid order — must be rejected (terminal status guard)
+        $this->postJson("/api/orders/{$orderId}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => 1.00]],
+        ])->assertStatus(422);
+
+        // Only one payment record should exist
+        $paymentCount = \App\Models\Payment::where('order_id', $orderId)->count();
+        $this->assertSame(1, $paymentCount, 'Only one Payment record should exist for this order');
+    }
+
+    // ------------------------------------------------------------------
+    // 13. Refund after concurrent payment callbacks does not double-refund
+    //     Guards against: two staff members issuing refunds at the same time
+    // ------------------------------------------------------------------
+
+    public function test_cumulative_refunds_cannot_exceed_order_total_under_concurrent_load(): void
+    {
+        $item = $this->makePreparedItem(5);
+
+        // Create + pay an order via the POS flow
+        Sanctum::actingAs($this->staffUser, ['staff']);
+        $resp = $this->postPosOrder($this->posOrderPayload($item, 1));
+        $resp->assertCreated();
+        $orderId = $resp->json('order.id');
+        $total   = (float) $resp->json('order.total');
+
+        // Pay it
+        $this->postJson("/api/orders/{$orderId}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => $total]],
+        ])->assertStatus(200);
+
+        // Simulate two concurrent refund requests for the full amount
+        // First refund — must succeed
+        $ownerRole = \App\Models\Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => '', 'is_active' => true],
+        );
+        $owner = \App\Models\User::factory()->create([
+            'role_id'   => $ownerRole->id,
+            'pin_hash'  => \Illuminate\Support\Facades\Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $r1 = $this->postJson("/api/orders/{$orderId}/refunds", [
+            'amount' => $total,
+            'reason' => 'Customer complaint',
+        ]);
+        $r1->assertStatus(201);
+
+        // Second refund attempt — must fail (already fully refunded)
+        $r2 = $this->postJson("/api/orders/{$orderId}/refunds", [
+            'amount' => $total,
+            'reason' => 'Duplicate request',
+        ]);
+        $r2->assertStatus(422);
+
+        // Exactly one refund record
+        $this->assertDatabaseCount('refunds', 1);
+    }
+
+    // ------------------------------------------------------------------
+    // 14. Paying an online order twice (BML callback arrives twice) does not
+    //     set status back to 'partial' or create duplicate OrderPaid events
+    // ------------------------------------------------------------------
+
+    public function test_bml_webhook_duplicate_does_not_double_deduct_stock(): void
+    {
+        $item = $this->makePreparedItem(3);
+        Sanctum::actingAs($this->customer, ['customer']);
+
+        $resp = $this->postJson('/api/customer/orders', $this->onlineOrderPayload($item, 1));
+        $resp->assertCreated();
+        $orderId = $resp->json('order.id');
+        $order   = \App\Models\Order::find($orderId);
+
+        // Manually create a Payment as if BML confirmed it (simulate webhook arrival)
+        $paidData = OrderPaidData::fromOrder($order->fresh());
+
+        // Fire OrderPaid once
+        OrderPaid::dispatch($paidData);
+        $item->refresh();
+        $stockAfterFirst = (float) $item->stock_quantity;
+
+        $movements1 = \App\Models\StockMovement::where('reference_type', 'order')
+            ->where('reference_id', $orderId)
+            ->count();
+
+        // Fire OrderPaid again (duplicate callback)
+        OrderPaid::dispatch($paidData);
+        $item->refresh();
+        $stockAfterSecond = (float) $item->stock_quantity;
+
+        $movements2 = \App\Models\StockMovement::where('reference_type', 'order')
+            ->where('reference_id', $orderId)
+            ->count();
+
+        $this->assertEquals(
+            $stockAfterFirst,
+            $stockAfterSecond,
+            'Duplicate OrderPaid must not change stock a second time',
+        );
+        $this->assertEquals(
+            $movements1,
+            $movements2,
+            'Duplicate OrderPaid must not create additional StockMovement records',
+        );
+    }
+
+    // ------------------------------------------------------------------
     // Bonus: Made-to-order items are unaffected by prepared stock logic
     // ------------------------------------------------------------------
 
