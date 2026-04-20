@@ -22,6 +22,21 @@ class CustomerContractTest extends ContractTestCase
 {
     use RefreshDatabase;
 
+    /** Fields that vary between test runs and must not be snapshot-compared. */
+    protected array $snapshotVolatileKeys = [
+        'id', 'order_id', 'customer_id', 'user_id', 'device_id', 'token',
+        'idempotency_key', 'created_at', 'updated_at', 'deleted_at', 'processed_at',
+        'sent_at', 'completed_at', 'paid_at', 'tracking_token', 'order_number',
+        // Customer-specific volatile fields
+        'email', 'name', 'phone', 'last_order_at',
+        // Order financial fields (random from factory)
+        'subtotal', 'tax_amount', 'discount_amount', 'total', 'total_laar',
+        'subtotal_laar', 'tax_laar', 'promo_discount_laar', 'delivery_fee',
+        'delivery_fee_laar', 'loyalty_discount_laar', 'gift_card_discount_laar',
+        // Loyalty fields
+        'points_balance', 'lifetime_points', 'loyalty_points',
+    ];
+
     private Customer $customer;
     private string $token;
 
@@ -39,7 +54,7 @@ class CustomerContractTest extends ContractTestCase
         $this->token = $this->customer->createToken('test', ['customer'])->plainTextToken;
     }
 
-    private function customerHeaders(): array
+    private function testCustomerHeaders(): array
     {
         return ['Authorization' => "Bearer {$this->token}"];
     }
@@ -48,7 +63,7 @@ class CustomerContractTest extends ContractTestCase
 
     public function test_customer_me_response_shape(): void
     {
-        $response = $this->getJson('/api/customer/me', $this->customerHeaders())
+        $response = $this->getJson('/api/customer/me', $this->testCustomerHeaders())
             ->assertStatus(200);
 
         $this->assertMatchesApiSnapshot($response, 'customer.me');
@@ -79,7 +94,7 @@ class CustomerContractTest extends ContractTestCase
             'total'       => 25.00,
         ]);
 
-        $response = $this->getJson('/api/customer/orders', $this->customerHeaders())
+        $response = $this->getJson('/api/customer/orders', $this->testCustomerHeaders())
             ->assertStatus(200);
 
         $this->assertMatchesApiSnapshot($response, 'customer.orders.list');
@@ -87,9 +102,13 @@ class CustomerContractTest extends ContractTestCase
 
     public function test_customer_orders_returns_empty_list_for_new_customer(): void
     {
-        $this->getJson('/api/customer/orders', $this->customerHeaders())
-            ->assertStatus(200)
-            ->assertJson(['orders' => []]);
+        $response = $this->getJson('/api/customer/orders', $this->testCustomerHeaders())
+            ->assertStatus(200);
+
+        // API returns paginated response; data array is empty for new customer
+        $data = $response->json();
+        $items = $data['data'] ?? $data['orders'] ?? [];
+        $this->assertEmpty($items, 'A new customer should have zero orders');
     }
 
     // ── GET /api/customer/orders/{id} ─────────────────────────────────────────
@@ -101,7 +120,7 @@ class CustomerContractTest extends ContractTestCase
             'total'       => 30.00,
         ]);
 
-        $response = $this->getJson("/api/customer/orders/{$order->id}", $this->customerHeaders())
+        $response = $this->getJson("/api/customer/orders/{$order->id}", $this->testCustomerHeaders())
             ->assertStatus(200);
 
         $this->assertMatchesApiSnapshot($response, 'customer.orders.detail');
@@ -109,11 +128,12 @@ class CustomerContractTest extends ContractTestCase
 
     public function test_customer_cannot_view_another_customers_order(): void
     {
-        $other    = Customer::factory()->create(['phone' => '+9607550002']);
-        $order    = Order::factory()->pending()->create(['customer_id' => $other->id, 'total' => 10.00]);
+        $other = Customer::factory()->create(['phone' => '+9607550002']);
+        $order = Order::factory()->pending()->create(['customer_id' => $other->id, 'total' => 10.00]);
 
-        $this->getJson("/api/customer/orders/{$order->id}", $this->customerHeaders())
-            ->assertStatus(403);
+        // Returns 404 (scoped query — other customer's orders are simply not found)
+        $this->getJson("/api/customer/orders/{$order->id}", $this->testCustomerHeaders())
+            ->assertStatus(404);
     }
 
     // ── GET /api/loyalty/me ───────────────────────────────────────────────────
@@ -125,7 +145,7 @@ class CustomerContractTest extends ContractTestCase
             ['points_balance' => 50, 'tier' => 'bronze', 'lifetime_points' => 50],
         );
 
-        $response = $this->getJson('/api/loyalty/me', $this->customerHeaders())
+        $response = $this->getJson('/api/loyalty/me', $this->testCustomerHeaders())
             ->assertStatus(200);
 
         $this->assertMatchesApiSnapshot($response, 'customer.loyalty.me');

@@ -36,10 +36,10 @@ class StaffNotificationRoutingTest extends TestCase
 
     private function makeRole(string $slug): Role
     {
-        return Role::create(['name' => ucfirst($slug), 'slug' => $slug]);
+        return Role::firstOrCreate(['slug' => $slug], ['name' => ucfirst($slug)]);
     }
 
-    private function makeStaff(Role $role, string $phone): User
+    private function makeSmsStaff(Role $role, string $phone): User
     {
         return User::create([
             'name'      => 'Staff ' . $phone,
@@ -51,7 +51,7 @@ class StaffNotificationRoutingTest extends TestCase
         ]);
     }
 
-    private function makeOrder(string $type = 'takeaway'): Order
+    private function makeSmsOrder(string $type = 'takeaway'): Order
     {
         return Order::create([
             'order_number' => 'BG-TEST-' . uniqid(),
@@ -77,10 +77,10 @@ class StaffNotificationRoutingTest extends TestCase
     public function test_on_shift_staff_receives_notification(): void
     {
         $role = $this->makeRole('staff');
-        $staff = $this->makeStaff($role, '+9607100001');
+        $staff = $this->makeSmsStaff($role, '+9607100001');
         $this->putOnShift($staff, Carbon::now());
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
         $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
 
         $phones = $recipients->pluck('phone');
@@ -91,10 +91,10 @@ class StaffNotificationRoutingTest extends TestCase
     public function test_off_shift_staff_excluded(): void
     {
         $role = $this->makeRole('staff');
-        $staff = $this->makeStaff($role, '+9607200002');
+        $staff = $this->makeSmsStaff($role, '+9607200002');
         // No shift scheduled
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
         $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
 
         $phones = $recipients->pluck('phone');
@@ -105,7 +105,7 @@ class StaffNotificationRoutingTest extends TestCase
     public function test_staff_with_notifications_disabled_excluded(): void
     {
         $role = $this->makeRole('staff');
-        $staff = $this->makeStaff($role, '+9607300003');
+        $staff = $this->makeSmsStaff($role, '+9607300003');
         $this->putOnShift($staff, Carbon::now());
 
         StaffNotificationPref::create([
@@ -113,7 +113,7 @@ class StaffNotificationRoutingTest extends TestCase
             'notifications_enabled' => false,
         ]);
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
         $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
 
         $phones = $recipients->pluck('phone');
@@ -124,7 +124,7 @@ class StaffNotificationRoutingTest extends TestCase
     public function test_staff_order_type_filter(): void
     {
         $role = $this->makeRole('staff');
-        $staff = $this->makeStaff($role, '+9607400004');
+        $staff = $this->makeSmsStaff($role, '+9607400004');
         $this->putOnShift($staff, Carbon::now());
 
         StaffNotificationPref::create([
@@ -134,12 +134,12 @@ class StaffNotificationRoutingTest extends TestCase
         ]);
 
         // Test: takeaway order should NOT match
-        $takeawayOrder = $this->makeOrder('takeaway');
+        $takeawayOrder = $this->makeSmsOrder('takeaway');
         $recipients = $this->router->resolve($takeawayOrder, 'new_order', Carbon::now());
         $this->assertNotContains('+9607400004', $recipients->pluck('phone'));
 
         // Test: delivery order SHOULD match
-        $deliveryOrder = $this->makeOrder('delivery');
+        $deliveryOrder = $this->makeSmsOrder('delivery');
         $recipients = $this->router->resolve($deliveryOrder, 'new_order', Carbon::now());
         $this->assertContains('+9607400004', $recipients->pluck('phone'));
     }
@@ -148,7 +148,7 @@ class StaffNotificationRoutingTest extends TestCase
     public function test_fallback_used_when_no_staff_on_shift(): void
     {
         $role = $this->makeRole('manager');
-        $manager = $this->makeStaff($role, '+9607500005');
+        $manager = $this->makeSmsStaff($role, '+9607500005');
 
         StaffNotificationPref::create([
             'user_id'     => $manager->id,
@@ -156,7 +156,7 @@ class StaffNotificationRoutingTest extends TestCase
             'fallback_priority' => 10,
         ]);
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
         $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
 
         $this->assertNotEmpty($recipients);
@@ -179,7 +179,7 @@ class StaffNotificationRoutingTest extends TestCase
         ]);
         $this->putOnShift($staff, Carbon::now());
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
         $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
 
         $phones = $recipients->pluck('phone');
@@ -198,7 +198,7 @@ class StaffNotificationRoutingTest extends TestCase
             'active_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
         ]);
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
         $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
 
         $phones = $recipients->pluck('phone');
@@ -209,12 +209,12 @@ class StaffNotificationRoutingTest extends TestCase
     public function test_multiple_staff_on_shift_all_receive(): void
     {
         $role = $this->makeRole('staff');
-        $staff1 = $this->makeStaff($role, '+9607700007');
-        $staff2 = $this->makeStaff($role, '+9607700008');
+        $staff1 = $this->makeSmsStaff($role, '+9607700007');
+        $staff2 = $this->makeSmsStaff($role, '+9607700008');
         $this->putOnShift($staff1, Carbon::now());
         $this->putOnShift($staff2, Carbon::now());
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
         $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
 
         $phones = $recipients->pluck('phone');

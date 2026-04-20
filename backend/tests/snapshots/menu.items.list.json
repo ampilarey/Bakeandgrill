@@ -25,6 +25,7 @@
                 "slug": "default"
             },
             "channel_availabilities": null,
+            "has_variants": false,
             "variants": [],
             "modifiers": [],
             "availability": {

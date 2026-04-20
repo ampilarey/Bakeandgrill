@@ -158,8 +158,9 @@ class InvoiceCrudTest extends TestCase
             $this->ownerHeaders,
         )->assertStatus(201);
 
-        $this->assertEquals('credit_note', $response->json('credit_note.type'));
-        $this->assertEquals($invoice->id, $response->json('credit_note.parent_invoice_id'));
+        // The endpoint returns under 'invoice' key regardless of type
+        $this->assertEquals('credit_note', $response->json('invoice.type'));
+        $this->assertEquals($invoice->id, $response->json('invoice.parent_invoice_id'));
     }
 
     // ── PDF generation ────────────────────────────────────────────────────────

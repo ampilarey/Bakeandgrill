@@ -45,7 +45,8 @@
                     "is_combo": false,
                     "combo_discount_pct": null,
                     "store_id": null,
-                    "menu_group_id": 1
+                    "menu_group_id": 1,
+                    "has_variants": false
                 }
             ]
         }

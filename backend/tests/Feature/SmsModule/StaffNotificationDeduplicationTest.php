@@ -17,7 +17,7 @@ class StaffNotificationDeduplicationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeOrder(): Order
+    private function makeSmsOrder(): Order
     {
         return Order::create([
             'order_number' => 'BG-DEDUP-' . uniqid(),
@@ -31,20 +31,20 @@ class StaffNotificationDeduplicationTest extends TestCase
     /** Running the job twice for the same event+phone sends SMS only once */
     public function test_job_does_not_send_duplicate_for_same_idempotency_key(): void
     {
-        $mockSmsService = $this->createMock(SmsService::class);
-        $mockSmsService->expects($this->once())->method('send')->willReturn(
-            (function () {
-                $log = new \App\Models\SmsLog();
-                $log->id = 1;
-                $log->status = 'sent';
-                $log->sent_at = now();
+        // Create a real SmsLog so foreign-key constraints are satisfied
+        $smsLog = \App\Models\SmsLog::create([
+            'to'         => '+9607111111',
+            'message'    => 'Test message',
+            'type'       => 'staff_notification',
+            'status'     => 'sent',
+            'sent_at'    => now(),
+        ]);
 
-                return $log;
-            })()
-        );
+        $mockSmsService = $this->createMock(SmsService::class);
+        $mockSmsService->expects($this->once())->method('send')->willReturn($smsLog);
         $this->app->instance(SmsService::class, $mockSmsService);
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
 
         $job = new SendStaffNotificationJob(
             orderId: $order->id,
@@ -78,20 +78,16 @@ class StaffNotificationDeduplicationTest extends TestCase
     /** A log record is created when the job runs */
     public function test_log_record_created_on_dispatch(): void
     {
-        $mockSmsService = $this->createMock(SmsService::class);
-        $mockSmsService->method('send')->willReturn(
-            (function () {
-                $log = new \App\Models\SmsLog();
-                $log->id = 1;
-                $log->status = 'sent';
-                $log->sent_at = now();
+        $smsLog2 = \App\Models\SmsLog::create([
+            'to' => '+9607222222', 'message' => 'New order notification',
+            'type' => 'staff_notification', 'status' => 'sent', 'sent_at' => now(),
+        ]);
 
-                return $log;
-            })()
-        );
+        $mockSmsService = $this->createMock(SmsService::class);
+        $mockSmsService->method('send')->willReturn($smsLog2);
         $this->app->instance(SmsService::class, $mockSmsService);
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
 
         $job = new SendStaffNotificationJob(
             orderId: $order->id,
@@ -116,19 +112,16 @@ class StaffNotificationDeduplicationTest extends TestCase
     /** Fallback_used flag is stored correctly */
     public function test_fallback_flag_stored_in_log(): void
     {
-        $mockSmsService = $this->createMock(SmsService::class);
-        $mockSmsService->method('send')->willReturn(
-            (function () {
-                $log = new \App\Models\SmsLog();
-                $log->id = 2;
-                $log->status = 'sent';
+        $smsLog3 = \App\Models\SmsLog::create([
+            'to' => '+9607333333', 'message' => 'Fallback alert',
+            'type' => 'staff_notification', 'status' => 'sent', 'sent_at' => now(),
+        ]);
 
-                return $log;
-            })()
-        );
+        $mockSmsService = $this->createMock(SmsService::class);
+        $mockSmsService->method('send')->willReturn($smsLog3);
         $this->app->instance(SmsService::class, $mockSmsService);
 
-        $order = $this->makeOrder();
+        $order = $this->makeSmsOrder();
 
         $job = new SendStaffNotificationJob(
             orderId: $order->id,

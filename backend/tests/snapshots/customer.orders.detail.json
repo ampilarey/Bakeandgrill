@@ -1,0 +1,24 @@
+{
+    "order": {
+        "id": "__VOLATILE__",
+        "order_number": "__VOLATILE__",
+        "status": "pending",
+        "type": "takeaway",
+        "total": "__VOLATILE__",
+        "total_laar": "__VOLATILE__",
+        "subtotal": "__VOLATILE__",
+        "delivery_fee": "__VOLATILE__",
+        "promo_discount_laar": "__VOLATILE__",
+        "loyalty_discount_laar": "__VOLATILE__",
+        "gift_card_discount_laar": "__VOLATILE__",
+        "referral_discount_laar": 0,
+        "paid_at": null,
+        "created_at": "__VOLATILE__",
+        "delivery_address_line1": null,
+        "delivery_address_line2": null,
+        "delivery_island": null,
+        "delivery_contact_name": null,
+        "delivery_contact_phone": null,
+        "delivery_notes": null
+    }
+}

@@ -1,0 +1,41 @@
+{
+    "data": [
+        {
+            "id": "__VOLATILE__",
+            "invoice_number": "__VOLATILE__",
+            "type": "sale",
+            "status": "draft",
+            "recipient_name": null,
+            "recipient_phone": null,
+            "recipient_email": null,
+            "recipient_address": null,
+            "subtotal": 20,
+            "tax_amount": 0,
+            "discount_amount": 0,
+            "total": 20,
+            "tax_rate_bp": 0,
+            "issue_date": "2026-04-20",
+            "due_date": null,
+            "paid_at": null,
+            "payment_method": null,
+            "payment_reference": null,
+            "notes": null,
+            "terms": null,
+            "pdf_path": null,
+            "order_id": null,
+            "purchase_id": null,
+            "parent_invoice_id": null,
+            "parent_invoice": null,
+            "customer": null,
+            "supplier": null,
+            "created_by": "__VOLATILE__",
+            "items": [],
+            "created_at": "__VOLATILE__"
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "total": 1
+    }
+}

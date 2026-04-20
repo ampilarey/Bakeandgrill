@@ -1,0 +1,12 @@
+{
+    "customer": {
+        "id": "__VOLATILE__",
+        "phone": "__VOLATILE__",
+        "name": "__VOLATILE__",
+        "email": "__VOLATILE__",
+        "loyalty_points": "__VOLATILE__",
+        "tier": "bronze",
+        "preferred_language": "en",
+        "last_order_at": null
+    }
+}

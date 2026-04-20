@@ -13,6 +13,7 @@
             "name": "Grills",
             "name_dv": null
         },
+        "has_variants": false,
         "variants": [],
         "modifiers": []
     }

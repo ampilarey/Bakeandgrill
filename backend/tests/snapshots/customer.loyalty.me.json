@@ -1,0 +1,13 @@
+{
+    "account": {
+        "points_balance": "__VOLATILE__",
+        "points_held": 0,
+        "available_points": 50,
+        "lifetime_points": "__VOLATILE__",
+        "tier": "bronze"
+    },
+    "rates": {
+        "earn_per_mvr": 1,
+        "discount_per_point_laar": 1
+    }
+}

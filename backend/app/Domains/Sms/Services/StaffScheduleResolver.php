@@ -17,9 +17,9 @@ class StaffScheduleResolver
     {
         return StaffSchedule::query()
             ->where('user_id', $user->id)
-            ->where('date', $at->toDateString())
-            ->where('shift_start', '<=', $at->format('H:i'))
-            ->where('shift_end', '>=', $at->format('H:i'))
+            ->whereDate('date', $at->toDateString())
+            ->where('shift_start', '<=', $at->format('H:i:s'))
+            ->where('shift_end', '>=', $at->format('H:i:s'))
             ->exists();
     }
 
@@ -29,9 +29,9 @@ class StaffScheduleResolver
     public function staffOnShiftAt(Carbon $at): \Illuminate\Support\Collection
     {
         $schedules = StaffSchedule::query()
-            ->where('date', $at->toDateString())
-            ->where('shift_start', '<=', $at->format('H:i'))
-            ->where('shift_end', '>=', $at->format('H:i'))
+            ->whereDate('date', $at->toDateString())
+            ->where('shift_start', '<=', $at->format('H:i:s'))
+            ->where('shift_end', '>=', $at->format('H:i:s'))
             ->with('user')
             ->get();
 

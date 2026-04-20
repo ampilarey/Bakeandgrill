@@ -33,7 +33,7 @@ class StaffScheduleNotificationTest extends TestCase
         \App\Models\SiteSetting::set('staff_sms_shift_reminder_enabled', '1');
     }
 
-    private function makeStaff(string $phone): User
+    private function makeSmsStaff(string $phone): User
     {
         $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff']);
 
@@ -50,7 +50,7 @@ class StaffScheduleNotificationTest extends TestCase
     /** Creating a schedule creates a shift reminder scheduled message */
     public function test_creating_schedule_creates_shift_reminder(): void
     {
-        $staff = $this->makeStaff('+9607100100');
+        $staff = $this->makeSmsStaff('+9607100100');
         $tomorrow = Carbon::tomorrow();
 
         StaffSchedule::create([
@@ -78,7 +78,7 @@ class StaffScheduleNotificationTest extends TestCase
     /** Updating a schedule cancels old reminder and creates new one */
     public function test_updating_schedule_replaces_reminder(): void
     {
-        $staff = $this->makeStaff('+9607200200');
+        $staff = $this->makeSmsStaff('+9607200200');
         $tomorrow = Carbon::tomorrow();
 
         $schedule = StaffSchedule::create([
@@ -109,7 +109,7 @@ class StaffScheduleNotificationTest extends TestCase
     /** Staff member with notifications disabled does not get schedule assigned SMS */
     public function test_staff_with_notifications_disabled_skips_schedule_sms(): void
     {
-        $staff = $this->makeStaff('+9607300300');
+        $staff = $this->makeSmsStaff('+9607300300');
 
         StaffNotificationPref::create([
             'user_id'               => $staff->id,

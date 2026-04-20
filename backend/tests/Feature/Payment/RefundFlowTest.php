@@ -60,7 +60,7 @@ class RefundFlowTest extends TestCase
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private function makePaidOrder(float $total = 50.00, ?int $totalLaar = null): Order
+    private function makeRefundableOrder(float $total = 50.00, ?int $totalLaar = null): Order
     {
         $customer = $this->makeCustomer();
 
@@ -73,7 +73,7 @@ class RefundFlowTest extends TestCase
         ]);
     }
 
-    private function authHeader(User $user): array
+    protected function authHeader(User $user): array
     {
         return ['Authorization' => 'Bearer ' . $user->createToken('test', ['staff'])->plainTextToken];
     }
@@ -82,7 +82,7 @@ class RefundFlowTest extends TestCase
 
     public function test_owner_can_create_refund_on_paid_order(): void
     {
-        $order = $this->makePaidOrder(50.00);
+        $order = $this->makeRefundableOrder(50.00);
 
         $response = $this->postJson(
             "/api/orders/{$order->id}/refunds",
@@ -104,7 +104,7 @@ class RefundFlowTest extends TestCase
 
     public function test_refund_requires_positive_amount(): void
     {
-        $order = $this->makePaidOrder(50.00);
+        $order = $this->makeRefundableOrder(50.00);
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
@@ -117,7 +117,7 @@ class RefundFlowTest extends TestCase
 
     public function test_refund_amount_cannot_exceed_order_total(): void
     {
-        $order = $this->makePaidOrder(50.00);
+        $order = $this->makeRefundableOrder(50.00);
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
@@ -128,7 +128,7 @@ class RefundFlowTest extends TestCase
 
     public function test_cumulative_refunds_cannot_exceed_order_total(): void
     {
-        $order = $this->makePaidOrder(50.00);
+        $order = $this->makeRefundableOrder(50.00);
 
         // First partial refund — OK
         $this->postJson(
@@ -149,7 +149,7 @@ class RefundFlowTest extends TestCase
 
     public function test_partial_refund_does_not_mark_order_as_refunded(): void
     {
-        $order = $this->makePaidOrder(100.00);
+        $order = $this->makeRefundableOrder(100.00);
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
@@ -165,7 +165,7 @@ class RefundFlowTest extends TestCase
 
     public function test_full_refund_marks_order_as_refunded(): void
     {
-        $order = $this->makePaidOrder(50.00);
+        $order = $this->makeRefundableOrder(50.00);
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
@@ -217,7 +217,7 @@ class RefundFlowTest extends TestCase
 
     public function test_unauthenticated_cannot_create_refund(): void
     {
-        $order = $this->makePaidOrder(50.00);
+        $order = $this->makeRefundableOrder(50.00);
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
@@ -228,7 +228,7 @@ class RefundFlowTest extends TestCase
     public function test_customer_token_cannot_create_refund(): void
     {
         $customer = $this->makeCustomer();
-        $order    = $this->makePaidOrder();
+        $order    = $this->makeRefundableOrder();
         $token    = $customer->createToken('test', ['customer'])->plainTextToken;
 
         $this->postJson(

@@ -59,7 +59,7 @@ class InventoryDeductionTest extends TestCase
         return $item;
     }
 
-    private function makeOrder(\App\Models\Item $item, int $qty = 2): Order
+    private function makeInventoryOrder(\App\Models\Item $item, int $qty = 2): Order
     {
         $customer = $this->makeCustomer();
         $order = Order::factory()->paid()->create(['customer_id' => $customer->id, 'total' => $item->base_price * $qty]);
@@ -87,7 +87,7 @@ class InventoryDeductionTest extends TestCase
     {
         $inventoryItem = $this->makeInventoryItem(100);
         $menuItem      = $this->makeItemWithRecipe($inventoryItem, quantityPerUnit: 0.5);
-        $order         = $this->makeOrder($menuItem, qty: 2);
+        $order         = $this->makeInventoryOrder($menuItem, qty: 2);
 
         $this->fireOrderPaid($order);
 
@@ -118,7 +118,7 @@ class InventoryDeductionTest extends TestCase
     {
         $inventoryItem = $this->makeInventoryItem(100);
         $menuItem      = $this->makeItemWithRecipe($inventoryItem, 1.0);
-        $order         = $this->makeOrder($menuItem, 1);
+        $order         = $this->makeInventoryOrder($menuItem, 1);
 
         // Fire twice — second run must be a no-op
         $this->fireOrderPaid($order);
@@ -164,7 +164,7 @@ class InventoryDeductionTest extends TestCase
     {
         $inventoryItem = $this->makeInventoryItem(50);
         $menuItem      = $this->makeItemWithRecipe($inventoryItem, 2.0);
-        $order         = $this->makeOrder($menuItem, 1);
+        $order         = $this->makeInventoryOrder($menuItem, 1);
 
         $this->fireOrderPaid($order);
 
