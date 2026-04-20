@@ -6,8 +6,7 @@
  * Each test injects the token via localStorage (no further API calls).
  */
 import { test, expect, type Page } from '@playwright/test';
-
-const ADMIN_PIN = process.env.ADMIN_PIN ?? '1121';
+import { ADMIN_PIN } from '../fixtures/auth';
 
 // Run all tests serially so we share one token and don't exhaust rate limit
 test.describe.configure({ mode: 'serial' });

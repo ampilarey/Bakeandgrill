@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Globe, Shield, Smartphone, Link2 } from 'lucide-react';
 import { Button, Card } from '../components/ui';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
@@ -97,15 +98,16 @@ function DevicesSettings() {
 
 // ─── Integrations sub-page ────────────────────────────────────────────────────
 function IntegrationsSettings() {
+  const navigate = useNavigate();
   const integrations = [
-    { label: 'Xero Accounting', desc: 'Sync invoices and expenses to Xero.', href: '/admin/xero', icon: '📊' },
-    { label: 'Webhooks', desc: 'Send real-time event payloads to external services.', href: '/admin/webhooks', icon: '🔗' },
-    { label: 'SMS Campaigns', desc: 'Send bulk SMS and manage campaigns.', href: '/admin/sms', icon: '💬' },
+    { label: 'Xero Accounting', desc: 'Sync invoices and expenses to Xero.', path: '/xero', icon: '📊' },
+    { label: 'Webhooks', desc: 'Send real-time event payloads to external services.', path: '/webhooks', icon: '🔗' },
+    { label: 'SMS Campaigns', desc: 'Send bulk SMS and manage campaigns.', path: '/sms', icon: '💬' },
   ];
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {integrations.map((intg) => (
-        <Card key={intg.href}>
+        <Card key={intg.path}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 24 }}>{intg.icon}</span>
@@ -114,7 +116,7 @@ function IntegrationsSettings() {
                 <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E' }}>{intg.desc}</p>
               </div>
             </div>
-            <Button variant="secondary" onClick={() => window.location.href = intg.href}>
+            <Button variant="secondary" onClick={() => navigate(intg.path)}>
               Open →
             </Button>
           </div>

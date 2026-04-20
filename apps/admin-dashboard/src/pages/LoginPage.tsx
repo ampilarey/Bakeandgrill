@@ -1,7 +1,11 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { pinLogin, type StaffUser } from '../api';
 
-export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUser) => void }) {
+export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUser, returnTo?: string) => void }) {
+  const location = useLocation();
+  const returnTo = (location.state as { from?: string } | null)?.from;
+
   const [username, setUsername] = useState('');
   const [pin, setPin]           = useState('');
   const [error, setError]       = useState('');
@@ -14,7 +18,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
     try {
       const res = await pinLogin(username.trim(), pin);
       localStorage.setItem('admin_token', res.token);
-      onLogin(res.token, res.user);
+      onLogin(res.token, res.user, returnTo);
     } catch (e) {
       setError((e as Error).message);
       setPin('');

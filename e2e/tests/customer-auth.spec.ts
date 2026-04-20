@@ -11,11 +11,10 @@
 import { test, expect, type Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import { STORAGE_STATE_PATH } from '../fixtures/auth';
 
-const TEST_PHONE         = process.env.TEST_PHONE         ?? '7972434';
-const TEST_PASSWORD      = process.env.TEST_PASSWORD      ?? '';
-const STORAGE_STATE_PATH  = path.resolve(__dirname, '../.auth/customer.json');
-const ORDER_APP_ORIGIN    = 'https://test.bakeandgrill.mv';
+const TEST_PHONE    = process.env.TEST_PHONE    ?? '7972434';
+const TEST_PASSWORD = process.env.TEST_PASSWORD ?? '';
 
 // ── Helper: normalise phone (add +960 prefix if not present) ──────────────
 function normalisePhone(raw: string): string {

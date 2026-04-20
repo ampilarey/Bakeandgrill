@@ -6,8 +6,7 @@
  * We run serially and limit PIN API calls to 2 (wrong + correct) to stay safe.
  */
 import { test, expect, type Page } from '@playwright/test';
-
-const ADMIN_PIN = process.env.ADMIN_PIN ?? '1121';
+import { ADMIN_PIN } from '../fixtures/auth';
 
 // Run all tests in this file sequentially to preserve rate-limit budget
 test.describe.configure({ mode: 'serial' });

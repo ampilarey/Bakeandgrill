@@ -205,8 +205,10 @@ export function Layout() {
                   }}
                 >
                   {[
-                    { to: '/hours',   label: '🕐  Hours' },
-                    { to: '/contact', label: '📞  Contact' },
+                    { to: '/hours',        label: '🕐  Hours' },
+                    { to: '/contact',      label: '📞  Contact' },
+                    { to: '/about',        label: 'ℹ️  About Us' },
+                    { to: '/reservations', label: '🪑  Reservations' },
                   ].map(({ to, label }) => (
                     <Link
                       key={to}
@@ -334,6 +336,8 @@ export function Layout() {
             <a href="/">Home</a>
             <Link to="/menu">Order Online</Link>
             <Link to="/pre-order">Pre-Order (Events)</Link>
+            <Link to="/reservations">Reservations</Link>
+            <Link to="/about">About Us</Link>
             <Link to="/order-history">Order History</Link>
             <Link to="/account">My Account</Link>
             <Link to="/hours">Opening Hours</Link>
@@ -355,7 +359,7 @@ export function Layout() {
             <a href={phoneTel}>📞 {phone}</a>
             <a href={`mailto:${email}`}>✉ {email}</a>
             <div className="order-footer-legal">
-              <Link to="/privacy">Privacy Policy</Link>
+              <a href="/privacy">Privacy Policy</a>
               <a href="/terms">Terms &amp; Conditions</a>
               <a href="/refund">Refund Policy</a>
               <a href="/admin" className="order-footer-staff">Staff Dashboard</a>

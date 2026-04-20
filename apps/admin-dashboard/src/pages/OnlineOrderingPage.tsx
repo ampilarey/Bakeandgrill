@@ -324,7 +324,7 @@ export default function OnlineOrderingPage() {
         <p style={{ fontSize: 13, color: '#6B5D4F', lineHeight: 1.6 }}>
           To set daily open/close times for online ordering, edit the{' '}
           <strong>online_ordering_schedule</strong> key in{' '}
-          <a href="/settings" style={{ color: '#D4813A', textDecoration: 'underline' }}>
+          <a href="/admin/settings" style={{ color: '#D4813A', textDecoration: 'underline' }}>
             Settings → Online Ordering
           </a>.
           The JSON format is:{' '}

@@ -17,9 +17,20 @@ async function collectConsoleErrors(page: Page) {
 }
 
 async function assertNoServerError(page: Page) {
-  const status = await page.evaluate(() => document.title);
-  expect(status).not.toContain('500');
-  expect(status).not.toContain('Error');
+  // Check page title for server error markers
+  const title = await page.evaluate(() => document.title);
+  expect(title).not.toContain('500');
+  expect(title).not.toContain('Error');
+
+  // Check HTTP status of the current page URL
+  const response = await page.request.get(page.url()).catch(() => null);
+  if (response) {
+    expect(response.status(), `${page.url()} returned HTTP ${response.status()}`).toBeLessThan(500);
+  }
+
+  // Check for Laravel/PHP error output in body
+  const bodyText = await page.evaluate(() => document.body?.innerText ?? '');
+  expect(bodyText).not.toMatch(/Whoops, something went wrong|SQLSTATE|Call to undefined|syntax error/i);
 }
 
 // ── API health ──────────────────────────────────────────────────────────────

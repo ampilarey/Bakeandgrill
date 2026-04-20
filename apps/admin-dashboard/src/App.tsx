@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { getMe, logout as apiLogout, type StaffUser } from './api';
 import { ToastProvider } from './components/ui';
 import { Layout } from './components/Layout';
@@ -57,7 +57,8 @@ function AuthGuard({
   user: StaffUser | null;
   children: React.ReactNode;
 }) {
-  if (!user) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return <>{children}</>;
 }
 
@@ -102,9 +103,9 @@ export default function App() {
       .finally(() => setChecking(false));
   }, []);
 
-  const handleLogin = (_token: string, staffUser: StaffUser) => {
+  const handleLogin = (_token: string, staffUser: StaffUser, returnTo?: string) => {
     setUser(staffUser);
-    navigate('/orders');
+    navigate(returnTo ?? '/dashboard');
   };
 
   const handleLogout = async () => {

@@ -3,6 +3,7 @@
  * Tests empty submits, boundary values, and bad inputs.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { ADMIN_PIN } from '../fixtures/auth';
 
 // ── Customer login page ────────────────────────────────────────────────────
 test.describe('Customer login validation', () => {
@@ -57,9 +58,8 @@ test.describe('Checkout validation (unauthenticated)', () => {
     // Clear localStorage first
     await page.goto('/order/');
     await page.evaluate(() => {
-      localStorage.removeItem('cart');
-      localStorage.removeItem('bake_cart');
-      // Common cart key patterns
+      localStorage.removeItem('bakegrill_cart');
+      // Remove any legacy cart keys too
       for (const key of Object.keys(localStorage)) {
         if (key.toLowerCase().includes('cart')) localStorage.removeItem(key);
       }
@@ -85,7 +85,7 @@ test.describe('Admin promotions validation', () => {
     // Try to get a token via PIN login API
     const page = await browser.newPage();
     const res = await page.request.post('/api/auth/staff/pin-login', {
-      data: { pin: process.env.ADMIN_PIN ?? '1111' },
+      data: { pin: ADMIN_PIN },
     });
     if (res.ok()) {
       const body = await res.json() as { token?: string };

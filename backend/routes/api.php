@@ -125,8 +125,8 @@ Route::prefix('auth/customer')
             ->middleware('throttle:5,10');
     });
 
-// Logout is available to both staff and customer tokens
-Route::middleware('auth:sanctum')->post('/auth/logout', [StaffAuthController::class, 'logout']);
+// Staff logout — requires a staff Sanctum token
+Route::middleware(['auth:sanctum', 'staff.token'])->post('/auth/logout', [StaffAuthController::class, 'logout']);
 
 // Customer API logout — revokes the current Sanctum token
 Route::middleware(['auth:sanctum', 'customer.token'])->post('/auth/customer/logout', [CustomerAuthController::class, 'logout']);
@@ -740,6 +740,8 @@ Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function
 });
 
 // ─── System Health ─────────────────────────────────────────────────────────
+// Canonical: GET /api/health (see top of file). This alias is kept for any
+// external monitors that may reference it — prefer /api/health for new usage.
 Route::get('/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
 
 // Protected admin health — returns full details for internal monitoring

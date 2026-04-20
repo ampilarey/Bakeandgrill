@@ -164,9 +164,13 @@ class PaymentController extends Controller
             }
         }
 
-        return redirect(
-            config('frontend.order_status_url') . '/' . $orderId . '?payment=' . $state,
-        );
+        $baseUrl = config('frontend.order_status_url');
+        if (empty($baseUrl)) {
+            \Illuminate\Support\Facades\Log::error('BML return: frontend.order_status_url is not configured — using fallback URL');
+            $baseUrl = '/order/orders';
+        }
+
+        return redirect(rtrim($baseUrl, '/') . '/' . $orderId . '?payment=' . $state);
     }
 
     /**

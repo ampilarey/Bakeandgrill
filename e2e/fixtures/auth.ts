@@ -9,8 +9,9 @@ import fs from 'fs';
 
 export const STORAGE_STATE_PATH = path.resolve(__dirname, '../.auth/customer.json');
 
-const ADMIN_PIN   = process.env.ADMIN_PIN   ?? '1111';
-const TEST_PHONE  = process.env.TEST_PHONE  ?? '7972434';
+/** Single source of truth for the admin PIN used in all E2E tests. */
+export const ADMIN_PIN  = process.env.ADMIN_PIN  ?? '1121';
+const TEST_PHONE        = process.env.TEST_PHONE ?? '7972434';
 
 /** Click each digit of a PIN on the admin numpad. */
 export async function adminLogin(page: Page): Promise<void> {
@@ -25,11 +26,6 @@ export async function adminLogin(page: Page): Promise<void> {
 
   // After entering PIN, dashboard should load
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
-}
-
-/** Returns true if the customer auth storage state file already exists. */
-export function customerAuthExists(): boolean {
-  return fs.existsSync(STORAGE_STATE_PATH);
 }
 
 /** Returns the phone number used for testing. */
