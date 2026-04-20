@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -42,7 +43,20 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        $result = $this->paymentService->initiateBmlPayment($order);
+        try {
+            $result = $this->paymentService->initiateBmlPayment($order);
+        } catch (\RuntimeException $e) {
+            Log::error('PaymentController: BML payment initiation failed', [
+                'order_id'   => $order->id,
+                'customer_id' => $order->customer_id,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Payment gateway unavailable. Please try again in a moment or contact us for help.',
+                'code'    => 'gateway_error',
+            ], 503);
+        }
 
         // Hold the order in payment_pending until BML webhook confirms.
         // Kitchen (KDS/admin) should not see it until payment is confirmed.
@@ -97,6 +111,17 @@ class PaymentController extends Controller
             );
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            Log::error('PaymentController: BML partial payment initiation failed', [
+                'order_id'   => $order->id,
+                'amount'     => $validated['amount'],
+                'error'      => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Payment gateway unavailable. Please try again in a moment or contact us for help.',
+                'code'    => 'gateway_error',
+            ], 503);
         }
 
         // Hold the order in payment_pending until BML webhook confirms payment,
