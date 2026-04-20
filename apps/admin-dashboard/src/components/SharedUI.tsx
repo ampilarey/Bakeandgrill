@@ -134,7 +134,6 @@ export function Btn({ variant = 'primary', small, children, style, ...rest }: Bt
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
         minHeight: small ? '2rem' : '2.75rem',
-        height: small ? '2rem' : '2.75rem',
         padding: small ? '0 0.75rem' : '0 1rem',
         borderRadius: 10, fontWeight: 600,
         fontSize: small ? '0.8125rem' : '0.875rem',
@@ -457,6 +456,7 @@ export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; clo
       onClick={close}
     >
       <div
+        className="modal-container"
         style={{
           background: '#fff', borderRadius: 14, padding: '1.75rem',
           maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)',

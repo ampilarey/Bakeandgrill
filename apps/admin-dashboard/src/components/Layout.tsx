@@ -121,7 +121,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
           <button
             onClick={() => setMoreOpen(true)}
             style={{
-              width: 36, height: 36, borderRadius: 10,
+              width: 44, height: 44, borderRadius: 10,
               border: 'none', background: '#F8F6F3',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', color: '#6B5D4F', flexShrink: 0,
