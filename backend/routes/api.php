@@ -105,11 +105,13 @@ Route::prefix('auth/customer')
 
         // New: check if phone exists and has a password
         Route::post('/check-phone', [CustomerAuthController::class, 'checkPhone'])
-            ->middleware('throttle:10,1');
+            ->middleware('throttle:30,1');
 
         // New: password-based login (no SMS cost for returning customers)
+        // Route-level throttle is intentionally lenient — the controller uses a
+        // tighter per-phone+IP RateLimiter so shared carrier IPs don't cause false lockouts.
         Route::post('/login', [CustomerAuthController::class, 'passwordLogin'])
-            ->middleware('throttle:5,5');
+            ->middleware('throttle:30,1');
 
         // New: check if already authenticated via session cookie
         // React app calls this on mount to auto-login customers from Blade session
