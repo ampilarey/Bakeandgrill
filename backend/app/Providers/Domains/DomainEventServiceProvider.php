@@ -35,6 +35,7 @@ use App\Domains\Notifications\Listeners\SendPaymentConfirmationListener;
 use App\Domains\Reservations\Listeners\SendReservationConfirmationListener;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Shifts\Events\ShiftOpened;
+use App\Domains\Sms\Listeners\SendNewCustomerNotificationListener;
 use App\Domains\Sms\Listeners\SendStaffOrderNotificationListener;
 use App\Domains\Webhooks\Listeners\DispatchWebhookOnDomainEvent;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider;
@@ -111,6 +112,7 @@ class DomainEventServiceProvider extends EventServiceProvider
 
         CustomerCreated::class => [
             DispatchWebhookOnDomainEvent::class,
+            SendNewCustomerNotificationListener::class,
         ],
 
         // Fires on every status change — real-time SSE and push notifications

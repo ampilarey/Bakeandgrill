@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RotateCcw, Send, AlertTriangle, CheckCircle, Truck, Bell } from 'lucide-react';
+import { RotateCcw, Send, AlertTriangle, CheckCircle, Truck, Bell, UserPlus } from 'lucide-react';
 import {
   getSiteSettings, updateSiteSettings,
   fetchStaffNotificationLogs, resendStaffNotification,
@@ -22,6 +22,7 @@ const EVENTS: EventConfig[] = [
   { key: 'staff_sms_no_staff_found_enabled', label: 'No Staff Found (Fallback)', description: 'Send alert to fallback contact when no matching staff is on shift.', icon: <AlertTriangle size={14} /> },
   { key: 'staff_sms_schedule_assigned_enabled', label: 'Schedule Assigned', description: 'SMS staff when a new shift is assigned to them.', icon: <Bell size={14} /> },
   { key: 'staff_sms_shift_reminder_enabled', label: 'Shift Reminder', description: 'Send a reminder 1 hour before each shift.', icon: <Bell size={14} /> },
+  { key: 'staff_sms_new_customer_enabled', label: 'New Customer Registered', description: 'Notify staff when a new customer registers online or via POS.', icon: <UserPlus size={14} /> },
 ];
 
 const STATUS_COLOR: Record<string, string> = { sent: 'green', failed: 'red', queued: 'orange' };
