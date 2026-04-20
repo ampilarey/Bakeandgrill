@@ -21,16 +21,23 @@ export default defineConfig({
   },
 
   projects: [
-    // Desktop Chromium
+    // Desktop Chromium — runs all specs except mobile-only and accessibility
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: ['**/mobile-ordering.spec.ts'],
     },
-    // iPhone 14 (mobile)
+    // iPhone 14 (mobile) — runs mobile-specific specs
     {
       name: 'mobile',
       use: { ...devices['iPhone 14'] },
-      testMatch: '**/mobile.spec.ts',
+      testMatch: ['**/mobile.spec.ts', '**/mobile-ordering.spec.ts'],
+    },
+    // Accessibility — desktop Chromium, axe-core scans
+    {
+      name: 'accessibility',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/accessibility.spec.ts',
     },
   ],
 
