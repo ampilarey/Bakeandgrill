@@ -113,6 +113,43 @@ for (const [url, heading] of publicPages) {
   });
 }
 
+// ── Order app — additional React pages ────────────────────────────────────
+test('order app /order/about loads', async ({ page }) => {
+  await page.goto('/order/about');
+  await page.waitForLoadState('networkidle');
+  const body = await page.textContent('body') ?? '';
+  expect(body).not.toContain('Cannot GET');
+  expect(body.toLowerCase()).toMatch(/about|bake|grill|story|mission/);
+  await assertNoServerError(page);
+});
+
+test('order app /order/reservations loads', async ({ page }) => {
+  await page.goto('/order/reservations');
+  await page.waitForLoadState('networkidle');
+  const body = await page.textContent('body') ?? '';
+  expect(body).not.toContain('Cannot GET');
+  expect(body.toLowerCase()).toMatch(/reserv|book|table|sign in|log in/);
+  await assertNoServerError(page);
+});
+
+test('order app /order/pre-order loads', async ({ page }) => {
+  await page.goto('/order/pre-order');
+  await page.waitForLoadState('networkidle');
+  const body = await page.textContent('body') ?? '';
+  expect(body).not.toContain('Cannot GET');
+  expect(body.toLowerCase()).toMatch(/pre.?order|advance|schedule|sign in|log in/);
+  await assertNoServerError(page);
+});
+
+test('order app /order/privacy loads', async ({ page }) => {
+  await page.goto('/order/privacy');
+  await page.waitForLoadState('networkidle');
+  const body = await page.textContent('body') ?? '';
+  expect(body).not.toContain('Cannot GET');
+  expect(body.toLowerCase()).toMatch(/privacy|data|personal/);
+  await assertNoServerError(page);
+});
+
 // ── Order app (React SPA) ──────────────────────────────────────────────────
 test('order app homepage loads', async ({ page }) => {
   collectConsoleErrors(page);

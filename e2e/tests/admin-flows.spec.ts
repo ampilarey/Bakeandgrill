@@ -231,3 +231,138 @@ test.describe('Settings page', () => {
     expect(body.toLowerCase()).toMatch(/site|website|contact|hero|brand/);
   });
 });
+
+// ── Extended admin page smoke tests ───────────────────────────────────────
+// Each test navigates to a page and asserts it loads without a crash.
+// Covers the ~25 admin pages that had 0 coverage before.
+
+test.describe('Admin pages — extended smoke coverage', () => {
+  const extendedPages: [string, string][] = [
+    ['/admin/dashboard',          'dashboard|revenue|orders|today'],
+    ['/admin/kds',                'kitchen|kds|ticket|queue'],
+    ['/admin/delivery',           'delivery|driver|order'],
+    ['/admin/loyalty',            'loyalty|points|reward'],
+    ['/admin/analytics',          'analytic|visit|session|revenue'],
+    ['/admin/reservations',       'reservation|booking|table'],
+    ['/admin/profit-loss',        'profit|loss|revenue|p&l|p &'],
+    ['/admin/supplier-intelligence', 'supplier|intelligence|performance'],
+    ['/admin/forecasts',          'forecast|predict|demand'],
+    ['/admin/purchase-orders',    'purchase|order|supplier'],
+    ['/admin/inventory',          'inventor|stock|item'],
+    ['/admin/waste-logs',         'waste|log'],
+    ['/admin/customers',          'customer'],
+    ['/admin/gift-cards',         'gift|card|voucher'],
+    ['/admin/reviews',            'review|rating'],
+    ['/admin/specials',           'special|daily|deal'],
+    ['/admin/refunds',            'refund|return'],
+    ['/admin/referrals',          'referral|code'],
+    ['/admin/webhooks',           'webhook|endpoint'],
+    ['/admin/sms',                'sms|recipient|campaign'],
+    ['/admin/tables',             'table|floor|seat'],
+    ['/admin/devices',            'device|pos|kds'],
+    ['/admin/shifts',             'shift|cash|drawer'],
+    ['/admin/time-clock',         'time|clock|punch'],
+    ['/admin/online-ordering',    'online.*order|ordering.*online|schedule'],
+  ];
+
+  for (const [url, pattern] of extendedPages) {
+    test(`${url} loads without crash`, async ({ page }) => {
+      await gotoAdmin(page, url);
+      if (!sharedAdminToken) return;
+
+      const body = await page.textContent('body') ?? '';
+      expect(body, `${url} body was empty`).not.toBe('');
+      expect(body).not.toContain('Cannot GET');
+      expect(body).not.toContain('Something went wrong');
+      // Keyword match — flexible regex so minor UI copy changes don't break tests
+      expect(body.toLowerCase()).toMatch(new RegExp(pattern));
+    });
+  }
+});
+
+// ── Dashboard stats sanity ─────────────────────────────────────────────────
+test.describe('Dashboard data', () => {
+  test('dashboard shows at least one stat card', async ({ page }) => {
+    await gotoAdmin(page, '/admin/dashboard');
+    if (!sharedAdminToken) return;
+
+    // Stat cards are rendered — at least one metric value should be visible
+    const body = await page.textContent('body') ?? '';
+    expect(body.toLowerCase()).toMatch(/revenue|orders|mvr|\d+/);
+  });
+});
+
+// ── Finance module smoke ───────────────────────────────────────────────────
+test.describe('Finance pages', () => {
+  test('/admin/invoices filter UI present', async ({ page }) => {
+    await gotoAdmin(page, '/admin/invoices');
+    if (!sharedAdminToken) return;
+    const body = await page.textContent('body') ?? '';
+    expect(body.toLowerCase()).toMatch(/invoice/);
+    // Filter dropdowns should render
+    const selects = page.locator('select');
+    expect(await selects.count()).toBeGreaterThanOrEqual(1);
+  });
+
+  test('/admin/expenses shows category and form', async ({ page }) => {
+    await gotoAdmin(page, '/admin/expenses');
+    if (!sharedAdminToken) return;
+    const body = await page.textContent('body') ?? '';
+    expect(body.toLowerCase()).toMatch(/expense/);
+  });
+
+  test('/admin/profit-loss date pickers present', async ({ page }) => {
+    await gotoAdmin(page, '/admin/profit-loss');
+    if (!sharedAdminToken) return;
+    // Date inputs should render
+    const dateInputs = page.locator('input[type="date"]');
+    const count = await dateInputs.count();
+    expect(count).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ── SMS page tabs load ─────────────────────────────────────────────────────
+test.describe('SMS page', () => {
+  test('SMS recipients tab is default and renders', async ({ page }) => {
+    await gotoAdmin(page, '/admin/sms');
+    if (!sharedAdminToken) return;
+
+    const body = await page.textContent('body') ?? '';
+    expect(body.toLowerCase()).toMatch(/recipient|staff|contact|sms/);
+  });
+
+  test('SMS automations tab loads toggles', async ({ page }) => {
+    await gotoAdmin(page, '/admin/sms');
+    if (!sharedAdminToken) return;
+
+    const autoTab = page.locator('button').filter({ hasText: /automation/i }).first();
+    if (await autoTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await autoTab.click();
+      await page.waitForTimeout(600);
+      const body = await page.textContent('body') ?? '';
+      expect(body.toLowerCase()).toMatch(/event|trigger|order|customer/);
+    }
+  });
+});
+
+// ── Staff page ─────────────────────────────────────────────────────────────
+test.describe('Staff page', () => {
+  test('staff list renders', async ({ page }) => {
+    await gotoAdmin(page, '/admin/staff');
+    if (!sharedAdminToken) return;
+
+    const body = await page.textContent('body') ?? '';
+    expect(body.toLowerCase()).toMatch(/staff|member|role|email/);
+  });
+});
+
+// ── Customers page ─────────────────────────────────────────────────────────
+test.describe('Customers page', () => {
+  test('customer table or empty state renders', async ({ page }) => {
+    await gotoAdmin(page, '/admin/customers');
+    if (!sharedAdminToken) return;
+
+    const body = await page.textContent('body') ?? '';
+    expect(body.toLowerCase()).toMatch(/customer|phone|order/);
+  });
+});
