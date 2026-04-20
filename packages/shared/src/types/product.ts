@@ -56,6 +56,7 @@ export type MenuItem = {
   is_combo?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: ComboItemEntry[];
+  tax_rate?: number | null;
 };
 
 export type ComboItemEntry = {

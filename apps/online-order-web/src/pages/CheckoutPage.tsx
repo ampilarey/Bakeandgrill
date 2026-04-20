@@ -202,7 +202,7 @@ export function CheckoutPage() {
     promoError, promoLoading,
     useLoyalty, setUseLoyalty,
     deliveryFee, errors, isPlacing, globalError,
-    subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,
+    subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardDelta,
@@ -464,6 +464,9 @@ export function CheckoutPage() {
     <div style={S.cardWarm}>
       <h2 style={S.sectionTitle}>Order Summary</h2>
       <SummaryRow label="Subtotal" value={`MVR ${laarToMvr(subtotalLaar)}`} />
+      {taxLaar > 0 && (
+        <SummaryRow label="GST" value={`MVR ${laarToMvr(taxLaar)}`} />
+      )}
       {orderType === 'delivery' && (
         <SummaryRow label="Delivery fee" value={`MVR ${laarToMvr(deliveryFeeLaar)}`} />
       )}

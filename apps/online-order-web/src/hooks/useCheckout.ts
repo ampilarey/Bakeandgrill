@@ -29,6 +29,7 @@ export type CartItem = {
   price: number;
   quantity: number;
   modifiers?: Array<{ id: number; name: string; price: number }>;
+  taxRate?: number;
 };
 
 export type OrderType = "takeaway" | "delivery";
@@ -63,7 +64,7 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
     const parsed = JSON.parse(raw);
     // CartContext stores a versioned object: { version, entries: [{ item, quantity, modifiers, variantId }] }
     const entries: Array<{
-      item: { id: number; name: string; base_price: number | string };
+      item: { id: number; name: string; base_price: number | string; tax_rate?: number | null };
       quantity: number;
       modifiers?: Array<{ id: number; name: string; price: number | string }>;
       variantId?: number | null;
@@ -76,6 +77,7 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
       quantity:  e.quantity,
       modifiers: (e.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: Number(m.price) })),
       variantId: e.variantId ?? null,
+      taxRate:   Number(e.item?.tax_rate ?? 0),
     }));
   } catch { return []; }
 }
@@ -225,6 +227,15 @@ export function useCheckout() {
     0,
   );
 
+  const taxLaar = cart.reduce((sum, item) => {
+    const rate = item.taxRate ?? 0;
+    if (rate <= 0) return sum;
+    const itemLaar =
+      Math.round(item.price * 100) * item.quantity +
+      (item.modifiers ?? []).reduce((ms, m) => ms + Math.round(m.price * 100) * item.quantity, 0);
+    return sum + Math.round(itemLaar * rate / 100);
+  }, 0);
+
   const deliveryFeeLaar  = orderType === "delivery" ? deliveryFee : 0;
   const promoDelta       = promoApplied?.discountLaar ?? 0;
   const loyaltyDelta     = useLoyalty && loyaltyAccount ? loyaltyPoints : 0;
@@ -232,7 +243,7 @@ export function useCheckout() {
   const referralDelta    = friendReferralApplied?.discountLaar ?? 0;
   const totalLaar        = Math.max(
     0,
-    subtotalLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta,
+    subtotalLaar + taxLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta,
   );
 
   // ── Promo ──────────────────────────────────────────────────────────────────
@@ -552,7 +563,7 @@ export function useCheckout() {
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
-    subtotalLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,
+    subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardDelta,
