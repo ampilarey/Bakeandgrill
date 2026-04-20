@@ -105,9 +105,12 @@ Route::get('/order/{any}', function () {
 
 // Admin Dashboard SPA — catch-all for /admin/* sub-paths
 Route::get('/admin/{any}', function () {
-    abort_if(! file_exists(public_path('admin/index.html')), 503, 'Admin app not deployed.');
-    return response()->file(public_path('admin/index.html'))
-        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    $path = public_path('admin/index.html');
+    abort_if(! file_exists($path), 503, 'Admin app not deployed.');
+    return response(file_get_contents($path), 200, [
+        'Content-Type'  => 'text/html; charset=utf-8',
+        'Cache-Control' => 'no-store, no-cache, must-revalidate',
+    ]);
 })->where('any', '.*')->name('admin.spa');
 
 // KDS SPA — catch-all for /kds/* sub-paths
@@ -115,9 +118,12 @@ Route::get('/kds', function () {
     return redirect('/kds/');
 })->name('kds.redirect');
 Route::get('/kds/{any}', function () {
-    abort_if(! file_exists(public_path('kds/index.html')), 503, 'KDS app not deployed.');
-    return response()->file(public_path('kds/index.html'))
-        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    $path = public_path('kds/index.html');
+    abort_if(! file_exists($path), 503, 'KDS app not deployed.');
+    return response(file_get_contents($path), 200, [
+        'Content-Type'  => 'text/html; charset=utf-8',
+        'Cache-Control' => 'no-store, no-cache, must-revalidate',
+    ]);
 })->where('any', '.*')->name('kds.spa');
 
 // POS SPA — catch-all for /pos/* sub-paths
@@ -125,9 +131,12 @@ Route::get('/pos', function () {
     return redirect('/pos/');
 })->name('pos.redirect');
 Route::get('/pos/{any}', function () {
-    abort_if(! file_exists(public_path('pos/index.html')), 503, 'POS app not deployed.');
-    return response()->file(public_path('pos/index.html'))
-        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    $path = public_path('pos/index.html');
+    abort_if(! file_exists($path), 503, 'POS app not deployed.');
+    return response(file_get_contents($path), 200, [
+        'Content-Type'  => 'text/html; charset=utf-8',
+        'Cache-Control' => 'no-store, no-cache, must-revalidate',
+    ]);
 })->where('any', '.*')->name('pos.spa');
 
 // Driver PWA SPA — catch-all for /driver/* sub-paths
