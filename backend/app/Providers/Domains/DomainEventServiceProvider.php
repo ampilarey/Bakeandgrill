@@ -35,6 +35,7 @@ use App\Domains\Notifications\Listeners\SendPaymentConfirmationListener;
 use App\Domains\Reservations\Listeners\SendReservationConfirmationListener;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Shifts\Events\ShiftOpened;
+use App\Domains\Sms\Listeners\SendStaffOrderNotificationListener;
 use App\Domains\Webhooks\Listeners\DispatchWebhookOnDomainEvent;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider;
 
@@ -53,6 +54,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             DispatchKitchenPrintListener::class,
             DispatchWebhookOnDomainEvent::class,
             SendOrderConfirmationListener::class,
+            SendStaffOrderNotificationListener::class,
         ],
 
         OrderPaid::class => [
@@ -116,6 +118,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             PublishOrderStatusToRedisListener::class,
             SendOrderStatusPushListener::class,
             SendOnlineOrderCompletionReceiptSmsListener::class,
+            SendStaffOrderNotificationListener::class,
         ],
     ];
 }

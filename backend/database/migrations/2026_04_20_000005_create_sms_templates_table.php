@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('sms_templates', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('body');
+            $table->string('type')->default('custom');
+            $table->string('description')->nullable();
+            $table->boolean('is_system')->default(false);
+            $table->json('variables')->nullable();
+            $table->timestamps();
+
+            $table->index('type');
+            $table->index('is_system');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('sms_templates');
+    }
+};

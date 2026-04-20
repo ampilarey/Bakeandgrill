@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             PrinterSeeder::class,
             RestaurantTableSeeder::class,
             ImportMenuSeeder::class,
+            SmsTemplateSeeder::class,
         ]);
     }
 }

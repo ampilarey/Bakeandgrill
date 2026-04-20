@@ -1,0 +1,214 @@
+import { useEffect, useState } from 'react';
+import { RotateCcw, Send, AlertTriangle, CheckCircle, Truck, Bell } from 'lucide-react';
+import {
+  getSiteSettings, updateSiteSettings,
+  fetchStaffNotificationLogs, resendStaffNotification,
+  type StaffNotificationLog,
+} from '../../api';
+import { Badge, Btn, EmptyState, Spinner, StatCard, TableCard, TD, TH } from '../../components/Layout';
+
+type EventConfig = {
+  key: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+};
+
+const EVENTS: EventConfig[] = [
+  { key: 'staff_sms_new_order_enabled', label: 'New Order', description: 'Notify staff when a new order is placed.', icon: <Bell size={14} /> },
+  { key: 'staff_sms_order_confirmed_enabled', label: 'Order Confirmed', description: 'Notify when order moves to in-progress / paid.', icon: <CheckCircle size={14} /> },
+  { key: 'staff_sms_order_ready_enabled', label: 'Order Ready', description: 'Notify when order is marked ready.', icon: <CheckCircle size={14} /> },
+  { key: 'staff_sms_order_out_for_delivery_enabled', label: 'Out for Delivery', description: 'Notify when a delivery order is on its way.', icon: <Truck size={14} /> },
+  { key: 'staff_sms_no_staff_found_enabled', label: 'No Staff Found (Fallback)', description: 'Send alert to fallback contact when no matching staff is on shift.', icon: <AlertTriangle size={14} /> },
+  { key: 'staff_sms_schedule_assigned_enabled', label: 'Schedule Assigned', description: 'SMS staff when a new shift is assigned to them.', icon: <Bell size={14} /> },
+  { key: 'staff_sms_shift_reminder_enabled', label: 'Shift Reminder', description: 'Send a reminder 1 hour before each shift.', icon: <Bell size={14} /> },
+];
+
+const STATUS_COLOR: Record<string, string> = { sent: 'green', failed: 'red', queued: 'orange' };
+
+export function AutomationsTab() {
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  const [logs, setLogs] = useState<StaffNotificationLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+  const [logsMeta, setLogsMeta] = useState<{ total: number } | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [resendingId, setResendingId] = useState<number | null>(null);
+
+  const loadSettings = async () => {
+    setLoadingSettings(true);
+    try {
+      const res = await getSiteSettings();
+      const map: Record<string, string> = {};
+      Object.values(res.settings ?? {}).forEach((group) => {
+        (group as { key: string; value: string | null }[]).forEach(s => {
+          if (s.value !== null) map[s.key] = s.value;
+        });
+      });
+      setSettings(map);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const loadLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const res = await fetchStaffNotificationLogs({ status: statusFilter || undefined });
+      setLogs(res.data);
+      setLogsMeta({ total: res.meta.total });
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadSettings(); }, []);
+  useEffect(() => { void loadLogs(); }, [statusFilter]);
+
+  const toggleEvent = async (key: string, currentValue: string) => {
+    const newValue = currentValue === '1' || currentValue === '' ? '0' : '1';
+    setSavingKey(key);
+    try {
+      await updateSiteSettings({ [key]: newValue });
+      setSettings(s => ({ ...s, [key]: newValue }));
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleResend = async (id: number) => {
+    setResendingId(id);
+    try {
+      await resendStaffNotification(id);
+      await loadLogs();
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const isEnabled = (key: string) => {
+    const v = settings[key];
+    return v === undefined || v === '1' || v === 'true';
+  };
+
+  const sentCount = logs.filter(l => l.status === 'sent').length;
+  const failedCount = logs.filter(l => l.status === 'failed').length;
+  const fallbackCount = logs.filter(l => l.fallback_used).length;
+
+  return (
+    <>
+      {/* Event Toggles */}
+      <div style={{ marginBottom: 28 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Event Triggers</h3>
+        <p style={{ fontSize: 13, color: '#9C8E7E', marginBottom: 16 }}>
+          Enable or disable SMS notifications for each event. Staff routing is configured per-staff in the Staff page.
+        </p>
+
+        {loadingSettings ? <Spinner /> : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {EVENTS.map(event => {
+              const enabled = isEnabled(event.key);
+              return (
+                <div key={event.key} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: '#fff', border: '1px solid #E8E0D8', borderRadius: 10, padding: '12px 16px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ color: '#D4813A' }}>{event.icon}</span>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{event.label}</div>
+                      <div style={{ color: '#9C8E7E', fontSize: 12 }}>{event.description}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleEvent(event.key, settings[event.key] ?? '1')}
+                    disabled={savingKey === event.key}
+                    style={{
+                      width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                      background: enabled ? '#D4813A' : '#D1D5DB', transition: 'background 0.2s',
+                      position: 'relative', flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 3, left: enabled ? 22 : 3,
+                      width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+                    }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Notification Logs */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700 }}>Staff Notification Log</h3>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+              <option value="">All Statuses</option>
+              <option value="sent">Sent</option>
+              <option value="failed">Failed</option>
+              <option value="queued">Queued</option>
+            </select>
+            <Btn variant="secondary" onClick={loadLogs}><RotateCcw size={13} /></Btn>
+          </div>
+        </div>
+
+        {logsMeta && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+            <StatCard label="Total Sent" value={sentCount.toString()} accent="#22c55e" />
+            <StatCard label="Failed" value={failedCount.toString()} accent="#ef4444" />
+            <StatCard label="Fallback Used" value={fallbackCount.toString()} accent="#F59E0B" />
+          </div>
+        )}
+
+        {logsLoading ? <Spinner /> : logs.length === 0 ? (
+          <TableCard><EmptyState message="No staff notifications logged yet." /></TableCard>
+        ) : (
+          <TableCard>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead><tr>{['Order', 'Event', 'Recipient', 'Phone', 'Message', 'Status', 'Fallback', 'Sent At', ''].map(h => <th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <tbody>
+                {logs.map(l => (
+                  <tr key={l.id}>
+                    <td style={{ ...TD, fontWeight: 600 }}>
+                      {l.order_number ? `#${l.order_number}` : '—'}
+                      {l.order_type && <div style={{ color: '#9C8E7E', fontSize: 11 }}>{l.order_type}</div>}
+                    </td>
+                    <td style={TD}><Badge label={l.event_type.replace(/_/g, ' ')} color="blue" /></td>
+                    <td style={{ ...TD, color: '#6B5D4F', fontSize: 11 }}>
+                      <Badge label={l.recipient_type} color="gray" />
+                    </td>
+                    <td style={{ ...TD, fontFamily: 'monospace', fontSize: 12 }}>{l.phone}</td>
+                    <td style={{ ...TD, maxWidth: 200, color: '#6B5D4F', fontSize: 11 }}>
+                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.message}</span>
+                    </td>
+                    <td style={TD}><Badge label={l.status} color={STATUS_COLOR[l.status] ?? 'gray'} /></td>
+                    <td style={{ ...TD, textAlign: 'center' }}>
+                      {l.fallback_used ? <span style={{ color: '#F59E0B', fontSize: 13 }}>⚠</span> : '—'}
+                    </td>
+                    <td style={{ ...TD, color: '#9C8E7E', fontSize: 11, whiteSpace: 'nowrap' }}>
+                      {l.sent_at ? new Date(l.sent_at).toLocaleString() : '—'}
+                    </td>
+                    <td style={TD}>
+                      {l.status !== 'sent' && (
+                        <Btn variant="ghost" disabled={resendingId === l.id} onClick={() => handleResend(l.id)} title="Resend">
+                          <Send size={12} />
+                        </Btn>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableCard>
+        )}
+      </div>
+    </>
+  );
+}

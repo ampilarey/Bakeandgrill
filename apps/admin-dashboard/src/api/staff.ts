@@ -5,6 +5,7 @@ export type StaffMember = {
   id: number;
   name: string;
   email: string;
+  phone: string | null;
   role: string | null;
   role_name: string | null;
   role_id: number | null;

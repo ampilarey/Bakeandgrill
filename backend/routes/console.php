@@ -54,3 +54,6 @@ Schedule::command('otp:prune')->dailyAt('02:00');
 
 // Orders: cancel stale payment_pending orders every 5 minutes
 Schedule::command('orders:cancel-stale')->everyFiveMinutes();
+
+// SMS: dispatch scheduled/recurring SMS messages every minute
+Schedule::command('sms:dispatch-scheduled')->everyMinute();

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
   getUserPermissions, updateUserPermissions,
-  type StaffMember, type StaffRole, type PermissionItem,
+  getStaffNotificationPrefs, updateStaffNotificationPrefs,
+  type StaffMember, type StaffRole, type PermissionItem, type StaffNotificationPref,
 } from '../api';
 import { SchedulesTab } from './StaffPage/SchedulesTab';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
@@ -64,11 +65,12 @@ function timeAgo(iso: string | null) {
 
 function CreateModal({ roles, onSave, onClose }: {
   roles: StaffRole[];
-  onSave: (data: { name: string; email: string; role_id: number; pin: string }) => Promise<void>;
+  onSave: (data: { name: string; email: string; phone?: string; role_id: number; pin: string }) => Promise<void>;
   onClose: () => void;
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [roleId, setRoleId] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -85,7 +87,7 @@ function CreateModal({ roles, onSave, onClose }: {
     if (pin.length < 4) { setError('PIN must be at least 4 digits.'); return; }
     if (pin !== confirmPin) { setError('PINs do not match.'); return; }
     setError(''); setLoading(true);
-    try { await onSave({ name: name.trim(), email: email.trim(), role_id: roleIdNum, pin }); }
+    try { await onSave({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, role_id: roleIdNum, pin }); }
     catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -99,6 +101,9 @@ function CreateModal({ roles, onSave, onClose }: {
         </Field>
         <Field label="Email">
           <Input value={email} onChange={setEmail} placeholder="ahmed@bakegrill.mv" />
+        </Field>
+        <Field label="Phone (for SMS notifications)">
+          <Input value={phone} onChange={setPhone} placeholder="+9607xxxxxx" />
         </Field>
         <Field label="Role">
           <RoleSelect value={roleId} onChange={setRoleId} roles={roles} />
@@ -123,11 +128,12 @@ function CreateModal({ roles, onSave, onClose }: {
 function EditModal({ member, roles, onSave, onClose }: {
   member: StaffMember;
   roles: StaffRole[];
-  onSave: (data: { name: string; email: string; role_id: number; is_active: boolean }) => Promise<void>;
+  onSave: (data: { name: string; email: string; phone?: string | null; role_id: number; is_active: boolean }) => Promise<void>;
   onClose: () => void;
 }) {
   const [name, setName] = useState(member.name);
   const [email, setEmail] = useState(member.email);
+  const [phone, setPhone] = useState(member.phone ?? '');
   const [roleId, setRoleId] = useState(member.role_id != null ? String(member.role_id) : '');
   const [isActive, setIsActive] = useState(member.is_active);
   const [loading, setLoading] = useState(false);
@@ -140,7 +146,7 @@ function EditModal({ member, roles, onSave, onClose }: {
     const roleIdNum = parseInt(roleId, 10);
     if (isNaN(roleIdNum)) { setError('Invalid role selected.'); return; }
     setError(''); setLoading(true);
-    try { await onSave({ name: name.trim(), email: email.trim(), role_id: roleIdNum, is_active: isActive }); }
+    try { await onSave({ name: name.trim(), email: email.trim(), phone: phone.trim() || null, role_id: roleIdNum, is_active: isActive }); }
     catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -155,6 +161,9 @@ function EditModal({ member, roles, onSave, onClose }: {
         <Field label="Email">
           <Input value={email} onChange={setEmail} placeholder="email@example.com" />
         </Field>
+        <Field label="Phone (for SMS notifications)">
+          <Input value={phone} onChange={setPhone} placeholder="+9607xxxxxx" />
+        </Field>
         <Field label="Role">
           <RoleSelect value={roleId} onChange={setRoleId} roles={roles} />
         </Field>
@@ -166,6 +175,115 @@ function EditModal({ member, roles, onSave, onClose }: {
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
         <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Changes'}</Btn>
+      </ModalActions>
+    </Modal>
+  );
+}
+
+// ── Notification Prefs modal ──────────────────────────────────────────────────
+
+const ORDER_TYPES = [
+  { value: 'dine_in', label: 'Dine-in' },
+  { value: 'takeaway', label: 'Takeaway' },
+  { value: 'online_pickup', label: 'Online Pickup' },
+  { value: 'delivery', label: 'Delivery' },
+];
+
+function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
+  const [prefs, setPrefs] = useState<StaffNotificationPref | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getStaffNotificationPrefs(member.id).then(res => {
+      setPrefs(res.prefs);
+      setLoading(false);
+    }).catch(e => { setError((e as Error).message); setLoading(false); });
+  }, [member.id]);
+
+  const save = async () => {
+    if (!prefs) return;
+    setSaving(true);
+    setError('');
+    try {
+      await updateStaffNotificationPrefs(member.id, prefs);
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleOrderType = (v: string) => {
+    if (!prefs) return;
+    const current = prefs.order_types ?? [];
+    const next = current.includes(v) ? current.filter(t => t !== v) : [...current, v];
+    setPrefs(p => p ? { ...p, order_types: next.length ? next : null } : p);
+  };
+
+  if (loading) return <Modal title={`SMS Prefs — ${member.name}`} onClose={onClose}><Spinner /></Modal>;
+
+  return (
+    <Modal title={`SMS Notifications — ${member.name}`} onClose={onClose}>
+      {error && <ErrorMsg message={error} />}
+      {prefs && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!member.phone && (
+            <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e' }}>
+              ⚠ No phone number set for this staff member. Add a phone number in Edit to enable SMS notifications.
+            </div>
+          )}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+            <input type="checkbox" checked={prefs.notifications_enabled}
+              onChange={e => setPrefs(p => p ? { ...p, notifications_enabled: e.target.checked } : p)} />
+            <span><strong>Enable SMS Notifications</strong> for this staff member</span>
+          </label>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>
+              Receive notifications for (blank = all types):
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {ORDER_TYPES.map(ot => {
+                const active = (prefs.order_types ?? []).includes(ot.value) || prefs.order_types === null;
+                const explicit = prefs.order_types !== null;
+                return (
+                  <button key={ot.value} onClick={() => toggleOrderType(ot.value)} style={{
+                    padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+                    background: (!explicit || active) ? '#D4813A' : '#F5F0EA',
+                    color: (!explicit || active) ? '#fff' : '#6B5D4F', border: 'none',
+                  }}>
+                    {ot.label}
+                  </button>
+                );
+              })}
+              <button onClick={() => setPrefs(p => p ? { ...p, order_types: null } : p)} style={{
+                padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+                background: prefs.order_types === null ? '#22c55e' : '#F5F0EA',
+                color: prefs.order_types === null ? '#fff' : '#6B5D4F', border: 'none',
+              }}>All Types</button>
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+              <input type="checkbox" checked={prefs.is_fallback}
+                onChange={e => setPrefs(p => p ? { ...p, is_fallback: e.target.checked } : p)} />
+              <span><strong>Fallback recipient</strong> — receive alerts when no matching staff is on shift</span>
+            </label>
+          </div>
+          {prefs.is_fallback && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Fallback Priority (higher = notified first)</label>
+              <Input type="number" value={String(prefs.fallback_priority)}
+                onChange={v => setPrefs(p => p ? { ...p, fallback_priority: parseInt(v) || 0 } : p)} />
+            </div>
+          )}
+        </div>
+      )}
+      <ModalActions>
+        <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+        <Btn onClick={save} disabled={saving || !prefs}>{saving ? 'Saving…' : 'Save Prefs'}</Btn>
       </ModalActions>
     </Modal>
   );
@@ -379,6 +497,7 @@ export function StaffPage() {
   const [editing, setEditing] = useState<StaffMember | null>(null);
   const [changingPin, setChangingPin] = useState<StaffMember | null>(null);
   const [permissionsUser, setPermissionsUser] = useState<StaffMember | null>(null);
+  const [notifPrefsUser, setNotifPrefsUser] = useState<StaffMember | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -392,7 +511,7 @@ export function StaffPage() {
 
   useEffect(() => { void load(); }, []);
 
-  const handleCreate = async (data: { name: string; email: string; role_id: number; pin: string }) => {
+  const handleCreate = async (data: { name: string; email: string; phone?: string; role_id: number; pin: string }) => {
     try {
       await createStaff(data);
       setCreating(false);
@@ -400,7 +519,7 @@ export function StaffPage() {
     } catch (e) { setError((e as Error).message); }
   };
 
-  const handleUpdate = async (data: { name: string; email: string; role_id: number; is_active: boolean }) => {
+  const handleUpdate = async (data: { name: string; email: string; phone?: string | null; role_id: number; is_active: boolean }) => {
     if (!editing) return;
     try {
       await updateStaff(editing.id, data);
@@ -473,7 +592,7 @@ export function StaffPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
-                {['Name', 'Email', 'Role', 'PIN', 'Status', 'Last Login', ''].map((h) => (
+                {['Name', 'Email', 'Phone', 'Role', 'PIN', 'Status', 'Last Login', ''].map((h) => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
@@ -483,6 +602,9 @@ export function StaffPage() {
                 <tr key={m.id} style={{ opacity: m.is_active ? 1 : 0.55 }}>
                   <td style={{ ...TD, fontWeight: 700, color: '#1C1408' }}>{m.name}</td>
                   <td style={{ ...TD, color: '#6B5D4F' }}>{m.email}</td>
+                  <td style={{ ...TD, color: '#6B5D4F', fontFamily: 'monospace', fontSize: 12 }}>
+                    {m.phone ?? <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
                   <td style={TD}>
                     <Badge label={m.role_name ?? m.role ?? '—'} color={roleColor(m.role)} />
                   </td>
@@ -508,6 +630,7 @@ export function StaffPage() {
                       {m.role !== 'owner' && (
                         <Btn small variant="ghost" onClick={() => setPermissionsUser(m)}>Permissions</Btn>
                       )}
+                      <Btn small variant="ghost" onClick={() => setNotifPrefsUser(m)}>SMS Prefs</Btn>
                       <Btn small variant="danger" onClick={() => handleDelete(m)}>Remove</Btn>
                     </div>
                   </td>
@@ -529,6 +652,9 @@ export function StaffPage() {
       )}
       {permissionsUser && (
         <PermissionsModal member={permissionsUser} onClose={() => setPermissionsUser(null)} />
+      )}
+      {notifPrefsUser && (
+        <NotificationPrefsModal member={notifPrefsUser} onClose={() => setNotifPrefsUser(null)} />
       )}
         </>
       )}
