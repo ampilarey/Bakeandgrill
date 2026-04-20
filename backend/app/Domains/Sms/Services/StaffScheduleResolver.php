@@ -26,7 +26,7 @@ class StaffScheduleResolver
     /**
      * Return all staff members who have a confirmed shift covering $at.
      */
-    public function staffOnShiftAt(Carbon $at): \Illuminate\Database\Eloquent\Collection
+    public function staffOnShiftAt(Carbon $at): \Illuminate\Support\Collection
     {
         $schedules = StaffSchedule::query()
             ->where('date', $at->toDateString())
