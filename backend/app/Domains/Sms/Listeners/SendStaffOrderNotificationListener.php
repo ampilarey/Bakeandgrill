@@ -42,6 +42,14 @@ class SendStaffOrderNotificationListener implements ShouldQueue
             return;
         }
 
+        // Online orders (online_pickup, delivery) require payment before staff is notified.
+        // Skip here — the 'order_confirmed' event fires once payment goes through.
+        if (in_array($order->type, ['online_pickup', 'delivery'], true)
+            && in_array($order->status, ['draft', 'payment_pending'], true)
+        ) {
+            return;
+        }
+
         $this->dispatcher->dispatch($order, 'new_order');
     }
 

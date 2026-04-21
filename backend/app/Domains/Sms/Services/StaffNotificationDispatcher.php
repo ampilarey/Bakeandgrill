@@ -109,10 +109,16 @@ class StaffNotificationDispatcher
             ? $order->items->sum('quantity')
             : $order->items()->sum('quantity');
 
+        // Load customer phone if not already loaded
+        $customerPhone = $order->delivery_contact_phone
+            ?? ($order->relationLoaded('customer') ? optional($order->customer)->phone : optional($order->customer()->first())->phone)
+            ?? 'N/A';
+
         return $this->templateRenderer->render($template, [
-            'order_number' => $order->order_number,
-            'order_type'   => $orderTypeLabel,
-            'item_count'   => $itemCount,
+            'order_number'   => $order->order_number,
+            'order_type'     => $orderTypeLabel,
+            'item_count'     => $itemCount,
+            'customer_phone' => $customerPhone,
         ]);
     }
 
