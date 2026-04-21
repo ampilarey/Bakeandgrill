@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { pinLogin, type StaffUser } from '../api';
 
@@ -30,6 +30,21 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
   const append = (d: string) => { if (pin.length < 8) setPin((p) => p + d); };
   const clear  = ()          => setPin('');
   const back   = ()          => setPin((p) => p.slice(0, -1));
+
+  // Allow typing the PIN directly from the keyboard
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Don't intercept when focus is on the email input
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (/^[0-9]$/.test(e.key))           append(e.key);
+      else if (e.key === 'Backspace')       back();
+      else if (e.key === 'Escape')          clear();
+      else if (e.key === 'Enter')           submit();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, username]);
 
   return (
     <div style={{
