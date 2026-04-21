@@ -6,6 +6,7 @@ use App\Models\Item;
 use Database\Seeders\ImportMenuSeeder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -30,30 +31,66 @@ Artisan::command('menu:sync-item-images', function () {
     $this->info("Synced {$updated} item image(s) from local cafe photos.");
 })->purpose('Set image_url for items that have local cafe photos so uploaded photos appear on the website');
 
+/**
+ * Helper: builds a generic onFailure handler that logs critical + notifies Sentry.
+ * All critical scheduled tasks call this so failures are never silent.
+ */
+$alertOnFailure = function (string $command): \Closure {
+    return function () use ($command): void {
+        $msg = "Scheduled task FAILED: {$command}";
+        Log::critical($msg);
+        if (app()->bound('sentry')) {
+            \Sentry\captureMessage($msg, \Sentry\Severity::error());
+        }
+    };
+};
+
 // Loyalty maintenance schedules
-Schedule::command('app:expire-loyalty-holds')->everyFifteenMinutes();
-Schedule::command('app:reconcile-loyalty-balances')->dailyAt('03:00');
+Schedule::command('app:expire-loyalty-holds')
+    ->everyFifteenMinutes()
+    ->onFailure($alertOnFailure('app:expire-loyalty-holds'));
+
+Schedule::command('app:reconcile-loyalty-balances')
+    ->dailyAt('03:00')
+    ->onFailure($alertOnFailure('app:reconcile-loyalty-balances'));
 
 // Reservations: auto-mark no-shows every 15 minutes
 Schedule::job(App\Jobs\AutoCancelNoShowReservations::class)->everyFifteenMinutes();
 
 // Finance: generate recurring expenses daily at 06:00
-Schedule::command('expenses:generate-recurring')->dailyAt('06:00');
+Schedule::command('expenses:generate-recurring')
+    ->dailyAt('06:00')
+    ->onFailure($alertOnFailure('expenses:generate-recurring'));
 
 // Finance: mark overdue invoices daily at 07:00
-Schedule::command('invoices:mark-overdue')->dailyAt('07:00');
+Schedule::command('invoices:mark-overdue')
+    ->dailyAt('07:00')
+    ->onFailure($alertOnFailure('invoices:mark-overdue'));
 
 // Inventory: check reorder points daily at 08:00
-Schedule::command('inventory:check-reorder')->dailyAt('08:00');
+Schedule::command('inventory:check-reorder')
+    ->dailyAt('08:00')
+    ->onFailure($alertOnFailure('inventory:check-reorder'));
 
 // Inventory: check expiring items daily at 08:05
-Schedule::command('inventory:check-expiry --days=7')->dailyAt('08:05');
+Schedule::command('inventory:check-expiry --days=7')
+    ->dailyAt('08:05')
+    ->onFailure($alertOnFailure('inventory:check-expiry'));
 
 // Housekeeping: prune expired OTP records daily
 Schedule::command('otp:prune')->dailyAt('02:00');
 
 // Orders: cancel stale payment_pending orders every 5 minutes
-Schedule::command('orders:cancel-stale')->everyFiveMinutes();
+Schedule::command('orders:cancel-stale')
+    ->everyFiveMinutes()
+    ->onFailure($alertOnFailure('orders:cancel-stale'));
 
 // SMS: dispatch scheduled/recurring SMS messages every minute
-Schedule::command('sms:dispatch-scheduled')->everyMinute();
+Schedule::command('sms:dispatch-scheduled')
+    ->everyMinute()
+    ->onFailure($alertOnFailure('sms:dispatch-scheduled'));
+
+// Payments: alert if any BML webhooks are stuck in failed status (potential missed payments)
+Schedule::command('webhooks:check-failed --hours=1')
+    ->everyFifteenMinutes()
+    ->onFailure($alertOnFailure('webhooks:check-failed'));

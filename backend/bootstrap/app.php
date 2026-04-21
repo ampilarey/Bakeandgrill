@@ -41,6 +41,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Sentry captures exceptions automatically via its Laravel integration.
+        // The explicit log call below is kept as a secondary record for local log files.
         $exceptions->report(function (\Throwable $e): void {
             if (app()->bound('log')) {
                 app('log')->error($e->getMessage(), [

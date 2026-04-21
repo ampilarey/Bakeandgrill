@@ -17,8 +17,9 @@ class DispatchWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-    public array $backoff = [10, 60, 300]; // 10s, 1min, 5min
+    public int   $tries   = 3;
+    public array $backoff  = [10, 60, 300]; // 10s, 1min, 5min
+    public int   $timeout  = 30; // HTTP client already has 15s timeout; job-level adds headroom
 
     public function __construct(
         public WebhookSubscription $subscription,
