@@ -150,7 +150,7 @@ export function AccountPage() {
     if (!authReady || !token || activeTab !== 'reservations' || reservations.length > 0) return;
     setReservationsLoading(true);
     getMyReservations(token)
-      .then((res) => setReservations(res.data))
+      .then((res) => setReservations(res.data ?? []))
       .catch((e: Error) => setReservationsError(e.message || 'Failed to load reservations.'))
       .finally(() => setReservationsLoading(false));
   }, [token, authReady, activeTab]);
@@ -159,7 +159,7 @@ export function AccountPage() {
     if (!authReady || !token || activeTab !== 'favourites') return;
     setFavouritesLoading(true);
     getMyFavourites(token)
-      .then((res) => setFavourites(res.data))
+      .then((res) => setFavourites(res.data ?? []))
       .catch((e: Error) => setFavouritesError(e.message || 'Failed to load favourites.'))
       .finally(() => setFavouritesLoading(false));
   }, [token, authReady, activeTab]);
@@ -168,7 +168,7 @@ export function AccountPage() {
     if (!authReady || !token || activeTab !== 'preorders' || preOrders.length > 0) return;
     setPreOrdersLoading(true);
     getMyPreOrders(token)
-      .then((res) => setPreOrders(res.data))
+      .then((res) => setPreOrders(res.data ?? []))
       .catch((e: Error) => setPreOrdersError(e.message || 'Failed to load pre-orders.'))
       .finally(() => setPreOrdersLoading(false));
   }, [token, authReady, activeTab]);
