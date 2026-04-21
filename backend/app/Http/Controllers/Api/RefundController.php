@@ -52,7 +52,7 @@ class RefundController extends Controller
         $amountLaar = (int) round($amount * 100);
 
         [$refund, $order] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request) {
-            $order = Order::with('items.item')->lockForUpdate()->findOrFail($orderId);
+            $order = Order::with(['items.item', 'items.variant'])->lockForUpdate()->findOrFail($orderId);
 
             $orderTotalLaar     = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
             $alreadyRefundedLaar = (int) round(
@@ -76,12 +76,32 @@ class RefundController extends Controller
             if ($isFullRefund) {
                 $order->update(['status' => 'refunded']);
 
-                // Restore prepared stock for each item that tracks stock.
-                // Idempotent: StockMovement unique key blocks double-restore.
+                // Restore stock for each line item. Idempotent: StockMovement
+                // unique key blocks any double-restore.
                 $stockService = app(StockManagementService::class);
                 foreach ($order->items as $orderItem) {
                     $item = $orderItem->item;
-                    if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
+                    if (!$item) {
+                        continue;
+                    }
+
+                    // Variant-level stock takes priority when the variant tracks
+                    // its own inventory (mirrors the deduction logic in OrderCreationService).
+                    $variant = $orderItem->variant;
+                    if ($variant && $variant->track_stock) {
+                        $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id;
+                        $stockService->restoreVariantStock(
+                            $variant,
+                            (int) $orderItem->quantity,
+                            $key,
+                            $order->id,
+                            $request->user()?->id,
+                        );
+                        continue; // Variant tracked — do not also restore item-level stock.
+                    }
+
+                    // Item-level stock (non-variant tracked products).
+                    if (!$item->track_stock || $item->availability_type !== 'stock_based') {
                         continue;
                     }
                     $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id;

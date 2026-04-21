@@ -274,17 +274,32 @@ class FinanceReportController extends Controller
 
     public function accountsPayable(Request $request): JsonResponse
     {
+        $limit = 500;
+
+        // Aggregate totals from the full table (cheap index scan — no row hydration).
+        $totals = Invoice::where('type', 'purchase')
+            ->whereIn('status', ['draft', 'sent', 'overdue'])
+            ->selectRaw('SUM(total) as total_outstanding, COUNT(CASE WHEN status = ? THEN 1 END) as overdue_count', ['overdue'])
+            ->first();
+
         $unpaid = Invoice::where('type', 'purchase')
             ->whereIn('status', ['draft', 'sent', 'overdue'])
             ->with(['supplier:id,name,phone', 'purchase:id,purchase_number'])
             ->orderBy('due_date')
+            ->limit($limit + 1) // fetch one extra to detect truncation
             ->get();
+
+        $truncated = $unpaid->count() > $limit;
+        if ($truncated) {
+            $unpaid = $unpaid->take($limit);
+        }
 
         $today = now()->toDateString();
 
         return response()->json([
-            'total_outstanding' => round($unpaid->sum('total'), 2),
-            'overdue_count'     => $unpaid->where('status', 'overdue')->count(),
+            'total_outstanding' => round((float) ($totals->total_outstanding ?? 0), 2),
+            'overdue_count'     => (int) ($totals->overdue_count ?? 0),
+            'truncated'         => $truncated,
             'items'             => $unpaid->map(fn($inv) => [
                 'id'             => $inv->id,
                 'invoice_number' => $inv->invoice_number,
@@ -306,17 +321,31 @@ class FinanceReportController extends Controller
 
     public function accountsReceivable(Request $request): JsonResponse
     {
+        $limit = 500;
+
+        $totals = Invoice::where('type', 'sale')
+            ->whereIn('status', ['sent', 'overdue'])
+            ->selectRaw('SUM(total) as total_outstanding, COUNT(CASE WHEN status = ? THEN 1 END) as overdue_count', ['overdue'])
+            ->first();
+
         $unpaid = Invoice::where('type', 'sale')
             ->whereIn('status', ['sent', 'overdue'])
             ->with(['customer:id,name,phone'])
             ->orderBy('due_date')
+            ->limit($limit + 1)
             ->get();
+
+        $truncated = $unpaid->count() > $limit;
+        if ($truncated) {
+            $unpaid = $unpaid->take($limit);
+        }
 
         $today = now()->toDateString();
 
         return response()->json([
-            'total_outstanding' => round($unpaid->sum('total'), 2),
-            'overdue_count'     => $unpaid->where('status', 'overdue')->count(),
+            'total_outstanding' => round((float) ($totals->total_outstanding ?? 0), 2),
+            'overdue_count'     => (int) ($totals->overdue_count ?? 0),
+            'truncated'         => $truncated,
             'items'             => $unpaid->map(fn($inv) => [
                 'id'             => $inv->id,
                 'invoice_number' => $inv->invoice_number,

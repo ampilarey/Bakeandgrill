@@ -61,13 +61,23 @@ class AnalyticsController extends Controller
         $rangeStart = Carbon::now()->startOfWeek()->subWeeks($weeks - 1);
         $rangeEnd   = Carbon::now()->endOfWeek();
 
+        // Safety cap: 52 weeks × ~100 orders/day × 7 = ~36 400 rows maximum.
+        // Raise this cap only if you have confirmed the server has sufficient RAM.
+        $rowCap = 10_000;
+
         // Query 1: all non-cancelled orders with a customer in the date range
         $orders = DB::table('orders')
             ->whereBetween('created_at', [$rangeStart, $rangeEnd])
             ->whereNotNull('customer_id')
             ->whereNotIn('status', ['cancelled'])
             ->select('customer_id', 'created_at')
+            ->limit($rowCap + 1) // fetch one extra to detect truncation
             ->get();
+
+        $truncated = $orders->count() > $rowCap;
+        if ($truncated) {
+            $orders = $orders->take($rowCap);
+        }
 
         // Query 2: first-ever order date per customer (for all customers seen in the range)
         $customerIds = $orders->pluck('customer_id')->unique()->values();
@@ -113,7 +123,10 @@ class AnalyticsController extends Controller
             ];
         }
 
-        return response()->json(['retention' => $data]);
+        return response()->json([
+            'retention'  => $data,
+            'truncated'  => $truncated ?? false,
+        ]);
     }
 
     /**

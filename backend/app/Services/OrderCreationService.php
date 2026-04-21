@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -51,34 +52,30 @@ class OrderCreationService
                 'customer_notes' => $payload['customer_notes'] ?? null,
             ]);
 
-            $subtotal = $this->addOrderItems($order, $payload['items'] ?? [], $user);
+            $this->addOrderItems($order, $payload['items'] ?? [], $user);
 
-            $order->load(['items.item']);
-            $taxAmount = 0;
-            foreach ($order->items as $orderItem) {
-                $item = $orderItem->item;
-                if ($item && $orderItem->total_price > 0) {
-                    $rate = (float) ($item->tax_rate ?? 0);
-                    $taxAmount += $orderItem->total_price * ($rate / 100);
-                }
-            }
-
+            // Convert any payload-level manual discount to laari and store it so
+            // the calculator (single source of truth) can include it correctly.
+            // The calculator applies discounts BEFORE tax, matching the intended
+            // business rule (tax on discounted price, not gross price).
             $discountAmount = (float) ($payload['discount_amount'] ?? 0);
-            $discountAmount = max(0, min($discountAmount, $subtotal));
-            $total = max(0, $subtotal + $taxAmount - $discountAmount);
+            $subtotalLaar   = (int) round(
+                $order->items()->sum(\DB::raw('total_price')) * 100
+            );
+            $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
+
+            // Persist the discount field first so recalculateAndPersist can read it.
+            $order->update(['manual_discount_laar' => $discountLaar]);
+
+            // Use OrderTotalsCalculator as the single source of truth for every
+            // totals field (subtotal_laar, tax_laar, total_laar, total, etc.).
+            $order = $this->calculator->recalculateAndPersist($order);
 
             // Enforce minimum order value (not applicable to dine-in)
             $minOrderMvr = (float) config('ordering.minimum_order_mvr', 0);
-            if ($minOrderMvr > 0 && $total < $minOrderMvr && ($payload['type'] ?? '') !== 'dine_in') {
+            if ($minOrderMvr > 0 && $order->total < $minOrderMvr && ($payload['type'] ?? '') !== 'dine_in') {
                 abort(422, 'Minimum order amount is MVR ' . number_format($minOrderMvr, 2));
             }
-
-            $order->update([
-                'subtotal' => $subtotal,
-                'tax_amount' => round($taxAmount, 2),
-                'discount_amount' => round($discountAmount, 2),
-                'total' => round($total, 2),
-            ]);
 
             $order->load(['items.modifiers']);
 

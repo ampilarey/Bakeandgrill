@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Delivery\DTOs\DeliveryDetails;
 use App\Domains\Delivery\Services\DeliveryFeeCalculator;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
+use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\DeliveryGateService;
@@ -29,6 +30,7 @@ class DeliveryOrderController extends Controller
         private DeliveryFeeCalculator $feeCalculator,
         private KitchenMenuResolver $kitchenMenuResolver,
         private DeliveryGateService $deliveryGate,
+        private OrderTotalsCalculator $calculator,
     ) {}
 
     /**
@@ -90,22 +92,25 @@ class DeliveryOrderController extends Controller
         $order = DB::transaction(function () use ($payload, $staffUser, $delivery): Order {
             $order = $this->orderCreation->createFromPayload($payload, $staffUser);
 
-            // Calculate delivery fee and add to order total
+            // Calculate delivery fee
             $feeLaar = $this->feeCalculator->calculateLaar(
                 $delivery->island,
-                (int) (($order->subtotal_laar ?? (int) round($order->subtotal * 100))),
+                (int) ($order->subtotal_laar ?? (int) round($order->subtotal * 100)),
             );
             $feeMvr = round($feeLaar / 100, 2);
 
-            // Persist all delivery fields (address, contact, eta) + fee + updated total
+            // Persist delivery fields + fee on the order row first …
             $order->update(array_merge($delivery->toArray(), [
-                'delivery_fee' => $feeMvr,
+                'delivery_fee'      => $feeMvr,
                 'delivery_fee_laar' => $feeLaar,
-                'total' => round(($order->total ?? 0) + $feeMvr, 2),
-                'total_laar' => ($order->total_laar ?? (int) round($order->total * 100)) + $feeLaar,
             ]));
 
-            return $order->fresh(['items.modifiers']);
+            // … then run the calculator so that subtotal_laar, tax_laar, and every
+            // other total field are consistent. OrderTotalsCalculator already reads
+            // delivery_fee_laar and adds it on top of the item grand total.
+            $order = $this->calculator->recalculateAndPersist($order->fresh());
+
+            return $order->load(['items.modifiers']);
         });
 
         return response()->json(['order' => $order], 201);
@@ -144,18 +149,16 @@ class DeliveryOrderController extends Controller
         // Recalculate delivery fee if island changed
         if (isset($validated['delivery_island'])) {
             $feeLaar = $this->feeCalculator->calculateLaar($validated['delivery_island']);
-            $validated['delivery_fee'] = round($feeLaar / 100, 2);
+            $validated['delivery_fee']      = round($feeLaar / 100, 2);
             $validated['delivery_fee_laar'] = $feeLaar;
-
-            // Adjust total: remove old fee, add new fee
-            $oldFeeLaar = $order->delivery_fee_laar ?? 0;
-            $delta = $feeLaar - $oldFeeLaar;
-            $validated['total'] = round(($order->total ?? 0) + ($delta / 100), 2);
-            $validated['total_laar'] = ($order->total_laar ?? 0) + $delta;
         }
 
         $order->update($validated);
 
-        return response()->json(['order' => $order->fresh(['items.modifiers'])]);
+        // Re-run the calculator so that subtotal_laar, tax_laar, and total stay
+        // consistent with any fee change. If no fee changed, this is a cheap no-op.
+        $order = $this->calculator->recalculateAndPersist($order->fresh());
+
+        return response()->json(['order' => $order->load(['items.modifiers'])]);
     }
 }

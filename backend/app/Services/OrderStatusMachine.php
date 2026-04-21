@@ -24,6 +24,7 @@ use App\Models\Order;
  * ─────────────────────────────────────────────────────────────────────
  *
  *  payment_pending ─→ paid           (BML webhook: CONFIRMED)
+ *  payment_pending ─→ pending        (PaymentConfirmedListener: online order confirmed → back to kitchen queue)
  *  payment_pending ─→ cancelled      (BML webhook: FAILED/CANCELLED/EXPIRED, or stale cleanup)
  *
  *  pending  ─→ in_progress           (KDS: start)
@@ -64,7 +65,9 @@ class OrderStatusMachine
      * @var array<string, list<string>>
      */
     private const TRANSITIONS = [
-        'payment_pending' => ['paid', 'cancelled'],
+        // 'pending' is used by PaymentConfirmedListener to move confirmed online
+        // orders back into the kitchen queue before KDS picks them up.
+        'payment_pending' => ['paid', 'pending', 'cancelled'],
         'pending'         => ['in_progress', 'ready', 'held', 'paid', 'partial', 'cancelled'],
         'paid'            => ['in_progress', 'ready', 'completed', 'refunded', 'cancelled'],
         'partial'         => ['paid', 'in_progress', 'cancelled'],

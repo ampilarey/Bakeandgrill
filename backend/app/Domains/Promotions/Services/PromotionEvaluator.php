@@ -7,6 +7,7 @@ namespace App\Domains\Promotions\Services;
 use App\Domains\Promotions\Repositories\PromotionRedemptionRepositoryInterface;
 use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
 use App\Models\Order;
+use App\Models\OrderPromotion;
 use App\Models\Promotion;
 
 /**
@@ -54,9 +55,23 @@ class PromotionEvaluator
         }
 
         if ($customerId && $promotion->max_uses_per_customer) {
-            $customerUsage = $this->redemptionRepo->countByPromotionAndCustomer($promotion->id, $customerId);
+            // Confirmed redemptions (paid/completed orders)
+            $confirmedUsage = $this->redemptionRepo->countByPromotionAndCustomer($promotion->id, $customerId);
 
-            if ($customerUsage >= $promotion->max_uses_per_customer) {
+            // Pending (draft) OrderPromotion rows on non-cancelled orders OTHER than the
+            // current one. Without this check, a customer could open 5 carts, apply the
+            // "once per customer" promo to all 5 before any payment is confirmed, and end
+            // up with multiple redemptions.
+            $pendingUsage = OrderPromotion::where('promotion_id', $promotion->id)
+                ->where('order_id', '!=', $order->id)
+                ->where('status', 'draft')
+                ->whereHas('order', fn ($q) => $q
+                    ->where('customer_id', $customerId)
+                    ->whereNotIn('status', ['cancelled', 'refunded'])
+                )
+                ->count();
+
+            if ($confirmedUsage + $pendingUsage >= $promotion->max_uses_per_customer) {
                 return $this->reject('You have already used this promo code the maximum number of times.');
             }
         }
