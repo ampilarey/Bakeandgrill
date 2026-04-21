@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 type Props = {
   username: string;
@@ -15,12 +15,28 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
   const append = (d: string) => { if (pin.length < 8) setPin(pin + d); };
   const back   = ()          => setPin(pin.slice(0, -1));
   const clear  = ()          => setPin('');
+  const emailRef    = useRef<HTMLInputElement>(null);
+  const deviceIdRef = useRef<HTMLInputElement>(null);
 
-  // Allow typing the PIN directly from the keyboard
+  // Allow typing the PIN directly from the keyboard.
+  // When a digit is pressed while the email/deviceId field is focused (e.g. after autofill),
+  // blur that field and route the digit to the PIN instead.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const emailFocused    = document.activeElement === emailRef.current;
+      const deviceIdFocused = document.activeElement === deviceIdRef.current;
+
+      if (emailFocused || deviceIdFocused) {
+        if (/^[0-9]$/.test(e.key)) {
+          e.preventDefault();
+          (document.activeElement as HTMLElement)?.blur();
+          append(e.key);
+        }
+        return;
+      }
+
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
-      if (/^[0-9]$/.test(e.key))  append(e.key);
+      if (/^[0-9]$/.test(e.key))     append(e.key);
       else if (e.key === 'Backspace') back();
       else if (e.key === 'Escape')    clear();
       else if (e.key === 'Enter')     onLogin();
@@ -59,6 +75,7 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
             Email
           </label>
           <input
+            ref={emailRef}
             type="email"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -80,6 +97,7 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
             Device ID
           </label>
           <input
+            ref={deviceIdRef}
             value={deviceId}
             onChange={(e) => setDeviceId(e.target.value)}
             style={{
