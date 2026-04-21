@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 type Props = {
   username: string;
   setUsername: (v: string) => void;
@@ -13,6 +15,20 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
   const append = (d: string) => { if (pin.length < 8) setPin(pin + d); };
   const back   = ()          => setPin(pin.slice(0, -1));
   const clear  = ()          => setPin('');
+
+  // Allow typing the PIN directly from the keyboard
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (/^[0-9]$/.test(e.key))  append(e.key);
+      else if (e.key === 'Backspace') back();
+      else if (e.key === 'Escape')    clear();
+      else if (e.key === 'Enter')     onLogin();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, username, onLogin]);
 
   return (
     <div style={{
