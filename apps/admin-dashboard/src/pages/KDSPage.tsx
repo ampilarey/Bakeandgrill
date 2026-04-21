@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall } from '../api';
 import type { KdsTicket } from '../api';
 import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useSse } from '../hooks/useSse';
 
 function elapsed(iso: string): string {
   const t = Date.parse(iso);
@@ -30,7 +31,7 @@ export function KDSPage() {
   const [error, setError] = useState('');
   const [acting, setActing] = useState<number | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const res = await fetchKdsOrders();
       setTickets(res.orders ?? []);
@@ -40,13 +41,21 @@ export function KDSPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    void load();
-    const t = setInterval(() => void load(), 10_000);
-    return () => clearInterval(t);
   }, []);
+
+  // Initial load
+  useEffect(() => { void load(); }, [load]);
+
+  // SSE: reload whenever the kitchen stream fires any order event
+  const handleSseEvent = useCallback(() => { void load(); }, [load]);
+  const { connected: sseConnected } = useSse('/stream/kds', { onEvent: handleSseEvent });
+
+  // Fallback polling — only active when SSE is disconnected (degraded mode)
+  useEffect(() => {
+    if (sseConnected) return;
+    const t = setInterval(() => void load(), 15_000);
+    return () => clearInterval(t);
+  }, [sseConnected, load]);
 
   const act = async (id: number, fn: (id: number) => Promise<void>) => {
     setActing(id);
@@ -95,7 +104,7 @@ export function KDSPage() {
     <>
       <PageHeader
         title="Kitchen Display"
-        subtitle="Live ticket board — auto-refreshes every 10s"
+        subtitle={sseConnected ? '● Live' : '○ Polling (reconnecting…)'}
         action={<Btn onClick={load} variant="secondary">↻ Refresh</Btn>}
       />
       {error && <ErrorMsg message={error} />}

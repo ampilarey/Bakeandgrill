@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSse } from '../hooks/useSse';
 import {
   fetchOrders, fetchOrder, holdOrder, resumeOrder, sendOrderBill,
   kdsStart, kdsBump, addOrderPayments,
@@ -391,15 +392,18 @@ export function OrdersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // Auto-refresh every 30s — use a ref so the interval is created once and
-  // always calls the latest version of load without resetting the timer on
-  // every filter/page change (which would cause multiple stale closures).
+  // SSE: reload the current page whenever an order event arrives
+  const handleSseEvent = useCallback(() => { void load(); }, [load]);
+  const { connected: sseConnected } = useSse('/stream/orders', { onEvent: handleSseEvent });
+
+  // Fallback polling — activates only when SSE drops (network degraded)
   const loadRef = useRef(load);
   useEffect(() => { loadRef.current = load; }, [load]);
   useEffect(() => {
+    if (sseConnected) return;
     const t = setInterval(() => void loadRef.current(), 30_000);
     return () => clearInterval(t);
-  }, []);
+  }, [sseConnected]);
 
   return (
     <>

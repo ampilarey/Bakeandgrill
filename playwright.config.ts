@@ -12,7 +12,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
 
   use: {
-    baseURL: 'https://test.bakeandgrill.mv',
+    baseURL: process.env.BASE_URL ?? 'https://test.bakeandgrill.mv',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',
