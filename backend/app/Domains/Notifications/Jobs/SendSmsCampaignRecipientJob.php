@@ -37,7 +37,18 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
             return;
         }
 
-        $campaign = $this->recipient->campaign;
+        // Re-load campaign fresh; the serialised relation may be stale or deleted.
+        $campaign = SmsCampaign::find($this->recipient->sms_campaign_id);
+
+        if (! $campaign) {
+            Log::warning('SendSmsCampaignRecipientJob: campaign not found, marking recipient failed', [
+                'recipient_id' => $this->recipient->id,
+                'campaign_id'  => $this->recipient->sms_campaign_id,
+            ]);
+            $this->recipient->markFailed('Campaign no longer exists');
+            // Do not rethrow — nothing to retry.
+            return;
+        }
 
         try {
             $log = $smsService->send(new SmsMessage(
@@ -57,17 +68,17 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
                 $this->recipient->markFailed($log->error_message ?? 'Gateway error', $log);
             }
         } catch (\Throwable $e) {
-            Log::error('SMS campaign job failed', [
+            Log::error('SendSmsCampaignRecipientJob: send failed', [
                 'recipient_id' => $this->recipient->id,
-                'campaign_id' => $campaign->id,
-                'error' => $e->getMessage(),
+                'campaign_id'  => $campaign->id,
+                'error'        => $e->getMessage(),
             ]);
 
             $this->recipient->markFailed($e->getMessage());
 
             throw $e;
         } finally {
-            // Update campaign-level stats after each send
+            // Refresh campaign stats regardless of send outcome.
             $campaign->updateStats();
         }
     }

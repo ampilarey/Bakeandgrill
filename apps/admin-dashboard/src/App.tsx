@@ -103,6 +103,19 @@ export default function App() {
       .finally(() => setChecking(false));
   }, []);
 
+  // When any API call returns 401 (token expired mid-session), the shared client
+  // dispatches an 'auth_expired' event. Handle it here so staff are immediately
+  // redirected to the login page instead of being left on a broken screen.
+  useEffect(() => {
+    const onExpired = () => {
+      localStorage.removeItem('admin_token');
+      setUser(null);
+      navigate('/login');
+    };
+    window.addEventListener('auth_expired', onExpired);
+    return () => window.removeEventListener('auth_expired', onExpired);
+  }, [navigate]);
+
   const handleLogin = (_token: string, staffUser: StaffUser, returnTo?: string) => {
     setUser(staffUser);
     navigate(returnTo ?? '/dashboard');

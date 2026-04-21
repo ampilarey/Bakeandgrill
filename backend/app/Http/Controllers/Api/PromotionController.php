@@ -104,7 +104,10 @@ class PromotionController extends Controller
             }
         }
 
-        if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+        // Block apply on 'partial' — payment has already been collected and
+        // lowering the total via a discount would make total < amount paid, causing
+        // an accounting discrepancy. Staff must handle adjustments manually.
+        if (in_array($order->status, ['paid', 'completed', 'cancelled', 'partial'], true)) {
             return response()->json(['message' => 'Cannot apply promo to this order.'], 422);
         }
 
@@ -128,8 +131,8 @@ class PromotionController extends Controller
             // Re-lock the order row inside the transaction to prevent race conditions.
             $order = Order::lockForUpdate()->findOrFail($orderId);
 
-            if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
-                // Order transitioned to a terminal state between the pre-check and the lock.
+            if (in_array($order->status, ['paid', 'completed', 'cancelled', 'partial'], true)) {
+                // Order transitioned to a terminal/partial state between the pre-check and the lock.
                 // $applied stays false; caller will receive a 409.
                 return;
             }

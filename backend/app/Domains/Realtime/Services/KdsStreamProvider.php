@@ -8,11 +8,13 @@ use App\Domains\Realtime\DTOs\StreamEvent;
 use App\Models\Order;
 
 /**
- * Fetches KDS-relevant orders (pending/in_progress/paid) changed since cursor.
+ * Fetches KDS-relevant orders (pending/in_progress/paid/preparing) changed since cursor.
  */
 class KdsStreamProvider
 {
-    private const KDS_STATUSES = ['pending', 'in_progress', 'paid'];
+    // 'preparing' is used by the customer-facing display and by some POS flows;
+    // include it so those orders are visible on the kitchen screen too.
+    private const KDS_STATUSES = ['pending', 'in_progress', 'paid', 'preparing'];
 
     public function __construct(private OrderStreamProvider $orderStreamProvider) {}
 

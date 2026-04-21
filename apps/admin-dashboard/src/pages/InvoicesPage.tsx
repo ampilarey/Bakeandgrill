@@ -185,7 +185,9 @@ export function InvoicesPage() {
         issue_date: manualForm.issue_date,
         due_date: manualForm.due_date || undefined,
         notes: manualForm.notes || undefined,
-        tax_rate_bp: manualForm.tax_rate_bp ? parseInt(manualForm.tax_rate_bp) : undefined,
+        tax_rate_bp: manualForm.tax_rate_bp
+          ? (() => { const v = parseInt(manualForm.tax_rate_bp, 10); return isNaN(v) ? undefined : v; })()
+          : undefined,
         items: lines,
       });
       showToast(`Invoice ${res.invoice.invoice_number} created.`);

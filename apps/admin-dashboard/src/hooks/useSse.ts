@@ -33,8 +33,11 @@ export function useSse(
   { onEvent, reconnectDelay = 3_000, enabled = true }: UseSseOptions,
 ): { connected: boolean } {
   const [connected, setConnected] = useState(false);
-  const abortRef   = useRef<AbortController | null>(null);
-  const onEventRef = useRef(onEvent);
+  const abortRef    = useRef<AbortController | null>(null);
+  const onEventRef  = useRef(onEvent);
+  // Persists the last received event id across reconnects so the server can
+  // resume from the correct cursor rather than replaying from the beginning.
+  const lastEventId = useRef('');
 
   // Keep the callback ref current without restarting the stream
   useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
@@ -45,13 +48,13 @@ export function useSse(
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
 
-    async function connect(lastEventId: string) {
+    async function connect(sinceId: string) {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
 
       const token = localStorage.getItem('admin_token') ?? '';
-      const url   = `${BASE}${path}${lastEventId ? `?since=${encodeURIComponent(lastEventId)}` : ''}`;
+      const url   = `${BASE}${path}${sinceId ? `?since=${encodeURIComponent(sinceId)}` : ''}`;
 
       try {
         const res = await fetch(url, {
@@ -72,7 +75,7 @@ export function useSse(
         const reader  = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer    = '';
-        let curId     = lastEventId;
+        let curId     = sinceId;
         let curType   = 'message';
         let curData   = '';
 
@@ -95,6 +98,8 @@ export function useSse(
               }
             } else if (line.startsWith('id:')) {
               curId = line.slice(3).trim();
+              // Persist so reconnect resumes from this cursor.
+              lastEventId.current = curId;
             } else if (line.startsWith('event:')) {
               curType = line.slice(6).trim();
             } else if (line.startsWith('data:')) {
@@ -111,12 +116,11 @@ export function useSse(
       }
 
       if (!stopped) {
-        const retryId = (abortRef.current as AbortController & { _lastId?: string })?._lastId ?? '';
-        retryTimer = setTimeout(() => connect(retryId), reconnectDelay);
+        retryTimer = setTimeout(() => connect(lastEventId.current), reconnectDelay);
       }
     }
 
-    void connect('');
+    void connect(lastEventId.current);
 
     return () => {
       stopped = true;

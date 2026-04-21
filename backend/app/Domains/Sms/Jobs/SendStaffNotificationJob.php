@@ -38,7 +38,7 @@ class SendStaffNotificationJob implements ShouldQueue
 
         // Idempotency check: skip if already sent
         $existing = StaffNotificationLog::where('idempotency_key', $idempotencyKey)->first();
-        if ($existing && $existing->status === 'sent') {
+        if ($existing && in_array($existing->status, ['sent', 'demo'], true)) {
             Log::info('SendStaffNotificationJob: duplicate prevented', ['key' => $idempotencyKey]);
 
             return;
@@ -69,11 +69,14 @@ class SendStaffNotificationJob implements ShouldQueue
                 idempotencyKey: $idempotencyKey . ':sms',
             ));
 
+            // 'demo' is a successful no-op send (local/staging without real credentials).
+            // Treat it the same as 'sent' so ops dashboards don't show false failures.
+            $success = in_array($smsLog->status, ['sent', 'demo'], true);
             $logRecord->update([
-                'status'     => $smsLog->status === 'sent' ? 'sent' : 'failed',
+                'status'     => $success ? 'sent' : 'failed',
                 'sms_log_id' => $smsLog->id,
-                'sent_at'    => $smsLog->status === 'sent' ? now() : null,
-                'failed_at'  => $smsLog->status !== 'sent' ? now() : null,
+                'sent_at'    => $success ? now() : null,
+                'failed_at'  => $success ? null : now(),
             ]);
         } catch (\Throwable $e) {
             $logRecord->update([

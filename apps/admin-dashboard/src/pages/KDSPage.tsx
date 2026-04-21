@@ -66,7 +66,8 @@ export function KDSPage() {
   // Backend statuses: pending → in_progress → ready → completed
   // paid = online order waiting for kitchen
   const pending = tickets.filter((t) => ['pending', 'paid'].includes(t.status));
-  const cooking = tickets.filter((t) => t.status === 'in_progress');
+  // 'preparing' is used by POS/online-order flows; treat it the same as in_progress.
+  const cooking = tickets.filter((t) => ['in_progress', 'preparing'].includes(t.status));
   const ready   = tickets.filter((t) => t.status === 'ready');
 
   const Column = ({ title, items, color, children }: {
