@@ -152,7 +152,7 @@ class WebhookIdempotencyTest extends TestCase
 
         $this->call(
             'POST',
-            '/api/webhooks/bml',
+            '/api/payments/bml/webhook',
             [], [], [],
             ['CONTENT_TYPE' => 'application/json', 'HTTP_X-BML-Signature' => 'invalid'],
             $webhookBody,
@@ -165,5 +165,76 @@ class WebhookIdempotencyTest extends TestCase
             ['paid', 'completed'],
             'A CANCELLED payment webhook must not mark the order as paid.',
         );
+    }
+
+    public function test_bml_webhook_with_invalid_signature_returns_200_and_does_not_pay_order(): void
+    {
+        // Even with a bad signature, BML always gets HTTP 200 (to stop retries).
+        // But the order must NOT be marked paid when enforce_signature is true.
+        config(['bml.enforce_signature' => true, 'app.env' => 'production']);
+
+        $webhookBody = json_encode([
+            'transactionId' => 'TXN-BAD-SIG-001',
+            'localId'       => 'LOCAL-WH-IDEM-001',
+            'state'         => 'CONFIRMED',
+            'amount'        => '150.00',
+            'currency'      => 'MVR',
+        ]);
+
+        $response = $this->call(
+            'POST',
+            '/api/payments/bml/webhook',
+            [], [], [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_X-BML-Signature' => 'badsignature'],
+            $webhookBody,
+        );
+
+        // Controller always returns 200 to prevent BML retry flood
+        $this->assertSame(200, $response->status());
+
+        // Order must NOT have been paid despite the CONFIRMED state in payload
+        $this->assertNotContains(
+            $this->order->fresh()->status,
+            ['paid', 'completed'],
+            'An invalid-signature webhook must not mark the order as paid.',
+        );
+    }
+
+    public function test_bml_webhook_enforce_signature_false_processes_payload(): void
+    {
+        // When enforce_signature is false (e.g. UAT without a real secret),
+        // the webhook should still process and update the order.
+        config(['bml.enforce_signature' => false, 'bml.webhook_secret' => null]);
+
+        $transactionId = 'TXN-NO-SIG-001';
+        $webhookBody   = json_encode([
+            'transactionId' => $transactionId,
+            'localId'       => $this->payment->local_id,
+            'state'         => 'CONFIRMED',
+            'amount'        => '150.00',
+            'currency'      => 'MVR',
+        ]);
+
+        // Update payment to reference this transaction
+        $this->payment->update([
+            'local_id'               => $this->payment->local_id,
+            'provider_transaction_id' => $transactionId,
+            'status'                 => 'initiated',
+        ]);
+
+        $response = $this->call(
+            'POST',
+            '/api/payments/bml/webhook',
+            [], [], [],
+            ['CONTENT_TYPE' => 'application/json'],
+            $webhookBody,
+        );
+
+        $this->assertSame(200, $response->status());
+        // Webhook log must be created
+        $this->assertDatabaseHas('webhook_logs', [
+            'gateway'         => 'bml',
+            'idempotency_key' => 'bml:webhook:' . $transactionId,
+        ]);
     }
 }

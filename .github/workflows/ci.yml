@@ -184,14 +184,18 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ github.run_id }}
-          path: playwright-report/
+          path: e2e/report/
           retention-days: 7
 
   deploy:
-    name: Deploy to production
+    # NOTE: This job deploys to the TEST server (test.bakeandgrill.mv).
+    # When a separate production server is introduced, add a second job
+    # with environment: production and its own DEPLOY_HOST secret.
+    name: Deploy (test server — test.bakeandgrill.mv)
     runs-on: ubuntu-latest
     needs: [frontend, test, contract]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: test
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -205,6 +209,7 @@ jobs:
             && cd backend \
             && composer install --no-dev --optimize-autoloader \
             && php artisan migrate --force \
+            && php artisan storage:link --force \
             && php artisan config:cache \
             && php artisan route:cache \
             && php artisan view:clear \

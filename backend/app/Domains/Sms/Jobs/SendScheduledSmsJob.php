@@ -72,7 +72,12 @@ class SendScheduledSmsJob implements ShouldQueue
             return;
         }
 
-        // Send to each recipient
+        // Send to each recipient, collecting any failures.
+        // We do NOT silently swallow errors: if any send fails we re-throw after
+        // attempting all recipients so that Laravel's retry mechanism fires and
+        // operators can see the failure in failed_jobs / logs.
+        $failures = [];
+
         foreach ($phones as $phone) {
             $idempotencyKey = 'scheduled:' . $this->scheduledMessageId . ':' . $at->format('YmdHi') . ':' . $phone;
 
@@ -86,12 +91,21 @@ class SendScheduledSmsJob implements ShouldQueue
                     idempotencyKey: $idempotencyKey,
                 ));
             } catch (\Throwable $e) {
-                Log::error('SendScheduledSmsJob: failed to send', [
+                Log::error('SendScheduledSmsJob: failed to send to recipient', [
                     'id'    => $this->scheduledMessageId,
                     'phone' => $phone,
                     'error' => $e->getMessage(),
                 ]);
+                $failures[] = $phone . ': ' . $e->getMessage();
             }
+        }
+
+        if (! empty($failures)) {
+            // Re-throw so the job enters failed_jobs and retry logic applies.
+            // Idempotency keys ensure already-sent messages are not re-sent on retry.
+            throw new \RuntimeException(
+                'SendScheduledSmsJob: ' . count($failures) . ' recipient(s) failed — ' . implode('; ', $failures),
+            );
         }
     }
 

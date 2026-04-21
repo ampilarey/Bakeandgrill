@@ -43,8 +43,11 @@ class StripeController extends Controller
         }
 
         $currency = $validated['currency'] ?? 'mvr';
+        // StripeService expects laari (smallest unit): 1 MVR = 100 laari.
+        // order->total is stored in MVR (decimal), so multiply by 100.
+        $amountLaar = (int) round(((float) ($order->total ?? 0)) * 100);
         $result = $this->stripe->createPaymentIntent(
-            (int) ($order->total ?? 0),
+            $amountLaar,
             $currency,
             (string) $order->id,
         );

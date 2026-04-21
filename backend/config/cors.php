@@ -19,13 +19,17 @@ return [
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
     'allowed_origins' => array_filter([
-        env('FRONTEND_URL'), // Production frontend domain
-        env('POS_URL'),      // POS app URL (optional)
-        env('KDS_URL'),      // KDS app URL (optional)
+        env('FRONTEND_URL'),   // Customer-facing online order app
+        env('POS_URL'),        // POS app URL (optional)
+        env('KDS_URL'),        // KDS app URL (optional)
+        env('DELIVERY_URL'),   // Delivery / driver app URL (optional)
+        env('ADMIN_URL'),      // Admin dashboard URL (optional, if served from a separate origin)
         // Allow localhost only in local/dev environment
         env('APP_ENV') !== 'production' ? 'http://localhost:3003' : null,
         env('APP_ENV') !== 'production' ? 'http://localhost:3001' : null,
         env('APP_ENV') !== 'production' ? 'http://localhost:3002' : null,
+        env('APP_ENV') !== 'production' ? 'http://localhost:3004' : null,
+        env('APP_ENV') !== 'production' ? 'http://localhost:3005' : null,
     ]),
 
     'allowed_origins_patterns' => [],
