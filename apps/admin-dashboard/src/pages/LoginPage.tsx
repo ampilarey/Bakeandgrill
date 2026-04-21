@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { pinLogin, type StaffUser } from '../api';
 
@@ -10,6 +10,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
   const [pin, setPin]           = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   const submit = async () => {
     if (!username.trim() || pin.length < 4) return;
@@ -31,15 +32,30 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
   const clear  = ()          => setPin('');
   const back   = ()          => setPin((p) => p.slice(0, -1));
 
-  // Allow typing the PIN directly from the keyboard
+  // Allow typing the PIN directly from the keyboard.
+  // When a digit is pressed while the email field is focused (e.g. after autofill),
+  // blur the email field and route the digit to the PIN instead.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Don't intercept when focus is on the email input
+      const emailFocused = document.activeElement === emailRef.current;
+
+      if (emailFocused) {
+        if (/^[0-9]$/.test(e.key)) {
+          e.preventDefault();
+          emailRef.current?.blur();
+          append(e.key);
+        }
+        // Let other keys (letters, @, Tab, etc.) reach the email input normally
+        return;
+      }
+
+      // Ignore keypresses inside any other input/textarea
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
-      if (/^[0-9]$/.test(e.key))           append(e.key);
-      else if (e.key === 'Backspace')       back();
-      else if (e.key === 'Escape')          clear();
-      else if (e.key === 'Enter')           submit();
+
+      if (/^[0-9]$/.test(e.key))     append(e.key);
+      else if (e.key === 'Backspace') back();
+      else if (e.key === 'Escape')    clear();
+      else if (e.key === 'Enter')     submit();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -75,6 +91,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
             Email
           </label>
           <input
+            ref={emailRef}
             type="email"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
