@@ -55,15 +55,15 @@ class SendStaffOrderNotificationListener implements ShouldQueue
 
     private function handleOrderStatusChanged(OrderStatusChanged $event): void
     {
-        $eventType = $this->mapStatusToEventType($event->data->status);
-
-        if (! $eventType) {
-            return;
-        }
-
         $order = Order::with('items.item')->find($event->data->orderId);
 
         if (! $order) {
+            return;
+        }
+
+        $eventType = $this->mapStatusToEventType($event->data->status, $order);
+
+        if (! $eventType) {
             return;
         }
 
@@ -73,10 +73,17 @@ class SendStaffOrderNotificationListener implements ShouldQueue
     /**
      * Map order statuses to staff notification event types.
      * Returns null for statuses that don't trigger staff notifications.
+     *
+     * 'pending' only fires for online_pickup/delivery orders — it means payment
+     * just completed and the order is now waiting for kitchen action.
+     * Takeaway/dine-in orders are notified on OrderCreated, not here.
      */
-    private function mapStatusToEventType(string $status): ?string
+    private function mapStatusToEventType(string $status, Order $order): ?string
     {
         return match ($status) {
+            'pending'             => in_array($order->type, ['online_pickup', 'delivery'], true)
+                                        ? 'new_order'
+                                        : null,
             'in_progress', 'paid' => 'order_confirmed',
             'ready'               => 'order_ready',
             'on_the_way'          => 'order_out_for_delivery',
