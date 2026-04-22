@@ -191,6 +191,15 @@ class PaymentController extends Controller
             $order = $this->paymentService->completeZeroBalanceOnlineOrder($orderId, (int) $request->user()->id);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('completeZeroBalance: unexpected exception', [
+                'order_id' => $orderId,
+                'error'    => $e->getMessage(),
+                'class'    => get_class($e),
+                'file'     => $e->getFile(),
+                'line'     => $e->getLine(),
+            ]);
+            return response()->json(['message' => 'Payment processing error: ' . $e->getMessage()], 500);
         }
 
         return response()->json(['order' => $order]);
