@@ -4,12 +4,19 @@ import { Btn, ConfirmDialog, ErrorMsg, Modal, ModalActions, useConfirmDialog } f
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function getWeekStart(offset = 0): string {
   const d = new Date();
   const day = d.getDay();
   const diff = (day === 0 ? -6 : 1 - day) + offset * 7;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
+  return toLocalDateStr(d);
 }
 
 const FS: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
@@ -57,6 +64,9 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
     if (!form.staff_id || !form.date || !form.start_time || !form.end_time) {
       setFormError('Staff, date, start and end times are required.'); return;
     }
+    if (form.end_time <= form.start_time) {
+      setFormError('End time must be after start time. Overnight shifts are not supported.'); return;
+    }
     const staffIdNum = Number(form.staff_id);
     if (isNaN(staffIdNum) || staffIdNum <= 0) { setFormError('Invalid staff member selected.'); return; }
     setSaving(true); setFormError('');
@@ -86,7 +96,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart + 'T00:00:00');
     d.setDate(d.getDate() + i);
-    return d.toISOString().slice(0, 10);
+    return toLocalDateStr(d);
   });
 
   return (

@@ -74,7 +74,7 @@ export default function TimeClockPage() {
     setActionLoading(true); setClockError('');
     try {
       if (clockedIn) { await clockOut(); }
-      else { const r = await clockIn(); setSinceTime(r.entry.clocked_in_at); }
+      else { const r = await clockIn(); if (r.entry?.clocked_in_at) setSinceTime(r.entry.clocked_in_at); }
       await loadStatus();
     } catch (e) { setClockError((e as Error).message); }
     finally { setActionLoading(false); }
@@ -128,7 +128,7 @@ export default function TimeClockPage() {
               Export CSV
             </Btn>
           ) : tab === 'summary' && summary.length > 0 ? (
-            <Btn variant="secondary" onClick={() => downloadCSV('time-clock-summary', summary.map(r => ({ Staff: r.staff.name, 'Total Hours': Number(r.total_hours).toFixed(2), Entries: r.entries_count })))}>
+            <Btn variant="secondary" onClick={() => downloadCSV('time-clock-summary', summary.map(r => ({ Staff: r.staff?.name ?? '—', 'Total Hours': Number(r.total_hours).toFixed(2), Entries: r.entries_count })))}>
               Export CSV
             </Btn>
           ) : undefined
@@ -255,7 +255,7 @@ export default function TimeClockPage() {
                 ) : summary.length === 0 ? (
                   <tr><td colSpan={3}><EmptyState message="No data for this period." /></td></tr>
                 ) : summary.map((row, i) => (
-                  <tr key={i}>
+                  <tr key={row.staff?.id ?? i}>
                     <td style={{ ...TD, fontWeight: 600 }}>{row.staff?.name ?? `Staff #${row.staff?.id ?? '?'}`}</td>
                     <td style={{ ...TD, fontWeight: 700 }}>{fmtHours(row.total_hours)}</td>
                     <td style={{ ...TD, color: '#6B5D4F' }}>{row.entries_count}</td>

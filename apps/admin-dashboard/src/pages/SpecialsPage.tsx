@@ -52,7 +52,7 @@ export default function SpecialsPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchSpecials({ page });
-      setSpecials(res.data); setMeta(res.meta);
+      setSpecials(res.data ?? []); setMeta(res.meta);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -92,19 +92,27 @@ export default function SpecialsPage() {
     if (discountPct !== undefined && (isNaN(discountPct) || discountPct < 0 || discountPct > 100)) {
       setFormError('Discount % must be between 0 and 100.'); return;
     }
+    const specialPrice = form.special_price ? parseFloat(form.special_price) : undefined;
+    if (specialPrice !== undefined && (isNaN(specialPrice) || specialPrice < 0)) {
+      setFormError('Special price must be a valid positive number.'); return;
+    }
+    const maxQty = form.max_quantity ? parseInt(form.max_quantity, 10) : undefined;
+    if (maxQty !== undefined && (isNaN(maxQty) || maxQty < 1)) {
+      setFormError('Max quantity must be a positive whole number.'); return;
+    }
     setSaving(true); setFormError('');
     try {
       const payload = {
         item_id: Number(form.item_id),
         badge_label: form.badge_label || undefined,
-        special_price: form.special_price ? parseFloat(form.special_price) : undefined,
+        special_price: specialPrice,
         discount_pct: discountPct,
         start_date: form.start_date,
         end_date: form.end_date,
         start_time: form.start_time || undefined,
         end_time: form.end_time || undefined,
         days_of_week: form.days_of_week.length > 0 ? form.days_of_week : undefined,
-        max_quantity: form.max_quantity ? parseInt(form.max_quantity, 10) : undefined,
+        max_quantity: maxQty,
         description: form.description || undefined,
         is_active: form.is_active,
       };

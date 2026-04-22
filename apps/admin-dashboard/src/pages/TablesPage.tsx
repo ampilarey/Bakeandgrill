@@ -275,7 +275,7 @@ export default function TablesPage() {
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', textTransform: 'capitalize' }}>{status}</span>
               </div>
             ))}
-            <span style={{ fontSize: 12, color: '#9C8E7E', marginLeft: 'auto' }}>Click a table to select · Hold Shift to select multiple</span>
+            <span style={{ fontSize: 12, color: '#9C8E7E', marginLeft: 'auto' }}>Click a table to select · Select 2+ to merge</span>
           </div>
 
           {zones.map(([zone, zoneTables]) => (

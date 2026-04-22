@@ -40,7 +40,7 @@ export default function GiftCardsPage() {
     try {
       const res = await fetchGiftCards({ page, status: statusFilter || undefined });
       setCards(res.data ?? []);
-      setMeta(res.meta);
+      setMeta(res.meta ?? { current_page: 1, last_page: 1, total: 0 });
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -80,7 +80,7 @@ export default function GiftCardsPage() {
   };
 
   const activeCards = cards.filter(c => c.status === 'active');
-  const totalValue = activeCards.reduce((s, c) => s + c.current_balance, 0);
+  const totalValue = activeCards.reduce((s, c) => s + Number(c.current_balance ?? 0), 0);
 
   return (
     <div>

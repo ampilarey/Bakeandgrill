@@ -54,6 +54,7 @@ export default function WasteLogsPage() {
   const [formError, setFormError]           = useState('');
 
   const load = async () => {
+    if (from > to) { setError('Start date cannot be after end date.'); return; }
     setLoading(true); setError('');
     try {
       const res = await fetchWasteLogs({ from, to, page });
@@ -65,9 +66,9 @@ export default function WasteLogsPage() {
   };
 
   const loadSummary = async () => {
+    if (from > to) return;
     setSummaryLoading(true);
     try {
-      // Fetch up to 500 rows for aggregation; enough for any real kitchen
       const res = await fetchWasteLogs({ from, to, page: 1, per_page: 500 } as Parameters<typeof fetchWasteLogs>[0]);
       setAllLogs(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
@@ -97,12 +98,13 @@ export default function WasteLogsPage() {
   const totalSummaryCost = useMemo(() => allLogs.reduce((s, l) => s + (l.cost_estimate ?? 0), 0), [allLogs]);
 
   const topItems = useMemo(() => {
-    const map: Record<string, { name: string; count: number; cost: number }> = {};
+    const map: Record<string, { key: string; name: string; count: number; cost: number }> = {};
     for (const log of allLogs) {
+      const key = log.item ? `menu-${log.item.id}` : log.inventory_item ? `inv-${log.inventory_item.id}` : 'unknown';
       const name = log.item?.name ?? log.inventory_item?.name ?? 'Unknown';
-      if (!map[name]) map[name] = { name, count: 0, cost: 0 };
-      map[name].count++;
-      map[name].cost += log.cost_estimate ?? 0;
+      if (!map[key]) map[key] = { key, name, count: 0, cost: 0 };
+      map[key].count++;
+      map[key].cost += log.cost_estimate ?? 0;
     }
     return Object.values(map).sort((a, b) => b.cost - a.cost).slice(0, 10);
   }, [allLogs]);
@@ -232,6 +234,11 @@ export default function WasteLogsPage() {
           <EmptyState message="No waste logs for this period." />
         ) : (
           <>
+            {allLogs.length >= 500 && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400e' }}>
+                Summary shows up to 500 entries. Narrow the date range for complete accuracy.
+              </div>
+            )}
             {/* KPI row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
               <StatCard label="Total Entries" value={String(allLogs.length)} accent="#D4813A" />
@@ -291,7 +298,7 @@ export default function WasteLogsPage() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {topItems.map((item, i) => (
-                      <div key={item.name}>
+                      <div key={item.key}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', width: 16 }}>#{i + 1}</span>

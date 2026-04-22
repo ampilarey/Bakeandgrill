@@ -30,8 +30,8 @@ export default function ReferralsPage() {
     try {
       const res = await fetchAdminReferrals({ page, status: statusFilter || undefined });
       setReferrals(res.data ?? []);
-      setLastPage(res.meta.last_page);
-      setTotal(res.meta.total);
+      setLastPage(res.meta?.last_page ?? 1);
+      setTotal(res.meta?.total ?? 0);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

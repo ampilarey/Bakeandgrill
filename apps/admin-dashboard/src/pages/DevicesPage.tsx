@@ -30,6 +30,7 @@ export default function DevicesPage() {
   const [newToken, setNewToken] = useState<string | null>(null);
 
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [copyToast, setCopyToast] = useState('');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -130,8 +131,13 @@ export default function DevicesPage() {
                   {newToken}
                 </code>
               </div>
+              {copyToast && <p style={{ color: '#15803d', fontSize: 13, marginBottom: 8 }}>{copyToast}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <Btn onClick={() => { void navigator.clipboard.writeText(newToken); }}>Copy Token</Btn>
+                <Btn onClick={() => {
+                  navigator.clipboard.writeText(newToken)
+                    .then(() => { setCopyToast('Copied!'); setTimeout(() => setCopyToast(''), 2000); })
+                    .catch(() => { setCopyToast('Copy failed — select the token and copy manually.'); });
+                }}>Copy Token</Btn>
                 <Btn variant="secondary" onClick={() => { setModal(false); setNewToken(null); }}>Done</Btn>
               </div>
             </>

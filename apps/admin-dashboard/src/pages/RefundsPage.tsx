@@ -40,8 +40,8 @@ export default function RefundsPage() {
     try {
       const res = await fetchAdminRefunds({ page, status: statusFilter || undefined });
       setRefunds(res.refunds?.data ?? []);
-      setTotal(res.refunds.total);
-      setLastPage(res.refunds.last_page);
+      setTotal(res.refunds?.total ?? 0);
+      setLastPage(res.refunds?.last_page ?? 1);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

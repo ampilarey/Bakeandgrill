@@ -76,11 +76,12 @@ export default function ShiftsPage() {
   };
 
   const handleClose = async () => {
+    if (!shift) return;
     const cash = parseFloat(closingCash);
     if (isNaN(cash) || cash < 0) { setCloseError('Enter a valid closing cash amount.'); return; }
     setCloseSaving(true); setCloseError('');
     try {
-      const res = await closeShift(shift!.id, { closing_cash: cash, notes: closeNotes || undefined });
+      const res = await closeShift(shift.id, { closing_cash: cash, notes: closeNotes || undefined });
       setShift(res.shift);
       setCloseModal(false);
       setClosingCash(''); setCloseNotes('');
@@ -89,19 +90,15 @@ export default function ShiftsPage() {
   };
 
   const handleMovement = async () => {
+    if (!shift) return;
     const amount = parseFloat(movAmount);
     if (isNaN(amount) || amount <= 0) { setMovError('Enter a valid amount.'); return; }
     if (!movReason.trim()) { setMovError('Reason is required.'); return; }
     setMovSaving(true); setMovError('');
     try {
-      const res = await addCashMovement(shift!.id, { type: movType, amount, reason: movReason.trim() });
-      setShift(prev => prev ? {
-        ...prev,
-        cash_movements: [...(prev.cash_movements ?? []), res.movement],
-        total_cash_in:  ['cash_in',  'paid_in'].includes(movType)  ? (prev.total_cash_in ?? 0)  + amount : prev.total_cash_in,
-        total_cash_out: ['cash_out', 'paid_out'].includes(movType) ? (prev.total_cash_out ?? 0) + amount : prev.total_cash_out,
-      } : prev);
+      await addCashMovement(shift.id, { type: movType, amount, reason: movReason.trim() });
       setMovAmount(''); setMovReason('');
+      void load();
     } catch (e) { setMovError((e as Error).message); }
     finally { setMovSaving(false); }
   };

@@ -68,7 +68,7 @@ export default function ReviewsPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 20 }}>
         <StatCard label="Total (page)" value={String(meta.total)} accent="#D4813A" />
-        <StatCard label="Avg Rating" value={reviews.length ? `${avgRating.toFixed(1)} ★` : '—'} accent="#f59e0b" />
+        <StatCard label="Avg (this page)" value={reviews.length ? `${avgRating.toFixed(1)} ★` : '—'} accent="#f59e0b" />
         <StatCard label="Pending" value={String(pending)} accent={pending > 0 ? '#f59e0b' : '#22c55e'} />
       </div>
 

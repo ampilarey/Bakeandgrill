@@ -83,7 +83,7 @@ export default function InventoryPage() {
   const [catName, setCatName] = useState('');
   const [catSaving, setCatSaving] = useState(false);
   const [catError, setCatError] = useState('');
-  const { state: dlg, close: closeDlg } = useConfirmDialog();
+  const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
 
   const loadCats = async () => {
     setCatsLoading(true);
@@ -103,7 +103,7 @@ export default function InventoryPage() {
 
   const loadConversions = async () => {
     setConvLoading(true);
-    try { const r = await getUnitConversions(); setConversions(r.conversions); }
+    try { const r = await getUnitConversions(); setConversions(r.conversions ?? []); }
     catch (e) { setConvError((e as Error).message); }
     finally { setConvLoading(false); }
   };
@@ -124,9 +124,17 @@ export default function InventoryPage() {
     finally { setConvSaving(false); }
   };
 
-  const handleDeleteConversion = async (id: number) => {
-    try { await deleteUnitConversion(id); void loadConversions(); }
-    catch (e) { setConvError((e as Error).message); }
+  const handleDeleteConversion = (id: number) => {
+    askConfirm({
+      title: 'Delete Conversion',
+      message: 'Delete this unit conversion? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try { await deleteUnitConversion(id); void loadConversions(); }
+        catch (e) { setConvError((e as Error).message); }
+      },
+    });
   };
 
   // ── Price History drawer ───────────────────────────────────────────────────
