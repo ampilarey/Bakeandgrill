@@ -101,7 +101,7 @@ class SmsTemplateSeeder extends Seeder
                 'slug'        => 'customer_new',
                 'name'        => 'New Customer Registered',
                 'type'        => 'order_notification',
-                'body'        => 'New customer registered: {{name}} ({{phone}}). Check admin panel.',
+                'body'        => 'New customer registered: {{phone}}. Check admin panel.',
                 'description' => 'Sent to staff when a new customer registers online or via POS.',
                 'is_system'   => true,
                 'variables'   => json_encode([

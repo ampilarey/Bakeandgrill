@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Domains\Notifications\DTOs\CustomerCreatedData;
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Events\CustomerCreated;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
@@ -267,9 +269,15 @@ class CustomerAuthController extends Controller
 
         $isNew = $customer->wasRecentlyCreated;
 
-        // CustomerCreated event is fired in CustomerProfileController::completeProfile()
-        // once the customer sets their name and password — not here, because name is null
-        // at OTP-verify time and the SMS would show "Unknown".
+        // Fire CustomerCreated as soon as the account row exists so staff are notified
+        // immediately. The customer_new SMS template uses phone only (name is null here).
+        if ($isNew) {
+            event(new CustomerCreated(new CustomerCreatedData(
+                customerId: $customer->id,
+                phone: $customer->phone,
+                name: $customer->name,
+            )));
+        }
 
         $customer->update(['last_login_at' => now()]);
 
