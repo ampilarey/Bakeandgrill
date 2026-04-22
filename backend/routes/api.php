@@ -361,7 +361,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public/customer — validate a code
 Route::post('/promotions/validate', [App\Http\Controllers\Api\PromotionController::class, 'validate'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:20,1');
 
 // Apply/remove promo — requires auth; authorization matrix enforced in the controller:
 //   - Customer token: may only modify their own order (IDOR check)
