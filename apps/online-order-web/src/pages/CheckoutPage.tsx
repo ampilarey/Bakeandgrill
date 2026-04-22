@@ -315,7 +315,7 @@ export function CheckoutPage() {
       {promoApplied ? (
         <div style={S.promoApplied}>
           <span style={{ fontSize: 'var(--text-base)' }}>
-            {promoApplied.pending
+            {(promoApplied.pending && promoApplied.discountLaar === 0)
               ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — applied at checkout</>
               : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
             }
@@ -470,7 +470,7 @@ export function CheckoutPage() {
       {orderType === 'delivery' && (
         <SummaryRow label="Delivery fee" value={`MVR ${laarToMvr(deliveryFeeLaar)}`} />
       )}
-      {promoApplied && !promoApplied.pending && (
+      {promoApplied && promoDelta > 0 && (
         <SummaryRow label={`Promo (${promoApplied.code})`} value={`− MVR ${laarToMvr(promoDelta)}`} highlight />
       )}
       {useLoyalty && loyaltyDelta > 0 && (
