@@ -4,6 +4,7 @@ import { fetchItems, setSalesChannel, type SalesChannel } from "../api/menu";
 import { useCart } from "../context/CartContext";
 import {
   applyPromoCode,
+  validatePromoCode,
   removePromoCode,
   createCustomerOrder,
   createDeliveryOrder,
@@ -249,13 +250,34 @@ export function useCheckout() {
   // ── Promo ──────────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
     if (!token) { setPromoError("Please sign in first."); return; }
-    if (!pendingOrderId) {
-      setPromoError("");
-      setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: 0, pending: true });
-      return;
-    }
     setPromoError("");
     setPromoLoading(true);
+    if (!pendingOrderId) {
+      // No order yet — validate the code and compute an estimated discount so
+      // the customer sees the saving before they pay.
+      try {
+        const validation = await validatePromoCode(promoCode.trim().toUpperCase(), token);
+        if (!validation.valid || !validation.promotion) {
+          setPromoError(validation.message ?? "Invalid promo code.");
+          return;
+        }
+        const p = validation.promotion as { type?: string; discount_type?: string; discount_value: number };
+        const pType = p.type ?? p.discount_type ?? "";
+        let estLaar = 0;
+        if (pType === "fixed") {
+          estLaar = Math.min(p.discount_value, totalLaar);
+        } else if (pType === "percentage") {
+          estLaar = Math.round(subtotalLaar * p.discount_value / 100);
+        }
+        setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: estLaar, pending: true });
+        setPromoCode("");
+      } catch (e) {
+        setPromoError((e as Error).message);
+      } finally {
+        setPromoLoading(false);
+      }
+      return;
+    }
     try {
       const res = await applyPromoCode(token, pendingOrderId, promoCode.trim().toUpperCase());
       setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: res.discount_laar, promotionId: res.promotion_id });
