@@ -49,15 +49,24 @@ class OrderTotalsCalculator
             ->add($referralDisco);
         $discountedSubtotal = $subtotal->subtract($totalDiscount);
 
-        // Tax is always calculated on the FULL subtotal before discounts.
-        // Discounts reduce the item cost the customer pays, but GST is always
-        // owed on the original selling price.
         if ($taxInclusive) {
-            $tax = $subtotal->extractTax($taxRateBp);
+            $tax = $discountedSubtotal->extractTax($taxRateBp);
             $grandTotal = $discountedSubtotal;
         } else {
-            $tax = $subtotal->addTax($taxRateBp)->subtract($subtotal);
+            $tax = $discountedSubtotal->addTax($taxRateBp)->subtract($discountedSubtotal);
             $grandTotal = $discountedSubtotal->add($tax);
+
+            // Floor: discounts reduce item cost but cannot eliminate the GST liability.
+            // The customer always pays at least the tax that would apply to the full subtotal.
+            // e.g. MVR 10 order, 8% GST — even if discounts cover all MVR 10, customer
+            // still owes MVR 0.80 GST.
+            if ($taxRateBp > 0) {
+                $minPayable = $subtotal->addTax($taxRateBp)->subtract($subtotal);
+                if ($grandTotal->isLessThan($minPayable)) {
+                    $tax        = $minPayable;
+                    $grandTotal = $minPayable;
+                }
+            }
         }
 
         return new TotalsBreakdown(

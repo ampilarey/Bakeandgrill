@@ -242,9 +242,10 @@ export function useCheckout() {
   const loyaltyDelta     = useLoyalty && loyaltyAccount ? loyaltyPoints : 0;
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
   const referralDelta    = friendReferralApplied?.discountLaar ?? 0;
-  // Tax is always on the full subtotal; discounts reduce only the pre-tax item cost.
+  // Discounts reduce item cost only; the GST floor (tax on full subtotal) + delivery fee
+  // is always owed. Matches server: grandTotal = max(taxOnFullSubtotal, discountedTotal).
   const totalLaar        = Math.max(
-    0,
+    taxLaar + deliveryFeeLaar, // minimum = GST on full subtotal + delivery fee
     subtotalLaar + taxLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta,
   );
 
