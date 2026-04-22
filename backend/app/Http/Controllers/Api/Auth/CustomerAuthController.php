@@ -269,15 +269,11 @@ class CustomerAuthController extends Controller
 
         $isNew = $customer->wasRecentlyCreated;
 
-        // Fire CustomerCreated as soon as the account row exists so staff are notified
-        // immediately. The customer_new SMS template uses phone only (name is null here).
-        if ($isNew) {
-            event(new CustomerCreated(new CustomerCreatedData(
-                customerId: $customer->id,
-                phone: $customer->phone,
-                name: $customer->name,
-            )));
-        }
+        // Note: CustomerCreated event is intentionally NOT fired here.
+        // OTP registrations are silent/quick-checkout flows — the customer has no name yet
+        // and sending a staff SMS for every OTP signup creates noise.
+        // Fire CustomerCreated only from password-based registration flows where a complete
+        // profile (name + password) is submitted.
 
         $customer->update(['last_login_at' => now()]);
 
