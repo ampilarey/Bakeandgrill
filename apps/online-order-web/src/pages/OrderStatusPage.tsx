@@ -130,11 +130,17 @@ const STATUS_CONFIG: Record<string, {
   label: string; sub: string; next?: string;
   color: string; bg: string; icon: string;
 }> = {
-  pending: {
+  payment_pending: {
     label: "Payment received!",
-    sub: "Your payment is confirmed and your order is in the queue.",
+    sub: "Confirming your payment — this takes just a moment.",
+    next: "Up next: your order will be sent to the kitchen",
+    color: "#1d4ed8", bg: "#dbeafe", icon: "⏳",
+  },
+  pending: {
+    label: "Order confirmed!",
+    sub: "Payment received. Your order is in the queue.",
     next: "Up next: kitchen will start preparing",
-    color: "#92400e", bg: "#fef3c7", icon: "⏳",
+    color: "#92400e", bg: "#fef3c7", icon: "✅",
   },
   paid: {
     label: "Order confirmed!",
@@ -200,7 +206,9 @@ const STEPS = [
   { key: "completed",  label: "Done" },
 ];
 function stepIndex(status: string): number {
-  const normalised = status === "paid" ? "preparing" : status;
+  const normalised = status === "paid" ? "preparing"
+    : status === "payment_pending" ? "pending"
+    : status;
   const s = STEPS.findIndex((s) => s.key === normalised);
   // delivery statuses sit between ready and completed
   if (['out_for_delivery', 'picked_up', 'on_the_way', 'delivered'].includes(status)) return 2;
@@ -243,6 +251,7 @@ export function OrderStatusPage() {
   const [error, setError] = useState("");
   const [liveConnected, setLiveConnected] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
+  const [showPaymentBanner, setShowPaymentBanner] = useState(true);
 
   const token = readToken();
   const esRef = useRef<EventSource | null>(null);
@@ -385,13 +394,20 @@ export function OrderStatusPage() {
       <div style={S.container}>
 
         {/* ── Payment result banners ─────────────────────── */}
-        {paymentState === "CONFIRMED" && (
+        {/* Only show while status is still payment_pending — once status card shows
+            "Order confirmed!" or better, this banner would be redundant. */}
+        {paymentState === "CONFIRMED" && showPaymentBanner && order?.status === "payment_pending" && (
           <div className="banner banner-success animate-fade-in">
             <span className="banner-icon">🎉</span>
-            <div>
+            <div style={{ flex: 1 }}>
               <p className="banner-title">Payment successful!</p>
-              <p className="banner-sub">Your order has been confirmed and sent to the kitchen.</p>
+              <p className="banner-sub">Confirming your order — this page will update automatically.</p>
             </div>
+            <button
+              onClick={() => setShowPaymentBanner(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--color-success)', padding: '0 0.25rem' }}
+              aria-label="Dismiss"
+            >✕</button>
           </div>
         )}
         {paymentState === "FAILED" && (

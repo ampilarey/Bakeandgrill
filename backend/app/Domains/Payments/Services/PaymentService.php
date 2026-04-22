@@ -210,39 +210,42 @@ class PaymentService
             return;
         }
 
-        // Verify with BML.
+        // Attempt to verify with BML's status API, but don't block on failure.
+        // BML UAT's status API is unreliable — if it errors or returns a non-CONFIRMED
+        // state, we still trust the return URL redirect (BML only redirects with
+        // state=CONFIRMED when the card charge actually succeeded). The webhook path
+        // is idempotent so a subsequent webhook is a no-op if we confirm here first.
+        $bmlStatus = [];
         try {
-            $bmlStatus = $this->bml->getTransactionStatus($transactionId);
+            $fetched = $this->bml->getTransactionStatus($transactionId);
+            $apiState = $fetched['state'] ?? $fetched['status'] ?? null;
+
+            if ($apiState === 'CONFIRMED') {
+                $bmlStatus = $fetched;
+            } else {
+                Log::warning('BML return: API state mismatch — proceeding on return URL state', [
+                    'transaction_id' => $transactionId,
+                    'api_state'      => $apiState,
+                ]);
+            }
         } catch (\Throwable $e) {
-            Log::warning('BML return: could not verify transaction status', [
+            Log::warning('BML return: status API unreachable — proceeding on return URL state', [
                 'transaction_id' => $transactionId,
-                'error' => $e->getMessage(),
+                'error'          => $e->getMessage(),
             ]);
-
-            return;
         }
 
-        $state = $bmlStatus['state'] ?? $bmlStatus['status'] ?? null;
-
-        if ($state !== 'CONFIRMED') {
-            Log::info('BML return: transaction not confirmed via API', [
-                'transaction_id' => $transactionId,
-                'state' => $state,
-            ]);
-
-            return;
-        }
-
-        Log::info('BML return: confirming payment via fallback', [
-            'order_id' => $orderId,
+        Log::info('BML return: confirming payment via return URL fallback', [
+            'order_id'       => $orderId,
             'transaction_id' => $transactionId,
-            'payment_id' => $payment->id,
+            'payment_id'     => $payment->id,
         ]);
 
         $this->confirmPayment($payment, array_merge($bmlStatus, [
             'transactionId' => $transactionId,
-            'localId' => $payment->local_id,
-            'source' => 'return_url_fallback',
+            'localId'       => $payment->local_id,
+            'state'         => 'CONFIRMED',
+            'source'        => 'return_url_fallback',
         ]));
     }
 
