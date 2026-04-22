@@ -467,7 +467,7 @@ export function OrdersPage() {
                     <Badge label={o.status} color={statColor(o.status)} />
                   </td>
                   <td style={{ padding: '12px 16px', color: '#475569' }}>
-                    {o.customer_name ?? o.table_number ?? '—'}
+                    {o.customer?.name ?? o.customer_name ?? o.table_number ?? '—'}
                   </td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>
                     MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}

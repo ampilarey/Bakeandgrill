@@ -143,6 +143,7 @@ class LoyaltyController extends Controller
     public function adminAccountIndex(Request $request): JsonResponse
     {
         $query = LoyaltyAccount::with('customer:id,name,phone')
+            ->whereHas('customer')
             ->orderByDesc('lifetime_points');
 
         if ($request->filled('search')) {
