@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\DTOs\CustomerCreatedData;
+use App\Domains\Notifications\Events\CustomerCreated;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use Illuminate\Http\Request;
@@ -34,11 +36,23 @@ class CustomerProfileController extends Controller
 
         // 'password' is excluded from $fillable — must be set directly so the
         // 'hashed' cast encrypts it; mass-assignment would silently drop it.
+        $wasProfileIncomplete = ! $customer->is_profile_complete;
+
         $customer->name                = $input['name'];
         $customer->email               = $input['email'] ?? $customer->email;
         $customer->password            = $input['password'];
         $customer->is_profile_complete = true;
         $customer->save();
+
+        // Fire CustomerCreated here (not at OTP-verify time) so the staff SMS
+        // includes the customer's actual name rather than "Unknown".
+        if ($wasProfileIncomplete) {
+            event(new CustomerCreated(new CustomerCreatedData(
+                customerId: $customer->id,
+                phone: $customer->phone,
+                name: $customer->name,
+            )));
+        }
 
         return response()->json([
             'message'  => 'Profile completed successfully',

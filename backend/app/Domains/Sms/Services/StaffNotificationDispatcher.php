@@ -114,11 +114,14 @@ class StaffNotificationDispatcher
             ?? ($order->relationLoaded('customer') ? optional($order->customer)->phone : optional($order->customer()->first())->phone)
             ?? 'N/A';
 
+        $total = 'MVR ' . number_format((float) ($order->total ?? 0), 2);
+
         return $this->templateRenderer->render($template, [
             'order_number'   => $order->order_number,
             'order_type'     => $orderTypeLabel,
             'item_count'     => $itemCount,
             'customer_phone' => $customerPhone,
+            'total'          => $total,
         ]);
     }
 
