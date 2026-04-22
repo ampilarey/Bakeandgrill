@@ -40,7 +40,7 @@ class PaymentService
      */
     public function initiateBmlPayment(Order $order, ?int $amountLaar = null, ?string $idempotencyKey = null): array
     {
-        $amountLaar = $amountLaar ?? (int) round($order->total * 100);
+        $amountLaar = $amountLaar ?? ($order->total_laar ?? (int) round($order->total * 100));
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
         $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
