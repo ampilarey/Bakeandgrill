@@ -490,7 +490,7 @@ class PaymentService
 
         $giftCard->update([
             'current_balance' => $newBalanceMvr,
-            'status'          => $newBalanceLaar <= 0 ? 'redeemed' : 'active',
+            'status'          => $newBalanceLaar <= 0 ? 'depleted' : 'active',
         ]);
 
         \App\Models\GiftCardTransaction::create([
