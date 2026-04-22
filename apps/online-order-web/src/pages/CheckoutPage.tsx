@@ -603,7 +603,7 @@ export function CheckoutPage() {
         /* ── Mobile: single column, sections in logical order ─────────── */
         <div style={{ ...S.layout, gridTemplateColumns: '1fr' }}>
           <div style={S.col}>
-            {!token && <AuthBlock onSuccess={handleAuthSuccess} />}
+            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
             {token && (
               <>
                 {sectionOrderType}
@@ -628,7 +628,7 @@ export function CheckoutPage() {
         <div style={{ ...S.layout, gridTemplateColumns: 'minmax(0,1fr) minmax(300px,380px)' }}>
           {/* Left: form */}
           <div style={S.col}>
-            {!token && <AuthBlock onSuccess={handleAuthSuccess} />}
+            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
             {token && (
               <>
                 {sectionOrderType}
