@@ -18,7 +18,7 @@ use App\Models\Order;
  *   3. LOYALTY DISCOUNT (from hold)
  *   4. MANUAL STAFF DISCOUNT
  *   5. GUARD: discountedSubtotal = max(0, subtotal − totalDiscounts)
- *   6. TAX (applied after discounts)
+ *   6. TAX (applied to discountedSubtotal — discounts reduce the taxable amount)
  *   7. GRAND TOTAL
  *
  * Rounding: floor() for discounts (merchant-favorable), round() for tax.
@@ -53,20 +53,9 @@ class OrderTotalsCalculator
             $tax = $discountedSubtotal->extractTax($taxRateBp);
             $grandTotal = $discountedSubtotal;
         } else {
+            // GST is applied to the discounted subtotal — discounts reduce the taxable amount.
             $tax = $discountedSubtotal->addTax($taxRateBp)->subtract($discountedSubtotal);
             $grandTotal = $discountedSubtotal->add($tax);
-
-            // Floor: discounts reduce item cost but cannot eliminate the GST liability.
-            // The customer always pays at least the tax that would apply to the full subtotal.
-            // e.g. MVR 10 order, 8% GST — even if discounts cover all MVR 10, customer
-            // still owes MVR 0.80 GST.
-            if ($taxRateBp > 0) {
-                $minPayable = $subtotal->addTax($taxRateBp)->subtract($subtotal);
-                if ($grandTotal->isLessThan($minPayable)) {
-                    $tax        = $minPayable;
-                    $grandTotal = $minPayable;
-                }
-            }
         }
 
         return new TotalsBreakdown(

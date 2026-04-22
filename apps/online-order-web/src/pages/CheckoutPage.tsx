@@ -476,10 +476,10 @@ export function CheckoutPage() {
       {useLoyalty && loyaltyDelta > 0 && (
         <SummaryRow label="Loyalty discount" value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
       )}
-      {giftCardApplied && !giftCardApplied.pending && giftCardDelta > 0 && (
+      {giftCardApplied && giftCardDelta > 0 && (
         <SummaryRow label={`Gift Card (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
       )}
-      {friendReferralApplied && !friendReferralApplied.pending && referralDelta > 0 && (
+      {friendReferralApplied && referralDelta > 0 && (
         <SummaryRow label={`Referral (${friendReferralApplied.code})`} value={`− MVR ${laarToMvr(referralDelta)}`} highlight />
       )}
       <div style={S.totalRow}>
@@ -603,7 +603,7 @@ export function CheckoutPage() {
         /* ── Mobile: single column, sections in logical order ─────────── */
         <div style={{ ...S.layout, gridTemplateColumns: '1fr' }}>
           <div style={S.col}>
-            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
+            {!token && <AuthBlock onSuccess={handleAuthSuccess} />}
             {token && (
               <>
                 {sectionOrderType}
@@ -628,7 +628,7 @@ export function CheckoutPage() {
         <div style={{ ...S.layout, gridTemplateColumns: 'minmax(0,1fr) minmax(300px,380px)' }}>
           {/* Left: form */}
           <div style={S.col}>
-            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
+            {!token && <AuthBlock onSuccess={handleAuthSuccess} />}
             {token && (
               <>
                 {sectionOrderType}

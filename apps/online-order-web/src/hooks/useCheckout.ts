@@ -228,7 +228,8 @@ export function useCheckout() {
     0,
   );
 
-  const taxLaar = cart.reduce((sum, item) => {
+  // Full tax on the un-discounted subtotal (used only to derive the effective rate)
+  const fullTaxLaar = cart.reduce((sum, item) => {
     const rate = item.taxRate ?? 0;
     if (rate <= 0) return sum;
     const itemLaar =
@@ -242,12 +243,12 @@ export function useCheckout() {
   const loyaltyDelta     = useLoyalty && loyaltyAccount ? loyaltyPoints : 0;
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
   const referralDelta    = friendReferralApplied?.discountLaar ?? 0;
-  // Discounts reduce item cost only; the GST floor (tax on full subtotal) + delivery fee
-  // is always owed. Matches server: grandTotal = max(taxOnFullSubtotal, discountedTotal).
-  const totalLaar        = Math.max(
-    taxLaar + deliveryFeeLaar, // minimum = GST on full subtotal + delivery fee
-    subtotalLaar + taxLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta,
-  );
+
+  // GST is on the discounted subtotal (standard Maldivian T-GST — discounts reduce
+  // the taxable amount). Scale the effective tax rate proportionally.
+  const discountedSubtotalLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta);
+  const taxLaar = subtotalLaar > 0 ? Math.round(discountedSubtotalLaar * fullTaxLaar / subtotalLaar) : 0;
+  const totalLaar = discountedSubtotalLaar + taxLaar + deliveryFeeLaar;
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
