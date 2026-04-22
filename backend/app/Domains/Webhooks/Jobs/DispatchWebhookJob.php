@@ -76,4 +76,18 @@ class DispatchWebhookJob implements ShouldQueue
             'status'                    => 'delivered',
         ]);
     }
+
+    public function failed(\Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error('DispatchWebhookJob: exhausted retries', [
+            'subscription_id' => $this->subscription->id,
+            'event'           => $this->event,
+            'url'             => $this->subscription->url,
+            'error'           => $e->getMessage(),
+        ]);
+
+        if (app()->bound('sentry')) {
+            \Sentry\captureException($e);
+        }
+    }
 }

@@ -28,6 +28,7 @@ class DispatchWebhookOnDomainEvent implements ShouldQueue
     public bool $afterCommit = true;
     public int  $tries       = 3;
     public int  $backoff     = 10;
+    public int  $timeout     = 30;
 
     private const EVENT_MAP = [
         OrderCreated::class       => 'order.created',
@@ -45,6 +46,18 @@ class DispatchWebhookOnDomainEvent implements ShouldQueue
     ];
 
     public function __construct(private WebhookDispatchService $webhooks) {}
+
+    public function failed(object $event, \Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error('DispatchWebhookOnDomainEvent: exhausted retries', [
+            'event' => get_class($event),
+            'error' => $e->getMessage(),
+        ]);
+
+        if (app()->bound('sentry')) {
+            \Sentry\captureException($e);
+        }
+    }
 
     public function handle(object $event): void
     {

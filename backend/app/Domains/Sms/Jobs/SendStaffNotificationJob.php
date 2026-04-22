@@ -94,4 +94,18 @@ class SendStaffNotificationJob implements ShouldQueue
             throw $e;
         }
     }
+
+    public function failed(\Throwable $e): void
+    {
+        Log::critical('SendStaffNotificationJob: exhausted retries', [
+            'order_id'   => $this->orderId,
+            'event_type' => $this->eventType,
+            'phone'      => $this->phone,
+            'error'      => $e->getMessage(),
+        ]);
+
+        if (app()->bound('sentry')) {
+            \Sentry\captureException($e);
+        }
+    }
 }

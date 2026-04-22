@@ -82,4 +82,16 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
             $campaign->updateStats();
         }
     }
+
+    public function failed(\Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error('SendSmsCampaignRecipientJob: exhausted retries', [
+            'recipient_id' => $this->recipient->id,
+            'error'        => $e->getMessage(),
+        ]);
+
+        if (app()->bound('sentry')) {
+            \Sentry\captureException($e);
+        }
+    }
 }

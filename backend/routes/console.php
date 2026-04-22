@@ -48,14 +48,18 @@ $alertOnFailure = function (string $command): \Closure {
 // Loyalty maintenance schedules
 Schedule::command('app:expire-loyalty-holds')
     ->everyFifteenMinutes()
+    ->withoutOverlapping()
     ->onFailure($alertOnFailure('app:expire-loyalty-holds'));
 
 Schedule::command('app:reconcile-loyalty-balances')
     ->dailyAt('03:00')
+    ->withoutOverlapping()
     ->onFailure($alertOnFailure('app:reconcile-loyalty-balances'));
 
 // Reservations: auto-mark no-shows every 15 minutes
-Schedule::job(App\Jobs\AutoCancelNoShowReservations::class)->everyFifteenMinutes();
+Schedule::job(App\Jobs\AutoCancelNoShowReservations::class)
+    ->everyFifteenMinutes()
+    ->onFailure($alertOnFailure('AutoCancelNoShowReservations'));
 
 // Finance: generate recurring expenses daily at 06:00
 Schedule::command('expenses:generate-recurring')
@@ -70,6 +74,7 @@ Schedule::command('invoices:mark-overdue')
 // Inventory: check reorder points daily at 08:00
 Schedule::command('inventory:check-reorder')
     ->dailyAt('08:00')
+    ->withoutOverlapping()
     ->onFailure($alertOnFailure('inventory:check-reorder'));
 
 // Inventory: check expiring items daily at 08:05
@@ -78,19 +83,30 @@ Schedule::command('inventory:check-expiry --days=7')
     ->onFailure($alertOnFailure('inventory:check-expiry'));
 
 // Housekeeping: prune expired OTP records daily
-Schedule::command('otp:prune')->dailyAt('02:00');
+Schedule::command('otp:prune')
+    ->dailyAt('02:00')
+    ->onFailure($alertOnFailure('otp:prune'));
 
 // Orders: cancel stale payment_pending orders every 5 minutes
 Schedule::command('orders:cancel-stale')
     ->everyFiveMinutes()
+    ->withoutOverlapping()
     ->onFailure($alertOnFailure('orders:cancel-stale'));
 
 // SMS: dispatch scheduled/recurring SMS messages every minute
+// withoutOverlapping() is important: SmsSchedulerService uses lockForUpdate internally,
+// but the outer command itself should not run in parallel to avoid thundering-herd on the lock.
 Schedule::command('sms:dispatch-scheduled')
     ->everyMinute()
+    ->withoutOverlapping()
     ->onFailure($alertOnFailure('sms:dispatch-scheduled'));
 
 // Payments: alert if any BML webhooks are stuck in failed status (potential missed payments)
 Schedule::command('webhooks:check-failed --hours=1')
     ->everyFifteenMinutes()
     ->onFailure($alertOnFailure('webhooks:check-failed'));
+
+// Queue health: alert on any failed_jobs entries in the last hour
+Schedule::command('jobs:alert-failed --hours=1')
+    ->everyFifteenMinutes()
+    ->onFailure($alertOnFailure('jobs:alert-failed'));

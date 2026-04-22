@@ -78,16 +78,21 @@ class StockManagementService
             return;
         }
 
-        $item->decrement('stock_quantity', $quantity);
+        // Use GREATEST to floor at 0 — stock cannot go negative in the DB.
+        // We still log a warning so overselling can be investigated and corrected.
+        \Illuminate\Support\Facades\DB::table('items')
+            ->where('id', $item->id)
+            ->update([
+                'stock_quantity' => \Illuminate\Support\Facades\DB::raw("GREATEST(0, stock_quantity - {$quantity})"),
+            ]);
         $item->refresh();
 
-        if ($item->stock_quantity < 0) {
-            Log::warning('StockManagementService: item stock went negative after deduction — check reservation/deduction flow', [
-                'item_id'       => $item->id,
-                'item_name'     => $item->name,
-                'balance_after' => $item->stock_quantity,
-                'quantity'      => $quantity,
-                'order_id'      => $orderId,
+        if ($item->stock_quantity === 0 && $quantity > 0) {
+            Log::warning('StockManagementService: item stock floored at 0 — possible oversell, check reservation/deduction flow', [
+                'item_id'    => $item->id,
+                'item_name'  => $item->name,
+                'quantity'   => $quantity,
+                'order_id'   => $orderId,
             ]);
         }
 
@@ -242,16 +247,19 @@ class StockManagementService
             return;
         }
 
-        $variant->decrement('stock_qty', $quantity);
+        \Illuminate\Support\Facades\DB::table('variants')
+            ->where('id', $variant->id)
+            ->update([
+                'stock_qty' => \Illuminate\Support\Facades\DB::raw("GREATEST(0, stock_qty - {$quantity})"),
+            ]);
         $variant->refresh();
 
-        if ($variant->stock_qty < 0) {
-            Log::warning('StockManagementService: variant stock went negative after deduction — check reservation/deduction flow', [
-                'variant_id'    => $variant->id,
-                'variant_name'  => $variant->name ?? null,
-                'balance_after' => $variant->stock_qty,
-                'quantity'      => $quantity,
-                'order_id'      => $orderId,
+        if ($variant->stock_qty === 0 && $quantity > 0) {
+            Log::warning('StockManagementService: variant stock floored at 0 — possible oversell, check reservation/deduction flow', [
+                'variant_id'  => $variant->id,
+                'variant_name' => $variant->name ?? null,
+                'quantity'    => $quantity,
+                'order_id'    => $orderId,
             ]);
         }
 

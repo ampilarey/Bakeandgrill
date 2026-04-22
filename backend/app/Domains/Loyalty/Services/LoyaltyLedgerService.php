@@ -111,20 +111,25 @@ class LoyaltyLedgerService
      */
     public function consumeHold(LoyaltyHold $hold): void
     {
-        if ($hold->status === 'consumed') {
-            Log::info('Loyalty hold already consumed, skipping', ['hold_id' => $hold->id]);
-
-            return;
-        }
-
-        if ($hold->isExpired() && $hold->status === 'active') {
-            Log::warning('Loyalty hold expired but order was paid — honoring redemption', [
-                'hold_id'    => $hold->id,
-                'expired_at' => $hold->expires_at,
-            ]);
-        }
-
         DB::transaction(function () use ($hold): void {
+            // Lock the hold row FIRST so concurrent calls (e.g. duplicate OrderPaid
+            // events) cannot both pass the status check and double-consume.
+            $locked = LoyaltyHold::where('id', $hold->id)->lockForUpdate()->first();
+
+            if (!$locked || $locked->status === 'consumed') {
+                Log::info('Loyalty hold already consumed or not found, skipping', ['hold_id' => $hold->id]);
+
+                return;
+            }
+
+            if ($locked->isExpired() && $locked->status === 'active') {
+                Log::warning('Loyalty hold expired but order was paid — honoring redemption', [
+                    'hold_id'    => $locked->id,
+                    'expired_at' => $locked->expires_at,
+                ]);
+            }
+
+            $hold = $locked; // Use the locked copy for all subsequent reads
             $account = $this->accountRepo->lockAccount($hold->customer_id);
             if (!$account) {
                 Log::error('Loyalty account not found for hold consumption', ['hold_id' => $hold->id]);

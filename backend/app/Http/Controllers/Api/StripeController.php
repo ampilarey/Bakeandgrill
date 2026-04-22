@@ -90,13 +90,19 @@ class StripeController extends Controller
                         ],
                     );
 
-                    event(new PaymentConfirmed(new PaymentConfirmedData(
-                        paymentId:   $payment->id,
-                        orderId:     $order->id,
-                        amountLaar:  $amount,
-                        currency:    'mvr',
-                        orderStatus: $order->status,
-                    )));
+                    // Only fire the domain event when we actually created a new Payment row.
+                    // Duplicate Stripe webhooks carry the same payment_intent ID, so
+                    // firstOrCreate returns the existing row without creating — we skip
+                    // the event and avoid re-running all downstream listeners.
+                    if ($payment->wasRecentlyCreated) {
+                        event(new PaymentConfirmed(new PaymentConfirmedData(
+                            paymentId:   $payment->id,
+                            orderId:     $order->id,
+                            amountLaar:  $amount,
+                            currency:    'mvr',
+                            orderStatus: $order->status,
+                        )));
+                    }
                 }
             }
         }

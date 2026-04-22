@@ -109,6 +109,18 @@ class SendScheduledSmsJob implements ShouldQueue
         }
     }
 
+    public function failed(\Throwable $e): void
+    {
+        Log::critical('SendScheduledSmsJob: exhausted retries', [
+            'scheduled_message_id' => $this->scheduledMessageId,
+            'error'                => $e->getMessage(),
+        ]);
+
+        if (app()->bound('sentry')) {
+            \Sentry\captureException($e);
+        }
+    }
+
     private function resolveBody(SmsScheduledMessage $scheduled, SmsTemplateRenderer $renderer): string
     {
         if ($scheduled->template) {

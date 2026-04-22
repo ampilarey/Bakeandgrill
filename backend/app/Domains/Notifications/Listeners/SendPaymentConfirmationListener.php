@@ -27,8 +27,21 @@ class SendPaymentConfirmationListener implements ShouldQueue
     public string $queue = 'default';
     public int $tries = 3;
     public int $backoff = 5;
+    public int $timeout = 30;
 
     public function __construct(private PaymentConfirmationNotifier $notifier) {}
+
+    public function failed(OrderPaid $event, \Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error('SendPaymentConfirmationListener: exhausted retries', [
+            'order_id' => $event->data->orderId,
+            'error'    => $e->getMessage(),
+        ]);
+
+        if (app()->bound('sentry')) {
+            \Sentry\captureException($e);
+        }
+    }
 
     public function handle(OrderPaid $event): void
     {

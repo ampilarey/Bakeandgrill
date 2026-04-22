@@ -23,8 +23,15 @@ class CancelStaleOrders extends Command
         $ttl = (int) config('ordering.payment_pending_ttl_minutes', 30);
         $cutoff = now()->subMinutes($ttl);
 
+        // Grace period: skip any order touched in the last 5 minutes.
+        // A recent updated_at means the payment gateway is likely still in the process
+        // of redirecting the customer or delivering a webhook. This prevents cancelling
+        // an order that is actively being paid right now.
+        $graceCutoff = now()->subMinutes(5);
+
         $stale = Order::where('status', 'payment_pending')
             ->where('created_at', '<', $cutoff)
+            ->where('updated_at', '<', $graceCutoff)
             ->get();
 
         if ($stale->isEmpty()) {

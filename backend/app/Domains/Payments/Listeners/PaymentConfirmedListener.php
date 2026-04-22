@@ -38,11 +38,26 @@ class PaymentConfirmedListener implements ShouldQueue
 
     public int $backoff = 5;
 
+    public int $timeout = 30;
+
     public function __construct(
         private readonly PaymentRepositoryInterface $payments,
         private readonly OrderRepositoryInterface $orders,
         private readonly PaymentConfirmationNotifier $confirmationNotifier,
     ) {}
+
+    public function failed(PaymentConfirmed $event, \Throwable $e): void
+    {
+        Log::critical('PaymentConfirmedListener: exhausted retries', [
+            'order_id'   => $event->data->orderId,
+            'payment_id' => $event->data->paymentId,
+            'error'      => $e->getMessage(),
+        ]);
+
+        if (app()->bound('sentry')) {
+            \Sentry\captureException($e);
+        }
+    }
 
     public function handle(PaymentConfirmed $event): void
     {
@@ -55,7 +70,9 @@ class PaymentConfirmedListener implements ShouldQueue
         }
 
         // Already fully processed — nothing to do (idempotency guard).
-        if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+        // paid_at being set means we already ran the full payment transition,
+        // even if the order is still 'pending' waiting for kitchen action.
+        if ($order->paid_at !== null || in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
             return;
         }
 
@@ -77,7 +94,10 @@ class PaymentConfirmedListener implements ShouldQueue
         DB::transaction(function () use ($order): void {
             // Lock the row before reading status to prevent concurrent transitions.
             $locked = Order::lockForUpdate()->find($order->id);
-            if (!$locked || in_array($locked->status, ['paid', 'completed', 'cancelled'], true)) {
+            if (!$locked
+                || $locked->paid_at !== null
+                || in_array($locked->status, ['paid', 'completed', 'cancelled'], true)
+            ) {
                 return;
             }
 

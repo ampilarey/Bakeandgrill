@@ -22,17 +22,29 @@ class ExpireLoyaltyHolds extends Command
 
         $count = 0;
         foreach ($expired as $hold) {
-            DB::transaction(function () use ($hold): void {
-                $hold->update(['status' => 'expired']);
+            DB::transaction(function () use ($hold, &$count): void {
+                // Lock the row inside the transaction so concurrent cron runs can't
+                // both process the same hold and double-decrement points_held.
+                $locked = LoyaltyHold::where('id', $hold->id)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
 
-                $pointsHeld = (int) $hold->points_held; // explicit cast before interpolation
+                if (!$locked) {
+                    return; // Already processed by a concurrent instance
+                }
+
+                $locked->update(['status' => 'expired']);
+
+                $pointsHeld = (int) $locked->points_held;
                 DB::table('loyalty_accounts')
-                    ->where('customer_id', $hold->customer_id)
+                    ->where('customer_id', $locked->customer_id)
                     ->update([
                         'points_held' => DB::raw("GREATEST(0, points_held - {$pointsHeld})"),
                     ]);
+
+                $count++;
             });
-            $count++;
         }
 
         $this->info("Expired {$count} loyalty holds.");
