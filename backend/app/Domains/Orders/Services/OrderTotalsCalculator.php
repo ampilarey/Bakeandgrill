@@ -49,11 +49,14 @@ class OrderTotalsCalculator
             ->add($referralDisco);
         $discountedSubtotal = $subtotal->subtract($totalDiscount);
 
+        // Tax is always calculated on the FULL subtotal before discounts.
+        // Discounts reduce the item cost the customer pays, but GST is always
+        // owed on the original selling price.
         if ($taxInclusive) {
-            $tax = $discountedSubtotal->extractTax($taxRateBp);
+            $tax = $subtotal->extractTax($taxRateBp);
             $grandTotal = $discountedSubtotal;
         } else {
-            $tax = $discountedSubtotal->addTax($taxRateBp)->subtract($discountedSubtotal);
+            $tax = $subtotal->addTax($taxRateBp)->subtract($subtotal);
             $grandTotal = $discountedSubtotal->add($tax);
         }
 

@@ -242,15 +242,11 @@ export function useCheckout() {
   const loyaltyDelta     = useLoyalty && loyaltyAccount ? loyaltyPoints : 0;
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
   const referralDelta    = friendReferralApplied?.discountLaar ?? 0;
-
-  // Mirror the server's calculation: discounts apply to the subtotal first,
-  // then tax is computed on the *discounted* subtotal (not the original).
-  // This prevents showing a phantom GST balance when discounts cover the full subtotal.
-  const totalDiscountsLaar     = promoDelta + loyaltyDelta + giftCardDelta + referralDelta;
-  const discountedSubtotalLaar = Math.max(0, subtotalLaar - totalDiscountsLaar);
-  const effectiveTaxRate       = subtotalLaar > 0 ? taxLaar / subtotalLaar : 0;
-  const taxOnDiscountedLaar    = Math.round(discountedSubtotalLaar * effectiveTaxRate);
-  const totalLaar              = Math.max(0, discountedSubtotalLaar + taxOnDiscountedLaar + deliveryFeeLaar);
+  // Tax is always on the full subtotal; discounts reduce only the pre-tax item cost.
+  const totalLaar        = Math.max(
+    0,
+    subtotalLaar + taxLaar + deliveryFeeLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta,
+  );
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
