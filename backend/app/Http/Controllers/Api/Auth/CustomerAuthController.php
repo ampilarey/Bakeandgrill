@@ -198,14 +198,14 @@ class CustomerAuthController extends Controller
 
         $key = 'otp-request:login:' . $phone;
 
-        if (RateLimiter::tooManyAttempts($key, 5)) {
+        if (RateLimiter::tooManyAttempts($key, 20)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
                 'phone' => ['Too many OTP requests. Please try again in ' . ceil($seconds / 60) . ' minutes.'],
             ]);
         }
 
-        RateLimiter::hit($key, 1800);
+        RateLimiter::hit($key, 300);
 
         $otpCode = $this->sendOtp($phone, $purpose);
 
