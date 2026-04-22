@@ -95,7 +95,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
               {item.name}
             </h3>
             <p style={{ fontSize: '1.1rem', color: 'var(--color-primary)', fontWeight: 700 }}>
-              {item.has_variants && !selectedVariant
+              {item.has_variants && !selectedVariant && activeVariants.length > 0
                 ? `From MVR ${Math.min(...activeVariants.map((v) => Number(v.price))).toFixed(2)}`
                 : `MVR ${totalPrice.toFixed(2)}`
               }

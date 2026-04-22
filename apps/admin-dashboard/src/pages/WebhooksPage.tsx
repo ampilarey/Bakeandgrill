@@ -174,7 +174,7 @@ export function WebhooksPage() {
     Promise.all([fetchWebhooks(), fetchSupportedWebhookEvents()])
       .then(([ws, evs]) => {
         setSubs(ws.subscriptions ?? []);
-        setAllEvents(evs.events);
+        setAllEvents(evs.events ?? []);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));

@@ -67,7 +67,7 @@ export async function fetchReservationSlots(date: string, partySize: number): Pr
   const data = await request<{ slots: ReservationSlot[] }>(
     `${ENDPOINTS.RESERVATIONS_AVAILABILITY}?date=${date}&party_size=${partySize}`,
   );
-  return data.slots;
+  return data.slots ?? [];
 }
 
 export async function createReservation(payload: {

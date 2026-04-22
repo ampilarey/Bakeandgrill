@@ -89,7 +89,7 @@ export function SupplierIntelligencePage() {
         fetchInventoryItems({ page: 1 }),
       ]);
       setDrillRatings(ratingsRes.data);
-      setInvItems(itemsRes.data.map((i) => ({ id: i.id, name: i.name })));
+      setInvItems((itemsRes.data ?? []).map((i) => ({ id: i.id, name: i.name })));
     } catch (e) { setError((e as Error).message); }
     finally { setDrillLoading(false); }
   };
@@ -256,7 +256,7 @@ export function SupplierIntelligencePage() {
                   ✓ Cheapest: {compareData.cheapest.supplier_name} — MVR {parseFloat(String(compareData.cheapest.unit_price ?? 0)).toFixed(2)}
                 </div>
               )}
-              {compareData.prices.length === 0 ? (
+              {(compareData.prices ?? []).length === 0 ? (
                 <EmptyState message="No price history found for this item from any supplier." />
               ) : (
                 <TableCard>
@@ -269,7 +269,7 @@ export function SupplierIntelligencePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...compareData.prices]
+                      {[...(compareData.prices ?? [])]
                         .sort((a, b) => a.unit_price - b.unit_price)
                         .map((p, i) => (
                           <tr key={p.supplier_id} style={{ background: i === 0 ? '#F0FDF4' : undefined }}>

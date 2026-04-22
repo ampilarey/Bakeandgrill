@@ -183,7 +183,7 @@ function ReservationsList() {
                   <td style={{ ...TD, whiteSpace: 'nowrap' }}>{r.time_slot}</td>
                   <td style={TD}>{r.table?.name ?? '—'}</td>
                   <td style={TD}>
-                    <Badge label={r.status.split('_').join(' ')} color={STATUS_COLOR[r.status] ?? 'gray'} />
+                    <Badge label={(r.status ?? '').split('_').join(' ')} color={STATUS_COLOR[r.status ?? ''] ?? 'gray'} />
                   </td>
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

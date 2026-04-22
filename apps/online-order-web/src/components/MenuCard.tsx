@@ -165,7 +165,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         {/* Price — visually dominant */}
         <div style={{ marginTop: 'auto', paddingTop: '0.375rem' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '0.75rem' }}>
-            {item.has_variants && item.variants && item.variants.length > 0 ? (
+            {item.has_variants && item.variants && item.variants.filter((v) => v.is_active).length > 0 ? (
               <>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>From MVR</span>
                 <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>

@@ -519,7 +519,7 @@ export function AccountPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>
-                        {new Date(r.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {r.time_slot.slice(0, 5)}
+                        {new Date(r.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {r.time_slot?.slice(0, 5) ?? ''}
                       </span>
                       {statusBadge(r.status)}
                     </div>

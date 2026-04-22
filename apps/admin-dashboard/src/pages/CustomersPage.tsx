@@ -51,7 +51,7 @@ export function CustomersPage() {
     try {
       const res = await fetchAdminCustomers({ search: s || undefined, page: p });
       setCustomers(res.data ?? []);
-      setMeta(res.meta);
+      setMeta(res.meta ?? { current_page: 1, last_page: 1, total: 0 });
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };

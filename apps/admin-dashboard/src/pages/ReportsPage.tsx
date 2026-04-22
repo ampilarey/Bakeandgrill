@@ -99,7 +99,7 @@ export function ReportsPage() {
     } else if (tab === 'Breakdown' && breakdown) {
       downloadCSV('sales-breakdown-items', (breakdown.top_items ?? []).map(i => ({ Item: i.name, Qty: i.qty, Revenue: mvr(i.revenue) })));
     } else if (tab === 'Tax' && taxReport) {
-      downloadCSV('tax-report', taxReport.by_rate.map(r => ({ 'Rate %': r.rate_pct, 'Net Sales': mvr(r.net_sales), 'Tax Amount': mvr(r.tax_amount) })));
+      downloadCSV('tax-report', (taxReport.by_rate ?? []).map(r => ({ 'Rate %': r.rate_pct, 'Net Sales': mvr(r.net_sales), 'Tax Amount': mvr(r.tax_amount) })));
     } else if (tab === 'Inventory' && inventory) {
       downloadCSV('inventory-valuation', inventory.items.map(i => ({ Item: i.name, Unit: i.unit, Qty: i.quantity, 'Cost/Unit': mvr(i.cost_per_unit), 'Total Value': mvr(i.total_value) })));
     } else if (tab === 'Accounts Payable' && ap) {
@@ -184,8 +184,8 @@ export function ReportsPage() {
                 <th style={{ ...S.th, minWidth: 160 }}>Revenue</th>
               </tr></thead>
               <tbody>
-                {breakdown.top_items.slice(0, 10).map(item => {
-                  const max = breakdown.top_items[0]?.revenue ?? 1;
+                {(breakdown.top_items ?? []).slice(0, 10).map(item => {
+                  const max = (breakdown.top_items ?? [])[0]?.revenue ?? 1;
                   return (
                     <tr key={item.id}>
                       <td style={S.td}>{item.name}</td>
@@ -208,8 +208,8 @@ export function ReportsPage() {
                 <th style={{ ...S.th, minWidth: 160 }}>Revenue</th>
               </tr></thead>
               <tbody>
-                {breakdown.by_category.map(cat => {
-                  const max = breakdown.by_category[0]?.revenue ?? 1;
+                {(breakdown.by_category ?? []).map(cat => {
+                  const max = (breakdown.by_category ?? [])[0]?.revenue ?? 1;
                   return (
                     <tr key={cat.category}>
                       <td style={S.td}>{cat.category}</td>
@@ -232,8 +232,8 @@ export function ReportsPage() {
                 <th style={{ ...S.th, minWidth: 160 }}>Revenue</th>
               </tr></thead>
               <tbody>
-                {breakdown.by_type.map(t => {
-                  const max = breakdown.by_type.length ? Math.max(...breakdown.by_type.map(x => x.revenue)) : 0;
+                {(breakdown.by_type ?? []).map(t => {
+                  const max = (breakdown.by_type ?? []).length ? Math.max(...(breakdown.by_type ?? []).map(x => x.revenue)) : 0;
                   return (
                     <tr key={t.type}>
                       <td style={S.td}>{ORDER_TYPE_LABELS[t.type] ?? t.type}</td>
@@ -256,8 +256,8 @@ export function ReportsPage() {
                 <th style={{ ...S.th, minWidth: 160 }}>Revenue</th>
               </tr></thead>
               <tbody>
-                {breakdown.by_hour.filter(h => h.orders > 0).map(h => {
-                  const max = breakdown.by_hour.length ? Math.max(...breakdown.by_hour.map(x => x.revenue)) : 0;
+                {(breakdown.by_hour ?? []).filter(h => h.orders > 0).map(h => {
+                  const max = (breakdown.by_hour ?? []).length ? Math.max(...(breakdown.by_hour ?? []).map(x => x.revenue)) : 0;
                   const label = `${String(h.hour).padStart(2, '0')}:00`;
                   return (
                     <tr key={h.hour}>
@@ -302,7 +302,7 @@ export function ReportsPage() {
                     <th style={S.th}>Type</th><th style={S.th}>Count</th><th style={S.th}>Total</th>
                   </tr></thead>
                   <tbody>
-                    {data.by_type.map(t => (
+                    {(data.by_type ?? []).map(t => (
                       <tr key={t.type}>
                         <td style={S.td}>{ORDER_TYPE_LABELS[t.type] ?? t.type}</td>
                         <td style={{ ...S.td, color: '#9C8E7E' }}>{t.count}</td>
@@ -350,7 +350,7 @@ export function ReportsPage() {
                 <th style={S.th}>% of Total</th>
               </tr></thead>
               <tbody>
-                {taxReport.by_rate.map(r => (
+                {(taxReport.by_rate ?? []).map(r => (
                   <tr key={r.rate_bp}>
                     <td style={{ ...S.td, fontWeight: 600 }}>{r.rate_pct}%</td>
                     <td style={S.td}>{mvr(r.net_sales)}</td>

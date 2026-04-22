@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
     void loadAll();
   }, []);
 
-  const maxCount = peakHours.length > 0 ? Math.max(...peakHours.map((h) => h.count), 1) : 1;
+  const maxCount = peakHours.length > 0 ? Math.max(...peakHours.map((h) => h.count ?? 0), 1) : 1;
 
   if (loading) return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><Spinner /></>;
   if (error)   return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><ErrorMsg message={error} /></>;

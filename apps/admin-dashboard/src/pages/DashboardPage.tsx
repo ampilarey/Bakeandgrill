@@ -93,7 +93,7 @@ function OrderCard({ order, now }: { order: Order; now: number }) {
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#6B5D4F' }}>
         <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
-          {order.type.replace('_', ' ')}
+          {(order.type ?? '').replace('_', ' ')}
           {order.table_number ? ` · T${order.table_number}` : ''}
         </span>
         <span style={{ marginLeft: 'auto', color: urgent ? '#ef4444' : '#9C8E7E' }}>

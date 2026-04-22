@@ -67,7 +67,7 @@ class LoyaltyLedgerService
 
             $discountLaar = $this->calculator->discountLaarForPoints($pointsToRedeem);
 
-            $maxDiscountLaar = (int) floor((int) round($order->total * 100) * $this->calculator->maxRedeemPercent() / 100);
+            $maxDiscountLaar = (int) floor((int) ($order->total_laar ?? round((float) $order->total * 100)) * $this->calculator->maxRedeemPercent() / 100);
             if ($discountLaar > $maxDiscountLaar) {
                 $discountLaar = $maxDiscountLaar;
                 $pointsToRedeem = $this->calculator->pointsNeededForDiscountLaar($discountLaar);

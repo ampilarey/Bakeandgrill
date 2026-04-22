@@ -56,7 +56,7 @@ export function DeliveryPage() {
   const loadDrivers = async () => {
     try {
       const res = await adminRequest<{ drivers: Driver[] }>('/delivery/drivers');
-      setDrivers(res.drivers);
+      setDrivers(res.drivers ?? []);
     } catch (e: unknown) { setError((e as Error).message); }
   };
 
@@ -212,7 +212,7 @@ function DeliveryCard({
     <Card style={{ border: urgent ? '2px solid #ef4444' : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <span style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>#{order.order_number}</span>
-        <Badge label={order.status.replace(/_/g, ' ')} color={statColor(order.status)} />
+        <Badge label={(order.status ?? '').replace(/_/g, ' ')} color={statColor(order.status ?? '')} />
       </div>
       <p style={{ fontSize: 14, color: '#374151', marginBottom: 4 }}>
         {order.delivery_address_line1 ?? '—'}

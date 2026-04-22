@@ -119,8 +119,10 @@ export default function OnlineOrderingPage() {
       .then((s) => {
         setStatus(s);
         if (s.override_until) {
-          // Convert ISO datetime to local datetime-local input value
-          const local = new Date(s.override_until).toISOString().slice(0, 16);
+          // Convert ISO datetime to local datetime-local input value (must use local parts, not UTC)
+          const d = new Date(s.override_until);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
           setOverrideUntil(local);
         }
       })

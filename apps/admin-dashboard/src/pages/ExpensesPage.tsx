@@ -43,7 +43,7 @@ export function ExpensesPage() {
       ]);
       setExpenses(expRes.data ?? []);
       setTotal(expRes.total_amount);
-      setCats(catRes.categories);
+      setCats(catRes.categories ?? []);
       setSummary(sumRes);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }

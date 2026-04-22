@@ -473,6 +473,14 @@ class PaymentService
             return;
         }
 
+        // Idempotency guard: if a redeem transaction already exists for this order, skip.
+        $alreadyRedeemed = \App\Models\GiftCardTransaction::where('order_id', $order->id)
+            ->where('type', 'redeem')
+            ->exists();
+        if ($alreadyRedeemed) {
+            return;
+        }
+
         $giftCard = \App\Models\GiftCard::where('code', $order->gift_card_code)
             ->where('status', 'active')
             ->lockForUpdate()

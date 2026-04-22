@@ -14,7 +14,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function JobTypeIcon({ type }: { type: string }) {
-  return <span style={{ fontSize: 11, color: '#9C8E7E', background: '#F0EBE5', padding: '2px 7px', borderRadius: 4, fontWeight: 600 }}>{type.replace(/_/g, ' ').toUpperCase()}</span>;
+  return <span style={{ fontSize: 11, color: '#9C8E7E', background: '#F0EBE5', padding: '2px 7px', borderRadius: 4, fontWeight: 600 }}>{(type ?? '').replace(/_/g, ' ').toUpperCase()}</span>;
 }
 
 function RetryCountBadge({ count }: { count: number }) {
@@ -51,7 +51,7 @@ export default function PrintJobsPage() {
     try {
       const res = await fetchPrintJobs({ status: statusFilter || undefined, page });
       setJobs(res.data ?? []);
-      setMeta(res.meta);
+      setMeta(res.meta ?? { current_page: 1, last_page: 1, total: 0 });
     } catch (e) {
       setError((e as Error).message);
     } finally {

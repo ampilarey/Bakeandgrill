@@ -20,6 +20,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
 
 function fmtDate(iso: string) {
   const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '—';
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}  ${pad(d.getHours())}:${pad(d.getMinutes())}`;

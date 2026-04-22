@@ -27,7 +27,7 @@ export function usePermissions(userId: number | null, role?: string | null): Use
     setLoading(true);
     setError(false);
     getUserPermissions(userId)
-      .then(({ permissions: p }) => { setPermissions(p); setError(false); })
+      .then(({ permissions: p }) => { setPermissions(p ?? []); setError(false); })
       .catch(() => {
         // On fetch failure keep previously-loaded permissions so the UI isn't
         // locked out by a transient network error; just mark the error state.

@@ -199,7 +199,7 @@ class PaymentController extends Controller
                 'file'     => $e->getFile(),
                 'line'     => $e->getLine(),
             ]);
-            return response()->json(['message' => 'Payment processing error: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'An unexpected error occurred. Please contact support.'], 500);
         }
 
         return response()->json(['order' => $order]);

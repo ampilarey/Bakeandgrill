@@ -46,7 +46,10 @@ function PromotionForm({
     : '';
 
   const handleMinOrderChange = (v: string) => {
-    set('min_order_laar', v ? Math.round(parseFloat(v) * 100) : null);
+    if (!v) { set('min_order_laar', null); return; }
+    const n = Math.round(parseFloat(v) * 100);
+    if (!Number.isFinite(n)) return;
+    set('min_order_laar', n);
   };
 
   const handleSave = async () => {
