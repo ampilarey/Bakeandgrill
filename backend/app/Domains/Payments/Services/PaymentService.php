@@ -404,14 +404,21 @@ class PaymentService
                 $this->orders->updateStatus($order->id, $newStatus, ['paid_at' => now()]);
 
                 DB::afterCommit(function () use ($order): void {
-                    $freshOrder = $this->orders->findById($order->id);
-                    if ($freshOrder) {
-                        // Send confirmation SMS/email synchronously — no queue dependency.
-                        // The queued SendPaymentConfirmationListener is a no-op if this succeeds
-                        // (idempotency key 'order:paid:confirm:{id}' blocks duplicate sends).
-                        $this->confirmationNotifier->notify($freshOrder);
+                    try {
+                        $freshOrder = $this->orders->findById($order->id);
+                        if ($freshOrder) {
+                            // Send confirmation SMS/email synchronously — no queue dependency.
+                            // The queued SendPaymentConfirmationListener is a no-op if this succeeds
+                            // (idempotency key 'order:paid:confirm:{id}' blocks duplicate sends).
+                            $this->confirmationNotifier->notify($freshOrder);
 
-                        OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
+                            OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::error('confirmBmlPayment: post-commit notification failed', [
+                            'order_id' => $order->id,
+                            'error'    => $e->getMessage(),
+                        ]);
                     }
                 });
             }
@@ -442,7 +449,14 @@ class PaymentService
             ]);
 
             DB::afterCommit(function () use ($order): void {
-                OrderCancelled::dispatch(OrderCancelledData::fromOrder($order));
+                try {
+                    OrderCancelled::dispatch(OrderCancelledData::fromOrder($order));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('cancelOrderOnPaymentFailure: post-commit dispatch failed', [
+                        'order_id' => $order->id,
+                        'error'    => $e->getMessage(),
+                    ]);
+                }
             });
         });
     }
@@ -520,10 +534,17 @@ class PaymentService
 
             $dispatchId = $locked->id;
             DB::afterCommit(function () use ($dispatchId): void {
-                $fresh = $this->orders->findById($dispatchId);
-                if ($fresh) {
-                    $this->confirmationNotifier->notify($fresh);
-                    OrderPaid::dispatch(OrderPaidData::fromOrder($fresh, true));
+                try {
+                    $fresh = $this->orders->findById($dispatchId);
+                    if ($fresh) {
+                        $this->confirmationNotifier->notify($fresh);
+                        OrderPaid::dispatch(OrderPaidData::fromOrder($fresh, true));
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('completeZeroBalance: post-commit notification failed', [
+                        'order_id' => $dispatchId,
+                        'error'    => $e->getMessage(),
+                    ]);
                 }
             });
 
