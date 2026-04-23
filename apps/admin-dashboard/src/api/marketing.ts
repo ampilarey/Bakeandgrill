@@ -45,7 +45,11 @@ export async function fetchPromotions(params?: { page?: number; status?: string 
 }
 
 export async function createPromotion(data: PromotionPayload): Promise<{ promotion: Promotion }> {
-  return req('/admin/promotions', { method: 'POST', body: JSON.stringify(data) });
+  // Strip null optional fields so the backend doesn't try to insert non-existent columns
+  const payload = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== null && v !== undefined),
+  );
+  return req('/admin/promotions', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function updatePromotion(
