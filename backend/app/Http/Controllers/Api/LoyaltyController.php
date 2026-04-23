@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Loyalty\Services\PointsCalculator;
+use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\LoyaltyAccount;
@@ -110,6 +111,10 @@ class LoyaltyController extends Controller
             $request->integer('points'),
         );
 
+        // Reflect the hold discount in the order so recalculation uses it.
+        $order->update(['loyalty_discount_laar' => $hold->discount_laar]);
+        app(OrderTotalsCalculator::class)->recalculateAndPersist($order->fresh());
+
         return response()->json([
             'hold' => [
                 'points_held' => $hold->points_held,
@@ -140,6 +145,13 @@ class LoyaltyController extends Controller
         }
 
         $this->service->releaseHold($hold);
+
+        // Reset the loyalty discount on the order and recalculate totals.
+        $order = Order::find($orderId);
+        if ($order) {
+            $order->update(['loyalty_discount_laar' => 0]);
+            app(OrderTotalsCalculator::class)->recalculateAndPersist($order->fresh());
+        }
 
         return response()->json(['message' => 'Hold released.']);
     }

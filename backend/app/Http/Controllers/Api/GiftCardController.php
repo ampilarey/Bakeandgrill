@@ -67,10 +67,13 @@ class GiftCardController extends Controller
                 return response()->json(['message' => 'This gift card has expired.'], 422);
             }
 
-            // Apply up to the order subtotal (before delivery) so we never over-discount
+            // Apply up to the current order total_laar (which already reflects all
+            // previously-applied discounts: promo, loyalty, referral).
+            // Using the gross subtotal_laar would let the card over-commit its balance
+            // when stacked with other discounts.
             $maxDiscount = (int) round((float) $card->current_balance * 100);
-            $subtotalLaar = (int) ($order->subtotal_laar ?? 0);
-            $discountLaar = min($maxDiscount, max(0, $subtotalLaar));
+            $currentDueLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+            $discountLaar = min($maxDiscount, max(0, $currentDueLaar));
 
             $order->update([
                 'gift_card_code'           => $card->code,
