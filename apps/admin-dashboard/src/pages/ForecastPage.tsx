@@ -101,16 +101,16 @@ export function ForecastPage() {
       {/* Controls */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
         <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14 }} />
-        <span style={{ color: '#94a3b8' }}>to</span>
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 14 }} />
+        <span style={{ color: '#9C8E7E' }}>to</span>
         <input type="date" value={to} onChange={e => setTo(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14 }} />
-        <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 8, overflow: 'hidden' }}>
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 14 }} />
+        <div style={{ display: 'flex', background: '#F0EBE5', borderRadius: 8, overflow: 'hidden' }}>
           {(['daily', 'weekly', 'monthly'] as const).map(g => (
             <button key={g} onClick={() => setGran(g)}
               style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: granularity === g ? '#0f172a' : 'transparent',
-                color: granularity === g ? '#fff' : '#64748b' }}>
+                background: granularity === g ? '#1C1408' : 'transparent',
+                color: granularity === g ? '#fff' : '#6B5D4F' }}>
               {g.charAt(0).toUpperCase() + g.slice(1)}
             </button>
           ))}
@@ -127,7 +127,7 @@ export function ForecastPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>Sales Trends</div>
-                  <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+                  <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 2 }}>
                     MVR {parseFloat(String(trends.total_revenue ?? 0)).toFixed(2)} · {trends.total_orders} orders
                   </div>
                 </div>
@@ -135,7 +135,7 @@ export function ForecastPage() {
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120, overflowX: 'auto', paddingBottom: 8 }}>
                 {trends.data.map(d => (
                   <div key={d.period} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, minWidth: 40 }}>
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4 }}>
+                    <div style={{ fontSize: 10, color: '#6B5D4F', marginBottom: 4 }}>
                       {d.growth_pct !== null ? (d.growth_pct >= 0 ? '+' : '') + parseFloat(String(d.growth_pct ?? 0)).toFixed(0) + '%' : ''}
                     </div>
                     <div
@@ -148,7 +148,7 @@ export function ForecastPage() {
                       }}
                       title={`${d.period}: MVR ${parseFloat(String(d.revenue ?? 0)).toFixed(2)} (${d.orders} orders)`}
                     />
-                    <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 4, textAlign: 'center', lineHeight: 1.2, maxWidth: 40 }}>
+                    <div style={{ fontSize: 9, color: '#9C8E7E', marginTop: 4, textAlign: 'center', lineHeight: 1.2, maxWidth: 40 }}>
                       {d.period.slice(-5)}
                     </div>
                   </div>
@@ -160,7 +160,7 @@ export function ForecastPage() {
           {/* Revenue forecast */}
           {!forecast && !loading && (
             <Card>
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8' }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: '#9C8E7E' }}>
                 <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Revenue Forecast</div>
                 <div style={{ fontSize: 13 }}>Not enough sales history yet — need at least 2 weeks of completed orders.</div>
               </div>
@@ -169,7 +169,7 @@ export function ForecastPage() {
           {forecast && (
             <Card>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Revenue Forecast (Next 4 Weeks)</div>
-              <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
                 Weighted Moving Avg: MVR {parseFloat(String(forecast.weighted_moving_avg ?? 0)).toFixed(2)}/wk ·
                 Growth Rate: <span style={{ color: forecast.growth_rate_pct >= 0 ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
                   {forecast.growth_rate_pct >= 0 ? '+' : ''}{parseFloat(String(forecast.growth_rate_pct ?? 0)).toFixed(2)}%/wk
@@ -177,9 +177,9 @@ export function ForecastPage() {
               </div>
               <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
                 {(forecast.forecast ?? []).map((wk, i) => (
-                  <div key={wk.week_start} style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Week {i + 1}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{wk.week_start}</div>
+                  <div key={wk.week_start} style={{ background: '#F8F6F3', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#6B5D4F', marginBottom: 6 }}>Week {i + 1}</div>
+                    <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 8 }}>{wk.week_start}</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: '#D4813A' }}>MVR {parseFloat(String(wk.projected_revenue ?? 0)).toFixed(2)}</div>
                   </div>
                 ))}
@@ -190,7 +190,7 @@ export function ForecastPage() {
           {/* Per-item demand forecast */}
           <Card>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Per-Item Demand Forecast</div>
-            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
               Select a menu item to see its projected daily demand.
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
@@ -250,14 +250,14 @@ export function ForecastPage() {
                       const barH = Math.max(4, (d.predicted_qty / maxQty) * 84);
                       return (
                         <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 28 }}>
-                          <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3, fontWeight: 600 }}>
+                          <div style={{ fontSize: 10, color: '#6B5D4F', marginBottom: 3, fontWeight: 600 }}>
                             {Math.round(d.predicted_qty)}
                           </div>
                           <div
                             style={{ width: '100%', maxWidth: 32, height: barH, background: '#D4813A', borderRadius: '3px 3px 0 0', opacity: 0.85 }}
                             title={`${d.date}: ${d.predicted_qty.toFixed(1)} units · MVR ${d.predicted_revenue.toFixed(2)}`}
                           />
-                          <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3, textAlign: 'center' }}>
+                          <div style={{ fontSize: 9, color: '#9C8E7E', marginTop: 3, textAlign: 'center' }}>
                             {d.date.slice(5)}
                           </div>
                         </div>
@@ -272,7 +272,7 @@ export function ForecastPage() {
               </div>
             )}
             {!selectedItem && !itemLoading && (
-              <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Choose a menu item above to see its demand forecast.</p>
+              <p style={{ color: '#9C8E7E', fontSize: 13, margin: 0 }}>Choose a menu item above to see its demand forecast.</p>
             )}
           </Card>
 
@@ -283,33 +283,33 @@ export function ForecastPage() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #f1f5f9' }}>
+                    <tr style={{ borderBottom: '2px solid #F0EBE5' }}>
                       {['Item', 'Category', 'Stock', 'Daily Usage', 'Days Left', 'Status'].map(h => (
-                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {invForecast.items.slice(0, 30).map(item => (
-                      <tr key={item.id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                      <tr key={item.id} style={{ borderBottom: '1px solid #F8F6F3' }}>
                         <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1e293b' }}>{item.name}</td>
-                        <td style={{ padding: '8px 12px', color: '#64748b' }}>{item.category ?? '—'}</td>
+                        <td style={{ padding: '8px 12px', color: '#6B5D4F' }}>{item.category ?? '—'}</td>
                         <td style={{ padding: '8px 12px' }}>{parseFloat(String(item.current_stock ?? 0)).toFixed(2)} {item.unit}</td>
-                        <td style={{ padding: '8px 12px', color: '#64748b' }}>{parseFloat(String(item.daily_usage_rate ?? 0)).toFixed(3)}/day</td>
+                        <td style={{ padding: '8px 12px', color: '#6B5D4F' }}>{parseFloat(String(item.daily_usage_rate ?? 0)).toFixed(3)}/day</td>
                         <td style={{ padding: '8px 12px', fontWeight: 700 }}>
                           {item.days_of_stock === null ? '∞' : item.days_of_stock === 0 ? 'OUT' : `${item.days_of_stock}d`}
                         </td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                            background: STATUS_BG[item.status] ?? '#f1f5f9',
-                            color: STATUS_COLOR[item.status] ?? '#64748b' }}>
+                            background: STATUS_BG[item.status] ?? '#F0EBE5',
+                            color: STATUS_COLOR[item.status] ?? '#6B5D4F' }}>
                             {item.status.replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
                       </tr>
                     ))}
                     {invForecast.items.length === 0 && (
-                      <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No inventory data available</td></tr>
+                      <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#9C8E7E' }}>No inventory data available</td></tr>
                     )}
                   </tbody>
                 </table>

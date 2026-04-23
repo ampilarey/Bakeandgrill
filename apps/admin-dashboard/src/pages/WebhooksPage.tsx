@@ -73,7 +73,7 @@ function WebhookForm({
       <div>
         <p style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Events</p>
         <div style={{
-          border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px',
+          border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 12px',
           maxHeight: 220, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px',
         }}>
           {allEvents.map((ev) => (
@@ -122,14 +122,14 @@ function LogsDrawer({
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px', borderBottom: '1px solid #e2e8f0',
+          padding: '16px 20px', borderBottom: '1px solid #E8E0D8',
         }}>
           <h2 style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
             Logs — {subscription.name}
           </h2>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}
+            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}
           >
             &times;
           </button>
@@ -139,13 +139,13 @@ function LogsDrawer({
           {loading ? <Spinner /> : logs.length === 0 ? (
             <EmptyState message="No delivery attempts yet." />
           ) : logs.map((log) => (
-            <div key={log.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px' }}>
+            <div key={log.id} style={{ border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <StatusBadge status={log.status} />
-                <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#64748b' }}>{log.event}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#94a3b8' }}>{log.response_code ?? '—'}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#6B5D4F' }}>{log.event}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9C8E7E' }}>{log.response_code ?? '—'}</span>
               </div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
                 {new Date(log.created_at).toLocaleString()}
               </div>
             </div>
@@ -287,13 +287,13 @@ export function WebhooksPage() {
                       <Badge label={`${sub.failure_count} failures`} color="yellow" />
                     )}
                   </div>
-                  <p style={{ fontSize: 12, color: '#64748b', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontSize: 12, color: '#6B5D4F', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {sub.url}
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
                     {(sub.events ?? []).map((ev) => (
                       <span key={ev} style={{
-                        background: '#f1f5f9', color: '#64748b', fontSize: 10,
+                        background: '#F0EBE5', color: '#6B5D4F', fontSize: 10,
                         borderRadius: 4, padding: '2px 6px', fontFamily: 'monospace',
                       }}>
                         {ev}
@@ -301,7 +301,7 @@ export function WebhooksPage() {
                     ))}
                   </div>
                   {sub.last_triggered_at && (
-                    <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                    <p style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
                       Last triggered: {new Date(sub.last_triggered_at).toLocaleString()}
                     </p>
                   )}

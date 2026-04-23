@@ -202,13 +202,13 @@ export function ScheduledTab() {
             {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Name *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Name *</label>
               <Input value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="e.g. Sunday Schedule Reminder" />
             </div>
 
             {/* Recipient */}
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Send To</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Send To</label>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 {(['phone', 'contact', 'group'] as const).map(t => (
                   <button key={t} onClick={() => setForm(f => ({ ...f, to_type: t }))} style={{
@@ -223,14 +223,14 @@ export function ScheduledTab() {
               {form.to_type === 'phone' && <Input value={form.to_phone} onChange={v => setForm(f => ({ ...f, to_phone: v }))} placeholder="+9607xxxxxx" />}
               {form.to_type === 'contact' && (
                 <select value={form.to_contact_id} onChange={e => setForm(f => ({ ...f, to_contact_id: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                   <option value="">— Select contact —</option>
                   {contacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>)}
                 </select>
               )}
               {form.to_type === 'group' && (
                 <select value={form.to_group_id} onChange={e => setForm(f => ({ ...f, to_group_id: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                   <option value="">— Select group —</option>
                   {groups.map(g => <option key={g.id} value={g.id}>{g.name} ({g.contacts_count} members)</option>)}
                 </select>
@@ -239,19 +239,19 @@ export function ScheduledTab() {
 
             {/* Template or Body */}
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Template (optional)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Template (optional)</label>
               <select value={form.template_id} onChange={e => setForm(f => ({ ...f, template_id: e.target.value }))}
-                style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                 <option value="">— Use custom message below —</option>
                 {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
             {!form.template_id && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Custom Message *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Custom Message *</label>
                 <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={3}
                   placeholder="Type your SMS message…"
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             )}
 
@@ -264,7 +264,7 @@ export function ScheduledTab() {
 
             {!form.is_recurring && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Send At *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Send At *</label>
                 <Input type="datetime-local" value={form.send_at} onChange={v => setForm(f => ({ ...f, send_at: v }))} />
               </div>
             )}
@@ -273,9 +273,9 @@ export function ScheduledTab() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Repeat *</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Repeat *</label>
                     <select value={form.recurrence_type} onChange={e => setForm(f => ({ ...f, recurrence_type: e.target.value as ScheduleForm['recurrence_type'] }))}
-                      style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                       <option value="">— Select —</option>
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -283,13 +283,13 @@ export function ScheduledTab() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Time *</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Time *</label>
                     <Input type="time" value={form.recurrence_time} onChange={v => setForm(f => ({ ...f, recurrence_time: v }))} />
                   </div>
                 </div>
                 {form.recurrence_type === 'weekly' && (
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Days</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Days</label>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {DAYS.map(d => (
                         <button key={d} onClick={() => toggleDay(d)} style={{
@@ -303,7 +303,7 @@ export function ScheduledTab() {
                 )}
                 {form.recurrence_type === 'monthly' && (
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Day of Month (1–28)</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Day of Month (1–28)</label>
                     <Input type="number" value={form.recurrence_day_of_month} onChange={v => setForm(f => ({ ...f, recurrence_day_of_month: v }))} placeholder="e.g. 1" />
                   </div>
                 )}

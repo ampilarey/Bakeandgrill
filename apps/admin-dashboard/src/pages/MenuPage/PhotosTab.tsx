@@ -41,7 +41,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     } catch (e) { setError((e as Error).message); }
   };
 
-  if (loading) return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>Loading photos…</div>;
+  if (loading) return <div style={{ padding: 24, textAlign: 'center', color: '#9C8E7E', fontSize: 14 }}>Loading photos…</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -53,9 +53,9 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         disabled={uploading}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          padding: '10px 16px', background: '#f1f5f9', border: '2px dashed #cbd5e1',
+          padding: '10px 16px', background: '#F0EBE5', border: '2px dashed #cbd5e1',
           borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
-          fontSize: 13, fontWeight: 600, color: '#475569',
+          fontSize: 13, fontWeight: 600, color: '#6B5D4F',
         }}
       >
         <Upload size={15} />
@@ -74,13 +74,13 @@ export function PhotosTab({ itemId }: { itemId: number }) {
       />
 
       {photos.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px 0', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', color: '#9C8E7E', padding: '20px 0', fontSize: 13 }}>
           No photos yet. Upload one above.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
           {photos.map((ph) => (
-            <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #e2e8f0' }}>
+            <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #E8E0D8' }}>
               <img
                 src={ph.url}
                 alt=""

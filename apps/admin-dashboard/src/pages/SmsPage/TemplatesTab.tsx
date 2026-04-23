@@ -158,13 +158,13 @@ export function TemplatesTab() {
             {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Template Name *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Template Name *</label>
                 <Input value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="e.g. Shift Reminder" />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Type</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Type</label>
                 <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as TemplateForm['type'] }))}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                   <option value="order_notification">Order Notification</option>
                   <option value="schedule_reminder">Schedule Reminder</option>
                   <option value="duty_reminder">Duty Reminder</option>
@@ -173,19 +173,19 @@ export function TemplatesTab() {
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Description</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Description</label>
               <Input value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="What is this template used for?" />
             </div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Message Body *</label>
-                <span style={{ fontSize: 11, color: info.segments > 1 ? '#ef4444' : '#94a3b8' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Message Body *</label>
+                <span style={{ fontSize: 11, color: info.segments > 1 ? '#ef4444' : '#9C8E7E' }}>
                   {info.chars} chars · {info.segments} segment{info.segments !== 1 ? 's' : ''} · {info.encoding}
                 </span>
               </div>
               <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
                 rows={4} placeholder={'Use {{variable_name}} for dynamic values\ne.g. Order #{{order_number}} is ready.'}
-                style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', fontSize: 13, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }} />
+                style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '10px 12px', fontSize: 13, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }} />
               <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>Use {'{{variable}}'} syntax for dynamic values.</div>
             </div>
           </div>

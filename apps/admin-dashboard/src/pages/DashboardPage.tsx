@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChefHat, Clock, Package, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, Package, Receipt, ShoppingBag, Trash2, TrendingUp, Zap } from 'lucide-react';
 import {
   fetchOrders,
   fetchLowStockItems,
@@ -267,12 +267,18 @@ export function DashboardPage() {
       {summaryErr && <ErrorMsg message={summaryErr} />}
       {summaryLoading ? <Spinner /> : summary && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
-          <StatCard label="Revenue"    value={fmt(summary.revenue)}   accent="#D4813A" />
-          <StatCard label="Net Profit" value={fmt(summary.net_profit)} accent={summary.net_profit >= 0 ? '#22c55e' : '#ef4444'} />
-          <StatCard label="Orders"     value={String(summary.orders)}  sub={`Avg ${fmt(summary.avg_order)}`} accent="#8b5cf6" />
-          <StatCard label="Tax"        value={fmt(summary.tax)}        accent="#f59e0b" />
-          <StatCard label="Expenses"   value={fmt(summary.expenses)}   accent="#f97316" />
-          <StatCard label="Waste Cost" value={fmt(summary.waste_cost)} accent="#ef4444" />
+          <StatCard label="Revenue"    value={fmt(summary.revenue)}    accent="#D4813A" icon={DollarSign} />
+          <StatCard label="Net Profit" value={fmt(summary.net_profit)}
+            accent={summary.net_profit >= 0 ? '#22c55e' : '#ef4444'}
+            icon={TrendingUp}
+            trend={summary.net_profit >= 0
+              ? { value: 'Profit', positive: true }
+              : { value: 'Loss', positive: false }}
+          />
+          <StatCard label="Orders"     value={String(summary.orders)}  sub={`Avg ${fmt(summary.avg_order)}`} accent="#8b5cf6" icon={ShoppingBag} />
+          <StatCard label="Tax"        value={fmt(summary.tax)}        accent="#f59e0b" icon={Receipt} />
+          <StatCard label="Expenses"   value={fmt(summary.expenses)}   accent="#f97316" icon={CreditCard} />
+          <StatCard label="Waste Cost" value={fmt(summary.waste_cost)} accent="#ef4444" icon={Trash2} />
         </div>
       )}
 

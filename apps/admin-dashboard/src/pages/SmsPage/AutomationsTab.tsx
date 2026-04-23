@@ -150,7 +150,7 @@ export function AutomationsTab() {
           <h3 style={{ fontSize: 15, fontWeight: 700 }}>Staff Notification Log</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+              style={{ border: '1px solid #E8E0D8', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}>
               <option value="">All Statuses</option>
               <option value="sent">Sent</option>
               <option value="failed">Failed</option>

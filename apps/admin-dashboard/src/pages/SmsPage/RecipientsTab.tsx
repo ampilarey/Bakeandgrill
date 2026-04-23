@@ -83,7 +83,7 @@ function StaffPrefsModal({
             <span><strong>Enable SMS Notifications</strong> for this staff member</span>
           </label>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
               Receive notifications for (blank = all order types):
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -112,7 +112,7 @@ function StaffPrefsModal({
           </label>
           {prefs.is_fallback && (
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>
                 Fallback Priority (higher = notified first)
               </label>
               <Input type="number" value={String(prefs.fallback_priority ?? 0)}
@@ -153,7 +153,7 @@ function PhoneModal({ member, onClose, onSaved }: { member: StaffMember; onClose
     <Modal title={`Set Phone — ${member.name}`} onClose={onClose}>
       {error && <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Mobile Phone Number</label>
+        <label style={{ fontSize: 13, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Mobile Phone Number</label>
         <Input placeholder="e.g. 7972434" value={phone} onChange={setPhone} />
         <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Maldivian 7-digit local number. Used for SMS notifications.</div>
       </div>

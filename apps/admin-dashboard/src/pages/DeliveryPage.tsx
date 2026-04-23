@@ -111,7 +111,7 @@ export function DeliveryPage() {
           <>
             {active.length > 0 && (
               <>
-                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#475569', marginBottom: 12 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#6B5D4F', marginBottom: 12 }}>
                   ACTIVE ({active.length})
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginBottom: 28 }}>
@@ -124,7 +124,7 @@ export function DeliveryPage() {
 
             {finished.length > 0 && (
               <>
-                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8', marginBottom: 12 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#9C8E7E', marginBottom: 12 }}>
                   COMPLETED ({finished.length})
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -160,7 +160,7 @@ export function DeliveryPage() {
             <div onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                 <h2 style={{ fontWeight: 800, fontSize: 18 }}>#{selected.order_number}</h2>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}>✕</button>
               </div>
               <Badge label={selected.status} color={statColor(selected.status)} />
               <div style={{ background: '#FFF8F3', borderRadius: 10, padding: 16, marginTop: 16, border: '1px solid #F0DCC8' }}>
@@ -211,17 +211,17 @@ function DeliveryCard({
   return (
     <Card style={{ border: urgent ? '2px solid #ef4444' : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <span style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>#{order.order_number}</span>
+        <span style={{ fontWeight: 800, fontSize: 15, color: '#1C1408' }}>#{order.order_number}</span>
         <Badge label={(order.status ?? '').replace(/_/g, ' ')} color={statColor(order.status ?? '')} />
       </div>
       <p style={{ fontSize: 14, color: '#374151', marginBottom: 4 }}>
         {order.delivery_address_line1 ?? '—'}
       </p>
       {order.delivery_island && (
-        <p style={{ fontSize: 13, color: '#64748b' }}>📍 {order.delivery_island}</p>
+        <p style={{ fontSize: 13, color: '#6B5D4F' }}>📍 {order.delivery_island}</p>
       )}
       {order.delivery_contact_name && (
-        <p style={{ fontSize: 13, color: '#64748b' }}>👤 {order.delivery_contact_name}</p>
+        <p style={{ fontSize: 13, color: '#6B5D4F' }}>👤 {order.delivery_contact_name}</p>
       )}
 
       {/* Driver badge or quick assign */}
@@ -237,7 +237,7 @@ function DeliveryCard({
       ) : null}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-        <span style={{ fontSize: 12, color: '#94a3b8' }}>{timeAgo(order.created_at)}</span>
+        <span style={{ fontSize: 12, color: '#9C8E7E' }}>{timeAgo(order.created_at)}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}</span>
           <Btn small variant="ghost" onClick={() => onSelect(order)}>Details</Btn>
@@ -270,8 +270,8 @@ function DriverLocationBadge({ orderId }: { orderId: number }) {
     return () => clearInterval(id);
   }, [load]);
 
-  if (loading) return <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Loading location…</p>;
-  if (!location) return <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>📍 Location not available</p>;
+  if (loading) return <p style={{ fontSize: 11, color: '#9C8E7E', marginTop: 2 }}>Loading location…</p>;
+  if (!location) return <p style={{ fontSize: 11, color: '#9C8E7E', marginTop: 2 }}>📍 Location not available</p>;
 
   const mapsUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
   const updatedMins = Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000);
@@ -363,8 +363,8 @@ function AssignDriverInline({
   };
 
   return (
-    <div style={{ marginTop: 16, background: '#f8fafc', borderRadius: 10, padding: 14, border: '1.5px solid #e5e7eb' }}>
-      <p style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Assign Driver</p>
+    <div style={{ marginTop: 16, background: '#F8F6F3', borderRadius: 10, padding: 14, border: '1.5px solid #e5e7eb' }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#6B5D4F', marginBottom: 8 }}>Assign Driver</p>
       {err && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 6 }}>{err}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
         <select
@@ -479,7 +479,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
           <select
             value={form.vehicle_type}
             onChange={(e) => setForm((f) => ({ ...f, vehicle_type: e.target.value }))}
-            style={{ ...inputStyle, color: form.vehicle_type ? '#374151' : '#94a3b8' }}
+            style={{ ...inputStyle, color: form.vehicle_type ? '#374151' : '#9C8E7E' }}
           >
             <option value="">Vehicle type…</option>
             <option value="bike">🚲 Bike</option>
@@ -523,12 +523,12 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>{d.name}</p>
-                  {d.phone && <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>📞 {d.phone}</p>}
-                  {d.vehicle_type && <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>🚗 {d.vehicle_type}</p>}
+                  {d.phone && <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>📞 {d.phone}</p>}
+                  {d.vehicle_type && <p style={{ fontSize: 12, color: '#6B5D4F', margin: '2px 0 0' }}>🚗 {d.vehicle_type}</p>}
                   <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                     <span style={{
-                      padding: '2px 8px', background: d.is_active ? '#dcfce7' : '#f1f5f9',
-                      color: d.is_active ? '#16a34a' : '#64748b',
+                      padding: '2px 8px', background: d.is_active ? '#dcfce7' : '#F0EBE5',
+                      color: d.is_active ? '#16a34a' : '#6B5D4F',
                       borderRadius: 99, fontSize: 11, fontWeight: 600,
                     }}>
                       {d.is_active ? 'Active' : 'Inactive'}
@@ -543,7 +543,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
                     </span>
                   </div>
                   {d.last_login_at && (
-                    <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                    <p style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
                       Last login: {new Date(d.last_login_at).toLocaleString()}
                     </p>
                   )}

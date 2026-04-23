@@ -248,7 +248,7 @@ export function CustomersPage() {
                   {saveError && <ErrorMsg message={saveError} />}
                   {(['name', 'email'] as const).map((key) => (
                     <div key={key}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4, textTransform: 'capitalize' }}>{key}</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4, textTransform: 'capitalize' }}>{key}</label>
                       <input
                         style={inputStyle}
                         value={form[key]}
@@ -257,7 +257,7 @@ export function CustomersPage() {
                     </div>
                   ))}
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Internal Notes</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Internal Notes</label>
                     <textarea
                       style={{ ...inputStyle, height: 80, resize: 'vertical' }}
                       value={form.internal_notes}

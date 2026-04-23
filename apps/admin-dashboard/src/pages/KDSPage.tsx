@@ -86,7 +86,7 @@ export function KDSPage() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {items.length === 0
-          ? <div style={{ color: '#94a3b8', fontSize: 13, padding: '20px 0' }}>Nothing here</div>
+          ? <div style={{ color: '#9C8E7E', fontSize: 13, padding: '20px 0' }}>Nothing here</div>
           : items.map((t) => (
             <div key={t.id} style={{
               background: '#fff', borderRadius: 14, padding: '16px',

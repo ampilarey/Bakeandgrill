@@ -15,7 +15,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>{label}</label>
       {children}
     </div>
   );
@@ -28,7 +28,7 @@ function RoleSelect({ value, onChange, roles }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
     >
       <option value="">— Select role —</option>
       {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
@@ -249,7 +249,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
             <span><strong>Enable SMS Notifications</strong> for this staff member</span>
           </label>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
               Receive notifications for (blank = all types):
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -282,7 +282,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
           </div>
           {prefs.is_fallback && (
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Fallback Priority (higher = notified first)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Fallback Priority (higher = notified first)</label>
               <Input type="number" value={String(prefs.fallback_priority)}
                 onChange={v => setPrefs(p => p ? { ...p, fallback_priority: parseInt(v) || 0 } : p)} />
             </div>

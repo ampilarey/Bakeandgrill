@@ -218,7 +218,7 @@ function PromotionForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>{label}</label>
       {children}
     </div>
   );
@@ -313,7 +313,7 @@ export function PromotionsPage() {
 
       {(creating || editing) && (
         <Card style={{ marginBottom: 24 }}>
-          <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 18, color: '#0f172a' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 18, color: '#1C1408' }}>
             {creating ? 'Create New Promotion' : `Edit: ${editing?.name}`}
           </h3>
           <PromotionForm

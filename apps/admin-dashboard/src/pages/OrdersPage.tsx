@@ -367,6 +367,9 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+type SortKey = 'order_number' | 'total' | 'created_at';
+type SortDir = 'asc' | 'desc';
+
 export function OrdersPage() {
     usePageTitle('Orders');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -378,6 +381,27 @@ export function OrdersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(25);
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+
+  const sortedOrders = [...orders].sort((a, b) => {
+    let cmp = 0;
+    if (sortKey === 'order_number') cmp = a.order_number.localeCompare(b.order_number);
+    else if (sortKey === 'total') cmp = Number(a.total ?? 0) - Number(b.total ?? 0);
+    else cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const SortArrow = ({ col }: { col: SortKey }) => (
+    <span style={{ marginLeft: 4, opacity: sortKey === col ? 1 : 0.25, fontSize: 10 }}>
+      {sortKey === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+    </span>
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -449,13 +473,26 @@ export function OrdersPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ background: '#F8F6F3', borderBottom: '1px solid #E8E0D8' }}>
-                {['Order #', 'Type', 'Status', 'Customer', 'Total', 'Time', ''].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                ))}
+                <th
+                  onClick={() => handleSort('order_number')}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: '#F8F6F3' }}
+                >Order # <SortArrow col="order_number" /></th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Type</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Customer</th>
+                <th
+                  onClick={() => handleSort('total')}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: '#F8F6F3' }}
+                >Total <SortArrow col="total" /></th>
+                <th
+                  onClick={() => handleSort('created_at')}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: '#F8F6F3' }}
+                >Time <SortArrow col="created_at" /></th>
+                <th style={{ padding: '12px 16px', position: 'sticky', top: 0, background: '#F8F6F3' }} />
               </tr>
             </thead>
             <tbody>
-              {orders.map((o) => (
+              {sortedOrders.map((o) => (
                 <tr key={o.id} style={{ borderBottom: '1px solid #F0EBE5', transition: 'background 0.1s' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#FDF8F4'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}>

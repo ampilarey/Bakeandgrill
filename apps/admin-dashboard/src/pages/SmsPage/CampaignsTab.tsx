@@ -109,13 +109,13 @@ export function CampaignsTab() {
         <Card style={{ marginBottom: 24 }}>
           <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>New SMS Campaign</h3>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Campaign Name</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Campaign Name</label>
             <Input value={name} onChange={setName} placeholder="e.g. Eid Special Offer" />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Message</label>
-              <span style={{ fontSize: 11, color: segments > 1 ? '#ef4444' : '#94a3b8' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Message</label>
+              <span style={{ fontSize: 11, color: segments > 1 ? '#ef4444' : '#9C8E7E' }}>
                 {message.length} chars · {segments} segment{segments > 1 ? 's' : ''}
                 {segInfo.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
               </span>
@@ -125,7 +125,7 @@ export function CampaignsTab() {
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your SMS message here…"
               rows={4}
-              style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
+              style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
             />
           </div>
 

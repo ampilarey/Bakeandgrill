@@ -245,30 +245,30 @@ export function ContactsTab() {
             {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Name *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Name *</label>
                 <Input value={contactForm.name} onChange={v => setContactForm(f => ({ ...f, name: v }))} placeholder="e.g. Manager After Hours" />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Phone *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Phone *</label>
                 <Input value={contactForm.phone} onChange={v => setContactForm(f => ({ ...f, phone: v }))} placeholder="+9607xxxxxx" />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Type</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Type</label>
                 <select value={contactForm.type} onChange={e => setContactForm(f => ({ ...f, type: e.target.value as 'staff' | 'external' }))}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                   <option value="external">External (raw number)</option>
                   <option value="staff">Staff (linked to account)</option>
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Tags (comma-separated)</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Tags (comma-separated)</label>
                 <Input value={contactForm.tags} onChange={v => setContactForm(f => ({ ...f, tags: v }))} placeholder="e.g. kitchen, delivery" />
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Active Days (leave blank for every day)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Active Days (leave blank for every day)</label>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {DAYS.map(d => (
                   <button key={d} onClick={() => toggleDay(d)} style={{
@@ -282,16 +282,16 @@ export function ContactsTab() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Active From</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Active From</label>
                 <Input type="time" value={contactForm.active_from} onChange={v => setContactForm(f => ({ ...f, active_from: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Active Until</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Active Until</label>
                 <Input type="time" value={contactForm.active_until} onChange={v => setContactForm(f => ({ ...f, active_until: v }))} />
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Notes</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes</label>
               <Input value={contactForm.notes} onChange={v => setContactForm(f => ({ ...f, notes: v }))} placeholder="Optional note about this contact" />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -314,11 +314,11 @@ export function ContactsTab() {
         <Modal title={editGroup ? 'Edit Group' : 'New Group'} onClose={() => setGroupModal(false)}>
           <div style={{ display: 'grid', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Group Name *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Group Name *</label>
               <Input value={groupName} onChange={setGroupName} placeholder="e.g. Kitchen Team" />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Description</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Description</label>
               <Input value={groupDesc} onChange={setGroupDesc} placeholder="Optional description" />
             </div>
           </div>
@@ -333,9 +333,9 @@ export function ContactsTab() {
       {memberModal && (
         <Modal title={`Add Member to "${memberModal.name}"`} onClose={() => setMemberModal(null)}>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 }}>Select Contact</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Select Contact</label>
             <select value={memberContactId} onChange={e => setMemberContactId(e.target.value)}
-              style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+              style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
               <option value="">— Choose contact —</option>
               {contacts
                 .filter(c => !memberModal.contacts.find(m => m.id === c.id))
