@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
-import { Bell, BellOff, ChevronLeft, ChevronRight, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { Bell, BellOff, ChevronDown, ChevronLeft, ChevronRight, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
 import { NAV_GROUPS, ALL_NAV_ITEMS, BOTTOM_TABS, can, LogOut } from './navConfig';
@@ -186,6 +186,49 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [moreOpen]);
+
+  // ── Collapsible sidebar groups ─────────────────────────────────────────────
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('bg_nav_open_groups');
+      if (saved) return new Set<string>(JSON.parse(saved));
+    } catch { /* ignore */ }
+    const activeGroup = NAV_GROUPS.find((g) =>
+      g.items.some((i) => location.pathname.startsWith(i.to))
+    );
+    return new Set<string>(activeGroup ? [activeGroup.id] : ['service']);
+  });
+
+  // Auto-open group when navigating to a page inside it
+  useEffect(() => {
+    const activeGroup = NAV_GROUPS.find((g) =>
+      g.items.some((i) => location.pathname.startsWith(i.to))
+    );
+    if (activeGroup) {
+      setOpenGroups((prev) => {
+        if (prev.has(activeGroup.id)) return prev;
+        const next = new Set(prev);
+        next.add(activeGroup.id);
+        return next;
+      });
+    }
+  }, [location.pathname]);
+
+  // Persist open groups
+  useEffect(() => {
+    try {
+      localStorage.setItem('bg_nav_open_groups', JSON.stringify([...openGroups]));
+    } catch { /* ignore */ }
+  }, [openGroups]);
+
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const currentPage = ALL_NAV_ITEMS.find((i) => location.pathname.startsWith(i.to))?.label ?? 'Admin';
   const sidebarW = collapsed ? 64 : 240;
@@ -412,21 +455,51 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter((item) => can(user, item.permission));
             if (visibleItems.length === 0) return null;
+            const isOpen = collapsed || openGroups.has(group.id);
+            const hasActive = group.items.some((i) => location.pathname.startsWith(i.to));
             return (
-              <div key={group.label}>
-                {!collapsed && (
-                  <p style={{
-                    fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.38)',
-                    letterSpacing: '0.1em', padding: '0 12px', marginBottom: 4, margin: '0 0 4px',
-                  }}>
-                    {group.label}
-                  </p>
+              <div key={group.id} style={{ marginBottom: 4 }}>
+                {/* Group header — clickable only in expanded sidebar */}
+                {!collapsed ? (
+                  <button
+                    onClick={() => toggleGroup(group.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      width: '100%', padding: '5px 12px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: hasActive ? 'rgba(212,129,58,0.7)' : 'rgba(255,255,255,0.32)',
+                      fontFamily: 'inherit',
+                      transition: 'color 0.15s',
+                    }}
+                  >
+                    <span style={{ flex: 1, textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em' }}>
+                      {group.label}
+                    </span>
+                    <ChevronDown
+                      size={11}
+                      style={{
+                        transform: openGroups.has(group.id) ? 'rotate(0deg)' : 'rotate(-90deg)',
+                        transition: 'transform 0.2s ease',
+                        flexShrink: 0,
+                      }}
+                    />
+                  </button>
+                ) : (
+                  /* Thin divider between groups in icon-only mode */
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 8px' }} />
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+                {/* Items — animated open/close */}
+                <div style={{
+                  overflow: 'hidden',
+                  maxHeight: isOpen ? '600px' : '0px',
+                  transition: 'max-height 0.22s ease',
+                  display: 'flex', flexDirection: 'column', gap: 2,
+                }}>
                   {visibleItems.map(({ to, icon, label }) => (
                     <SideNavItem
                       key={to} to={to} icon={icon} label={label} collapsed={collapsed}
