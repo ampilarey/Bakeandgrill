@@ -10,7 +10,7 @@ import {
 import { PhotosTab } from './MenuPage/PhotosTab';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, PageHeader, Spinner, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, PageHeader, Spinner, useConfirmDialog,
 } from '../components/Layout';
 
 // ── Image upload field ────────────────────────────────────────────────────────
@@ -45,9 +45,9 @@ function ImageUploadField({ value, onChange }: { value: string; onChange: (url: 
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           style={{
-            flexShrink: 0, padding: '8px 14px', background: '#f1f5f9',
-            border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer',
-            fontSize: 13, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap',
+            flexShrink: 0, padding: '8px 14px', background: '#F8F6F3',
+            border: '1px solid #E8E0D8', borderRadius: 8, cursor: 'pointer',
+            fontSize: 13, fontWeight: 600, color: '#6B5D4F', whiteSpace: 'nowrap',
           }}
         >
           {uploading ? '⏳ Uploading…' : '📁 Upload'}
@@ -69,7 +69,7 @@ function ImageUploadField({ value, onChange }: { value: string; onChange: (url: 
         <img
           src={value}
           alt="preview"
-          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }}
+          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8' }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
       )}
@@ -82,7 +82,7 @@ function ImageUploadField({ value, onChange }: { value: string; onChange: (url: 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
         {label}
       </label>
       {children}
@@ -100,7 +100,7 @@ function FormTextarea({ value, onChange, placeholder, rows = 3 }: {
       placeholder={placeholder}
       rows={rows}
       style={{
-        width: '100%', border: '1px solid #e2e8f0', borderRadius: 9,
+        width: '100%', border: '1px solid #E8E0D8', borderRadius: 9,
         padding: '9px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical',
         boxSizing: 'border-box',
       }}
@@ -139,8 +139,7 @@ function CategoryFormModal({
   };
 
   return (
-    <Modal onClose={onClose}>
-      <h3 style={{ fontWeight: 800, fontSize: 17, marginBottom: 20, color: '#0f172a' }}>{title}</h3>
+    <Modal title={title} onClose={onClose}>
       {error && <ErrorMsg message={error} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -298,15 +297,14 @@ function ItemFormModal({
     padding: '7px 16px', fontSize: 13, fontWeight: 600, border: 'none',
     borderBottom: active ? '2px solid #D4813A' : '2px solid transparent',
     background: 'none', cursor: 'pointer',
-    color: active ? '#D4813A' : '#64748b',
+    color: active ? '#D4813A' : '#9C8E7E',
   });
 
   return (
-    <Modal onClose={onClose} wide>
-      <h3 style={{ fontWeight: 800, fontSize: 17, marginBottom: 16, color: '#0f172a' }}>{title}</h3>
+    <Modal title={title} onClose={onClose} maxWidth={640}>
 
       {itemId && (
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8E0D8', marginBottom: 20 }}>
           <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
           <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')}>Photos</button>
         </div>
@@ -328,7 +326,7 @@ function ItemFormModal({
               <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Describe the item…" />
             </Field>
             {/* Variant toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#F8F6F3', borderRadius: 8, border: '1px solid #E8E0D8' }}>
               <input
                 type="checkbox"
                 checked={form.has_variants}
@@ -373,7 +371,7 @@ function ItemFormModal({
                 <select
                   value={form.category_id}
                   onChange={(e) => set('category_id', e.target.value)}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
                 >
                   <option value="">— No category —</option>
                   {categories.map((c) => (
@@ -385,7 +383,7 @@ function ItemFormModal({
                 <select
                   value={form.menu_group_id}
                   onChange={(e) => set('menu_group_id', e.target.value)}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
                 >
                   {menuGroups.map((g) => (
                     <option key={g.id} value={String(g.id)}>{g.name}</option>
@@ -398,7 +396,7 @@ function ItemFormModal({
             </Field>
             {itemId && (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
                   Per-channel availability
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
@@ -474,7 +472,7 @@ function VariantsEditor({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Variants</label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Variants</label>
         <Btn variant="ghost" onClick={addRow} style={{ fontSize: 12, padding: '3px 10px' }}>+ Add variant</Btn>
       </div>
       {rows.length === 0 ? (
@@ -485,7 +483,7 @@ function VariantsEditor({
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+              <tr style={{ borderBottom: '1px solid #E8E0D8' }}>
                 <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 100 }}>Name *</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Price *</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Cost</th>
@@ -498,13 +496,13 @@ function VariantsEditor({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row._key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <tr key={row._key} style={{ borderBottom: '1px solid #F0EBE5' }}>
                   <td style={cellStyle}>
                     <input
                       value={row.name}
                       onChange={(e) => update(row._key, 'name', e.target.value)}
                       placeholder="e.g. Large"
-                      style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', fontSize: 12 }}
+                      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 8px', fontSize: 12 }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -512,7 +510,7 @@ function VariantsEditor({
                       type="number" min="0" step="0.01"
                       value={row.price}
                       onChange={(e) => update(row._key, 'price', parseFloat(e.target.value) || 0)}
-                      style={{ width: 68, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                      style={{ width: 68, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -521,7 +519,7 @@ function VariantsEditor({
                       value={row.cost ?? ''}
                       onChange={(e) => update(row._key, 'cost', e.target.value !== '' ? parseFloat(e.target.value) : null)}
                       placeholder="—"
-                      style={{ width: 68, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                      style={{ width: 68, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -529,7 +527,7 @@ function VariantsEditor({
                       value={row.sku ?? ''}
                       onChange={(e) => update(row._key, 'sku', e.target.value || null)}
                       placeholder="optional"
-                      style={{ width: 86, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
+                      style={{ width: 86, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -538,7 +536,7 @@ function VariantsEditor({
                       value={row.stock_qty ?? 0}
                       onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
                       disabled={!row.track_stock}
-                      style={{ width: 52, border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                      style={{ width: 52, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'center' }}>
@@ -575,23 +573,7 @@ function VariantsEditor({
   );
 }
 
-// ── Modal wrapper ─────────────────────────────────────────────────────────────
-
-function Modal({ children, onClose, wide }: {
-  children: React.ReactNode; onClose: () => void; wide?: boolean;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div ref={ref} style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: wide ? 640 : 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        {children}
-      </div>
-    </div>
-  );
-}
+// Local Modal removed — using SharedUI Modal from ../components/Layout
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -791,7 +773,7 @@ export function MenuPage() {
       {error && <ErrorMsg message={error} />}
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid #E8E0D8' }}>
         {(['categories', 'items'] as View[]).map((t) => (
           <button key={t} onClick={() => setView(t)} style={{
             padding: '10px 22px', fontSize: 14, fontWeight: view === t ? 700 : 400,
@@ -827,7 +809,7 @@ export function MenuPage() {
                       <Badge label={cat.is_active ? 'Active' : 'Hidden'} color={cat.is_active ? 'green' : 'gray'} />
                     </div>
                     {cat.description && (
-                      <p style={{ fontSize: 13, color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {cat.description}
                       </p>
                     )}
@@ -853,8 +835,8 @@ export function MenuPage() {
       {view === 'items' && (
         <>
           <Card style={{ padding: '16px 18px', marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 8 }}>Chef menu on duty</div>
-            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px', lineHeight: 1.45 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 8 }}>Chef menu on duty</div>
+            <p style={{ fontSize: 12, color: '#6B5D4F', margin: '0 0 12px', lineHeight: 1.45 }}>
               Only items in the selected menu groups appear on the public menu (per channel rules). Choose one or more groups that are live right now.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', marginBottom: 12 }}>
@@ -879,7 +861,7 @@ export function MenuPage() {
             <select
               value={selectedCat ?? ''}
               onChange={(e) => setSelectedCat(e.target.value ? parseInt(e.target.value) : null)}
-              style={{ border: '1px solid #e2e8f0', borderRadius: 9, padding: '8px 12px', fontSize: 14, minWidth: 180 }}
+              style={{ border: '1px solid #E8E0D8', borderRadius: 9, padding: '8px 12px', fontSize: 14, minWidth: 180 }}
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
@@ -889,12 +871,12 @@ export function MenuPage() {
             <div style={{ flex: 1, minWidth: 180 }}>
               <Input value={search} onChange={setSearch} placeholder="Search by name or SKU…" />
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B5D4F' }}>
               Per page:
               <select
                 value={perPage}
                 onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); void loadItems(1); }}
-                style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, fontFamily: 'inherit' }}
+                style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }}
               >
                 {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
@@ -910,29 +892,29 @@ export function MenuPage() {
                 <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr style={{ background: '#F8F6F3', borderBottom: '1px solid #E8E0D8' }}>
                       {['', 'Name', 'Category', 'Price', 'Available', 'Active', ''].map((h, i) => (
-                        <th key={i} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12 }}>{h}</th>
+                        <th key={i} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((item) => (
-                      <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', opacity: item.is_active ? 1 : 0.5 }}>
+                      <tr key={item.id} style={{ borderBottom: '1px solid #F0EBE5', opacity: item.is_active ? 1 : 0.5 }}>
                         <td style={{ padding: '10px 14px', width: 52 }}>
                           {item.image_url ? (
                             <img src={item.image_url} alt={item.name}
                               style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }}
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           ) : (
-                            <div style={{ width: 40, height: 40, background: '#f1f5f9', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍽</div>
+                            <div style={{ width: 40, height: 40, background: '#F0EBE5', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍽</div>
                           )}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           <div style={{ fontWeight: 600 }}>{item.name}</div>
                           {item.sku && <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.sku}</div>}
                         </td>
-                        <td style={{ padding: '10px 14px', color: '#475569', fontSize: 13 }}>
+                        <td style={{ padding: '10px 14px', color: '#6B5D4F', fontSize: 13 }}>
                           {item.category?.name ?? <span style={{ color: '#cbd5e1' }}>—</span>}
                         </td>
                         <td style={{ padding: '10px 14px', fontWeight: 700, color: '#D4813A' }}>
@@ -976,7 +958,7 @@ export function MenuPage() {
                     onClick={() => { const p = page - 1; setPage(p); void loadItems(p); }}>
                     ← Prev
                   </Btn>
-                  <span style={{ padding: '6px 14px', fontSize: 14, color: '#64748b' }}>
+                  <span style={{ padding: '6px 14px', fontSize: 14, color: '#6B5D4F' }}>
                     Page {page} of {lastPage}
                   </span>
                   <Btn small variant="secondary" disabled={page >= lastPage}

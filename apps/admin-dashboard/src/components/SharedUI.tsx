@@ -287,20 +287,59 @@ export function ModalActions({ children }: { children: ReactNode }) {
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 export function StatCard({
-  label, value, sub, accent = '#D4813A',
-}: { label: string; value: string; sub?: string; accent?: string }) {
+  label, value, sub, accent = '#D4813A', icon: Icon, trend,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: string;
+  icon?: React.ElementType;
+  trend?: { value: string; positive?: boolean };
+}) {
   return (
     <div style={{
       background: '#fff',
       border: '1px solid #E8E0D8',
       borderRadius: 14,
-      padding: '20px 24px',
-      borderLeft: `4px solid ${accent}`,
+      padding: '16px 20px',
       boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
       minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
     }}>
-      <p style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8, margin: '0 0 8px' }}>{label}</p>
-      <p style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: '0 0 4px' }}>{value}</p>
+      {/* Label row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <p style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>{label}</p>
+        {Icon && (
+          <div style={{
+            width: 30, height: 30, borderRadius: 8,
+            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: accent, flexShrink: 0,
+          }}>
+            <Icon size={15} />
+          </div>
+        )}
+      </div>
+      {/* Value row */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+        <p style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: 0, lineHeight: 1 }}>{value}</p>
+        {trend && (
+          <span style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: trend.positive === true ? '#15803d' : trend.positive === false ? '#b91c1c' : '#6B5D4F',
+            background: trend.positive === true ? '#dcfce7' : trend.positive === false ? '#fee2e2' : '#F8F6F3',
+            border: `1px solid ${trend.positive === true ? '#86efac' : trend.positive === false ? '#fca5a5' : '#E8E0D8'}`,
+            borderRadius: 9999,
+            padding: '2px 7px',
+            whiteSpace: 'nowrap',
+          }}>
+            {trend.value}
+          </span>
+        )}
+      </div>
       {sub && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{sub}</p>}
     </div>
   );

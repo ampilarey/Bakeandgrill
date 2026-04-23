@@ -176,10 +176,10 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
         overflowY: 'auto', padding: 24, boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
       }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontWeight: 800, fontSize: 18, color: '#0f172a' }}>
+          <h2 style={{ fontWeight: 800, fontSize: 18, color: '#1C1408' }}>
             {order ? `#${order.order_number}` : 'Order Details'}
           </h2>
-          <button onClick={onClose} aria-label="Close order details" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+          <button onClick={onClose} aria-label="Close order details" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}>✕</button>
         </div>
 
         {toast && (
@@ -254,7 +254,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               </div>
             )}
 
-            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ background: '#F8F6F3', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <Row label="Order #" value={order.order_number} />
               <Row label="Type" value={typeLabel(order.type)} />
               <Row label="Time" value={new Date(order.created_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })} />
@@ -272,9 +272,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               <div style={{ background: '#eff6ff', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                 <p style={{ fontWeight: 700, fontSize: 13, color: '#1e40af', marginBottom: 8 }}>Delivery Address</p>
                 <p style={{ fontSize: 14 }}>{order.delivery_address_line1}</p>
-                {order.delivery_island && <p style={{ fontSize: 13, color: '#475569' }}>{order.delivery_island}</p>}
+                {order.delivery_island && <p style={{ fontSize: 13, color: '#6B5D4F' }}>{order.delivery_island}</p>}
                 {order.delivery_contact_name && (
-                  <p style={{ fontSize: 13, color: '#475569', marginTop: 4 }}>
+                  <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4 }}>
                     {order.delivery_contact_name} · {order.delivery_contact_phone}
                   </p>
                 )}
@@ -283,9 +283,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
 
             {order.items && order.items.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#475569', marginBottom: 8 }}>Items</p>
+                <p style={{ fontWeight: 700, fontSize: 13, color: '#6B5D4F', marginBottom: 8 }}>Items</p>
                 {order.items.map((item) => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F0EBE5' }}>
                     <span>{item.quantity}× {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}</span>
                     <span style={{ color: '#D4813A', fontWeight: 600 }}>MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}</span>
                   </div>
@@ -361,8 +361,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-      <span style={{ color: '#64748b' }}>{label}</span>
-      <span style={{ fontWeight: 600, color: '#0f172a' }}>{value}</span>
+      <span style={{ color: '#9C8E7E' }}>{label}</span>
+      <span style={{ fontWeight: 600, color: '#1C1408' }}>{value}</span>
     </div>
   );
 }
@@ -427,12 +427,12 @@ export function OrdersPage() {
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B5D4F' }}>
           Per page:
           <select
             value={perPage}
             onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }}
           >
             {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -448,18 +448,18 @@ export function OrdersPage() {
           <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <tr style={{ background: '#F8F6F3', borderBottom: '1px solid #E8E0D8' }}>
                 {['Order #', 'Type', 'Status', 'Customer', 'Total', 'Time', ''].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12 }}>{h}</th>
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.1s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
+                <tr key={o.id} style={{ borderBottom: '1px solid #F0EBE5', transition: 'background 0.1s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#FDF8F4'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1C1408' }}>
                     #{o.order_number}
                     {o.type === 'delivery' && <span style={{ marginLeft: 6, fontSize: 12 }}>🛵</span>}
                   </td>
@@ -469,13 +469,13 @@ export function OrdersPage() {
                   <td style={{ padding: '12px 16px' }}>
                     <Badge label={o.status} color={statColor(o.status)} />
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#475569' }}>
+                  <td style={{ padding: '12px 16px', color: '#6B5D4F' }}>
                     {o.customer?.name ?? o.customer_name ?? o.table_number ?? '—'}
                   </td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>
                     MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#94a3b8', fontSize: 12 }}>
+                  <td style={{ padding: '12px 16px', color: '#9C8E7E', fontSize: 12 }}>
                     {timeAgo(o.created_at)}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
@@ -491,7 +491,7 @@ export function OrdersPage() {
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px' }}>
               <Btn small variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</Btn>
-              <span style={{ lineHeight: '30px', fontSize: 13, color: '#64748b' }}>Page {page} of {totalPages}</span>
+              <span style={{ lineHeight: '30px', fontSize: 13, color: '#6B5D4F' }}>Page {page} of {totalPages}</span>
               <Btn small variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</Btn>
             </div>
           )}

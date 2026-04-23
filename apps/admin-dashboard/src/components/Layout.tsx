@@ -19,10 +19,13 @@ function useWindowWidth() {
 function SideNavItem({
   to, icon: Icon, label, collapsed,
 }: { to: string; icon: React.ElementType; label: string; collapsed: boolean }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <NavLink
       to={to}
       title={collapsed ? label : undefined}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={({ isActive }) => ({
         display: 'flex',
         alignItems: 'center',
@@ -33,25 +36,11 @@ function SideNavItem({
         textDecoration: 'none',
         fontSize: 13,
         fontWeight: isActive ? 700 : 400,
-        color: isActive ? '#D4813A' : '#C4B5A3',
-        background: isActive ? 'rgba(212,129,58,0.12)' : 'transparent',
+        color: isActive ? '#D4813A' : hovered ? '#E8A66A' : '#C4B5A3',
+        background: isActive ? 'rgba(212,129,58,0.12)' : hovered ? 'rgba(212,129,58,0.08)' : 'transparent',
         position: 'relative',
         transition: 'background 0.15s, color 0.15s',
       })}
-      onMouseEnter={(e) => {
-        const el = e.currentTarget;
-        if (!el.style.background.includes('0.12')) {
-          el.style.background = 'rgba(212,129,58,0.08)';
-          el.style.color = '#E8A66A';
-        }
-      }}
-      onMouseLeave={(e) => {
-        const el = e.currentTarget;
-        if (!el.style.background.includes('0.12')) {
-          el.style.background = 'transparent';
-          el.style.color = '#C4B5A3';
-        }
-      }}
     >
       {({ isActive }) => (
         <>
@@ -66,6 +55,38 @@ function SideNavItem({
         </>
       )}
     </NavLink>
+  );
+}
+
+// ── Sidebar footer button (hover without DOM mutation) ───────────────────────
+function SidebarFooterBtn({
+  onClick, children, collapsed, title, hoverStyle, ...rest
+}: {
+  onClick: () => void; children: React.ReactNode; collapsed: boolean;
+  title?: string; hoverStyle: React.CSSProperties;
+  [key: string]: unknown;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        justifyContent: collapsed ? 'center' : undefined,
+        width: '100%', padding: collapsed ? '10px 0' : '10px 12px',
+        borderRadius: 10, border: 'none',
+        background: hovered ? (hoverStyle.background as string) : 'transparent',
+        color: hovered ? (hoverStyle.color as string) : '#C4B5A3',
+        fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+        transition: 'background 0.15s, color 0.15s',
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -336,7 +357,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
               <div key={group.label}>
                 {!collapsed && (
                   <p style={{
-                    fontSize: 10, fontWeight: 700, color: '#4a3d2e',
+                    fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.38)',
                     letterSpacing: '0.1em', padding: '0 12px', marginBottom: 4, margin: '0 0 4px',
                   }}>
                     {group.label}
@@ -352,7 +373,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
           })}
         </nav>
 
-        {/* User + Logout */}
+        {/* User + Logout + Collapse */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: 8, flexShrink: 0 }}>
           {!collapsed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 4 }}>
@@ -364,7 +385,7 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
               }}>
                 {user.name?.charAt(0).toUpperCase()}
               </div>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <p style={{ color: '#fff', fontSize: 12, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.name}
                 </p>
@@ -372,41 +393,27 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
               </div>
             </div>
           )}
-          <button
+          <SidebarFooterBtn
             onClick={onLogout}
             title={collapsed ? 'Log out' : undefined}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              justifyContent: collapsed ? 'center' : undefined,
-              width: '100%', padding: collapsed ? '10px 0' : '10px 12px',
-              borderRadius: 10, border: 'none',
-              background: 'transparent', color: '#C4B5A3',
-              fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-              transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.15)'; e.currentTarget.style.color = '#f87171'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#C4B5A3'; }}
+            collapsed={collapsed}
+            hoverStyle={{ background: 'rgba(220,38,38,0.15)', color: '#f87171' }}
           >
             <LogOut size={16} style={{ flexShrink: 0 }} />
             {!collapsed && 'Log out'}
-          </button>
+          </SidebarFooterBtn>
+          {/* Collapse toggle — inside sidebar, no floating button */}
+          <SidebarFooterBtn
+            onClick={() => setCollapsed((c) => !c)}
+            collapsed={collapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            hoverStyle={{ background: 'rgba(212,129,58,0.1)', color: '#E8A66A' }}
+          >
+            {collapsed ? <ChevronRight size={16} style={{ flexShrink: 0 }} /> : <ChevronLeft size={16} style={{ flexShrink: 0 }} />}
+            {!collapsed && <span style={{ fontSize: 12 }}>Collapse</span>}
+          </SidebarFooterBtn>
         </div>
-
-        {/* Collapse toggle button */}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          style={{
-            position: 'absolute', right: -12, top: 64,
-            width: 24, height: 24, borderRadius: '50%',
-            background: '#D4813A', border: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', cursor: 'pointer', zIndex: 10,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-          }}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-        </button>
       </aside>
 
       {/* Main content area */}
@@ -424,11 +431,20 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
           display: 'flex', alignItems: 'center',
           padding: '0 24px', gap: 16,
         }}>
-          <div style={{ flex: 1 }} />
+          {/* Breadcrumb */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span style={{ fontSize: 12, color: '#C4B5A3', fontWeight: 500, whiteSpace: 'nowrap' }}>Bake &amp; Grill</span>
+            <ChevronRight size={12} style={{ color: '#C4B5A3', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentPage}
+            </span>
+          </div>
+          {/* User pill */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '6px 12px', borderRadius: 10,
             background: '#F8F6F3', border: '1px solid #E8E0D8',
+            flexShrink: 0,
           }}>
             <div style={{
               width: 24, height: 24, borderRadius: '50%',
