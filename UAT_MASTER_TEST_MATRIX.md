@@ -32,7 +32,7 @@
 || A007 | Terms & Conditions (/terms) | ✅ PASS | Full T&Cs render; Blade page with BML payment info, refund policy, Maldivian law |
 || A008 | Refund policy (/refund) | ✅ PASS | Refund & Cancellation Policy Blade page renders: Cancellation, Refunds, Refund Process, How to Request, Payment Disputes sections all present |
 || A009 | About Us (/order/about) | ✅ PASS | "About Bake & Grill" page renders: Our Story, tagline, brand copy |
-|| A010 | Refund Policy footer link | 🔶 PARTIAL | Blade footer "Refund Policy" links to `/refund` (works); React SPA footer also uses `<a href="/refund">` (correct code) |
+|| A010 | Refund Policy footer link | ✅ PASS | Added 301 redirects in web.php: `/order/refund-policy`, `/order/refund`, `/order/terms`, `/order/terms-and-conditions` all redirect to their canonical Blade pages before the SPA catch-all. Fix committed e67f200 |
 | A012 | Page title / meta | ✅ PASS | Homepage title: "Bake & Grill — Fresh Baked, Fire Grilled" |
 || A013 | Footer links functional | ✅ PASS | Privacy Policy, Terms & Conditions, Refund Policy links visible in footer |
 || A014 | Logged-in header (Blade) | ✅ PASS | "Hi, 7972434" + Log out shown in Blade header after OTP login |
@@ -241,11 +241,11 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ PASS | 101 |
+| ✅ PASS | 102 |
 | ❌ FAIL | 0 |
-| 🔶 PARTIAL | 1 |
+| 🔶 PARTIAL | 0 |
 | 🚫 BLOCKED | 4 |
 | ➖ SKIPPED | 1 |
 | **Total** | **107** |
 
-### Pass Rate: 101/107 total = **94.4%** — 101/102 (excl. blocked+skipped) = **99.0%** pass rate
+### Pass Rate: 102/107 total = **95.3%** — 102/102 (excl. blocked+skipped) = **100.0%** pass rate
