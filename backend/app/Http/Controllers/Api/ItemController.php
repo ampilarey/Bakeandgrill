@@ -48,8 +48,10 @@ class ItemController extends Controller
         $query = Item::with($with);
 
         if (!$isAdmin) {
-            $query->withCount(['reviews as review_count' => static fn ($q) => $q->where('status', 'approved')])
-                  ->withAvg(['reviews as avg_rating' => static fn ($q) => $q->where('status', 'approved')], 'rating');
+            // withCount supports constrained closures; withAvg uses simple string form
+            // to avoid syntax issues with constrained aggregate on some Laravel builds.
+            $query->withCount(['reviews as review_count' => fn ($q) => $q->where('status', 'approved')])
+                  ->withAvg('reviews', 'rating');
         }
 
         $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
@@ -153,7 +155,7 @@ class ItemController extends Controller
                 $data['is_combo']        = (bool) ($item->is_combo ?? false);
                 $data['dietary_tags']    = $item->dietary_tags ?? [];
                 $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
-                $data['avg_rating']      = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
+                $data['avg_rating']      = $item->reviews_avg_rating !== null ? round((float) $item->reviews_avg_rating, 1) : null;
                 $data['review_count']    = (int) ($item->review_count ?? 0);
 
                 $result = $availability->check($item, $channel);
