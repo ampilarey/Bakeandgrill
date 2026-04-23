@@ -26,8 +26,14 @@
 | A002 | Hero CTA buttons visible | ✅ PASS | "Order Now →" and "View Menu" CTAs visible |
 | A003 | "Order Now" navigates to `/order/menu` | ✅ PASS | Correct redirect |
 | A011 | Open/closed badge visible | ✅ PASS | "We're open · Closes 23:59" green badge |
-| A004–A010 | Other public pages (contact, hours, etc.) | ➖ SKIPPED | |
-| A012–A014 | SEO/meta/footer links | ➖ SKIPPED | |
+| A004 | Contact page (/contact) | ✅ PASS | Address, phone, email, WhatsApp, Viber, maps link, opening hours section all render |
+|| A005 | Opening Hours (/hours) | ✅ PASS | Full daily schedule, contact link, "Order Online Now" CTA |
+|| A006 | Privacy Policy (/privacy) | ✅ PASS | Redirects to /order/privacy; React SPA renders full policy with correct last-updated date |
+|| A007 | Terms & Conditions (/terms) | ✅ PASS | Full T&Cs render; Blade page with BML payment info, refund policy, Maldivian law |
+|| A008–A010 | Refund policy, About, other sub-pages | ➖ SKIPPED | |
+| A012 | Page title / meta | ✅ PASS | Homepage title: "Bake & Grill — Fresh Baked, Fire Grilled" |
+|| A013 | Footer links functional | ✅ PASS | Privacy Policy, Terms & Conditions, Refund Policy links visible in footer |
+|| A014 | Logged-in header (Blade) | ✅ PASS | "Hi, 7972434" + Log out shown in Blade header after OTP login |
 
 ---
 
@@ -233,11 +239,11 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ PASS | 72 |
+| ✅ PASS | 79 |
 | ❌ FAIL | 0 |
 | 🔶 PARTIAL | 2 |
 | 🚫 BLOCKED | 6 |
-| ➖ SKIPPED | 11 |
-| **Total** | **91** |
+| ➖ SKIPPED | 5 |
+| **Total** | **92** |
 
-### Pass Rate: 72/91 executed = **79.1%** (of testable) — 72/80 that aren't skip/blocked = **90.0%** pass rate
+### Pass Rate: 79/92 executed = **85.9%** (of testable) — 79/87 that aren't skip/blocked = **90.8%** pass rate
