@@ -189,7 +189,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
               <span style={LS}>Date *</span>
               <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={FS} />
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={LS}>Start Time *</span>
                 <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={FS} />

@@ -82,7 +82,7 @@ export function ProfitLossPage() {
                 <StatCard label="Net Profit"    value={`MVR ${parseFloat(String(pnl.operating_profit ?? 0)).toFixed(2)}`} sub={`Margin: ${pnl.net_profit_margin_pct}%`} accent={pnl.operating_profit >= 0 ? '#22c55e' : '#ef4444'} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 {/* P&L Waterfall */}
                 <Card>
                   <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 20, margin: '0 0 20px' }}>P&L Breakdown</p>

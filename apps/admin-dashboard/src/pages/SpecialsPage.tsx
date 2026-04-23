@@ -226,7 +226,7 @@ export default function SpecialsPage() {
                 {items.map(item => <option key={item.id} value={item.id}>{item.name} (MVR {parseFloat(String(item.base_price)).toFixed(2)})</option>)}
               </select>
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Special Price (MVR)</span>
                 <Input type="number" min="0" step="0.01" placeholder="e.g. 39.00" value={form.special_price} onChange={v => setForm(f => ({ ...f, special_price: v }))} />
@@ -240,7 +240,7 @@ export default function SpecialsPage() {
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Badge Label</span>
               <Input placeholder="e.g. Chef's Special" value={form.badge_label} onChange={v => setForm(f => ({ ...f, badge_label: v }))} />
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Start Date *</span>
                 <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
@@ -252,7 +252,7 @@ export default function SpecialsPage() {
                   style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
               </label>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Start Time</span>
                 <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
@@ -277,7 +277,7 @@ export default function SpecialsPage() {
                 })}
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Max Quantity</span>
                 <Input type="number" min="1" placeholder="Unlimited" value={form.max_quantity} onChange={v => setForm(f => ({ ...f, max_quantity: v }))} />

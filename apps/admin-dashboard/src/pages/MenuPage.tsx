@@ -142,7 +142,7 @@ function CategoryFormModal({
     <Modal title={title} onClose={onClose}>
       {error && <ErrorMsg message={error} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Name (English)">
             <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Grills" />
           </Field>
@@ -156,7 +156,7 @@ function CategoryFormModal({
         <Field label="Image">
           <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
         </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Sort Order">
             <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
           </Field>

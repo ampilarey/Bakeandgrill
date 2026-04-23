@@ -404,7 +404,7 @@ export function PurchaseOrdersPage() {
               </>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Purchase Date</label>
               <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)}

@@ -161,7 +161,7 @@ export function AutomationsTab() {
         </div>
 
         {logsMeta && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+          <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
             <StatCard label="Total Sent" value={sentCount.toString()} accent="#22c55e" />
             <StatCard label="Failed" value={failedCount.toString()} accent="#ef4444" />
             <StatCard label="Fallback Used" value={fallbackCount.toString()} accent="#F59E0B" />

@@ -218,7 +218,7 @@ export function CustomersPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
               {!editing ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   {([
                     ['Phone', detail.customer.phone],
                     ['Email', detail.customer.email ?? '—'],

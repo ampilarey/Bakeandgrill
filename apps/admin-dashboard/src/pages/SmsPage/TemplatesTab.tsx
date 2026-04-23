@@ -156,7 +156,7 @@ export function TemplatesTab() {
         <Modal title={editTemplate ? 'Edit Template' : 'New Template'} onClose={() => setModal(false)}>
           <div style={{ display: 'grid', gap: 12 }}>
             {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Template Name *</label>
                 <Input value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="e.g. Shift Reminder" />

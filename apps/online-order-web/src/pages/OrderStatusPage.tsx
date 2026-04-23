@@ -552,6 +552,53 @@ export function OrderStatusPage() {
               {order.paid_at && (
                 <DetailRow label="Paid at" value={new Date(order.paid_at).toLocaleString()} />
               )}
+
+              {/* Receipt breakdown */}
+              {order.subtotal != null && (
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', paddingBottom: '0.375rem' }}>
+                    <span>Subtotal</span>
+                    <span>MVR {parseFloat(String(order.subtotal)).toFixed(2)}</span>
+                  </div>
+                  {(order.promo_discount_laar ?? 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                      <span>🏷️ Promo</span>
+                      <span>-MVR {((order.promo_discount_laar ?? 0) / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(order.loyalty_discount_laar ?? 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                      <span>⭐ Loyalty</span>
+                      <span>-MVR {((order.loyalty_discount_laar ?? 0) / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(order.gift_card_discount_laar ?? 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                      <span>🎁 Gift Card</span>
+                      <span>-MVR {((order.gift_card_discount_laar ?? 0) / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(order.referral_discount_laar ?? 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                      <span>👥 Referral</span>
+                      <span>-MVR {((order.referral_discount_laar ?? 0) / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(order.delivery_fee ?? 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', paddingBottom: '0.375rem' }}>
+                      <span>🛵 Delivery</span>
+                      <span>+MVR {parseFloat(String(order.delivery_fee)).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {order.tax_amount != null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', paddingBottom: '0.375rem' }}>
+                      <span>GST (8%)</span>
+                      <span>MVR {parseFloat(String(order.tax_amount)).toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 'var(--text-lg)', color: 'var(--color-text)', borderTop: '2px solid var(--color-border)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
                 <span>Total</span>
                 <span style={{ color: 'var(--color-primary)' }}>

@@ -283,7 +283,7 @@ export function ReportsPage() {
                 <p style={{ fontSize: 11, color: '#9C8E7E', margin: '0 0 16px' }}>
                   Generated: {new Date(data.generated_at).toLocaleString()}
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                   {[
                     { l: 'Orders',    v: data.totals.orders.toString() },
                     { l: 'Revenue',   v: mvr(data.totals.revenue) },

@@ -154,7 +154,7 @@ export default function ShiftsPage() {
           <div style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 14, padding: 24, marginBottom: 24, maxWidth: 540 }}>
             <h4 style={{ margin: '0 0 16px', fontSize: 15, color: '#1C1408' }}>Record Cash Movement</h4>
             {movError && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13 }}>{movError}</p>}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <label>
                 <span style={S.label}>Type</span>
                 <select value={movType} onChange={e => setMovType(e.target.value as 'cash_in' | 'cash_out' | 'paid_in' | 'paid_out')} style={S.select}>

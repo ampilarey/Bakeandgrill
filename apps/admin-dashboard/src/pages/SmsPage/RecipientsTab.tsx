@@ -221,7 +221,7 @@ function ExternalContactModal({
     <Modal title={contact ? 'Edit External Contact' : 'Add External Contact'} onClose={onClose}>
       {error && <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Name *</label>
             <Input placeholder="e.g. Manager On-Call" value={form.name} onChange={v => set('name', v)} />
@@ -257,7 +257,7 @@ function ExternalContactModal({
             }}>Every day</button>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Active From</label>
             <Input type="time" value={form.active_from} onChange={v => set('active_from', v)} />

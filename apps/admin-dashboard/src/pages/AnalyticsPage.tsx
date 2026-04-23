@@ -102,7 +102,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Retention + Top Customers */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
         <div>
           <SectionLabel>Customer Retention — last 12 weeks</SectionLabel>
           <TableCard>

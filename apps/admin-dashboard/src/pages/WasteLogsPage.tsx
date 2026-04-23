@@ -247,7 +247,7 @@ export default function WasteLogsPage() {
               <StatCard label="Reason Types" value={String(byReason.length)} accent="#6B5D4F" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
 
               {/* Breakdown by reason */}
               <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20 }}>

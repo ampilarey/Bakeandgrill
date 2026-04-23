@@ -142,7 +142,7 @@ function PromotionForm({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {error && <ErrorMsg message={error} />}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Promo Name">
           <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Ramadan Special" />
         </Field>

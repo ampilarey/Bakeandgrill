@@ -470,7 +470,7 @@ export function InvoicesPage() {
       {showManual && (
         <Modal title="New Invoice" onClose={() => setShowManual(false)} maxWidth={600}>
           {manualError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{manualError}</p>}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             {([
               { key: 'recipient_name',  label: 'Recipient Name',  type: 'text' },
               { key: 'recipient_phone', label: 'Phone',           type: 'tel' },

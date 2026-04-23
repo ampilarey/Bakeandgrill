@@ -278,7 +278,7 @@ export function ExpensesPage() {
               Description *
               <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
                 Amount (MVR) *
                 <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
@@ -333,7 +333,7 @@ export function ExpensesPage() {
                 style={{ ...fieldStyle, marginTop: 4 }}
               />
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
                 Amount (MVR) *
                 <input
