@@ -142,6 +142,6 @@
         <p>These terms are governed by the laws of the Republic of Maldives. Any disputes will be resolved through the relevant Maldivian courts or authority.</p>
     @endif
 
-    <p class="updated">{{ $termsLastUpdated }} {{ date('F j, Y') }}</p>
+    <p class="updated">{{ $termsLastUpdated }} {{ \App\Models\SiteSetting::get('legal_last_updated_date', 'April 2026') }}</p>
 </div>
 @endsection

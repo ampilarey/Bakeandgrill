@@ -121,6 +121,6 @@
         <p>All transactions are in <strong>MVR (Maldivian Rufiyaa)</strong>. No import/export charges or customs duties apply to our food and beverage products.</p>
     @endif
 
-    <p class="updated">{{ $refundLastUpdated }} {{ date('F j, Y') }}</p>
+    <p class="updated">{{ $refundLastUpdated }} {{ \App\Models\SiteSetting::get('legal_last_updated_date', 'April 2026') }}</p>
 </div>
 @endsection

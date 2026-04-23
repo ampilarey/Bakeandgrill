@@ -814,8 +814,9 @@
                 @php
                     $cust = Auth::guard('customer')->user();
                     $dispPhoneDesk = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
+                    $greetDesk = !empty($cust->name) ? $cust->name : $dispPhoneDesk;
                 @endphp
-                <a href="/order/account" style="font-size:0.875rem;color:var(--muted);font-weight:500;text-decoration:none;">Hi, {{ $dispPhoneDesk }}</a>
+                <a href="/order/account" style="font-size:0.875rem;color:var(--muted);font-weight:500;text-decoration:none;">Hi, {{ $greetDesk }}</a>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
                     <button type="submit" class="hdr-logout-btn">Log out</button>
@@ -876,9 +877,10 @@
                 @php
                     $cust = Auth::guard('customer')->user();
                     $dispPhone = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
+                    $greetMob = !empty($cust->name) ? $cust->name : $dispPhone;
                 @endphp
                 <a href="/order/account" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.65rem;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:0.75rem;font-weight:600;color:var(--muted);text-decoration:none;white-space:nowrap;">
-                    👤 {{ $dispPhone }}
+                    👤 {{ $greetMob }}
                 </a>
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>

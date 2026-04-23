@@ -60,7 +60,7 @@
 @endphp
 <div class="privacy-content">
     <h1>{{ $privacyTitle }}</h1>
-    <p><em>{{ $privacyLastUpdated }} {{ date('F d, Y') }}</em></p>
+    <p><em>{{ $privacyLastUpdated }} {{ \App\Models\SiteSetting::get('legal_last_updated_date', 'April 2026') }}</em></p>
 
     @if($privacyBodyOverride)
         {{-- CMS body override: plain text, HTML-escaped, newlines converted to <br> --}}

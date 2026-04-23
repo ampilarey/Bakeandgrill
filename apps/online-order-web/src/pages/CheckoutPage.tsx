@@ -85,7 +85,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 }
 
 // ── T&C + Pay button (reused in both columns depending on viewport) ───────────
-function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay, gateClosed, gateMessage }: {
+function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay, gateClosed, gateMessage, hasPendingReferral }: {
   acceptTerms: boolean;
   setAcceptTerms: (v: boolean) => void;
   globalError: string | null;
@@ -94,6 +94,7 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
   handlePlaceAndPay: () => void;
   gateClosed?: boolean;
   gateMessage?: string | null;
+  hasPendingReferral?: boolean;
 }) {
   const disabled = isPlacing || !acceptTerms || !!gateClosed;
   return (
@@ -127,7 +128,7 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
         <div className="banner banner-error" style={{ marginBottom: 12 }}>
           <span className="banner-icon">⚠️</span>
           <div>
-            <p className="banner-title">Payment failed</p>
+            <p className="banner-title">Something went wrong</p>
             <p className="banner-sub">{globalError}</p>
           </div>
         </div>
@@ -151,6 +152,11 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
         {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
         {placeLabel}
       </button>
+      {hasPendingReferral && (
+        <p style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+          ⏳ Referral discount will be confirmed and applied after your order is created.
+        </p>
+      )}
     </div>
   );
 }
@@ -233,12 +239,13 @@ export function CheckoutPage() {
     );
   }
 
+  const hasPendingReferral = friendReferralApplied?.pending === true && referralDelta === 0;
   const placeLabel = isPlacing
     ? 'Processing…'
     : orderingGateClosed
       ? 'Online ordering is closed'
       : totalLaar <= 0
-        ? 'Place order (no payment due)'
+        ? 'Place order — no payment due'
         : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
 
   // ── Reusable section blocks (shared between mobile and desktop layouts) ──────
@@ -362,7 +369,7 @@ export function CheckoutPage() {
   );
 
   const sectionFriendReferral = (
-    <SectionCard title="Friend's referral code">
+    <SectionCard title="Friend's Referral Code">
       {friendReferralApplied ? (
         <div style={S.promoApplied}>
           <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
@@ -551,6 +558,7 @@ export function CheckoutPage() {
       handlePlaceAndPay={handlePlaceAndPay}
       gateClosed={orderingGateClosed}
       gateMessage={onlineGate?.message}
+      hasPendingReferral={hasPendingReferral}
     />
   );
 

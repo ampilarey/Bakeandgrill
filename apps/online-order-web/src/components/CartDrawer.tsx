@@ -87,9 +87,9 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
               </div>
             ))}
 
-            {/* Total */}
+            {/* Subtotal (tax & delivery calculated at checkout) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)', fontWeight: 700, color: 'var(--color-text)' }}>
-              <span>Total</span>
+              <span>Subtotal</span>
               <span style={{ color: 'var(--color-primary)', fontSize: '1.05rem' }}>MVR {cartTotal.toFixed(2)}</span>
             </div>
           </div>
@@ -121,7 +121,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           onMouseEnter={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary-hover)'; }}
           onMouseLeave={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary)'; }}
         >
-          {!isOpen ? "We're Closed" : cart.length === 0 ? t('cart.empty') : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
+          {!isOpen ? "Closed — not taking orders right now" : cart.length === 0 ? "Add items to continue" : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
         </button>
       </div>
     </div>
