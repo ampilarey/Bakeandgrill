@@ -35,7 +35,12 @@
 
 | ID | Test | Result | Notes |
 |----|------|--------|-------|
-| B001–B014 | OTP login, rate limiting, referral/promo validation | 🚫 BLOCKED | Customer already logged in from prior session; fresh OTP test requires real SMS delivery. Rate limit audit done separately in prior session. |
+| B001 | OTP request — phone accepted | ✅ PASS | Entered 7972434 → "Checking…" → OTP screen shown: "A 6-digit code was sent to 7972434" |
+| B002 | OTP SMS delivery (Dhiraagu) | ✅ PASS | Code received on real device within ~5 seconds |
+| B003 | Invalid OTP rejected | ✅ PASS | Expired code 112197 → "Invalid OTP code. 4 attempts remaining." shown in red |
+| B004 | Valid OTP accepted | ✅ PASS | Code 357532 → "Verifying…" → post-OTP profile setup screen |
+| B005 | Skip profile setup | ✅ PASS | "Skip for now — go to checkout" → redirected to My Account, "Hi, 7972434" shown, Sign Out visible |
+| B006–B014 | Rate limiting, referral/promo validation | 🚫 BLOCKED | Requires multiple fresh OTP cycles; not tested this session |
 
 ---
 
@@ -228,11 +233,11 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ PASS | 63 |
+| ✅ PASS | 68 |
 | ❌ FAIL | 1 |
 | 🔶 PARTIAL | 4 |
-| 🚫 BLOCKED | 8 |
+| 🚫 BLOCKED | 7 |
 | ➖ SKIPPED | 11 |
-| **Total** | **87** |
+| **Total** | **91** |
 
-### Pass Rate: 63/87 executed = **72.4%** (of testable) — 63/72 that aren't skip/blocked = **87.5%** pass rate
+### Pass Rate: 68/91 executed = **74.7%** (of testable) — 68/80 that aren't skip/blocked = **85.0%** pass rate
