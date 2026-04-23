@@ -277,6 +277,7 @@ class PromotionController extends Controller
             'stackable' => 'boolean',
             'min_order_laar' => 'nullable|integer|min:0',
             'scope' => 'in:order,item',
+            'restricted_customer_id' => 'nullable|integer|exists:customers,id',
         ]);
 
         $promotion = Promotion::create($validated);
@@ -291,11 +292,12 @@ class PromotionController extends Controller
         $promotion = Promotion::withTrashed()->findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'is_active' => 'sometimes|boolean',
-            'expires_at' => 'nullable|date',
-            'max_uses' => 'nullable|integer|min:1',
-            'max_uses_per_customer' => 'nullable|integer|min:1',
+            'name'                   => 'sometimes|string|max:255',
+            'is_active'              => 'sometimes|boolean',
+            'expires_at'             => 'nullable|date',
+            'max_uses'               => 'nullable|integer|min:1',
+            'max_uses_per_customer'  => 'nullable|integer|min:1',
+            'restricted_customer_id' => 'nullable|integer|exists:customers,id',
         ]);
 
         $promotion->update($validated);

@@ -26,6 +26,7 @@ class Promotion extends Model
         'min_order_laar',
         'scope',
         'metadata',
+        'restricted_customer_id',
     ];
 
     protected $casts = [

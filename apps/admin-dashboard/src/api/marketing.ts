@@ -16,6 +16,8 @@ export type Promotion = {
   is_active: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  restricted_customer_id?: number | null;
+  restricted_customer?: { id: number; name: string | null; phone: string } | null;
   created_at: string;
 };
 
@@ -31,6 +33,7 @@ export type PromotionPayload = {
   is_active?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  restricted_customer_id?: number | null;
 };
 
 export async function fetchPromotions(params?: { page?: number; status?: string }): Promise<{ data: Promotion[]; meta?: { current_page: number; last_page: number; total: number } }> {

@@ -5,6 +5,7 @@ import {
 } from '../components/SharedUI';
 import { fetchGiftCards, issueGiftCard, checkGiftCardBalance, type GiftCard } from '../api';
 import { Gift, Search, Copy, Check } from 'lucide-react';
+import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
 
 const STATUS_COLOR: Record<string, string> = {
   active: 'green', redeemed: 'orange', expired: 'red', cancelled: 'gray',
@@ -21,6 +22,7 @@ export default function GiftCardsPage() {
   const [statusFilter, setStatusFilter] = useState('');
 
   const [issueOpen, setIssueOpen] = useState(false);
+  const [printCard, setPrintCard] = useState<PrintCardData | null>(null);
   const [amount, setAmount] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -84,6 +86,7 @@ export default function GiftCardsPage() {
 
   return (
     <div>
+      {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
       <PageHeader
         title="Gift Cards"
         action={<Btn onClick={() => { setIssueOpen(true); setIssuedCard(null); setIssueError(''); }}>+ Issue Gift Card</Btn>}
@@ -139,7 +142,7 @@ export default function GiftCardsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Code', 'Issued To', 'Initial', 'Balance', 'Status', 'Expires', 'Issued'].map(h => (
+              {['Code', 'Issued To', 'Initial', 'Balance', 'Status', 'Expires', 'Issued', ''].map(h => (
                 <th key={h} style={TH}>{h}</th>
               ))}
             </tr>
@@ -154,10 +157,21 @@ export default function GiftCardsPage() {
                 <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: '#1C1408' }}>{card.code}</code></td>
                 <td style={TD}>{card.issued_to?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
-                <td style={{ ...TD, fontWeight: 700, color: card.current_balance > 0 ? '#166534' : '#9C8E7E' }}>MVR {card.current_balance.toFixed(2)}</td>
+                <td style={{ ...TD, fontWeight: 700, color: card.current_balance > 0 ? '#166534' : '#9C8E7E' }}>MVR {Number(card.current_balance).toFixed(2)}</td>
                 <td style={TD}><Badge color={STATUS_COLOR[card.status] ?? 'gray'}>{card.status}</Badge></td>
                 <td style={TD}>{card.expires_at ?? '—'}</td>
                 <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{card.created_at ? new Date(card.created_at).toLocaleDateString() : '—'}</td>
+                <td style={TD}>
+                  <Btn small variant="secondary" onClick={() => setPrintCard({
+                    type: 'gift_card',
+                    code: card.code,
+                    title: 'Gift Card',
+                    subtitle: `MVR ${Number(card.initial_balance).toFixed(2)}`,
+                    expiry: card.expires_at ?? null,
+                    note: 'Redeem online or in-store',
+                    logoText: 'Bake & Grill',
+                  })}>🖨️ Print</Btn>
+                </td>
               </tr>
             ))}
           </tbody>

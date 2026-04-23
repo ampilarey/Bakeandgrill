@@ -45,6 +45,13 @@ class PromotionEvaluator
             return $this->reject('Promo code is not valid or has expired.');
         }
 
+        // Customer-restricted promo: only the designated customer may use it.
+        if ($promotion->restricted_customer_id !== null) {
+            if ($customerId === null || (int) $promotion->restricted_customer_id !== $customerId) {
+                return $this->reject('This promo code is not valid for your account.');
+            }
+        }
+
         $order->loadMissing('items');
         $subtotalLaar = (int) round($order->subtotal * 100);
 

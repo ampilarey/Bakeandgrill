@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   fetchPromotions, createPromotion, updatePromotion, deletePromotion,
+  fetchAdminCustomers,
   type Promotion, type PromotionPayload,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -9,12 +10,83 @@ import {
   PageHeader, Select, Spinner, TD, TH, useConfirmDialog,
 } from '../components/Layout';
 import { downloadCSV } from '../utils/csvExport';
+import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
 
 const EMPTY: PromotionPayload = {
   name: '', code: '', type: 'fixed', discount_value: 0,
   scope: 'order', min_order_laar: null, max_uses: null,
   stackable: false, is_active: true, starts_at: null, expires_at: null,
+  restricted_customer_id: null,
 };
+
+function CustomerSearch({
+  value, onChange,
+}: {
+  value: number | null;
+  onChange: (id: number | null, label: string) => void;
+}) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<{ id: number; name: string | null; phone: string }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [label, setLabel] = useState('');
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const search = (v: string) => {
+    setQ(v);
+    if (timer.current) clearTimeout(timer.current);
+    if (!v.trim()) { setResults([]); return; }
+    timer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetchAdminCustomers({ search: v.trim(), page: 1 });
+        setResults((res.data ?? []).slice(0, 6).map((c) => ({ id: c.id, name: c.name, phone: c.phone })));
+      } finally { setSearching(false); }
+    }, 300);
+  };
+
+  const select = (c: { id: number; name: string | null; phone: string }) => {
+    const lbl = `${c.name ?? 'Unknown'} (${c.phone})`;
+    setLabel(lbl); setQ(''); setResults([]);
+    onChange(c.id, lbl);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {value ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '7px 10px', fontSize: 13 }}>
+          <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>🔒 {label}</span>
+          <button type="button" onClick={() => { onChange(null, ''); setLabel(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: 16, lineHeight: 1 }}>×</button>
+        </div>
+      ) : (
+        <>
+          <Input
+            value={q}
+            onChange={search}
+            placeholder="Search by name or phone… (leave empty for public)"
+          />
+          {searching && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Searching…</div>}
+          {results.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2 }}>
+              {results.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => select(c)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #F5F0EB' }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = '#FFF8F3')}
+                  onMouseOut={(e) => (e.currentTarget.style.background = 'none')}
+                >
+                  <span style={{ fontWeight: 600 }}>{c.name ?? 'Unknown'}</span>
+                  <span style={{ color: '#9C8E7E', marginLeft: 8 }}>{c.phone}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 function PromotionForm({
   initial, onSave, onCancel,
@@ -116,6 +188,15 @@ function PromotionForm({
           <Input value={form.expires_at ?? ''} onChange={(v) => set('expires_at', v || null)} type="datetime-local" />
         </Field>
       </div>
+      <Field label="Restrict to Specific Customer (optional)">
+        <CustomerSearch
+          value={form.restricted_customer_id ?? null}
+          onChange={(id) => set('restricted_customer_id', id)}
+        />
+        <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>
+          If set, only this customer can redeem the code — useful for personal discounts.
+        </div>
+      </Field>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
@@ -156,6 +237,7 @@ export function PromotionsPage() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
+  const [printCard, setPrintCard] = useState<PrintCardData | null>(null);
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const load = async () => {
@@ -214,6 +296,7 @@ export function PromotionsPage() {
   return (
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
+      {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
       <PageHeader
         title="Promotions"
         subtitle="Manage promo codes and discounts"
@@ -265,7 +348,14 @@ export function PromotionsPage() {
             <tbody>
               {promos.map((p) => (
                 <tr key={p.id}>
-                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{p.name}</td>
+                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>
+                    {p.name}
+                    {p.restricted_customer_id && (
+                      <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
+                        🔒 Personal promo
+                      </div>
+                    )}
+                  </td>
                   <td style={TD}>
                     <code style={{ background: '#F8F6F3', padding: '2px 8px', borderRadius: 6, fontSize: 13, fontWeight: 700, letterSpacing: 1, color: '#1C1408', border: '1px solid #E8E0D8' }}>
                       {p.code}
@@ -284,11 +374,20 @@ export function PromotionsPage() {
                     <Badge label={p.is_active ? 'Active' : 'Inactive'} color={p.is_active ? 'green' : 'gray'} />
                   </td>
                   <td style={TD}>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <Btn small variant="ghost" onClick={() => handleToggle(p)}>
                         {p.is_active ? 'Disable' : 'Enable'}
                       </Btn>
                       <Btn small variant="secondary" onClick={() => { setEditing(p); setCreating(false); }}>Edit</Btn>
+                      <Btn small variant="secondary" onClick={() => setPrintCard({
+                        type: 'promo',
+                        code: p.code,
+                        title: p.name,
+                        subtitle: formatDiscount(p),
+                        expiry: p.expires_at ?? null,
+                        note: p.restricted_customer_id ? 'Personal discount — non-transferable' : 'Enter code at checkout',
+                        logoText: 'Bake & Grill',
+                      })}>🖨️ Print</Btn>
                       <Btn small variant="danger" onClick={() => handleDelete(p.id)}>Delete</Btn>
                     </div>
                   </td>
