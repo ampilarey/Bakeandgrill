@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, Package, Play, Receipt, ShoppingBag, Trash2, TrendingUp, Zap } from 'lucide-react';
+import { playChime } from '../utils/audio';
 import {
   fetchOrders,
   fetchLowStockItems,
@@ -214,7 +215,8 @@ export function DashboardPage() {
 
   // Tracks orders that changed status since the last poll — drives the "recent changes" panel
   const [liveEvents, setLiveEvents] = useState<{ id: number; order_number: string; status: string; ts: number }[]>([]);
-  const prevOrdersRef = useRef<Record<number, string>>({});
+  const prevOrdersRef  = useRef<Record<number, string>>({});
+  const isFirstLoadRef = useRef(true);
 
   // ── load today's summary ──
   useEffect(() => {
@@ -231,16 +233,24 @@ export function DashboardPage() {
       .then((r) => {
         setActiveOrders(r.data ?? []);
         setOrdersErr('');
-        // Detect status changes since last poll
+        // Detect status changes and brand-new orders since last poll
         const changed: typeof liveEvents = [];
+        const newPending: typeof liveEvents = [];
         (r.data ?? []).forEach((o) => {
-          if (prevOrdersRef.current[o.id] !== undefined && prevOrdersRef.current[o.id] !== o.status) {
+          if (prevOrdersRef.current[o.id] === undefined) {
+            // Brand-new order appeared in the feed
+            if (!isFirstLoadRef.current && ['pending', 'paid'].includes(o.status)) {
+              newPending.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
+            }
+          } else if (prevOrdersRef.current[o.id] !== o.status) {
             changed.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
           }
           prevOrdersRef.current[o.id] = o.status;
         });
-        if (changed.length > 0) {
-          setLiveEvents((prev) => [...changed, ...prev].slice(0, 20));
+        isFirstLoadRef.current = false;
+        if (newPending.length > 0) playChime();
+        if (newPending.length > 0 || changed.length > 0) {
+          setLiveEvents((prev) => [...newPending, ...changed, ...prev].slice(0, 20));
         }
       })
       .catch((e: Error) => setOrdersErr(e.message))

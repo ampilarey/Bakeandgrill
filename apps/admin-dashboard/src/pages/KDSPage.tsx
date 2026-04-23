@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall } from '../api';
 import type { KdsTicket } from '../api';
 import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSse } from '../hooks/useSse';
+import { playChime } from '../utils/audio';
 
 function elapsed(iso: string): string {
   const t = Date.parse(iso);
@@ -30,12 +31,30 @@ export function KDSPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [acting, setActing] = useState<number | null>(null);
+  const [newTicketFlash, setNewTicketFlash] = useState(false);
+  const prevPendingIdsRef = useRef<Set<number>>(new Set());
+  const isFirstKdsLoad    = useRef(true);
 
   const load = useCallback(async () => {
     try {
       const res = await fetchKdsOrders();
-      setTickets(res.orders ?? []);
+      const incoming = res.orders ?? [];
+      setTickets(incoming);
       setError('');
+
+      // Detect new pending/paid tickets
+      const newIds = incoming
+        .filter((t) => ['pending', 'paid'].includes(t.status) && !prevPendingIdsRef.current.has(t.id))
+        .map((t) => t.id);
+      const nextSet = new Set(incoming.filter((t) => ['pending', 'paid'].includes(t.status)).map((t) => t.id));
+      prevPendingIdsRef.current = nextSet;
+
+      if (!isFirstKdsLoad.current && newIds.length > 0) {
+        playChime();
+        setNewTicketFlash(true);
+        setTimeout(() => setNewTicketFlash(false), 2500);
+      }
+      isFirstKdsLoad.current = false;
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -70,19 +89,28 @@ export function KDSPage() {
   const cooking = tickets.filter((t) => ['in_progress', 'preparing'].includes(t.status));
   const ready   = tickets.filter((t) => t.status === 'ready');
 
-  const Column = ({ title, items, color, children }: {
-    title: string; items: KdsTicket[]; color: string;
+  const Column = ({ title, items, color, flash, children }: {
+    title: string; items: KdsTicket[]; color: string; flash?: boolean;
     children: (t: KdsTicket) => React.ReactNode;
   }) => (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
-        <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{title}</span>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
+        padding: flash ? '6px 10px' : '6px 10px', borderRadius: 10,
+        background: flash ? 'rgba(245,158,11,0.12)' : 'transparent',
+        transition: 'background 0.3s',
+        animation: flash ? 'kds-pulse 0.5s ease-in-out 4' : 'none',
+      }}>
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: flash ? '#f59e0b' : color, boxShadow: flash ? '0 0 6px #f59e0b' : 'none', transition: 'box-shadow 0.3s' }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: flash ? '#92400E' : '#1C1408', transition: 'color 0.3s' }}>{title}</span>
         <span style={{
-          background: '#F8F6F3', color: '#6B5D4F', borderRadius: 999,
+          background: flash ? '#f59e0b' : '#F8F6F3',
+          color: flash ? '#fff' : '#6B5D4F', borderRadius: 999,
           padding: '1px 8px', fontSize: 12, fontWeight: 700,
-          border: '1px solid #E8E0D8',
+          border: `1px solid ${flash ? '#f59e0b' : '#E8E0D8'}`,
+          transition: 'all 0.3s',
         }}>{items.length}</span>
+        {flash && <span style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginLeft: 2 }}>NEW!</span>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {items.length === 0
@@ -114,7 +142,7 @@ export function KDSPage() {
         <Card style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-          <Column title="Pending" items={pending} color="#f59e0b">
+          <Column title="Pending" items={pending} color="#f59e0b" flash={newTicketFlash}>
             {(t) => (
               <>
                 <TicketHeader ticket={t} />

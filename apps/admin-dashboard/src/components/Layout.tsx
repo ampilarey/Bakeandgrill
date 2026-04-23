@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
-import { Menu, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Bell, BellOff, ChevronLeft, ChevronRight, Menu, Search, X } from 'lucide-react';
+import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { NAV_GROUPS, ALL_NAV_ITEMS, BOTTOM_TABS, can, LogOut } from './navConfig';
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
@@ -125,8 +126,15 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [audioOn, setAudioOn] = useState(isAudioEnabled);
   const location = useLocation();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const toggleAudio = () => {
+    const next = !audioOn;
+    setAudioEnabled(next);
+    setAudioOn(next);
+  };
 
   // Fetch low-stock count once on mount (refresh every 5 min)
   useEffect(() => {
@@ -495,6 +503,22 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
               <span style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A3', background: '#E8E0D8', borderRadius: 4, padding: '1px 5px' }}>⌘K</span>
             </button>
           )}
+          {/* Audio alert toggle */}
+          <button
+            onClick={toggleAudio}
+            title={audioOn ? 'Sound alerts ON — click to mute' : 'Sound alerts OFF — click to enable'}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              border: '1px solid #E8E0D8',
+              background: audioOn ? 'rgba(212,129,58,0.08)' : '#F8F6F3',
+              cursor: 'pointer',
+              color: audioOn ? '#D4813A' : '#C4B5A3',
+              transition: 'all 0.15s',
+            }}
+          >
+            {audioOn ? <Bell size={16} /> : <BellOff size={16} />}
+          </button>
           {/* User pill */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,

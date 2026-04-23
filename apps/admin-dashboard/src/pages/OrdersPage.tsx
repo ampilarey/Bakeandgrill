@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { MessageSquare } from 'lucide-react';
 import { useSse } from '../hooks/useSse';
 import {
   fetchOrders, fetchOrder, holdOrder, resumeOrder, sendOrderBill,
@@ -383,6 +384,43 @@ export function OrdersPage() {
   const [perPage, setPerPage] = useState(25);
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [quickActing, setQuickActing] = useState<number | null>(null);
+  const [smsBusy, setSmsBusy] = useState<number | null>(null);
+  const [rowToast, setRowToast] = useState<{ id: number; msg: string } | null>(null);
+
+  const showRowToast = (id: number, msg: string) => {
+    setRowToast({ id, msg });
+    setTimeout(() => setRowToast(null), 2500);
+  };
+
+  const quickAdvance = async (o: Order) => {
+    setQuickActing(o.id);
+    try {
+      if (['pending', 'paid'].includes(o.status)) await kdsStart(o.id);
+      else if (['in_progress', 'preparing', 'ready'].includes(o.status)) await kdsBump(o.id);
+      else if (o.status === 'held') await resumeOrder(o.id);
+      else return;
+      void load();
+    } catch { /* non-blocking */ } finally { setQuickActing(null); }
+  };
+
+  const quickLabel = (status: string): string | null => {
+    if (['pending', 'paid'].includes(status))                  return '▶ Cook';
+    if (['in_progress', 'preparing'].includes(status))         return '✓ Ready';
+    if (status === 'ready')                                    return '✓ Done';
+    if (status === 'held')                                     return '▶ Resume';
+    return null;
+  };
+
+  const sendSmsReceipt = async (o: Order) => {
+    const phone = o.customer?.phone ?? o.customer_phone ?? '';
+    if (!phone) { showRowToast(o.id, 'No phone number'); return; }
+    setSmsBusy(o.id);
+    try {
+      await sendReceiptForOrder(o.id, { recipient: phone, channel: 'sms' });
+      showRowToast(o.id, '✓ SMS sent');
+    } catch { showRowToast(o.id, 'SMS failed'); } finally { setSmsBusy(null); }
+  };
 
   const handleSort = (key: SortKey) => {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -515,8 +553,45 @@ export function OrdersPage() {
                   <td style={{ padding: '12px 16px', color: '#9C8E7E', fontSize: 12 }}>
                     {timeAgo(o.created_at)}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <Btn small onClick={() => setSelectedId(o.id)} variant="ghost">View</Btn>
+                  <td style={{ padding: '8px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+                      {/* Quick status advance */}
+                      {quickLabel(o.status) && (
+                        <button
+                          onClick={() => void quickAdvance(o)}
+                          disabled={quickActing === o.id}
+                          title="Advance order to next status"
+                          style={{
+                            fontSize: 11, fontWeight: 700, padding: '4px 8px',
+                            borderRadius: 7, border: '1px solid #D4813A',
+                            background: quickActing === o.id ? '#F8F6F3' : 'rgba(212,129,58,0.1)',
+                            color: '#D4813A', cursor: 'pointer', whiteSpace: 'nowrap',
+                            opacity: quickActing === o.id ? 0.6 : 1,
+                          }}
+                        >
+                          {quickActing === o.id ? '…' : quickLabel(o.status)}
+                        </button>
+                      )}
+                      {/* Receipt SMS */}
+                      {(o.customer?.phone ?? o.customer_phone) && (
+                        <button
+                          onClick={() => void sendSmsReceipt(o)}
+                          disabled={smsBusy === o.id}
+                          title="Send receipt via SMS"
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 28, height: 28, borderRadius: 7,
+                            border: '1px solid #E8E0D8', background: '#F8F6F3',
+                            cursor: 'pointer', color: rowToast?.id === o.id ? '#22c55e' : '#9C8E7E',
+                            fontSize: 11, fontWeight: 700,
+                            opacity: smsBusy === o.id ? 0.5 : 1,
+                          }}
+                        >
+                          {rowToast?.id === o.id ? '✓' : <MessageSquare size={13} />}
+                        </button>
+                      )}
+                      <Btn small onClick={() => setSelectedId(o.id)} variant="ghost">View</Btn>
+                    </div>
                   </td>
                 </tr>
               ))}

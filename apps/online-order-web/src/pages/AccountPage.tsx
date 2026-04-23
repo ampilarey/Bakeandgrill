@@ -7,6 +7,7 @@ import {
   revokeCustomerToken, logoutCustomerWebSession, getLoyaltyAccount,
   getMyReservations, cancelMyReservation, getMyFavourites,
   getMyPreOrders, getMyReviews, submitReview, fetchCustomerOrders,
+  getMyReferralCode,
 } from '../api';
 import type {
   AuthCustomer, CustomerReservation, FavouriteItem,
@@ -83,7 +84,7 @@ export function AccountPage() {
   const navigate = useNavigate();
   const { token, authReady, setAuth, clearAuth, customerName } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'reservations' | 'favourites' | 'preorders' | 'reviews'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals'>('profile');
 
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -120,6 +121,14 @@ export function AccountPage() {
   const [reviewAnon, setReviewAnon] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSubmitError, setReviewSubmitError] = useState('');
+
+  // Referrals
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralUses, setReferralUses] = useState(0);
+  const [referralDiscount, setReferralDiscount] = useState(0);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralError, setReferralError] = useState('');
+  const [referralCopied, setReferralCopied] = useState(false);
 
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '' });
@@ -191,6 +200,15 @@ export function AccountPage() {
       })
       .catch((e: Error) => setReviewsError(e.message || 'Failed to load reviews.'))
       .finally(() => setReviewsLoading(false));
+  }, [token, authReady, activeTab]);
+
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'referrals' || referralCode !== null) return;
+    setReferralLoading(true);
+    getMyReferralCode(token)
+      .then((r) => { setReferralCode(r.code); setReferralUses(r.uses_count); setReferralDiscount(r.referee_discount_mvr); })
+      .catch((e: Error) => setReferralError(e.message || 'Failed to load referral code.'))
+      .finally(() => setReferralLoading(false));
   }, [token, authReady, activeTab]);
 
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
@@ -326,10 +344,12 @@ export function AccountPage() {
       <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
         {([
           { id: 'profile',      label: '👤 Profile'       },
+          { id: 'loyalty',      label: '⭐ Loyalty'       },
+          { id: 'referrals',    label: '🎁 Referrals'     },
           { id: 'reservations', label: '🗓 Reservations'  },
           { id: 'favourites',   label: '❤️ Favourites'    },
           { id: 'preorders',    label: '📦 Pre-orders'    },
-          { id: 'reviews',      label: '⭐ My Reviews'    },
+          { id: 'reviews',      label: '✍️ Reviews'       },
         ] as const).map(({ id, label }) => (
           <button key={id} style={tabStyle(activeTab === id)} onClick={() => setActiveTab(id)}>{label}</button>
         ))}
@@ -751,6 +771,167 @@ export function AccountPage() {
               </div>
             )}
           </SectionCard>
+        </>
+      )}
+
+      {/* ── Loyalty tab ── */}
+      {activeTab === 'loyalty' && (
+        <>
+          {loyaltyError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{loyaltyError}</p>}
+          {loyalty ? (
+            <>
+              {/* Tier hero card */}
+              <div style={{
+                background: TIER_COLOR[loyalty.tier]?.bg ?? '#FEF3E2',
+                border: `2px solid ${TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D'}`,
+                borderRadius: 18, padding: '24px 20px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 40, marginBottom: 8 }}>
+                  {loyalty.tier === 'gold' ? '🥇' : loyalty.tier === 'silver' ? '🥈' : loyalty.tier === 'platinum' ? '💎' : '🥉'}
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', margin: '0 0 4px' }}>
+                  {loyalty.tier} Member
+                </p>
+                <p style={{ fontSize: 36, fontWeight: 900, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', margin: '0 0 4px' }}>
+                  {loyalty.points_balance.toLocaleString()} pts
+                </p>
+                <p style={{ fontSize: 13, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.7, margin: 0 }}>
+                  {loyalty.lifetime_points != null ? `${loyalty.lifetime_points.toLocaleString()} lifetime points earned` : ''}
+                </p>
+              </div>
+
+              {/* How to earn */}
+              <SectionCard title="How to Earn Points">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {[
+                    { icon: '🛒', label: 'Every MVR 1 spent', detail: 'Earn 1 point on every order' },
+                    { icon: '🎂', label: 'Birthday bonus', detail: 'Extra points on your birthday month' },
+                    { icon: '🎁', label: 'Refer a friend', detail: `Earn bonus points when friends join` },
+                  ].map((row) => (
+                    <div key={row.label} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                      <span style={{ fontSize: 26, flexShrink: 0 }}>{row.icon}</span>
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 2px' }}>{row.label}</p>
+                        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{row.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+
+              {/* How to redeem */}
+              <SectionCard title="Redeeming Points">
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
+                  Apply your points at checkout to get a discount on your next order. Every <strong>100 points = MVR 1</strong> off.
+                </p>
+                {loyalty.points_balance >= 100 && (
+                  <div style={{ background: 'var(--color-success-bg, #DCFCE7)', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--color-success, #15803D)', fontWeight: 600 }}>
+                    🎉 You can redeem up to MVR {Math.floor(loyalty.points_balance / 100).toFixed(2)} on your next order!
+                  </div>
+                )}
+              </SectionCard>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+              <p style={{ fontSize: 36, margin: '0 0 8px' }}>⭐</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>Place your first order to start earning loyalty points.</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Referrals tab ── */}
+      {activeTab === 'referrals' && (
+        <>
+          {referralError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{referralError}</p>}
+          {referralLoading ? (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>Loading…</div>
+          ) : referralCode ? (
+            <>
+              {/* Code card */}
+              <div style={{
+                background: 'linear-gradient(135deg, #FEF3E2 0%, #FDE68A 100%)',
+                border: '2px solid #FCD34D', borderRadius: 18, padding: '28px 20px', textAlign: 'center',
+              }}>
+                <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#92400E', margin: '0 0 10px' }}>
+                  Your Referral Code
+                </p>
+                <p style={{ fontSize: 34, fontWeight: 900, letterSpacing: '0.15em', color: '#78350F', margin: '0 0 16px', fontFamily: 'monospace' }}>
+                  {referralCode}
+                </p>
+                <button
+                  onClick={() => {
+                    void navigator.clipboard.writeText(referralCode);
+                    setReferralCopied(true);
+                    setTimeout(() => setReferralCopied(false), 2000);
+                  }}
+                  style={{ ...btnStyle, background: referralCopied ? '#15803D' : '#D97706', fontSize: 13, height: 40, padding: '0 24px' }}
+                >
+                  {referralCopied ? '✓ Copied!' : '📋 Copy Code'}
+                </button>
+              </div>
+
+              {/* Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '20px 16px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 32, fontWeight: 900, color: 'var(--color-primary)', margin: '0 0 4px' }}>{referralUses}</p>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Friends joined</p>
+                </div>
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '20px 16px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 32, fontWeight: 900, color: '#15803D', margin: '0 0 4px' }}>MVR {referralDiscount.toFixed(2)}</p>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Discount per referral</p>
+                </div>
+              </div>
+
+              {/* How it works */}
+              <SectionCard title="How Referrals Work">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {[
+                    { step: '1', text: `Share your code "${referralCode}" with friends` },
+                    { step: '2', text: 'They enter your code during checkout' },
+                    { step: '3', text: `They get MVR ${referralDiscount.toFixed(2)} off their first order` },
+                    { step: '4', text: 'You earn bonus loyalty points once they order' },
+                  ].map(({ step, text }) => (
+                    <div key={step} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                        {step}
+                      </div>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+
+              {/* Share link */}
+              <SectionCard title="Share Your Link">
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+                  Send this link to friends — the referral code is pre-filled for them.
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    readOnly
+                    value={`${window.location.origin}/?ref=${referralCode}`}
+                    style={{ ...inputStyle, flex: 1, fontSize: 12, color: 'var(--color-text-muted)' }}
+                  />
+                  <button
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`${window.location.origin}/?ref=${referralCode}`);
+                      setReferralCopied(true);
+                      setTimeout(() => setReferralCopied(false), 2000);
+                    }}
+                    style={{ ...btnStyle, padding: '0 16px', fontSize: 12, whiteSpace: 'nowrap' }}
+                  >
+                    {referralCopied ? '✓' : 'Copy'}
+                  </button>
+                </div>
+              </SectionCard>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+              <p style={{ fontSize: 36, margin: '0 0 8px' }}>🎁</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>Place your first order to unlock your referral code.</p>
+            </div>
+          )}
         </>
       )}
     </div>
