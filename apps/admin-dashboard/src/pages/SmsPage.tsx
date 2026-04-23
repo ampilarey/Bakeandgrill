@@ -25,7 +25,7 @@ const TABS: [Tab, string, React.ReactNode][] = [
 ];
 
 export function SmsPage() {
-  usePageTitle('SMS');
+    usePageTitle('SMS');
   const [tab, setTab] = useState<Tab>('recipients');
 
   return (

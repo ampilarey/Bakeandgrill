@@ -100,8 +100,8 @@ export type KdsTicket = {
 };
 
 export async function fetchKdsOrders(): Promise<{ orders: KdsTicket[] }> {
-  // Include paid orders so online orders appear in kitchen
-  return req('/kds/orders?status=pending,in_progress,paid');
+  // Include all active kitchen statuses: paid (online orders), pending, preparing, in_progress, ready
+  return req('/kds/orders?status=pending,paid,preparing,in_progress,ready');
 }
 
 export async function kdsStart(id: number): Promise<void> {

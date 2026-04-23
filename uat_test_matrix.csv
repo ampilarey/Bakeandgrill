@@ -1,0 +1,77 @@
+ID,Area,Test,Result,Notes
+A001,Public Website,Homepage loads,PASS,Hero/nav/categories render
+A002,Public Website,Hero CTAs visible,PASS,"Order Now and View Menu present"
+A003,Public Website,Order Now → /order/menu,PASS,Correct redirect
+A011,Public Website,Open/closed badge,PASS,"We're open · Closes 23:59"
+B001-B014,Customer Auth,OTP login flow,BLOCKED,Customer session active; OTP requires handset
+C001,Order App,Navigate to /order,PASS,Homepage loads
+C002,Order App,Open /order/menu,PASS,Menu loads
+C003,Order App,Categories load,PASS,BML TEST category present
+C004,Order App,Menu items load,PASS,BML Bajiya visible
+C005,Order App,Item image shows,PASS,Photo in menu card
+C006,Order App,Item detail modal,PASS,Modal opens correctly
+C007,Order App,Add to cart,PASS,Cart updates to 1 item
+C008,Order App,Add-ons/modifiers,PASS N/A,No add-ons on test item
+C009,Order App,Increase quantity,PASS,Qty 1→2 total updates
+C010,Order App,Decrease quantity,PASS,Qty 2→1 total updates
+C011,Order App,Remove item,PASS,Cart empties
+C012,Order App,Cart drawer total,PASS,Correct subtotal and count
+C013,Order App,Empty cart state,PASS,Empty state message shown
+C014,Order App,Search by name,PASS,"bajiya match; zzznomatch empty state"
+C015,Order App,Category filter,BLOCKED,Only 1 category in UAT
+C016,Order App,Account page loads,PASS,Profile/Loyalty/Referrals tabs
+C017,Order App,Loyalty balance shown,PASS,"500 pts Bronze Member 500 Lifetime"
+C018,Order App,Order history link,PASS,Order History card present
+C019,Order App,Free delivery progress bar,PASS,"Add MVR 199 for free delivery"
+C020,Order App,Homepage reorder block,PASS,"Welcome back! Order #BG-20260423-0016 Reorder"
+C021,Order App,Cart upsell block,PASS,Add to your order section present
+C022,Order App,Post-order review prompt,PASS,Review form appears at Delivered status
+C023,Order App,Review submission,PASS,4★ review submitted successfully
+D001,Checkout,Checkout page loads,PASS,All sections render
+D003,Checkout,Delivery type selection,PASS,Address fields + total updates to MVR 21.08
+D004,Checkout,Takeaway is default,PASS,Takeaway pre-selected
+D005,Checkout,Terms required,PASS,Pay button disabled until checked
+D007,Checkout,Valid promo code,BLOCKED,No test promo code available
+D008,Checkout,Invalid promo code,PASS,Promo code is invalid or expired
+D009,Checkout,Loyalty points toggle,PARTIAL,500 pts shown but checkbox readonly
+D011,Checkout,Subtotal displayed,PASS,MVR 1.00
+D012,Checkout,GST displayed,PASS,MVR 0.08
+D013,Checkout,Delivery fee in total,PASS,MVR 20.00 added
+D014,Checkout,Total correct,PASS,MVR 1.08
+D015,Checkout,Pay button shows amount,PASS,Pay MVR 1.08 with BML
+D016,Checkout,Loyalty discount in total,BLOCKED,Readonly toggle state
+E001,BML Payment,BML redirect initiates,PASS,Redirected to BML UAT gateway
+E002,BML Payment,Payment completes,PASS,Test card approved
+E003,BML Payment,Return to order status,PASS,Redirected to /order/orders/3?payment=CONFIRMED
+E004-E009,BML Payment,Declined/expired card tests,BLOCKED,Only approve test card available
+E010,BML Payment,Processing prevents duplicates,PASS,Button shows Processing disabled
+E011-E016,BML Payment,Edge cases,BLOCKED,Manual-only
+F001,Order Status,Order confirmed banner,PASS,Payment received banner shown
+F002,Order Status,SMS receipt,BLOCKED,Cannot verify SMS without handset
+F003,Order Status,Progress bar steps,PASS,4 steps Received→Preparing→Ready→Done
+F004,Order Status,Status updates,PASS,Tested Received→Ready→Delivered
+F005,Order Status,Full lifecycle,PASS,All 4 stages completed
+F006,Order Status,Auto-refresh indicator,PASS,Auto-refreshing every 10 seconds
+F007,Order Status,Push notification prompt,PASS,Enable notification card shown
+F008,Order Status,Receipt shows correct amounts,PASS,Subtotal MVR 1.00 Total MVR 1.08
+H001,Admin,Admin auth,PASS,Owner authenticated
+H002,Admin,Order in admin dashboard,PASS,#BG-20260423-0016 Pending MVR 1.08
+H003,Admin,Admin Reviews page,PASS,3 reviews Avg 4.7★ Pending 3
+H004,Admin,Review approval,PASS,Approved badge shown pending count drops
+I001,Menu Admin,Menu Management page,PASS,BML TEST category 1 item
+L001,Staff Admin,Staff Management page,PASS,Owner+Manager Active PIN set
+N001,KDS,KDS page loads,PASS,3-column Pending/Cooking/Ready
+N002,KDS,Sound alerts toggle,PASS,Sound alerts ON button in header
+N003,KDS,Paid order in KDS,PASS,Order appeared after payment confirmed
+N004,KDS,Start Cooking,PASS,Order moved to Cooking column
+N005,KDS,Mark Ready,PASS,Order status changed to Ready in Orders page
+N006,KDS,KDS Ready column displays,FAIL,Always shows Nothing here - Bug #4
+N007,KDS,KDS live polling,PARTIAL,Reconnecting indicator appeared intermittently
+P001,Customers Admin,Customers page,PASS,"1 customer Bronze 3 orders Active"
+Q001,Loyalty Admin,Loyalty Accounts page,PASS,"500 pts Bronze Ledger/Adjust actions"
+Q002,Loyalty Admin,Points post-order,PARTIAL,Balance 500 not 501 - queue delay likely
+R001,Reports Admin,Reports page loads,PASS,All tabs + correct revenue MVR 1.08
+R002,Reports Admin,Revenue data correct,PASS,MVR 1.08 1 order matches completed order
+R003,Reports Admin,Date filter presets,PARTIAL,Apply required - presets don't auto-reload (Bug #6)
+S001,Finance Admin,Invoices page,PASS,All actions present empty state correct
+T001,Finance Admin,P&L page,PASS,Revenue 1.08 Gross Profit 100% Net Profit 1.08
