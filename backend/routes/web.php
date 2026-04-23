@@ -94,6 +94,14 @@ Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::
 Route::get('/order', function () {
     return redirect('/order/');
 })->name('order.redirect');
+
+// Specific paths inside /order/* that should resolve to their canonical Blade/static equivalents
+// These must be declared BEFORE the catch-all to take precedence.
+Route::redirect('/order/refund-policy', '/refund', 301);
+Route::redirect('/order/refund',         '/refund', 301);
+Route::redirect('/order/terms-and-conditions', '/terms', 301);
+Route::redirect('/order/terms',          '/terms', 301);
+
 Route::get('/order/{any}', function () {
     $path = public_path('order/index.html');
     abort_if(! file_exists($path), 503, 'Order app not deployed.');
