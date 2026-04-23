@@ -973,7 +973,6 @@
                 <a href="/order/privacy">Privacy Policy</a>
                 <a href="/terms">Terms &amp; Conditions</a>
                 <a href="/refund">Refund Policy</a>
-                <a href="/admin" class="footer-legal-staff">Staff Dashboard</a>
             </div>
         </div>
     </div>

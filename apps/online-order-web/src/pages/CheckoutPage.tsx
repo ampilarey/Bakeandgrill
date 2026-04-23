@@ -615,7 +615,7 @@ export function CheckoutPage() {
               Complete your order
             </h1>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0, marginTop: '0.125rem' }}>
-              Review, pay, and we'll get it ready
+              Secure payment · Straight to the kitchen
             </p>
           </div>
         </div>

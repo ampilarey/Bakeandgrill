@@ -145,7 +145,7 @@
 <div class="page-hero">
     <span class="page-hero-eyebrow">{{ \App\Models\SiteSetting::get('contact_page_eyebrow', '📍 Find Us') }}</span>
     <h1>{{ \App\Models\SiteSetting::get('contact_page_title', 'Contact Us') }}</h1>
-    <p>{{ \App\Models\SiteSetting::get('contact_page_subtitle', "We'd love to hear from you — visit, call, or message us anytime") }}</p>
+    <p>{{ \App\Models\SiteSetting::get('contact_page_subtitle', "Visit us in Malé, call ahead, or drop us a message on WhatsApp or Viber — we're always happy to help") }}</p>
 </div>
 
 <div class="contact-section">

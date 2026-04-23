@@ -132,8 +132,8 @@ const STATUS_CONFIG: Record<string, {
 }> = {
   payment_pending: {
     label: "Payment received!",
-    sub: "Confirming your payment — this takes just a moment.",
-    next: "Up next: your order will be sent to the kitchen",
+    sub: "We're confirming your order — this usually takes under 30 seconds.",
+    next: "Your order will go to the kitchen as soon as it's confirmed",
     color: "#1d4ed8", bg: "#dbeafe", icon: "⏳",
   },
   pending: {
@@ -742,7 +742,7 @@ export function OrderStatusPage() {
               }}
               onClick={() => navigate('/')}
             >
-              {isDone ? 'Order again' : '← Back to menu'}
+              {isDone ? '🔁 Order again' : '← Back to menu'}
             </button>
           </div>
         )}

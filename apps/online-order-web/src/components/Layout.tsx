@@ -362,7 +362,6 @@ export function Layout() {
               <a href="/privacy">Privacy Policy</a>
               <a href="/terms">Terms &amp; Conditions</a>
               <a href="/refund">Refund Policy</a>
-              <a href="/admin" className="order-footer-staff">Staff Dashboard</a>
             </div>
           </div>
         </div>

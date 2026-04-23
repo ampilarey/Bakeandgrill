@@ -206,7 +206,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             onClick={handleCheckPhone} disabled={loading || !phone}>
             {loading ? "Checking…" : "Continue →"}
           </button>
-          <p style={S.note}>Your number is used only for order updates. No spam.</p>
+          <p style={S.note}>Used for order updates only — we never sell your number or spam you.</p>
         </>
       )}
 
@@ -284,9 +284,16 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             onClick={handleCompleteProfile} disabled={loading || !setupName.trim() || !setupPwd}>
             {loading ? "Saving…" : "Create account →"}
           </button>
-          <p style={{ ...S.note, marginTop: "0.5rem" }}>
-            You can skip this — your order will still go through.
-          </p>
+          <button
+            style={{ ...S.ghostBtn, marginTop: "0.25rem" }}
+            onClick={() => {
+              if (!pendingToken || !pendingCustomer) return;
+              const name = persistAuth(pendingToken, pendingCustomer);
+              onSuccess(pendingToken, name);
+            }}
+          >
+            Skip for now — go to checkout
+          </button>
         </>
       )}
 

@@ -1,7 +1,7 @@
 @extends('layout')
 
 @section('title',       \App\Models\SiteSetting::get('hours_meta_title',       'Opening Hours – Bake & Grill'))
-@section('description', \App\Models\SiteSetting::get('hours_meta_description',  'See our opening hours. Bake & Grill is open 7 days a week in Malé, Maldives.'))
+@section('description', \App\Models\SiteSetting::get('hours_meta_description',  'See the latest opening hours for Bake & Grill in Malé, Maldives. Order online or call us to confirm.'))
 
 @section('styles')
 <style>

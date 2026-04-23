@@ -705,7 +705,7 @@
     $proofDetails = json_decode(\App\Models\SiteSetting::get('proof_details', '[]'), true) ?: [];
 
     $ctaHeadline = \App\Models\SiteSetting::get('cta_band_headline', 'Hungry? <em>Order now.</em>');
-    $ctaSubtext  = \App\Models\SiteSetting::get('cta_band_subtext',  'Fresh from our kitchen to your door in 30–45 minutes. No fuss, no wait — just real food.');
+    $ctaSubtext  = \App\Models\SiteSetting::get('cta_band_subtext',  'Fresh from our kitchen to your door. Real food, properly made — order online in under a minute.');
 
     $phone             = \App\Models\SiteSetting::get('business_phone',    '+960 912 0011');
     $phoneTel          = 'tel:' . preg_replace('/[^+\d]/', '', $phone);

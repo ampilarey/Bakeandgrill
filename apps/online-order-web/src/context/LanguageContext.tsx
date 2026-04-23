@@ -8,7 +8,7 @@ const TRANSLATIONS: Translations = {
   "menu.title":          { en: "Our Menu",       dv: "އަހަރެމެންގެ މެނޫ" },
   "menu.search":         { en: "Search menu…",   dv: "މެނޫ ހޯދާ…" },
   "cart.title":          { en: "Your Cart",       dv: "ތިބާގެ ކާތް" },
-  "cart.empty":          { en: "Your cart is empty", dv: "ކާތް ހުސް" },
+  "cart.empty":          { en: "Your cart is empty — add something to get started", dv: "ކާތް ހުސް" },
   "cart.checkout":       { en: "Proceed to Checkout", dv: "ޗެކްއައުޓް" },
   "checkout.title":      { en: "Checkout",        dv: "ޗެކްއައުޓް" },
   "reserve.title":       { en: "Reserve a Table", dv: "ތާ ބުކް ކުރޭ" },
