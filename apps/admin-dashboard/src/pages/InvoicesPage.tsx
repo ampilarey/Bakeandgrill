@@ -41,6 +41,10 @@ export function InvoicesPage() {
   const [editForm, setEditForm]           = useState({ recipient_name: '', recipient_phone: '', due_date: '', notes: '' });
   const [editSaving, setEditSaving]       = useState(false);
 
+  // Bulk selection
+  const [bulkSelected, setBulkSelected]   = useState<Set<number>>(new Set());
+  const [bulkLoading, setBulkLoading]     = useState(false);
+
   // Credit note
   const [cnInv, setCnInv]                 = useState<Invoice | null>(null);
   const [cnForm, setCnForm]               = useState({ reason: '', amount: '' });
@@ -55,6 +59,44 @@ export function InvoicesPage() {
   const [manualError, setManualError]     = useState('');
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const toggleSelect = (id: number) => setBulkSelected((s) => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+  const toggleAll = () => {
+    if (bulkSelected.size === invoices.length) setBulkSelected(new Set());
+    else setBulkSelected(new Set(invoices.map((i) => i.id)));
+  };
+
+  const bulkMarkSent = async () => {
+    setBulkLoading(true);
+    try {
+      await Promise.all([...bulkSelected].map((id) => markInvoiceSent(id)));
+      showToast(`${bulkSelected.size} invoice${bulkSelected.size !== 1 ? 's' : ''} marked as sent.`);
+      setBulkSelected(new Set()); void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setBulkLoading(false); }
+  };
+
+  const bulkVoid = () => {
+    ask({
+      title: 'Void Selected',
+      message: `Void ${bulkSelected.size} invoice${bulkSelected.size !== 1 ? 's' : ''}? This cannot be undone.`,
+      confirmLabel: 'Void All',
+      danger: true,
+      onConfirm: async () => {
+        setBulkLoading(true);
+        try {
+          await Promise.all([...bulkSelected].map((id) => voidInvoice(id)));
+          showToast(`${bulkSelected.size} invoice${bulkSelected.size !== 1 ? 's' : ''} voided.`);
+          setBulkSelected(new Set()); void load();
+        } catch (e) { setError((e as Error).message); }
+        finally { setBulkLoading(false); }
+      },
+    });
+  };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -262,11 +304,28 @@ export function InvoicesPage() {
         </select>
       </div>
 
+      {/* Bulk action bar */}
+      {bulkSelected.size > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 16px', borderRadius: 10, marginBottom: 12,
+          background: '#1C1408', color: '#fff',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{bulkSelected.size} selected</span>
+          <Btn small onClick={bulkMarkSent} disabled={bulkLoading}>Mark Sent</Btn>
+          <Btn small variant="danger" onClick={bulkVoid} disabled={bulkLoading}>Void All</Btn>
+          <button onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: '#C4B5A3', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+      )}
+
       {loading ? <Spinner /> : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
+                <th style={{ ...TH, width: 36 }}>
+                  <input type="checkbox" checked={bulkSelected.size === invoices.length && invoices.length > 0} onChange={toggleAll} style={{ cursor: 'pointer' }} />
+                </th>
                 {['Number', 'Type', 'Status', 'Recipient', 'Total', 'Issue Date', 'Due', 'Actions'].map((h) => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -274,7 +333,10 @@ export function InvoicesPage() {
             </thead>
             <tbody>
               {invoices.map((inv) => (
-                <tr key={inv.id}>
+                <tr key={inv.id} style={{ background: bulkSelected.has(inv.id) ? '#FEF8F2' : undefined }}>
+                  <td style={{ ...TD, width: 36 }}>
+                    <input type="checkbox" checked={bulkSelected.has(inv.id)} onChange={() => toggleSelect(inv.id)} style={{ cursor: 'pointer' }} />
+                  </td>
                   <td style={{ ...TD, fontWeight: 700, color: '#1C1408' }}>{inv.invoice_number}</td>
                   <td style={TD}>
                     <Badge label={inv.type.replace('_', ' ')} color={TYPE_COLOR[inv.type] ?? 'gray'} />
@@ -322,7 +384,7 @@ export function InvoicesPage() {
               ))}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <EmptyState message="No invoices found." />
                   </td>
                 </tr>

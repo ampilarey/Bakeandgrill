@@ -4,6 +4,7 @@ import { getMe, logout as apiLogout, type StaffUser } from './api';
 import { ToastProvider } from './components/ui';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
+import { CommandPalette } from './components/CommandPalette';
 
 const OrdersPage              = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const KDSPage                 = lazy(() => import('./pages/KDSPage').then((m) => ({ default: m.KDSPage })));
@@ -89,7 +90,20 @@ function PermissionGuard({
 export default function App() {
   const [user, setUser] = useState<StaffUser | null>(null);
   const [checking, setChecking] = useState(true);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Global Ctrl+K / Cmd+K shortcut to open command palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (user) setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [user]);
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
@@ -138,13 +152,14 @@ export default function App() {
 
   return (
     <ToastProvider>
+    <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     <Routes>
       <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
       <Route
         path="/*"
         element={
           <AuthGuard user={user}>
-            <Layout user={user!} onLogout={handleLogout}>
+            <Layout user={user!} onLogout={handleLogout} onSearch={() => setPaletteOpen(true)}>
               <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route index element={<Navigate to="/dashboard" replace />} />

@@ -30,8 +30,27 @@ export function ExpensesPage() {
   const [toast, setToast] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [receiptExpenseId, setReceiptExpenseId] = useState<number | null>(null);
+  const [bulkSelected, setBulkSelected] = useState<Set<number>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const toggleBulk = (id: number) => setBulkSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAllBulk = () => {
+    if (bulkSelected.size === expenses.length) setBulkSelected(new Set());
+    else setBulkSelected(new Set(expenses.map((e) => e.id)));
+  };
+  const bulkApprove = async () => {
+    const pending = expenses.filter((e) => bulkSelected.has(e.id) && e.status === 'pending');
+    if (!pending.length) { showToast('No pending expenses selected.'); return; }
+    setBulkLoading(true);
+    try {
+      await Promise.all(pending.map((e) => approveExpense(e.id)));
+      showToast(`${pending.length} expense${pending.length !== 1 ? 's' : ''} approved.`);
+      setBulkSelected(new Set()); void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setBulkLoading(false); }
+  };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -194,10 +213,20 @@ export function ExpensesPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <StatCard label="Total Expenses" value={`MVR ${parseFloat(String(totalAmount ?? 0)).toFixed(2)}`} accent="#ef4444" />
 
+            {bulkSelected.size > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, marginBottom: 10, background: '#1C1408', color: '#fff' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{bulkSelected.size} selected</span>
+                <Btn small onClick={bulkApprove} disabled={bulkLoading}>✓ Approve</Btn>
+                <button onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: '#C4B5A3', cursor: 'pointer', fontSize: 18 }}>×</button>
+              </div>
+            )}
             <TableCard>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr>
+                    <th style={{ ...TH, width: 36 }}>
+                      <input type="checkbox" checked={bulkSelected.size === expenses.length && expenses.length > 0} onChange={toggleAllBulk} style={{ cursor: 'pointer' }} />
+                    </th>
                     {['Date', 'Category', 'Description', 'Amount', 'Method', 'Status', ''].map((h) => (
                       <th key={h} style={TH}>{h}</th>
                     ))}
@@ -205,7 +234,8 @@ export function ExpensesPage() {
                 </thead>
                 <tbody>
                   {expenses.map((exp) => (
-                    <tr key={exp.id}>
+                    <tr key={exp.id} style={{ background: bulkSelected.has(exp.id) ? '#FEF8F2' : undefined }}>
+                      <td style={{ ...TD, width: 36 }}><input type="checkbox" checked={bulkSelected.has(exp.id)} onChange={() => toggleBulk(exp.id)} style={{ cursor: 'pointer' }} /></td>
                       <td style={{ ...TD, whiteSpace: 'nowrap', color: '#9C8E7E' }}>{exp.expense_date}</td>
                       <td style={TD}>{exp.category?.icon} {exp.category?.name}</td>
                       <td style={{ ...TD, color: '#1C1408' }}>{exp.description}</td>
@@ -234,7 +264,7 @@ export function ExpensesPage() {
                     </tr>
                   ))}
                   {expenses.length === 0 && (
-                    <tr><td colSpan={7}><EmptyState message="No expenses in this date range." /></td></tr>
+                    <tr><td colSpan={8}><EmptyState message="No expenses in this date range." /></td></tr>
                   )}
                 </tbody>
               </table>

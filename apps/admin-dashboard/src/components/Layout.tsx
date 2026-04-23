@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { StaffUser } from '../api';
-import { Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { fetchLowStockItems } from '../api';
+import { Menu, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { NAV_GROUPS, ALL_NAV_ITEMS, BOTTOM_TABS, can, LogOut } from './navConfig';
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
@@ -17,8 +18,8 @@ function useWindowWidth() {
 
 // ── Sidebar nav item ──────────────────────────────────────────────────────────
 function SideNavItem({
-  to, icon: Icon, label, collapsed,
-}: { to: string; icon: React.ElementType; label: string; collapsed: boolean }) {
+  to, icon: Icon, label, collapsed, badge,
+}: { to: string; icon: React.ElementType; label: string; collapsed: boolean; badge?: number }) {
   const [hovered, setHovered] = useState(false);
   return (
     <NavLink
@@ -50,8 +51,28 @@ function SideNavItem({
               width: 3, height: 20, background: '#D4813A', borderRadius: '0 4px 4px 0',
             }} />
           )}
-          <Icon size={17} style={{ flexShrink: 0 }} />
-          {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>}
+          <span style={{ position: 'relative', flexShrink: 0, display: 'flex' }}>
+            <Icon size={17} />
+            {(badge ?? 0) > 0 && (
+              <span style={{
+                position: 'absolute', top: -5, right: -6,
+                minWidth: 14, height: 14, borderRadius: 7,
+                background: '#ef4444', color: '#fff',
+                fontSize: 9, fontWeight: 800, lineHeight: '14px',
+                textAlign: 'center', padding: '0 3px',
+              }}>
+                {badge! > 99 ? '99+' : badge}
+              </span>
+            )}
+          </span>
+          {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{label}</span>}
+          {!collapsed && (badge ?? 0) > 0 && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: '#ef4444',
+              background: 'rgba(239,68,68,0.12)', borderRadius: 10,
+              padding: '1px 6px', flexShrink: 0,
+            }}>{badge}</span>
+          )}
         </>
       )}
     </NavLink>
@@ -97,14 +118,27 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-export function Layout({ user, onLogout, children }: LayoutProps) {
+export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { onSearch?: () => void }) {
   const width = useWindowWidth();
   const isMobile = width < 768;
   const isTablet = width >= 768 && width < 1024;
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [lowStockCount, setLowStockCount] = useState(0);
   const location = useLocation();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch low-stock count once on mount (refresh every 5 min)
+  useEffect(() => {
+    const fetch = () => {
+      fetchLowStockItems()
+        .then((r) => setLowStockCount((r.data ?? []).length))
+        .catch(() => { /* non-blocking */ });
+    };
+    fetch();
+    const t = setInterval(fetch, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (isTablet) setCollapsed(true);
@@ -365,7 +399,10 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {visibleItems.map(({ to, icon, label }) => (
-                    <SideNavItem key={to} to={to} icon={icon} label={label} collapsed={collapsed} />
+                    <SideNavItem
+                      key={to} to={to} icon={icon} label={label} collapsed={collapsed}
+                      badge={to === '/inventory' && lowStockCount > 0 ? lowStockCount : undefined}
+                    />
                   ))}
                 </div>
               </div>
@@ -439,6 +476,25 @@ export function Layout({ user, onLogout, children }: LayoutProps) {
               {currentPage}
             </span>
           </div>
+          {/* Search trigger */}
+          {onSearch && (
+            <button
+              onClick={onSearch}
+              title="Search (Ctrl+K)"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 12px', borderRadius: 10,
+                border: '1px solid #E8E0D8', background: '#F8F6F3',
+                cursor: 'pointer', color: '#9C8E7E', fontSize: 12,
+                fontFamily: 'inherit', flexShrink: 0,
+                transition: 'border-color 0.15s',
+              }}
+            >
+              <Search size={14} />
+              <span style={{ color: '#C4B5A3' }}>Search…</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A3', background: '#E8E0D8', borderRadius: 4, padding: '1px 5px' }}>⌘K</span>
+            </button>
+          )}
           {/* User pill */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,

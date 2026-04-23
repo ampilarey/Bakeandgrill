@@ -577,11 +577,25 @@ export function CheckoutPage() {
       <BrandedHeader
         onBack={() => navigate(-1)}
         backLabel="← Back"
-        rightSlot={customerName ? (
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-            Hi, {customerName}
-          </span>
-        ) : undefined}
+        rightSlot={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            {loyaltyAccount && loyaltyAccount.points_balance > 0 && (
+              <span style={{
+                display: 'flex', alignItems: 'center', gap: '0.25rem',
+                fontSize: 'var(--text-xs)', fontWeight: 700,
+                color: '#d97706', background: '#fef3c7',
+                borderRadius: '999px', padding: '0.2rem 0.6rem',
+              }}>
+                ⭐ {loyaltyAccount.points_balance} pts
+              </span>
+            )}
+            {customerName && (
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                Hi, {customerName}
+              </span>
+            )}
+          </div>
+        }
       />
 
       {/* ── Page heading ───────────────────────────────────── */}

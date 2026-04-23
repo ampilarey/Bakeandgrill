@@ -46,13 +46,15 @@ export async function fetchOrders(params?: {
   page?: number;
   per_page?: number;
   date?: string;
+  search?: string;
 }): Promise<OrdersResponse> {
   const qs = new URLSearchParams();
-  if (params?.status) qs.set('status', params.status);
-  if (params?.type) qs.set('type', params.type);
-  if (params?.page) qs.set('page', String(params.page));
+  if (params?.status)   qs.set('status', params.status);
+  if (params?.type)     qs.set('type', params.type);
+  if (params?.page)     qs.set('page', String(params.page));
   if (params?.per_page) qs.set('per_page', String(params.per_page));
-  if (params?.date) qs.set('date', params.date);
+  if (params?.date)     qs.set('date', params.date);
+  if (params?.search)   qs.set('search', params.search);
   return req(`/orders?${qs}`);
 }
 
