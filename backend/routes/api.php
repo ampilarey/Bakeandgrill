@@ -221,22 +221,19 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
     Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])->middleware('throttle:30,1');
 
-    // Reports
-    Route::get('/reports/sales-summary', [ReportsController::class, 'salesSummary']);
-    Route::get('/reports/sales-breakdown', [ReportsController::class, 'salesBreakdown']);
-    Route::get('/reports/x-report', [ReportsController::class, 'xReport']);
-    Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
-    Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
-    Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])
-        ->middleware('throttle:20,1');
-    Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])
-        ->middleware('throttle:20,1');
-    Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])
-        ->middleware('throttle:20,1');
-    Route::get('/reports/z-report/csv', [ReportsController::class, 'zReportCsv'])
-        ->middleware('throttle:20,1');
-    Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv'])
-        ->middleware('throttle:20,1');
+    // Reports — restricted to users with reports.view permission
+    Route::middleware('permission:reports.view')->group(function () {
+        Route::get('/reports/sales-summary',          [ReportsController::class, 'salesSummary']);
+        Route::get('/reports/sales-breakdown',        [ReportsController::class, 'salesBreakdown']);
+        Route::get('/reports/x-report',               [ReportsController::class, 'xReport']);
+        Route::get('/reports/z-report',               [ReportsController::class, 'zReport']);
+        Route::get('/reports/inventory-valuation',    [ReportsController::class, 'inventoryValuation']);
+        Route::get('/reports/sales-summary/csv',      [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/sales-breakdown/csv',    [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/x-report/csv',           [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/z-report/csv',           [ReportsController::class, 'zReportCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/inventory-valuation/csv',[ReportsController::class, 'inventoryValuationCsv'])->middleware('throttle:20,1');
+    });
 
     // Tables
     Route::get('/tables', [TableController::class, 'index']);

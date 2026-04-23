@@ -197,7 +197,15 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
 
   useEffect(() => {
     getStaffNotificationPrefs(member.id).then(res => {
-      setPrefs(res.prefs);
+      setPrefs(res.prefs ?? {
+        user_id: member.id,
+        notifications_enabled: true,
+        order_types: null,
+        menu_group_ids: null,
+        category_ids: null,
+        is_fallback: false,
+        fallback_priority: 0,
+      });
       setLoading(false);
     }).catch(e => { setError((e as Error).message); setLoading(false); });
   }, [member.id]);

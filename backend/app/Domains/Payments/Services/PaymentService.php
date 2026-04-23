@@ -155,28 +155,37 @@ class PaymentService
 
     /**
      * Initiate a partial BML payment.
+     * Wraps the balance check + payment creation in a transaction with a row-lock
+     * so two concurrent requests cannot both pass the "amount <= remaining" check
+     * and together exceed the order total.
      */
     public function initiatePartialBmlPayment(Order $order, int $amountLaar, string $idempotencyKey): array
     {
-        $remainingLaar = $this->getRemainingBalanceLaar($order);
-
         if ($amountLaar <= 0) {
             throw new \InvalidArgumentException('Amount must be greater than zero.');
         }
 
-        if ($amountLaar > $remainingLaar) {
-            throw new \InvalidArgumentException(
-                "Amount ({$amountLaar} laari) exceeds remaining balance ({$remainingLaar} laari).",
-            );
-        }
+        return DB::transaction(function () use ($order, $amountLaar, $idempotencyKey): array {
+            // Lock the order row for the duration of this transaction so a concurrent
+            // partial-payment request cannot read the same remaining balance.
+            $locked = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
 
-        $result = $this->initiateBmlPayment($order, $amountLaar, 'partial:' . $idempotencyKey);
+            $remainingLaar = $this->getRemainingBalanceLaar($locked);
 
-        return array_merge($result, [
-            'remaining_balance_before_laar' => $remainingLaar,
-            'remaining_balance_after_laar' => $remainingLaar - $amountLaar,
-            'amount_laar' => $amountLaar,
-        ]);
+            if ($amountLaar > $remainingLaar) {
+                throw new \InvalidArgumentException(
+                    "Amount ({$amountLaar} laari) exceeds remaining balance ({$remainingLaar} laari).",
+                );
+            }
+
+            $result = $this->initiateBmlPayment($locked, $amountLaar, 'partial:' . $idempotencyKey);
+
+            return array_merge($result, [
+                'remaining_balance_before_laar' => $remainingLaar,
+                'remaining_balance_after_laar'  => $remainingLaar - $amountLaar,
+                'amount_laar'                   => $amountLaar,
+            ]);
+        });
     }
 
     /**

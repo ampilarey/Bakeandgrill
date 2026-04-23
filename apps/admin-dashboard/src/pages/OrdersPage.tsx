@@ -4,6 +4,7 @@ import {
   fetchOrders, fetchOrder, holdOrder, resumeOrder, sendOrderBill,
   kdsStart, kdsBump, addOrderPayments,
   getReceiptLinkForOrder, sendReceiptForOrder,
+  createInvoiceFromOrder, sendInvoiceToCustomer,
   type Order,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -90,8 +91,10 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
     if (!order || !phone) { setActionErr('Customer phone is required.'); return; }
     setReceiptBusy(true); setActionErr('');
     try {
-      await sendReceiptForOrder(order.id, { recipient: phone, channel: 'sms' });
-      showToast(`Invoice link sent to ${phone}.`);
+      // Create (or retrieve) the invoice for this order, then SMS it to the customer.
+      const { invoice } = await createInvoiceFromOrder(order.id);
+      await sendInvoiceToCustomer(invoice.id, phone);
+      showToast(`Invoice sent to ${phone}.`);
       reload();
     } catch (e) {
       setActionErr((e as Error).message);

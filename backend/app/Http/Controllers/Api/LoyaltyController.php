@@ -65,6 +65,12 @@ class LoyaltyController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // IDOR guard: ensure the order belongs to this customer.
+        $order = \App\Models\Order::find($request->integer('order_id'));
+        if (!$order || (int) $order->customer_id !== (int) $customer->id) {
+            return response()->json(['message' => 'Order not found.'], 404);
+        }
+
         $account = $this->service->accountFor($customer);
         $points = min($request->integer('points'), $account->availablePoints());
         $discountLaar = $this->calculator->discountLaarForPoints($points);
