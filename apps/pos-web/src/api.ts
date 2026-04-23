@@ -9,9 +9,29 @@ import type {
 
 export type { SalesSummary };
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  (import.meta.env.PROD ? "/api" : "http://localhost:8000/api");
+function resolvePosApiBaseUrl(): string {
+  const envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  const defaultForMode = import.meta.env.PROD
+    ? "/api"
+    : "http://localhost:8000/api";
+  let base = envUrl ?? defaultForMode;
+
+  // Deployed sites must not call a dev machine URL (often baked in if the bundle
+  // was built with MODE=development or VITE_API_BASE_URL=http://localhost:8000/api).
+  if (typeof window !== "undefined") {
+    const h = window.location.hostname;
+    const pageIsLocal = h === "localhost" || h === "127.0.0.1";
+    const baseLooksLocal =
+      base.includes("localhost") || base.includes("127.0.0.1");
+    if (!pageIsLocal && baseLooksLocal) {
+      base = "/api";
+    }
+  }
+
+  return base;
+}
+
+const API_BASE_URL = resolvePosApiBaseUrl();
 
 if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   // eslint-disable-next-line no-console
