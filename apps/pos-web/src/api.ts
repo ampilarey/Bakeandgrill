@@ -51,8 +51,10 @@ const { request } = createApiClient({
 });
 
 export async function fetchCategories(): Promise<Category[]> {
-  const data = await request<{ categories: Category[] }>("/categories");
-  return data.categories ?? [];
+  const data = await request<{ categories?: Category[]; data?: Category[] }>(
+    "/categories",
+  );
+  return data.categories ?? data.data ?? [];
 }
 
 export async function fetchItems(): Promise<Item[]> {

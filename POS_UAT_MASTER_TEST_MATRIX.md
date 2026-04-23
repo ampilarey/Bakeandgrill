@@ -2,7 +2,7 @@
 
 **Environment:** UAT — `https://test.bakeandgrill.mv/pos/`  
 **App source:** `apps/pos-web/` (Vite SPA, API via `/api` same-origin in production)  
-**Matrix version:** 2026-04-24  
+**Matrix version:** 2026-04-24 (full sweep update)  
 
 ## Code map (Phase 1)
 
@@ -33,14 +33,14 @@
 | ID | Feature | Action | Expected | Credentials | Route | Status |
 |----|---------|--------|----------|-------------|-------|--------|
 | A001 | Open POS | Navigate to `/pos/` | Login UI loads | None | `/pos/` | PASS |
-| A002 | Valid login | Email + PIN, Sign In | Main POS | Staff | `/pos/` | BLOCKED |
+| A002 | Valid login | Email + PIN, Sign In | Main POS | Staff | `/pos/` | PASS |
 | A003 | Invalid email | Wrong email + PIN | Error banner | None | `/pos/` | PASS |
 | A004 | Invalid PIN | Valid-format email + wrong PIN | Error | None | `/pos/` | PASS |
 | A005 | Blank email | Empty email | Cannot submit (disabled) | None | `/pos/` | PASS |
 | A006 | Short PIN | PIN &lt; 4 digits | Sign In disabled | None | `/pos/` | PASS |
-| A007 | Refresh session | F5 when logged in | Session persists | Staff | `/pos/` | BLOCKED |
-| A008 | Logout | Log out | Login screen | Staff | `/pos/` | BLOCKED |
-| A009 | Refresh after logout | F5 | Still logged out | Staff | `/pos/` | BLOCKED |
+| A007 | Refresh session | F5 when logged in | Session persists | Staff | `/pos/` | PASS |
+| A008 | Logout | Log out | Login screen | Staff | `/pos/` | PASS |
+| A009 | Refresh after logout | F5 | Still logged out | Staff | `/pos/` | PASS |
 
 ## Area B — Device ID
 
@@ -48,27 +48,27 @@
 |----|---------|--------|----------|-------------|-------|--------|
 | B001 | Auto device ID | First load | `POS-xxxxxxxx` | None | `/pos/` | PASS |
 | B002 | Persist refresh | Reload | Same ID | None | `/pos/` | PASS |
-| B003 | Stable re-login | Logout/login | Same ID | Staff | `/pos/` | BLOCKED |
+| B003 | Stable re-login | Logout/login | Same ID | Staff | `/pos/` | PASS |
 | B004 | New after clear | Clear `localStorage` | New ID | Manual | `/pos/` | NOT EXECUTED |
-| B005 | Visible | Login shows device field; logged-in header shows device | Readable | None / Staff | `/pos/` | PASS (login); header post-login BLOCKED |
+| B005 | Visible | Login shows device field; logged-in header shows device | Readable | None / Staff | `/pos/` | PASS |
 
 ## Area C — Header / shell / modes
 
 | ID | Feature | Action | Expected | Credentials | Route | Status |
 |----|---------|--------|----------|-------------|-------|--------|
-| C001 | Title | Logged-in header | "Bake & Grill POS" | Staff | `/pos/` | BLOCKED |
-| C002 | Online badge | See Online/Offline | Visible | Staff | `/pos/` | BLOCKED |
-| C003 | Queue count | Header "Queue: N" | Visible | Staff | `/pos/` | BLOCKED |
-| C004 | POS mode | Click POS | POS UI | Staff | `/pos/` | BLOCKED |
-| C005 | OPS mode | Click OPS | OpsPanel | Staff | `/pos/` | BLOCKED |
-| C006 | Back to POS | From OPS | POS restored | Staff | `/pos/` | BLOCKED |
+| C001 | Title | Logged-in header | "Bake & Grill POS" | Staff | `/pos/` | PASS |
+| C002 | Online badge | See Online/Offline | Visible | Staff | `/pos/` | PASS |
+| C003 | Queue count | Header "Queue: N" | Visible | Staff | `/pos/` | PASS |
+| C004 | POS mode | Click POS | POS UI | Staff | `/pos/` | PASS |
+| C005 | OPS mode | Click OPS | OpsPanel | Staff | `/pos/` | PASS |
+| C006 | Back to POS | From OPS | POS restored | Staff | `/pos/` | PASS |
 | C007 | Site link | ← Main Website / ← Site | Opens `/` | None | `/` | PASS |
 
 ## Area D — Connectivity / offline
 
 | ID | Feature | Action | Expected | Credentials | Status |
 |----|---------|--------|----------|-------------|--------|
-| D001 | Online use | Normal flow | APIs work | Staff | BLOCKED |
+| D001 | Online use | Normal flow | APIs work | Staff | PASS |
 | D002 | Offline badge | Disconnect | Offline | Manual | NOT EXECUTED |
 | D003 | Queue offline | While offline | Count visible | Manual | NOT EXECUTED |
 | D004 | Reconnect | Online returns | Badge green | Manual | NOT EXECUTED |
@@ -76,7 +76,9 @@
 | D006 | Sync | Sync button | Batch sync | Staff+manual | NOT EXECUTED |
 | D007 | Drop mid-session | Toggle network | No crash | Manual | NOT EXECUTED |
 
-## Areas E–U — POS + OPS functional (all BLOCKED without staff login)
+## Areas E–U — POS + OPS functional
+
+Most rows remain **BLOCKED** in `pos_uat_test_matrix.csv` until cart/checkout/OPS mutations are exercised end-to-end. Partial coverage: **E001–E005** (tables fetch + order-type toggles), **F001–F002, F006** (menu API + reload), **O001** (OPS shell). See CSV for per-ID status.
 
 See `pos_uat_test_matrix.csv` for full steps. Summary:
 
@@ -113,7 +115,7 @@ See `pos_uat_test_matrix.csv` for full steps. Summary:
 | ID | Feature | Status |
 |----|---------|--------|
 | W001 | Tablet layout 768×1024 | PASS (login) |
-| W002–W004 | Tablet login / order / OPS | BLOCKED |
+| W002–W004 | Tablet login / order / OPS | BLOCKED (viewport-specific runs not repeated this sweep) |
 | W005 | Mobile layout 390×844 | PASS (login) |
 | W006–W009 | Mobile login / cart / order / send bill | BLOCKED |
 
@@ -123,10 +125,12 @@ See `pos_uat_test_matrix.csv` for full steps. Summary:
 
 | Status | Count |
 |--------|-------|
-| PASS | 12 |
-| BLOCKED | 127 |
+| PASS | 44 |
+| BLOCKED | 95 |
 | NOT EXECUTED | 11 |
 | NOT AVAILABLE | 1 |
 | **Total** | **151** |
+
+**Evidence:** Staff UAT user `pos.uat.staff2@gmail.com`; use **`?nocache=`** or hard-refresh if the IDE browser serves an old `index-*.js` (CSP + cached localhost bundle). Full pass added **F5 session (A007)**, **post-logout F5 (A009)**, **OPS sales summary (Q001–Q004)**, **split tender add/remove (J005/J007)**, **empty checkout (K008)**, **shift shell (O002)**, **refunds section (T001)**. **Categories/menu:** backend returns `data` for `/categories`; POS expected `categories` — **fixed in** `apps/pos-web/src/api.ts` (**rebuild + deploy** `backend/public/pos/`). Remaining **BLOCKED** rows: cart line tests, checkout with payment, hold/resume, send bill, most OPS mutations.
 
 Full machine-readable rows: `pos_uat_test_matrix.csv`.
