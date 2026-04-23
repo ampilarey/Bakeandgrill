@@ -219,25 +219,39 @@ class PaymentService
             return;
         }
 
-        // Attempt to verify with BML's status API, but don't block on failure.
-        // BML UAT's status API is unreliable — if it errors or returns a non-CONFIRMED
-        // state, we still trust the return URL redirect (BML only redirects with
-        // state=CONFIRMED when the card charge actually succeeded). The webhook path
-        // is idempotent so a subsequent webhook is a no-op if we confirm here first.
+        // Verify the transaction with BML's status API.
+        //
+        // Two distinct cases:
+        //   1. API reachable + non-CONFIRMED state  → payment genuinely failed/declined;
+        //      do NOT confirm — bail out immediately.
+        //   2. API unreachable (exception/timeout)  → fall through and trust the return
+        //      URL redirect (BML only sends state=CONFIRMED on success in production;
+        //      the webhook is idempotent if it arrives later).
+        //
+        // Previously the else-branch only logged a warning and fell through, which caused
+        // declined UAT payments to be confirmed because BML UAT sends state=CONFIRMED
+        // even when 3DS authentication was rejected.
         $bmlStatus = [];
         try {
-            $fetched = $this->bml->getTransactionStatus($transactionId);
+            $fetched  = $this->bml->getTransactionStatus($transactionId);
             $apiState = $fetched['state'] ?? $fetched['status'] ?? null;
 
             if ($apiState === 'CONFIRMED') {
                 $bmlStatus = $fetched;
             } else {
-                Log::warning('BML return: API state mismatch — proceeding on return URL state', [
+                // API is reachable and explicitly says this transaction is not confirmed.
+                // Treat any non-CONFIRMED API response as authoritative and abort.
+                Log::warning('BML return: API returned non-CONFIRMED state — aborting confirmation', [
                     'transaction_id' => $transactionId,
                     'api_state'      => $apiState,
+                    'order_id'       => $orderId,
+                    'payment_id'     => $payment->id,
                 ]);
+
+                return;
             }
         } catch (\Throwable $e) {
+            // API unreachable or timed out — fall through and trust the return URL.
             Log::warning('BML return: status API unreachable — proceeding on return URL state', [
                 'transaction_id' => $transactionId,
                 'error'          => $e->getMessage(),
