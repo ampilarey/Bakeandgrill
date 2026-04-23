@@ -1,5 +1,9 @@
 # Pre-Production Bug Audit — Bake & Grill
-*Audit Date: April 2026*
+*Audit Date: April 2026*  
+
+> **STATUS: ALL 9 BUGS FIXED** — The final verdict at the bottom of this document ("Close, but needs fixes")
+> refers to the state *before* the fixes documented within. All 9 bugs were fixed in the same session.
+> For current UAT status, see: **CURRENT_UAT_STATUS.md**
 
 ---
 

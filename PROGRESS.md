@@ -1,7 +1,15 @@
-# 🚀 Bake & Grill - Implementation Progress
+# ⚠️ ARCHIVED — Bake & Grill Initial Implementation Progress
 
-**Last Updated:** January 28, 2026 00:00 MVT  
-**Total Steps:** 37 | **Completed:** 5 | **Progress:** ~14%
+> **STATUS: HISTORICAL — Initial scaffold log from January 2026**  
+> This document tracked progress during the first weeks of development.  
+> The "14% complete" figure refers to the initial scaffold phase only.  
+> The application is now fully built, tested, and UAT-ready.  
+> For current status see: **CURRENT_UAT_STATUS.md**
+
+---
+
+**Last Updated:** January 28, 2026 00:00 MVT (initial scaffold only)  
+**Total Steps:** 37 | **Completed at time of writing:** 5 | **Progress at time of writing:** ~14%
 
 ---
 

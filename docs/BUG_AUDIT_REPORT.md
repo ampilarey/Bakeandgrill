@@ -1,4 +1,11 @@
-# Bake & Grill — Full Bug & Security Audit Report
+# ⚠️ ARCHIVED — Bake & Grill Full Bug & Security Audit Report
+
+> **STATUS: HISTORICAL — DO NOT USE AS CURRENT REFERENCE**  
+> This audit was performed on 9 Feb 2026. The checklist items shown as `[ ]` at the bottom of this document
+> reflect the state at that date. Many have since been fixed across multiple April 2026 audit sessions.  
+> For current status, see: **CURRENT_UAT_STATUS.md** and **UAT_FINAL_REVIEW_DISCOVERY.md**
+
+---
 
 **Date:** 9 Feb 2026  
 **Audited by:** AI Code Review (Backend + Frontend + Database)  

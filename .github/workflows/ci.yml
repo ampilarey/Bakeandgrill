@@ -1,4 +1,15 @@
 name: CI
+# ────────────────────────────────────────────────────────────────────────────
+# This workflow runs on every push/PR to main.
+#
+# DEPLOY TARGET: The `deploy` job below deploys ONLY to the TEST server
+#   (test.bakeandgrill.mv) — it is NOT a production deploy.
+#
+# When a separate production server (bakeandgrill.mv) is introduced, add a
+# second `deploy-production` job using environment: production with its own
+# DEPLOY_HOST_PROD / DEPLOY_USER_PROD / DEPLOY_SSH_KEY_PROD secrets.
+# See MAIN_PRODUCTION_LAUNCH_TODO.md for the full production deploy checklist.
+# ────────────────────────────────────────────────────────────────────────────
 
 on:
   push:
@@ -243,7 +254,13 @@ jobs:
             --grep "@smoke|public-pages|admin-auth|apps-smoke" \
             --reporter=github \
             --timeout=30000 \
-            || true   # non-blocking: E2E failures annotate the PR but don't block deploy
+            || true
+          # NOTE: `|| true` makes E2E non-blocking intentionally.
+          # E2E tests run against test.bakeandgrill.mv (live UAT server).
+          # Failures annotate the PR for visibility but do not block the deploy.
+          # This is correct for UAT: test-server stability should not gate CI.
+          # When a production server is introduced, consider making E2E blocking
+          # for the production deploy job specifically.
 
       - name: Upload Playwright report
         if: always()

@@ -6,8 +6,11 @@
 
 ## PRE-GO-LIVE: Server Configuration (MUST DO BEFORE GOING LIVE)
 
-- [ ] Set `TAX_RATE_BP=800` in server `.env` (currently 0 → causes GST mismatch)  
-- [ ] Run `php artisan config:cache` after changing `.env`  
+> 📌 Items for the **UAT test server** (test.bakeandgrill.mv):
+- [x] Set `TAX_RATE_BP=800` in server `.env` — **CONFIRMED DONE** (verified Apr 22, 2026 via live payment test)
+- [x] Run `php artisan config:cache` after changing `.env` — **DONE**
+
+> 📋 Items for the **future production server** (bakeandgrill.mv) — see MAIN_PRODUCTION_LAUNCH_TODO.md:
 - [ ] Set `APP_ENV=production` in server `.env`  
 - [ ] Set `APP_URL=https://bakeandgrill.mv` in server `.env` (when switching domain)  
 - [ ] Configure BML real production credentials (not UAT)  
@@ -123,13 +126,13 @@
 
 ## OVERALL STATUS
 
-| Area | Status |
-|---|---|
-| Public website | ✅ Ready |
-| Customer ordering app | ✅ Ready (delivery flow needs separate test) |
-| BML UAT payment | ✅ Working |
-| Admin panel | ✅ Ready |
-| GST configuration | ⚠️ Server .env must be updated (TAX_RATE_BP=800) |
-| BML Production | ❌ Not configured yet (planned later) |
-| Email notifications | ❌ Not configured yet (planned later) |
-| Production domain | ❌ Not configured yet (planned later) |
+| Area | UAT Status | Production Status |
+|---|---|---|
+| Public website | ✅ Ready | ⏳ Needs domain cutover |
+| Customer ordering app | ✅ Ready (delivery flow needs separate test) | ⏳ Needs domain cutover |
+| BML UAT payment | ✅ Working | ⏳ Awaiting production credentials from BML |
+| Admin panel | ✅ Ready | ⏳ Needs domain cutover |
+| GST configuration | ✅ Confirmed (TAX_RATE_BP=800 verified Apr 22) | ⏳ Must set on production server |
+| BML Production credentials | N/A — UAT only | ❌ Not configured yet (planned later) |
+| Email notifications | ❌ Using log driver (non-blocking for UAT) | ❌ Must configure SMTP before go-live |
+| Production domain | N/A — UAT server | ❌ Not provisioned yet |
