@@ -97,6 +97,27 @@ export function useCheckout() {
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [loyaltyAccount, setLoyaltyAccount] = useState<LoyaltyAccount | null>(null);
 
+  // Sync token when AuthContext recovers session via Blade cookie (e.g. after BML payment
+  // clears localStorage on mobile Safari, checkSession() restores it asynchronously).
+  useEffect(() => {
+    const sync = () => {
+      const t = localStorage.getItem("online_token");
+      if (t && t !== token) setToken(t);
+    };
+    const expire = () => {
+      setToken(null);
+      setCustomerName(null);
+      setLoyaltyAccount(null);
+    };
+    window.addEventListener("auth_change", sync);
+    window.addEventListener("auth_expired", expire);
+    return () => {
+      window.removeEventListener("auth_change", sync);
+      window.removeEventListener("auth_expired", expire);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [orderType, setOrderType]   = useState<OrderType>("takeaway");
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
