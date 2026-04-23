@@ -90,16 +90,16 @@
 | D004 | Takeaway is default | ✅ PASS | Takeaway button pressed by default |
 | D005 | Terms checkbox required | ✅ PASS | Pay button disabled until terms accepted |
 | D006 | Special instructions field | ✅ PASS | Textarea available |
-| D007 | Valid promo code | 🚫 BLOCKED | No active test promo code available |
+| D007 | Valid promo code | ✅ PASS | FLAT5 (MVR 5.00 fixed) applied: "✅ FLAT5 — MVR 1.08 off" shown, Order Summary shows Promo (FLAT5) −MVR 1.08, Total MVR 0.00 |
 | D008 | Invalid promo code | ✅ PASS | "Promo code is invalid or expired." shown in red |
-| D009 | Loyalty points toggle | ✅ PASS | 500 pts shown (MVR 5.00 value). ARIA snapshot reported `readonly` as artefact of React-controlled input; checkbox has `onChange` handler and no disabled/readOnly attribute |
+| D009 | Loyalty points toggle | ✅ PASS | Checkbox clicked → checked state confirmed; 500 pts / MVR 5.00 loyalty discount appears in Order Summary |
 | D010 | Referral code field | ✅ PASS | Field present with Apply button |
 | D011 | Subtotal displayed | ✅ PASS | MVR 1.00 |
 | D012 | GST displayed | ✅ PASS | MVR 0.08 (8%) |
 | D013 | Delivery fee in total | ✅ PASS | MVR 20.00 delivery added when delivery selected |
 | D014 | Total is correct | ✅ PASS | MVR 1.08 (takeaway) |
 | D015 | Pay button shows amount | ✅ PASS | "Pay MVR 1.08 with BML" |
-| D016 | Loyalty discount in total | ✅ PASS | Loyalty toggle functional; useLoyalty state reduces discountedSubtotalLaar via `loyaltyDelta = useLoyalty && loyaltyAccount ? loyaltyPoints : 0` |
+| D016 | Loyalty discount in total | ✅ PASS | "Loyalty discount −MVR 5.00" shown in Order Summary; Pay button changed to "Place order — no payment due" on zero-total |
 
 ---
 
@@ -239,11 +239,11 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ PASS | 79 |
+| ✅ PASS | 97 |
 | ❌ FAIL | 0 |
 | 🔶 PARTIAL | 2 |
 | 🚫 BLOCKED | 6 |
-| ➖ SKIPPED | 5 |
-| **Total** | **92** |
+| ➖ SKIPPED | 4 |
+| **Total** | **109** |
 
-### Pass Rate: 79/92 executed = **85.9%** (of testable) — 79/87 that aren't skip/blocked = **90.8%** pass rate
+### Pass Rate: 97/109 total = **89.0%** — 97/101 (excl. blocked+skipped) = **96.0%** pass rate
