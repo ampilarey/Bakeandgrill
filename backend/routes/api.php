@@ -512,11 +512,11 @@ Route::middleware(['auth:sanctum', 'permission:customers.analytics'])->prefix('a
 
 // Public: validate referral code
 Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController::class, 'validate'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:30,1');
 
 // Public: gift card balance check
 Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:30,1');
 
 // Customer: referral management + gift card on orders
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
