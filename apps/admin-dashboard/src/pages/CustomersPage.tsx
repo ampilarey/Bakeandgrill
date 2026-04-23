@@ -4,7 +4,7 @@ import {
   type AdminCustomer, type Order,
 } from '../api';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions,
+  Badge, Btn, Card, EmptyState, ErrorMsg,
   PageHeader, Spinner, TableCard, TD, TH,
   ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
@@ -13,10 +13,6 @@ import { usePageTitle } from '../hooks/usePageTitle';
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-function fmtDateTime(iso: string | null | undefined) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString();
 }
 
 const TIER_COLOR: Record<string, string> = {
@@ -209,110 +205,145 @@ export function CustomersPage() {
         )}
       </TableCard>
 
-      {/* Detail / Edit modal */}
+      {/* Customer detail — slide-in side panel */}
       {selected && (
-        <Modal title={detail?.customer.name ?? detail?.customer.phone ?? 'Customer'} onClose={closeDetail}>
-          {detailLoading ? (
-            <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>
-          ) : detail ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={closeDetail}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(28,20,8,0.35)', zIndex: 40, backdropFilter: 'blur(2px)' }}
+          />
+          {/* Drawer */}
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50,
+            width: 'min(480px, 100vw)',
+            background: '#fff', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0EAE3', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(212,129,58,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: '#D4813A', flexShrink: 0 }}>
+                {(detail?.customer.name ?? selected.name ?? '?').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#1C1408', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {detail?.customer.name ?? selected.name ?? selected.phone}
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>{selected.phone}</p>
+              </div>
+              <button onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 4, borderRadius: 8, display: 'flex' }}>
+                ✕
+              </button>
+            </div>
 
-              {!editing ? (
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {([
-                    ['Phone', detail.customer.phone],
-                    ['Email', detail.customer.email ?? '—'],
-                    ['Tier', detail.customer.tier ?? '—'],
-                    ['Loyalty points', String(detail.customer.loyalty_points)],
-                    ['Orders', String(detail.customer.orders_count)],
-                    ['Last login', fmtDateTime(detail.customer.last_login_at)],
-                    ['Last order', fmtDateTime(detail.customer.last_order_at)],
-                    ['Joined', fmtDate(detail.customer.created_at)],
-                    ['SMS opt-out', detail.customer.sms_opt_out ? 'Yes' : 'No'],
-                    ['Status', detail.customer.is_active ? 'Active' : 'Inactive'],
-                  ] as [string, string][]).map(([label, value]) => (
-                    <div key={label}>
-                      <p style={{ color: '#8B7355', margin: '0 0 2px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
-                      <p style={{ color: '#1C1408', margin: 0, fontWeight: 500, fontSize: 13 }}>{value}</p>
+            {detailLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}><Spinner /></div>
+            ) : detail ? (
+              <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                {/* KPI strip */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {[
+                    { label: 'Total Orders', value: String(detail.customer.orders_count) },
+                    { label: 'Loyalty Pts', value: String(detail.customer.loyalty_points ?? 0) },
+                    { label: 'Total Spend', value: `MVR ${(detail.orders ?? []).reduce((s, o) => s + parseFloat(String(o.total ?? 0)), 0).toFixed(2)}` },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ background: '#FAF7F3', border: '1px solid #F0EAE3', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#D4813A' }}>{value}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9C8E7E', fontWeight: 600 }}>{label}</p>
                     </div>
                   ))}
-                  {detail.customer.internal_notes && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <p style={{ color: '#8B7355', margin: '0 0 4px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Internal Notes</p>
-                      <p style={{ color: '#1C1408', margin: 0, background: '#FAF7F3', padding: '8px 10px', borderRadius: 8, fontSize: 13 }}>{detail.customer.internal_notes}</p>
-                    </div>
-                  )}
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {saveError && <ErrorMsg message={saveError} />}
-                  {(['name', 'email'] as const).map((key) => (
-                    <div key={key}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4, textTransform: 'capitalize' }}>{key}</label>
-                      <input
-                        style={inputStyle}
-                        value={form[key]}
-                        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Internal Notes</label>
-                    <textarea
-                      style={{ ...inputStyle, height: 80, resize: 'vertical' }}
-                      value={form.internal_notes}
-                      onChange={(e) => setForm((f) => ({ ...f, internal_notes: e.target.value }))}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: 20 }}>
-                    {([['Active', 'is_active'], ['SMS opt-out', 'sms_opt_out']] as [string, 'is_active' | 'sms_opt_out'][]).map(([label, key]) => (
-                      <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={form[key]}
-                          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {(detail.orders ?? []).length > 0 && (
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 10px' }}>Recent Orders</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {(detail.orders ?? []).map((o) => (
-                      <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 10px', background: '#FAF7F3', borderRadius: 8 }}>
-                        <span style={{ fontWeight: 600 }}>#{o.order_number}</span>
-                        <span style={{ color: '#8B7355' }}>{o.type}</span>
-                        <Badge color={['completed', 'paid'].includes(o.status) ? 'green' : o.status === 'cancelled' ? 'red' : 'gray'}>{o.status}</Badge>
-                        <span style={{ fontWeight: 600 }}>MVR {parseFloat(String(o.total)).toFixed(2)}</span>
-                        <span style={{ color: '#9C8E7E', fontSize: 11 }}>{fmtDate(o.created_at)}</span>
+                {/* Info grid */}
+                {!editing ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      {([
+                        ['Phone', detail.customer.phone],
+                        ['Email', detail.customer.email ?? '—'],
+                        ['Tier', detail.customer.tier ?? '—'],
+                        ['Joined', fmtDate(detail.customer.created_at)],
+                        ['Last Order', fmtDate(detail.customer.last_order_at)],
+                        ['Status', detail.customer.is_active ? 'Active' : 'Inactive'],
+                        ['SMS Opt-out', detail.customer.sms_opt_out ? 'Yes' : 'No'],
+                        ['Last Login', fmtDate(detail.customer.last_login_at)],
+                      ] as [string, string][]).map(([label, value]) => (
+                        <div key={label} style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
+                          <p style={{ color: '#9C8E7E', margin: '0 0 2px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+                          <p style={{ color: '#1C1408', margin: 0, fontWeight: 600, fontSize: 13 }}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {detail.customer.internal_notes && (
+                      <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: '10px 14px' }}>
+                        <p style={{ color: '#92400E', margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>📝 Internal Notes</p>
+                        <p style={{ color: '#78350F', margin: 0, fontSize: 13 }}>{detail.customer.internal_notes}</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {saveError && <ErrorMsg message={saveError} />}
+                    {(['name', 'email'] as const).map((key) => (
+                      <div key={key}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4, textTransform: 'capitalize' }}>{key}</label>
+                        <input style={inputStyle} value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
                       </div>
                     ))}
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Internal Notes</label>
+                      <textarea style={{ ...inputStyle, height: 80, resize: 'vertical' }} value={form.internal_notes} onChange={(e) => setForm((f) => ({ ...f, internal_notes: e.target.value }))} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 20 }}>
+                      {([['Active', 'is_active'], ['SMS opt-out', 'sms_opt_out']] as [string, 'is_active' | 'sms_opt_out'][]).map(([label, key]) => (
+                        <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Order history */}
+                {(detail.orders ?? []).length > 0 && (
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 11, color: '#9C8E7E', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Order History</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {(detail.orders ?? []).map((o) => (
+                        <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '10px 12px', background: '#FAF7F3', borderRadius: 10, border: '1px solid #F0EAE3' }}>
+                          <span style={{ fontWeight: 700, color: '#1C1408' }}>#{o.order_number}</span>
+                          <span style={{ color: '#8B7355', fontSize: 12 }}>{o.type?.replace('_', ' ')}</span>
+                          <Badge color={['completed', 'paid'].includes(o.status) ? 'green' : o.status === 'cancelled' ? 'red' : 'gray'}>{o.status}</Badge>
+                          <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(o.total)).toFixed(2)}</span>
+                          <span style={{ color: '#9C8E7E', fontSize: 11 }}>{fmtDate(o.created_at)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {/* Footer actions */}
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #F0EAE3', display: 'flex', gap: 8, flexShrink: 0 }}>
+              {!editing ? (
+                <>
+                  <Btn variant="secondary" onClick={() => setEditing(true)}>Edit</Btn>
+                  <Btn variant="danger" onClick={() => detail && handleDelete(detail.customer)}>Deactivate</Btn>
+                  <div style={{ flex: 1 }} />
+                  <Btn onClick={closeDetail}>Close</Btn>
+                </>
+              ) : (
+                <>
+                  <Btn variant="secondary" onClick={() => { setEditing(false); setSaveError(''); }}>Cancel</Btn>
+                  <Btn onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Btn>
+                </>
               )}
             </div>
-          ) : null}
-
-          <ModalActions>
-            {!editing ? (
-              <>
-                <Btn variant="secondary" onClick={() => setEditing(true)}>Edit</Btn>
-                <Btn variant="danger" onClick={() => detail && handleDelete(detail.customer)}>Deactivate</Btn>
-                <Btn onClick={closeDetail}>Close</Btn>
-              </>
-            ) : (
-              <>
-                <Btn variant="secondary" onClick={() => { setEditing(false); setSaveError(''); }}>Cancel</Btn>
-                <Btn onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
-              </>
-            )}
-          </ModalActions>
-        </Modal>
+          </div>
+        </>
       )}
     </div>
   );

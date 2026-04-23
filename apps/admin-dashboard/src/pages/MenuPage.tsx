@@ -923,14 +923,20 @@ export function MenuPage() {
                         <td style={{ padding: '10px 14px' }}>
                           <button
                             onClick={() => handleToggleAvail(item)}
+                            title={item.is_available ? 'Click to mark sold out' : 'Click to mark available'}
                             style={{
-                              background: item.is_available ? '#dcfce7' : '#fee2e2',
-                              color: item.is_available ? '#16a34a' : '#dc2626',
-                              border: 'none', borderRadius: 20, padding: '3px 12px', fontSize: 12,
-                              fontWeight: 700, cursor: 'pointer',
+                              width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                              background: item.is_available ? '#22c55e' : '#d1d5db',
+                              position: 'relative', transition: 'background 0.2s', flexShrink: 0, display: 'inline-block',
+                              verticalAlign: 'middle',
                             }}
                           >
-                            {item.is_available ? 'Yes' : 'No'}
+                            <span style={{
+                              position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%',
+                              background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                              transition: 'left 0.2s',
+                              left: item.is_available ? 22 : 2,
+                            }} />
                           </button>
                         </td>
                         <td style={{ padding: '10px 14px' }}>

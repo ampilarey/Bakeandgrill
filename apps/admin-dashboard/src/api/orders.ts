@@ -145,6 +145,23 @@ export async function getRefund(id: number): Promise<{ refund: AdminRefund }> {
   return req(`/refunds/${id}`);
 }
 
+// ── Delivery drivers ──────────────────────────────────────────────────────────
+
+export interface DeliveryDriver {
+  id: number;
+  name: string;
+  phone?: string | null;
+  is_active?: boolean;
+}
+
+export async function fetchDeliveryDrivers(): Promise<{ drivers: DeliveryDriver[] }> {
+  return req('/delivery/drivers');
+}
+
+export async function assignDeliveryDriver(orderId: number, driverId: number): Promise<{ order: Order }> {
+  return req(`/delivery/orders/${orderId}/assign-driver`, { method: 'POST', body: JSON.stringify({ driver_id: driverId }) });
+}
+
 export async function getReceiptLinkForOrder(orderId: number): Promise<{ link: string }> {
   return req(`/orders/${orderId}/receipt-link`);
 }

@@ -232,3 +232,38 @@ a { text-decoration: none; color: inherit; }
   --z-modal:    50;
   --z-toast:    60;
 }
+
+/* ── Dark Mode ───────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg:            #0F0D0A;
+  --color-surface:       #1C1910;
+  --color-surface-hover: #252118;
+  --color-border:        #2E2920;
+  --color-border-light:  #252118;
+
+  --color-text:          #F0EAE0;
+  --color-text-secondary:#C4B5A3;
+  --color-text-muted:    #8A7D6D;
+
+  --color-sidebar-bg:    #0A0907;
+  --color-sidebar-text:  #A09080;
+  --color-sidebar-active:#D4813A;
+  --color-sidebar-hover: rgba(212, 129, 58, 0.15);
+}
+
+[data-theme="dark"] body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Make white card surfaces dark */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background: white"] {
+  background: var(--color-surface) !important;
+}
+
+/* Table row hover in dark mode */
+[data-theme="dark"] tr:hover {
+  background: var(--color-surface-hover) !important;
+}

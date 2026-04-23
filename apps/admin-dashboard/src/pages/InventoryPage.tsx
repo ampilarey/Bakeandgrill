@@ -4,6 +4,7 @@ import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog,
 } from '../components/SharedUI';
+import { downloadCSV } from '../utils/csvExport';
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
@@ -259,7 +260,17 @@ export default function InventoryPage() {
   return (
     <div>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader title="Inventory" subtitle={lowCount > 0 ? `${lowCount} item${lowCount !== 1 ? 's' : ''} below reorder level` : undefined} />
+      <PageHeader
+        title="Inventory"
+        subtitle={lowCount > 0 ? `${lowCount} item${lowCount !== 1 ? 's' : ''} below reorder level` : undefined}
+        action={tab === 'stock' && items.length > 0 ? (
+          <Btn small variant="secondary" onClick={() => downloadCSV('inventory-stock', items.map((i) => ({
+            Name: i.name, SKU: i.sku ?? '', Category: i.category?.name ?? '', Unit: i.unit,
+            'Qty on Hand': i.quantity_on_hand, 'Reorder Level': i.reorder_level ?? '',
+            Status: i.quantity_on_hand <= (i.reorder_level ?? 0) ? 'Low Stock' : 'OK',
+          })))}>Export CSV</Btn>
+        ) : undefined}
+      />
 
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 

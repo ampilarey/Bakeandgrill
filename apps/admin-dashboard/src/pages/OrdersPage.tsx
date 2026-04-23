@@ -6,7 +6,8 @@ import {
   kdsStart, kdsBump, addOrderPayments,
   getReceiptLinkForOrder, sendReceiptForOrder,
   createInvoiceFromOrder, sendInvoiceToCustomer,
-  type Order,
+  fetchDeliveryDrivers, assignDeliveryDriver,
+  type Order, type DeliveryDriver,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
@@ -69,8 +70,25 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [receiptBusy, setReceiptBusy] = useState(false);
   const [copyLinkBusy, setCopyLinkBusy] = useState(false);
+  const [drivers, setDrivers] = useState<DeliveryDriver[]>([]);
+  const [driverAssigning, setDriverAssigning] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const handleAssignDriver = async (driverId: number) => {
+    if (!order) return;
+    setDriverAssigning(true);
+    try {
+      const { order: updated } = await assignDeliveryDriver(order.id, driverId);
+      setOrder(updated);
+      onOrderUpdated();
+      showToast(`Driver assigned.`);
+    } catch (e) {
+      setActionErr((e as Error).message);
+    } finally {
+      setDriverAssigning(false);
+    }
+  };
 
   const phone = order?.customer?.phone ?? order?.customer_phone ?? '';
 
@@ -130,6 +148,10 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
       });
     return () => controller.abort();
   };
+
+  useEffect(() => {
+    fetchDeliveryDrivers().then((r) => setDrivers(r.drivers ?? [])).catch(() => {/* non-critical */});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -278,6 +300,33 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4 }}>
                     {order.delivery_contact_name} · {order.delivery_contact_phone}
                   </p>
+                )}
+              </div>
+            )}
+
+            {order.type === 'delivery' && (
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontWeight: 700, fontSize: 13, color: '#6B5D4F', marginBottom: 8 }}>
+                  🚗 Driver
+                  {order.driver && <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, color: '#16a34a' }}>✓ {order.driver.name}</span>}
+                </p>
+                {drivers.length > 0 ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <select
+                      defaultValue={order.driver?.id ?? ''}
+                      onChange={(e) => { if (e.target.value) void handleAssignDriver(Number(e.target.value)); }}
+                      disabled={driverAssigning}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: '#FAF7F3', color: '#1C1408', cursor: 'pointer' }}
+                    >
+                      <option value="">— select driver —</option>
+                      {drivers.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}{d.phone ? ` (${d.phone})` : ''}</option>
+                      ))}
+                    </select>
+                    {driverAssigning && <span style={{ fontSize: 12, color: '#9C8E7E' }}>Assigning…</span>}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>No drivers registered.</p>
                 )}
               </div>
             )}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
-import { Bell, BellOff, ChevronLeft, ChevronRight, Menu, Search, X } from 'lucide-react';
+import { Bell, BellOff, ChevronLeft, ChevronRight, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
 import { NAV_GROUPS, ALL_NAV_ITEMS, BOTTOM_TABS, can, LogOut } from './navConfig';
@@ -128,6 +128,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const [moreOpen, setMoreOpen] = useState(false);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [audioOn, setAudioOn] = useState(isAudioEnabled);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('bg_theme') === 'dark');
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount } = useNotifications();
@@ -139,6 +140,12 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
     setAudioEnabled(next);
     setAudioOn(next);
   };
+
+  // Apply dark mode to document root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    localStorage.setItem('bg_theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   // Close notification panel on outside click
   useEffect(() => {
@@ -517,6 +524,21 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
               <span style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A3', background: '#E8E0D8', borderRadius: 4, padding: '1px 5px' }}>⌘K</span>
             </button>
           )}
+          {/* Dark mode toggle */}
+          <button
+            onClick={() => setDarkMode((d) => !d)}
+            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              border: '1px solid #E8E0D8', background: darkMode ? '#1C1910' : '#F8F6F3',
+              cursor: 'pointer', color: darkMode ? '#D4813A' : '#6B5D4F',
+              transition: 'all 0.15s',
+            }}
+          >
+            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+
           {/* Audio alert toggle */}
           <button
             onClick={toggleAudio}
