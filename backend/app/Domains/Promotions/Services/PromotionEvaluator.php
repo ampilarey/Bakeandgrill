@@ -102,7 +102,7 @@ class PromotionEvaluator
         $applicableAmount = $this->applicableSubtotal($promo, $order);
 
         return match ($promo->type) {
-            'percentage' => (int) floor($applicableAmount * $promo->discount_value / 10000),
+            'percentage' => (int) floor($applicableAmount * $promo->discount_value / 100),
             'fixed'      => min($promo->discount_value, $applicableAmount),
             'free_item'  => $this->freeItemDiscount($promo, $order),
             default      => 0,

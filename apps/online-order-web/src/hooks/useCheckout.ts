@@ -466,8 +466,12 @@ export function useCheckout() {
           setPromoApplied({ code: promoToApply, discountLaar: promoRes.discount_laar, promotionId: promoRes.promotion_id });
           setPromoCode("");
         } catch (e) {
+          // Promo failed to apply — clear it and stop checkout so the customer
+          // isn't charged the full undiscounted amount without knowing.
           setPromoError((e as Error).message);
           setPromoApplied(null);
+          setIsPlacing(false);
+          return;
         }
       }
 
