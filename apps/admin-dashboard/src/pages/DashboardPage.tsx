@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, Package, Play, Receipt, ShoppingBag, Trash2, TrendingUp, Zap } from 'lucide-react';
 import { playChime } from '../utils/audio';
+import { pushNotification } from '../utils/notifications';
 import {
   fetchOrders,
   fetchLowStockItems,
@@ -190,14 +191,15 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
 
 // ── main component ────────────────────────────────────────────────────────────
 
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function DashboardPage() {
   usePageTitle('Dashboard');
   const now = useNow();
-  // Use local date (not UTC) so the business day matches the venue's timezone
-  const today = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
+  const [summaryDate, setSummaryDate] = useState(localToday);
 
   const [summary, setSummary]       = useState<DailySummary | null>(null);
   const [summaryErr, setSummaryErr] = useState('');
@@ -218,14 +220,14 @@ export function DashboardPage() {
   const prevOrdersRef  = useRef<Record<number, string>>({});
   const isFirstLoadRef = useRef(true);
 
-  // ── load today's summary ──
+  // ── load daily summary ──
   useEffect(() => {
-    setSummaryLoading(true);
-    getDailySummary(today)
+    setSummaryLoading(true); setSummaryErr('');
+    getDailySummary(summaryDate)
       .then(setSummary)
       .catch((e: Error) => setSummaryErr(e.message))
       .finally(() => setSummaryLoading(false));
-  }, [today]);
+  }, [summaryDate]);
 
   // ── load active orders (poll every 10s) — diff drives the live feed ──
   const loadOrders = () => {
@@ -248,7 +250,12 @@ export function DashboardPage() {
           prevOrdersRef.current[o.id] = o.status;
         });
         isFirstLoadRef.current = false;
-        if (newPending.length > 0) playChime();
+        if (newPending.length > 0) {
+          playChime();
+          newPending.forEach((o) =>
+            pushNotification({ type: 'order', title: 'New Order', body: `Order #${o.order_number} is waiting` })
+          );
+        }
         if (newPending.length > 0 || changed.length > 0) {
           setLiveEvents((prev) => [...newPending, ...changed, ...prev].slice(0, 20));
         }
@@ -266,7 +273,13 @@ export function DashboardPage() {
   // ── load low stock ──
   useEffect(() => {
     fetchLowStockItems()
-      .then((r) => setLowStock((r.data ?? []).slice(0, 8)))
+      .then((r) => {
+        const items = r.data ?? [];
+        setLowStock(items.slice(0, 8));
+        if (items.length > 0) {
+          pushNotification({ type: 'stock', title: 'Low Stock', body: `${items.length} item${items.length !== 1 ? 's' : ''} below reorder level` });
+        }
+      })
       .catch((e: Error) => setLowStockErr(e.message));
   }, []);
 
@@ -294,7 +307,26 @@ export function DashboardPage() {
     <>
       <PageHeader
         title="Dashboard"
-        subtitle={new Date().toLocaleDateString('en-MV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        subtitle={new Date(summaryDate + 'T00:00:00').toLocaleDateString('en-MV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        action={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="date"
+              value={summaryDate}
+              max={localToday()}
+              onChange={(e) => e.target.value && setSummaryDate(e.target.value)}
+              style={{ padding: '6px 10px', borderRadius: 10, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: '#F8F6F3', color: '#1C1408', cursor: 'pointer' }}
+            />
+            {summaryDate !== localToday() && (
+              <button
+                onClick={() => setSummaryDate(localToday())}
+                style={{ fontSize: 12, fontWeight: 700, color: '#D4813A', background: 'rgba(212,129,58,0.1)', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                ← Today
+              </button>
+            )}
+          </div>
+        }
       />
 
       {/* ── Shift banner ── */}
@@ -306,7 +338,7 @@ export function DashboardPage() {
       <SectionLabel>Today at a glance</SectionLabel>
       {summaryErr && <ErrorMsg message={summaryErr} />}
       {summaryLoading ? <Spinner /> : summary && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
           <StatCard label="Revenue"    value={fmt(summary.revenue)}    accent="#D4813A" icon={DollarSign} />
           <StatCard label="Net Profit" value={fmt(summary.net_profit)}
             accent={summary.net_profit >= 0 ? '#22c55e' : '#ef4444'}

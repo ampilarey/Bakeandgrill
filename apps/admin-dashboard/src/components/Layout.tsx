@@ -4,6 +4,7 @@ import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
 import { Bell, BellOff, ChevronLeft, ChevronRight, Menu, Search, X } from 'lucide-react';
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
+import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
 import { NAV_GROUPS, ALL_NAV_ITEMS, BOTTOM_TABS, can, LogOut } from './navConfig';
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
@@ -127,6 +128,9 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const [moreOpen, setMoreOpen] = useState(false);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [audioOn, setAudioOn] = useState(isAudioEnabled);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const { notifications, unreadCount } = useNotifications();
   const location = useLocation();
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -135,6 +139,16 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
     setAudioEnabled(next);
     setAudioOn(next);
   };
+
+  // Close notification panel on outside click
+  useEffect(() => {
+    if (!notifOpen) return;
+    const h = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [notifOpen]);
 
   // Fetch low-stock count once on mount (refresh every 5 min)
   useEffect(() => {
@@ -519,6 +533,77 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           >
             {audioOn ? <Bell size={16} /> : <BellOff size={16} />}
           </button>
+
+          {/* Notification center */}
+          <div ref={notifRef} style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => { setNotifOpen((o) => !o); if (!notifOpen) markAllRead(); }}
+              title="Notifications"
+              style={{
+                position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 34, height: 34, borderRadius: 10,
+                border: '1px solid #E8E0D8', background: notifOpen ? 'rgba(212,129,58,0.08)' : '#F8F6F3',
+                cursor: 'pointer', color: notifications.length > 0 ? '#D4813A' : '#C4B5A3',
+                transition: 'all 0.15s',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4,
+                  minWidth: 16, height: 16, borderRadius: 8,
+                  background: '#ef4444', color: '#fff',
+                  fontSize: 9, fontWeight: 800, lineHeight: '16px', textAlign: 'center', padding: '0 3px',
+                }}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div style={{
+                position: 'absolute', top: 42, right: 0, width: 320,
+                background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 60, overflow: 'hidden',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #F0EAE3' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408', flex: 1 }}>Notifications</span>
+                  {notifications.length > 0 && (
+                    <button onClick={clearAll} style={{ fontSize: 11, color: '#9C8E7E', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Clear all
+                    </button>
+                  )}
+                  <button onClick={() => setNotifOpen(false)} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', display: 'flex' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: '#9C8E7E', fontSize: 13 }}>
+                      No notifications yet
+                    </div>
+                  ) : notifications.map((n) => {
+                    const iconMap: Record<string, string> = { order: '🛒', stock: '📦', info: 'ℹ️', warning: '⚠️' };
+                    return (
+                      <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid #F8F4F0', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{iconMap[n.type] ?? 'ℹ️'}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1C1408' }}>{n.title}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B5D4F' }}>{n.body}</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 11, color: '#C4B5A3' }}>
+                            {new Date(n.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
           {/* User pill */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,

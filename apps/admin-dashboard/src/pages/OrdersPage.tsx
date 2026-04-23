@@ -384,6 +384,8 @@ export function OrdersPage() {
   const [perPage, setPerPage] = useState(25);
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [quickActing, setQuickActing] = useState<number | null>(null);
   const [smsBusy, setSmsBusy] = useState<number | null>(null);
   const [rowToast, setRowToast] = useState<{ id: number; msg: string } | null>(null);
@@ -422,6 +424,12 @@ export function OrdersPage() {
     } catch { showRowToast(o.id, 'SMS failed'); } finally { setSmsBusy(null); }
   };
 
+  // Debounce search input 400 ms
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const handleSort = (key: SortKey) => {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('desc'); }
@@ -445,7 +453,7 @@ export function OrdersPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchOrders({ status: statusFilter || undefined, type: typeFilter || undefined, page, per_page: perPage });
+      const res = await fetchOrders({ status: statusFilter || undefined, type: typeFilter || undefined, page, per_page: perPage, search: debouncedSearch || undefined });
       setOrders(res.data ?? []);
       setTotalPages(res.meta?.last_page ?? 1);
     } catch (e) {
@@ -453,7 +461,7 @@ export function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, typeFilter, page, perPage]);
+  }, [statusFilter, typeFilter, page, perPage, debouncedSearch]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -487,6 +495,13 @@ export function OrdersPage() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search order # or customer…"
+          style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280, padding: '7px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none' }}
+        />
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B5D4F' }}>
@@ -507,7 +522,7 @@ export function OrdersPage() {
         <Card><EmptyState message="No orders found." /></Card>
       ) : (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ background: '#F8F6F3', borderBottom: '1px solid #E8E0D8' }}>

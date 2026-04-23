@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
@@ -40,6 +40,34 @@ export default function InventoryPage() {
   const [adjForm, setAdjForm] = useState({ type: 'add' as 'add' | 'remove' | 'set', quantity: '', reason: '' });
   const [adjSaving, setAdjSaving] = useState(false);
   const [adjError, setAdjError] = useState('');
+  const [quickAdjusting, setQuickAdjusting] = useState<Record<number, boolean>>({});
+  const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const pendingAdj = useRef<Record<number, number>>({});
+
+  const quickAdjust = (item: InventoryItem, delta: number) => {
+    pendingAdj.current[item.id] = (pendingAdj.current[item.id] ?? 0) + delta;
+    setQuickAdjusting((s) => ({ ...s, [item.id]: true }));
+    // Optimistically update local items list
+    setItems((prev) => prev.map((i) => i.id === item.id
+      ? { ...i, quantity_on_hand: Math.max(0, i.quantity_on_hand + delta) }
+      : i
+    ));
+    clearTimeout(debounceTimers.current[item.id]);
+    debounceTimers.current[item.id] = setTimeout(async () => {
+      const total = pendingAdj.current[item.id] ?? 0;
+      delete pendingAdj.current[item.id];
+      if (total === 0) { setQuickAdjusting((s) => ({ ...s, [item.id]: false })); return; }
+      try {
+        await adjustInventoryStock(item.id, {
+          type: total > 0 ? 'add' : 'remove',
+          quantity: Math.abs(total),
+          reason: 'Quick adjust',
+        });
+        void loadItems();
+      } catch { void loadItems(); }
+      finally { setQuickAdjusting((s) => ({ ...s, [item.id]: false })); }
+    }, 800);
+  };
 
   const loadItems = async () => {
     setLoading(true); setError('');
@@ -287,9 +315,7 @@ export default function InventoryPage() {
                       <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
                       <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{item.sku ?? '—'}</td>
                       <td style={TD}>{item.category?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                      <td style={{ ...TD, fontWeight: 700, color: isLow ? '#ef4444' : '#1C1408' }}>
-                        {item.quantity_on_hand} {item.unit}
-                      </td>
+                      <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{item.unit}</td>
                       <td style={{ ...TD, color: '#9C8E7E' }}>
                         {item.reorder_level != null ? `${item.reorder_level} ${item.unit}` : '—'}
                       </td>
@@ -297,12 +323,28 @@ export default function InventoryPage() {
                         <Badge color={isLow ? 'red' : 'green'}>{isLow ? 'Low Stock' : 'OK'}</Badge>
                       </td>
                       <td style={TD}>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          {/* Quick ±1 buttons */}
+                          <button
+                            onClick={() => quickAdjust(item, -1)}
+                            disabled={quickAdjusting[item.id] || item.quantity_on_hand <= 0}
+                            title="Remove 1"
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#ef4444', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (quickAdjusting[item.id] || item.quantity_on_hand <= 0) ? 0.4 : 1 }}
+                          >−</button>
+                          <span style={{ minWidth: 32, textAlign: 'center', fontSize: 13, fontWeight: 700, color: isLow ? '#ef4444' : '#1C1408' }}>
+                            {quickAdjusting[item.id] ? '…' : item.quantity_on_hand}
+                          </span>
+                          <button
+                            onClick={() => quickAdjust(item, 1)}
+                            disabled={quickAdjusting[item.id]}
+                            title="Add 1"
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#22c55e', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: quickAdjusting[item.id] ? 0.4 : 1 }}
+                          >+</button>
                           <Btn small variant="secondary" onClick={() => {
                             setAdjustItem(item);
                             setAdjForm({ type: 'add', quantity: '', reason: '' });
                             setAdjError('');
-                          }}>Adjust</Btn>
+                          }} title="Full adjust dialog">⚙</Btn>
                           <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
                         </div>
                       </td>

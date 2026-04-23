@@ -32,8 +32,25 @@ export function KDSPage() {
   const [error, setError] = useState('');
   const [acting, setActing] = useState<number | null>(null);
   const [newTicketFlash, setNewTicketFlash] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstKdsLoad    = useRef(true);
+  const kdsRef = useRef<HTMLDivElement>(null);
+
+  // Sync fullscreen state with browser events
+  useEffect(() => {
+    const h = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', h);
+    return () => document.removeEventListener('fullscreenchange', h);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      void (kdsRef.current ?? document.documentElement).requestFullscreen();
+    } else {
+      void document.exitFullscreen();
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -130,18 +147,25 @@ export function KDSPage() {
   );
 
   return (
-    <>
+    <div ref={kdsRef} style={isFullscreen ? { background: '#F8F6F3', padding: 20, minHeight: '100vh' } : undefined}>
       <PageHeader
         title="Kitchen Display"
         subtitle={sseConnected ? '● Live' : '○ Polling (reconnecting…)'}
-        action={<Btn onClick={load} variant="secondary">↻ Refresh</Btn>}
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+            <Btn onClick={toggleFullscreen} variant="secondary" title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+              {isFullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
+            </Btn>
+          </div>
+        }
       />
       {error && <ErrorMsg message={error} />}
 
       {loading && tickets.length === 0 ? (
         <Card style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></Card>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+        <div className="kds-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
           <Column title="Pending" items={pending} color="#f59e0b" flash={newTicketFlash}>
             {(t) => (
               <>
@@ -197,7 +221,7 @@ export function KDSPage() {
           </Column>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
