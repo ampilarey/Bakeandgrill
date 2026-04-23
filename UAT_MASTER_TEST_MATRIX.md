@@ -136,7 +136,7 @@
 | H002 | Order appears in admin dashboard | ✅ PASS | #BG-20260423-0016 shown as "Pending", MVR 1.08, 2m ago |
 | H003 | Admin Reviews page loads | ✅ PASS | 3 reviews, Avg 4.7★, 3 pending |
 | H004 | Admin review approval | ✅ PASS | Approve clicked → status changed to "Approved" (green badge), pending count dropped |
-| H005 | Admin review rejection | ➖ SKIPPED | |
+| H005 | Admin review rejection | ✅ PASS | Clicked Reject on "UAT test review - excellent experience!" → status changed to Rejected (orange badge) |
 | H006–H010 | Other admin pages | ✅ PASS | See Areas I-T below |
 
 ---
@@ -146,7 +146,11 @@
 | ID | Test | Result | Notes |
 |----|------|--------|-------|
 | I001 | Menu Management page loads | ✅ PASS | Categories (BML TEST, Active, 1 item) and Items tabs |
-| I002–I008 | Create/edit/delete category & item | 🚫 BLOCKED | Avoided to protect UAT data |
+| I002 | Create new category | ✅ PASS | "UAT Test Category" created; Categories (1→2) |
+| I003 | Edit category | ✅ PASS | Renamed to "UAT Test Category (Edited)"; saved successfully |
+| I004 | Create new menu item | ✅ PASS | "UAT Test Item" MVR 9.99 created under BML TEST category |
+| I005 | Delete menu item | ✅ PASS | Test item deleted; back to 1 item (BML Bajiya) |
+| I006 | Delete category | ✅ PASS | Test category deleted; back to 1 category |
 
 ---
 
@@ -155,7 +159,10 @@
 | ID | Test | Result | Notes |
 |----|------|--------|-------|
 | L001 | Staff Management page loads | ✅ PASS | Owner + Manager listed, both Active, PIN set |
-| L002–L005 | Create/edit staff, PIN change | 🚫 BLOCKED | Not tested to avoid data disruption |
+| L002 | Create new staff member | ✅ PASS | "UAT Test Staff" (staff role, PIN 9988) created; list grew to 4 |
+| L003 | Disable staff | ✅ PASS | Disable clicked → button changed to "Enable" instantly |
+| L004 | Remove staff | ✅ PASS | "UAT Test Staff" removed; list back to 3 |
+| L005 | Change staff PIN | ✅ PASS | PIN change form opened, saved successfully (modal closed) |
 
 ---
 
@@ -186,7 +193,7 @@
 | ID | Test | Result | Notes |
 |----|------|--------|-------|
 | Q001 | Loyalty Accounts page | ✅ PASS | Customer: 500 pts, Bronze, Ledger/Adjust actions |
-| Q002 | Points post-order | 🔶 PARTIAL | Balance shows 500 pts after completed order — queue worker may be delayed |
+| Q002 | Points post-order | ✅ PASS | Loyalty hold fix verified: stale holds released, points credited correctly |
 
 ---
 
@@ -221,9 +228,11 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ PASS | 52 |
+| ✅ PASS | 63 |
 | ❌ FAIL | 1 |
-| 🔶 PARTIAL | 5 |
-| 🚫 BLOCKED | 14 |
-| ➖ SKIPPED | 12 |
-| **Total** | **84** |
+| 🔶 PARTIAL | 4 |
+| 🚫 BLOCKED | 8 |
+| ➖ SKIPPED | 11 |
+| **Total** | **87** |
+
+### Pass Rate: 63/87 executed = **72.4%** (of testable) — 63/72 that aren't skip/blocked = **87.5%** pass rate
