@@ -15,6 +15,18 @@ class EloquentLoyaltyHoldRepository implements LoyaltyHoldRepositoryInterface
             ->first();
     }
 
+    public function findActiveByCustomerId(int $customerId, ?int $excludeOrderId = null): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = LoyaltyHold::where('customer_id', $customerId)
+            ->where('status', 'active');
+
+        if ($excludeOrderId !== null) {
+            $query->where('order_id', '!=', $excludeOrderId);
+        }
+
+        return $query->get();
+    }
+
     public function upsertForOrder(int $orderId, array $attributes): LoyaltyHold
     {
         return LoyaltyHold::updateOrCreate(

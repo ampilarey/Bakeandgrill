@@ -56,6 +56,16 @@ class LoyaltyLedgerService
                 throw new \InvalidArgumentException("Minimum redemption is {$minRedeem} points.");
             }
 
+            // Release stale holds from other abandoned checkouts first so they
+            // don't inflate points_held and make availablePoints() incorrectly zero.
+            $staleHolds = $this->holdRepo->findActiveByCustomerId($customer->id, excludeOrderId: $order->id);
+            foreach ($staleHolds as $staleHold) {
+                $this->releaseHold($staleHold, $account);
+            }
+
+            // Re-read account after releasing stale holds so availablePoints() is accurate.
+            $account->refresh();
+
             $maxRedeem = min(
                 $this->calculator->maxRedeemPoints(),
                 $account->availablePoints(),
