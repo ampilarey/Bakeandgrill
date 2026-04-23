@@ -62,6 +62,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             DeductInventoryListener::class,
             DeductPreparedStockListener::class,
             DispatchReceiptPrintListener::class,
+            DispatchKitchenPrintListener::class, // online orders: kitchen print fires here after payment confirmed
             ConsumePromoRedemptionsListener::class,
             ConsumeLoyaltyHoldListener::class,
             RecordReferralRedemptionListener::class,

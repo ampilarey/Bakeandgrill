@@ -33,13 +33,24 @@ class OrderCreationService
             $device = Device::where('identifier', $payload['device_identifier'])->first();
         }
 
-        $printKitchen = !array_key_exists('print', $payload) || $payload['print'] === true;
+        // Customer online orders (no staff user, type online_pickup/delivery) must start as
+        // payment_pending so the KDS never shows them before payment is confirmed.
+        // Kitchen print is also suppressed here — it fires via DispatchKitchenPrintListener
+        // on the OrderPaid event once BML/zero-balance confirms the payment.
+        $isCustomerOnlineOrder = $user === null
+            && in_array($payload['type'] ?? '', ['online_pickup', 'delivery'], true);
 
-        return DB::transaction(function () use ($payload, $user, $device, $printKitchen): Order {
+        $initialStatus = $isCustomerOnlineOrder ? 'payment_pending' : 'pending';
+
+        $printKitchen = $isCustomerOnlineOrder
+            ? false
+            : (!array_key_exists('print', $payload) || $payload['print'] === true);
+
+        return DB::transaction(function () use ($payload, $user, $device, $printKitchen, $initialStatus): Order {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'type' => $payload['type'],
-                'status' => 'pending',
+                'status' => $initialStatus,
                 'restaurant_table_id' => $payload['restaurant_table_id'] ?? null,
                 'customer_id' => $payload['customer_id'] ?? null,
                 'user_id' => $user?->id,
