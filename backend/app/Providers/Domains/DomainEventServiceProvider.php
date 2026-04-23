@@ -13,6 +13,7 @@ use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
 use App\Domains\Notifications\Events\CustomerCreated;
+use App\Domains\Notifications\Listeners\SendCustomerOrderStatusSmsListener;
 use App\Domains\Notifications\Listeners\SendOnlineOrderCompletionReceiptSmsListener;
 use App\Domains\Notifications\Listeners\SendOrderStatusPushListener;
 use App\Domains\Orders\Events\OrderCancelled;
@@ -116,10 +117,11 @@ class DomainEventServiceProvider extends EventServiceProvider
             SendNewCustomerNotificationListener::class,
         ],
 
-        // Fires on every status change — real-time SSE and push notifications
+        // Fires on every status change — real-time SSE, push notifications, customer SMS
         OrderStatusChanged::class => [
             PublishOrderStatusToRedisListener::class,
             SendOrderStatusPushListener::class,
+            SendCustomerOrderStatusSmsListener::class,
             SendOnlineOrderCompletionReceiptSmsListener::class,
             SendStaffOrderNotificationListener::class,
         ],
