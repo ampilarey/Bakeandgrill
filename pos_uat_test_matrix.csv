@@ -1,0 +1,152 @@
+ID,Area,Feature,Test Step,Expected Result,Credentials Needed,Live URL/Route,Status,Evidence,Screenshot,Notes
+A001,A,App load,Open https://test.bakeandgrill.mv/pos/,POS login shell loads,None,/pos/,PASS,Live navigation 2026-04-24,pos-uat-evidence/A001-pos-load.png,
+A002,A,Login success,"Enter valid staff email + PIN ≥4, Sign In",Authenticated; POS main UI,Staff email + PIN,/pos/,BLOCKED,,,No demo staff credentials provided in this session
+A003,A,Invalid email,"Invalid email + 4-digit PIN, Sign In",Error: login failed,None (negative test),/pos/,PASS,Banner shown,pos-uat-evidence/A003-invalid-login.png,Message: Login failed. Check your email and PIN.
+A004,A,Invalid PIN,Plausible email + wrong PIN,Error shown,None (negative test),/pos/,PASS,Same error path as A003,,Used pos-uat-staff@bakeandgrill.test + 9999
+A005,A,Blank email,Leave email empty; observe Sign In,Cannot submit / disabled,None,/pos/,PASS,Sign In disabled when email empty,,Per LoginPage.tsx disabled state
+A006,A,Short PIN,Email filled; enter only 3 digits,Sign In stays disabled,None,/pos/,PASS,Button disabled pin.length < 4,,
+A007,A,Refresh session,F5 after successful login,Still logged in,Staff creds,/pos/,BLOCKED,,,Requires A002
+A008,A,Logout,Click Log out,Token cleared; login screen,Staff creds,/pos/,BLOCKED,,,
+A009,A,Refresh after logout,F5 on login,Still logged out,Staff creds,/pos/,BLOCKED,,,
+B001,B,Device ID,First load,pos_device_id in localStorage / field populated,None,/pos/,PASS,POS-532C34E3 observed,pos-uat-evidence/A001-pos-load.png,
+B002,B,Device persist,Reload /pos/,Same device ID,None,/pos/,PASS,POS-532C34E3 after hard navigation,,
+B003,B,Re-login stability,Logout + login again,Same device ID,Staff creds,/pos/,BLOCKED,,,
+B004,B,New ID after clear,Clear site data / localStorage pos_device_id,New POS-xxxx ID,Manual DevTools,/pos/,NOT EXECUTED,,,Manual-only; automation cannot clear storage in this run
+B005,B,Device visible,Login screen shows Device ID field,Readable,None,/pos/,PASS,Header text on logged-in shell not verified (needs login),pos-uat-evidence/A001-pos-load.png,Post-login header per App.tsx line 140
+C001,C,Header title,Logged-in header,Bake & Grill POS,Staff creds,/pos/,BLOCKED,,,
+C002,C,Online badge,See Online/Offline pill,State visible,Staff creds,/pos/,BLOCKED,,,
+C003,C,Queue count,Queue: N in header,Visible,Staff creds,/pos/,BLOCKED,,,
+C004,C,POS mode,Click POS,POS mode active,Staff creds,/pos/,BLOCKED,,,
+C005,C,OPS mode,Click OPS,OpsPanel visible,Staff creds,/pos/,BLOCKED,,,
+C006,C,Return POS,Click POS from OPS,Menu+cart restored,Staff creds,/pos/,BLOCKED,,,
+C007,C,Site link,Click ← Main Website (login) or ← Site (logged-in),Navigates to site root,None,/,PASS,Direct nav to https://test.bakeandgrill.mv/ works,,LoginPage href=/ ; App header href=/
+D001,D,Online operation,Use POS while online,API calls succeed,Staff creds,/pos/,BLOCKED,,,Login required
+D002,D,Offline badge,Disconnect network,Offline state,Manual network,/pos/,NOT EXECUTED,,,Browser MCP cannot toggle offline reliably
+D003,D,Queue offline,"While offline, queue count",Still visible,Manual,/pos/,NOT EXECUTED,,,
+D004,D,Reconnect,Back online,Online badge,Manual,/pos/,NOT EXECUTED,,,
+D005,D,Order offline,Checkout offline,Queue message / sync,Staff + manual offline,/pos/,NOT EXECUTED,,,Code path: useOrderCreation enqueues when !isOnline
+D006,D,Sync queue,Reconnect; Sync button,Batch processed,Staff + manual,/pos/,NOT EXECUTED,,,
+D007,D,Mid-session drop,Toggle network mid-session,No crash,Manual,/pos/,NOT EXECUTED,,,
+E001,E,Tables fetch,After login,Table list in dine-in,Staff creds,/pos/,BLOCKED,,,fetchTables in App.tsx
+E002,E,Active table,Auto-select is_active table,Selected if exists,Staff + data,/pos/,BLOCKED,,,
+E003,E,Takeaway,Click Takeaway,orderType Takeaway,Staff creds,/pos/,BLOCKED,,,
+E004,E,Dine-in,Click Dine-in,Table selector shows,Staff creds,/pos/,BLOCKED,,,
+E005,E,Online Pickup,Click Online Pickup,Mode changes,Staff creds,/pos/,BLOCKED,,,
+E006,E,Select table,Pick table from dropdown,selectedTableId set,Staff + tables,/pos/,BLOCKED,,,
+E007,E,Change table,Select different table,Updates,Staff creds,/pos/,BLOCKED,,,
+E008,E,Dine-in no table,Checkout dine-in w/o table,Blocked message,Staff creds,/pos/,BLOCKED,,,handleCheckout guards in useOrderCreation
+F001,F,Categories,After login,Categories list,Staff creds,/pos/,BLOCKED,,,useMenu fetchCategories
+F002,F,Items,Items load,Grid populates,Staff creds,/pos/,BLOCKED,,,
+F003,F,Select category,Click category,filteredItems update,Staff creds,/pos/,BLOCKED,,,
+F004,F,Switch categories,Rapid switching,No error,Staff creds,/pos/,BLOCKED,,,
+F005,F,Cards render,No blank cards,All items show name+price,Staff creds,/pos/,BLOCKED,,,
+F006,F,Refresh menu,F5,Menu reloads,Staff creds,/pos/,BLOCKED,,,
+F007,F,Menu failure,Simulate API failure,dataError after retries,DevTools throttle,/pos/,NOT EXECUTED,,,useMenu sets dataError after 3 failures
+G001,G,Select item,Click item card,Modifier panel may show,Staff creds,/pos/,BLOCKED,,,
+G002,G,Add one,Add to cart,Cart +1,Staff creds,/pos/,BLOCKED,,,
+G003,G,Multiple SKUs,Add different items,Cart lines correct,Staff creds,/pos/,BLOCKED,,,
+G004,G,Modifiers UI,Item with modifiers,Toggles visible,Staff + menu data,/pos/,BLOCKED,,,
+G005,G,Modifier on,Toggle modifier,Selected styling,Staff creds,/pos/,BLOCKED,,,
+G006,G,Modifier off,Toggle off,Removed,Staff creds,/pos/,BLOCKED,,,
+G007,G,Modifier price,Totals,Reflects modifier,Staff creds,/pos/,BLOCKED,,,OrderCart line math
+G008,G,Clear selection,After add,No stale selection,Staff creds,/pos/,BLOCKED,,,
+H001,H,Qty +,Plus button,qty and line total up,Staff creds,/pos/,BLOCKED,,,
+H002,H,Qty -,Minus to reduce,Updates / removes at 0,Staff creds,/pos/,BLOCKED,,,
+H003,H,Remove line,Reduce qty to 0,Gone,Staff creds,/pos/,BLOCKED,,,
+H004,H,Totals,Several items,Subtotal matches sum,Staff creds,/pos/,BLOCKED,,,Note: discount not in cartTotal display — known product behavior
+H005,H,Clear cart,Clear button,Empty,Staff creds,/pos/,BLOCKED,,,
+H006,H,Empty state,No items,No items yet.,Staff creds,/pos/,BLOCKED,,,
+H007,H,Category w/ cart,Switch category,Cart persists,Staff creds,/pos/,BLOCKED,,,
+H008,H,Order type w/ cart,Change type with items,Stable,Staff creds,/pos/,BLOCKED,,,
+I001,I,Valid barcode,Submit known barcode,Item added,Staff + barcode seed,/pos/,BLOCKED,,,lookupBarcode API
+I002,I,Invalid barcode,Unknown code,No crash / silent or fallback,Staff creds,/pos/,BLOCKED,,,
+I003,I,Barcode resilience,Repeat bad scans,App usable,Staff creds,/pos/,BLOCKED,,,
+J001,J,Discount apply,Enter discount MVR,Sent in payload (total display is pre-discount in UI),Staff creds,/pos/,BLOCKED,,,cartTotal ignores discountAmount in OrderCart.tsx
+J002,J,Discount change,Edit amount,Updates field,Staff creds,/pos/,BLOCKED,,,
+J003,J,Discount clear,Clear discount,Field empty,Staff creds,/pos/,BLOCKED,,,
+J004,J,Payment row,Default cash row,Present,Staff creds,/pos/,BLOCKED,,,
+J005,J,Split pay,Add split,Second row,Staff creds,/pos/,BLOCKED,,,
+J006,J,Edit payment,Change amount,Updates,Staff creds,/pos/,BLOCKED,,,
+J007,J,Remove split,Remove row,Gone,Staff creds,/pos/,BLOCKED,,,
+J008,J,Invalid payment,Non-numeric / negative,Server or client handling,Staff creds,/pos/,BLOCKED,,,parseFloat filters invalid in useOrderCreation
+K001,K,Takeaway order,Checkout takeaway,Success message,Staff creds,/pos/,BLOCKED,,,
+K002,K,Dine-in order,With table,Success,Staff + table,/pos/,BLOCKED,,,
+K003,K,Online pickup,Checkout,Success,Staff creds,/pos/,BLOCKED,,,
+K004,K,Status message,After checkout,Order paid and sent…,Staff creds,/pos/,BLOCKED,,,
+K005,K,Cart clears,After success,Empty cart,Staff creds,/pos/,BLOCKED,,,
+K006,K,lastCreatedOrderId,After success,Send Bill available,Staff creds,/pos/,BLOCKED,,,
+K007,K,Double click,Rapid Checkout,isSubmitting guard,Staff creds,/pos/,BLOCKED,,,useOrderCreation line 68
+K008,K,Empty cart checkout,Checkout w/o items,No-op,Staff creds,/pos/,BLOCKED,,,handleCheckout early return
+K009,K,Dine-in validation,No table,Select a table…,Staff creds,/pos/,BLOCKED,,,
+K010,K,API failure,Order 5xx,Error message,Simulated,/pos/,NOT EXECUTED,,,
+L001,L,Post payment,After createOrder,createOrderPayments succeeds,Staff creds,/pos/,BLOCKED,,,Bundled in handleCheckout
+L002,L,Valid amount,Payment totals,OK,Staff creds,/pos/,BLOCKED,,,
+L003,L,Multiple payments,Split tender,OK,Staff creds,/pos/,BLOCKED,,,
+L004,L,Invalid payment,Bad amounts,Safe failure,Staff creds,/pos/,BLOCKED,,,
+L005,L,Consistency,Payment fail after order,Message; no dup,Staff creds,/pos/,BLOCKED,,,
+M001,M,Hold,Hold with items,Order held,Staff creds,/pos/,BLOCKED,,,
+M002,M,Resume,Resume last,Cart restored,Staff creds,/pos/,BLOCKED,,,
+M003,M,Complete after resume,Checkout,Works,Staff creds,/pos/,BLOCKED,,,
+N001,N,Order exists,After checkout,order id,Staff creds,/pos/,BLOCKED,,,
+N002,N,Send Bill btn,lastCreatedOrderId set,Button visible,Staff creds,/pos/,BLOCKED,,,
+N003,N,Open panel,Click Send Bill,Modal open,Staff creds,/pos/,BLOCKED,,,
+N004,N,Close panel,X,Closed,Staff creds,/pos/,BLOCKED,,,
+N005,N,Valid phone,+9607…,Success + link,Staff + SMS backend,/pos/,BLOCKED,,,
+N006,N,Invalid phone,Bad number,Validation error,Staff creds,/pos/,BLOCKED,,,SendBillPanel regex
+N007,N,Send failure,API error,Error in panel,Staff creds,/pos/,BLOCKED,,,
+O001,O,OPS load,Switch OPS,Panels load,Staff creds,/pos/,BLOCKED,,,
+O002,O,Current shift,See shift card,State visible,Staff creds,/pos/,BLOCKED,,,
+O003,O,Open shift,Opening cash,Shift opened,Staff creds,/pos/,BLOCKED,,,
+O004,O,Close shift,Closing cash,Closed + variance,Staff creds,/pos/,BLOCKED,,,
+O005,O,Bad open,Non-numeric opening,Validation msg,Staff creds,/pos/,BLOCKED,,,
+O006,O,Bad close,Non-numeric closing,Validation msg,Staff creds,/pos/,BLOCKED,,,
+P001,P,Cash in,Record movement,Success,Open shift,/pos/,BLOCKED,,,
+P002,P,Cash out,Record,Success,Open shift,/pos/,BLOCKED,,,
+P003,P,Invalid movement,Missing reason/amount,Error,Staff creds,/pos/,BLOCKED,,,
+P004,P,Feedback,opsMessage,Visible,Staff creds,/pos/,BLOCKED,,,
+Q001,Q,Sales summary default,Enter OPS,Data loads,Staff creds,/pos/,BLOCKED,,,Auto fetch on dates
+Q002,Q,From date,Set from,Loads,Staff creds,/pos/,BLOCKED,,,
+Q003,Q,To date,Set to,Loads,Staff creds,/pos/,BLOCKED,,,
+Q004,Q,Range,from+to,Loads,Staff creds,/pos/,BLOCKED,,,
+Q005,Q,Empty range,No orders,No crash,Staff + empty data,/pos/,BLOCKED,,,
+R001,R,Inventory list,Rows,Visible,Staff creds,/pos/,BLOCKED,,,
+R002,R,Stock up,Positive qty,Success,Staff creds,/pos/,BLOCKED,,,
+R003,R,Stock down,Negative qty,Success,Staff creds,/pos/,BLOCKED,,,
+R004,R,Adjustment reason,type=adjustment,OK,Staff creds,/pos/,BLOCKED,,,
+R005,R,Waste,type=waste,OK,Staff creds,/pos/,BLOCKED,,,
+R006,R,Correction,type=correction,OK,Staff creds,/pos/,BLOCKED,,,
+R007,R,Invalid qty,Non-finite,Message,Staff creds,/pos/,BLOCKED,,,
+R008,R,Feedback,Success/fail,opsMessage,Staff creds,/pos/,BLOCKED,,,
+S001,S,Suppliers list,Load,Names,Staff creds,/pos/,BLOCKED,,,
+S002,S,Supplier name only,Create,OK if API allows,Staff creds,/pos/,BLOCKED,,,
+S003,S,Supplier full,Name+phone,OK,Staff creds,/pos/,BLOCKED,,,
+S004,S,Bad supplier,Empty name,No-op / error,Staff creds,/pos/,BLOCKED,,,handleCreateSupplier early return
+S005,S,Purchase w supplier,Record,OK,Staff creds,/pos/,BLOCKED,,,
+S006,S,Purchase no supplier,Optional supplier,OK,Staff creds,/pos/,BLOCKED,,,
+S007,S,Multi line purchase,Add items,Code: single line only in UI,Staff creds,/pos/,BLOCKED,,,OpsPanel only one item row — mark potential NA for multi-line
+S008,S,Bad purchase,Invalid qty/cost,Message,Staff creds,/pos/,BLOCKED,,,
+T001,T,Refunds list,Load,Table area,Staff creds,/pos/,BLOCKED,,,
+T002,T,Filter,If UI exists,N/A in POS OpsPanel,—,/pos/,NOT AVAILABLE,,,No status filter in OpsPanel; API supports ?status
+T003,T,Create refund,order id + amount,Recorded,Staff creds,/pos/,BLOCKED,,,
+T004,T,Invalid refund,Bad amount,Message,Staff creds,/pos/,BLOCKED,,,
+T005,T,Refund reason,Optional reason,OK,Staff creds,/pos/,BLOCKED,,,
+T006,T,Order state,After refund,Consistent,Staff creds,/pos/,BLOCKED,,,
+U001,U,Promo UI,OPS SMS section,Loads,Staff creds,/pos/,BLOCKED,,,
+U002,U,Preview,Message + preview,Estimate shown,Staff creds,/pos/,BLOCKED,,,
+U003,U,Empty preview,No message,Enter promotion message,Staff creds,/pos/,BLOCKED,,,
+U004,U,Send valid,Send SMS,Queued/success,Staff creds,/pos/,BLOCKED,,,
+U005,U,Send invalid,Bad payload,Handled,Staff creds,/pos/,BLOCKED,,,
+V001,V,Login failure UX,Bad creds,Useful error,None,/pos/,PASS,Same as A003,pos-uat-evidence/A003-invalid-login.png,
+V002,V,Tables failure,API error,Graceful,Simulated,/pos/,NOT EXECUTED,,,App sets tables=[] on catch
+V003,V,Order failure,5xx on create,Message,Staff + sim,/pos/,BLOCKED,,,
+V004,V,Send bill failure,API error,Panel still usable,Staff creds,/pos/,BLOCKED,,,
+V005,V,Inventory API fail,5xx,opsMessage,Simulated,/pos/,NOT EXECUTED,,,
+W001,W,Tablet layout,768×1024 /pos/,Login usable,None,/pos/,PASS,Snapshot + screenshot session,,
+W002,W,Tablet login,Sign in tablet,Success,Staff creds,/pos/,BLOCKED,,,
+W003,W,Tablet order,Create order,Success,Staff creds,/pos/,BLOCKED,,,
+W004,W,Tablet OPS,OPS mode,Usable,Staff creds,/pos/,BLOCKED,,,
+W005,W,Mobile layout,390×844 /pos/,Usable,None,/pos/,PASS,,pos-uat-evidence/W005-mobile-login.png,
+W006,W,Mobile login,Sign in,Success,Staff creds,/pos/,BLOCKED,,,
+W007,W,Mobile cart,Use cart,Usable,Staff creds,/pos/,BLOCKED,,,
+W008,W,Mobile order,Checkout,Success,Staff creds,/pos/,BLOCKED,,,
+W009,W,Mobile Send Bill,Open panel,Usable,Staff creds,/pos/,BLOCKED,,,
