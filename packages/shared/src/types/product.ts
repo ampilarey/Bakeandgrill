@@ -57,6 +57,9 @@ export type MenuItem = {
   combo_discount_pct?: number | null;
   combo_items?: ComboItemEntry[];
   tax_rate?: number | null;
+  // Review aggregates (public API only)
+  avg_rating?: number | null;
+  review_count?: number;
 };
 
 export type ComboItemEntry = {

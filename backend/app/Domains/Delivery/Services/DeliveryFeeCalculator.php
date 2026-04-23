@@ -22,6 +22,11 @@ class DeliveryFeeCalculator
      */
     public function calculate(string $island, int $subtotalLaar = 0): float
     {
+        $freeThreshold = (float) config('delivery.free_threshold', 200.00);
+        if ($freeThreshold > 0 && $subtotalLaar >= (int) round($freeThreshold * 100)) {
+            return 0.0;
+        }
+
         $zones = $this->zones();
         $normalizedIsland = mb_strtolower(trim($island));
 
@@ -33,6 +38,11 @@ class DeliveryFeeCalculator
 
         // Default zone fee
         return (float) config('delivery.default_fee', 30.00);
+    }
+
+    public function freeThresholdMvr(): float
+    {
+        return (float) config('delivery.free_threshold', 200.00);
     }
 
     /**

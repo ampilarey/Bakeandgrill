@@ -155,6 +155,18 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
           </p>
         )}
 
+        {/* Star rating */}
+        {item.avg_rating != null && item.review_count != null && item.review_count > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <span style={{ color: '#f59e0b', fontSize: '0.78rem', letterSpacing: '-0.02em' }}>
+              {'★'.repeat(Math.round(item.avg_rating))}{'☆'.repeat(5 - Math.round(item.avg_rating))}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+              {item.avg_rating.toFixed(1)} ({item.review_count})
+            </span>
+          </div>
+        )}
+
         {/* Prep time */}
         {item.prep_time_minutes && (
           <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0 }}>

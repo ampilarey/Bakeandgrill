@@ -15,6 +15,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Free Delivery Threshold (MVR)
+    |--------------------------------------------------------------------------
+    |
+    | Orders with a subtotal at or above this threshold get free delivery.
+    | Set to 0 to disable (always charge the zone fee).
+    |
+    */
+    'free_threshold' => (float) env('DELIVERY_FREE_THRESHOLD', 200.00),
+
+    /*
+    |--------------------------------------------------------------------------
     | Zone-based Fees (Island => MVR)
     |--------------------------------------------------------------------------
     |

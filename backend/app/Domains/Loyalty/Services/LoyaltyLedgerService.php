@@ -185,6 +185,43 @@ class LoyaltyLedgerService
     }
 
     /**
+     * Credit a one-off bonus (e.g. referral reward) without requiring an Order.
+     * Idempotent — safe to call more than once with the same key.
+     */
+    public function creditBonus(Customer $customer, int $points, string $notes, string $idempotencyKey): void
+    {
+        if ($points <= 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($customer, $points, $notes, $idempotencyKey): void {
+            $this->accountFor($customer);
+            $account = LoyaltyAccount::where('customer_id', $customer->id)->lockForUpdate()->firstOrFail();
+
+            if ($this->ledgerRepo->existsByIdempotencyKey($idempotencyKey)) {
+                Log::info('Loyalty bonus already recorded, skipping', ['key' => $idempotencyKey]);
+
+                return;
+            }
+
+            $balanceAfter = $account->points_balance + $points;
+
+            $this->ledgerRepo->createEntry([
+                'idempotency_key' => $idempotencyKey,
+                'customer_id'     => $customer->id,
+                'order_id'        => null,
+                'type'            => 'bonus',
+                'points'          => $points,
+                'balance_after'   => $balanceAfter,
+                'notes'           => $notes,
+                'occurred_at'     => now(),
+            ]);
+
+            $this->accountRepo->updateBalance($customer->id, $balanceAfter, $points);
+        });
+    }
+
+    /**
      * Award points for a completed order.
      */
     public function earnPointsForOrder(Customer $customer, Order $order): void

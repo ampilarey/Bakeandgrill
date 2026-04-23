@@ -31,20 +31,32 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
 
     public function updateBalance(int $customerId, int $balance, ?int $addLifetime = null): void
     {
-        $update = ['points_balance' => $balance];
-
         if ($addLifetime !== null) {
+            $account = LoyaltyAccount::where('customer_id', $customerId)->first();
+            $newLifetime = ($account?->lifetime_points ?? 0) + $addLifetime;
+
             DB::table('loyalty_accounts')
                 ->where('customer_id', $customerId)
                 ->update([
-                    'points_balance' => $balance,
+                    'points_balance'  => $balance,
                     'lifetime_points' => DB::raw('lifetime_points + ' . (int) $addLifetime),
+                    'tier'            => $this->tierForLifetimePoints($newLifetime),
                 ]);
 
             return;
         }
 
-        DB::table('loyalty_accounts')->where('customer_id', $customerId)->update($update);
+        DB::table('loyalty_accounts')->where('customer_id', $customerId)->update(['points_balance' => $balance]);
+    }
+
+    private function tierForLifetimePoints(int $lifetime): string
+    {
+        return match (true) {
+            $lifetime >= 15000 => 'platinum',
+            $lifetime >= 5000  => 'gold',
+            $lifetime >= 1000  => 'silver',
+            default            => 'bronze',
+        };
     }
 
     public function decrementPointsHeld(int $customerId, int $points): void

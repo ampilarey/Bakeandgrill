@@ -42,13 +42,16 @@ class DeliveryGateService
         $result   = $this->evaluate($deliveryArea, $at);
         $schedule = $this->parseSchedule();
 
+        $freeThreshold = (float) config('delivery.free_threshold', 200.00);
+
         return [
-            'delivery_open'        => $result->allowed,
-            'message'              => $result->allowed ? null : $result->message,
-            'accepting_flag'       => $this->acceptingFlagOn(),
-            'schedule_active'      => $schedule !== null,
-            'zones_enforced'       => $this->parseZones() !== null,
-            'next_delivery_window' => $schedule ? $this->nextWindow($schedule, $at) : null,
+            'delivery_open'           => $result->allowed,
+            'message'                 => $result->allowed ? null : $result->message,
+            'accepting_flag'          => $this->acceptingFlagOn(),
+            'schedule_active'         => $schedule !== null,
+            'zones_enforced'          => $this->parseZones() !== null,
+            'next_delivery_window'    => $schedule ? $this->nextWindow($schedule, $at) : null,
+            'free_delivery_threshold' => $freeThreshold > 0 ? $freeThreshold : null,
         ];
     }
 

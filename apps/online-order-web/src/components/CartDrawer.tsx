@@ -1,6 +1,12 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchItems } from '../api';
+import type { Item } from '../api';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+
+// MVR threshold for free delivery — must match backend config/delivery.php DELIVERY_FREE_THRESHOLD
+const FREE_DELIVERY_MVR = 200;
 
 type Props = {
   isOpen?: boolean;
@@ -11,8 +17,24 @@ type Props = {
 
 export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const navigate = useNavigate();
-  const { cart, cartTotal, updateQuantity } = useCart();
+  const { cart, cartTotal, updateQuantity, addItem } = useCart();
   const { t } = useLanguage();
+  const [upsellItems, setUpsellItems] = useState<Item[]>([]);
+  const hasFetched = useRef(false);
+
+  // Fetch upsell candidates once (browser caches the GET — same request as MenuPage)
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    fetchItems().then(({ data }) => {
+      const inCartIds = new Set(cart.map((e) => e.item.id));
+      const candidates = data
+        .filter((item) => !inCartIds.has(item.id) && item.is_available !== false && !item.has_variants && Number(item.base_price) < 50)
+        .sort((a, b) => Number(a.base_price) - Number(b.base_price))
+        .slice(0, 3);
+      setUpsellItems(candidates);
+    }).catch(() => { /* non-fatal */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
@@ -92,6 +114,24 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
               <span>Subtotal</span>
               <span style={{ color: 'var(--color-primary)', fontSize: '1.05rem' }}>MVR {cartTotal.toFixed(2)}</span>
             </div>
+
+            {/* Free delivery progress bar */}
+            {cartTotal < FREE_DELIVERY_MVR && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
+                  <span>🛵 Add <strong style={{ color: 'var(--color-primary)' }}>MVR {(FREE_DELIVERY_MVR - cartTotal).toFixed(2)}</strong> for free delivery</span>
+                  <span>MVR {FREE_DELIVERY_MVR}</span>
+                </div>
+                <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, (cartTotal / FREE_DELIVERY_MVR) * 100)}%`, background: 'var(--color-primary)', borderRadius: 999, transition: 'width 0.3s ease' }} />
+                </div>
+              </div>
+            )}
+            {cartTotal >= FREE_DELIVERY_MVR && (
+              <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: '#15803d', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: '#dcfce7', borderRadius: 8 }}>
+                🎉 You qualify for free delivery!
+              </div>
+            )}
           </div>
         )}
 
@@ -124,6 +164,34 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           {!isOpen ? "Closed — not taking orders right now" : cart.length === 0 ? "Add items to continue" : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
         </button>
       </div>
+
+      {/* ── Upsell block ────────────────────────────────────────── */}
+      {upsellItems.length > 0 && cart.length > 0 && (
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1rem' }}>
+          <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Add to your order
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+            {upsellItems.map((item) => (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', flex: 1, lineHeight: 1.3 }}>{item.name}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>MVR {Number(item.base_price).toFixed(2)}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addItem(item as any, 1, [], null);
+                    setUpsellItems((prev) => prev.filter((u) => u.id !== item.id));
+                  }}
+                  style={{ flexShrink: 0, padding: '0.3rem 0.7rem', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                  aria-label={`Add ${item.name} to cart`}
+                >
+                  + Add
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

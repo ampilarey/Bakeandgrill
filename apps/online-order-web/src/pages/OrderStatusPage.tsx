@@ -192,7 +192,7 @@ const STATUS_CONFIG: Record<string, {
   },
   cancelled: {
     label: "Order cancelled",
-    sub: "This order was cancelled. Contact us if you have questions.",
+    sub: "This order was cancelled. If you were charged, your money will be refunded within 3–5 business days. Message us on WhatsApp if you need help.",
     next: undefined,
     color: "#991b1b", bg: "#fee2e2", icon: "✕",
   },
@@ -413,9 +413,19 @@ export function OrderStatusPage() {
         {paymentState === "FAILED" && (
           <div className="banner banner-error animate-fade-in">
             <span className="banner-icon">❌</span>
-            <div>
-              <p className="banner-title">Payment failed</p>
-              <p className="banner-sub">Please try paying again or contact us for help.</p>
+            <div style={{ flex: 1 }}>
+              <p className="banner-title">Payment didn't go through</p>
+              <p className="banner-sub">Your card was not charged. Please try paying again — or{' '}
+                <a
+                  href={s.business_whatsapp || 'https://wa.me/9609120011'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}
+                >
+                  message us on WhatsApp
+                </a>{' '}
+                and we'll sort it out.
+              </p>
             </div>
           </div>
         )}

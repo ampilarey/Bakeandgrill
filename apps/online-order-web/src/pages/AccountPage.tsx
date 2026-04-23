@@ -800,6 +800,43 @@ export function AccountPage() {
                 </p>
               </div>
 
+              {/* Tier progress bar */}
+              {(() => {
+                const TIERS = [
+                  { key: 'bronze',   label: 'Bronze',   threshold: 0,     next: 1000,  icon: '🥉' },
+                  { key: 'silver',   label: 'Silver',   threshold: 1000,  next: 5000,  icon: '🥈' },
+                  { key: 'gold',     label: 'Gold',     threshold: 5000,  next: 15000, icon: '🥇' },
+                  { key: 'platinum', label: 'Platinum', threshold: 15000, next: null,  icon: '💎' },
+                ];
+                const lifePoints = loyalty.lifetime_points ?? 0;
+                const currentIdx = TIERS.findIndex((t) => t.key === loyalty.tier);
+                const current = TIERS[currentIdx] ?? TIERS[0];
+                const nextTier = TIERS[currentIdx + 1];
+                if (!nextTier) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.04)', borderRadius: 12, fontSize: 13, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', fontWeight: 600 }}>
+                      💎 You've reached Platinum — the highest tier!
+                    </div>
+                  );
+                }
+                const progress = Math.min(1, Math.max(0, (lifePoints - current.threshold) / (nextTier.threshold - current.threshold)));
+                const ptsLeft = nextTier.threshold - lifePoints;
+                return (
+                  <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>{current.icon} {current.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: TIER_COLOR[nextTier.key]?.text ?? '#92400E' }}>{nextTier.icon} {nextTier.label}</span>
+                    </div>
+                    <div style={{ height: 10, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden', marginBottom: 8 }}>
+                      <div style={{ height: '100%', width: `${(progress * 100).toFixed(1)}%`, background: TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D', borderRadius: 999, transition: 'width 0.4s ease' }} />
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, textAlign: 'center' }}>
+                      {ptsLeft > 0 ? <><strong>{ptsLeft.toLocaleString()} pts</strong> to reach {nextTier.label}</> : `You've reached ${nextTier.label}!`}
+                    </p>
+                  </div>
+                );
+              })()}
+
               {/* How to earn */}
               <SectionCard title="How to Earn Points">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

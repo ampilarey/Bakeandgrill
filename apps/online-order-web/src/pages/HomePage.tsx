@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { fetchItems, fetchOpeningHoursStatus, fetchActiveSpecials, API_ORIGIN } from '../api';
-import type { Item, OpeningHoursStatus, DailySpecial } from '../api';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { fetchItems, fetchOpeningHoursStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, API_ORIGIN } from '../api';
+import type { Item, OpeningHoursStatus, DailySpecial, Order } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { HeroCarousel } from '../components/HeroCarousel';
+import { useCart } from '../context/CartContext';
 
 // ─── Category shortcuts data ──────────────────────────────────────────────────
 const CATEGORIES = [
@@ -17,12 +18,17 @@ const CATEGORIES = [
 ];
 
 export function HomePage() {
+  const navigate = useNavigate();
+  const { addItem, clearCart } = useCart();
   const [featuredItems, setFeaturedItems] = useState<Item[]>([]);
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
   const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
+  const [lastOrder, setLastOrder] = useState<Order | null>(null);
+  const [reordering, setReordering] = useState(false);
   const { settings: s, trustItems, heroSlides } = useSiteSettingsContext();
+  const reorderFetched = useRef(false);
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
   const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
@@ -51,6 +57,18 @@ export function HomePage() {
       setSpecials((sp ?? []).slice(0, 6));
     }).catch(() => { /* non-blocking */ });
   }, []);
+
+  // Load last order for returning customers (non-blocking)
+  useEffect(() => {
+    if (reorderFetched.current) return;
+    const token = localStorage.getItem('online_token');
+    if (!token) return;
+    reorderFetched.current = true;
+    fetchCustomerOrders(token).then(({ data }) => {
+      const completed = (data ?? []).find((o) => ['completed', 'delivered', 'paid'].includes(o.status));
+      if (completed) setLastOrder(completed);
+    }).catch(() => { /* non-blocking */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statusBadge =
     isOpen !== null ? (
@@ -107,6 +125,61 @@ export function HomePage() {
         fallback={gradientHeroFallback}
         statusSlot={statusBadge}
       />
+
+      {/* ── "Your usual" returning-customer block ──────────────────────────── */}
+      {lastOrder && (
+        <section style={{ background: 'linear-gradient(135deg, #FEF9F0, #FFF7ED)', borderBottom: '1px solid var(--color-border)', padding: '1.25rem var(--page-gutter)' }}>
+          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)', margin: '0 0 0.2rem' }}>
+                Welcome back!
+              </p>
+              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-dark)', margin: 0 }}>
+                Order #{lastOrder.order_number}
+                {lastOrder.items && lastOrder.items.length > 0 && (
+                  <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                    {' — '}{lastOrder.items.slice(0, 3).map((i) => i.item_name).join(', ')}
+                    {lastOrder.items.length > 3 ? ` +${lastOrder.items.length - 3} more` : ''}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={reordering}
+              onClick={async () => {
+                const token = localStorage.getItem('online_token');
+                if (!token) { navigate('/account'); return; }
+                setReordering(true);
+                try {
+                  const payload = await getReorderPayload(token, lastOrder.id);
+                  clearCart();
+                  for (const i of payload.items) {
+                    const fakeItem = { id: i.item_id, name: i.item_name, base_price: i.unit_price, has_variants: false, is_available: true } as any;
+                    addItem(fakeItem, i.quantity, [], null);
+                  }
+                  navigate('/checkout');
+                } catch {
+                  navigate('/menu');
+                } finally {
+                  setReordering(false);
+                }
+              }}
+              style={{
+                padding: '0.65rem 1.5rem',
+                background: 'var(--color-primary)', color: '#fff',
+                border: 'none', borderRadius: '10px',
+                fontSize: '0.9rem', fontWeight: 700,
+                cursor: reordering ? 'wait' : 'pointer',
+                fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+                opacity: reordering ? 0.7 : 1,
+              }}
+            >
+              {reordering ? 'Adding…' : '🔁 Reorder'}
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* ── Trust strip (Blade .trust-strip parity) ───────────────────────── */}
       <div className="order-trust-strip">

@@ -84,6 +84,12 @@ class Item extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function reviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Review::class);
+    }
+    }
+
     public function comboItems(): HasMany
     {
         return $this->hasMany(ComboItem::class, 'combo_id');
