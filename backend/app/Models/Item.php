@@ -88,7 +88,6 @@ class Item extends Model
     {
         return $this->hasMany(\App\Models\Review::class);
     }
-    }
 
     public function comboItems(): HasMany
     {
