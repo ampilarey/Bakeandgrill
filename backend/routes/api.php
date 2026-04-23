@@ -97,11 +97,12 @@ Route::prefix('auth/staff')->group(function () {
 */
 Route::prefix('auth/customer')
     ->group(function () {
-        // Existing OTP flow
+        // OTP flow — route throttle is intentionally lenient (IP-based, CGNAT-safe).
+        // Real per-phone enforcement is inside CustomerAuthController (20 req / 5 min per phone).
         Route::post('/otp/request', [CustomerAuthController::class, 'requestOtp'])
-            ->middleware('throttle:10,5');
+            ->middleware('throttle:60,1');
         Route::post('/otp/verify', [CustomerAuthController::class, 'verifyOtp'])
-            ->middleware('throttle:10,10');
+            ->middleware('throttle:60,1');
 
         // New: check if phone exists and has a password
         Route::post('/check-phone', [CustomerAuthController::class, 'checkPhone'])
@@ -118,11 +119,11 @@ Route::prefix('auth/customer')
         Route::get('/check', [CustomerAuthController::class, 'check'])
             ->middleware('throttle:20,1');
 
-        // New: password reset via OTP
+        // Password reset — controller guards per-phone (5 req / 30 min per phone).
         Route::post('/forgot-password', [CustomerAuthController::class, 'forgotPassword'])
-            ->middleware('throttle:3,5');
+            ->middleware('throttle:30,1');
         Route::post('/reset-password', [CustomerAuthController::class, 'resetPassword'])
-            ->middleware('throttle:5,10');
+            ->middleware('throttle:30,1');
     });
 
 // Staff logout — requires a staff Sanctum token

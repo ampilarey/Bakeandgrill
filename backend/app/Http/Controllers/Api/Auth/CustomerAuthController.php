@@ -241,6 +241,9 @@ class CustomerAuthController extends Controller
 
         $this->verifyAndConsumeOtp($phone, $input['otp']);
 
+        // Successful verification — clear OTP request rate limit so user can request again cleanly
+        RateLimiter::clear('otp-request:login:' . $phone);
+
         // Include soft-deleted rows so we don't hit a unique constraint violation
         // when a customer who was admin-deleted tries to log back in via OTP.
         $existing = Customer::withTrashed()->where('phone', $phone)->first();

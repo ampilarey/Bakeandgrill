@@ -48,15 +48,15 @@ class CustomerPortalController extends Controller
         }
 
         // New customer or no password → send OTP
-        $key = 'otp-request:' . $phone;
+        $key = 'otp-request:web:' . $phone;
 
-        if (RateLimiter::tooManyAttempts($key, 3)) {
+        if (RateLimiter::tooManyAttempts($key, 10)) {
             $seconds = RateLimiter::availableIn($key);
 
             return back()->withErrors(['phone' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
         }
 
-        RateLimiter::hit($key, 3600);
+        RateLimiter::hit($key, 600);
 
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -96,15 +96,15 @@ class CustomerPortalController extends Controller
             return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
         }
 
-        $key = 'otp-request:' . $phone;
+        $key = 'otp-request:web-reset:' . $phone;
 
-        if (RateLimiter::tooManyAttempts($key, 3)) {
+        if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
 
             return back()->withErrors(['phone' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
         }
 
-        RateLimiter::hit($key, 3600);
+        RateLimiter::hit($key, 600);
 
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -210,6 +210,9 @@ class CustomerPortalController extends Controller
         }
 
         $otpRecord->update(['used_at' => now()]);
+
+        // Successful verification — clear the OTP request rate limit for this phone
+        RateLimiter::clear('otp-request:web:' . $phone);
 
         $customer = Customer::firstOrCreate(
             ['phone' => $phone],
