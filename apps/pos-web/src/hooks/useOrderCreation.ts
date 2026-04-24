@@ -58,6 +58,7 @@ export function useOrderCreation(params: Params) {
         item_id: item.id,
         name: item.name,
         quantity: item.quantity,
+        ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
         modifiers: item.modifiers.map((m) => ({ modifier_id: m.id, name: m.name, price: m.price })),
       })),
     };
@@ -169,6 +170,8 @@ export function useOrderCreation(params: Params) {
           name: item.item_name,
           price: item.unit_price,
           quantity: item.quantity,
+          variant_id: item.variant_id ?? null,
+          variant_name: item.variant_name ?? null,
           modifiers: item.modifiers?.map((m) => ({
             id: m.modifier_id ?? 0,
             name: m.modifier_name,
@@ -225,6 +228,7 @@ export function useOrderCreation(params: Params) {
         item_id?: number | null;
         name: string;
         quantity: number;
+        variant_id?: number | null;
         modifiers?: Array<{ modifier_id?: number | null; name: string; price: number }>;
       }>;
     };

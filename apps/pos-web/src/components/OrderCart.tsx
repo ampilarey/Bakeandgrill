@@ -45,12 +45,15 @@ export function OrderCart({
             <p className="text-sm text-slate-400">No items yet.</p>
           )}
           {cartItems.map((item) => {
-            const itemKey = makeCartKey(item.id, item.modifiers);
+            const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id);
             return (
               <div key={itemKey}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">{item.name}</p>
+                    {item.variant_name && (
+                      <p className="text-xs text-slate-500">{item.variant_name}</p>
+                    )}
                     {item.modifiers.length > 0 && (
                       <p className="text-xs text-slate-500">
                         {item.modifiers.map((m) => m.name).join(", ")}
@@ -67,7 +70,7 @@ export function OrderCart({
                         setCartItems(
                           cartItems
                             .map((ci) =>
-                              makeCartKey(ci.id, ci.modifiers) === itemKey
+                              makeCartKey(ci.id, ci.modifiers, ci.variant_id) === itemKey
                                 ? { ...ci, quantity: ci.quantity - 1 }
                                 : ci,
                             )
@@ -83,7 +86,7 @@ export function OrderCart({
                       onClick={() =>
                         setCartItems(
                           cartItems.map((ci) =>
-                            makeCartKey(ci.id, ci.modifiers) === itemKey
+                            makeCartKey(ci.id, ci.modifiers, ci.variant_id) === itemKey
                               ? { ...ci, quantity: ci.quantity + 1 }
                               : ci,
                           ),

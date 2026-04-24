@@ -7,8 +7,19 @@ export type PaymentRow = {
   amount: string;
 };
 
-export const makeCartKey = (itemId: number, modifiers: Modifier[]) =>
-  `${itemId}-${modifiers.map((m) => m.id).sort().join(",")}`;
+/** First active variant, or first listed — matches server expectation when item.has_variants. */
+function defaultVariantForItem(item: Item): { id: number; name: string; price: number } | null {
+  if (!item.has_variants || !item.variants?.length) return null;
+  const v = item.variants.find((x) => x.is_active) ?? item.variants[0];
+  return {
+    id: v.id,
+    name: v.name,
+    price: parseFloat(String(v.price ?? 0)),
+  };
+}
+
+export const makeCartKey = (itemId: number, modifiers: Modifier[], variantId?: number | null) =>
+  `${itemId}-v${variantId ?? 0}-${modifiers.map((m) => m.id).sort().join(",")}`;
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -46,17 +57,29 @@ export function useCart() {
 
   const addToCart = useCallback((item: Item) => {
     const modifiers = selectedItem?.id === item.id ? selectedModifiers : [];
-    const key = makeCartKey(item.id, modifiers);
+    const defVar = defaultVariantForItem(item);
+    const key = makeCartKey(item.id, modifiers, defVar?.id);
     setCartItems((curr) => {
-      const existing = curr.find((ci) => makeCartKey(ci.id, ci.modifiers) === key);
+      const existing = curr.find((ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id) === key);
       if (existing) {
         return curr.map((ci) =>
           ci === existing ? { ...ci, quantity: ci.quantity + 1 } : ci,
         );
       }
-      const parsedPrice = parseFloat(String(item.base_price ?? 0));
+      const parsedPrice = defVar ? defVar.price : parseFloat(String(item.base_price ?? 0));
       const parsedModifiers = modifiers.map((m) => ({ ...m, price: parseFloat(String(m.price ?? 0)) }));
-      return [...curr, { id: item.id, name: item.name, price: parsedPrice, quantity: 1, modifiers: parsedModifiers }];
+      return [
+        ...curr,
+        {
+          id: item.id,
+          name: item.name,
+          price: parsedPrice,
+          quantity: 1,
+          modifiers: parsedModifiers,
+          variant_id: defVar?.id ?? null,
+          variant_name: defVar?.name ?? null,
+        },
+      ];
     });
   }, [selectedItem, selectedModifiers]);
 
@@ -64,7 +87,7 @@ export function useCart() {
     setCartItems((curr) =>
       curr
         .map((item) =>
-          makeCartKey(item.id, item.modifiers) === itemKey
+          makeCartKey(item.id, item.modifiers, item.variant_id) === itemKey
             ? { ...item, quantity: item.quantity + delta }
             : item,
         )

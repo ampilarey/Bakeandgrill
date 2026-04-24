@@ -88,6 +88,7 @@ export async function createOrder(payload: {
     item_id?: number | null;
     name: string;
     quantity: number;
+    variant_id?: number | null;
     modifiers?: Array<{
       modifier_id?: number | null;
       name: string;
@@ -112,6 +113,7 @@ export async function createOrderBatch(payload: {
       item_id?: number | null;
       name: string;
       quantity: number;
+      variant_id?: number | null;
       modifiers?: Array<{
         modifier_id?: number | null;
         name: string;
@@ -147,6 +149,8 @@ export async function getOrder(orderId: number): Promise<{
     items: Array<{
       item_id: number | null;
       item_name: string;
+      variant_id?: number | null;
+      variant_name?: string | null;
       unit_price: number;
       quantity: number;
       modifiers?: Array<{
