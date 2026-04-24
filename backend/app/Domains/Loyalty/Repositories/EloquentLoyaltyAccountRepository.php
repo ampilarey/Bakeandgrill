@@ -39,7 +39,7 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
                 ->where('customer_id', $customerId)
                 ->update([
                     'points_balance' => $balance,
-                    'lifetime_points' => DB::raw('lifetime_points + ' . (int) $addLifetime),
+                    'lifetime_points' => DB::raw('lifetime_points + '.(int) $addLifetime),
                     'tier' => $this->tierForLifetimePoints($newLifetime),
                 ]);
 
@@ -67,9 +67,9 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
             ->where('customer_id', $customerId)
             ->update([
                 'points_held' => DB::raw(
-                    'CASE WHEN points_held > ' . (int) $points
-                    . ' THEN points_held - ' . (int) $points
-                    . ' ELSE 0 END',
+                    'CASE WHEN points_held > '.(int) $points
+                    .' THEN points_held - '.(int) $points
+                    .' ELSE 0 END',
                 ),
             ]);
     }

@@ -45,23 +45,23 @@ class StaffScheduleObserver
     private function sendScheduleAssignedSms(StaffSchedule $schedule): void
     {
         $settingEnabled = $this->isSettingEnabled('staff_sms_schedule_assigned_enabled');
-        if (!$settingEnabled) {
+        if (! $settingEnabled) {
             return;
         }
 
         $user = $schedule->user;
-        if (!$user || !$user->phone || !$user->is_active) {
+        if (! $user || ! $user->phone || ! $user->is_active) {
             return;
         }
 
         // Check if staff has notifications enabled
         $pref = StaffNotificationPref::where('user_id', $user->id)->first();
-        if ($pref && !$pref->notifications_enabled) {
+        if ($pref && ! $pref->notifications_enabled) {
             return;
         }
 
         $template = SmsTemplate::where('slug', 'schedule_assigned')->first();
-        if (!$template) {
+        if (! $template) {
             return;
         }
 
@@ -79,7 +79,7 @@ class StaffScheduleObserver
                 type: 'staff_notification',
                 referenceType: 'staff_schedule',
                 referenceId: (string) $schedule->id,
-                idempotencyKey: 'schedule-assigned:' . $schedule->id . ':' . $schedule->updated_at?->timestamp,
+                idempotencyKey: 'schedule-assigned:'.$schedule->id.':'.$schedule->updated_at?->timestamp,
             ));
         } catch (\Throwable $e) {
             Log::error('StaffScheduleObserver: failed to send schedule assigned SMS', [
@@ -93,12 +93,12 @@ class StaffScheduleObserver
     private function scheduleShiftReminder(StaffSchedule $schedule): void
     {
         $settingEnabled = $this->isSettingEnabled('staff_sms_shift_reminder_enabled');
-        if (!$settingEnabled) {
+        if (! $settingEnabled) {
             return;
         }
 
         $user = $schedule->user;
-        if (!$user || !$user->phone) {
+        if (! $user || ! $user->phone) {
             return;
         }
 
@@ -109,12 +109,12 @@ class StaffScheduleObserver
         );
 
         $template = SmsTemplate::where('slug', 'shift_reminder')->first();
-        if (!$template) {
+        if (! $template) {
             return;
         }
 
         // Schedule: 1 hour before shift start
-        $shiftDateTime = Carbon::parse($schedule->date->format('Y-m-d') . ' ' . $schedule->shift_start);
+        $shiftDateTime = Carbon::parse($schedule->date->format('Y-m-d').' '.$schedule->shift_start);
         $sendAt = $shiftDateTime->subHour();
 
         // Don't schedule reminders in the past
@@ -123,7 +123,7 @@ class StaffScheduleObserver
         }
 
         SmsScheduledMessage::create([
-            'name' => 'Shift reminder: ' . $user->name . ' on ' . $schedule->date->format('d M'),
+            'name' => 'Shift reminder: '.$user->name.' on '.$schedule->date->format('d M'),
             'to_type' => 'contact',
             'to_contact_id' => $contact->id,
             'template_id' => $template->id,
@@ -141,20 +141,20 @@ class StaffScheduleObserver
     private function cancelExistingReminder(StaffSchedule $schedule): void
     {
         $user = $schedule->user;
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
         // Cancel pending shift reminders for this user on this date
         $contact = SmsContact::where('user_id', $user->id)->where('type', 'staff')->first();
-        if (!$contact) {
+        if (! $contact) {
             return;
         }
 
         SmsScheduledMessage::where('to_contact_id', $contact->id)
             ->where('status', 'active')
             ->where('is_recurring', false)
-            ->where('name', 'like', 'Shift reminder: ' . $user->name . ' on ' . $schedule->date->format('d M') . '%')
+            ->where('name', 'like', 'Shift reminder: '.$user->name.' on '.$schedule->date->format('d M').'%')
             ->update(['status' => 'cancelled']);
     }
 

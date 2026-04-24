@@ -22,6 +22,7 @@ class AuthContractTest extends ContractTestCase
     use RefreshDatabase;
 
     private string $ownerEmail = 'contract-owner@test.com';
+
     private string $ownerPin = '9988';
 
     /**

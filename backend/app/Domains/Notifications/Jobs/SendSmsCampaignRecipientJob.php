@@ -24,7 +24,9 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 60;
+
     public int $timeout = 60;
 
     public function __construct(
@@ -40,7 +42,7 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
         // Re-load campaign fresh; the serialised relation may be stale or deleted.
         $campaign = SmsCampaign::find($this->recipient->sms_campaign_id);
 
-        if (!$campaign) {
+        if (! $campaign) {
             Log::warning('SendSmsCampaignRecipientJob: campaign not found, marking recipient failed', [
                 'recipient_id' => $this->recipient->id,
                 'campaign_id' => $this->recipient->sms_campaign_id,

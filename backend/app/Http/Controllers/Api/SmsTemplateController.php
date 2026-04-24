@@ -34,7 +34,7 @@ class SmsTemplateController extends Controller
         ]);
 
         $data['is_system'] = false;
-        $data['slug'] = \Illuminate\Support\Str::slug($data['name']) . '-' . \Illuminate\Support\Str::random(4);
+        $data['slug'] = \Illuminate\Support\Str::slug($data['name']).'-'.\Illuminate\Support\Str::random(4);
 
         $template = SmsTemplate::create($data);
 

@@ -17,7 +17,9 @@ class LoyaltyTest extends TestCase
     use RefreshDatabase;
 
     private LoyaltyLedgerService $service;
+
     private Customer $customer;
+
     private Order $order;
 
     protected function setUp(): void

@@ -36,7 +36,7 @@ class ReconcileLoyaltyBalances extends Command
                     'diff' => $ledgerSum - $account->points_balance,
                 ];
 
-                if (!$this->option('dry-run')) {
+                if (! $this->option('dry-run')) {
                     $account->update(['points_balance' => max(0, $ledgerSum)]);
                     $fixed++;
                 }
@@ -52,7 +52,7 @@ class ReconcileLoyaltyBalances extends Command
             );
 
             if ($this->option('dry-run')) {
-                $this->warn('Dry run: ' . count($mismatches) . ' mismatches found. Run without --dry-run to fix.');
+                $this->warn('Dry run: '.count($mismatches).' mismatches found. Run without --dry-run to fix.');
             } else {
                 $this->info("Fixed {$fixed} balance mismatches.");
             }

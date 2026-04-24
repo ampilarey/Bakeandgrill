@@ -21,7 +21,7 @@ class FavoritesController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -45,7 +45,7 @@ class FavoritesController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -84,7 +84,7 @@ class FavoritesController extends Controller
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
         // Also explicitly scopes order lookup to this customer's orders.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 

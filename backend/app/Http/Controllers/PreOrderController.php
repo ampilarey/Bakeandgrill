@@ -14,7 +14,7 @@ class PreOrderController extends Controller
     public function create()
     {
         // Require login for event orders
-        if (!session('customer_id')) {
+        if (! session('customer_id')) {
             session(['intended_url' => '/pre-order']);
 
             return redirect('/customer/login')->with('message', 'Please login to place event orders');
@@ -31,7 +31,7 @@ class PreOrderController extends Controller
     public function store(Request $request)
     {
         // Require login
-        if (!session('customer_id')) {
+        if (! session('customer_id')) {
             return redirect('/customer/login');
         }
 
@@ -52,7 +52,7 @@ class PreOrderController extends Controller
 
         foreach ($request->items as $itemData) {
             $item = Item::find($itemData['item_id']);
-            if (!$item) {
+            if (! $item) {
                 continue;
             }
 
@@ -70,7 +70,7 @@ class PreOrderController extends Controller
 
         // Create pre-order
         $preOrder = PreOrder::create([
-            'order_number' => 'PRE-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
+            'order_number' => 'PRE-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
             'customer_id' => session('customer_id'),
             'customer_name' => $request->customer_name,
             'customer_phone' => $request->customer_phone,

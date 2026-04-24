@@ -35,7 +35,7 @@ final class PrayerTimeHelper
      */
     public static function parseDate(string $dateStr): ?\Carbon\Carbon
     {
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateStr)) {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateStr)) {
             return null;
         }
 

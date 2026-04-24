@@ -45,7 +45,7 @@ class PurchaseWorkflowController extends Controller
     {
         $purchase = Purchase::findOrFail($id);
 
-        if (!in_array($purchase->status, ['draft', 'ordered'])) {
+        if (! in_array($purchase->status, ['draft', 'ordered'])) {
             return response()->json(['message' => 'Only draft or ordered purchases can be rejected.'], 422);
         }
 
@@ -53,7 +53,7 @@ class PurchaseWorkflowController extends Controller
 
         $purchase->update([
             'status' => 'cancelled',
-            'notes' => ($purchase->notes ? $purchase->notes . "\n" : '') . 'Rejected: ' . ($validated['reason'] ?? 'No reason given'),
+            'notes' => ($purchase->notes ? $purchase->notes."\n" : '').'Rejected: '.($validated['reason'] ?? 'No reason given'),
         ]);
 
         $this->audit->log('purchase.rejected', 'Purchase', $id, [], [], [], $request);
@@ -77,7 +77,7 @@ class PurchaseWorkflowController extends Controller
 
         $purchase = Purchase::with('items.inventoryItem')->findOrFail($id);
 
-        if (!in_array($purchase->status, ['ordered', 'partial'])) {
+        if (! in_array($purchase->status, ['ordered', 'partial'])) {
             return response()->json(['message' => 'Only ordered or partial purchases can receive items.'], 422);
         }
 
@@ -93,6 +93,7 @@ class PurchaseWorkflowController extends Controller
                 if ($isRejected) {
                     $pItem->receive_status = 'rejected';
                     $pItem->save();
+
                     continue;
                 }
 
@@ -283,6 +284,6 @@ class PurchaseWorkflowController extends Controller
         $date = now()->format('Ymd');
         $count = Purchase::whereDate('purchase_date', now()->toDateString())->count() + 1;
 
-        return 'PO-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        return 'PO-'.$date.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
     }
 }

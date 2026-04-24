@@ -101,7 +101,7 @@ class AnalyticsController extends Controller
 
             foreach ($orders as $order) {
                 $orderDate = Carbon::parse($order->created_at);
-                if (!$orderDate->between($start, $end)) {
+                if (! $orderDate->between($start, $end)) {
                     continue;
                 }
                 $cid = $order->customer_id;
@@ -143,7 +143,7 @@ class AnalyticsController extends Controller
         $items = DB::table('order_items as oi')
             ->join('items as i', 'i.id', '=', 'oi.item_id')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
-            ->whereBetween('o.created_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->whereBetween('o.created_at', [$from.' 00:00:00', $to.' 23:59:59'])
             ->where('o.status', 'completed')
             ->selectRaw('
                 i.id,

@@ -43,7 +43,7 @@ class DhiraaguSmsProvider implements SmsProviderInterface
         $password = $config['password'] ?? null;
         $apiUrl = $config['api_url'] ?? null;
 
-        if (!$username || !$password || !$apiUrl) {
+        if (! $username || ! $password || ! $apiUrl) {
             return null;
         }
 
@@ -62,7 +62,7 @@ class DhiraaguSmsProvider implements SmsProviderInterface
 
     private function sendViaDhiraagu(string $phone, string $message, array $creds): array
     {
-        $authorizationKey = base64_encode($creds['username'] . ':' . $creds['password']);
+        $authorizationKey = base64_encode($creds['username'].':'.$creds['password']);
 
         try {
             $response = Http::timeout($creds['timeout'])

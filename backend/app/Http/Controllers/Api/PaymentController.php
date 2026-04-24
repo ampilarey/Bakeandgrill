@@ -23,7 +23,7 @@ class PaymentController extends Controller
     {
         $order = Order::findOrFail($orderId);
 
-        if (!$request->user()->tokenCan('customer')) {
+        if (! $request->user()->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -60,7 +60,7 @@ class PaymentController extends Controller
 
         // Hold the order in payment_pending until BML webhook confirms.
         // Kitchen (KDS/admin) should not see it until payment is confirmed.
-        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+        if (! in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
             $order->update(['status' => 'payment_pending']);
         }
 
@@ -91,7 +91,7 @@ class PaymentController extends Controller
 
         $order = Order::findOrFail($validated['order_id']);
 
-        if (!$request->user()->tokenCan('customer')) {
+        if (! $request->user()->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -126,7 +126,7 @@ class PaymentController extends Controller
 
         // Hold the order in payment_pending until BML webhook confirms payment,
         // so it does not appear in KDS/kitchen queue before payment is received.
-        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+        if (! in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
             $order->update(['status' => 'payment_pending']);
         }
 
@@ -170,7 +170,7 @@ class PaymentController extends Controller
             $baseUrl = '/order/orders';
         }
 
-        return redirect(rtrim($baseUrl, '/') . '/' . $orderId . '?payment=' . $state);
+        return redirect(rtrim($baseUrl, '/').'/'.$orderId.'?payment='.$state);
     }
 
     /**
@@ -178,7 +178,7 @@ class PaymentController extends Controller
      */
     public function completeZeroBalance(Request $request, int $orderId): JsonResponse
     {
-        if (!$request->user()->tokenCan('customer')) {
+        if (! $request->user()->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

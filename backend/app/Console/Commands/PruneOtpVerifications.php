@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 class PruneOtpVerifications extends Command
 {
     protected $signature = 'otp:prune';
+
     protected $description = 'Delete OTP verification records older than 24 hours';
 
     public function handle(): int

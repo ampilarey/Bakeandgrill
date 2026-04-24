@@ -38,7 +38,7 @@ class ConsumeLoyaltyHoldListener implements ShouldQueue
             ->whereIn('status', ['active', 'expired'])
             ->first();
 
-        if (!$hold) {
+        if (! $hold) {
             return;
         }
 

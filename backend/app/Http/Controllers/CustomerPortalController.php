@@ -35,25 +35,25 @@ class CustomerPortalController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
+        if (! preg_match('/^\+960[0-9]{7}$/', $phone)) {
             return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
         }
 
         // Returning customer with a password → show password form (no SMS cost)
         $customer = Customer::where('phone', $phone)->first();
-        if ($customer && !empty($customer->password)) {
+        if ($customer && ! empty($customer->password)) {
             return back()
                 ->with('password_step', true)
                 ->with('phone', $phone);
         }
 
         // New customer or no password → send OTP
-        $key = 'otp-request:web:' . $phone;
+        $key = 'otp-request:web:'.$phone;
 
         if (RateLimiter::tooManyAttempts($key, 10)) {
             $seconds = RateLimiter::availableIn($key);
 
-            return back()->withErrors(['phone' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
+            return back()->withErrors(['phone' => 'Too many attempts. Try again in '.ceil($seconds / 60).' minutes.']);
         }
 
         RateLimiter::hit($key, 600);
@@ -72,7 +72,7 @@ class CustomerPortalController extends Controller
         $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
         $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
-        if (!app()->environment('production') && !$smsSent) {
+        if (! app()->environment('production') && ! $smsSent) {
             session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
@@ -92,16 +92,16 @@ class CustomerPortalController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
+        if (! preg_match('/^\+960[0-9]{7}$/', $phone)) {
             return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
         }
 
-        $key = 'otp-request:web-reset:' . $phone;
+        $key = 'otp-request:web-reset:'.$phone;
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
 
-            return back()->withErrors(['phone' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
+            return back()->withErrors(['phone' => 'Too many attempts. Try again in '.ceil($seconds / 60).' minutes.']);
         }
 
         RateLimiter::hit($key, 600);
@@ -120,7 +120,7 @@ class CustomerPortalController extends Controller
         $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
         $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
-        if (!app()->environment('production') && !$smsSent) {
+        if (! app()->environment('production') && ! $smsSent) {
             session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
@@ -144,7 +144,7 @@ class CustomerPortalController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (!$otpRecord || !Hash::check($request->otp, $otpRecord->code_hash)) {
+        if (! $otpRecord || ! Hash::check($request->otp, $otpRecord->code_hash)) {
             return back()->withErrors(['otp' => 'Invalid or expired code']);
         }
 
@@ -166,7 +166,7 @@ class CustomerPortalController extends Controller
         $phone = $this->normalizePhone($request->phone);
         $customer = Customer::where('phone', $phone)->first();
 
-        if (!$customer) {
+        if (! $customer) {
             return back()->withErrors(['phone' => 'No account found for this phone number.']);
         }
 
@@ -191,11 +191,11 @@ class CustomerPortalController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        $verifyKey = 'otp-web-verify:' . $phone;
+        $verifyKey = 'otp-web-verify:'.$phone;
         if (RateLimiter::tooManyAttempts($verifyKey, 5)) {
             $seconds = RateLimiter::availableIn($verifyKey);
 
-            return back()->withErrors(['otp' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
+            return back()->withErrors(['otp' => 'Too many attempts. Try again in '.ceil($seconds / 60).' minutes.']);
         }
         RateLimiter::hit($verifyKey, 600);
 
@@ -205,21 +205,21 @@ class CustomerPortalController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (!$otpRecord || !Hash::check($request->otp, $otpRecord->code_hash)) {
+        if (! $otpRecord || ! Hash::check($request->otp, $otpRecord->code_hash)) {
             return back()->withErrors(['otp' => 'Invalid or expired OTP']);
         }
 
         $otpRecord->update(['used_at' => now()]);
 
         // Successful verification — clear the OTP request rate limit for this phone
-        RateLimiter::clear('otp-request:web:' . $phone);
+        RateLimiter::clear('otp-request:web:'.$phone);
 
         $customer = Customer::firstOrCreate(
             ['phone' => $phone],
             ['loyalty_points' => 0, 'tier' => 'bronze'],
         );
 
-        if (!$customer->wasRecentlyCreated && !$customer->is_active) {
+        if (! $customer->wasRecentlyCreated && ! $customer->is_active) {
             return back()->withErrors(['otp' => 'This account has been deactivated. Please contact support.']);
         }
 
@@ -231,7 +231,7 @@ class CustomerPortalController extends Controller
         $request->session()->regenerate();
 
         // Redirect to profile setup if this is a first-time customer
-        if (!$customer->is_profile_complete) {
+        if (! $customer->is_profile_complete) {
             $this->queueHandoffCookies($customer);
 
             return redirect()->route('customer.complete-profile');
@@ -241,7 +241,7 @@ class CustomerPortalController extends Controller
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
-        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
+        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
             $intendedUrl = '/';
         }
 
@@ -260,11 +260,11 @@ class CustomerPortalController extends Controller
         $phone = $this->normalizePhone($request->phone);
         $customer = Customer::where('phone', $phone)->first();
 
-        if (!$customer || empty($customer->password) || !Hash::check($request->password, $customer->password)) {
+        if (! $customer || empty($customer->password) || ! Hash::check($request->password, $customer->password)) {
             return back()->withErrors(['password' => 'Invalid phone number or password.'])->withInput(['phone' => $request->phone]);
         }
 
-        if (!$customer->is_active) {
+        if (! $customer->is_active) {
             return back()->withErrors(['phone' => 'This account has been deactivated. Please contact support.'])->withInput(['phone' => $request->phone]);
         }
 
@@ -273,7 +273,7 @@ class CustomerPortalController extends Controller
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
-        if (!$customer->is_profile_complete) {
+        if (! $customer->is_profile_complete) {
             $this->queueHandoffCookies($customer);
 
             return redirect()->route('customer.complete-profile');
@@ -283,7 +283,7 @@ class CustomerPortalController extends Controller
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
-        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
+        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
             $intendedUrl = '/';
         }
 
@@ -294,7 +294,7 @@ class CustomerPortalController extends Controller
 
     public function showCompleteProfile()
     {
-        if (!Auth::guard('customer')->check()) {
+        if (! Auth::guard('customer')->check()) {
             return redirect()->route('customer.login');
         }
 
@@ -303,7 +303,7 @@ class CustomerPortalController extends Controller
 
     public function completeProfile(Request $request)
     {
-        if (!Auth::guard('customer')->check()) {
+        if (! Auth::guard('customer')->check()) {
             return redirect()->route('customer.login');
         }
 
@@ -328,7 +328,7 @@ class CustomerPortalController extends Controller
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
-        if (!is_string($intendedUrl) || !str_starts_with($intendedUrl, '/')) {
+        if (! is_string($intendedUrl) || ! str_starts_with($intendedUrl, '/')) {
             $intendedUrl = '/';
         }
 
@@ -348,7 +348,7 @@ class CustomerPortalController extends Controller
         /** @var Customer $customer */
         $customer = $request->user();
 
-        if (!$customer->is_active) {
+        if (! $customer->is_active) {
             return response()->json(['message' => 'This account has been deactivated.'], 403);
         }
 
@@ -391,7 +391,7 @@ class CustomerPortalController extends Controller
     private function queueHandoffCookies(Customer $customer): void
     {
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-'.$customer->phone, ['customer'])->plainTextToken;
         // Always show the short phone number (strip +960) so both apps show the same thing
         $name = str_replace('+960', '', $customer->phone ?? '');
         $domain = config('session.domain'); // .bakeandgrill.mv

@@ -23,9 +23,13 @@ class RoleAuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private User $owner;
+
     private User $manager;
+
     private User $staff;
+
     private Customer $customer;
+
     private string $customerToken;
 
     protected function setUp(): void

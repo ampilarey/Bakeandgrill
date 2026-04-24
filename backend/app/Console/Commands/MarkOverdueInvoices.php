@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 class MarkOverdueInvoices extends Command
 {
     protected $signature = 'invoices:mark-overdue';
+
     protected $description = 'Mark sent invoices past their due date as overdue';
 
     public function handle(): int

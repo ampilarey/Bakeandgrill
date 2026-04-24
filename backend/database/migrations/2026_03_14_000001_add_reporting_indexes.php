@@ -16,28 +16,28 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (Schema::hasColumn('payments', 'processed_at') && !$this->indexExists('payments', 'payments_processed_at_index')) {
+            if (Schema::hasColumn('payments', 'processed_at') && ! $this->indexExists('payments', 'payments_processed_at_index')) {
                 $table->index('processed_at');
             }
-            if (Schema::hasColumn('payments', 'reference_number') && !$this->indexExists('payments', 'payments_reference_number_index')) {
+            if (Schema::hasColumn('payments', 'reference_number') && ! $this->indexExists('payments', 'payments_reference_number_index')) {
                 $table->index('reference_number');
             }
         });
 
         Schema::table('orders', function (Blueprint $table) {
-            if (!$this->indexExists('orders', 'orders_status_created_at_index')) {
+            if (! $this->indexExists('orders', 'orders_status_created_at_index')) {
                 $table->index(['status', 'created_at']);
             }
-            if (Schema::hasColumn('orders', 'customer_id') && !$this->indexExists('orders', 'orders_customer_id_index')) {
+            if (Schema::hasColumn('orders', 'customer_id') && ! $this->indexExists('orders', 'orders_customer_id_index')) {
                 $table->index('customer_id');
             }
-            if (Schema::hasColumn('orders', 'shift_id') && !$this->indexExists('orders', 'orders_shift_id_index')) {
+            if (Schema::hasColumn('orders', 'shift_id') && ! $this->indexExists('orders', 'orders_shift_id_index')) {
                 $table->index('shift_id');
             }
         });
 
         Schema::table('order_items', function (Blueprint $table) {
-            if (Schema::hasColumn('order_items', 'item_id') && !$this->indexExists('order_items', 'order_items_item_id_index')) {
+            if (Schema::hasColumn('order_items', 'item_id') && ! $this->indexExists('order_items', 'order_items_item_id_index')) {
                 $table->index('item_id');
             }
         });

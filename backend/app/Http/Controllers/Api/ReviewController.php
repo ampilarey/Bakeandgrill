@@ -56,7 +56,7 @@ class ReviewController extends Controller
         $user = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$user instanceof Customer) {
+        if (! $user instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -68,7 +68,7 @@ class ReviewController extends Controller
             return response()->json(['message' => 'You can only review your own orders.'], 403);
         }
 
-        if (!in_array($order->status, ['completed', 'paid', 'delivered'], true)) {
+        if (! in_array($order->status, ['completed', 'paid', 'delivered'], true)) {
             return response()->json(['message' => 'You can only review completed orders.'], 422);
         }
 
@@ -97,7 +97,7 @@ class ReviewController extends Controller
         $user = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$user instanceof Customer) {
+        if (! $user instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 

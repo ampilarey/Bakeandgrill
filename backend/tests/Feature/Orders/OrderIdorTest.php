@@ -23,9 +23,13 @@ class OrderIdorTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customerA;
+
     private Customer $customerB;
+
     private Order $orderA;
+
     private string $tokenA;
+
     private string $tokenB;
 
     protected function setUp(): void

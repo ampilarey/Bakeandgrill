@@ -22,7 +22,7 @@ class MaldivesPhone implements ValidationRule
         // Strip spaces, dashes, and parentheses only
         $clean = preg_replace('/[\s\-().]/', '', (string) $value);
 
-        if (!$this->isValid($clean)) {
+        if (! $this->isValid($clean)) {
             $fail('Please enter a valid Maldivian phone number (e.g. 7654321 or +9607654321).');
         }
     }
@@ -33,21 +33,21 @@ class MaldivesPhone implements ValidationRule
 
         // Already in +960XXXXXXX format
         if (preg_match('/^\+960([0-9]{7})$/', $clean, $m)) {
-            return '+960' . $m[1];
+            return '+960'.$m[1];
         }
 
         // 960XXXXXXX — 10 digits, no +
         if (preg_match('/^960([0-9]{7})$/', $clean, $m)) {
-            return '+960' . $m[1];
+            return '+960'.$m[1];
         }
 
         // 7 local digits starting with 3, 6, 7, or 9
         if (preg_match('/^([3679][0-9]{6})$/', $clean, $m)) {
-            return '+960' . $m[1];
+            return '+960'.$m[1];
         }
 
         // Anything else is invalid — caller must validate first
-        throw new \InvalidArgumentException('Invalid Maldivian phone number: ' . $phone);
+        throw new \InvalidArgumentException('Invalid Maldivian phone number: '.$phone);
     }
 
     private function isValid(string $clean): bool

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 final class GetIslandCollection
 {
     private const CACHE_KEY = 'prayer_islands_all';
+
     private const CACHE_TTL = 3600; // 1 hour
 
     /**

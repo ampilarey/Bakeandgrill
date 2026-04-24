@@ -17,7 +17,7 @@ class CustomerController extends Controller
     public function me(Request $request)
     {
         // SECURITY: Ensure this is a customer token, not staff
-        if (!$request->user()->tokenCan('customer')) {
+        if (! $request->user()->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden - customer access only'], 403);
         }
 
@@ -45,7 +45,7 @@ class CustomerController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -66,7 +66,7 @@ class CustomerController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -109,7 +109,7 @@ class CustomerController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 

@@ -11,6 +11,7 @@ use Illuminate\Console\Command;
 class CheckReorderPoints extends Command
 {
     protected $signature = 'inventory:check-reorder';
+
     protected $description = 'Create low-stock alerts for items at or below their reorder point';
 
     public function handle(): int

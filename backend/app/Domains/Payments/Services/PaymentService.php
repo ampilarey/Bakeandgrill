@@ -35,14 +35,14 @@ class PaymentService
      * Initiate a BML online payment for an order (full amount).
      * Returns the redirect URL for the customer.
      *
-     * @param int|null $amountLaar Override amount in laari. Null = full order total.
-     * @param string|null $idempotencyKey Caller-supplied idempotency key (for partial payments).
+     * @param  int|null  $amountLaar  Override amount in laari. Null = full order total.
+     * @param  string|null  $idempotencyKey  Caller-supplied idempotency key (for partial payments).
      */
     public function initiateBmlPayment(Order $order, ?int $amountLaar = null, ?string $idempotencyKey = null): array
     {
         $amountLaar = $amountLaar ?? ($order->total_laar ?? (int) round($order->total * 100));
-        $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
-        $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
+        $idempotencyKey = $idempotencyKey ?? ('bml:init:'.$order->id.':'.now()->format('Ymd'));
+        $localId = $this->bml->normalizeLocalId('BG-'.$order->order_number.'-'.now()->format('His'));
 
         $payment = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar) {
             return $this->payments->firstOrCreate(
@@ -84,13 +84,13 @@ class PaymentService
         }
 
         // Payment in an unexpected terminal state — create a fresh one.
-        if (!in_array($payment->status, ['created'], true)) {
+        if (! in_array($payment->status, ['created'], true)) {
             Log::warning('BML: Payment in unexpected state, issuing new attempt', [
                 'payment_id' => $payment->id,
                 'status' => $payment->status,
             ]);
-            $idempotencyKey .= ':retry:' . now()->timestamp;
-            $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
+            $idempotencyKey .= ':retry:'.now()->timestamp;
+            $localId = $this->bml->normalizeLocalId('BG-'.$order->order_number.'-'.now()->format('His'));
 
             $payment = $this->payments->create([
                 'idempotency_key' => $idempotencyKey,
@@ -108,7 +108,7 @@ class PaymentService
 
         // Include orderId in the return URL so bmlReturn() can redirect to the right order page.
         // BML appends its own params (&state=...&transactionId=...) to whatever URL we provide.
-        $bmlReturnUrl = rtrim(config('bml.return_url'), '/') . '?orderId=' . $order->id;
+        $bmlReturnUrl = rtrim(config('bml.return_url'), '/').'?orderId='.$order->id;
 
         $result = $this->bml->createPayment(
             $payment->amount_laar,
@@ -178,7 +178,7 @@ class PaymentService
                 );
             }
 
-            $result = $this->initiateBmlPayment($locked, $amountLaar, 'partial:' . $idempotencyKey);
+            $result = $this->initiateBmlPayment($locked, $amountLaar, 'partial:'.$idempotencyKey);
 
             return array_merge($result, [
                 'remaining_balance_before_laar' => $remainingLaar,
@@ -203,7 +203,7 @@ class PaymentService
         $payment = $this->payments->findByProviderTransactionId($transactionId)
             ?? $this->payments->findByOrderId($orderId);
 
-        if (!$payment) {
+        if (! $payment) {
             Log::info('BML return: no payment record for order', [
                 'order_id' => $orderId,
                 'transaction_id' => $transactionId,
@@ -285,7 +285,7 @@ class PaymentService
         $rawSig = $headers[$sigHeader] ?? $headers[strtolower($sigHeader)] ?? $headers['x-signature'] ?? $headers['X-Signature'] ?? null;
         $signature = is_array($rawSig) ? ($rawSig[0] ?? '') : ($rawSig ?? '');
 
-        $idempotencyKey = 'bml:webhook:' . ($payload['transactionId'] ?? Str::uuid());
+        $idempotencyKey = 'bml:webhook:'.($payload['transactionId'] ?? Str::uuid());
 
         $log = DB::transaction(function () use ($idempotencyKey, $rawBody, $payload, $headers): WebhookLog {
             return WebhookLog::firstOrCreate(
@@ -309,7 +309,7 @@ class PaymentService
         }
 
         try {
-            if (!$this->bml->verifyWebhookSignature($rawBody, $signature)) {
+            if (! $this->bml->verifyWebhookSignature($rawBody, $signature)) {
                 Log::warning('BML: Webhook signature mismatch. Verify BML_WEBHOOK_SECRET matches the portal.', [
                     'idempotency_key' => $idempotencyKey,
                 ]);
@@ -343,12 +343,12 @@ class PaymentService
             'local_id' => $localId,
         ]);
 
-        if (!$transactionId || !$localId) {
+        if (! $transactionId || ! $localId) {
             throw new \RuntimeException('BML webhook missing transactionId or localId');
         }
 
         $payment = $this->payments->findByLocalId($localId);
-        if (!$payment) {
+        if (! $payment) {
             Log::warning('BML: No payment found for localId', ['local_id' => $localId]);
 
             return;
@@ -385,7 +385,7 @@ class PaymentService
             $locked = Payment::where('id', $payment->id)->lockForUpdate()->first();
             $sm = $locked ? PaymentStateMachine::for($locked) : null;
 
-            if (!$locked || !$sm->can('confirmed')) {
+            if (! $locked || ! $sm->can('confirmed')) {
                 Log::info('BML: Payment already confirmed or cannot transition (concurrent request), skipping', [
                     'payment_id' => $payment->id,
                     'current_status' => $locked?->status ?? 'not found',
@@ -398,7 +398,7 @@ class PaymentService
             $sm->transition('confirmed', ['gateway_response' => $payload]);
 
             $order = $this->orders->findById($locked->order_id);
-            if (!$order) {
+            if (! $order) {
                 Log::error('BML: Order not found during payment confirmation', [
                     'payment_id' => $locked->id,
                     'order_id' => $locked->order_id,
@@ -423,7 +423,7 @@ class PaymentService
 
             $this->redeemGiftCardForOrder($order);
 
-            if ($paidLaar >= $orderLaar && !in_array($order->status, ['paid', 'completed'], true)) {
+            if ($paidLaar >= $orderLaar && ! in_array($order->status, ['paid', 'completed'], true)) {
                 // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
                 // POS orders already in the kitchen queue go straight to paid.
                 $newStatus = $order->status === 'payment_pending' ? 'pending' : 'paid';
@@ -462,7 +462,7 @@ class PaymentService
         DB::transaction(function () use ($orderId, $paymentState): void {
             $order = Order::lockForUpdate()->find($orderId);
 
-            if (!$order || $order->status !== 'payment_pending') {
+            if (! $order || $order->status !== 'payment_pending') {
                 return; // Already cancelled or progressed — nothing to do
             }
 
@@ -509,7 +509,7 @@ class PaymentService
             ->lockForUpdate()
             ->first();
 
-        if (!$giftCard) {
+        if (! $giftCard) {
             return;
         }
 

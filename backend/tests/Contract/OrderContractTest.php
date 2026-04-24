@@ -21,7 +21,9 @@ use Laravel\Sanctum\Sanctum;
 class OrderContractTest extends ContractTestCase
 {
     private User $staff;
+
     private Device $device;
+
     private Item $item;
 
     protected function setUp(): void

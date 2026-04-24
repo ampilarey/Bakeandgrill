@@ -27,8 +27,11 @@ use Illuminate\Support\Facades\Log;
 final class SendCustomerOrderStatusSmsListener implements ShouldQueue
 {
     public bool $afterCommit = true;
+
     public string $queue = 'default';
+
     public int $tries = 3;
+
     public int $backoff = 5;
 
     public function __construct(private readonly SmsService $sms) {}
@@ -38,7 +41,7 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
         $status = $event->data->status;
 
         // Only handle statuses we care about
-        if (!in_array($status, ['in_progress', 'ready', 'on_the_way'], true)) {
+        if (! in_array($status, ['in_progress', 'ready', 'on_the_way'], true)) {
             return;
         }
 
@@ -59,12 +62,12 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
         }
 
         $phone = $order->customer?->phone;
-        if (!$phone) {
+        if (! $phone) {
             return;
         }
 
-        $trackingUrl = rtrim(config('app.url'), '/') . '/order/orders/' . $order->id
-            . '?tok=' . $order->tracking_token;
+        $trackingUrl = rtrim(config('app.url'), '/').'/order/orders/'.$order->id
+            .'?tok='.$order->tracking_token;
 
         $orderNum = $order->order_number ?? "#{$order->id}";
 

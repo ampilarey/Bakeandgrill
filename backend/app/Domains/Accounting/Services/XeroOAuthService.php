@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\Http;
 class XeroOAuthService
 {
     private const AUTHORIZE_URL = 'https://login.xero.com/identity/connect/authorize';
+
     private const TOKEN_URL = 'https://identity.xero.com/connect/token';
+
     private const CONNECTIONS_URL = 'https://api.xero.com/connections';
+
     private const SCOPES = 'openid profile email accounting.transactions accounting.settings offline_access';
 
     public function getAuthorizationUrl(string $state): string
@@ -24,7 +27,7 @@ class XeroOAuthService
             'state' => $state,
         ]);
 
-        return self::AUTHORIZE_URL . '?' . $params;
+        return self::AUTHORIZE_URL.'?'.$params;
     }
 
     public function exchangeCode(string $code): XeroConnection
@@ -39,7 +42,7 @@ class XeroOAuthService
         ]);
 
         if ($response->failed()) {
-            throw new \RuntimeException('Xero token exchange failed: ' . $response->body());
+            throw new \RuntimeException('Xero token exchange failed: '.$response->body());
         }
 
         $tokens = $response->json();
@@ -50,7 +53,7 @@ class XeroOAuthService
             ->json();
 
         $tenant = $connections[0] ?? null;
-        if (!$tenant) {
+        if (! $tenant) {
             throw new \RuntimeException('No Xero organisation found for this connection.');
         }
 
@@ -101,7 +104,7 @@ class XeroOAuthService
     public function getFreshToken(): string
     {
         $conn = $this->getActiveConnection();
-        if (!$conn) {
+        if (! $conn) {
             throw new \RuntimeException('Xero is not connected. Authorize first at /api/xero/connect.');
         }
 

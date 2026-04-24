@@ -24,7 +24,7 @@ return new class extends Migration
         $cashierId = DB::table('roles')->where('slug', 'cashier')->value('id');
         $staffId = DB::table('roles')->where('slug', 'staff')->value('id');
 
-        if ($cashierId && !$staffId) {
+        if ($cashierId && ! $staffId) {
             // Rename cashier row to staff
             DB::table('roles')->where('id', $cashierId)->update([
                 'slug' => 'staff',
@@ -33,7 +33,7 @@ return new class extends Migration
                 'updated_at' => now(),
             ]);
             $staffId = $cashierId;
-        } elseif (!$staffId) {
+        } elseif (! $staffId) {
             // Create staff from scratch
             $staffId = DB::table('roles')->insertGetId([
                 'slug' => 'staff',

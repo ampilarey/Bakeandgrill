@@ -35,7 +35,7 @@ class SendOrderStatusPushListener
                 $data->customerId,
                 $title,
                 $body,
-                '/orders/' . $data->orderId,
+                '/orders/'.$data->orderId,
             );
         } catch (\Throwable $e) {
             Log::warning('SendOrderStatusPushListener: push notification failed', [

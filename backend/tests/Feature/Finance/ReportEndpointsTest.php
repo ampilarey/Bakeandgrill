@@ -48,12 +48,10 @@ class ReportEndpointsTest extends TestCase
         $this->getJson('/api/reports/x-report')->assertStatus(401);
     }
 
-    public function test_x_report_accessible_by_all_staff(): void
+    public function test_x_report_forbidden_for_plain_staff_without_permission(): void
     {
-        // X-report is inside the general staff.token group with no extra permission gate.
-        // Returns 200 (shift open) or 422 (no shift) — both mean "authenticated and authorized".
-        $status = $this->getJson('/api/reports/x-report', $this->staffOnlyHeaders())->status();
-        $this->assertContains($status, [200, 422]);
+        // X-report requires the reports.view permission. Plain staff without it get 403.
+        $this->getJson('/api/reports/x-report', $this->staffOnlyHeaders())->assertStatus(403);
     }
 
     // ── Z-report ─────────────────────────────────────────────────────────────
@@ -74,8 +72,8 @@ class ReportEndpointsTest extends TestCase
     public function test_tax_report_returns_200_for_owner(): void
     {
         $this->getJson(
-            '/api/reports/finance/tax?from=' . today()->startOfMonth()->toDateString()
-            . '&to=' . today()->toDateString(),
+            '/api/reports/finance/tax?from='.today()->startOfMonth()->toDateString()
+            .'&to='.today()->toDateString(),
             $this->ownerHeaders(),
         )->assertStatus(200);
     }

@@ -16,7 +16,9 @@ class PartialPaymentTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
+
     private Order $order;
+
     private string $customerToken;
 
     protected function setUp(): void

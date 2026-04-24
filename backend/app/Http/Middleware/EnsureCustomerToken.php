@@ -32,26 +32,26 @@ class EnsureCustomerToken
         $user = $request->user();
 
         // Fallback: check session-based customer guard (no Bearer token present)
-        if (!$user && !$request->bearerToken()) {
+        if (! $user && ! $request->bearerToken()) {
             $user = Auth::guard('customer')->user();
         }
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         // Must be a Customer model instance, not a staff User
-        if (!($user instanceof Customer)) {
+        if (! ($user instanceof Customer)) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return response()->json(['message' => 'This account has been deactivated.'], 403);
         }
 
         // Token ability check only when a Bearer token was presented;
         // session auth does not carry token abilities.
-        if ($request->bearerToken() && !$user->tokenCan('customer')) {
+        if ($request->bearerToken() && ! $user->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 

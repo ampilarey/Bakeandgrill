@@ -21,8 +21,11 @@ class VariantStockTest extends TestCase
     use RefreshDatabase;
 
     private User $staff;
+
     private Device $device;
+
     private Item $variantItem;
+
     private Variant $variantSmall;
 
     protected function setUp(): void

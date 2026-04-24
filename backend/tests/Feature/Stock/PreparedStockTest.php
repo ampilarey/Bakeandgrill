@@ -47,11 +47,17 @@ class PreparedStockTest extends TestCase
     private const DEVICE_ID = 'TEST-POS-001';
 
     private Category $category;
+
     private MenuGroup $menuGroup;
+
     private Customer $customer;
+
     private User $staffUser;
+
     private User $managerUser;
+
     private Role $staffRole;
+
     private Device $device;
 
     protected function setUp(): void
@@ -265,7 +271,7 @@ class PreparedStockTest extends TestCase
         DB::table('stock_reservations')->insert([
             'item_id' => $item->id,
             'order_id' => $order->id,
-            'session_id' => 'order:' . $order->id,
+            'session_id' => 'order:'.$order->id,
             'quantity' => 2,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now(),
@@ -314,7 +320,7 @@ class PreparedStockTest extends TestCase
         DB::table('stock_reservations')->insert([
             'item_id' => $item->id,
             'order_id' => $order->id,
-            'session_id' => 'order:' . $order->id,
+            'session_id' => 'order:'.$order->id,
             'quantity' => 1,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now(),
@@ -361,7 +367,7 @@ class PreparedStockTest extends TestCase
         DB::table('stock_reservations')->insert([
             'item_id' => $item->id,
             'order_id' => $staleOrder->id,
-            'session_id' => 'order:' . $staleOrder->id,
+            'session_id' => 'order:'.$staleOrder->id,
             'quantity' => 2,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now()->subMinutes(45),
@@ -402,7 +408,7 @@ class PreparedStockTest extends TestCase
         DB::table('stock_reservations')->insert([
             'item_id' => $item->id,
             'order_id' => $order->id,
-            'session_id' => 'order:' . $order->id,
+            'session_id' => 'order:'.$order->id,
             'quantity' => 3,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now(),
@@ -598,7 +604,7 @@ class PreparedStockTest extends TestCase
 
         $this->assertSame(
             1,
-            StockMovement::where('idempotency_key', 'online:order:' . $order->id . ':item:' . $orderItem->id)->count(),
+            StockMovement::where('idempotency_key', 'online:order:'.$order->id.':item:'.$orderItem->id)->count(),
             'Only one StockMovement should exist despite two OrderPaid events',
         );
     }

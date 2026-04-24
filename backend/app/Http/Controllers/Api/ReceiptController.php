@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
 class ReceiptController extends Controller
 {
     private const MAX_RESENDS = 3;
+
     private const RESEND_COOLDOWN_SECONDS = 120;
 
     /**
@@ -32,7 +33,7 @@ class ReceiptController extends Controller
         $order = Order::findOrFail($orderId);
 
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (!$receipt->exists) {
+        if (! $receipt->exists) {
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
@@ -51,18 +52,18 @@ class ReceiptController extends Controller
         $channel = $validated['channel'] ?? 'email';
         $recipient = $validated['recipient'] ?? null;
 
-        if (!$recipient) {
+        if (! $recipient) {
             $recipient = $channel === 'sms'
                 ? $order->customer?->phone
                 : $order->customer?->email;
         }
 
-        if (!$recipient) {
+        if (! $recipient) {
             return response()->json(['message' => 'Recipient not available.'], 422);
         }
 
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (!$receipt->exists) {
+        if (! $receipt->exists) {
             $receipt->token = Str::random(48);
         }
 
@@ -73,7 +74,7 @@ class ReceiptController extends Controller
         ]);
 
         $sent = $this->deliverReceipt($receipt);
-        if (!$sent) {
+        if (! $sent) {
             return response()->json(['message' => 'Failed to send receipt.'], 500);
         }
 
@@ -121,7 +122,7 @@ class ReceiptController extends Controller
         }
 
         $sent = $this->deliverReceipt($receipt);
-        if (!$sent) {
+        if (! $sent) {
             return response()->json(['message' => 'Failed to resend receipt.'], 500);
         }
 
@@ -145,7 +146,7 @@ class ReceiptController extends Controller
     {
         $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();
 
-        if (!$this->orderIsPaidForReceipt($receipt->order)) {
+        if (! $this->orderIsPaidForReceipt($receipt->order)) {
             return response()->json(['message' => 'Feedback is available after payment.'], 403);
         }
 
@@ -175,7 +176,7 @@ class ReceiptController extends Controller
     {
         $receipt->loadMissing('order.items.modifiers', 'order.payments', 'customer');
 
-        if (!$receipt->recipient) {
+        if (! $receipt->recipient) {
             return false;
         }
 
@@ -204,7 +205,7 @@ class ReceiptController extends Controller
 
     private function receiptLink(Receipt $receipt): string
     {
-        return rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+        return rtrim(config('app.url'), '/').'/receipts/'.$receipt->token;
     }
 
     private function orderIsPaidForReceipt(?Order $order): bool
@@ -224,9 +225,9 @@ class ReceiptController extends Controller
         $link = $this->receiptLink($receipt);
 
         if ($this->orderIsPaidForReceipt($order)) {
-            return 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
+            return 'Thanks for visiting Bake & Grill! View your receipt: '.$link;
         }
 
-        return 'Bake & Grill: Here is your invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;
+        return 'Bake & Grill: Here is your invoice for order #'.($order->order_number ?? $order->id).': '.$link;
     }
 }

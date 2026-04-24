@@ -35,7 +35,7 @@ class DeliveryDriverController extends Controller
             'pin' => ['nullable', 'string', 'digits_between:4,6'],
         ]);
 
-        if (!empty($validated['pin'])) {
+        if (! empty($validated['pin'])) {
             $validated['pin'] = Hash::make($validated['pin']);
         }
 

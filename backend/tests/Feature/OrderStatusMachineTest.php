@@ -40,6 +40,7 @@ class OrderStatusMachineTest extends TestCase
     private const DEVICE_ID = 'STATUS-POS-001';
 
     private User $staffUser;
+
     private Item $item;
 
     protected function setUp(): void

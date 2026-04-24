@@ -26,8 +26,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 class DispatchWebhookOnDomainEvent implements ShouldQueue
 {
     public bool $afterCommit = true;
+
     public int $tries = 3;
+
     public int $backoff = 10;
+
     public int $timeout = 30;
 
     private const EVENT_MAP = [
@@ -62,7 +65,7 @@ class DispatchWebhookOnDomainEvent implements ShouldQueue
     public function handle(object $event): void
     {
         $eventName = self::EVENT_MAP[get_class($event)] ?? null;
-        if (!$eventName) {
+        if (! $eventName) {
             return;
         }
 

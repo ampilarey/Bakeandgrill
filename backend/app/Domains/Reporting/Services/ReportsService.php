@@ -114,7 +114,7 @@ class ReportsService
     {
         $shift = Shift::where('user_id', $userId)->whereNull('closed_at')->latest('opened_at')->first();
 
-        if (!$shift) {
+        if (! $shift) {
             return null;
         }
 

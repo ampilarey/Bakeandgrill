@@ -72,7 +72,7 @@ class VariantController extends Controller
             'name_dv' => 'nullable|string|max:100',
             'price' => 'sometimes|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
-            'sku' => 'nullable|string|max:100|unique:variants,sku,' . $id,
+            'sku' => 'nullable|string|max:100|unique:variants,sku,'.$id,
             'barcode' => 'nullable|string|max:100',
             'track_stock' => 'nullable|boolean',
             'stock_qty' => 'nullable|integer|min:0',

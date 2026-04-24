@@ -13,7 +13,7 @@ class PrayerTimesSeeder extends Seeder
     {
         $sqlitePath = env('PRAYER_TIMES_DB', database_path('salat.db'));
 
-        if (!file_exists($sqlitePath)) {
+        if (! file_exists($sqlitePath)) {
             $this->command->error("SQLite source DB not found at: {$sqlitePath}");
             $this->command->line('Set PRAYER_TIMES_DB in your .env to the path of salat.db');
 
@@ -37,7 +37,7 @@ class PrayerTimesSeeder extends Seeder
             foreach ($cats as $catId) {
                 DB::table('prayer_categories')->insert(['id' => $catId]);
             }
-            $this->command->info('Inserted ' . count($cats) . ' categories.');
+            $this->command->info('Inserted '.count($cats).' categories.');
 
             // ── Islands ──────────────────────────────────────────────────
             $this->command->info('Seeding prayer_islands...');
@@ -60,7 +60,7 @@ class PrayerTimesSeeder extends Seeder
             foreach (array_chunk($islandRows, 100) as $chunk) {
                 DB::table('prayer_islands')->insert($chunk);
             }
-            $this->command->info('Inserted ' . count($islandRows) . ' islands.');
+            $this->command->info('Inserted '.count($islandRows).' islands.');
 
             // ── Prayer times ──────────────────────────────────────────────
             $this->command->info('Seeding prayer_times (15 372 rows)...');

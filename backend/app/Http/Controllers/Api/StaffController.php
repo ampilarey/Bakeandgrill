@@ -22,10 +22,10 @@ class StaffController extends Controller
     private function authorizePermission(Request $request, string $permission): void
     {
         $user = $request->user();
-        if (!$user || $user instanceof Customer) {
+        if (! $user || $user instanceof Customer) {
             abort(403, 'Forbidden.');
         }
-        if (!$user->hasPermission($permission)) {
+        if (! $user->hasPermission($permission)) {
             abort(403, 'You do not have permission to perform this action.');
         }
     }
@@ -42,7 +42,7 @@ class StaffController extends Controller
             'role_id' => $user->role_id,
             'is_active' => $user->is_active,
             'last_login_at' => $user->last_login_at?->toIso8601String(),
-            'has_pin' => !is_null($user->pin_hash),
+            'has_pin' => ! is_null($user->pin_hash),
             'created_at' => $user->created_at->toIso8601String(),
         ];
     }

@@ -20,7 +20,7 @@ class EloquentItemRepository implements ItemRepositoryInterface
             ->where('is_active', true)
             ->where('is_available', true);
 
-        if (!empty($relations)) {
+        if (! empty($relations)) {
             $query->with($relations);
         }
 

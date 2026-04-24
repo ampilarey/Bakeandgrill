@@ -31,7 +31,7 @@ class SmsContactGroupController extends Controller
             'is_enabled' => 'boolean',
         ]);
 
-        $data['slug'] = Str::slug($data['name']) . '-' . Str::random(4);
+        $data['slug'] = Str::slug($data['name']).'-'.Str::random(4);
 
         $group = SmsContactGroup::create($data);
         $group->load('contacts');

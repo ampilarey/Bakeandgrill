@@ -35,19 +35,19 @@ class EarnPointsFromOrderListener implements ShouldQueue
     {
         $customerId = $event->data->customerId;
 
-        if (!$customerId) {
+        if (! $customerId) {
             return;
         }
 
         $customer = $this->customers->findById($customerId);
-        if (!$customer) {
+        if (! $customer) {
             Log::warning('EarnPointsFromOrderListener: customer not found', ['customer_id' => $customerId]);
 
             return;
         }
 
         $order = $this->orders->findById($event->data->orderId);
-        if (!$order) {
+        if (! $order) {
             Log::warning('EarnPointsFromOrderListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;

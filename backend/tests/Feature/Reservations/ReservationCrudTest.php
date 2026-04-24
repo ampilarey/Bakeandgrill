@@ -22,6 +22,7 @@ class ReservationCrudTest extends TestCase
     use RefreshDatabase;
 
     private array $ownerHeaders;
+
     private array $basePayload;
 
     protected function setUp(): void

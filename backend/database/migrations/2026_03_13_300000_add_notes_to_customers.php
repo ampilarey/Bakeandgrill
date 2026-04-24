@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('customers', function (Blueprint $table) {
-            if (!Schema::hasColumn('customers', 'internal_notes')) {
+            if (! Schema::hasColumn('customers', 'internal_notes')) {
                 $table->text('internal_notes')->nullable()->after('preferences');
             }
         });

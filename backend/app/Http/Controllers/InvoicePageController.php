@@ -26,6 +26,6 @@ class InvoicePageController extends Controller
 
         $pdf = Pdf::loadView('invoice-pdf', ['invoice' => $invoice]);
 
-        return $pdf->stream('invoice-' . $invoice->invoice_number . '.pdf');
+        return $pdf->stream('invoice-'.$invoice->invoice_number.'.pdf');
     }
 }

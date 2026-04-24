@@ -88,7 +88,7 @@ class PurchaseController extends Controller
 
             foreach ($validated['items'] as $row) {
                 $purchaseItem = $purchase->items->firstWhere('id', $row['purchase_item_id']);
-                if (!$purchaseItem || !in_array($purchaseItem->id, $purchaseItemIds)) {
+                if (! $purchaseItem || ! in_array($purchaseItem->id, $purchaseItemIds)) {
                     continue;
                 }
 
@@ -182,14 +182,14 @@ class PurchaseController extends Controller
         }
 
         $header = fgetcsv($handle);
-        if (!$header) {
+        if (! $header) {
             return response()->json(['message' => 'CSV is empty.'], 422);
         }
 
         $normalized = array_map(fn ($value) => strtolower(trim($value)), $header);
         $required = ['name', 'quantity', 'unit_cost'];
         foreach ($required as $column) {
-            if (!in_array($column, $normalized, true)) {
+            if (! in_array($column, $normalized, true)) {
                 return response()->json(['message' => "Missing required column: {$column}."], 422);
             }
         }
@@ -202,12 +202,12 @@ class PurchaseController extends Controller
             }
 
             $row = array_combine($normalized, $data);
-            if (!$row || empty($row['name'])) {
+            if (! $row || empty($row['name'])) {
                 continue;
             }
 
             $rows[] = [
-                'inventory_item_id' => !empty($row['inventory_item_id']) ? (int) $row['inventory_item_id'] : null,
+                'inventory_item_id' => ! empty($row['inventory_item_id']) ? (int) $row['inventory_item_id'] : null,
                 'name' => $row['name'],
                 'quantity' => (float) $row['quantity'],
                 'unit_cost' => (float) $row['unit_cost'],
@@ -272,7 +272,7 @@ class PurchaseController extends Controller
                 $subtotal += $lineTotal;
 
                 $inventoryItem = null;
-                if (!empty($itemPayload['inventory_item_id'])) {
+                if (! empty($itemPayload['inventory_item_id'])) {
                     $inventoryItem = InventoryItem::find($itemPayload['inventory_item_id']);
                 }
 

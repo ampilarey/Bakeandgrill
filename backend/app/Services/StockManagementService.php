@@ -22,7 +22,7 @@ class StockManagementService
     public function checkStock(Item $item, int $quantity): bool
     {
         // Items that don't track stock are always available
-        if (!$item->track_stock) {
+        if (! $item->track_stock) {
             return true;
         }
 
@@ -40,7 +40,7 @@ class StockManagementService
      */
     public function deductStock(Item $item, int $quantity): void
     {
-        if (!$item->track_stock) {
+        if (! $item->track_stock) {
             return;
         }
 
@@ -69,7 +69,7 @@ class StockManagementService
         int $orderId,
         ?int $userId = null,
     ): void {
-        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
+        if (! $item->track_stock || $item->availability_type !== 'stock_based') {
             return;
         }
 
@@ -126,7 +126,7 @@ class StockManagementService
         int $orderId,
         ?int $userId = null,
     ): void {
-        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
+        if (! $item->track_stock || $item->availability_type !== 'stock_based') {
             return;
         }
 
@@ -137,7 +137,7 @@ class StockManagementService
 
         // Lock the row so concurrent restores do not race
         $locked = Item::lockForUpdate()->find($item->id);
-        if (!$locked) {
+        if (! $locked) {
             return;
         }
 
@@ -238,7 +238,7 @@ class StockManagementService
         int $orderId,
         ?int $userId = null,
     ): void {
-        if (!$variant->track_stock) {
+        if (! $variant->track_stock) {
             return;
         }
 
@@ -287,7 +287,7 @@ class StockManagementService
         int $orderId,
         ?int $userId = null,
     ): void {
-        if (!$variant->track_stock) {
+        if (! $variant->track_stock) {
             return;
         }
 
@@ -297,7 +297,7 @@ class StockManagementService
         }
 
         $locked = Variant::lockForUpdate()->find($variant->id);
-        if (!$locked) {
+        if (! $locked) {
             return;
         }
 

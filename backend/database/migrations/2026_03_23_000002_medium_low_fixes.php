@@ -31,7 +31,7 @@ return new class extends Migration
         }
 
         // ── M-10: Soft-delete cascade for order_items ─────────────────────────
-        if (Schema::hasTable('order_items') && !Schema::hasColumn('order_items', 'deleted_at')) {
+        if (Schema::hasTable('order_items') && ! Schema::hasColumn('order_items', 'deleted_at')) {
             Schema::table('order_items', function (Blueprint $table) {
                 $table->softDeletes();
             });
@@ -39,7 +39,7 @@ return new class extends Migration
 
         // ── M-12: Standalone index on webhook_logs.gateway_event_id ──────────
         if (Schema::hasTable('webhook_logs') && Schema::hasColumn('webhook_logs', 'gateway_event_id')) {
-            if (!Schema::hasIndex('webhook_logs', 'webhook_logs_gateway_event_id_index')) {
+            if (! Schema::hasIndex('webhook_logs', 'webhook_logs_gateway_event_id_index')) {
                 Schema::table('webhook_logs', function (Blueprint $table) {
                     $table->index('gateway_event_id');
                 });
@@ -48,7 +48,7 @@ return new class extends Migration
 
         // ── M-13: Reverse lookup index on promotion_targets ──────────────────
         if (Schema::hasTable('promotion_targets')) {
-            if (!Schema::hasIndex('promotion_targets', 'promotion_targets_target_type_target_id_index')) {
+            if (! Schema::hasIndex('promotion_targets', 'promotion_targets_target_type_target_id_index')) {
                 Schema::table('promotion_targets', function (Blueprint $table) {
                     $table->index(['target_type', 'target_id']);
                 });

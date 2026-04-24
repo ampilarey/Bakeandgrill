@@ -252,7 +252,7 @@ class ImportMenuSeeder extends Seeder
         $hotKeywords = ['tea', 'coffee', 'espresso', 'cappuccino', 'latte', 'lavaza', 'illy', 'cardamom', 'masala', 'milk coffee', 'milk tea', 'bombe tea', 'black tea', 'black coffee', 'lemon tea'];
 
         $csvPath = database_path('seeders/export_items.csv');
-        if (!file_exists($csvPath)) {
+        if (! file_exists($csvPath)) {
             $this->command->error("CSV not found: {$csvPath}");
 
             return;

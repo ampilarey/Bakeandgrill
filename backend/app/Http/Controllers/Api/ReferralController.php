@@ -51,7 +51,7 @@ class ReferralController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$code) {
+        if (! $code) {
             return response()->json(['valid' => false, 'message' => 'Invalid or expired referral code.'], 422);
         }
 
@@ -84,7 +84,7 @@ class ReferralController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$code) {
+        if (! $code) {
             return response()->json(['message' => 'Invalid or expired referral code.'], 422);
         }
 

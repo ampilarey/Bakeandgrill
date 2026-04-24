@@ -17,7 +17,7 @@ class SmsTemplateRenderer
         $body = $template->body;
 
         foreach ($variables as $key => $value) {
-            $body = str_replace('{{' . $key . '}}', (string) $value, $body);
+            $body = str_replace('{{'.$key.'}}', (string) $value, $body);
         }
 
         return trim($body);
@@ -29,7 +29,7 @@ class SmsTemplateRenderer
     public function renderRaw(string $body, array $variables = []): string
     {
         foreach ($variables as $key => $value) {
-            $body = str_replace('{{' . $key . '}}', (string) $value, $body);
+            $body = str_replace('{{'.$key.'}}', (string) $value, $body);
         }
 
         return trim($body);
@@ -43,7 +43,7 @@ class SmsTemplateRenderer
         $vars = $template->extractVariables();
         $placeholders = array_combine(
             $vars,
-            array_map(fn ($v) => '[' . strtoupper($v) . ']', $vars),
+            array_map(fn ($v) => '['.strtoupper($v).']', $vars),
         );
 
         return $this->render($template, $placeholders ?: []);

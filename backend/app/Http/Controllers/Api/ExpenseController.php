@@ -214,7 +214,7 @@ class ExpenseController extends Controller
                 ->lockForUpdate()
                 ->count() + 1;
 
-            return 'EXP-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+            return 'EXP-'.$date.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
         });
     }
 

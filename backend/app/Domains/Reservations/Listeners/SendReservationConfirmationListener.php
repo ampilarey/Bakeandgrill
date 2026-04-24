@@ -13,8 +13,11 @@ use Illuminate\Support\Facades\Log;
 class SendReservationConfirmationListener implements ShouldQueue
 {
     public bool $afterCommit = true;
+
     public string $queue = 'default';
+
     public int $tries = 3;
+
     public int $backoff = 5;
 
     public function __construct(private SmsService $sms) {}

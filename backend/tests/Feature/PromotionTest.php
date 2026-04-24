@@ -23,8 +23,11 @@ class PromotionTest extends TestCase
     use RefreshDatabase;
 
     private User $staff;
+
     private Device $device;
+
     private Item $item;
+
     private Customer $customer;
 
     protected function setUp(): void
@@ -156,8 +159,10 @@ class PromotionTest extends TestCase
         $freshOrder = $order->fresh();
 
         // Pay the order — use the post-discount total so the payment fully covers it.
+        // Cast to float so SQLite string "22.50" isn't treated as 0 by JSON encoding.
+        $payableAmount = max((float) $freshOrder->total, (float) $freshOrder->subtotal, 0.01);
         $payResponse = $this->postJson("/api/orders/{$order->id}/payments", [
-            'payments' => [['method' => 'cash', 'amount' => $freshOrder->total]],
+            'payments' => [['method' => 'cash', 'amount' => $payableAmount]],
             'print_receipt' => false,
         ]);
         $payResponse->assertOk();

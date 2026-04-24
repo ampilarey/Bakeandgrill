@@ -24,6 +24,7 @@ class ItemAvailabilityServiceTest extends TestCase
     use RefreshDatabase;
 
     private Item $item;
+
     private string $channel = 'online_pickup';
 
     protected function setUp(): void
@@ -155,7 +156,7 @@ class ItemAvailabilityServiceTest extends TestCase
         $response->assertOk();
 
         $items = $response->json('data');
-        if (!empty($items)) {
+        if (! empty($items)) {
             $this->assertArrayNotHasKey('availability', $items[0]);
         }
     }

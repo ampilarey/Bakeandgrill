@@ -13,7 +13,7 @@ class PrintProxyService
     {
         $printProxyKey = config('services.print_proxy.key');
 
-        if (!$printProxyKey) {
+        if (! $printProxyKey) {
             \Log::error('PRINT_PROXY_KEY not configured');
             $job->update([
                 'status' => 'failed',
@@ -35,7 +35,7 @@ class PrintProxyService
                 'X-Print-Key' => $printProxyKey,
             ])
             ->post(
-                rtrim(config('services.print_proxy.url'), '/') . '/print',
+                rtrim(config('services.print_proxy.url'), '/').'/print',
                 $payload,
             );
 

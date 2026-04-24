@@ -30,7 +30,7 @@ class DeductInventoryListener
             ['items.item.recipe.recipeItems.inventoryItem'],
         );
 
-        if (!$order) {
+        if (! $order) {
             Log::error('DeductInventoryListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;

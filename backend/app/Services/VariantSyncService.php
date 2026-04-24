@@ -23,7 +23,7 @@ class VariantSyncService
      * Elements without 'id' are created. Existing variants not present in the
      * payload are NOT touched (use destroy() to remove/deactivate individually).
      *
-     * @param array $variantsData Validated array from request
+     * @param  array  $variantsData  Validated array from request
      */
     public function sync(Item $item, array $variantsData): void
     {

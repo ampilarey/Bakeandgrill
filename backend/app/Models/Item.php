@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Item extends Model
 {
     use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'category_id',
         'menu_group_id',

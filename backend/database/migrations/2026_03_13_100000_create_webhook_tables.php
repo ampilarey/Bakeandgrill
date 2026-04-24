@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('webhook_subscriptions')) {
+        if (! Schema::hasTable('webhook_subscriptions')) {
             Schema::create('webhook_subscriptions', function (Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -25,7 +25,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('webhook_logs')) {
+        if (! Schema::hasTable('webhook_logs')) {
             Schema::create('webhook_logs', function (Blueprint $table) {
                 $table->id();
                 $table->string('direction')->default('outgoing'); // outgoing | incoming

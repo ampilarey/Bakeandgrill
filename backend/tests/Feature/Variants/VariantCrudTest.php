@@ -20,6 +20,7 @@ class VariantCrudTest extends TestCase
     use RefreshDatabase;
 
     private User $owner;
+
     private Item $item;
 
     protected function setUp(): void

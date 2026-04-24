@@ -67,7 +67,7 @@ class ItemPhotoController extends Controller
             'is_primary' => ['sometimes', 'boolean'],
         ]);
 
-        if (!empty($validated['is_primary'])) {
+        if (! empty($validated['is_primary'])) {
             ItemPhoto::where('item_id', $itemId)->update(['is_primary' => false]);
         }
 

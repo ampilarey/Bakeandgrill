@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('recipes') || !Schema::hasColumn('recipe_items', 'recipe_id')) {
+        if (! Schema::hasTable('recipes') || ! Schema::hasColumn('recipe_items', 'recipe_id')) {
             return;
         }
 
@@ -30,7 +30,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('recipe_items') || !Schema::hasColumn('recipe_items', 'recipe_id')) {
+        if (! Schema::hasTable('recipe_items') || ! Schema::hasColumn('recipe_items', 'recipe_id')) {
             return;
         }
 

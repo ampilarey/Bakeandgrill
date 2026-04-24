@@ -19,13 +19,13 @@ class PhoneNormalizer
         $digitsOnly = preg_replace('/[^0-9]/', '', $phone);
 
         if (str_starts_with($digitsOnly, '960') && strlen($digitsOnly) === 10) {
-            return '+' . $digitsOnly;
+            return '+'.$digitsOnly;
         }
 
         if (strlen($digitsOnly) === 7) {
-            return '+960' . $digitsOnly;
+            return '+960'.$digitsOnly;
         }
 
-        return '+960' . substr($digitsOnly, -7);
+        return '+960'.substr($digitsOnly, -7);
     }
 }

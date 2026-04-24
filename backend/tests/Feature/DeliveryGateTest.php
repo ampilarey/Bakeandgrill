@@ -33,6 +33,7 @@ class DeliveryGateTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
+
     private Item $item;
 
     protected function setUp(): void

@@ -39,7 +39,7 @@ class StaffScheduleNotificationTest extends TestCase
 
         return User::create([
             'name' => 'Test Staff',
-            'email' => $phone . '@example.mv',
+            'email' => $phone.'@example.mv',
             'phone' => $phone,
             'password' => bcrypt('secret'),
             'role_id' => $role->id,
@@ -71,7 +71,7 @@ class StaffScheduleNotificationTest extends TestCase
         $this->assertEquals('active', $reminder->status);
 
         // The reminder should be 1 hour before shift start
-        $expectedSendAt = Carbon::parse($tomorrow->toDateString() . ' 09:00')->subHour();
+        $expectedSendAt = Carbon::parse($tomorrow->toDateString().' 09:00')->subHour();
         $this->assertEquals($expectedSendAt->toDateTimeString(), $reminder->next_send_at->toDateTimeString());
     }
 
@@ -102,7 +102,7 @@ class StaffScheduleNotificationTest extends TestCase
         $activeReminders = SmsScheduledMessage::where('to_contact_id', $contact->id)->where('status', 'active')->get();
         $this->assertCount(1, $activeReminders);
 
-        $expectedSendAt = Carbon::parse($tomorrow->toDateString() . ' 14:00')->subHour();
+        $expectedSendAt = Carbon::parse($tomorrow->toDateString().' 14:00')->subHour();
         $this->assertEquals($expectedSendAt->toDateTimeString(), $activeReminders->first()->next_send_at->toDateTimeString());
     }
 

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 class PrayerImport extends Command
 {
     protected $signature = 'prayer:import {--path= : Path to salat.db SQLite source file}';
+
     protected $description = 'Import prayer categories, islands and times from the salat.db SQLite source';
 
     public function handle(): int

@@ -39,23 +39,23 @@ class SmsCampaignController extends Controller
         $query = SmsLog::with('customer')
             ->orderByDesc('created_at');
 
-        if (!empty($validated['type'])) {
+        if (! empty($validated['type'])) {
             $query->ofType($validated['type']);
         }
 
-        if (!empty($validated['status'])) {
+        if (! empty($validated['status'])) {
             $query->where('status', $validated['status']);
         }
 
-        if (!empty($validated['phone'])) {
+        if (! empty($validated['phone'])) {
             $query->byPhone($validated['phone']);
         }
 
-        if (!empty($validated['customer_id'])) {
+        if (! empty($validated['customer_id'])) {
             $query->where('customer_id', $validated['customer_id']);
         }
 
-        if (!empty($validated['days'])) {
+        if (! empty($validated['days'])) {
             $query->recent((int) $validated['days']);
         }
 
@@ -159,7 +159,7 @@ class SmsCampaignController extends Controller
      */
     public function send(SmsCampaign $campaign): JsonResponse
     {
-        if (!$campaign->canStart()) {
+        if (! $campaign->canStart()) {
             return response()->json([
                 'message' => "Campaign cannot be started (status: {$campaign->status}).",
             ], 422);
@@ -178,7 +178,7 @@ class SmsCampaignController extends Controller
      */
     public function cancel(SmsCampaign $campaign): JsonResponse
     {
-        if (!$campaign->canCancel()) {
+        if (! $campaign->canCancel()) {
             return response()->json([
                 'message' => "Campaign cannot be cancelled (status: {$campaign->status}).",
             ], 422);

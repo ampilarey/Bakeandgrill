@@ -130,7 +130,7 @@ class DeliveryOrderController extends Controller
             abort(403, 'You do not own this order.');
         }
 
-        if (!in_array($order->status, ['pending', 'draft'], true)) {
+        if (! in_array($order->status, ['pending', 'draft', 'payment_pending'], true)) {
             throw ValidationException::withMessages([
                 'status' => "Cannot update delivery details once order is {$order->status}.",
             ]);

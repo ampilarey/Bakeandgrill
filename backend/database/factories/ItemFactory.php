@@ -24,7 +24,7 @@ class ItemFactory extends Factory
         return [
             'category_id' => Category::factory(),
             'name' => ucwords($name),
-            'sku' => strtoupper(Str::random(4)) . '-' . fake()->unique()->randomNumber(4),
+            'sku' => strtoupper(Str::random(4)).'-'.fake()->unique()->randomNumber(4),
             'base_price' => fake()->randomFloat(2, 5, 80),
             'is_active' => true,
             'is_available' => true,

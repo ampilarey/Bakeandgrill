@@ -78,7 +78,7 @@ class TableController extends Controller
     public function open(OpenTableRequest $request, $id)
     {
         $table = RestaurantTable::findOrFail($id);
-        if (!$table->is_active) {
+        if (! $table->is_active) {
             return response()->json(['message' => 'Table is inactive.'], 422);
         }
 
@@ -191,7 +191,7 @@ class TableController extends Controller
         }
 
         $sourceOrder = $this->findActiveOrder($sourceTable->id);
-        if (!$sourceOrder) {
+        if (! $sourceOrder) {
             return response()->json(['message' => 'No active order on source table.'], 422);
         }
 
@@ -248,7 +248,7 @@ class TableController extends Controller
 
         $service = app(OrderCreationService::class);
 
-        if (!empty($validated['item_ids'])) {
+        if (! empty($validated['item_ids'])) {
             $splitOrder = $service->createFromPayload([
                 'type' => 'dine_in',
                 'restaurant_table_id' => $table->id,

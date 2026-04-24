@@ -58,12 +58,12 @@ trait SnapshotHelper
         $actual = $this->normalizeForSnapshot($response->json());
         $snapshotPath = $this->snapshotPath($snapshotName);
 
-        if (file_exists($snapshotPath) && !$this->shouldUpdateSnapshots()) {
+        if (file_exists($snapshotPath) && ! $this->shouldUpdateSnapshots()) {
             $expected = json_decode(file_get_contents($snapshotPath), true);
             $this->assertEquals(
                 $expected,
                 $actual,
-                "API contract snapshot mismatch for [{$snapshotName}].\n" .
+                "API contract snapshot mismatch for [{$snapshotName}].\n".
                 'Run with UPDATE_SNAPSHOTS=true to regenerate.',
             );
         } else {
@@ -74,7 +74,7 @@ trait SnapshotHelper
 
     public function normalizeForSnapshot(mixed $data): mixed
     {
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return $data;
         }
 
@@ -95,11 +95,11 @@ trait SnapshotHelper
     private function snapshotPath(string $name): string
     {
         $dir = base_path('tests/snapshots');
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        return $dir . '/' . $name . '.json';
+        return $dir.'/'.$name.'.json';
     }
 
     private function shouldUpdateSnapshots(): bool

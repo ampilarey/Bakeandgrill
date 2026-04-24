@@ -23,6 +23,7 @@ class StripeWebhookTest extends TestCase
     use RefreshDatabase;
 
     private const WEBHOOK_SECRET = 'whsec_test_secret_for_stripe_webhook_tests';
+
     private const STRIPE_ROUTE = '/api/stripe/webhook';
 
     protected function setUp(): void
@@ -52,7 +53,7 @@ class StripeWebhookTest extends TestCase
      */
     private function stripeSignature(string $body, int $timestamp): string
     {
-        $payload = $timestamp . '.' . $body;
+        $payload = $timestamp.'.'.$body;
         $sig = hash_hmac('sha256', $payload, self::WEBHOOK_SECRET);
 
         return "t={$timestamp},v1={$sig}";
@@ -61,7 +62,7 @@ class StripeWebhookTest extends TestCase
     private function makePaymentIntentEvent(string $piId, int $orderId, int $amountLaar = 5000): array
     {
         return [
-            'id' => 'evt_' . $piId,
+            'id' => 'evt_'.$piId,
             'type' => 'payment_intent.succeeded',
             'data' => [
                 'object' => [
@@ -106,7 +107,7 @@ class StripeWebhookTest extends TestCase
 
         $this->assertSame(200, $response->status());
         $this->assertDatabaseHas('payments', [
-            'idempotency_key' => 'stripe:' . $piId,
+            'idempotency_key' => 'stripe:'.$piId,
             'order_id' => $order->id,
             'method' => 'stripe',
             'status' => 'completed',
@@ -119,10 +120,10 @@ class StripeWebhookTest extends TestCase
         $piId = 'pi_badsig_001';
         $body = json_encode($this->makePaymentIntentEvent($piId, $order->id));
 
-        $response = $this->postWebhook($body, 't=' . time() . ',v1=invalidsignature');
+        $response = $this->postWebhook($body, 't='.time().',v1=invalidsignature');
 
         $this->assertSame(400, $response->status());
-        $this->assertDatabaseMissing('payments', ['idempotency_key' => 'stripe:' . $piId]);
+        $this->assertDatabaseMissing('payments', ['idempotency_key' => 'stripe:'.$piId]);
         $this->assertSame('payment_pending', $order->fresh()->status);
     }
 

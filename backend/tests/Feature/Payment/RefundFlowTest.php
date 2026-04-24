@@ -23,8 +23,11 @@ class RefundFlowTest extends TestCase
     use RefreshDatabase;
 
     private User $owner;
+
     private User $staff;
+
     private string $ownerToken;
+
     private string $staffToken;
 
     protected function setUp(): void
@@ -73,7 +76,7 @@ class RefundFlowTest extends TestCase
 
     protected function authHeader(User $user): array
     {
-        return ['Authorization' => 'Bearer ' . $user->createToken('test', ['staff'])->plainTextToken];
+        return ['Authorization' => 'Bearer '.$user->createToken('test', ['staff'])->plainTextToken];
     }
 
     // ── Issue refund ──────────────────────────────────────────────────────────

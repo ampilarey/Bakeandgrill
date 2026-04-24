@@ -74,7 +74,7 @@ class OrderCancellationTest extends TestCase
             'quantity' => -1,
             'reference_type' => 'order',
             'reference_id' => $order->id,
-            'idempotency_key' => 'reserve:order:' . $order->id . ':item:999',
+            'idempotency_key' => 'reserve:order:'.$order->id.':item:999',
             'notes' => 'test reservation',
         ]);
 

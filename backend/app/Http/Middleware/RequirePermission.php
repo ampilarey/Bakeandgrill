@@ -14,7 +14,7 @@ class RequirePermission
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
@@ -24,7 +24,7 @@ class RequirePermission
         }
 
         foreach ($permissions as $permission) {
-            if (!$user->hasPermission($permission)) {
+            if (! $user->hasPermission($permission)) {
                 return response()->json([
                     'message' => 'You do not have permission to perform this action.',
                     'required' => $permission,

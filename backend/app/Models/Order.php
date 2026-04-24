@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 class Order extends Model
 {
     use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'order_number',
         'tracking_token',

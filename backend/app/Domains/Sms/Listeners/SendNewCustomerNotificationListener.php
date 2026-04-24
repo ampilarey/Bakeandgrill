@@ -25,13 +25,13 @@ class SendNewCustomerNotificationListener implements ShouldQueue
 
     public function handle(CustomerCreated $event): void
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return;
         }
 
         $template = SmsTemplate::where('slug', 'customer_new')->first();
 
-        if (!$template) {
+        if (! $template) {
             Log::warning('SendNewCustomerNotificationListener: customer_new template not found');
 
             return;
@@ -97,7 +97,7 @@ class SendNewCustomerNotificationListener implements ShouldQueue
                 'recipient_type' => 'contact',
                 'recipient_id' => $c->id,
             ])
-            ->filter(fn ($r) => !empty($r['phone']));
+            ->filter(fn ($r) => ! empty($r['phone']));
 
         $recipients = $recipients->merge($externalContacts);
 

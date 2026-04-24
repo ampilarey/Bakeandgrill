@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Referral extends Model
 {
     protected $fillable = ['referral_code_id', 'referee_customer_id', 'order_id', 'reward_paid'];
+
     protected $casts = ['reward_paid' => 'boolean'];
 
     public function code(): BelongsTo

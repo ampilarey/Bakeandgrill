@@ -37,8 +37,11 @@ class CustomerTokenScopeTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
+
     private string $customerToken;
+
     private User $staff;
+
     private string $staffToken;
 
     protected function setUp(): void

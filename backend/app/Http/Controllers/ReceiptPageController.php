@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 class ReceiptPageController extends Controller
 {
     private const MAX_RESENDS = 3;
+
     private const RESEND_COOLDOWN_SECONDS = 120;
 
     public function show($token)
@@ -38,7 +39,7 @@ class ReceiptPageController extends Controller
             ->where('token', $token)
             ->firstOrFail();
 
-        if (!$this->orderIsPaidForReceipt($receipt->order)) {
+        if (! $this->orderIsPaidForReceipt($receipt->order)) {
             abort(403, 'PDF is available after payment is complete.');
         }
 
@@ -47,7 +48,7 @@ class ReceiptPageController extends Controller
             'order' => $receipt->order,
         ]);
 
-        return $pdf->stream('receipt-' . $receipt->order?->order_number . '.pdf');
+        return $pdf->stream('receipt-'.$receipt->order?->order_number.'.pdf');
     }
 
     public function resend(Request $request, $token)
@@ -65,7 +66,7 @@ class ReceiptPageController extends Controller
         }
 
         $sent = $this->deliverReceipt($receipt);
-        if (!$sent) {
+        if (! $sent) {
             return redirect()->back()->with('error', 'Failed to resend receipt.');
         }
 
@@ -76,7 +77,7 @@ class ReceiptPageController extends Controller
     {
         $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();
 
-        if (!$this->orderIsPaidForReceipt($receipt->order)) {
+        if (! $this->orderIsPaidForReceipt($receipt->order)) {
             return redirect()->back()->with('error', 'Feedback is available after payment.');
         }
 
@@ -94,7 +95,7 @@ class ReceiptPageController extends Controller
     {
         $receipt->loadMissing('order.items.modifiers', 'order.payments', 'customer');
 
-        if (!$receipt->recipient) {
+        if (! $receipt->recipient) {
             return false;
         }
 
@@ -123,7 +124,7 @@ class ReceiptPageController extends Controller
 
     private function receiptLink(Receipt $receipt): string
     {
-        return rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+        return rtrim(config('app.url'), '/').'/receipts/'.$receipt->token;
     }
 
     private function orderIsPaidForReceipt(?Order $order): bool
@@ -143,9 +144,9 @@ class ReceiptPageController extends Controller
         $link = $this->receiptLink($receipt);
 
         if ($this->orderIsPaidForReceipt($order)) {
-            return 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
+            return 'Thanks for visiting Bake & Grill! View your receipt: '.$link;
         }
 
-        return 'Bake & Grill: Here is your invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;
+        return 'Bake & Grill: Here is your invoice for order #'.($order->order_number ?? $order->id).': '.$link;
     }
 }

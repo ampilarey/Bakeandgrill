@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class GiftCard extends Model
 {
     protected $fillable = ['code', 'initial_balance', 'current_balance', 'issued_to_customer_id', 'purchased_by_customer_id', 'status', 'expires_at'];
+
     protected $casts = ['initial_balance' => 'decimal:2', 'current_balance' => 'decimal:2', 'expires_at' => 'date'];
 
     /**
@@ -34,7 +35,7 @@ class GiftCard extends Model
         $segments = explode('-', $this->attributes['code']);
 
         return implode('-', array_map(
-            fn (string $seg) => str_repeat('*', max(0, strlen($seg) - 4)) . substr($seg, -4),
+            fn (string $seg) => str_repeat('*', max(0, strlen($seg) - 4)).substr($seg, -4),
             $segments,
         ));
     }

@@ -41,11 +41,11 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
     {
         $query = Reservation::with(['table', 'customer'])->orderByDesc('date')->orderBy('time_slot');
 
-        if (!empty($filters['date'])) {
+        if (! empty($filters['date'])) {
             $query->where('date', $filters['date']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 

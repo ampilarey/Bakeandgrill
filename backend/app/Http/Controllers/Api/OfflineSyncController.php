@@ -47,6 +47,7 @@ class OfflineSyncController extends Controller
                         'status' => 'duplicate',
                         'order_id' => $existing->id,
                     ];
+
                     continue;
                 }
 

@@ -21,6 +21,7 @@ class DeliveryOrderTest extends TestCase
     use RefreshDatabase;
 
     private Item $item;
+
     private Customer $customer;
 
     protected function setUp(): void
@@ -181,13 +182,23 @@ class DeliveryOrderTest extends TestCase
             'pin_hash' => Hash::make('9999'), 'is_active' => true,
         ]);
 
-        // Create delivery order as customer
-        $createResponse = $this->postJson(
-            '/api/orders/delivery',
-            $this->validDeliveryPayload(),
-            $this->customerAuthHeaders(),
-        );
-        $createResponse->assertStatus(201);
+        // Customer delivery orders start as payment_pending and only move to pending after
+        // payment confirmation — KDS shows pending orders, not payment_pending ones.
+        // Create a delivery order directly in DB with pending status to test KDS visibility.
+        $order = Order::create([
+            'order_number' => 'KDS-TEST-001',
+            'type' => 'delivery',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 50,
+            'delivery_address_line1' => '1 Test St',
+            'delivery_island' => 'Male',
+            'delivery_contact_name' => 'Test Customer',
+            'delivery_contact_phone' => '+9607654321',
+        ]);
 
         // Check KDS as staff
         Sanctum::actingAs($staff, ['staff']);
@@ -195,9 +206,9 @@ class DeliveryOrderTest extends TestCase
         $kdsResponse->assertStatus(200);
 
         $orders = collect($kdsResponse->json('orders'));
-        $deliveryOrder = $orders->firstWhere('id', $createResponse->json('order.id'));
+        $deliveryOrder = $orders->firstWhere('id', $order->id);
 
-        $this->assertNotNull($deliveryOrder, 'Delivery order should appear in KDS');
+        $this->assertNotNull($deliveryOrder, 'Delivery order should appear in KDS once pending');
         $this->assertEquals('delivery', $deliveryOrder['type']);
     }
 }

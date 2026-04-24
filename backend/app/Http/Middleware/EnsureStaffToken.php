@@ -28,17 +28,17 @@ class EnsureStaffToken
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         // Must be a staff User model, not a Customer
-        if (!($user instanceof User)) {
+        if (! ($user instanceof User)) {
             return response()->json(['message' => 'Forbidden — staff access only.'], 403);
         }
 
         // Must carry the 'staff' ability on the token
-        if (!$user->tokenCan('staff')) {
+        if (! $user->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 

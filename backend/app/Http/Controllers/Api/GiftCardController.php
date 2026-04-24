@@ -24,7 +24,7 @@ class GiftCardController extends Controller
 
         // Return a generic 404 for both not-found and non-active cards to prevent
         // enumeration attacks that could reveal card status from error messages.
-        if (!$card || $card->status !== 'active') {
+        if (! $card || $card->status !== 'active') {
             return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
 
@@ -58,7 +58,7 @@ class GiftCardController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$card) {
+            if (! $card) {
                 return response()->json(['message' => 'Invalid or unavailable gift card.'], 422);
             }
 
@@ -118,8 +118,8 @@ class GiftCardController extends Controller
 
         $code = null;
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $candidate = strtoupper(Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4));
-            if (!GiftCard::where('code', $candidate)->exists()) {
+            $candidate = strtoupper(Str::random(4).'-'.Str::random(4).'-'.Str::random(4));
+            if (! GiftCard::where('code', $candidate)->exists()) {
                 $code = $candidate;
                 break;
             }

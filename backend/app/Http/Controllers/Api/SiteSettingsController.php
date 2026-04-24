@@ -66,13 +66,13 @@ class SiteSettingsController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:png,jpg,jpeg,webp,ico|max:5120',
-            'key' => 'required|string|in:' . implode(',', $allowedKeys),
+            'key' => 'required|string|in:'.implode(',', $allowedKeys),
         ]);
 
         $file = $request->file('file');
         $key = $request->input('key');
         $extension = $file->getClientOriginalExtension();
-        $filename = $key . '_' . Str::random(8) . '.' . $extension;
+        $filename = $key.'_'.Str::random(8).'.'.$extension;
         $path = $file->storeAs('site', $filename, 'public');
         $url = Storage::url($path);
 

@@ -31,7 +31,9 @@ class CustomerDisplayTest extends TestCase
     use RefreshDatabase;
 
     private User $staff;
+
     private Device $device;
+
     private Item $item;
 
     protected function setUp(): void

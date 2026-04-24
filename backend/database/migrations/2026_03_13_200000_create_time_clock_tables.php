@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('time_punches')) {
+        if (! Schema::hasTable('time_punches')) {
             Schema::create('time_punches', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained()->cascadeOnDelete();
@@ -26,10 +26,10 @@ return new class extends Migration
         }
 
         Schema::table('purchase_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('purchase_items', 'received_quantity')) {
+            if (! Schema::hasColumn('purchase_items', 'received_quantity')) {
                 $table->decimal('received_quantity', 10, 4)->nullable()->after('quantity');
             }
-            if (!Schema::hasColumn('purchase_items', 'received_at')) {
+            if (! Schema::hasColumn('purchase_items', 'received_at')) {
                 $table->timestamp('received_at')->nullable()->after('received_quantity');
             }
         });

@@ -30,7 +30,9 @@ class PosCustomerLinkageTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
+
     private User $staffUser;
+
     private Item $item;
 
     protected function setUp(): void

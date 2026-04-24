@@ -32,12 +32,12 @@ class DispatchReceiptPrintListener implements ShouldQueue
 
     public function handle(OrderPaid $event): void
     {
-        if (!$event->data->printReceipt) {
+        if (! $event->data->printReceipt) {
             return;
         }
 
         $order = $this->orders->findWithRelations($event->data->orderId, ['items.modifiers', 'payments']);
-        if (!$order) {
+        if (! $order) {
             Log::error('DispatchReceiptPrintListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;

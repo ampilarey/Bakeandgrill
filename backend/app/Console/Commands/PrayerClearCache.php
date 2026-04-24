@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 class PrayerClearCache extends Command
 {
     protected $signature = 'prayer:clear-cache';
+
     protected $description = 'Clear all cached prayer times and island data';
 
     public function handle(): int

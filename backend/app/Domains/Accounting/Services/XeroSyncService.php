@@ -18,7 +18,7 @@ class XeroSyncService
     private function headers(string $tenantId): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->oauth->getFreshToken(),
+            'Authorization' => 'Bearer '.$this->oauth->getFreshToken(),
             'Xero-tenant-id' => $tenantId,
             'Accept' => 'application/json',
         ];
@@ -27,7 +27,7 @@ class XeroSyncService
     private function tenantId(): string
     {
         $conn = $this->oauth->getActiveConnection();
-        if (!$conn) {
+        if (! $conn) {
             throw new \RuntimeException('Xero not connected.');
         }
 
@@ -64,7 +64,7 @@ class XeroSyncService
         }
 
         $response = Http::withHeaders($headers)
-            ->post(self::API_BASE . '/Invoices', ['Invoices' => [$payload]]);
+            ->post(self::API_BASE.'/Invoices', ['Invoices' => [$payload]]);
 
         $xeroId = $response->json('Invoices.0.InvoiceID') ?? null;
 
@@ -78,7 +78,7 @@ class XeroSyncService
         ]);
 
         if ($response->failed()) {
-            throw new \RuntimeException('Xero invoice push failed: ' . $response->body());
+            throw new \RuntimeException('Xero invoice push failed: '.$response->body());
         }
     }
 
@@ -107,7 +107,7 @@ class XeroSyncService
         ];
 
         $response = Http::withHeaders($headers)
-            ->post(self::API_BASE . '/BankTransactions', ['BankTransactions' => [$payload]]);
+            ->post(self::API_BASE.'/BankTransactions', ['BankTransactions' => [$payload]]);
 
         $xeroId = $response->json('BankTransactions.0.BankTransactionID') ?? null;
 
@@ -121,7 +121,7 @@ class XeroSyncService
         ]);
 
         if ($response->failed()) {
-            throw new \RuntimeException('Xero expense push failed: ' . $response->body());
+            throw new \RuntimeException('Xero expense push failed: '.$response->body());
         }
     }
 

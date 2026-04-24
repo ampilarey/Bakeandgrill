@@ -20,14 +20,14 @@ class PreOrderApiController extends Controller
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|integer|exists:items,id',
             'items.*.quantity' => 'required|integer|min:1|max:50',
-            'fulfillment_date' => 'required|date|after:' . now()->addHours(24)->toIso8601String(),
+            'fulfillment_date' => 'required|date|after:'.now()->addHours(24)->toIso8601String(),
             'customer_notes' => 'nullable|string|max:1000',
         ]);
 
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -36,7 +36,7 @@ class PreOrderApiController extends Controller
 
         foreach ($request->items as $line) {
             $item = Item::find($line['item_id']);
-            if (!$item) {
+            if (! $item) {
                 continue;
             }
 
@@ -57,7 +57,7 @@ class PreOrderApiController extends Controller
         }
 
         $preOrder = PreOrder::create([
-            'order_number' => 'PRE-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
+            'order_number' => 'PRE-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
             'customer_id' => $customer->id,
             'customer_name' => $customer->name ?? $customer->phone,
             'customer_phone' => $customer->phone,
@@ -78,7 +78,7 @@ class PreOrderApiController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 

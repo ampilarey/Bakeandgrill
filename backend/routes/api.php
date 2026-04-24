@@ -192,7 +192,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // purchase workflow, forecasting) — required HERE so static paths like
     // /suppliers/performance and /purchases/suggest are registered BEFORE the
     // {id} wildcard routes below, preventing route shadowing.
-    require __DIR__ . '/api_finance.php';
+    require __DIR__.'/api_finance.php';
 
     // Suppliers — read requires suppliers.view, write requires suppliers.manage
     Route::middleware('permission:suppliers.view')->group(function () {

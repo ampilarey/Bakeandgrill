@@ -38,7 +38,7 @@ class FinanceContractTest extends ContractTestCase
         parent::setUp();
 
         $owner = $this->makeOwner();
-        $this->ownerHeaders = ['Authorization' => 'Bearer ' . $owner->createToken('test', ['staff'])->plainTextToken];
+        $this->ownerHeaders = ['Authorization' => 'Bearer '.$owner->createToken('test', ['staff'])->plainTextToken];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

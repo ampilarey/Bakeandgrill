@@ -111,7 +111,7 @@ class CustomerPasswordLoginTest extends TestCase
         }
 
         // Simulate cooldown expiry by clearing the limiter
-        $rateKey = 'customer-login:' . \App\Rules\MaldivesPhone::normalize('+9607001234') . ':127.0.0.1';
+        $rateKey = 'customer-login:'.\App\Rules\MaldivesPhone::normalize('+9607001234').':127.0.0.1';
         RateLimiter::clear($rateKey);
 
         $this->postJson('/api/auth/customer/login', [

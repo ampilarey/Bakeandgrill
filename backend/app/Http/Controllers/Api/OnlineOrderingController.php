@@ -43,7 +43,7 @@ class OnlineOrderingController extends Controller
 
         $next = $request->has('enabled')
             ? (bool) $request->input('enabled')
-            : !$current;
+            : ! $current;
 
         SiteSetting::set('online_ordering_enabled', $next ? '1' : '0');
 

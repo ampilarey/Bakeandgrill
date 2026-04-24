@@ -16,10 +16,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('reservation_settings', function (Blueprint $table): void {
-            if (!Schema::hasColumn('reservation_settings', 'opening_time')) {
+            if (! Schema::hasColumn('reservation_settings', 'opening_time')) {
                 $table->time('opening_time')->default('09:00:00')->after('auto_cancel_minutes');
             }
-            if (!Schema::hasColumn('reservation_settings', 'closing_time')) {
+            if (! Schema::hasColumn('reservation_settings', 'closing_time')) {
                 $table->time('closing_time')->default('22:00:00')->after('opening_time');
             }
         });

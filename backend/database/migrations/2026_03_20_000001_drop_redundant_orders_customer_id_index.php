@@ -18,7 +18,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('orders')) {
+        if (! Schema::hasTable('orders')) {
             return;
         }
 
@@ -31,11 +31,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('orders')) {
+        if (! Schema::hasTable('orders')) {
             return;
         }
 
-        if (!Schema::hasIndex('orders', 'orders_customer_id_index')) {
+        if (! Schema::hasIndex('orders', 'orders_customer_id_index')) {
             Schema::table('orders', function (Blueprint $table): void {
                 $table->index('customer_id', 'orders_customer_id_index');
             });

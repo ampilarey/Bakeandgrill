@@ -40,8 +40,11 @@ class OnlineOrderingGateTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
+
     private User $staffUser;
+
     private User $managerUser;
+
     private Item $item;
 
     protected function setUp(): void

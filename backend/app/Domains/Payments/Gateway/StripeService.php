@@ -20,7 +20,7 @@ class StripeService
 
     public function __construct()
     {
-        if (!config('services.stripe.secret_key')) {
+        if (! config('services.stripe.secret_key')) {
             throw new \RuntimeException('Stripe secret key not configured.');
         }
     }
@@ -28,16 +28,16 @@ class StripeService
     /**
      * Create a PaymentIntent and return client_secret for the frontend.
      *
-     * @param int $amountLaari Amount in smallest unit (laari for MVR)
-     * @param string $currency ISO currency code, e.g. 'mvr', 'usd'
-     * @param string $orderId Used as metadata for reconciliation
+     * @param  int  $amountLaari  Amount in smallest unit (laari for MVR)
+     * @param  string  $currency  ISO currency code, e.g. 'mvr', 'usd'
+     * @param  string  $orderId  Used as metadata for reconciliation
      * @return array{ payment_intent_id: string, client_secret: string }
      */
     public function createPaymentIntent(int $amountLaari, string $currency, string $orderId): array
     {
         $response = Http::withBasicAuth(config('services.stripe.secret_key'), '')
             ->asForm()
-            ->post(self::BASE_URL . '/payment_intents', [
+            ->post(self::BASE_URL.'/payment_intents', [
                 'amount' => $amountLaari,
                 'currency' => strtolower($currency),
                 'metadata[order_id]' => $orderId,
@@ -46,7 +46,7 @@ class StripeService
 
         if ($response->failed()) {
             Log::error('Stripe createPaymentIntent failed', ['body' => $response->body()]);
-            throw new \RuntimeException('Stripe payment creation failed: ' . ($response->json('error.message') ?? $response->body()));
+            throw new \RuntimeException('Stripe payment creation failed: '.($response->json('error.message') ?? $response->body()));
         }
 
         return [
@@ -61,10 +61,10 @@ class StripeService
     public function getPaymentIntent(string $paymentIntentId): array
     {
         $response = Http::withBasicAuth(config('services.stripe.secret_key'), '')
-            ->get(self::BASE_URL . '/payment_intents/' . $paymentIntentId);
+            ->get(self::BASE_URL.'/payment_intents/'.$paymentIntentId);
 
         if ($response->failed()) {
-            throw new \RuntimeException('Stripe getPaymentIntent failed: ' . $response->body());
+            throw new \RuntimeException('Stripe getPaymentIntent failed: '.$response->body());
         }
 
         return $response->json();
@@ -78,20 +78,28 @@ class StripeService
     public function verifyWebhook(string $rawBody, string $sigHeader): array
     {
         $secret = config('services.stripe.webhook_secret');
-        if (!$secret) {
+        if (! $secret) {
             throw new \RuntimeException('Stripe webhook secret not configured.');
+        }
+
+        if (empty($sigHeader)) {
+            throw new \RuntimeException('Missing Stripe webhook signature header.');
         }
 
         $parts = [];
         foreach (explode(',', $sigHeader) as $part) {
-            [$k, $v] = explode('=', $part, 2);
+            $pieces = explode('=', $part, 2);
+            if (count($pieces) !== 2) {
+                continue;
+            }
+            [$k, $v] = $pieces;
             $parts[$k][] = $v;
         }
 
         $timestamp = $parts['t'][0] ?? null;
         $signatures = $parts['v1'] ?? [];
 
-        if (!$timestamp || empty($signatures)) {
+        if (! $timestamp || empty($signatures)) {
             throw new \RuntimeException('Invalid Stripe webhook signature header.');
         }
 
@@ -100,7 +108,7 @@ class StripeService
             throw new \RuntimeException('Stripe webhook timestamp too old.');
         }
 
-        $expectedSig = hash_hmac('sha256', $timestamp . '.' . $rawBody, $secret);
+        $expectedSig = hash_hmac('sha256', $timestamp.'.'.$rawBody, $secret);
 
         foreach ($signatures as $sig) {
             if (hash_equals($expectedSig, $sig)) {
@@ -123,10 +131,10 @@ class StripeService
 
         $response = Http::withBasicAuth(config('services.stripe.secret_key'), '')
             ->asForm()
-            ->post(self::BASE_URL . '/refunds', $params);
+            ->post(self::BASE_URL.'/refunds', $params);
 
         if ($response->failed()) {
-            throw new \RuntimeException('Stripe refund failed: ' . $response->body());
+            throw new \RuntimeException('Stripe refund failed: '.$response->body());
         }
 
         return $response->json();

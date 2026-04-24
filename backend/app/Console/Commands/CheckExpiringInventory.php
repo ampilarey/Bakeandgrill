@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 class CheckExpiringInventory extends Command
 {
     protected $signature = 'inventory:check-expiry {--days=7 : Warn if expiry within this many days}';
+
     protected $description = 'List inventory items expiring within N days';
 
     public function handle(): int

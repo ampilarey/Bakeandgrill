@@ -88,7 +88,7 @@ class LoyaltyLedgerService
                 $this->releaseHold($existing, $account);
             }
 
-            $idempotencyKey = 'hold:' . $customer->id . ':' . $order->id . ':' . $pointsToRedeem;
+            $idempotencyKey = 'hold:'.$customer->id.':'.$order->id.':'.$pointsToRedeem;
             $ttlMinutes = (int) config('app.loyalty_hold_ttl', 30);
 
             $hold = $this->holdRepo->upsertForOrder($order->id, [
@@ -126,7 +126,7 @@ class LoyaltyLedgerService
             // events) cannot both pass the status check and double-consume.
             $locked = LoyaltyHold::where('id', $hold->id)->lockForUpdate()->first();
 
-            if (!$locked || $locked->status === 'consumed') {
+            if (! $locked || $locked->status === 'consumed') {
                 Log::info('Loyalty hold already consumed or not found, skipping', ['hold_id' => $hold->id]);
 
                 return;
@@ -141,7 +141,7 @@ class LoyaltyLedgerService
 
             $hold = $locked; // Use the locked copy for all subsequent reads
             $account = $this->accountRepo->lockAccount($hold->customer_id);
-            if (!$account) {
+            if (! $account) {
                 Log::error('Loyalty account not found for hold consumption', ['hold_id' => $hold->id]);
 
                 return;
@@ -159,7 +159,7 @@ class LoyaltyLedgerService
                 $pointsToConsume = $hold->points_held;
             }
 
-            $idempotencyKey = 'loyalty:redeem:' . $hold->order_id . ':' . $hold->id;
+            $idempotencyKey = 'loyalty:redeem:'.$hold->order_id.':'.$hold->id;
             $balanceAfter = max(0, $account->points_balance - $pointsToConsume);
 
             $this->ledgerRepo->firstOrCreateByIdempotencyKey($idempotencyKey, [
@@ -184,7 +184,7 @@ class LoyaltyLedgerService
      */
     public function releaseHold(LoyaltyHold $hold, ?LoyaltyAccount $account = null): void
     {
-        if (!in_array($hold->status, ['active'], true)) {
+        if (! in_array($hold->status, ['active'], true)) {
             return;
         }
 
@@ -236,7 +236,7 @@ class LoyaltyLedgerService
      */
     public function earnPointsForOrder(Customer $customer, Order $order): void
     {
-        $idempotencyKey = 'loyalty:earn:' . $order->id . ':' . $customer->id;
+        $idempotencyKey = 'loyalty:earn:'.$order->id.':'.$customer->id;
 
         DB::transaction(function () use ($customer, $order, $idempotencyKey): void {
             // Ensure account exists before acquiring the lock.
@@ -266,7 +266,7 @@ class LoyaltyLedgerService
                 'type' => 'earn',
                 'points' => $points,
                 'balance_after' => $balanceAfter,
-                'notes' => 'Earned from order ' . $order->order_number,
+                'notes' => 'Earned from order '.$order->order_number,
                 'occurred_at' => now(),
             ]);
 

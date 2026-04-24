@@ -66,7 +66,7 @@ class SupplierIntelligenceController extends Controller
     {
         $supplier = Supplier::findOrFail($supplierId);
         $cache = SupplierPerformanceCache::firstOrNew(['supplier_id' => $supplierId]);
-        $isStale = !$cache->refreshed_at || $cache->refreshed_at->lt(now()->subHours(6));
+        $isStale = ! $cache->refreshed_at || $cache->refreshed_at->lt(now()->subHours(6));
 
         if ($isStale) {
             $cache = $this->refreshPerformanceCache($supplierId);

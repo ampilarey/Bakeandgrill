@@ -24,8 +24,11 @@ use Laravel\Sanctum\Sanctum;
 class PrintPayloadContractTest extends ContractTestCase
 {
     private User $staff;
+
     private Device $device;
+
     private Item $item;
+
     private Printer $kitchenPrinter;
 
     protected function setUp(): void
@@ -157,7 +160,7 @@ class PrintPayloadContractTest extends ContractTestCase
 
         Http::assertSent(function ($request) {
             $payload = $request->data();
-            if (!isset($payload['order']['subtotal'])) {
+            if (! isset($payload['order']['subtotal'])) {
                 return false;
             }
 

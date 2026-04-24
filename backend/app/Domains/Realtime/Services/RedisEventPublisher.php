@@ -30,7 +30,7 @@ class RedisEventPublisher
      */
     public function publishOrderEvent(int $orderId, string $eventType, array $payload): void
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return;
         }
 

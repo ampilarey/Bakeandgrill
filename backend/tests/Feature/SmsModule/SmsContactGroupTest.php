@@ -37,7 +37,7 @@ class SmsContactGroupTest extends TestCase
     {
         return SmsContactGroup::create([
             'name' => 'Test Group',
-            'slug' => 'test-group-' . uniqid(),
+            'slug' => 'test-group-'.uniqid(),
             'is_enabled' => true,
         ]);
     }

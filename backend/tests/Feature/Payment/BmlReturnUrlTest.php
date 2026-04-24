@@ -20,7 +20,9 @@ class BmlReturnUrlTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
+
     private Order $order;
+
     private string $token;
 
     protected function setUp(): void
@@ -113,7 +115,7 @@ class BmlReturnUrlTest extends TestCase
             'amount' => 100.00,
             'amount_laar' => 10000,
             'status' => 'pending',
-            'idempotency_key' => 'bml:init:' . $this->order->id . ':' . now()->format('Ymd'),
+            'idempotency_key' => 'bml:init:'.$this->order->id.':'.now()->format('Ymd'),
             'local_id' => 'LOCAL-BML-001',
             'transaction_id' => 'TXN-BML-WH-001',
         ]);

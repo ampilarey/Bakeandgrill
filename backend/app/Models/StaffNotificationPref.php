@@ -42,7 +42,7 @@ class StaffNotificationPref extends Model
      */
     public function acceptsOrderType(string $orderType): bool
     {
-        if (!$this->notifications_enabled) {
+        if (! $this->notifications_enabled) {
             return false;
         }
 
@@ -63,6 +63,6 @@ class StaffNotificationPref extends Model
             return true;
         }
 
-        return !empty(array_intersect($this->menu_group_ids, $menuGroupIds));
+        return ! empty(array_intersect($this->menu_group_ids, $menuGroupIds));
     }
 }

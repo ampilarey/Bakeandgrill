@@ -21,11 +21,17 @@ class VariantOrderTest extends TestCase
     use RefreshDatabase;
 
     private User $staff;
+
     private Item $simpleItem;
+
     private Item $variantItem;
+
     private Variant $variantSmall;
+
     private Variant $variantLarge;
+
     private Variant $inactiveVariant;
+
     private Device $device;
 
     protected function setUp(): void

@@ -45,7 +45,7 @@ class SseStreamService
      */
     public function streamOrderViaRedis(int $orderId, callable $fetchEvents, string $initialCursor = ''): StreamedResponse
     {
-        if (!$this->redisEnabled()) {
+        if (! $this->redisEnabled()) {
             return $this->stream($fetchEvents, $initialCursor);
         }
 
@@ -60,7 +60,7 @@ class SseStreamService
                     echo $event->toSseString();
                     $cursor = $event->id;
                 }
-                if (!empty($events)) {
+                if (! empty($events)) {
                     flush();
                 }
 
@@ -79,7 +79,7 @@ class SseStreamService
                         }
 
                         $data = json_decode($message, true);
-                        if (!is_array($data)) {
+                        if (! is_array($data)) {
                             return;
                         }
 
@@ -161,7 +161,7 @@ class SseStreamService
                 $cursor = $event->id;
             }
 
-            if (!empty($events)) {
+            if (! empty($events)) {
                 flush();
             }
 

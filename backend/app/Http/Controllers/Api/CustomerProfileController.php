@@ -68,7 +68,7 @@ class CustomerProfileController extends Controller
         /** @var Customer $customer */
         $customer = $request->user();
 
-        if (empty($customer->password) || !Hash::check($input['current_password'], $customer->password)) {
+        if (empty($customer->password) || ! Hash::check($input['current_password'], $customer->password)) {
             throw ValidationException::withMessages([
                 'current_password' => ['Current password is incorrect.'],
             ]);

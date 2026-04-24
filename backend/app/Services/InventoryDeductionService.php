@@ -21,7 +21,7 @@ class InventoryDeductionService
                 $item = $orderItem->item;
                 $recipe = $item?->recipe;
 
-                if (!$recipe) {
+                if (! $recipe) {
                     continue;
                 }
 
@@ -31,7 +31,7 @@ class InventoryDeductionService
                     $inventoryItem = $recipeItem->inventoryItem;
                     $perUnitQuantity = (float) $recipeItem->quantity;
 
-                    if (!$inventoryItem || $perUnitQuantity <= 0) {
+                    if (! $inventoryItem || $perUnitQuantity <= 0) {
                         continue;
                     }
 
@@ -43,7 +43,7 @@ class InventoryDeductionService
                     // Include orderItem->id so two menu items sharing the same ingredient
                     // each produce a distinct key — without it only the first deduction
                     // is recorded and subsequent items silently skip.
-                    $idempotencyKey = 'order:' . $order->id . ':item:' . $orderItem->id . ':inv:' . $inventoryItem->id;
+                    $idempotencyKey = 'order:'.$order->id.':item:'.$orderItem->id.':inv:'.$inventoryItem->id;
 
                     // Lock the inventory row first to close the TOCTOU window.
                     // Without lockForUpdate(), two concurrent requests can both
@@ -56,7 +56,7 @@ class InventoryDeductionService
                         ->lockForUpdate()
                         ->first();
 
-                    if (!$lockedItem) {
+                    if (! $lockedItem) {
                         continue;
                     }
 

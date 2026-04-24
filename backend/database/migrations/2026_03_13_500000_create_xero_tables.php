@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('xero_connections')) {
+        if (! Schema::hasTable('xero_connections')) {
             Schema::create('xero_connections', function (Blueprint $table) {
                 $table->id();
                 $table->string('tenant_id')->unique();
@@ -24,7 +24,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('xero_sync_logs')) {
+        if (! Schema::hasTable('xero_sync_logs')) {
             Schema::create('xero_sync_logs', function (Blueprint $table) {
                 $table->id();
                 $table->string('resource_type'); // invoice, expense, payment

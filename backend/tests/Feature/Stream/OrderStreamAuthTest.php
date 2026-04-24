@@ -22,8 +22,11 @@ class OrderStreamAuthTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
+
     private Customer $otherCustomer;
+
     private Order $order;
+
     private string $customerToken;
 
     protected function setUp(): void
@@ -123,7 +126,7 @@ class OrderStreamAuthTest extends TestCase
 
         $ticket = $ticketResponse->json('ticket');
         // Manually expire the ticket
-        \Illuminate\Support\Facades\Cache::forget('stream_ticket:' . $ticket);
+        \Illuminate\Support\Facades\Cache::forget('stream_ticket:'.$ticket);
 
         $this->getJson(
             "/api/stream/order-status/{$this->order->id}?ticket={$ticket}",
@@ -143,7 +146,7 @@ class OrderStreamAuthTest extends TestCase
         // First use: the SSE stream opens, but since it's an infinite stream we can't easily
         // test the full stream. We test the ticket is consumed by attempting the same endpoint twice
         // via the cache directly.
-        $cacheKey = 'stream_ticket:' . $ticket;
+        $cacheKey = 'stream_ticket:'.$ticket;
         $this->assertTrue(\Illuminate\Support\Facades\Cache::has($cacheKey), 'Ticket should be in cache after issuance.');
     }
 

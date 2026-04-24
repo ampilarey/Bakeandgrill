@@ -374,15 +374,15 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::findOrFail($id);
         $phone = PhoneNormalizer::normalize($request->phone);
-        $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
+        $link = rtrim(config('app.url'), '/').'/invoices/'.$invoice->token;
 
         app(SmsService::class)->send(new SmsMessage(
             to: $phone,
-            message: 'Bake & Grill: Your bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
+            message: 'Bake & Grill: Your bill #'.$invoice->invoice_number.' — MVR '.number_format((float) $invoice->total, 2).'. View: '.$link,
             type: 'transactional',
             referenceType: 'invoice',
             referenceId: (string) $invoice->id,
-            idempotencyKey: 'invoice:send:' . $invoice->id . ':' . $phone,
+            idempotencyKey: 'invoice:send:'.$invoice->id.':'.$phone,
         ));
 
         $invoice->update([
@@ -459,7 +459,7 @@ class InvoiceController extends Controller
         $date = now()->format('Ymd');
         $count = Invoice::whereDate('created_at', now()->toDateString())->withTrashed()->lockForUpdate()->count() + 1;
 
-        return 'INV-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        return 'INV-'.$date.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
     }
 
     private function format(Invoice $inv): array

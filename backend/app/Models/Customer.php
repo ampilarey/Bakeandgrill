@@ -15,6 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
 class Customer extends Model implements AuthenticatableContract
 {
     use Authenticatable, HasApiTokens, HasFactory, SoftDeletes;
+
     protected $fillable = [
         'name',
         'phone',

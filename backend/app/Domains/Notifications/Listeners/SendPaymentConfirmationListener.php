@@ -24,9 +24,13 @@ use Illuminate\Support\Facades\Log;
 class SendPaymentConfirmationListener implements ShouldQueue
 {
     public bool $afterCommit = true;
+
     public string $queue = 'default';
+
     public int $tries = 3;
+
     public int $backoff = 5;
+
     public int $timeout = 30;
 
     public function __construct(private PaymentConfirmationNotifier $notifier) {}
@@ -47,7 +51,7 @@ class SendPaymentConfirmationListener implements ShouldQueue
     {
         $order = Order::with(['items.item', 'customer'])->find($event->data->orderId);
 
-        if (!$order) {
+        if (! $order) {
             Log::warning('SendPaymentConfirmationListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;

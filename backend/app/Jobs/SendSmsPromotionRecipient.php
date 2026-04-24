@@ -20,7 +20,9 @@ class SendSmsPromotionRecipient implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 60;
+
     public int $timeout = 60;
 
     public function __construct(public int $recipientId) {}
@@ -31,18 +33,18 @@ class SendSmsPromotionRecipient implements ShouldQueue
 
         SmsPromotionRecipient::where('id', $this->recipientId)
             ->where('status', 'queued')
-            ->update(['status' => 'failed', 'error_message' => 'Job failed after retries: ' . $exception->getMessage()]);
+            ->update(['status' => 'failed', 'error_message' => 'Job failed after retries: '.$exception->getMessage()]);
     }
 
     public function handle(SmsService $smsService): void
     {
         $recipient = SmsPromotionRecipient::find($this->recipientId);
-        if (!$recipient || $recipient->status !== 'queued') {
+        if (! $recipient || $recipient->status !== 'queued') {
             return;
         }
 
         $promotion = SmsPromotion::find($recipient->sms_promotion_id);
-        if (!$promotion) {
+        if (! $promotion) {
             $recipient->update(['status' => 'failed', 'error_message' => 'Promotion not found']);
 
             return;

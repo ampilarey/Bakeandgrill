@@ -125,18 +125,18 @@ class SmsService
         $digits = preg_replace('/[^0-9]/', '', $phone);
 
         if (str_starts_with($digits, '960') && strlen($digits) === 10) {
-            return '+' . $digits;
+            return '+'.$digits;
         }
 
         if (strlen($digits) === 7) {
-            return '+960' . $digits;
+            return '+960'.$digits;
         }
 
         if (strlen($digits) > 7) {
-            return '+960' . substr($digits, -7);
+            return '+960'.substr($digits, -7);
         }
 
-        return '+960' . str_pad($digits, 7, '0', STR_PAD_LEFT);
+        return '+960'.str_pad($digits, 7, '0', STR_PAD_LEFT);
     }
 
     public function isValidMaldivianNumber(string $normalized): bool

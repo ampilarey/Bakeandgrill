@@ -30,7 +30,9 @@ use Illuminate\Support\Facades\Log;
 class BmlConnectService
 {
     private string $baseUrl;
+
     private string $appId;
+
     private string $apiKey;
 
     public function __construct()
@@ -43,8 +45,8 @@ class BmlConnectService
     /**
      * Create a payment session with BML.
      *
-     * @param int $amountLaar Amount in laari (e.g. 2500 = MVR 25.00)
-     * @param string $localId Unique merchant-side transaction ID (alphanumeric, max 50 chars)
+     * @param  int  $amountLaar  Amount in laari (e.g. 2500 = MVR 25.00)
+     * @param  string  $localId  Unique merchant-side transaction ID (alphanumeric, max 50 chars)
      * @return array{payment_url: string, transaction_id: string, local_id: string}
      *
      * @throws \RuntimeException on gateway error
@@ -70,7 +72,7 @@ class BmlConnectService
             'paymentPortalExperience' => [
                 'externalWebsiteTermsAccepted' => (bool) ($portalExp['external_website_terms_accepted'] ?? true),
                 'externalWebsiteTermsUrl' => $portalExp['external_website_terms_url']
-                                                    ?: rtrim(config('app.url', ''), '/') . '/terms',
+                                                    ?: rtrim(config('app.url', ''), '/').'/terms',
             ],
         ];
 
@@ -100,20 +102,20 @@ class BmlConnectService
 
         $body = $response->json() ?? [];
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('BML: Payment creation failed', [
                 'local_id' => $localId,
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'payload_sent' => $payload,
             ]);
-            throw new \RuntimeException("BML payment creation failed ({$response->status()}): " . $response->body());
+            throw new \RuntimeException("BML payment creation failed ({$response->status()}): ".$response->body());
         }
 
         $paymentUrl = $body['url'] ?? $body['shortUrl'] ?? $body['paymentUrl'] ?? $body['redirectUrl'] ?? null;
         $transactionId = $body['id'] ?? $body['transactionId'] ?? $body['transaction_id'] ?? '';
 
-        if (!$paymentUrl) {
+        if (! $paymentUrl) {
             Log::error('BML: No payment URL in response', ['local_id' => $localId, 'body' => $body]);
             throw new \RuntimeException('BML did not return a payment URL.');
         }
@@ -137,7 +139,7 @@ class BmlConnectService
     public function verifyWebhookSignature(string $rawBody, string $signature): bool
     {
         $secret = config('bml.webhook_secret');
-        if (!$secret) {
+        if (! $secret) {
             Log::warning('BML: Webhook secret not configured');
 
             return false;
@@ -160,7 +162,7 @@ class BmlConnectService
             ->timeout(15)
             ->get("{$this->baseUrl}/v2/transactions/{$transactionId}");
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \RuntimeException("BML status check failed: {$response->status()}");
         }
 
@@ -190,10 +192,10 @@ class BmlConnectService
         return match ($mode) {
             'raw' => $key,
             'bearer_jwt' => "Bearer {$key}",
-            'bearer_basic' => 'Bearer ' . base64_encode($key . ':' . $this->appId),
+            'bearer_basic' => 'Bearer '.base64_encode($key.':'.$this->appId),
             default => str_starts_with($key, 'eyJ')
                                 ? "Bearer {$key}"
-                                : 'Bearer ' . base64_encode($key . ':' . $this->appId),
+                                : 'Bearer '.base64_encode($key.':'.$this->appId),
         };
     }
 }

@@ -27,7 +27,7 @@ class DeductPreparedStockListener
 
     public function handle(OrderPaid $event): void
     {
-        if (!in_array($event->data->orderType ?? '', ['online_pickup', 'delivery'], true)) {
+        if (! in_array($event->data->orderType ?? '', ['online_pickup', 'delivery'], true)) {
             // POS orders already deducted stock at creation — nothing to do
             return;
         }
@@ -37,7 +37,7 @@ class DeductPreparedStockListener
             ['items.item'],
         );
 
-        if (!$order) {
+        if (! $order) {
             Log::error('DeductPreparedStockListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;

@@ -21,13 +21,13 @@ class CategoryController extends Controller
                    && $request->user()->tokenCan('staff');
 
         $query = Category::with(['items' => function ($q) use ($isAdmin) {
-            if (!$isAdmin) {
+            if (! $isAdmin) {
                 $q->where('is_active', true)->where('is_available', true);
             }
             $q->orderBy('sort_order')->orderBy('name');
         }]);
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $query->where('is_active', true);
         }
 

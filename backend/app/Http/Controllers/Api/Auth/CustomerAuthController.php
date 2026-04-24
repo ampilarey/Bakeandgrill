@@ -60,7 +60,7 @@ class CustomerAuthController extends Controller
             type: 'otp',
             referenceType: 'otp',
             referenceId: (string) OtpVerification::where('phone', $phone)->latest()->value('id'),
-            idempotencyKey: 'otp:' . $purpose . ':' . $phone . ':' . now()->format('YmdHi'),
+            idempotencyKey: 'otp:'.$purpose.':'.$phone.':'.now()->format('YmdHi'),
         ));
 
         return $otpCode;
@@ -74,7 +74,7 @@ class CustomerAuthController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
-        if (!$otpRecord) {
+        if (! $otpRecord) {
             throw ValidationException::withMessages([
                 'otp' => ['OTP expired or invalid. Please request a new one.'],
             ]);
@@ -86,10 +86,10 @@ class CustomerAuthController extends Controller
             ]);
         }
 
-        if (!Hash::check($code, $otpRecord->code_hash)) {
+        if (! Hash::check($code, $otpRecord->code_hash)) {
             $otpRecord->increment('attempts');
             throw ValidationException::withMessages([
-                'otp' => ['Invalid OTP code. ' . (5 - $otpRecord->attempts) . ' attempts remaining.'],
+                'otp' => ['Invalid OTP code. '.(5 - $otpRecord->attempts).' attempts remaining.'],
             ]);
         }
 
@@ -113,7 +113,7 @@ class CustomerAuthController extends Controller
 
         return response()->json([
             'exists' => $customer !== null,
-            'has_password' => $customer !== null && !empty($customer->password),
+            'has_password' => $customer !== null && ! empty($customer->password),
         ]);
     }
 
@@ -131,18 +131,18 @@ class CustomerAuthController extends Controller
 
         // Controller-level rate limit (in addition to route throttle) so lockout
         // message is friendly and consistent regardless of proxy/throttle config.
-        $rateKey = 'customer-login:' . $phone . ':' . $request->ip();
+        $rateKey = 'customer-login:'.$phone.':'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
             throw ValidationException::withMessages([
-                'phone' => ['Too many login attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
+                'phone' => ['Too many login attempts. Try again in '.ceil($seconds / 60).' minutes.'],
             ]);
         }
 
         $customer = Customer::where('phone', $phone)->first();
 
-        if (!$customer || empty($customer->password) || !Hash::check($input['password'], $customer->password)) {
+        if (! $customer || empty($customer->password) || ! Hash::check($input['password'], $customer->password)) {
             RateLimiter::hit($rateKey, 900); // 15-minute decay per phone+IP
             throw ValidationException::withMessages([
                 'phone' => ['Invalid phone number or password.'],
@@ -151,7 +151,7 @@ class CustomerAuthController extends Controller
 
         RateLimiter::clear($rateKey);
 
-        if (!$customer->is_active) {
+        if (! $customer->is_active) {
             throw ValidationException::withMessages([
                 'phone' => ['This account has been deactivated. Please contact support.'],
             ]);
@@ -161,7 +161,7 @@ class CustomerAuthController extends Controller
 
         // Issue a new token without revoking existing ones — customers may be
         // logged in on multiple devices or tabs simultaneously.
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-'.$customer->phone.'-'.bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
@@ -188,19 +188,19 @@ class CustomerAuthController extends Controller
         // Soft-deleted customers are allowed through OTP so they can recover their account.
         if ($purpose === 'register') {
             $customer = Customer::where('phone', $phone)->first();
-            if ($customer && !empty($customer->password)) {
+            if ($customer && ! empty($customer->password)) {
                 throw ValidationException::withMessages([
                     'phone' => ['This number already has an account. Please log in with your password, or use "Forgot password?" to reset it.'],
                 ]);
             }
         }
 
-        $key = 'otp-request:login:' . $phone;
+        $key = 'otp-request:login:'.$phone;
 
         if (RateLimiter::tooManyAttempts($key, 20)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
-                'phone' => ['Too many OTP requests. Please try again in ' . ceil($seconds / 60) . ' minutes.'],
+                'phone' => ['Too many OTP requests. Please try again in '.ceil($seconds / 60).' minutes.'],
             ]);
         }
 
@@ -208,7 +208,7 @@ class CustomerAuthController extends Controller
 
         $otpCode = $this->sendOtp($phone, $purpose);
 
-        if (!app()->environment('production')) {
+        if (! app()->environment('production')) {
             logger()->info('OTP requested', ['phone' => $phone, 'otp' => $otpCode, 'purpose' => $purpose]);
         }
 
@@ -241,7 +241,7 @@ class CustomerAuthController extends Controller
         $this->verifyAndConsumeOtp($phone, $input['otp']);
 
         // Successful verification — clear OTP request rate limit so user can request again cleanly
-        RateLimiter::clear('otp-request:login:' . $phone);
+        RateLimiter::clear('otp-request:login:'.$phone);
 
         // Include soft-deleted rows so we don't hit a unique constraint violation
         // when a customer who was admin-deleted tries to log back in via OTP.
@@ -254,7 +254,7 @@ class CustomerAuthController extends Controller
             $customer = $existing;
         } elseif ($existing) {
             $customer = $existing;
-            if (!$customer->is_active) {
+            if (! $customer->is_active) {
                 throw ValidationException::withMessages([
                     'phone' => ['This account has been deactivated. Please contact support.'],
                 ]);
@@ -281,7 +281,7 @@ class CustomerAuthController extends Controller
 
         // Issue a new token without revoking existing ones — customers may be
         // logged in on multiple devices or tabs simultaneously.
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-'.$customer->phone.'-'.bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Verified successfully',
@@ -300,16 +300,16 @@ class CustomerAuthController extends Controller
     {
         $customer = Auth::guard('customer')->user();
 
-        if (!$customer instanceof Customer) {
+        if (! $customer instanceof Customer) {
             return response()->json(['authenticated' => false], 401);
         }
 
-        if (!$customer->is_active) {
+        if (! $customer->is_active) {
             return response()->json(['authenticated' => false, 'message' => 'Account deactivated.'], 403);
         }
 
         // Bridge a Blade session to a Sanctum token without revoking other device tokens.
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-'.$customer->phone.'-'.bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'authenticated' => true,
@@ -340,12 +340,12 @@ class CustomerAuthController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        $key = 'otp-request:reset:' . $phone;
+        $key = 'otp-request:reset:'.$phone;
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
-                'phone' => ['Too many requests. Please try again in ' . ceil($seconds / 60) . ' minutes.'],
+                'phone' => ['Too many requests. Please try again in '.ceil($seconds / 60).' minutes.'],
             ]);
         }
 
@@ -353,7 +353,7 @@ class CustomerAuthController extends Controller
 
         $otpCode = $this->sendOtp($phone, 'reset_password');
 
-        if (!app()->environment('production')) {
+        if (! app()->environment('production')) {
             logger()->info('Password reset OTP requested', ['phone' => $phone, 'otp' => $otpCode]);
         }
 
@@ -387,7 +387,7 @@ class CustomerAuthController extends Controller
 
         $customer = Customer::where('phone', $phone)->first();
 
-        if (!$customer) {
+        if (! $customer) {
             throw ValidationException::withMessages([
                 'phone' => ['No account found for this phone number.'],
             ]);
@@ -401,7 +401,7 @@ class CustomerAuthController extends Controller
 
         // Password reset: intentionally revoke all sessions for security.
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
+        $token = $customer->createToken('customer-'.$customer->phone.'-'.bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Password reset successfully',

@@ -38,6 +38,7 @@ class CustomerContractTest extends ContractTestCase
     ];
 
     private Customer $customer;
+
     private string $token;
 
     protected function setUp(): void

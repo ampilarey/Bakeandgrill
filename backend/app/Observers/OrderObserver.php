@@ -33,7 +33,7 @@ class OrderObserver
 
     public function updated(Order $order): void
     {
-        if (!$order->wasChanged('status')) {
+        if (! $order->wasChanged('status')) {
             return;
         }
 

@@ -21,6 +21,7 @@ class SseStreamTest extends TestCase
     use RefreshDatabase;
 
     private User $staff;
+
     private Customer $customer;
 
     protected function setUp(): void

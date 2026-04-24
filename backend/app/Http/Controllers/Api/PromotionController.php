@@ -54,9 +54,9 @@ class PromotionController extends Controller
             ? $user->id
             : ($order?->customer_id ?? null);
 
-        if (!$order) {
+        if (! $order) {
             $promo = Promotion::where('code', strtoupper(trim($request->input('code'))))->first();
-            if (!$promo || !$promo->isValid()) {
+            if (! $promo || ! $promo->isValid()) {
                 return response()->json(['valid' => false, 'message' => 'Promo code is invalid or expired.']);
             }
 
@@ -87,7 +87,7 @@ class PromotionController extends Controller
         $order = Order::with('items.item')->findOrFail($orderId);
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
         $isCustomerActor = $user->tokenCan('customer');
@@ -99,7 +99,7 @@ class PromotionController extends Controller
             }
         } else {
             // Staff actor — must have explicit promotions.discounts permission.
-            if (!$user->hasPermission('promotions.discounts')) {
+            if (! $user->hasPermission('promotions.discounts')) {
                 return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
             }
         }
@@ -116,12 +116,12 @@ class PromotionController extends Controller
 
         $result = $this->evaluator->evaluate($request->input('code'), $order, $customerId);
 
-        if (!$result['valid']) {
+        if (! $result['valid']) {
             return response()->json(['message' => $result['message']], 422);
         }
 
         $promotion = $result['promotion'];
-        $idempotencyKey = 'order-promo:' . $orderId . ':' . $promotion->id;
+        $idempotencyKey = 'order-promo:'.$orderId.':'.$promotion->id;
 
         // Track whether the promo was actually persisted so we can return the
         // correct status if the order was concurrently locked into a terminal state.
@@ -141,7 +141,7 @@ class PromotionController extends Controller
                 ->whereNotIn('status', ['released'])
                 ->first();
 
-            if ($existing && !$promotion->stackable) {
+            if ($existing && ! $promotion->stackable) {
                 $existing->update(['status' => 'released']);
             }
 
@@ -164,7 +164,7 @@ class PromotionController extends Controller
             $applied = true;
         });
 
-        if (!$applied) {
+        if (! $applied) {
             return response()->json(['message' => 'Order is no longer modifiable.'], 409);
         }
 
@@ -194,7 +194,7 @@ class PromotionController extends Controller
             }
         } else {
             // Staff actor — must have explicit promotions.discounts permission.
-            if (!$user->hasPermission('promotions.discounts')) {
+            if (! $user->hasPermission('promotions.discounts')) {
                 return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
             }
         }
@@ -229,7 +229,7 @@ class PromotionController extends Controller
             $removed = true;
         });
 
-        if (!$removed) {
+        if (! $removed) {
             return response()->json(['message' => 'Order is no longer modifiable.'], 409);
         }
 
@@ -251,11 +251,11 @@ class PromotionController extends Controller
     private function authorizeAdminRole(Request $request, string ...$roles): void
     {
         $user = $request->user();
-        if (!$user || $user instanceof Customer) {
+        if (! $user || $user instanceof Customer) {
             abort(403, 'Forbidden.');
         }
         $user->loadMissing('role');
-        if (!in_array($user->role?->slug, $roles, true)) {
+        if (! in_array($user->role?->slug, $roles, true)) {
             abort(403, 'Insufficient role.');
         }
     }
