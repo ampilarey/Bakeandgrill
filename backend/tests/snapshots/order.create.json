@@ -17,6 +17,16 @@
         "updated_at": "__VOLATILE__",
         "created_at": "__VOLATILE__",
         "id": "__VOLATILE__",
+        "manual_discount_laar": 0,
+        "subtotal_laar": 2200,
+        "tax_laar": 0,
+        "promo_discount_laar": 0,
+        "loyalty_discount_laar": 0,
+        "gift_card_discount_laar": 0,
+        "referral_discount_laar": 0,
+        "total_laar": 2200,
+        "tax_inclusive": false,
+        "tax_rate_bp": 0,
         "items": [
             {
                 "id": "__VOLATILE__",

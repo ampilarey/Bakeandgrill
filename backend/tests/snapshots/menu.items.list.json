@@ -28,6 +28,12 @@
             "has_variants": false,
             "variants": [],
             "modifiers": [],
+            "spice_level": null,
+            "is_combo": false,
+            "dietary_tags": [],
+            "prep_time_minutes": null,
+            "avg_rating": null,
+            "review_count": 0,
             "availability": {
                 "available": true,
                 "reason_code": null,
