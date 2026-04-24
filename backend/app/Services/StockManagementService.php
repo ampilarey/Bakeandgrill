@@ -78,12 +78,13 @@ class StockManagementService
             return;
         }
 
-        // Use GREATEST to floor at 0 — stock cannot go negative in the DB.
+        // Floor at 0 — stock cannot go negative in the DB.
+        // CASE WHEN is portable across SQLite, MySQL, and PostgreSQL.
         // We still log a warning so overselling can be investigated and corrected.
         DB::table('items')
             ->where('id', $item->id)
             ->update([
-                'stock_quantity' => DB::raw("GREATEST(0, stock_quantity - {$quantity})"),
+                'stock_quantity' => DB::raw("CASE WHEN stock_quantity >= {$quantity} THEN stock_quantity - {$quantity} ELSE 0 END"),
             ]);
         $item->refresh();
 
@@ -250,7 +251,7 @@ class StockManagementService
         DB::table('variants')
             ->where('id', $variant->id)
             ->update([
-                'stock_qty' => DB::raw("GREATEST(0, stock_qty - {$quantity})"),
+                'stock_qty' => DB::raw("CASE WHEN stock_qty >= {$quantity} THEN stock_qty - {$quantity} ELSE 0 END"),
             ]);
         $variant->refresh();
 
