@@ -109,7 +109,7 @@ jobs:
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
           MAIL_MAILER: array
-        run: php artisan test --parallel --stop-on-failure
+        run: php artisan test --stop-on-failure
 
   test-postgres:
     name: PHPUnit tests (PostgreSQL)
@@ -175,7 +175,7 @@ jobs:
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
           MAIL_MAILER: array
-        run: php artisan test --parallel --stop-on-failure
+        run: php artisan test --stop-on-failure
 
   frontend:
     name: Frontend type-check & build
