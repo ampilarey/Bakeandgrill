@@ -35,7 +35,7 @@ class SmsSchedulerService
                     // duplicate dispatch when two scheduler runs overlap.
                     $scheduled = SmsScheduledMessage::lockForUpdate()->find($id);
 
-                    if (! $scheduled || $scheduled->status !== 'active') {
+                    if (!$scheduled || $scheduled->status !== 'active') {
                         return; // Already picked up by another process.
                     }
                     if ($scheduled->next_send_at > $now) {
@@ -54,7 +54,7 @@ class SmsSchedulerService
                         $scheduled->update([
                             'last_sent_at' => $now,
                             'next_send_at' => null,
-                            'status'       => 'completed',
+                            'status' => 'completed',
                         ]);
                     }
 
@@ -63,7 +63,7 @@ class SmsSchedulerService
                 });
             } catch (\Throwable $e) {
                 Log::error('SmsSchedulerService: failed to dispatch scheduled message', [
-                    'id'    => $id,
+                    'id' => $id,
                     'error' => $e->getMessage(),
                 ]);
             }

@@ -75,7 +75,7 @@ class InventoryController extends Controller
         $validated = $request->validated();
 
         [$item, $movement] = DB::transaction(function () use ($validated, $id, $request) {
-            $item     = InventoryItem::lockForUpdate()->findOrFail($id);
+            $item = InventoryItem::lockForUpdate()->findOrFail($id);
             $oldStock = (float) ($item->current_stock ?? 0);
             $quantity = (float) $validated['quantity'];
 
@@ -92,14 +92,14 @@ class InventoryController extends Controller
 
             $movement = StockMovement::create([
                 'inventory_item_id' => $item->id,
-                'user_id'           => $request->user()?->id,
-                'type'              => $validated['type'],
-                'quantity'          => $quantity,
-                'balance_after'     => $item->current_stock,
-                'unit_cost'         => $validated['unit_cost'] ?? null,
-                'reference_type'    => 'manual',
-                'reference_id'      => null,
-                'notes'             => $validated['notes'] ?? null,
+                'user_id' => $request->user()?->id,
+                'type' => $validated['type'],
+                'quantity' => $quantity,
+                'balance_after' => $item->current_stock,
+                'unit_cost' => $validated['unit_cost'] ?? null,
+                'reference_type' => 'manual',
+                'reference_id' => null,
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             app(AuditLogService::class)->log(
@@ -116,7 +116,7 @@ class InventoryController extends Controller
         });
 
         return response()->json([
-            'item'     => $item,
+            'item' => $item,
             'movement' => $movement,
         ]);
     }

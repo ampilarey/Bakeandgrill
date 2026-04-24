@@ -21,12 +21,12 @@ class LowStockAlert extends Model
     ];
 
     protected $casts = [
-        'item_id'     => 'integer',
+        'item_id' => 'integer',
         'stock_level' => 'integer',
-        'threshold'   => 'integer',
-        'recipients'  => 'array',
-        'sent'        => 'boolean',
-        'sent_at'     => 'datetime',
+        'threshold' => 'integer',
+        'recipients' => 'array',
+        'sent' => 'boolean',
+        'sent_at' => 'datetime',
     ];
 
     public function item(): BelongsTo

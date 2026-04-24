@@ -66,7 +66,7 @@ return new class extends Migration
             // Drop the index first so column drops succeed
             try {
                 $table->dropIndex('webhook_logs_subscription_created_idx');
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // index may not exist — safe to ignore
             }
 

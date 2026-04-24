@@ -15,9 +15,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-
-
 
 class OrderCreationService
 {
@@ -70,8 +67,8 @@ class OrderCreationService
             // The calculator applies discounts BEFORE tax, matching the intended
             // business rule (tax on discounted price, not gross price).
             $discountAmount = (float) ($payload['discount_amount'] ?? 0);
-            $subtotalLaar   = (int) round(
-                $order->items()->sum(\DB::raw('total_price')) * 100
+            $subtotalLaar = (int) round(
+                $order->items()->sum(\DB::raw('total_price')) * 100,
             );
             $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
 
@@ -153,7 +150,7 @@ class OrderCreationService
 
             // ── Variant resolution ────────────────────────────────────────────
             $variantId = $itemPayload['variant_id'] ?? null;
-            $variant   = null;
+            $variant = null;
 
             if ($itemModel->has_variants) {
                 // Variant selection is mandatory for variant products
@@ -179,7 +176,7 @@ class OrderCreationService
                 }
             }
 
-            $basePrice   = $variant ? (float) $variant->price : (float) $itemModel->base_price;
+            $basePrice = $variant ? (float) $variant->price : (float) $itemModel->base_price;
             $variantName = $variant?->name;
 
             // ── Stock check ───────────────────────────────────────────────────
@@ -193,7 +190,7 @@ class OrderCreationService
             } elseif ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
                 // Fall back to item-level stock for simple (non-variant-tracking) products
                 $lockedItem = Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
-                $available  = app(StockReservationService::class)->getAvailableStock($lockedItem);
+                $available = app(StockReservationService::class)->getAvailableStock($lockedItem);
                 if ($available < $quantity) {
                     abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$available}, requested: {$quantity}");
                 }
@@ -204,16 +201,16 @@ class OrderCreationService
             $modifierTotal = 0;
 
             $orderItem = OrderItem::create([
-                'order_id'     => $order->id,
-                'item_id'      => $itemModel->id,
-                'variant_id'   => $variantId,
-                'item_name'    => $itemModel->name,
+                'order_id' => $order->id,
+                'item_id' => $itemModel->id,
+                'variant_id' => $variantId,
+                'item_name' => $itemModel->name,
                 'variant_name' => $variantName,
-                'quantity'     => $quantity,
-                'unit_price'   => $basePrice,
-                'total_price'  => 0,
-                'notes'        => null,
-                'status'       => 'pending',
+                'quantity' => $quantity,
+                'unit_price' => $basePrice,
+                'total_price' => 0,
+                'notes' => null,
+                'status' => 'pending',
             ]);
 
             // POS only: deduct stock immediately upon order creation.

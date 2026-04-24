@@ -101,7 +101,7 @@ class DeliveryOrderController extends Controller
 
             // Persist delivery fields + fee on the order row first …
             $order->update(array_merge($delivery->toArray(), [
-                'delivery_fee'      => $feeMvr,
+                'delivery_fee' => $feeMvr,
                 'delivery_fee_laar' => $feeLaar,
             ]));
 
@@ -149,7 +149,7 @@ class DeliveryOrderController extends Controller
         // Recalculate delivery fee if island changed
         if (isset($validated['delivery_island'])) {
             $feeLaar = $this->feeCalculator->calculateLaar($validated['delivery_island']);
-            $validated['delivery_fee']      = round($feeLaar / 100, 2);
+            $validated['delivery_fee'] = round($feeLaar / 100, 2);
             $validated['delivery_fee_laar'] = $feeLaar;
         }
 

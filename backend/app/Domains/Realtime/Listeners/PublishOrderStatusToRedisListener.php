@@ -21,23 +21,23 @@ class PublishOrderStatusToRedisListener
         $data = $event->data;
 
         $eventType = match ($data->status) {
-            'paid'      => 'order.paid',
+            'paid' => 'order.paid',
             'completed' => 'order.completed',
             'cancelled' => 'order.cancelled',
-            'partial'   => 'order.partial',
-            default     => 'order.updated',
+            'partial' => 'order.partial',
+            default => 'order.updated',
         };
 
         try {
             $this->redis->publishOrderEvent($data->orderId, $eventType, [
-                'id'         => $data->orderId,
-                'status'     => $data->status,
+                'id' => $data->orderId,
+                'status' => $data->status,
                 'updated_at' => $data->updatedAt,
             ]);
         } catch (\Throwable $e) {
             Log::warning('PublishOrderStatusToRedisListener: failed', [
                 'order_id' => $data->orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }

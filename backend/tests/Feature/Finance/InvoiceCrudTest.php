@@ -31,14 +31,14 @@ class InvoiceCrudTest extends TestCase
     private function invoicePayload(array $overrides = []): array
     {
         return array_merge([
-            'type'           => 'sale',
-            'issue_date'     => today()->toDateString(),
+            'type' => 'sale',
+            'issue_date' => today()->toDateString(),
             'recipient_name' => 'Test Customer',
-            'items'          => [
+            'items' => [
                 [
                     'description' => 'Grilled Chicken Meal',
-                    'quantity'    => 2,
-                    'unit_price'  => 15.00,
+                    'quantity' => 2,
+                    'unit_price' => 15.00,
                 ],
             ],
         ], $overrides);
@@ -82,9 +82,9 @@ class InvoiceCrudTest extends TestCase
     public function test_invoice_total_matches_line_items(): void
     {
         $response = $this->postJson('/api/invoices', [
-            'type'       => 'sale',
+            'type' => 'sale',
             'issue_date' => today()->toDateString(),
-            'items'      => [
+            'items' => [
                 ['description' => 'A', 'quantity' => 2, 'unit_price' => 10.00],
                 ['description' => 'B', 'quantity' => 1, 'unit_price' => 5.00],
             ],
@@ -105,7 +105,7 @@ class InvoiceCrudTest extends TestCase
             ['recipient_name' => 'Updated Name', 'notes' => 'Test note'],
             $this->ownerHeaders,
         )->assertStatus(200)
-        ->assertJsonPath('invoice.recipient_name', 'Updated Name');
+            ->assertJsonPath('invoice.recipient_name', 'Updated Name');
     }
 
     public function test_cannot_update_non_draft_invoice(): void
@@ -151,7 +151,7 @@ class InvoiceCrudTest extends TestCase
             "/api/invoices/{$invoice->id}/credit-note",
             [
                 'reason' => 'Customer returned item',
-                'items'  => [
+                'items' => [
                     ['description' => 'Return: Grilled Chicken', 'quantity' => 1, 'unit_price' => 15.00],
                 ],
             ],

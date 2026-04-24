@@ -83,13 +83,13 @@ class HealthEndpointTest extends TestCase
 
     public function test_admin_system_health_returns_full_details_for_admin(): void
     {
-        $role  = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'description' => '', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'description' => '', 'is_active' => true]);
         $owner = User::create([
-            'name'      => 'Owner',
-            'email'     => 'owner-health@test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Owner',
+            'email' => 'owner-health@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 

@@ -25,7 +25,7 @@ class DeliveryDriver extends Model implements AuthenticatableContract
     ];
 
     protected $casts = [
-        'is_active'     => 'boolean',
+        'is_active' => 'boolean',
         'last_login_at' => 'datetime',
     ];
 

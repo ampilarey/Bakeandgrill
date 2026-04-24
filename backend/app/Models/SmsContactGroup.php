@@ -29,7 +29,7 @@ class SmsContactGroup extends Model
             SmsContact::class,
             'sms_contact_group_members',
             'group_id',
-            'contact_id'
+            'contact_id',
         );
     }
 }

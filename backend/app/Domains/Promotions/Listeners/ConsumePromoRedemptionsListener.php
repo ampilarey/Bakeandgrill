@@ -25,7 +25,7 @@ class ConsumePromoRedemptionsListener
 
     public function handle(OrderPaid $event): void
     {
-        $orderId    = $event->data->orderId;
+        $orderId = $event->data->orderId;
         $customerId = $event->data->customerId;
 
         $draftPromotions = OrderPromotion::where('order_id', $orderId)
@@ -44,11 +44,11 @@ class ConsumePromoRedemptionsListener
                     PromotionRedemption::firstOrCreate(
                         ['idempotency_key' => $idempotencyKey],
                         [
-                            'promotion_id'  => $orderPromo->promotion_id,
-                            'order_id'      => $orderId,
-                            'customer_id'   => $customerId,
+                            'promotion_id' => $orderPromo->promotion_id,
+                            'order_id' => $orderId,
+                            'customer_id' => $customerId,
                             'discount_laar' => $orderPromo->discount_laar,
-                            'redeemed_at'   => now(),
+                            'redeemed_at' => now(),
                         ],
                     );
 
@@ -57,8 +57,8 @@ class ConsumePromoRedemptionsListener
                     $this->promotions->incrementRedemptionsCount($orderPromo->promotion_id);
 
                     Log::info('Promo redeemed', [
-                        'promotion_id'  => $orderPromo->promotion_id,
-                        'order_id'      => $orderId,
+                        'promotion_id' => $orderPromo->promotion_id,
+                        'order_id' => $orderId,
                         'discount_laar' => $orderPromo->discount_laar,
                     ]);
                 }
@@ -66,7 +66,7 @@ class ConsumePromoRedemptionsListener
         } catch (\Throwable $e) {
             Log::error('ConsumePromoRedemptionsListener: failed', [
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             // Re-throw so the queue worker retries; promo redemption is critical
             // for usage-limit enforcement and revenue accounting.

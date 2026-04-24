@@ -28,8 +28,8 @@ class StaffNotificationLog extends Model
     {
         return [
             'fallback_used' => 'boolean',
-            'sent_at'       => 'datetime',
-            'failed_at'     => 'datetime',
+            'sent_at' => 'datetime',
+            'failed_at' => 'datetime',
         ];
     }
 

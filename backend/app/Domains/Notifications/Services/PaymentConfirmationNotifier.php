@@ -39,7 +39,7 @@ class PaymentConfirmationNotifier
 
         $phone = $order->customer?->phone;
         $email = $order->customer?->email;
-        $name  = $order->customer?->name ?? 'Customer';
+        $name = $order->customer?->name ?? 'Customer';
 
         if (!$phone) {
             return;
@@ -55,9 +55,9 @@ class PaymentConfirmationNotifier
         $receipt->customer_id = $order->customer_id;
         if (!$isOnline) {
             $receipt->fill([
-                'channel'      => 'sms',
-                'recipient'    => $phone,
-                'sent_at'      => now(),
+                'channel' => 'sms',
+                'recipient' => $phone,
+                'sent_at' => now(),
                 'last_sent_at' => now(),
                 'resend_count' => ($receipt->resend_count ?? 0) + 1,
             ]);
@@ -65,27 +65,27 @@ class PaymentConfirmationNotifier
         $receipt->save();
 
         if ($isOnline) {
-            $url     = rtrim(config('frontend.order_status_url', config('app.url') . '/order/orders'), '/') . '/' . $order->id . '?tok=' . $order->tracking_token;
+            $url = rtrim(config('frontend.order_status_url', config('app.url') . '/order/orders'), '/') . '/' . $order->id . '?tok=' . $order->tracking_token;
             $message = 'Bake & Grill: Payment received! Order #' . $order->order_number . ' is confirmed. Track: ' . $url;
         } else {
-            $url     = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+            $url = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
             $message = 'Bake & Grill: Thanks for dining with us! Your receipt for order #' . $order->order_number . ': ' . $url;
         }
 
         try {
             $this->sms->send(new SmsMessage(
-                to:             $phone,
-                message:        $message,
-                type:           'transactional',
-                customerId:     $order->customer_id,
-                referenceType:  'order',
-                referenceId:    (string) $order->id,
+                to: $phone,
+                message: $message,
+                type: 'transactional',
+                customerId: $order->customer_id,
+                referenceType: 'order',
+                referenceId: (string) $order->id,
                 idempotencyKey: 'order:paid:confirm:' . $order->id,
             ));
         } catch (\Throwable $e) {
             Log::error('PaymentConfirmationNotifier: SMS failed', [
                 'order_id' => $order->id,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -95,7 +95,7 @@ class PaymentConfirmationNotifier
             } catch (\Throwable $e) {
                 Log::error('PaymentConfirmationNotifier: email failed', [
                     'order_id' => $order->id,
-                    'error'    => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
         }

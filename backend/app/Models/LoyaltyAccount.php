@@ -19,9 +19,9 @@ class LoyaltyAccount extends Model
     ];
 
     protected $casts = [
-        'customer_id'     => 'integer',
-        'points_balance'  => 'integer',
-        'points_held'     => 'integer',
+        'customer_id' => 'integer',
+        'points_balance' => 'integer',
+        'points_held' => 'integer',
         'lifetime_points' => 'integer',
     ];
 

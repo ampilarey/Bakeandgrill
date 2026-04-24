@@ -45,16 +45,16 @@ class CustomerContractTest extends ContractTestCase
         parent::setUp();
 
         $this->customer = Customer::factory()->withPassword()->create([
-            'name'     => 'Test Customer',
-            'phone'    => '+9607550001',
-            'tier'     => 'bronze',
+            'name' => 'Test Customer',
+            'phone' => '+9607550001',
+            'tier' => 'bronze',
             'loyalty_points' => 50,
         ]);
 
         $this->token = $this->customer->createToken('test', ['customer'])->plainTextToken;
     }
 
-    private function testCustomerHeaders(): array
+    private function test_customer_headers(): array
     {
         return ['Authorization' => "Bearer {$this->token}"];
     }
@@ -91,7 +91,7 @@ class CustomerContractTest extends ContractTestCase
         // Create one order for the customer so the list is non-empty
         Order::factory()->pending()->create([
             'customer_id' => $this->customer->id,
-            'total'       => 25.00,
+            'total' => 25.00,
         ]);
 
         $response = $this->getJson('/api/customer/orders', $this->testCustomerHeaders())
@@ -117,7 +117,7 @@ class CustomerContractTest extends ContractTestCase
     {
         $order = Order::factory()->pending()->create([
             'customer_id' => $this->customer->id,
-            'total'       => 30.00,
+            'total' => 30.00,
         ]);
 
         $response = $this->getJson("/api/customer/orders/{$order->id}", $this->testCustomerHeaders())

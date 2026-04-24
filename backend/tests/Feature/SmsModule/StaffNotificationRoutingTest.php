@@ -42,11 +42,11 @@ class StaffNotificationRoutingTest extends TestCase
     private function makeSmsStaff(Role $role, string $phone): User
     {
         return User::create([
-            'name'      => 'Staff ' . $phone,
-            'email'     => $phone . '@test.mv',
-            'phone'     => $phone,
-            'password'  => bcrypt('secret'),
-            'role_id'   => $role->id,
+            'name' => 'Staff ' . $phone,
+            'email' => $phone . '@test.mv',
+            'phone' => $phone,
+            'password' => bcrypt('secret'),
+            'role_id' => $role->id,
             'is_active' => true,
         ]);
     }
@@ -55,20 +55,20 @@ class StaffNotificationRoutingTest extends TestCase
     {
         return Order::create([
             'order_number' => 'BG-TEST-' . uniqid(),
-            'type'         => $type,
-            'status'       => 'pending',
-            'total'        => 100,
-            'total_laar'   => 10000,
+            'type' => $type,
+            'status' => 'pending',
+            'total' => 100,
+            'total_laar' => 10000,
         ]);
     }
 
     private function putOnShift(User $user, Carbon $at): void
     {
         StaffSchedule::create([
-            'user_id'     => $user->id,
-            'date'        => $at->toDateString(),
+            'user_id' => $user->id,
+            'date' => $at->toDateString(),
             'shift_start' => '08:00',
-            'shift_end'   => '18:00',
+            'shift_end' => '18:00',
             'is_confirmed' => true,
         ]);
     }
@@ -109,7 +109,7 @@ class StaffNotificationRoutingTest extends TestCase
         $this->putOnShift($staff, Carbon::now());
 
         StaffNotificationPref::create([
-            'user_id'               => $staff->id,
+            'user_id' => $staff->id,
             'notifications_enabled' => false,
         ]);
 
@@ -128,9 +128,9 @@ class StaffNotificationRoutingTest extends TestCase
         $this->putOnShift($staff, Carbon::now());
 
         StaffNotificationPref::create([
-            'user_id'               => $staff->id,
+            'user_id' => $staff->id,
             'notifications_enabled' => true,
-            'order_types'           => ['delivery'],
+            'order_types' => ['delivery'],
         ]);
 
         // Test: takeaway order should NOT match
@@ -151,7 +151,7 @@ class StaffNotificationRoutingTest extends TestCase
         $manager = $this->makeSmsStaff($role, '+9607500005');
 
         StaffNotificationPref::create([
-            'user_id'     => $manager->id,
+            'user_id' => $manager->id,
             'is_fallback' => true,
             'fallback_priority' => 10,
         ]);
@@ -170,11 +170,11 @@ class StaffNotificationRoutingTest extends TestCase
     {
         $role = $this->makeRole('staff');
         $staff = User::create([
-            'name'      => 'No Phone Staff',
-            'email'     => 'nophone@test.mv',
-            'phone'     => null,
-            'password'  => bcrypt('secret'),
-            'role_id'   => $role->id,
+            'name' => 'No Phone Staff',
+            'email' => 'nophone@test.mv',
+            'phone' => null,
+            'password' => bcrypt('secret'),
+            'role_id' => $role->id,
             'is_active' => true,
         ]);
         $this->putOnShift($staff, Carbon::now());
@@ -191,9 +191,9 @@ class StaffNotificationRoutingTest extends TestCase
     public function test_external_contact_receives_notification(): void
     {
         SmsContact::create([
-            'name'       => 'On-call Manager',
-            'phone'      => '+9607600006',
-            'type'       => 'external',
+            'name' => 'On-call Manager',
+            'phone' => '+9607600006',
+            'type' => 'external',
             'is_enabled' => true,
             'active_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
         ]);

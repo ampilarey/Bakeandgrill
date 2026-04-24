@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Api\OrderController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,10 +27,10 @@ class OfflineSyncController extends Controller
     public function sync(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'orders'               => ['required', 'array', 'min:1', 'max:50'],
-            'orders.*.offline_id'  => ['required', 'string'],
-            'orders.*.type'        => ['required', 'string'],
-            'orders.*.items'       => ['required', 'array'],
+            'orders' => ['required', 'array', 'min:1', 'max:50'],
+            'orders.*.offline_id' => ['required', 'string'],
+            'orders.*.type' => ['required', 'string'],
+            'orders.*.items' => ['required', 'array'],
         ]);
 
         $results = [];
@@ -45,8 +44,8 @@ class OfflineSyncController extends Controller
                 if ($existing) {
                     $results[] = [
                         'offline_id' => $offlineId,
-                        'status'     => 'duplicate',
-                        'order_id'   => $existing->id,
+                        'status' => 'duplicate',
+                        'order_id' => $existing->id,
                     ];
                     continue;
                 }
@@ -63,23 +62,23 @@ class OfflineSyncController extends Controller
                 $subRequest->setUserResolver($request->getUserResolver());
 
                 $response = $this->orders->store($subRequest);
-                $data      = json_decode($response->getContent(), true);
+                $data = json_decode($response->getContent(), true);
 
                 $results[] = [
                     'offline_id' => $offlineId,
-                    'status'     => 'created',
-                    'order_id'   => $data['order']['id'] ?? null,
+                    'status' => 'created',
+                    'order_id' => $data['order']['id'] ?? null,
                 ];
             } catch (\Throwable $e) {
                 logger()->error('Offline sync failed', [
                     'offline_id' => $offlineId,
-                    'error'      => $e->getMessage(),
-                    'trace'      => $e->getTraceAsString(),
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
                 $results[] = [
                     'offline_id' => $offlineId,
-                    'status'     => 'error',
-                    'message'    => 'Order could not be synced. Please retry or contact support.',
+                    'status' => 'error',
+                    'message' => 'Order could not be synced. Please retry or contact support.',
                 ];
             }
         }

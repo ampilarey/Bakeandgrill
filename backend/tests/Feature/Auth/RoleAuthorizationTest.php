@@ -32,9 +32,9 @@ class RoleAuthorizationTest extends TestCase
     {
         parent::setUp();
 
-        $ownerRole   = Role::firstOrCreate(['slug' => 'owner'],   ['name' => 'Owner',   'description' => '', 'is_active' => true]);
+        $ownerRole = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner',   'description' => '', 'is_active' => true]);
         $managerRole = Role::firstOrCreate(['slug' => 'manager'], ['name' => 'Manager', 'description' => '', 'is_active' => true]);
-        $staffRole   = Role::firstOrCreate(['slug' => 'staff'],   ['name' => 'Staff',   'description' => '', 'is_active' => true]);
+        $staffRole = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff',   'description' => '', 'is_active' => true]);
 
         $this->owner = User::create([
             'name' => 'Owner User', 'email' => 'owner@test.com',
@@ -132,10 +132,10 @@ class RoleAuthorizationTest extends TestCase
         Sanctum::actingAs($this->staff, ['staff']);
 
         $response = $this->postJson('/api/admin/staff', [
-            'name'     => 'New Staff',
-            'email'    => 'new@test.com',
-            'pin'      => '9999',
-            'role_id'  => 1,
+            'name' => 'New Staff',
+            'email' => 'new@test.com',
+            'pin' => '9999',
+            'role_id' => 1,
         ]);
 
         $this->assertContains($response->status(), [403, 422], 'Staff without permission should be blocked from creating other staff.');

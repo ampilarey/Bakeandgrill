@@ -43,7 +43,7 @@ class SmsTemplateRenderer
         $vars = $template->extractVariables();
         $placeholders = array_combine(
             $vars,
-            array_map(fn ($v) => '[' . strtoupper($v) . ']', $vars)
+            array_map(fn ($v) => '[' . strtoupper($v) . ']', $vars),
         );
 
         return $this->render($template, $placeholders ?: []);

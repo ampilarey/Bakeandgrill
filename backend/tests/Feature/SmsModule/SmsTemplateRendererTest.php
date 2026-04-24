@@ -18,7 +18,7 @@ class SmsTemplateRendererTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->renderer = new SmsTemplateRenderer();
+        $this->renderer = new SmsTemplateRenderer;
     }
 
     private function makeTemplate(string $body): SmsTemplate

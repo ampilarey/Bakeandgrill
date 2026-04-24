@@ -24,8 +24,8 @@ use App\Models\Promotion;
 class PromotionEvaluator
 {
     public function __construct(
-        private PromotionRepositoryInterface            $promotionRepo,
-        private PromotionRedemptionRepositoryInterface  $redemptionRepo,
+        private PromotionRepositoryInterface $promotionRepo,
+        private PromotionRedemptionRepositoryInterface $redemptionRepo,
     ) {}
 
     /**
@@ -72,9 +72,11 @@ class PromotionEvaluator
             $pendingUsage = OrderPromotion::where('promotion_id', $promotion->id)
                 ->where('order_id', '!=', $order->id)
                 ->where('status', 'draft')
-                ->whereHas('order', fn ($q) => $q
-                    ->where('customer_id', $customerId)
-                    ->whereNotIn('status', ['cancelled', 'refunded'])
+                ->whereHas(
+                    'order',
+                    fn ($q) => $q
+                        ->where('customer_id', $customerId)
+                        ->whereNotIn('status', ['cancelled', 'refunded']),
                 )
                 ->count();
 
@@ -90,10 +92,10 @@ class PromotionEvaluator
         }
 
         return [
-            'valid'         => true,
+            'valid' => true,
             'discount_laar' => $discountLaar,
-            'message'       => 'Promo code applied successfully.',
-            'promotion'     => $promotion,
+            'message' => 'Promo code applied successfully.',
+            'promotion' => $promotion,
         ];
     }
 
@@ -103,9 +105,9 @@ class PromotionEvaluator
 
         return match ($promo->type) {
             'percentage' => (int) floor($applicableAmount * $promo->discount_value / 100),
-            'fixed'      => min($promo->discount_value, $applicableAmount),
-            'free_item'  => $this->freeItemDiscount($promo, $order),
-            default      => 0,
+            'fixed' => min($promo->discount_value, $applicableAmount),
+            'free_item' => $this->freeItemDiscount($promo, $order),
+            default => 0,
         };
     }
 
@@ -124,15 +126,15 @@ class PromotionEvaluator
         $inclusions = $promo->targets->where('is_exclusion', false);
         $exclusions = $promo->targets->where('is_exclusion', true);
 
-        $excludedItemIds     = $exclusions->where('target_type', 'item')->pluck('target_id')->toArray();
+        $excludedItemIds = $exclusions->where('target_type', 'item')->pluck('target_id')->toArray();
         $excludedCategoryIds = $exclusions->where('target_type', 'category')->pluck('target_id')->toArray();
 
-        $includedItemIds     = $inclusions->where('target_type', 'item')->pluck('target_id')->toArray();
+        $includedItemIds = $inclusions->where('target_type', 'item')->pluck('target_id')->toArray();
         $includedCategoryIds = $inclusions->where('target_type', 'category')->pluck('target_id')->toArray();
 
         $total = 0;
         foreach ($order->items as $orderItem) {
-            $itemId     = $orderItem->item_id;
+            $itemId = $orderItem->item_id;
             $categoryId = $orderItem->item?->category_id ?? null;
 
             if (in_array($itemId, $excludedItemIds) || in_array($categoryId, $excludedCategoryIds)) {
@@ -160,7 +162,7 @@ class PromotionEvaluator
         }
 
         $targetItemIds = $targets->pluck('target_id')->toArray();
-        $cheapestItem  = $order->items
+        $cheapestItem = $order->items
             ->filter(fn ($i) => in_array($i->item_id, $targetItemIds))
             ->sortBy('unit_price')
             ->first();

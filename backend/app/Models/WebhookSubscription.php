@@ -15,10 +15,10 @@ class WebhookSubscription extends Model
     ];
 
     protected $casts = [
-        'events'           => 'array',
-        'active'           => 'boolean',
-        'last_triggered_at'=> 'datetime',
-        'disabled_at'      => 'datetime',
+        'events' => 'array',
+        'active' => 'boolean',
+        'last_triggered_at' => 'datetime',
+        'disabled_at' => 'datetime',
     ];
 
     public function logs(): HasMany
@@ -47,8 +47,8 @@ class WebhookSubscription extends Model
     public function markSuccess(): void
     {
         $this->update([
-            'failure_count'      => 0,
-            'last_triggered_at'  => now(),
+            'failure_count' => 0,
+            'last_triggered_at' => now(),
         ]);
     }
 }

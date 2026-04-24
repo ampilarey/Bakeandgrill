@@ -26,7 +26,7 @@ class DeliveryStatusController extends Controller
         $area = $request->query('area');
 
         return response()->json(
-            $this->gate->status(is_string($area) ? $area : null)
+            $this->gate->status(is_string($area) ? $area : null),
         );
     }
 }

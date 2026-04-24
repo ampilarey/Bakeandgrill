@@ -20,7 +20,7 @@ class KdsController extends Controller
     {
         // 'paid' = online orders received but not yet started by kitchen
         // 'ready' = cooked and waiting for pickup/delivery
-        $allowed  = ['pending', 'in_progress', 'paid', 'ready'];
+        $allowed = ['pending', 'in_progress', 'paid', 'ready'];
         $statuses = $request->query('status')
             ? array_intersect(explode(',', $request->query('status')), $allowed)
             : $allowed;
@@ -42,7 +42,7 @@ class KdsController extends Controller
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
             $machine = app(OrderStatusMachine::class);
-            if (! $machine->isAllowed($order->status, 'in_progress')) {
+            if (!$machine->isAllowed($order->status, 'in_progress')) {
                 return ['error' => 'Only pending or paid orders can be started.'];
             }
 
@@ -69,7 +69,7 @@ class KdsController extends Controller
             // Determine target status through the machine
             $targetStatus = $order->status === 'ready' ? 'completed' : 'ready';
             $machine = app(OrderStatusMachine::class);
-            if (! $machine->isAllowed($order->status, $targetStatus)) {
+            if (!$machine->isAllowed($order->status, $targetStatus)) {
                 return ['error' => 'Order cannot be bumped.'];
             }
 
@@ -79,15 +79,18 @@ class KdsController extends Controller
             $newStatus = $targetStatus;
 
             $order->update([
-                'status'       => $newStatus,
+                'status' => $newStatus,
                 'completed_at' => $newStatus === 'completed' ? now() : null,
             ]);
 
             app(AuditLogService::class)->log(
                 $newStatus === 'completed' ? 'order.completed' : 'order.ready',
-                'Order', $order->id,
-                ['status' => $oldStatus], ['status' => $newStatus],
-                ['source' => 'kds'], $request,
+                'Order',
+                $order->id,
+                ['status' => $oldStatus],
+                ['status' => $newStatus],
+                ['source' => 'kds'],
+                $request,
             );
 
             // If the order wasn't already paid (edge case: KDS-only flow), fire OrderPaid

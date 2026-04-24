@@ -50,29 +50,29 @@ class OrderStatusMachineTest extends TestCase
         $cat = Category::create(['name' => 'Status Food', 'slug' => 'status-food', 'is_active' => true]);
 
         $this->item = Item::create([
-            'category_id'  => $cat->id,
-            'name'         => 'Status Item',
-            'base_price'   => 50.0,
-            'sku'          => 'STATUS-001',
-            'is_active'    => true,
+            'category_id' => $cat->id,
+            'name' => 'Status Item',
+            'base_price' => 50.0,
+            'sku' => 'STATUS-001',
+            'is_active' => true,
             'is_available' => true,
         ]);
 
         $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
         $this->staffUser = User::create([
-            'name'      => 'Cashier',
-            'email'     => 'cashier@status-test.com',
-            'password'  => Hash::make('pw'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Cashier',
+            'email' => 'cashier@status-test.com',
+            'password' => Hash::make('pw'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 
         Device::create([
-            'name'       => 'Status POS',
+            'name' => 'Status POS',
             'identifier' => self::DEVICE_ID,
-            'type'       => 'pos',
-            'is_active'  => true,
+            'type' => 'pos',
+            'is_active' => true,
         ]);
     }
 
@@ -86,7 +86,7 @@ class OrderStatusMachineTest extends TestCase
         Sanctum::actingAs($this->staffUser, ['staff']);
         $response = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson('/api/orders', [
-                'type'  => 'dine_in',
+                'type' => 'dine_in',
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ]);
 
@@ -107,19 +107,19 @@ class OrderStatusMachineTest extends TestCase
     {
         $machine = $this->machine();
 
-        $this->assertTrue($machine->isAllowed('pending',         'in_progress'));
-        $this->assertTrue($machine->isAllowed('pending',         'ready'));    // KDS bump shortcut
-        $this->assertTrue($machine->isAllowed('pending',         'paid'));
-        $this->assertTrue($machine->isAllowed('pending',         'held'));
-        $this->assertTrue($machine->isAllowed('pending',         'cancelled'));
-        $this->assertTrue($machine->isAllowed('paid',            'in_progress'));
-        $this->assertTrue($machine->isAllowed('paid',            'refunded'));
-        $this->assertTrue($machine->isAllowed('in_progress',     'ready'));
-        $this->assertTrue($machine->isAllowed('ready',           'completed'));
-        $this->assertTrue($machine->isAllowed('held',            'pending'));
+        $this->assertTrue($machine->isAllowed('pending', 'in_progress'));
+        $this->assertTrue($machine->isAllowed('pending', 'ready'));    // KDS bump shortcut
+        $this->assertTrue($machine->isAllowed('pending', 'paid'));
+        $this->assertTrue($machine->isAllowed('pending', 'held'));
+        $this->assertTrue($machine->isAllowed('pending', 'cancelled'));
+        $this->assertTrue($machine->isAllowed('paid', 'in_progress'));
+        $this->assertTrue($machine->isAllowed('paid', 'refunded'));
+        $this->assertTrue($machine->isAllowed('in_progress', 'ready'));
+        $this->assertTrue($machine->isAllowed('ready', 'completed'));
+        $this->assertTrue($machine->isAllowed('held', 'pending'));
         $this->assertTrue($machine->isAllowed('payment_pending', 'paid'));
         $this->assertTrue($machine->isAllowed('payment_pending', 'cancelled'));
-        $this->assertTrue($machine->isAllowed('completed',       'refunded'));
+        $this->assertTrue($machine->isAllowed('completed', 'refunded'));
     }
 
     public function test_invalid_transitions_are_blocked(): void

@@ -41,35 +41,35 @@ class PosCustomerLinkageTest extends TestCase
         $category = Category::create(['name' => 'Food', 'slug' => 'pos-link-food', 'is_active' => true]);
 
         $this->item = Item::create([
-            'category_id'  => $category->id,
-            'name'         => 'Link Test Item',
-            'base_price'   => 30.0,
-            'sku'          => 'LINK-001',
-            'is_active'    => true,
+            'category_id' => $category->id,
+            'name' => 'Link Test Item',
+            'base_price' => 30.0,
+            'sku' => 'LINK-001',
+            'is_active' => true,
             'is_available' => true,
         ]);
 
         $this->customer = Customer::create([
-            'name'      => 'Linked Customer',
-            'phone'     => '+9607880001',
+            'name' => 'Linked Customer',
+            'phone' => '+9607880001',
             'is_active' => true,
         ]);
 
         $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
         $this->staffUser = User::create([
-            'name'      => 'Cashier',
-            'email'     => 'cashier@link-test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Cashier',
+            'email' => 'cashier@link-test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 
         Device::create([
-            'name'       => 'Link POS',
+            'name' => 'Link POS',
             'identifier' => 'LINK-POS-001',
-            'type'       => 'pos',
-            'is_active'  => true,
+            'type' => 'pos',
+            'is_active' => true,
         ]);
     }
 
@@ -79,9 +79,9 @@ class PosCustomerLinkageTest extends TestCase
 
         return $this->withHeader('X-Device-Identifier', 'LINK-POS-001')
             ->postJson('/api/orders', array_filter([
-                'type'        => 'takeaway',
+                'type' => 'takeaway',
                 'customer_id' => $customerId,
-                'items'       => [['item_id' => $this->item->id, 'quantity' => 1]],
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ], fn ($v) => $v !== null));
     }
 

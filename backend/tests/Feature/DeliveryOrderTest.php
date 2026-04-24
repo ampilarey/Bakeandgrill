@@ -40,8 +40,8 @@ class DeliveryOrderTest extends TestCase
         ]);
 
         $this->customer = Customer::create([
-            'name'      => 'Delivery Customer',
-            'phone'     => '+9607890000',
+            'name' => 'Delivery Customer',
+            'phone' => '+9607890000',
             'is_active' => true,
         ]);
     }

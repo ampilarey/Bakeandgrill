@@ -17,29 +17,29 @@ return new class extends Migration
     {
         $settings = [
             [
-                'key'         => 'delivery_schedule',
-                'value'       => null,
-                'type'        => 'json',
-                'group'       => 'Delivery',
-                'label'       => 'Delivery Hours Schedule (optional)',
+                'key' => 'delivery_schedule',
+                'value' => null,
+                'type' => 'json',
+                'group' => 'Delivery',
+                'label' => 'Delivery Hours Schedule (optional)',
                 'description' => 'JSON: {"mon":{"open":"08:00","close":"22:00"},…}. Leave empty to use the same hours as online ordering. Days absent = no delivery that day.',
-                'is_public'   => true,
+                'is_public' => true,
             ],
             [
-                'key'         => 'delivery_zones',
-                'value'       => null,
-                'type'        => 'json',
-                'group'       => 'Delivery',
-                'label'       => 'Delivery Zones (optional)',
+                'key' => 'delivery_zones',
+                'value' => null,
+                'type' => 'json',
+                'group' => 'Delivery',
+                'label' => 'Delivery Zones (optional)',
                 'description' => 'JSON array of island/area slugs accepted for delivery, e.g. ["male","hulhumale"]. Leave empty to accept all zones.',
-                'is_public'   => true,
+                'is_public' => true,
             ],
         ];
 
         foreach ($settings as $row) {
             DB::table('site_settings')->updateOrInsert(
                 ['key' => $row['key']],
-                array_merge($row, ['created_at' => now(), 'updated_at' => now()])
+                array_merge($row, ['created_at' => now(), 'updated_at' => now()]),
             );
         }
     }

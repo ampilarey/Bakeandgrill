@@ -18,11 +18,11 @@ class CustomerFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'        => fake()->name(),
-            'phone'       => '+960' . fake()->unique()->numerify('#######'),
-            'email'       => fake()->unique()->safeEmail(),
-            'is_active'   => true,
-            'tier'        => 'bronze',
+            'name' => fake()->name(),
+            'phone' => '+960' . fake()->unique()->numerify('#######'),
+            'email' => fake()->unique()->safeEmail(),
+            'is_active' => true,
+            'tier' => 'bronze',
             'loyalty_points' => 0,
             'sms_opt_out' => false,
         ];

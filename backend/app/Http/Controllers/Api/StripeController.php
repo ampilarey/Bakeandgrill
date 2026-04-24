@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Payments\Gateway\StripeService;
-use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\DTOs\PaymentConfirmedData;
+use App\Domains\Payments\Events\PaymentConfirmed;
+use App\Domains\Payments\Gateway\StripeService;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
@@ -38,7 +38,7 @@ class StripeController extends Controller
             if ($order->customer_id !== $user->id) {
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
-        } elseif (! $user?->tokenCan('staff')) {
+        } elseif (!$user?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -62,7 +62,7 @@ class StripeController extends Controller
     public function webhook(Request $request): Response
     {
         $sigHeader = $request->header('Stripe-Signature', '');
-        $rawBody   = $request->getContent();
+        $rawBody = $request->getContent();
 
         try {
             $event = $this->stripe->verifyWebhook($rawBody, $sigHeader);
@@ -71,9 +71,9 @@ class StripeController extends Controller
         }
 
         if ($event['type'] === 'payment_intent.succeeded') {
-            $pi       = $event['data']['object'];
-            $orderId  = (int) ($pi['metadata']['order_id'] ?? 0);
-            $amount   = (int) ($pi['amount'] ?? 0);
+            $pi = $event['data']['object'];
+            $orderId = (int) ($pi['metadata']['order_id'] ?? 0);
+            $amount = (int) ($pi['amount'] ?? 0);
 
             if ($orderId) {
                 $order = Order::find($orderId);
@@ -81,11 +81,11 @@ class StripeController extends Controller
                     $payment = Payment::firstOrCreate(
                         ['idempotency_key' => 'stripe:' . $pi['id']],
                         [
-                            'order_id'     => $order->id,
-                            'method'       => 'stripe',
-                            'amount'       => $amount,
-                            'status'       => 'completed',
-                            'reference'    => $pi['id'],
+                            'order_id' => $order->id,
+                            'method' => 'stripe',
+                            'amount' => $amount,
+                            'status' => 'completed',
+                            'reference' => $pi['id'],
                             'processed_at' => now(),
                         ],
                     );
@@ -96,10 +96,10 @@ class StripeController extends Controller
                     // the event and avoid re-running all downstream listeners.
                     if ($payment->wasRecentlyCreated) {
                         event(new PaymentConfirmed(new PaymentConfirmedData(
-                            paymentId:   $payment->id,
-                            orderId:     $order->id,
-                            amountLaar:  $amount,
-                            currency:    'mvr',
+                            paymentId: $payment->id,
+                            orderId: $order->id,
+                            amountLaar: $amount,
+                            currency: 'mvr',
                             orderStatus: $order->status,
                         )));
                     }

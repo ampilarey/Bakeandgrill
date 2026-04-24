@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Http;
 
 class XeroOAuthService
 {
-    private const AUTHORIZE_URL  = 'https://login.xero.com/identity/connect/authorize';
-    private const TOKEN_URL      = 'https://identity.xero.com/connect/token';
+    private const AUTHORIZE_URL = 'https://login.xero.com/identity/connect/authorize';
+    private const TOKEN_URL = 'https://identity.xero.com/connect/token';
     private const CONNECTIONS_URL = 'https://api.xero.com/connections';
     private const SCOPES = 'openid profile email accounting.transactions accounting.settings offline_access';
 
@@ -18,10 +18,10 @@ class XeroOAuthService
     {
         $params = http_build_query([
             'response_type' => 'code',
-            'client_id'     => config('services.xero.client_id'),
-            'redirect_uri'  => config('services.xero.redirect_uri'),
-            'scope'         => self::SCOPES,
-            'state'         => $state,
+            'client_id' => config('services.xero.client_id'),
+            'redirect_uri' => config('services.xero.redirect_uri'),
+            'scope' => self::SCOPES,
+            'state' => $state,
         ]);
 
         return self::AUTHORIZE_URL . '?' . $params;
@@ -33,8 +33,8 @@ class XeroOAuthService
             config('services.xero.client_id'),
             config('services.xero.client_secret'),
         )->post(self::TOKEN_URL, [
-            'grant_type'   => 'authorization_code',
-            'code'         => $code,
+            'grant_type' => 'authorization_code',
+            'code' => $code,
             'redirect_uri' => config('services.xero.redirect_uri'),
         ]);
 
@@ -57,13 +57,13 @@ class XeroOAuthService
         return XeroConnection::updateOrCreate(
             ['tenant_id' => $tenant['tenantId']],
             [
-                'tenant_name'      => $tenant['tenantName'],
-                'access_token'     => $tokens['access_token'],
-                'refresh_token'    => $tokens['refresh_token'],
+                'tenant_name' => $tenant['tenantName'],
+                'access_token' => $tokens['access_token'],
+                'refresh_token' => $tokens['refresh_token'],
                 'token_expires_at' => now()->addSeconds((int) $tokens['expires_in']),
-                'connected_at'     => now(),
-                'active'           => true,
-            ]
+                'connected_at' => now(),
+                'active' => true,
+            ],
         );
     }
 
@@ -73,7 +73,7 @@ class XeroOAuthService
             config('services.xero.client_id'),
             config('services.xero.client_secret'),
         )->post(self::TOKEN_URL, [
-            'grant_type'    => 'refresh_token',
+            'grant_type' => 'refresh_token',
             'refresh_token' => $connection->refresh_token,
         ]);
 
@@ -85,8 +85,8 @@ class XeroOAuthService
         $tokens = $response->json();
 
         $connection->update([
-            'access_token'     => $tokens['access_token'],
-            'refresh_token'    => $tokens['refresh_token'] ?? $connection->refresh_token,
+            'access_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'] ?? $connection->refresh_token,
             'token_expires_at' => now()->addSeconds((int) $tokens['expires_in']),
         ]);
 

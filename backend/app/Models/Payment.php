@@ -24,11 +24,11 @@ class Payment extends Model
     ];
 
     protected $casts = [
-        'order_id'         => 'integer',
-        'amount'           => 'decimal:2',
-        'amount_laar'      => 'integer',
+        'order_id' => 'integer',
+        'amount' => 'decimal:2',
+        'amount_laar' => 'integer',
         'gateway_response' => 'array',
-        'processed_at'     => 'datetime',
+        'processed_at' => 'datetime',
     ];
 
     public function order(): BelongsTo

@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 class CheckReorderPoints extends Command
 {
-    protected $signature   = 'inventory:check-reorder';
+    protected $signature = 'inventory:check-reorder';
     protected $description = 'Create low-stock alerts for items at or below their reorder point';
 
     public function handle(): int
@@ -22,6 +22,7 @@ class CheckReorderPoints extends Command
 
         if ($items->isEmpty()) {
             $this->info('All inventory items are above reorder point.');
+
             return 0;
         }
 

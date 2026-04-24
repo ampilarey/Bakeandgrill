@@ -21,11 +21,11 @@ class VerifyBmlSignature
 
     public function handle(Request $request, Closure $next): Response
     {
-        $rawBody    = $request->getContent();
+        $rawBody = $request->getContent();
         // Read from the single source of truth in config/bml.php so this middleware
         // and PaymentService::handleBmlWebhook() always agree on the header name.
         $headerName = config('bml.webhook_signature_header', 'X-BML-Signature');
-        $signature  = $request->header($headerName, '') ?: $request->header('X-BML-Signature', '');
+        $signature = $request->header($headerName, '') ?: $request->header('X-BML-Signature', '');
 
         if (!$this->bml->verifyWebhookSignature($rawBody, $signature)) {
             return response()->json(['message' => 'Invalid signature'], 401);

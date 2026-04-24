@@ -45,7 +45,7 @@ class SseStreamService
      */
     public function streamOrderViaRedis(int $orderId, callable $fetchEvents, string $initialCursor = ''): StreamedResponse
     {
-        if (! $this->redisEnabled()) {
+        if (!$this->redisEnabled()) {
             return $this->stream($fetchEvents, $initialCursor);
         }
 
@@ -60,7 +60,7 @@ class SseStreamService
                     echo $event->toSseString();
                     $cursor = $event->id;
                 }
-                if (! empty($events)) {
+                if (!empty($events)) {
                     flush();
                 }
 
@@ -79,13 +79,13 @@ class SseStreamService
                         }
 
                         $data = json_decode($message, true);
-                        if (! is_array($data)) {
+                        if (!is_array($data)) {
                             return;
                         }
 
                         $eventType = $data['type'] ?? 'order.updated';
-                        $payload   = $data['payload'] ?? [];
-                        $id        = (string) ($payload['updated_at'] ?? now()->toIso8601String());
+                        $payload = $data['payload'] ?? [];
+                        $id = (string) ($payload['updated_at'] ?? now()->toIso8601String());
 
                         $event = new StreamEvent(id: $id, type: $eventType, data: json_encode($payload));
                         echo $event->toSseString();
@@ -116,9 +116,9 @@ class SseStreamService
     public function sseHeaders(): array
     {
         return [
-            'Content-Type'      => 'text/event-stream',
-            'Cache-Control'     => 'no-cache',
-            'Connection'        => 'keep-alive',
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',
         ];
     }
@@ -133,7 +133,7 @@ class SseStreamService
 
     private function runDbPollingLoop(callable $fetchEvents, string $cursor): void
     {
-        $startedAt     = time();
+        $startedAt = time();
         $lastHeartbeat = time();
 
         while (true) {
@@ -161,7 +161,7 @@ class SseStreamService
                 $cursor = $event->id;
             }
 
-            if (! empty($events)) {
+            if (!empty($events)) {
                 flush();
             }
 

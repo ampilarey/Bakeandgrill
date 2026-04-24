@@ -21,12 +21,12 @@ class StaffNotificationPrefController extends Controller
             ['user_id' => $user->id],
             [
                 'notifications_enabled' => true,
-                'order_types'           => null,
-                'menu_group_ids'        => null,
-                'category_ids'          => null,
-                'is_fallback'           => false,
-                'fallback_priority'     => 0,
-            ]
+                'order_types' => null,
+                'menu_group_ids' => null,
+                'category_ids' => null,
+                'is_fallback' => false,
+                'fallback_priority' => 0,
+            ],
         );
 
         return response()->json(['prefs' => $this->format($pref)]);
@@ -39,19 +39,19 @@ class StaffNotificationPrefController extends Controller
 
         $data = $request->validate([
             'notifications_enabled' => 'boolean',
-            'order_types'           => 'nullable|array',
-            'order_types.*'         => 'in:dine_in,takeaway,online_pickup,delivery',
-            'menu_group_ids'        => 'nullable|array',
-            'menu_group_ids.*'      => 'integer|exists:menu_groups,id',
-            'category_ids'          => 'nullable|array',
-            'category_ids.*'        => 'integer|exists:categories,id',
-            'is_fallback'           => 'boolean',
-            'fallback_priority'     => 'integer|min:0|max:100',
+            'order_types' => 'nullable|array',
+            'order_types.*' => 'in:dine_in,takeaway,online_pickup,delivery',
+            'menu_group_ids' => 'nullable|array',
+            'menu_group_ids.*' => 'integer|exists:menu_groups,id',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'integer|exists:categories,id',
+            'is_fallback' => 'boolean',
+            'fallback_priority' => 'integer|min:0|max:100',
         ]);
 
         $pref = StaffNotificationPref::updateOrCreate(
             ['user_id' => $userId],
-            $data
+            $data,
         );
 
         return response()->json(['prefs' => $this->format($pref)]);
@@ -60,13 +60,13 @@ class StaffNotificationPrefController extends Controller
     private function format(StaffNotificationPref $pref): array
     {
         return [
-            'user_id'               => $pref->user_id,
+            'user_id' => $pref->user_id,
             'notifications_enabled' => $pref->notifications_enabled,
-            'order_types'           => $pref->order_types,
-            'menu_group_ids'        => $pref->menu_group_ids,
-            'category_ids'          => $pref->category_ids,
-            'is_fallback'           => $pref->is_fallback,
-            'fallback_priority'     => $pref->fallback_priority,
+            'order_types' => $pref->order_types,
+            'menu_group_ids' => $pref->menu_group_ids,
+            'category_ids' => $pref->category_ids,
+            'is_fallback' => $pref->is_fallback,
+            'fallback_priority' => $pref->fallback_priority,
         ];
     }
 }

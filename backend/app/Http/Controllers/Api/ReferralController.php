@@ -26,17 +26,17 @@ class ReferralController extends Controller
         $code = ReferralCode::firstOrCreate(
             ['customer_id' => $customer->id],
             [
-                'code'                 => strtoupper(Str::random(8)),
-                'referrer_reward_mvr'  => config('loyalty.referral.referrer_reward_mvr'),
+                'code' => strtoupper(Str::random(8)),
+                'referrer_reward_mvr' => config('loyalty.referral.referrer_reward_mvr'),
                 'referee_discount_mvr' => config('loyalty.referral.referee_discount_mvr'),
-                'is_active'            => true,
+                'is_active' => true,
             ],
         );
 
         return response()->json([
-            'code'                 => $code->code,
-            'uses_count'           => $code->uses_count,
-            'referrer_reward_mvr'  => (float) $code->referrer_reward_mvr,
+            'code' => $code->code,
+            'uses_count' => $code->uses_count,
+            'referrer_reward_mvr' => (float) $code->referrer_reward_mvr,
             'referee_discount_mvr' => (float) $code->referee_discount_mvr,
         ]);
     }
@@ -60,7 +60,7 @@ class ReferralController extends Controller
         }
 
         return response()->json([
-            'valid'                => true,
+            'valid' => true,
             'referee_discount_mvr' => (float) $code->referee_discount_mvr,
         ]);
     }
@@ -119,15 +119,15 @@ class ReferralController extends Controller
         }
 
         $order->update([
-            'referral_code'           => $code->code,
-            'referral_discount_laar'  => $referralLaar,
+            'referral_code' => $code->code,
+            'referral_discount_laar' => $referralLaar,
         ]);
         $calc->recalculateAndPersist($order->fresh());
 
         return response()->json([
-            'code'          => $code->code,
+            'code' => $code->code,
             'discount_laar' => $referralLaar,
-            'discount_mvr'  => number_format($referralLaar / 100, 2),
+            'discount_mvr' => number_format($referralLaar / 100, 2),
         ]);
     }
 
@@ -142,7 +142,7 @@ class ReferralController extends Controller
             ->firstOrFail();
 
         $order->update([
-            'referral_code'          => null,
+            'referral_code' => null,
             'referral_discount_laar' => 0,
         ]);
         $calc->recalculateAndPersist($order->fresh());
@@ -159,15 +159,15 @@ class ReferralController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'data' => collect($codes->items())->map(fn($c) => [
-                'id'                   => $c->id,
-                'code'                 => $c->code,
-                'customer'             => $c->customer ? ['id' => $c->customer->id, 'name' => $c->customer->name] : null,
-                'uses_count'           => $c->uses_count,
-                'max_uses'             => $c->max_uses,
-                'referrer_reward_mvr'  => (float) $c->referrer_reward_mvr,
+            'data' => collect($codes->items())->map(fn ($c) => [
+                'id' => $c->id,
+                'code' => $c->code,
+                'customer' => $c->customer ? ['id' => $c->customer->id, 'name' => $c->customer->name] : null,
+                'uses_count' => $c->uses_count,
+                'max_uses' => $c->max_uses,
+                'referrer_reward_mvr' => (float) $c->referrer_reward_mvr,
                 'referee_discount_mvr' => (float) $c->referee_discount_mvr,
-                'is_active'            => $c->is_active,
+                'is_active' => $c->is_active,
             ]),
             'meta' => ['current_page' => $codes->currentPage(), 'last_page' => $codes->lastPage(), 'total' => $codes->total()],
         ]);

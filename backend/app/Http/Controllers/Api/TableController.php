@@ -157,7 +157,7 @@ class TableController extends Controller
         $activeOrder = $this->findActiveOrder($table->id);
         if ($activeOrder) {
             return response()->json([
-                'message'  => 'Cannot close table — unpaid order exists.',
+                'message' => 'Cannot close table — unpaid order exists.',
                 'order_id' => $activeOrder->id,
             ], 422);
         }

@@ -41,7 +41,7 @@ class DeductInventoryListener
         } catch (\Throwable $e) {
             Log::error('DeductInventoryListener: deduction failed', [
                 'order_id' => $event->data->orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             // Re-throw so any outer transaction rolls back — failure here is non-silent.
             throw $e;

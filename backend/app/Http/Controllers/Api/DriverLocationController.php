@@ -25,24 +25,24 @@ class DriverLocationController extends Controller
         $driver = $request->user();
 
         $validated = $request->validate([
-            'locations'               => ['required', 'array', 'min:1', 'max:50'],
-            'locations.*.latitude'    => ['required', 'numeric', 'between:-90,90'],
-            'locations.*.longitude'   => ['required', 'numeric', 'between:-180,180'],
-            'locations.*.heading'     => ['nullable', 'numeric'],
-            'locations.*.speed'       => ['nullable', 'numeric', 'min:0'],
-            'locations.*.accuracy'    => ['nullable', 'numeric', 'min:0'],
+            'locations' => ['required', 'array', 'min:1', 'max:50'],
+            'locations.*.latitude' => ['required', 'numeric', 'between:-90,90'],
+            'locations.*.longitude' => ['required', 'numeric', 'between:-180,180'],
+            'locations.*.heading' => ['nullable', 'numeric'],
+            'locations.*.speed' => ['nullable', 'numeric', 'min:0'],
+            'locations.*.accuracy' => ['nullable', 'numeric', 'min:0'],
             'locations.*.recorded_at' => ['required', 'date'],
         ]);
 
-        $rows = collect($validated['locations'])->map(fn(array $loc) => [
+        $rows = collect($validated['locations'])->map(fn (array $loc) => [
             'delivery_driver_id' => $driver->id,
-            'latitude'           => $loc['latitude'],
-            'longitude'          => $loc['longitude'],
-            'heading'            => $loc['heading'] ?? null,
-            'speed'              => $loc['speed'] ?? null,
-            'accuracy'           => $loc['accuracy'] ?? null,
-            'recorded_at'        => $loc['recorded_at'],
-            'created_at'         => now(),
+            'latitude' => $loc['latitude'],
+            'longitude' => $loc['longitude'],
+            'heading' => $loc['heading'] ?? null,
+            'speed' => $loc['speed'] ?? null,
+            'accuracy' => $loc['accuracy'] ?? null,
+            'recorded_at' => $loc['recorded_at'],
+            'created_at' => now(),
         ]);
 
         DriverLocation::insert($rows->toArray());
@@ -50,10 +50,10 @@ class DriverLocationController extends Controller
         // Cache the latest position (15 minute TTL — location expires when driver stops)
         $latest = $rows->sortByDesc('recorded_at')->first();
         Cache::put("driver_location:{$driver->id}", [
-            'latitude'    => $latest['latitude'],
-            'longitude'   => $latest['longitude'],
-            'heading'     => $latest['heading'],
-            'speed'       => $latest['speed'],
+            'latitude' => $latest['latitude'],
+            'longitude' => $latest['longitude'],
+            'heading' => $latest['heading'],
+            'speed' => $latest['speed'],
             'recorded_at' => $latest['recorded_at'],
         ], now()->addMinutes(15));
 
@@ -100,10 +100,10 @@ class DriverLocationController extends Controller
 
             if ($dbLocation) {
                 $cached = [
-                    'latitude'    => (float) $dbLocation->latitude,
-                    'longitude'   => (float) $dbLocation->longitude,
-                    'heading'     => $dbLocation->heading,
-                    'speed'       => $dbLocation->speed,
+                    'latitude' => (float) $dbLocation->latitude,
+                    'longitude' => (float) $dbLocation->longitude,
+                    'heading' => $dbLocation->heading,
+                    'speed' => $dbLocation->speed,
                     'recorded_at' => $dbLocation->recorded_at->toIso8601String(),
                 ];
             }
@@ -113,8 +113,8 @@ class DriverLocationController extends Controller
 
         return response()->json([
             'location' => $cached,
-            'driver'   => $driver ? [
-                'name'  => $driver->name,
+            'driver' => $driver ? [
+                'name' => $driver->name,
                 'phone' => $driver->phone,
             ] : null,
         ]);

@@ -43,17 +43,17 @@ class DeliveryGateTest extends TestCase
         $cat = Category::create(['name' => 'Delivery Food', 'slug' => 'del-food', 'is_active' => true]);
 
         $this->item = Item::create([
-            'category_id'  => $cat->id,
-            'name'         => 'Delivery Item',
-            'base_price'   => 40.0,
-            'sku'          => 'DEL-001',
-            'is_active'    => true,
+            'category_id' => $cat->id,
+            'name' => 'Delivery Item',
+            'base_price' => 40.0,
+            'sku' => 'DEL-001',
+            'is_active' => true,
             'is_available' => true,
         ]);
 
         $this->customer = Customer::create([
-            'name'      => 'Delivery Customer',
-            'phone'     => '+9607770099',
+            'name' => 'Delivery Customer',
+            'phone' => '+9607770099',
             'is_active' => true,
         ]);
 
@@ -85,10 +85,10 @@ class DeliveryGateTest extends TestCase
         Sanctum::actingAs($this->customer, ['customer']);
 
         return $this->postJson('/api/orders/delivery', [
-            'items'                  => [['item_id' => $this->item->id, 'quantity' => 1]],
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             'delivery_address_line1' => '1st Floor, Kalaafaanu Hingun',
-            'delivery_island'        => $island,
-            'delivery_contact_name'  => 'Test',
+            'delivery_island' => $island,
+            'delivery_contact_name' => 'Test',
             'delivery_contact_phone' => '9607777777',
         ]);
     }
@@ -121,7 +121,7 @@ class DeliveryGateTest extends TestCase
 
         $this->setSetting('delivery_schedule', json_encode([
             $dayKey => [
-                'open'  => $now->clone()->subHour()->format('H:i'),
+                'open' => $now->clone()->subHour()->format('H:i'),
                 'close' => $now->clone()->addHours(2)->format('H:i'),
             ],
         ]));
@@ -136,7 +136,7 @@ class DeliveryGateTest extends TestCase
 
         $response = $this->postDeliveryOrder('addu');
         $response->assertStatus(422);
-        $this->assertStringContainsString("addu", $response->json('message'));
+        $this->assertStringContainsString('addu', $response->json('message'));
     }
 
     public function test_zone_enforcement_allows_correct_zone(): void
@@ -174,7 +174,7 @@ class DeliveryGateTest extends TestCase
     {
         $this->setSetting('delivery_zones', json_encode(['male']));
 
-        $open   = $this->getJson('/api/ordering/delivery-status?area=male');
+        $open = $this->getJson('/api/ordering/delivery-status?area=male');
         $closed = $this->getJson('/api/ordering/delivery-status?area=hulhumale');
 
         $open->assertOk()->assertJsonPath('delivery_open', true);

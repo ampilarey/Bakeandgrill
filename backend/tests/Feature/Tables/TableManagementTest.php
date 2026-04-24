@@ -7,7 +7,6 @@ namespace Tests\Feature\Tables;
 use App\Models\Device;
 use App\Models\RestaurantTable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -42,9 +41,9 @@ class TableManagementTest extends TestCase
     private function createTable(string $name = 'T-01', int $capacity = 4): RestaurantTable
     {
         return RestaurantTable::create([
-            'name'      => $name,
-            'capacity'  => $capacity,
-            'status'    => 'available',
+            'name' => $name,
+            'capacity' => $capacity,
+            'status' => 'available',
             'is_active' => true,
         ]);
     }
@@ -60,7 +59,7 @@ class TableManagementTest extends TestCase
     public function test_manager_can_create_table(): void
     {
         $this->postJson('/api/tables', [
-            'name'     => 'Table 1',
+            'name' => 'Table 1',
             'capacity' => 4,
         ], $this->managerHeaders)
             ->assertStatus(201)
@@ -72,7 +71,7 @@ class TableManagementTest extends TestCase
         $this->createTable('T-DUPE');
 
         $this->postJson('/api/tables', [
-            'name'     => 'T-DUPE',
+            'name' => 'T-DUPE',
             'capacity' => 4,
         ], $this->managerHeaders)->assertStatus(422);
     }
@@ -97,7 +96,7 @@ class TableManagementTest extends TestCase
         $table = $this->createTable('Old Name');
 
         $this->patchJson("/api/tables/{$table->id}", [
-            'name'     => 'New Name',
+            'name' => 'New Name',
             'capacity' => 6,
         ], $this->managerHeaders)
             ->assertStatus(200)
@@ -131,16 +130,16 @@ class TableManagementTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'restaurant_table_id' => $table->id,
-            'type'                => 'dine_in',
+            'type' => 'dine_in',
         ]);
     }
 
     public function test_cannot_open_inactive_table(): void
     {
         $table = RestaurantTable::create([
-            'name'      => 'T-Inactive',
-            'capacity'  => 4,
-            'status'    => 'available',
+            'name' => 'T-Inactive',
+            'capacity' => 4,
+            'status' => 'available',
             'is_active' => false,
         ]);
 
@@ -220,7 +219,7 @@ class TableManagementTest extends TestCase
         $response = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson("/api/tables/{$table->id}/split", [
                 'order_id' => 99999,
-                'amount'   => 5.00,
+                'amount' => 5.00,
             ], $this->managerHeaders);
 
         // 404 (model not found) or 422 (validation) depending on implementation

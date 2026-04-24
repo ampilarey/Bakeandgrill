@@ -18,7 +18,6 @@ use App\Models\OrderItem;
 use App\Models\Role;
 use App\Models\StockMovement;
 use App\Models\User;
-use App\Services\StockManagementService;
 use App\Services\StockReservationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -67,52 +66,52 @@ class PreparedStockTest extends TestCase
         );
 
         $this->category = Category::create([
-            'name'      => 'Food',
-            'slug'      => 'food',
+            'name' => 'Food',
+            'slug' => 'food',
             'is_active' => true,
         ]);
 
         $this->customer = Customer::create([
-            'name'      => 'Stock Test Customer',
-            'phone'     => '+9607770001',
+            'name' => 'Stock Test Customer',
+            'phone' => '+9607770001',
             'is_active' => true,
         ]);
 
         $this->staffRole = Role::create([
-            'name'      => 'Cashier',
-            'slug'      => 'cashier',
+            'name' => 'Cashier',
+            'slug' => 'cashier',
             'is_active' => true,
         ]);
 
         $managerRole = Role::create([
-            'name'      => 'Manager',
-            'slug'      => 'manager',
+            'name' => 'Manager',
+            'slug' => 'manager',
             'is_active' => true,
         ]);
 
         $this->staffUser = User::create([
-            'name'      => 'Cashier',
-            'email'     => 'cashier@test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $this->staffRole->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Cashier',
+            'email' => 'cashier@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $this->staffRole->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 
         $this->managerUser = User::create([
-            'name'      => 'Manager',
-            'email'     => 'manager@test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $managerRole->id,
-            'pin_hash'  => Hash::make('5678'),
+            'name' => 'Manager',
+            'email' => 'manager@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $managerRole->id,
+            'pin_hash' => Hash::make('5678'),
             'is_active' => true,
         ]);
 
         $this->device = Device::create([
-            'name'       => 'Test POS',
+            'name' => 'Test POS',
             'identifier' => self::DEVICE_ID,
-            'type'       => 'pos',
-            'is_active'  => true,
+            'type' => 'pos',
+            'is_active' => true,
         ]);
     }
 
@@ -123,16 +122,16 @@ class PreparedStockTest extends TestCase
     private function makePreparedItem(int $stock, string $sku = 'ITEM-001'): Item
     {
         return Item::create([
-            'category_id'       => $this->category->id,
-            'name'              => 'Prepared Burger',
-            'base_price'        => 50.00,
-            'cost'              => 10.00,
-            'sku'               => $sku,
-            'is_active'         => true,
-            'is_available'      => true,
-            'track_stock'       => true,
+            'category_id' => $this->category->id,
+            'name' => 'Prepared Burger',
+            'base_price' => 50.00,
+            'cost' => 10.00,
+            'sku' => $sku,
+            'is_active' => true,
+            'is_available' => true,
+            'track_stock' => true,
             'availability_type' => 'stock_based',
-            'stock_quantity'    => $stock,
+            'stock_quantity' => $stock,
             'low_stock_threshold' => 0,
         ]);
     }
@@ -140,13 +139,13 @@ class PreparedStockTest extends TestCase
     private function makeMadeToOrderItem(): Item
     {
         return Item::create([
-            'category_id'       => $this->category->id,
-            'name'              => 'Custom Sandwich',
-            'base_price'        => 40.00,
-            'sku'               => 'MTO-001',
-            'is_active'         => true,
-            'is_available'      => true,
-            'track_stock'       => false,
+            'category_id' => $this->category->id,
+            'name' => 'Custom Sandwich',
+            'base_price' => 40.00,
+            'sku' => 'MTO-001',
+            'is_active' => true,
+            'is_available' => true,
+            'track_stock' => false,
             'availability_type' => 'made_to_order',
         ]);
     }
@@ -155,7 +154,7 @@ class PreparedStockTest extends TestCase
     private function onlineOrderPayload(Item $item, int $qty = 1): array
     {
         return [
-            'type'  => 'online_pickup',
+            'type' => 'online_pickup',
             'items' => [['item_id' => $item->id, 'quantity' => $qty]],
         ];
     }
@@ -164,7 +163,7 @@ class PreparedStockTest extends TestCase
     private function posOrderPayload(Item $item, int $qty = 1): array
     {
         return [
-            'type'  => 'takeaway',
+            'type' => 'takeaway',
             'items' => [['item_id' => $item->id, 'quantity' => $qty]],
         ];
     }
@@ -243,31 +242,31 @@ class PreparedStockTest extends TestCase
 
         // Create an online order with a reservation
         $order = Order::create([
-            'order_number'    => 'TEST-PAY-001',
-            'type'            => 'online_pickup',
-            'status'          => 'payment_pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 100.0,
-            'tax_amount'      => 0,
+            'order_number' => 'TEST-PAY-001',
+            'type' => 'online_pickup',
+            'status' => 'payment_pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 100.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 100.0,
+            'total' => 100.0,
         ]);
 
         $orderItem = OrderItem::create([
-            'order_id'   => $order->id,
-            'item_id'    => $item->id,
-            'item_name'  => $item->name,
-            'quantity'   => 2,
+            'order_id' => $order->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 2,
             'unit_price' => 50.0,
             'total_price' => 100.0,
-            'status'     => 'pending',
+            'status' => 'pending',
         ]);
 
         DB::table('stock_reservations')->insert([
-            'item_id'    => $item->id,
-            'order_id'   => $order->id,
+            'item_id' => $item->id,
+            'order_id' => $order->id,
             'session_id' => 'order:' . $order->id,
-            'quantity'   => 2,
+            'quantity' => 2,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now(),
             'updated_at' => now(),
@@ -302,21 +301,21 @@ class PreparedStockTest extends TestCase
         $item = $this->makePreparedItem(5);
 
         $order = Order::create([
-            'order_number'    => 'TEST-FAIL-001',
-            'type'            => 'online_pickup',
-            'status'          => 'payment_pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 50.0,
-            'tax_amount'      => 0,
+            'order_number' => 'TEST-FAIL-001',
+            'type' => 'online_pickup',
+            'status' => 'payment_pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50.0,
+            'total' => 50.0,
         ]);
 
         DB::table('stock_reservations')->insert([
-            'item_id'    => $item->id,
-            'order_id'   => $order->id,
+            'item_id' => $item->id,
+            'order_id' => $order->id,
             'session_id' => 'order:' . $order->id,
-            'quantity'   => 1,
+            'quantity' => 1,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now(),
             'updated_at' => now(),
@@ -344,14 +343,14 @@ class PreparedStockTest extends TestCase
         $item = $this->makePreparedItem(5);
 
         $staleOrder = Order::create([
-            'order_number'    => 'STALE-001',
-            'type'            => 'online_pickup',
-            'status'          => 'payment_pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 50.0,
-            'tax_amount'      => 0,
+            'order_number' => 'STALE-001',
+            'type' => 'online_pickup',
+            'status' => 'payment_pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50.0,
+            'total' => 50.0,
         ]);
 
         // Force the created_at into the past so CancelStaleOrders picks it up
@@ -360,10 +359,10 @@ class PreparedStockTest extends TestCase
             ->update(['created_at' => now()->subMinutes(45)]);
 
         DB::table('stock_reservations')->insert([
-            'item_id'    => $item->id,
-            'order_id'   => $staleOrder->id,
+            'item_id' => $item->id,
+            'order_id' => $staleOrder->id,
             'session_id' => 'order:' . $staleOrder->id,
-            'quantity'   => 2,
+            'quantity' => 2,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now()->subMinutes(45),
             'updated_at' => now()->subMinutes(45),
@@ -390,21 +389,21 @@ class PreparedStockTest extends TestCase
         $item = $this->makePreparedItem(10);
 
         $order = Order::create([
-            'order_number'    => 'DBL-REL-001',
-            'type'            => 'online_pickup',
-            'status'          => 'cancelled',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 50.0,
-            'tax_amount'      => 0,
+            'order_number' => 'DBL-REL-001',
+            'type' => 'online_pickup',
+            'status' => 'cancelled',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50.0,
+            'total' => 50.0,
         ]);
 
         DB::table('stock_reservations')->insert([
-            'item_id'    => $item->id,
-            'order_id'   => $order->id,
+            'item_id' => $item->id,
+            'order_id' => $order->id,
             'session_id' => 'order:' . $order->id,
-            'quantity'   => 3,
+            'quantity' => 3,
             'expires_at' => now()->addMinutes(30),
             'created_at' => now(),
             'updated_at' => now(),
@@ -433,25 +432,25 @@ class PreparedStockTest extends TestCase
 
         // Simulate a paid POS order (stock already deducted)
         $order = Order::create([
-            'order_number'    => 'REFUND-001',
-            'type'            => 'dine_in',
-            'status'          => 'paid',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 100.0,
-            'tax_amount'      => 0,
+            'order_number' => 'REFUND-001',
+            'type' => 'dine_in',
+            'status' => 'paid',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 100.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 100.0,
-            'total_laar'      => 10000,
+            'total' => 100.0,
+            'total_laar' => 10000,
         ]);
 
         OrderItem::create([
-            'order_id'    => $order->id,
-            'item_id'     => $item->id,
-            'item_name'   => $item->name,
-            'quantity'    => 2,
-            'unit_price'  => 50.0,
+            'order_id' => $order->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 2,
+            'unit_price' => 50.0,
             'total_price' => 100.0,
-            'status'      => 'pending',
+            'status' => 'pending',
         ]);
 
         // Stock is already deducted (simulate state after POS sale)
@@ -490,23 +489,23 @@ class PreparedStockTest extends TestCase
 
         // First order gets the last unit
         $order1 = Order::create([
-            'order_number'    => 'RACE-001',
-            'type'            => 'online_pickup',
-            'status'          => 'pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 50.0,
-            'tax_amount'      => 0,
+            'order_number' => 'RACE-001',
+            'type' => 'online_pickup',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50.0,
+            'total' => 50.0,
         ]);
         OrderItem::create([
-            'order_id'    => $order1->id,
-            'item_id'     => $item->id,
-            'item_name'   => $item->name,
-            'quantity'    => 1,
-            'unit_price'  => 50.0,
+            'order_id' => $order1->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 1,
+            'unit_price' => 50.0,
             'total_price' => 50.0,
-            'status'      => 'pending',
+            'status' => 'pending',
         ]);
 
         DB::transaction(function () use ($service, $order1): void {
@@ -515,23 +514,23 @@ class PreparedStockTest extends TestCase
 
         // Second order tries for the same last unit — must fail
         $order2 = Order::create([
-            'order_number'    => 'RACE-002',
-            'type'            => 'online_pickup',
-            'status'          => 'pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 50.0,
-            'tax_amount'      => 0,
+            'order_number' => 'RACE-002',
+            'type' => 'online_pickup',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50.0,
+            'total' => 50.0,
         ]);
         OrderItem::create([
-            'order_id'    => $order2->id,
-            'item_id'     => $item->id,
-            'item_name'   => $item->name,
-            'quantity'    => 1,
-            'unit_price'  => 50.0,
+            'order_id' => $order2->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 1,
+            'unit_price' => 50.0,
             'total_price' => 50.0,
-            'status'      => 'pending',
+            'status' => 'pending',
         ]);
 
         $exceptionThrown = false;
@@ -564,24 +563,24 @@ class PreparedStockTest extends TestCase
         $item = $this->makePreparedItem(10);
 
         $order = Order::create([
-            'order_number'    => 'IDEM-001',
-            'type'            => 'online_pickup',
-            'status'          => 'paid',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 100.0,
-            'tax_amount'      => 0,
+            'order_number' => 'IDEM-001',
+            'type' => 'online_pickup',
+            'status' => 'paid',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 100.0,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 100.0,
+            'total' => 100.0,
         ]);
 
         $orderItem = OrderItem::create([
-            'order_id'    => $order->id,
-            'item_id'     => $item->id,
-            'item_name'   => $item->name,
-            'quantity'    => 2,
-            'unit_price'  => 50.0,
+            'order_id' => $order->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 2,
+            'unit_price' => 50.0,
             'total_price' => 100.0,
-            'status'      => 'pending',
+            'status' => 'pending',
         ]);
 
         $paidData = OrderPaidData::fromOrder($order, false);
@@ -717,7 +716,7 @@ class PreparedStockTest extends TestCase
         $resp = $this->postPosOrder($this->posOrderPayload($item, 1));
         $resp->assertCreated();
         $orderId = $resp->json('order.id');
-        $total   = (float) $resp->json('order.total');
+        $total = (float) $resp->json('order.total');
 
         // Pay it
         $this->postJson("/api/orders/{$orderId}/payments", [
@@ -726,13 +725,13 @@ class PreparedStockTest extends TestCase
 
         // Simulate two concurrent refund requests for the full amount
         // First refund — must succeed
-        $ownerRole = \App\Models\Role::firstOrCreate(
+        $ownerRole = Role::firstOrCreate(
             ['slug' => 'owner'],
             ['name' => 'Owner', 'description' => '', 'is_active' => true],
         );
-        $owner = \App\Models\User::factory()->create([
-            'role_id'   => $ownerRole->id,
-            'pin_hash'  => \Illuminate\Support\Facades\Hash::make('1234'),
+        $owner = User::factory()->create([
+            'role_id' => $ownerRole->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
         Sanctum::actingAs($owner, ['staff']);
@@ -767,7 +766,7 @@ class PreparedStockTest extends TestCase
         $resp = $this->postJson('/api/customer/orders', $this->onlineOrderPayload($item, 1));
         $resp->assertCreated();
         $orderId = $resp->json('order.id');
-        $order   = \App\Models\Order::find($orderId);
+        $order = Order::find($orderId);
 
         // Manually create a Payment as if BML confirmed it (simulate webhook arrival)
         $paidData = OrderPaidData::fromOrder($order->fresh());
@@ -777,7 +776,7 @@ class PreparedStockTest extends TestCase
         $item->refresh();
         $stockAfterFirst = (float) $item->stock_quantity;
 
-        $movements1 = \App\Models\StockMovement::where('reference_type', 'order')
+        $movements1 = StockMovement::where('reference_type', 'order')
             ->where('reference_id', $orderId)
             ->count();
 
@@ -786,7 +785,7 @@ class PreparedStockTest extends TestCase
         $item->refresh();
         $stockAfterSecond = (float) $item->stock_quantity;
 
-        $movements2 = \App\Models\StockMovement::where('reference_type', 'order')
+        $movements2 = StockMovement::where('reference_type', 'order')
             ->where('reference_id', $orderId)
             ->count();
 
@@ -813,7 +812,7 @@ class PreparedStockTest extends TestCase
         Sanctum::actingAs($this->staffUser, ['staff']);
 
         $response = $this->postPosOrder([
-            'type'  => 'takeaway',
+            'type' => 'takeaway',
             'items' => [['item_id' => $item->id, 'quantity' => 99]],
         ]);
         $response->assertCreated();

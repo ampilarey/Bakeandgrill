@@ -17,7 +17,7 @@ class ItemPhotoController extends Controller
 
     public function index(int $itemId): JsonResponse
     {
-        $item   = Item::findOrFail($itemId);
+        $item = Item::findOrFail($itemId);
         $photos = $item->photos()->get();
 
         return response()->json(['photos' => $photos]);
@@ -30,13 +30,13 @@ class ItemPhotoController extends Controller
         $item = Item::findOrFail($itemId);
 
         $validated = $request->validate([
-            'photo'      => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
-            'alt_text'   => ['nullable', 'string', 'max:200'],
+            'photo' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'alt_text' => ['nullable', 'string', 'max:200'],
             'is_primary' => ['sometimes', 'boolean'],
         ]);
 
         $path = $request->file('photo')->store("item-photos/{$itemId}", 'public');
-        $url  = Storage::url($path);
+        $url = Storage::url($path);
 
         if ($validated['is_primary'] ?? false) {
             // Demote all others
@@ -46,9 +46,9 @@ class ItemPhotoController extends Controller
         $maxOrder = $item->photos()->max('sort_order') ?? 0;
 
         $photo = ItemPhoto::create([
-            'item_id'    => $item->id,
-            'url'        => $url,
-            'alt_text'   => $validated['alt_text'] ?? null,
+            'item_id' => $item->id,
+            'url' => $url,
+            'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
             'is_primary' => (bool) ($validated['is_primary'] ?? false),
         ]);
@@ -60,9 +60,9 @@ class ItemPhotoController extends Controller
 
     public function update(Request $request, int $itemId, int $photoId): JsonResponse
     {
-        $photo     = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
+        $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
         $validated = $request->validate([
-            'alt_text'   => ['nullable', 'string', 'max:200'],
+            'alt_text' => ['nullable', 'string', 'max:200'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_primary' => ['sometimes', 'boolean'],
         ]);

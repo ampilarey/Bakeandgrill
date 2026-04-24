@@ -15,7 +15,7 @@ class Store extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'settings'  => 'array',
+        'settings' => 'array',
     ];
 
     public function orders(): HasMany

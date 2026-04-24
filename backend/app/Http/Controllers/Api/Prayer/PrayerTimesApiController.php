@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Prayer;
 
 use App\Domains\PrayerTimes\Actions\GetIslandCollection;
@@ -12,21 +14,21 @@ use Illuminate\Http\JsonResponse;
 class PrayerTimesApiController extends Controller
 {
     public function __construct(
-        private readonly GetIslandCollection            $getIslands,
+        private readonly GetIslandCollection $getIslands,
         private readonly GetPrayerTimesForIslandAndDate $getPrayerTimes,
     ) {}
 
     public function __invoke(PrayerTimesApiRequest $request): JsonResponse
     {
         $islandId = (int) $request->validated('island_id');
-        $islands  = $this->getIslands->execute();
-        $island   = $islands->first(fn ($i) => $i->id === $islandId);
+        $islands = $this->getIslands->execute();
+        $island = $islands->first(fn ($i) => $i->id === $islandId);
 
         if ($island === null) {
             return response()->json(['error' => 'Island not found'], 404);
         }
 
-        $date    = $request->resolvedDate();
+        $date = $request->resolvedDate();
         $prayers = $this->getPrayerTimes->execute($island, $date);
 
         if ($prayers === null) {

@@ -49,22 +49,23 @@ class VariantStockTest extends TestCase
         ]);
 
         $this->variantSmall = Variant::create([
-            'item_id'     => $this->variantItem->id,
-            'name'        => 'Small',
-            'price'       => 8.00,
-            'is_active'   => true,
-            'sort_order'  => 0,
+            'item_id' => $this->variantItem->id,
+            'name' => 'Small',
+            'price' => 8.00,
+            'is_active' => true,
+            'sort_order' => 0,
             'track_stock' => true,
-            'stock_qty'   => 3,
+            'stock_qty' => 3,
         ]);
     }
 
     private function postOrder(array $items): \Illuminate\Testing\TestResponse
     {
         Sanctum::actingAs($this->staff, ['*']);
+
         return $this->withHeader('X-Device-Identifier', $this->device->identifier)
             ->postJson('/api/orders', [
-                'type'  => 'dine_in',
+                'type' => 'dine_in',
                 'items' => $items,
             ]);
     }
@@ -77,7 +78,7 @@ class VariantStockTest extends TestCase
 
         $res->assertStatus(201);
         $this->assertDatabaseHas('variants', [
-            'id'        => $this->variantSmall->id,
+            'id' => $this->variantSmall->id,
             'stock_qty' => 1, // 3 - 2 = 1
         ]);
     }
@@ -118,21 +119,21 @@ class VariantStockTest extends TestCase
 
         $this->assertDatabaseHas('stock_movements', [
             'reference_type' => 'variant',
-            'reference_id'   => $this->variantSmall->id,
-            'quantity'       => -1,
+            'reference_id' => $this->variantSmall->id,
+            'quantity' => -1,
         ]);
     }
 
     public function test_variant_without_track_stock_allows_unlimited_orders(): void
     {
         $unlimitedVariant = Variant::create([
-            'item_id'     => $this->variantItem->id,
-            'name'        => 'Large (unlimited)',
-            'price'       => 12.00,
-            'is_active'   => true,
-            'sort_order'  => 1,
+            'item_id' => $this->variantItem->id,
+            'name' => 'Large (unlimited)',
+            'price' => 12.00,
+            'is_active' => true,
+            'sort_order' => 1,
             'track_stock' => false,
-            'stock_qty'   => 0,
+            'stock_qty' => 0,
         ]);
 
         // Order 99 — should succeed because track_stock=false

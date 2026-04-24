@@ -12,15 +12,15 @@ return new class extends Migration
         DB::table('site_settings')->updateOrInsert(
             ['key' => 'staff_sms_new_customer_enabled'],
             [
-                'value'       => '1',
-                'type'        => 'boolean',
-                'group'       => 'notifications',
-                'label'       => 'New Customer SMS Alert',
+                'value' => '1',
+                'type' => 'boolean',
+                'group' => 'notifications',
+                'label' => 'New Customer SMS Alert',
                 'description' => 'Send SMS to staff when a new customer registers online or via POS.',
-                'is_public'   => false,
-                'created_at'  => now(),
-                'updated_at'  => now(),
-            ]
+                'is_public' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         );
     }
 

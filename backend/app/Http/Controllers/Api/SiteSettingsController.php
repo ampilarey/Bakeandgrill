@@ -36,7 +36,7 @@ class SiteSettingsController extends Controller
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'settings'   => 'required|array',
+            'settings' => 'required|array',
             'settings.*' => 'nullable|string',
         ]);
 
@@ -60,21 +60,21 @@ class SiteSettingsController extends Controller
     public function upload(Request $request): JsonResponse
     {
         $directKeys = ['logo', 'logo_dark', 'favicon', 'og_image'];
-        $jsonKeys   = ['hero_1_image', 'hero_2_image', 'hero_3_image',
-                       'cat_1_image',  'cat_2_image',  'cat_3_image',  'cat_4_image'];
+        $jsonKeys = ['hero_1_image', 'hero_2_image', 'hero_3_image',
+            'cat_1_image',  'cat_2_image',  'cat_3_image',  'cat_4_image'];
         $allowedKeys = array_merge($directKeys, $jsonKeys);
 
         $request->validate([
             'file' => 'required|file|mimes:png,jpg,jpeg,webp,ico|max:5120',
-            'key'  => 'required|string|in:' . implode(',', $allowedKeys),
+            'key' => 'required|string|in:' . implode(',', $allowedKeys),
         ]);
 
-        $file      = $request->file('file');
-        $key       = $request->input('key');
+        $file = $request->file('file');
+        $key = $request->input('key');
         $extension = $file->getClientOriginalExtension();
-        $filename  = $key . '_' . Str::random(8) . '.' . $extension;
-        $path      = $file->storeAs('site', $filename, 'public');
-        $url       = Storage::url($path);
+        $filename = $key . '_' . Str::random(8) . '.' . $extension;
+        $path = $file->storeAs('site', $filename, 'public');
+        $url = Storage::url($path);
 
         // For brand assets, auto-save directly to the setting
         if (in_array($key, $directKeys, true)) {

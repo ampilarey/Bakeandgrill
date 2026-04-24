@@ -34,13 +34,13 @@ class SmsScheduledMessage extends Model
     protected function casts(): array
     {
         return [
-            'is_recurring'             => 'boolean',
-            'variables'                => 'array',
-            'recurrence_days'          => 'array',
-            'send_at'                  => 'datetime',
-            'next_send_at'             => 'datetime',
-            'last_sent_at'             => 'datetime',
-            'recurrence_day_of_month'  => 'integer',
+            'is_recurring' => 'boolean',
+            'variables' => 'array',
+            'recurrence_days' => 'array',
+            'send_at' => 'datetime',
+            'next_send_at' => 'datetime',
+            'last_sent_at' => 'datetime',
+            'recurrence_day_of_month' => 'integer',
         ];
     }
 
@@ -80,7 +80,7 @@ class SmsScheduledMessage extends Model
      */
     public function computeNextSendAt(Carbon $after): ?Carbon
     {
-        if (! $this->is_recurring || ! $this->recurrence_type || ! $this->recurrence_time) {
+        if (!$this->is_recurring || !$this->recurrence_type || !$this->recurrence_time) {
             return null;
         }
 
@@ -90,13 +90,13 @@ class SmsScheduledMessage extends Model
         // If candidate is in the past relative to $after, advance by the recurrence unit
         if ($candidate->lte($after)) {
             match ($this->recurrence_type) {
-                'daily'   => $candidate->addDay(),
-                'weekly'  => $candidate->addWeek(),
+                'daily' => $candidate->addDay(),
+                'weekly' => $candidate->addWeek(),
                 'monthly' => $candidate->addMonth(),
             };
         }
 
-        if ($this->recurrence_type === 'weekly' && ! empty($this->recurrence_days)) {
+        if ($this->recurrence_type === 'weekly' && !empty($this->recurrence_days)) {
             // Find the next matching day of week
             $days = $this->recurrence_days; // ['mon','tue',...]
             for ($i = 0; $i < 7; $i++) {
@@ -112,7 +112,7 @@ class SmsScheduledMessage extends Model
             $candidate->setDay(min($this->recurrence_day_of_month, $candidate->daysInMonth));
             if ($candidate->lte($after)) {
                 $candidate->addMonth()->setDay(
-                    min($this->recurrence_day_of_month, $candidate->daysInMonth)
+                    min($this->recurrence_day_of_month, $candidate->daysInMonth),
                 );
             }
         }

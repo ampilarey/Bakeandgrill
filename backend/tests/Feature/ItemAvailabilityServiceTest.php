@@ -34,11 +34,11 @@ class ItemAvailabilityServiceTest extends TestCase
         $cat = Category::create(['name' => 'Avail Test', 'slug' => 'avail-test', 'is_active' => true]);
 
         $this->item = Item::create([
-            'category_id'  => $cat->id,
-            'name'         => 'Availability Item',
-            'base_price'   => 25.0,
-            'sku'          => 'AVAIL-001',
-            'is_active'    => true,
+            'category_id' => $cat->id,
+            'name' => 'Availability Item',
+            'base_price' => 25.0,
+            'sku' => 'AVAIL-001',
+            'is_active' => true,
             'is_available' => true,
         ]);
 
@@ -100,15 +100,15 @@ class ItemAvailabilityServiceTest extends TestCase
     {
         $cat = Category::create(['name' => 'Stock Cat', 'slug' => 'sc-avail', 'is_active' => true]);
         $stockItem = Item::create([
-            'category_id'       => $cat->id,
-            'name'              => 'Stock Item',
-            'base_price'        => 20.0,
-            'sku'               => 'STOCK-AVAIL-001',
-            'is_active'         => true,
-            'is_available'      => true,
-            'track_stock'       => true,
+            'category_id' => $cat->id,
+            'name' => 'Stock Item',
+            'base_price' => 20.0,
+            'sku' => 'STOCK-AVAIL-001',
+            'is_active' => true,
+            'is_available' => true,
+            'track_stock' => true,
             'availability_type' => 'stock_based',
-            'stock_quantity'    => 0,
+            'stock_quantity' => 0,
         ]);
 
         $result = $this->service()->check($stockItem, 'online_pickup');

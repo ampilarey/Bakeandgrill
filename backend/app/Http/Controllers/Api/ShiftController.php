@@ -30,9 +30,9 @@ class ShiftController extends Controller
 
         if ($shift) {
             $shift->load('cashMovements.user');
-            $cashIn  = $shift->cashMovements->whereIn('type', ['cash_in',  'paid_in'])->sum('amount');
+            $cashIn = $shift->cashMovements->whereIn('type', ['cash_in',  'paid_in'])->sum('amount');
             $cashOut = $shift->cashMovements->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
-            $shift->setAttribute('total_cash_in',  $cashIn);
+            $shift->setAttribute('total_cash_in', $cashIn);
             $shift->setAttribute('total_cash_out', $cashOut);
             $shift->setAttribute('cash_movements', $shift->cashMovements->values());
         }
@@ -56,11 +56,11 @@ class ShiftController extends Controller
             }
 
             return Shift::create([
-                'user_id'      => $userId,
-                'device_id'    => $request->input('device_id'),
-                'opened_at'    => now(),
+                'user_id' => $userId,
+                'device_id' => $request->input('device_id'),
+                'opened_at' => now(),
                 'opening_cash' => $request->input('opening_cash'),
-                'notes'        => $request->input('notes'),
+                'notes' => $request->input('notes'),
             ]);
         });
 

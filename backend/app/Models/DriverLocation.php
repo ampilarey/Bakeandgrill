@@ -24,13 +24,13 @@ class DriverLocation extends Model
 
     protected $casts = [
         'delivery_driver_id' => 'integer',
-        'latitude'           => 'decimal:7',
-        'longitude'          => 'decimal:7',
-        'heading'            => 'float',
-        'speed'              => 'float',
-        'accuracy'           => 'float',
-        'recorded_at'        => 'datetime',
-        'created_at'         => 'datetime',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
+        'heading' => 'float',
+        'speed' => 'float',
+        'accuracy' => 'float',
+        'recorded_at' => 'datetime',
+        'created_at' => 'datetime',
     ];
 
     public function driver(): BelongsTo

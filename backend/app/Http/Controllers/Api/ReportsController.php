@@ -21,6 +21,7 @@ class ReportsController extends Controller
     public function salesSummary(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
+
         return response()->json($this->reports->salesSummary($from, $to));
     }
 
@@ -44,6 +45,7 @@ class ReportsController extends Controller
         foreach ($data['payments'] ?? [] as $method => $amount) {
             $rows[] = [$method, $amount];
         }
+
         return $this->csvResponse('sales-summary.csv', $rows);
     }
 
@@ -51,6 +53,7 @@ class ReportsController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
         $limit = min((int) $request->input('limit', 100), 500);
+
         return response()->json($this->reports->salesBreakdown($from, $to, $limit));
     }
 
@@ -71,13 +74,14 @@ class ReportsController extends Controller
         foreach ($data['employees'] ?? [] as $employee) {
             $rows[] = ['employees', $employee['user_id'] ?? '', $employee['name'] ?? '', $employee['orders_count'] ?? 0, $employee['total'] ?? 0];
         }
+
         return $this->csvResponse('sales-breakdown.csv', $rows);
     }
 
     public function xReport(Request $request)
     {
         $userId = $request->user()?->id;
-        $data   = $this->reports->xReport($userId);
+        $data = $this->reports->xReport($userId);
 
         if ($data === null) {
             return response()->json(['message' => 'No active shift.'], 422);
@@ -89,7 +93,7 @@ class ReportsController extends Controller
     public function xReportCsv(Request $request)
     {
         $userId = $request->user()?->id;
-        $data   = $this->reports->xReport($userId);
+        $data = $this->reports->xReport($userId);
 
         if ($data === null) {
             return response()->json(['message' => 'No active shift.'], 422);
@@ -111,12 +115,14 @@ class ReportsController extends Controller
         foreach ($data['payments'] ?? [] as $method => $amount) {
             $rows[] = [$method, $amount];
         }
+
         return $this->csvResponse('x-report.csv', $rows);
     }
 
     public function zReport(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
+
         return response()->json($this->reports->zReport($from, $to));
     }
 
@@ -141,6 +147,7 @@ class ReportsController extends Controller
         foreach ($data['payments'] ?? [] as $method => $amount) {
             $rows[] = [$method, $amount];
         }
+
         return $this->csvResponse('z-report.csv', $rows);
     }
 
@@ -157,6 +164,7 @@ class ReportsController extends Controller
             ['value', $data['value'] ?? 0],
             ['quantity', $data['quantity'] ?? 0],
         ];
+
         return $this->csvResponse('inventory-valuation.csv', $rows);
     }
 
@@ -198,7 +206,7 @@ class ReportsController extends Controller
         fclose($handle);
 
         return response($csv, 200, [
-            'Content-Type'        => 'text/csv',
+            'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
@@ -215,6 +223,7 @@ class ReportsController extends Controller
         if (preg_match('/^[=+\\-@]/', $string)) {
             return "'" . $string;
         }
+
         return $string;
     }
 }

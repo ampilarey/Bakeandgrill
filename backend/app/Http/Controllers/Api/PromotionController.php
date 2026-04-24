@@ -36,7 +36,7 @@ class PromotionController extends Controller
         // Eager-load items.item so PromotionEvaluator doesn't trigger N+1 queries per category
         $order = $orderId ? Order::with('items.item')->findOrFail($orderId) : null;
 
-        $user           = $request->user();
+        $user = $request->user();
         $isCustomerActor = $user?->tokenCan('customer');
 
         // Prevent cross-order IDOR: customers may only validate against their own orders
@@ -99,7 +99,7 @@ class PromotionController extends Controller
             }
         } else {
             // Staff actor — must have explicit promotions.discounts permission.
-            if (! $user->hasPermission('promotions.discounts')) {
+            if (!$user->hasPermission('promotions.discounts')) {
                 return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
             }
         }
@@ -120,7 +120,7 @@ class PromotionController extends Controller
             return response()->json(['message' => $result['message']], 422);
         }
 
-        $promotion      = $result['promotion'];
+        $promotion = $result['promotion'];
         $idempotencyKey = 'order-promo:' . $orderId . ':' . $promotion->id;
 
         // Track whether the promo was actually persisted so we can return the
@@ -148,10 +148,10 @@ class PromotionController extends Controller
             OrderPromotion::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
                 [
-                    'order_id'      => $order->id,
-                    'promotion_id'  => $promotion->id,
+                    'order_id' => $order->id,
+                    'promotion_id' => $promotion->id,
                     'discount_laar' => $result['discount_laar'],
-                    'status'        => 'draft',
+                    'status' => 'draft',
                 ],
             );
 
@@ -169,10 +169,10 @@ class PromotionController extends Controller
         }
 
         return response()->json([
-            'message'       => $result['message'],
+            'message' => $result['message'],
             'discount_laar' => $result['discount_laar'],
-            'discount_mvr'  => number_format($result['discount_laar'] / 100, 2),
-            'promotion_id'  => $promotion->id,
+            'discount_mvr' => number_format($result['discount_laar'] / 100, 2),
+            'promotion_id' => $promotion->id,
         ]);
     }
 
@@ -181,7 +181,7 @@ class PromotionController extends Controller
      */
     public function removeFromOrder(Request $request, int $orderId, int $promotionId): JsonResponse
     {
-        $user            = $request->user();
+        $user = $request->user();
         $isCustomerActor = $user->tokenCan('customer');
 
         // Pre-check existence (no lock yet — avoids holding a lock during auth evaluation).
@@ -194,7 +194,7 @@ class PromotionController extends Controller
             }
         } else {
             // Staff actor — must have explicit promotions.discounts permission.
-            if (! $user->hasPermission('promotions.discounts')) {
+            if (!$user->hasPermission('promotions.discounts')) {
                 return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
             }
         }
@@ -292,11 +292,11 @@ class PromotionController extends Controller
         $promotion = Promotion::withTrashed()->findOrFail($id);
 
         $validated = $request->validate([
-            'name'                   => 'sometimes|string|max:255',
-            'is_active'              => 'sometimes|boolean',
-            'expires_at'             => 'nullable|date',
-            'max_uses'               => 'nullable|integer|min:1',
-            'max_uses_per_customer'  => 'nullable|integer|min:1',
+            'name' => 'sometimes|string|max:255',
+            'is_active' => 'sometimes|boolean',
+            'expires_at' => 'nullable|date',
+            'max_uses' => 'nullable|integer|min:1',
+            'max_uses_per_customer' => 'nullable|integer|min:1',
             'restricted_customer_id' => 'nullable|integer|exists:customers,id',
         ]);
 

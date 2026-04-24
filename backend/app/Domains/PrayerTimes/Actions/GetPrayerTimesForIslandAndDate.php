@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\PrayerTimes\Actions;
 
 use App\Domains\PrayerTimes\DTOs\IslandData;

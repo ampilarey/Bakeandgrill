@@ -19,9 +19,9 @@ class OrderItemModifier extends Model
 
     protected $casts = [
         'order_item_id' => 'integer',
-        'modifier_id'   => 'integer',
-        'quantity'      => 'integer',
-        'modifier_price'=> 'decimal:2',
+        'modifier_id' => 'integer',
+        'quantity' => 'integer',
+        'modifier_price' => 'decimal:2',
     ];
 
     public function orderItem(): BelongsTo

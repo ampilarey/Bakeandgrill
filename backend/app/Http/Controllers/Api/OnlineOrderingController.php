@@ -43,13 +43,13 @@ class OnlineOrderingController extends Controller
 
         $next = $request->has('enabled')
             ? (bool) $request->input('enabled')
-            : ! $current;
+            : !$current;
 
         SiteSetting::set('online_ordering_enabled', $next ? '1' : '0');
 
         return response()->json([
             'online_ordering_enabled' => $next,
-            'status'                  => $this->gate->status(),
+            'status' => $this->gate->status(),
         ]);
     }
 
@@ -68,7 +68,7 @@ class OnlineOrderingController extends Controller
 
         return response()->json([
             'override_until' => $validated['override_until'],
-            'status'         => $this->gate->status(),
+            'status' => $this->gate->status(),
         ]);
     }
 }

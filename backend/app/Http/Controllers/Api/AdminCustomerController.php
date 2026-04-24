@@ -24,8 +24,8 @@ class AdminCustomerController extends Controller
             $like = '%' . $search . '%';
             $query->where(function ($q) use ($like) {
                 $q->where('name', 'like', $like)
-                  ->orWhere('phone', 'like', $like)
-                  ->orWhere('email', 'like', $like);
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('email', 'like', $like);
             });
         }
 
@@ -36,11 +36,11 @@ class AdminCustomerController extends Controller
         $paginator = $query->paginate(30);
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn(Customer $c) => $this->format($c)),
+            'data' => collect($paginator->items())->map(fn (Customer $c) => $this->format($c)),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
             ],
         ]);
     }
@@ -61,7 +61,7 @@ class AdminCustomerController extends Controller
 
         return response()->json([
             'customer' => $this->format($customer),
-            'orders'   => $orders,
+            'orders' => $orders,
         ]);
     }
 
@@ -74,11 +74,11 @@ class AdminCustomerController extends Controller
         $customer = Customer::findOrFail($id);
 
         $validated = $request->validate([
-            'name'           => ['sometimes', 'string', 'max:255'],
-            'email'          => ['sometimes', 'nullable', 'email', 'max:255'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'internal_notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'is_active'      => ['sometimes', 'boolean'],
-            'sms_opt_out'    => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
+            'sms_opt_out' => ['sometimes', 'boolean'],
         ]);
 
         $customer->update($validated);
@@ -101,21 +101,21 @@ class AdminCustomerController extends Controller
     private function format(Customer $c): array
     {
         return [
-            'id'              => $c->id,
-            'name'            => $c->name,
-            'phone'           => $c->phone,
-            'email'           => $c->email,
-            'tier'            => $c->tier,
-            'loyalty_points'  => $c->loyalty_points,
-            'is_active'       => (bool) $c->is_active,
+            'id' => $c->id,
+            'name' => $c->name,
+            'phone' => $c->phone,
+            'email' => $c->email,
+            'tier' => $c->tier,
+            'loyalty_points' => $c->loyalty_points,
+            'is_active' => (bool) $c->is_active,
             'is_profile_complete' => (bool) $c->is_profile_complete,
-            'sms_opt_out'     => (bool) $c->sms_opt_out,
-            'internal_notes'  => $c->internal_notes,
+            'sms_opt_out' => (bool) $c->sms_opt_out,
+            'internal_notes' => $c->internal_notes,
             'preferred_language' => $c->preferred_language,
-            'orders_count'    => $c->orders_count ?? 0,
-            'last_login_at'   => $c->last_login_at,
-            'last_order_at'   => $c->last_order_at,
-            'created_at'      => $c->created_at,
+            'orders_count' => $c->orders_count ?? 0,
+            'last_login_at' => $c->last_login_at,
+            'last_order_at' => $c->last_order_at,
+            'created_at' => $c->created_at,
         ];
     }
 }

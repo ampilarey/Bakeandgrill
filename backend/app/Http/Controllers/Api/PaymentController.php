@@ -39,7 +39,7 @@ class PaymentController extends Controller
         if ($dueLaar <= 0) {
             return response()->json([
                 'message' => 'Nothing to pay. Your order is fully covered — use “Place order” again to confirm without card.',
-                'code'    => 'zero_balance',
+                'code' => 'zero_balance',
             ], 422);
         }
 
@@ -47,14 +47,14 @@ class PaymentController extends Controller
             $result = $this->paymentService->initiateBmlPayment($order);
         } catch (\RuntimeException $e) {
             Log::error('PaymentController: BML payment initiation failed', [
-                'order_id'   => $order->id,
+                'order_id' => $order->id,
                 'customer_id' => $order->customer_id,
-                'error'      => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'message' => 'Payment gateway unavailable. Please try again in a moment or contact us for help.',
-                'code'    => 'gateway_error',
+                'code' => 'gateway_error',
             ], 503);
         }
 
@@ -113,14 +113,14 @@ class PaymentController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (\RuntimeException $e) {
             Log::error('PaymentController: BML partial payment initiation failed', [
-                'order_id'   => $order->id,
-                'amount'     => $validated['amount'],
-                'error'      => $e->getMessage(),
+                'order_id' => $order->id,
+                'amount' => $validated['amount'],
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'message' => 'Payment gateway unavailable. Please try again in a moment or contact us for help.',
-                'code'    => 'gateway_error',
+                'code' => 'gateway_error',
             ], 503);
         }
 
@@ -156,7 +156,7 @@ class PaymentController extends Controller
             try {
                 $this->paymentService->confirmFromReturnUrl((int) $orderId, $transactionId);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('BML return: fallback confirmation failed', [
+                Log::warning('BML return: fallback confirmation failed', [
                     'order_id' => $orderId,
                     'transaction_id' => $transactionId,
                     'error' => $e->getMessage(),
@@ -166,7 +166,7 @@ class PaymentController extends Controller
 
         $baseUrl = config('frontend.order_status_url');
         if (empty($baseUrl)) {
-            \Illuminate\Support\Facades\Log::error('BML return: frontend.order_status_url is not configured — using fallback URL');
+            Log::error('BML return: frontend.order_status_url is not configured — using fallback URL');
             $baseUrl = '/order/orders';
         }
 
@@ -192,13 +192,14 @@ class PaymentController extends Controller
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('completeZeroBalance: unexpected exception', [
+            Log::error('completeZeroBalance: unexpected exception', [
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
-                'class'    => get_class($e),
-                'file'     => $e->getFile(),
-                'line'     => $e->getLine(),
+                'error' => $e->getMessage(),
+                'class' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
+
             return response()->json(['message' => 'An unexpected error occurred. Please contact support.'], 500);
         }
 

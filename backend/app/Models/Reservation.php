@@ -24,10 +24,10 @@ class Reservation extends Model
     ];
 
     protected $casts = [
-        'date'       => 'date',
+        'date' => 'date',
         'party_size' => 'integer',
         'duration_minutes' => 'integer',
-        'table_id'   => 'integer',
+        'table_id' => 'integer',
     ];
 
     public function customer(): BelongsTo
@@ -40,7 +40,18 @@ class Reservation extends Model
         return $this->belongsTo(RestaurantTable::class, 'table_id');
     }
 
-    public function isPending(): bool    { return $this->status === 'pending'; }
-    public function isConfirmed(): bool  { return $this->status === 'confirmed'; }
-    public function isCancelled(): bool  { return $this->status === 'cancelled'; }
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isConfirmed(): bool
+    {
+        return $this->status === 'confirmed';
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
 }

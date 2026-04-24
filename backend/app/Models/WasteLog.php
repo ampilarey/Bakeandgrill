@@ -15,11 +15,22 @@ class WasteLog extends Model
     ];
 
     protected $casts = [
-        'quantity'      => 'decimal:3',
+        'quantity' => 'decimal:3',
         'cost_estimate' => 'decimal:2',
     ];
 
-    public function item(): BelongsTo         { return $this->belongsTo(Item::class); }
-    public function inventoryItem(): BelongsTo { return $this->belongsTo(InventoryItem::class); }
-    public function user(): BelongsTo          { return $this->belongsTo(User::class); }
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Item::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

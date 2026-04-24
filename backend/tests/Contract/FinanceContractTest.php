@@ -37,7 +37,7 @@ class FinanceContractTest extends ContractTestCase
     {
         parent::setUp();
 
-        $owner             = $this->makeOwner();
+        $owner = $this->makeOwner();
         $this->ownerHeaders = ['Authorization' => 'Bearer ' . $owner->createToken('test', ['staff'])->plainTextToken];
     }
 
@@ -46,9 +46,9 @@ class FinanceContractTest extends ContractTestCase
     private function createInvoice(): Invoice
     {
         $response = $this->postJson('/api/invoices', [
-            'type'       => 'sale',
+            'type' => 'sale',
             'issue_date' => today()->toDateString(),
-            'items'      => [
+            'items' => [
                 ['description' => 'Meal', 'quantity' => 1, 'unit_price' => 20.00],
             ],
         ], $this->ownerHeaders)->assertStatus(201);
@@ -72,7 +72,7 @@ class FinanceContractTest extends ContractTestCase
 
     public function test_invoice_detail_response_shape(): void
     {
-        $invoice  = $this->createInvoice();
+        $invoice = $this->createInvoice();
 
         $response = $this->getJson("/api/invoices/{$invoice->id}", $this->ownerHeaders)
             ->assertStatus(200);

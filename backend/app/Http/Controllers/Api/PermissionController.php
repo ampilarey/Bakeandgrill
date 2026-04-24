@@ -28,9 +28,9 @@ class PermissionController extends Controller
         $user->load('role');
 
         return response()->json([
-            'user_id'     => $user->id,
-            'name'        => $user->name,
-            'role'        => $user->role?->slug,
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'role' => $user->role?->slug,
             'permissions' => $user->getEffectivePermissions(),
         ]);
     }
@@ -46,11 +46,11 @@ class PermissionController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         $validated = $request->validate([
-            'permissions'   => 'required|array',
+            'permissions' => 'required|array',
             'permissions.*' => 'nullable|boolean',
         ]);
 
-        $actor   = $request->user();
+        $actor = $request->user();
         $actorId = $actor?->id;
 
         // Prevent modifying own permissions
@@ -75,7 +75,7 @@ class PermissionController extends Controller
         $user->load('role');
 
         return response()->json([
-            'message'     => 'Permissions updated.',
+            'message' => 'Permissions updated.',
             'permissions' => $user->getEffectivePermissions(),
         ]);
     }

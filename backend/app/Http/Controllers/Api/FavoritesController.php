@@ -21,7 +21,7 @@ class FavoritesController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -45,7 +45,7 @@ class FavoritesController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -67,9 +67,9 @@ class FavoritesController extends Controller
 
         DB::table('customer_favorites')->insert([
             'customer_id' => $customer->id,
-            'item_id'     => $item->id,
-            'created_at'  => now(),
-            'updated_at'  => now(),
+            'item_id' => $item->id,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return response()->json(['favorited' => true, 'item_id' => $item->id]);
@@ -84,7 +84,7 @@ class FavoritesController extends Controller
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
         // Also explicitly scopes order lookup to this customer's orders.
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -95,20 +95,20 @@ class FavoritesController extends Controller
 
         $cartItems = $order->items->map(function ($oi) {
             return [
-                'item_id'    => $oi->item_id,
-                'item_name'  => $oi->item_name,
-                'quantity'   => $oi->quantity,
+                'item_id' => $oi->item_id,
+                'item_name' => $oi->item_name,
+                'quantity' => $oi->quantity,
                 'unit_price' => $oi->unit_price,
-                'modifiers'  => $oi->modifiers->map(fn($m) => [
-                    'id'    => $m->modifier_id ?? $m->id,
-                    'name'  => $m->name,
+                'modifiers' => $oi->modifiers->map(fn ($m) => [
+                    'id' => $m->modifier_id ?? $m->id,
+                    'name' => $m->name,
                     'price' => $m->price ?? 0,
                 ]),
             ];
         });
 
         return response()->json([
-            'items'         => $cartItems,
+            'items' => $cartItems,
             'original_type' => $order->type,
         ]);
     }

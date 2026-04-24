@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\OrderItem;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,10 +21,10 @@ class AnalyticsController extends Controller
     {
         $days = min((int) ($request->query('days', 30)), 365);
 
-        $hourExpr = match(DB::getDriverName()) {
-            'sqlite'  => "CAST(strftime('%H', created_at) AS INTEGER)",
-            'pgsql'   => 'EXTRACT(HOUR FROM created_at)::INTEGER',
-            default   => 'HOUR(created_at)',
+        $hourExpr = match (DB::getDriverName()) {
+            'sqlite' => "CAST(strftime('%H', created_at) AS INTEGER)",
+            'pgsql' => 'EXTRACT(HOUR FROM created_at)::INTEGER',
+            default => 'HOUR(created_at)',
         };
 
         $rows = DB::table('orders')
@@ -40,9 +39,9 @@ class AnalyticsController extends Controller
         for ($h = 0; $h < 24; $h++) {
             $row = $rows->firstWhere('hour', $h);
             $hours[] = [
-                'hour'      => $h,
-                'label'     => sprintf('%02d:00', $h),
-                'count'     => $row ? (int) $row->count : 0,
+                'hour' => $h,
+                'label' => sprintf('%02d:00', $h),
+                'count' => $row ? (int) $row->count : 0,
                 'avg_total' => $row ? round((float) $row->avg_total, 2) : 0,
             ];
         }
@@ -57,9 +56,9 @@ class AnalyticsController extends Controller
      */
     public function retention(Request $request): JsonResponse
     {
-        $weeks     = min((int) ($request->query('weeks', 12)), 52);
+        $weeks = min((int) ($request->query('weeks', 12)), 52);
         $rangeStart = Carbon::now()->startOfWeek()->subWeeks($weeks - 1);
-        $rangeEnd   = Carbon::now()->endOfWeek();
+        $rangeEnd = Carbon::now()->endOfWeek();
 
         // Safety cap: 52 weeks × ~100 orders/day × 7 = ~36 400 rows maximum.
         // Raise this cap only if you have confirmed the server has sufficient RAM.
@@ -94,17 +93,21 @@ class AnalyticsController extends Controller
         $data = [];
         for ($i = $weeks - 1; $i >= 0; $i--) {
             $start = Carbon::now()->startOfWeek()->subWeeks($i);
-            $end   = $start->copy()->endOfWeek();
+            $end = $start->copy()->endOfWeek();
 
-            $seenThisWeek  = [];
-            $newCount      = 0;
+            $seenThisWeek = [];
+            $newCount = 0;
             $returningCount = 0;
 
             foreach ($orders as $order) {
                 $orderDate = Carbon::parse($order->created_at);
-                if (!$orderDate->between($start, $end)) continue;
+                if (!$orderDate->between($start, $end)) {
+                    continue;
+                }
                 $cid = $order->customer_id;
-                if (isset($seenThisWeek[$cid])) continue; // count each customer once per week
+                if (isset($seenThisWeek[$cid])) {
+                    continue;
+                } // count each customer once per week
                 $seenThisWeek[$cid] = true;
 
                 $firstOrder = $firstOrderDates[$cid] ?? null;
@@ -116,16 +119,16 @@ class AnalyticsController extends Controller
             }
 
             $data[] = [
-                'week'            => $start->format('M d'),
-                'new'             => $newCount,
-                'returning'       => $returningCount,
+                'week' => $start->format('M d'),
+                'new' => $newCount,
+                'returning' => $returningCount,
                 'total_customers' => $newCount + $returningCount,
             ];
         }
 
         return response()->json([
-            'retention'  => $data,
-            'truncated'  => $truncated ?? false,
+            'retention' => $data,
+            'truncated' => $truncated ?? false,
         ]);
     }
 
@@ -135,7 +138,7 @@ class AnalyticsController extends Controller
     public function profitability(Request $request): JsonResponse
     {
         $from = $request->query('from', Carbon::now()->startOfMonth()->toDateString());
-        $to   = $request->query('to',   Carbon::now()->toDateString());
+        $to = $request->query('to', Carbon::now()->toDateString());
 
         $items = DB::table('order_items as oi')
             ->join('items as i', 'i.id', '=', 'oi.item_id')
@@ -156,16 +159,16 @@ class AnalyticsController extends Controller
             ->get();
 
         return response()->json([
-            'from'  => $from,
-            'to'    => $to,
-            'items' => $items->map(fn($r) => [
-                'id'              => $r->id,
-                'name'            => $r->name,
-                'total_qty'       => (int) $r->total_qty,
-                'total_revenue'   => round((float) $r->total_revenue, 2),
-                'total_cost'      => round((float) $r->total_cost, 2),
-                'gross_profit'    => round((float) $r->total_revenue - (float) $r->total_cost, 2),
-                'margin_pct'      => $r->total_revenue > 0
+            'from' => $from,
+            'to' => $to,
+            'items' => $items->map(fn ($r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'total_qty' => (int) $r->total_qty,
+                'total_revenue' => round((float) $r->total_revenue, 2),
+                'total_cost' => round((float) $r->total_cost, 2),
+                'gross_profit' => round((float) $r->total_revenue - (float) $r->total_cost, 2),
+                'margin_pct' => $r->total_revenue > 0
                     ? round(((float) $r->total_revenue - (float) $r->total_cost) / (float) $r->total_revenue * 100, 1)
                     : 0,
             ]),
@@ -180,10 +183,10 @@ class AnalyticsController extends Controller
         $lookbackDays = min((int) ($request->query('lookback', 90)), 365);
 
         // DAYOFWEEK: MySQL returns 1=Sun; normalise pgsql/sqlite to the same convention
-        $dowExpr = match(DB::getDriverName()) {
-            'sqlite'  => "CAST(strftime('%w', created_at) AS INTEGER) + 1",
-            'pgsql'   => 'EXTRACT(DOW FROM created_at)::INTEGER + 1',
-            default   => 'DAYOFWEEK(created_at)',
+        $dowExpr = match (DB::getDriverName()) {
+            'sqlite' => "CAST(strftime('%w', created_at) AS INTEGER) + 1",
+            'pgsql' => 'EXTRACT(DOW FROM created_at)::INTEGER + 1',
+            default => 'DAYOFWEEK(created_at)',
         };
 
         $avgByDow = DB::table('orders')
@@ -197,17 +200,17 @@ class AnalyticsController extends Controller
         $forecast = [];
         for ($i = 0; $i < 7; $i++) {
             $date = Carbon::now()->addDays($i);
-            $dow  = $date->dayOfWeek + 1; // MySQL DAYOFWEEK: 1=Sunday
-            $row  = $avgByDow->get($dow);
+            $dow = $date->dayOfWeek + 1; // MySQL DAYOFWEEK: 1=Sunday
+            $row = $avgByDow->get($dow);
 
             $avg = $row && $row->day_count > 0
                 ? round($row->total / $row->day_count)
                 : 0;
 
             $forecast[] = [
-                'date'        => $date->toDateString(),
-                'day'         => $date->format('D'),
-                'avg_orders'  => $avg,
+                'date' => $date->toDateString(),
+                'day' => $date->format('D'),
+                'avg_orders' => $avg,
             ];
         }
 
@@ -230,14 +233,14 @@ class AnalyticsController extends Controller
             ->get();
 
         return response()->json([
-            'top_customers' => $top->map(fn($r) => [
-                'id'          => $r->id,
-                'name'        => $r->name,
-                'phone'       => $r->phone,
+            'top_customers' => $top->map(fn ($r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'phone' => $r->phone,
                 'order_count' => (int) $r->order_count,
                 'total_spent' => round((float) $r->total_spent, 2),
                 'first_order' => $r->first_order,
-                'last_order'  => $r->last_order,
+                'last_order' => $r->last_order,
             ]),
         ]);
     }

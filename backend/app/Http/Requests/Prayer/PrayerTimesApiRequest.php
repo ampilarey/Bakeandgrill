@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Prayer;
 
 use App\Support\PrayerTimeHelper;
@@ -17,7 +19,7 @@ class PrayerTimesApiRequest extends FormRequest
     {
         return [
             'island_id' => ['required', 'integer', 'min:1', 'exists:prayer_islands,id'],
-            'date'      => ['nullable', 'date_format:Y-m-d'],
+            'date' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
 

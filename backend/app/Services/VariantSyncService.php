@@ -23,8 +23,7 @@ class VariantSyncService
      * Elements without 'id' are created. Existing variants not present in the
      * payload are NOT touched (use destroy() to remove/deactivate individually).
      *
-     * @param Item  $item
-     * @param array $variantsData  Validated array from request
+     * @param array $variantsData Validated array from request
      */
     public function sync(Item $item, array $variantsData): void
     {
@@ -32,16 +31,16 @@ class VariantSyncService
             $id = $data['id'] ?? null;
 
             $fields = [
-                'name'        => $data['name'],
-                'name_dv'     => $data['name_dv'] ?? null,
-                'price'       => $data['price'],
-                'cost'        => $data['cost'] ?? null,
-                'sku'         => $data['sku'] ?? null,
-                'barcode'     => $data['barcode'] ?? null,
+                'name' => $data['name'],
+                'name_dv' => $data['name_dv'] ?? null,
+                'price' => $data['price'],
+                'cost' => $data['cost'] ?? null,
+                'sku' => $data['sku'] ?? null,
+                'barcode' => $data['barcode'] ?? null,
                 'track_stock' => (bool) ($data['track_stock'] ?? false),
-                'stock_qty'   => (int) ($data['stock_qty'] ?? 0),
-                'is_active'   => isset($data['is_active']) ? (bool) $data['is_active'] : true,
-                'sort_order'  => $data['sort_order'] ?? $i,
+                'stock_qty' => (int) ($data['stock_qty'] ?? 0),
+                'is_active' => isset($data['is_active']) ? (bool) $data['is_active'] : true,
+                'sort_order' => $data['sort_order'] ?? $i,
             ];
 
             if ($id) {

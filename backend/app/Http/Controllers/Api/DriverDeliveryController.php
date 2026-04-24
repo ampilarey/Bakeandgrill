@@ -16,8 +16,8 @@ class DriverDeliveryController extends Controller
 
     private const VALID_TRANSITIONS = [
         'out_for_delivery' => 'picked_up',
-        'picked_up'        => 'on_the_way',
-        'on_the_way'       => 'delivered',
+        'picked_up' => 'on_the_way',
+        'on_the_way' => 'delivered',
     ];
 
     /**
@@ -34,7 +34,7 @@ class DriverDeliveryController extends Controller
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->orderBy('driver_assigned_at', 'desc')
             ->get()
-            ->map(fn(Order $o) => $this->orderSummary($o));
+            ->map(fn (Order $o) => $this->orderSummary($o));
 
         return response()->json(['deliveries' => $orders]);
     }
@@ -49,7 +49,7 @@ class DriverDeliveryController extends Controller
         $driver = $request->user();
 
         $validated = $request->validate([
-            'date'     => ['nullable', 'date'],
+            'date' => ['nullable', 'date'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -66,11 +66,11 @@ class DriverDeliveryController extends Controller
             ->paginate($validated['per_page'] ?? 20);
 
         return response()->json([
-            'deliveries' => $orders->map(fn(Order $o) => $this->orderSummary($o)),
-            'meta'       => [
+            'deliveries' => $orders->map(fn (Order $o) => $this->orderSummary($o)),
+            'meta' => [
                 'current_page' => $orders->currentPage(),
-                'last_page'    => $orders->lastPage(),
-                'total'        => $orders->total(),
+                'last_page' => $orders->lastPage(),
+                'total' => $orders->total(),
             ],
         ]);
     }
@@ -131,8 +131,8 @@ class DriverDeliveryController extends Controller
 
         return response()->json([
             'delivery' => [
-                'id'           => $order->id,
-                'status'       => $order->status,
+                'id' => $order->id,
+                'status' => $order->status,
                 'picked_up_at' => $order->picked_up_at?->toIso8601String(),
                 'delivered_at' => $order->delivered_at?->toIso8601String(),
             ],
@@ -152,7 +152,7 @@ class DriverDeliveryController extends Controller
             ->whereIn('status', ['delivered', 'completed']);
 
         $today = (clone $base)->whereDate('delivered_at', today())->count();
-        $week  = (clone $base)->whereBetween('delivered_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
+        $week = (clone $base)->whereBetween('delivered_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
         $month = (clone $base)->whereMonth('delivered_at', now()->month)
             ->whereYear('delivered_at', now()->year)->count();
 
@@ -171,11 +171,11 @@ class DriverDeliveryController extends Controller
 
         return response()->json([
             'stats' => [
-                'today'            => $today,
-                'this_week'        => $week,
-                'this_month'       => $month,
-                'avg_minutes'      => $avgMinutes ? round((float) $avgMinutes) : null,
-                'total_fees_mvr'   => round((float) $totalFees, 2),
+                'today' => $today,
+                'this_week' => $week,
+                'this_month' => $month,
+                'avg_minutes' => $avgMinutes ? round((float) $avgMinutes) : null,
+                'total_fees_mvr' => round((float) $totalFees, 2),
             ],
         ]);
     }
@@ -183,40 +183,40 @@ class DriverDeliveryController extends Controller
     private function orderSummary(Order $order): array
     {
         return [
-            'id'                => $order->id,
-            'status'            => $order->status,
-            'total'             => (float) $order->total,
-            'delivery_fee'      => (float) ($order->delivery_fee ?? 0),
-            'delivery_address'  => $order->delivery_address,
-            'delivery_area'     => $order->delivery_area,
+            'id' => $order->id,
+            'status' => $order->status,
+            'total' => (float) $order->total,
+            'delivery_fee' => (float) ($order->delivery_fee ?? 0),
+            'delivery_address' => $order->delivery_address,
+            'delivery_area' => $order->delivery_area,
             'delivery_building' => $order->delivery_building,
-            'delivery_floor'    => $order->delivery_floor,
-            'delivery_notes'    => $order->delivery_notes,
-            'customer_name'     => $order->customer_name,
-            'customer_phone'    => $order->customer_phone,
+            'delivery_floor' => $order->delivery_floor,
+            'delivery_notes' => $order->delivery_notes,
+            'customer_name' => $order->customer_name,
+            'customer_phone' => $order->customer_phone,
             'driver_assigned_at' => $order->driver_assigned_at?->toIso8601String(),
-            'picked_up_at'      => $order->picked_up_at?->toIso8601String(),
-            'delivered_at'      => $order->delivered_at?->toIso8601String(),
-            'item_count'        => $order->orderItems->count(),
+            'picked_up_at' => $order->picked_up_at?->toIso8601String(),
+            'delivered_at' => $order->delivered_at?->toIso8601String(),
+            'item_count' => $order->orderItems->count(),
         ];
     }
 
     private function orderDetail(Order $order): array
     {
         return array_merge($this->orderSummary($order), [
-            'items' => $order->orderItems->map(fn($item) => [
-                'id'        => $item->id,
-                'name'      => $item->item?->name ?? $item->name,
-                'quantity'  => (int) $item->quantity,
+            'items' => $order->orderItems->map(fn ($item) => [
+                'id' => $item->id,
+                'name' => $item->item?->name ?? $item->name,
+                'quantity' => (int) $item->quantity,
                 'unit_price' => (float) $item->unit_price,
                 'total_price' => (float) $item->total_price,
-                'variant'   => $item->variant?->name,
+                'variant' => $item->variant?->name,
                 'modifiers' => $item->modifiers?->pluck('name') ?? [],
-                'notes'     => $item->notes,
+                'notes' => $item->notes,
             ]),
             'customer' => $order->customer ? [
-                'id'    => $order->customer->id,
-                'name'  => $order->customer->name,
+                'id' => $order->customer->id,
+                'name' => $order->customer->name,
                 'phone' => $order->customer->phone,
             ] : null,
         ]);

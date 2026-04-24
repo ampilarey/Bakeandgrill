@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Domains\PrayerTimes\Actions\GetIslandCollection;
@@ -11,14 +13,14 @@ use Illuminate\View\View;
 class PrayerTimesWebController extends Controller
 {
     public function __construct(
-        private readonly GetIslandCollection             $getIslands,
-        private readonly GetPrayerTimesForIslandAndDate  $getPrayerTimes,
+        private readonly GetIslandCollection $getIslands,
+        private readonly GetPrayerTimesForIslandAndDate $getPrayerTimes,
     ) {}
 
     public function index(PrayerTimesWebRequest $request): View
     {
-        $islands  = $this->getIslands->execute();
-        $date     = $request->resolvedDate();
+        $islands = $this->getIslands->execute();
+        $date = $request->resolvedDate();
         $islandId = $request->resolvedIslandId();
 
         if ($islandId === 0) {
@@ -32,10 +34,10 @@ class PrayerTimesWebController extends Controller
         $prayers = $island ? $this->getPrayerTimes->execute($island, $date) : null;
 
         $viewModel = new PrayerPageViewModel(
-            islands:        $islands,
+            islands: $islands,
             selectedIsland: $island,
-            selectedDate:   $date,
-            prayers:        $prayers,
+            selectedDate: $date,
+            prayers: $prayers,
         );
 
         return view('prayer-times', compact('viewModel'));

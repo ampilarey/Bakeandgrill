@@ -20,7 +20,7 @@ class DeliveryDriverController extends Controller
 
     public function index(): JsonResponse
     {
-        $drivers = DeliveryDriver::orderBy('name')->get()->map(fn(DeliveryDriver $d) => $this->driverData($d));
+        $drivers = DeliveryDriver::orderBy('name')->get()->map(fn (DeliveryDriver $d) => $this->driverData($d));
 
         return response()->json(['drivers' => $drivers]);
     }
@@ -28,11 +28,11 @@ class DeliveryDriverController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'         => ['required', 'string', 'max:100'],
-            'phone'        => ['nullable', 'string', 'max:30'],
-            'is_active'    => ['boolean'],
+            'name' => ['required', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'is_active' => ['boolean'],
             'vehicle_type' => ['nullable', 'string', 'max:30'],
-            'pin'          => ['nullable', 'string', 'digits_between:4,6'],
+            'pin' => ['nullable', 'string', 'digits_between:4,6'],
         ]);
 
         if (!empty($validated['pin'])) {
@@ -47,11 +47,11 @@ class DeliveryDriverController extends Controller
     public function update(Request $request, DeliveryDriver $driver): JsonResponse
     {
         $validated = $request->validate([
-            'name'         => ['sometimes', 'string', 'max:100'],
-            'phone'        => ['nullable', 'string', 'max:30'],
-            'is_active'    => ['boolean'],
+            'name' => ['sometimes', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'is_active' => ['boolean'],
             'vehicle_type' => ['nullable', 'string', 'max:30'],
-            'pin'          => ['nullable', 'string', 'digits_between:4,6'],
+            'pin' => ['nullable', 'string', 'digits_between:4,6'],
         ]);
 
         if (array_key_exists('pin', $validated)) {
@@ -66,12 +66,12 @@ class DeliveryDriverController extends Controller
     private function driverData(DeliveryDriver $driver): array
     {
         return [
-            'id'           => $driver->id,
-            'name'         => $driver->name,
-            'phone'        => $driver->phone,
-            'is_active'    => $driver->is_active,
+            'id' => $driver->id,
+            'name' => $driver->name,
+            'phone' => $driver->phone,
+            'is_active' => $driver->is_active,
             'vehicle_type' => $driver->vehicle_type,
-            'has_pin'      => (bool) $driver->getAttributes()['pin'],
+            'has_pin' => (bool) $driver->getAttributes()['pin'],
             'last_login_at' => $driver->last_login_at?->toIso8601String(),
         ];
     }
@@ -106,20 +106,20 @@ class DeliveryDriverController extends Controller
             'delivery_driver_id' => $driverId,
             'driver_assigned_at' => $driverId ? now() : null,
             // Automatically update status when a driver is assigned to out_for_delivery
-            'status'             => $driverId && $order->status === 'ready' ? 'out_for_delivery' : $order->status,
+            'status' => $driverId && $order->status === 'ready' ? 'out_for_delivery' : $order->status,
         ]);
 
         $order->load('deliveryDriver');
 
         return response()->json([
             'order' => [
-                'id'                  => $order->id,
-                'status'              => $order->status,
-                'delivery_driver_id'  => $order->delivery_driver_id,
-                'driver_assigned_at'  => $order->driver_assigned_at?->toIso8601String(),
-                'driver'              => $order->deliveryDriver ? [
-                    'id'    => $order->deliveryDriver->id,
-                    'name'  => $order->deliveryDriver->name,
+                'id' => $order->id,
+                'status' => $order->status,
+                'delivery_driver_id' => $order->delivery_driver_id,
+                'driver_assigned_at' => $order->driver_assigned_at?->toIso8601String(),
+                'driver' => $order->deliveryDriver ? [
+                    'id' => $order->deliveryDriver->id,
+                    'name' => $order->deliveryDriver->name,
                     'phone' => $order->deliveryDriver->phone,
                 ] : null,
             ],

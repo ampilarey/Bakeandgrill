@@ -39,7 +39,7 @@ class CmsContentTest extends TestCase
     {
         SiteSetting::updateOrCreate(
             ['key' => $key],
-            ['value' => $value, 'type' => $type, 'group' => $group, 'label' => $key, 'description' => '', 'is_public' => $isPublic]
+            ['value' => $value, 'type' => $type, 'group' => $group, 'label' => $key, 'description' => '', 'is_public' => $isPublic],
         );
         Cache::forget("site_setting.{$key}");
     }
@@ -47,6 +47,7 @@ class CmsContentTest extends TestCase
     private function ownerUser(): User
     {
         $role = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'description' => '', 'is_active' => true]);
+
         return User::create([
             'name' => 'Owner', 'email' => 'owner@cms-test.com',
             'password' => \Illuminate\Support\Facades\Hash::make('secret'),
@@ -57,6 +58,7 @@ class CmsContentTest extends TestCase
     private function staffUser(): User
     {
         $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
+
         return User::create([
             'name' => 'Staff', 'email' => 'staff@cms-test.com',
             'password' => \Illuminate\Support\Facades\Hash::make('secret'),
@@ -83,7 +85,7 @@ class CmsContentTest extends TestCase
         $body = $response->getContent();
         $this->assertTrue(
             str_contains($body, 'Most Ordered') || str_contains($body, 'Handpicked'),
-            'Expected featured items eyebrow to be present'
+            'Expected featured items eyebrow to be present',
         );
     }
 
@@ -122,7 +124,7 @@ class CmsContentTest extends TestCase
     public function test_homepage_renders_cms_location_section_override(): void
     {
         $this->seedSetting('home_location_eyebrow', 'Come visit');
-        $this->seedSetting('home_location_title',   'Find & Order');
+        $this->seedSetting('home_location_title', 'Find & Order');
 
         $response = $this->get('/');
         $response->assertOk();
@@ -152,7 +154,7 @@ class CmsContentTest extends TestCase
 
     public function test_contact_page_renders_cms_title_override(): void
     {
-        $this->seedSetting('contact_page_title',    'Get in Touch', 'Pages');
+        $this->seedSetting('contact_page_title', 'Get in Touch', 'Pages');
         $this->seedSetting('contact_page_subtitle', 'Reach out any time', 'Pages');
 
         $response = $this->get('/contact');
@@ -177,7 +179,7 @@ class CmsContentTest extends TestCase
     public function test_hours_page_renders_cms_title_override(): void
     {
         $this->seedSetting('hours_page_title', 'When We Are Open', 'Pages');
-        $this->seedSetting('hours_page_note',  'Closed on national holidays.', 'Pages');
+        $this->seedSetting('hours_page_note', 'Closed on national holidays.', 'Pages');
 
         $response = $this->get('/hours');
         $response->assertOk();
@@ -192,7 +194,7 @@ class CmsContentTest extends TestCase
     public function test_announcement_banner_hidden_when_disabled(): void
     {
         $this->seedSetting('announcement_enabled', 'false', 'Announcements', 'boolean', true);
-        $this->seedSetting('announcement_text',    'Big sale today!', 'Announcements', 'text', true);
+        $this->seedSetting('announcement_text', 'Big sale today!', 'Announcements', 'text', true);
 
         $response = $this->get('/');
         $response->assertOk();
@@ -202,8 +204,8 @@ class CmsContentTest extends TestCase
 
     public function test_announcement_banner_shows_when_enabled(): void
     {
-        $this->seedSetting('announcement_enabled', 'true',            'Announcements', 'boolean', true);
-        $this->seedSetting('announcement_text',    'Big sale today!', 'Announcements', 'text',    true);
+        $this->seedSetting('announcement_enabled', 'true', 'Announcements', 'boolean', true);
+        $this->seedSetting('announcement_text', 'Big sale today!', 'Announcements', 'text', true);
 
         $response = $this->get('/');
         $response->assertOk();
@@ -213,9 +215,9 @@ class CmsContentTest extends TestCase
 
     public function test_announcement_banner_with_link_renders_anchor(): void
     {
-        $this->seedSetting('announcement_enabled', 'true',                 'Announcements', 'boolean', true);
-        $this->seedSetting('announcement_text',    'Free delivery weekend', 'Announcements', 'text',    true);
-        $this->seedSetting('announcement_url',     '/order/',              'Announcements', 'text',    true);
+        $this->seedSetting('announcement_enabled', 'true', 'Announcements', 'boolean', true);
+        $this->seedSetting('announcement_text', 'Free delivery weekend', 'Announcements', 'text', true);
+        $this->seedSetting('announcement_url', '/order/', 'Announcements', 'text', true);
 
         $response = $this->get('/');
         $response->assertOk();
@@ -226,7 +228,7 @@ class CmsContentTest extends TestCase
     public function test_announcement_banner_hidden_when_text_empty(): void
     {
         $this->seedSetting('announcement_enabled', 'true', 'Announcements', 'boolean', true);
-        $this->seedSetting('announcement_text',    '',     'Announcements', 'text',    true);
+        $this->seedSetting('announcement_text', '', 'Announcements', 'text', true);
 
         $response = $this->get('/');
         $response->assertOk();
@@ -235,9 +237,9 @@ class CmsContentTest extends TestCase
 
     public function test_announcement_style_applied_to_class(): void
     {
-        $this->seedSetting('announcement_enabled', 'true',    'Announcements', 'boolean', true);
-        $this->seedSetting('announcement_text',    'Warning!', 'Announcements', 'text',    true);
-        $this->seedSetting('announcement_style',   'warning',  'Announcements', 'text',    true);
+        $this->seedSetting('announcement_enabled', 'true', 'Announcements', 'boolean', true);
+        $this->seedSetting('announcement_text', 'Warning!', 'Announcements', 'text', true);
+        $this->seedSetting('announcement_style', 'warning', 'Announcements', 'text', true);
 
         $response = $this->get('/');
         $response->assertOk();
@@ -250,17 +252,17 @@ class CmsContentTest extends TestCase
 
     public function test_public_settings_api_exposes_announcement_keys(): void
     {
-        $this->seedSetting('announcement_enabled', 'true',           'Announcements', 'boolean', true);
-        $this->seedSetting('announcement_text',    'Order for EID!', 'Announcements', 'text',    true);
-        $this->seedSetting('announcement_url',     '/order/',        'Announcements', 'text',    true);
-        $this->seedSetting('announcement_style',   'promo',          'Announcements', 'text',    true);
+        $this->seedSetting('announcement_enabled', 'true', 'Announcements', 'boolean', true);
+        $this->seedSetting('announcement_text', 'Order for EID!', 'Announcements', 'text', true);
+        $this->seedSetting('announcement_url', '/order/', 'Announcements', 'text', true);
+        $this->seedSetting('announcement_style', 'promo', 'Announcements', 'text', true);
 
         Cache::forget('site_settings.public');
 
         $response = $this->getJson('/api/site-settings/public');
         $response->assertOk();
         $response->assertJsonPath('settings.announcement_enabled', 'true');
-        $response->assertJsonPath('settings.announcement_text',    'Order for EID!');
+        $response->assertJsonPath('settings.announcement_text', 'Order for EID!');
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -291,7 +293,7 @@ class CmsContentTest extends TestCase
         $response->assertOk();
 
         $this->assertDatabaseHas('site_settings', [
-            'key'   => 'announcement_text',
+            'key' => 'announcement_text',
             'value' => 'updated banner',
         ]);
     }
@@ -376,7 +378,7 @@ class CmsContentTest extends TestCase
 
         // We can't control isOpen() in a unit test, so we check the setting
         // is at least being read by verifying SiteSetting::get() returns it.
-        $value = \App\Models\SiteSetting::get('hours_open_status_text', "● We're open right now");
+        $value = SiteSetting::get('hours_open_status_text', "● We're open right now");
         $this->assertSame('✅ Open Now!', $value);
     }
 
@@ -393,7 +395,7 @@ class CmsContentTest extends TestCase
 
     public function test_terms_page_renders_cms_title_override(): void
     {
-        $this->seedSetting('terms_page_title',    'Our Terms of Service', 'Pages');
+        $this->seedSetting('terms_page_title', 'Our Terms of Service', 'Pages');
         $this->seedSetting('terms_page_subtitle', 'Read before ordering.', 'Pages');
 
         $response = $this->get('/terms');
@@ -446,7 +448,7 @@ class CmsContentTest extends TestCase
 
     public function test_refund_page_renders_cms_title_override(): void
     {
-        $this->seedSetting('refund_page_title',    'Returns & Refunds', 'Pages');
+        $this->seedSetting('refund_page_title', 'Returns & Refunds', 'Pages');
         $this->seedSetting('refund_page_subtitle', 'How we handle refunds.', 'Pages');
 
         $response = $this->get('/refund');
@@ -485,7 +487,7 @@ class CmsContentTest extends TestCase
         $this->seedSetting('privacy_email', 'dpo@bakeandgrill.mv', 'Pages');
 
         // Verify the setting resolves correctly (privacy page Blade is served at /order/privacy via React)
-        $value = \App\Models\SiteSetting::get('privacy_email', 'privacy@bakeandgrill.mv');
+        $value = SiteSetting::get('privacy_email', 'privacy@bakeandgrill.mv');
         $this->assertSame('dpo@bakeandgrill.mv', $value);
     }
 
@@ -493,7 +495,7 @@ class CmsContentTest extends TestCase
     {
         $this->seedSetting('privacy_page_title', 'Your Data & Privacy', 'Pages');
 
-        $value = \App\Models\SiteSetting::get('privacy_page_title', 'Privacy Policy');
+        $value = SiteSetting::get('privacy_page_title', 'Privacy Policy');
         $this->assertSame('Your Data & Privacy', $value);
     }
 
@@ -501,7 +503,7 @@ class CmsContentTest extends TestCase
     {
         $this->seedSetting('legal_privacy_body', 'We respect your privacy.', 'Legal', 'textarea');
 
-        $value = \App\Models\SiteSetting::get('legal_privacy_body');
+        $value = SiteSetting::get('legal_privacy_body');
         $this->assertSame('We respect your privacy.', $value);
     }
 
@@ -750,7 +752,7 @@ class CmsContentTest extends TestCase
     {
         $this->seedSetting('privacy_meta_title', 'Data Privacy - Bake & Grill', 'Pages');
 
-        $value = \App\Models\SiteSetting::get('privacy_meta_title', 'Privacy Policy - Bake & Grill');
+        $value = SiteSetting::get('privacy_meta_title', 'Privacy Policy - Bake & Grill');
         $this->assertSame('Data Privacy - Bake & Grill', $value);
     }
 
@@ -758,7 +760,7 @@ class CmsContentTest extends TestCase
     {
         $this->seedSetting('privacy_last_updated_label', 'Effective from:', 'Pages');
 
-        $value = \App\Models\SiteSetting::get('privacy_last_updated_label', 'Last updated:');
+        $value = SiteSetting::get('privacy_last_updated_label', 'Last updated:');
         $this->assertSame('Effective from:', $value);
     }
 
@@ -766,7 +768,7 @@ class CmsContentTest extends TestCase
     {
         $this->seedSetting('privacy_email_label', 'E-mail:', 'Pages');
 
-        $value = \App\Models\SiteSetting::get('privacy_email_label', 'Email:');
+        $value = SiteSetting::get('privacy_email_label', 'Email:');
         $this->assertSame('E-mail:', $value);
     }
 
@@ -774,7 +776,7 @@ class CmsContentTest extends TestCase
     {
         $this->seedSetting('privacy_address_label', 'Office:', 'Pages');
 
-        $value = \App\Models\SiteSetting::get('privacy_address_label', 'Address:');
+        $value = SiteSetting::get('privacy_address_label', 'Address:');
         $this->assertSame('Office:', $value);
     }
 

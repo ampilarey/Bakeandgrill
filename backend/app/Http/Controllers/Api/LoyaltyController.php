@@ -67,7 +67,7 @@ class LoyaltyController extends Controller
         }
 
         // IDOR guard: ensure the order belongs to this customer.
-        $order = \App\Models\Order::find($request->integer('order_id'));
+        $order = Order::find($request->integer('order_id'));
         if (!$order || (int) $order->customer_id !== (int) $customer->id) {
             return response()->json(['message' => 'Order not found.'], 404);
         }
@@ -176,15 +176,15 @@ class LoyaltyController extends Controller
         // Flatten customer fields for frontend
         $accounts->getCollection()->transform(function (LoyaltyAccount $account) {
             return [
-                'id'              => $account->id,
-                'customer_id'     => $account->customer_id,
-                'customer_name'   => $account->customer?->name,
-                'customer_phone'  => $account->customer?->phone ?? '—',
-                'points_balance'  => $account->points_balance,
-                'points_held'     => $account->points_held,
+                'id' => $account->id,
+                'customer_id' => $account->customer_id,
+                'customer_name' => $account->customer?->name,
+                'customer_phone' => $account->customer?->phone ?? '—',
+                'points_balance' => $account->points_balance,
+                'points_held' => $account->points_held,
                 'lifetime_points' => $account->lifetime_points,
-                'tier'            => $account->tier,
-                'updated_at'      => $account->updated_at?->toIso8601String(),
+                'tier' => $account->tier,
+                'updated_at' => $account->updated_at?->toIso8601String(),
             ];
         });
 
@@ -199,9 +199,9 @@ class LoyaltyController extends Controller
 
         // Map to frontend-expected shape
         $ledger->getCollection()->transform(fn (LoyaltyLedger $entry) => [
-            'id'         => $entry->id,
-            'delta'      => $entry->points,
-            'reason'     => $entry->notes ?? $entry->type,
+            'id' => $entry->id,
+            'delta' => $entry->points,
+            'reason' => $entry->notes ?? $entry->type,
             'created_at' => $entry->occurred_at?->toIso8601String() ?? $entry->created_at?->toIso8601String(),
         ]);
 
@@ -211,30 +211,30 @@ class LoyaltyController extends Controller
     public function adminAdjust(Request $request, int $customerId): JsonResponse
     {
         $request->validate([
-            'delta'  => 'required|integer|not_in:0',
+            'delta' => 'required|integer|not_in:0',
             'reason' => 'required|string|max:255',
         ]);
 
         $customer = Customer::findOrFail($customerId);
-        $delta    = $request->integer('delta');
+        $delta = $request->integer('delta');
 
         $accountId = \Illuminate\Support\Facades\DB::transaction(function () use ($customer, $delta, $request): int {
-            $account    = $this->service->accountFor($customer);
-            $account    = \App\Models\LoyaltyAccount::lockForUpdate()->findOrFail($account->id);
+            $account = $this->service->accountFor($customer);
+            $account = LoyaltyAccount::lockForUpdate()->findOrFail($account->id);
             $newBalance = max(0, $account->points_balance + $delta);
 
             LoyaltyLedger::create([
-                'customer_id'     => $customer->id,
-                'type'            => $delta > 0 ? 'admin_credit' : 'admin_debit',
-                'points'          => $delta,
-                'balance_after'   => $newBalance,
-                'notes'           => $request->input('reason'),
+                'customer_id' => $customer->id,
+                'type' => $delta > 0 ? 'admin_credit' : 'admin_debit',
+                'points' => $delta,
+                'balance_after' => $newBalance,
+                'notes' => $request->input('reason'),
                 'idempotency_key' => 'admin-adjust:' . $customer->id . ':' . Str::uuid(),
-                'occurred_at'     => now(),
+                'occurred_at' => now(),
             ]);
 
             $account->update([
-                'points_balance'  => $newBalance,
+                'points_balance' => $newBalance,
                 'lifetime_points' => $delta > 0
                     ? $account->lifetime_points + $delta
                     : $account->lifetime_points,
@@ -244,8 +244,8 @@ class LoyaltyController extends Controller
         });
 
         return response()->json([
-            'message'     => 'Points adjusted.',
-            'new_balance' => \App\Models\LoyaltyAccount::find($accountId)?->points_balance,
+            'message' => 'Points adjusted.',
+            'new_balance' => LoyaltyAccount::find($accountId)?->points_balance,
         ]);
     }
 

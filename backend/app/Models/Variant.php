@@ -24,13 +24,13 @@ class Variant extends Model
     ];
 
     protected $casts = [
-        'item_id'     => 'integer',
-        'sort_order'  => 'integer',
-        'price'       => 'decimal:2',
-        'cost'        => 'decimal:2',
+        'item_id' => 'integer',
+        'sort_order' => 'integer',
+        'price' => 'decimal:2',
+        'cost' => 'decimal:2',
         'track_stock' => 'boolean',
-        'stock_qty'   => 'integer',
-        'is_active'   => 'boolean',
+        'stock_qty' => 'integer',
+        'is_active' => 'boolean',
     ];
 
     public function item(): BelongsTo

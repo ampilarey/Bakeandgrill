@@ -160,6 +160,7 @@ class OrderController extends Controller
             $oldStatus = $order->status;
             $order->update(['status' => 'held', 'held_at' => now()]);
             app(AuditLogService::class)->log('order.held', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'held'], [], $request);
+
             return $order;
         });
 
@@ -178,6 +179,7 @@ class OrderController extends Controller
             $oldStatus = $order->status;
             $order->update(['status' => 'pending', 'held_at' => null]);
             app(AuditLogService::class)->log('order.resumed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'pending'], [], $request);
+
             return $order;
         });
 

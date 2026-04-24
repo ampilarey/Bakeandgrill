@@ -19,12 +19,11 @@ use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\ReportsController;
+use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\ShiftController;
 use App\Http\Controllers\Api\SmsPromotionController;
 use App\Http\Controllers\Api\SupplierController;
-use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\TableController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -49,9 +48,9 @@ Route::get('/orders/track/{token}', [OrderController::class, 'trackByToken'])
 Route::middleware('throttle:60,1')
     ->prefix('prayer-times')
     ->group(function () {
-        Route::get('islands',  [App\Http\Controllers\Api\Prayer\IslandsController::class, 'index']);
-        Route::get('nearest',  App\Http\Controllers\Api\Prayer\NearestIslandController::class);
-        Route::get('',         App\Http\Controllers\Api\Prayer\PrayerTimesApiController::class);
+        Route::get('islands', [App\Http\Controllers\Api\Prayer\IslandsController::class, 'index']);
+        Route::get('nearest', App\Http\Controllers\Api\Prayer\NearestIslandController::class);
+        Route::get('', App\Http\Controllers\Api\Prayer\PrayerTimesApiController::class);
     });
 
 // Opening hours status (public - for online order app)
@@ -143,7 +142,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 
     // Online ordering gate — toggle (owner/manager) and public status is above
     Route::prefix('admin/ordering')->middleware('role:owner,manager')->group(function () {
-        Route::post('/toggle',   [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggle']);
+        Route::post('/toggle', [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggle']);
         Route::post('/override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'override']);
     });
 
@@ -224,16 +223,16 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 
     // Reports — restricted to users with reports.view permission
     Route::middleware('permission:reports.view')->group(function () {
-        Route::get('/reports/sales-summary',          [ReportsController::class, 'salesSummary']);
-        Route::get('/reports/sales-breakdown',        [ReportsController::class, 'salesBreakdown']);
-        Route::get('/reports/x-report',               [ReportsController::class, 'xReport']);
-        Route::get('/reports/z-report',               [ReportsController::class, 'zReport']);
-        Route::get('/reports/inventory-valuation',    [ReportsController::class, 'inventoryValuation']);
-        Route::get('/reports/sales-summary/csv',      [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
-        Route::get('/reports/sales-breakdown/csv',    [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');
-        Route::get('/reports/x-report/csv',           [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');
-        Route::get('/reports/z-report/csv',           [ReportsController::class, 'zReportCsv'])->middleware('throttle:20,1');
-        Route::get('/reports/inventory-valuation/csv',[ReportsController::class, 'inventoryValuationCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/sales-summary', [ReportsController::class, 'salesSummary']);
+        Route::get('/reports/sales-breakdown', [ReportsController::class, 'salesBreakdown']);
+        Route::get('/reports/x-report', [ReportsController::class, 'xReport']);
+        Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
+        Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
+        Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/z-report/csv', [ReportsController::class, 'zReportCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv'])->middleware('throttle:20,1');
     });
 
     // Tables
@@ -280,8 +279,8 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::patch('/profile', [CustomerController::class, 'update']);
 
     // Profile completion and password management
-    Route::post('/complete-profile', [\App\Http\Controllers\Api\CustomerProfileController::class, 'completeProfile']);
-    Route::post('/change-password',  [\App\Http\Controllers\Api\CustomerProfileController::class, 'changePassword']);
+    Route::post('/complete-profile', [App\Http\Controllers\Api\CustomerProfileController::class, 'completeProfile']);
+    Route::post('/change-password', [App\Http\Controllers\Api\CustomerProfileController::class, 'changePassword']);
 });
 
 /*
@@ -413,7 +412,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:orders.manage'])->
 
 // ─── Partial Online Payment ───────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/payments/online/initiate-partial', [App\Http\Controllers\Api\PaymentController::class, 'initiatePartial']);
+    Route::post('/payments/online/initiate-partial', [PaymentController::class, 'initiatePartial']);
 });
 
 // ─── SSE Real-Time Streams ───────────────────────────────────────────────────
@@ -427,7 +426,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 // Issue a short-lived stream ticket (requires customer auth)
 Route::middleware(['auth:sanctum', 'customer.token'])->post(
     '/orders/{orderId}/stream-ticket',
-    [App\Http\Controllers\Api\StreamController::class, 'issueStreamTicket']
+    [App\Http\Controllers\Api\StreamController::class, 'issueStreamTicket'],
 );
 
 // Public order-status stream — uses short-lived ?ticket= (NOT the real auth token)
@@ -492,21 +491,21 @@ Route::middleware(['auth:sanctum', 'permission:menu.manage'])->post('/admin/uplo
 
 // ─── Staff Management — per-action permissions ──────────────────────────────
 Route::prefix('admin/staff')->middleware('auth:sanctum')->group(function () {
-    Route::get('/',          [App\Http\Controllers\Api\StaffController::class, 'index'])->middleware('permission:staff.view');
-    Route::post('/',         [App\Http\Controllers\Api\StaffController::class, 'store'])->middleware('permission:staff.create');
-    Route::patch('/{id}',    [App\Http\Controllers\Api\StaffController::class, 'update'])->middleware('permission:staff.update');
+    Route::get('/', [App\Http\Controllers\Api\StaffController::class, 'index'])->middleware('permission:staff.view');
+    Route::post('/', [App\Http\Controllers\Api\StaffController::class, 'store'])->middleware('permission:staff.create');
+    Route::patch('/{id}', [App\Http\Controllers\Api\StaffController::class, 'update'])->middleware('permission:staff.update');
     Route::post('/{id}/pin', [App\Http\Controllers\Api\StaffController::class, 'resetPin'])->middleware('permission:staff.update');
-    Route::delete('/{id}',   [App\Http\Controllers\Api\StaffController::class, 'destroy'])->middleware('permission:staff.delete');
+    Route::delete('/{id}', [App\Http\Controllers\Api\StaffController::class, 'destroy'])->middleware('permission:staff.delete');
 });
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
 Route::middleware(['auth:sanctum', 'permission:customers.analytics'])->prefix('admin/analytics')->group(function () {
-    Route::get('/peak-hours',    [App\Http\Controllers\Api\AnalyticsController::class, 'peakHours']);
-    Route::get('/retention',     [App\Http\Controllers\Api\AnalyticsController::class, 'retention']);
+    Route::get('/peak-hours', [App\Http\Controllers\Api\AnalyticsController::class, 'peakHours']);
+    Route::get('/retention', [App\Http\Controllers\Api\AnalyticsController::class, 'retention']);
     Route::get('/profitability', [App\Http\Controllers\Api\AnalyticsController::class, 'profitability']);
-    Route::get('/forecast',      [App\Http\Controllers\Api\AnalyticsController::class, 'forecast']);
-    Route::get('/customer-ltv',  [App\Http\Controllers\Api\AnalyticsController::class, 'customerLtv']);
+    Route::get('/forecast', [App\Http\Controllers\Api\AnalyticsController::class, 'forecast']);
+    Route::get('/customer-ltv', [App\Http\Controllers\Api\AnalyticsController::class, 'customerLtv']);
 });
 
 // ─── Marketing: Referrals & Gift Cards ───────────────────────────────────────
@@ -522,17 +521,17 @@ Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardContr
 // Customer: referral management + gift card on orders
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
-    Route::post('/orders/{orderId}/apply-gift-card',  [App\Http\Controllers\Api\GiftCardController::class, 'applyToOrder']);
-    Route::delete('/orders/{orderId}/gift-card',      [App\Http\Controllers\Api\GiftCardController::class, 'removeFromOrder']);
-    Route::post('/orders/{orderId}/apply-referral',   [App\Http\Controllers\Api\ReferralController::class, 'applyToOrder']);
-    Route::delete('/orders/{orderId}/referral',       [App\Http\Controllers\Api\ReferralController::class, 'removeFromOrder']);
+    Route::post('/orders/{orderId}/apply-gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'applyToOrder']);
+    Route::delete('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'removeFromOrder']);
+    Route::post('/orders/{orderId}/apply-referral', [App\Http\Controllers\Api\ReferralController::class, 'applyToOrder']);
+    Route::delete('/orders/{orderId}/referral', [App\Http\Controllers\Api\ReferralController::class, 'removeFromOrder']);
 });
 
 // Admin: gift cards and referral overview
 Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->group(function () {
-    Route::get('/admin/gift-cards',  [App\Http\Controllers\Api\GiftCardController::class, 'index']);
+    Route::get('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'index']);
     Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
-    Route::get('/admin/referrals',   [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
+    Route::get('/admin/referrals', [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
 });
 
 // ─── Tips, Scheduling, Waste, Wait Time ──────────────────────────────────────
@@ -542,15 +541,15 @@ Route::get('/wait-time', [App\Http\Controllers\Api\WaitTimeController::class, 'e
 
 // Staff Scheduling (admin)
 Route::middleware(['auth:sanctum', 'permission:staff.schedule'])->prefix('admin/schedules')->group(function () {
-    Route::get('/',        [App\Http\Controllers\Api\ScheduleController::class, 'index']);
-    Route::post('/',       [App\Http\Controllers\Api\ScheduleController::class, 'store']);
-    Route::patch('/{id}',  [App\Http\Controllers\Api\ScheduleController::class, 'update']);
+    Route::get('/', [App\Http\Controllers\Api\ScheduleController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\Api\ScheduleController::class, 'store']);
+    Route::patch('/{id}', [App\Http\Controllers\Api\ScheduleController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\ScheduleController::class, 'destroy']);
 });
 
 // Waste Logs (staff)
 Route::middleware(['auth:sanctum', 'staff.token'])->prefix('waste-logs')->group(function () {
-    Route::get('/',  [App\Http\Controllers\Api\WasteLogController::class, 'index']);
+    Route::get('/', [App\Http\Controllers\Api\WasteLogController::class, 'index']);
     Route::post('/', [App\Http\Controllers\Api\WasteLogController::class, 'store']);
 });
 
@@ -558,10 +557,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->prefix('waste-logs')->group(
 
 // Admin: full CRUD for variants (requires menu.manage permission)
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
-    Route::get('/items/{itemId}/variants',              [App\Http\Controllers\Api\VariantController::class, 'index']);
-    Route::post('/items/{itemId}/variants',             [App\Http\Controllers\Api\VariantController::class, 'store']);
-    Route::patch('/items/{itemId}/variants/{id}',       [App\Http\Controllers\Api\VariantController::class, 'update']);
-    Route::delete('/items/{itemId}/variants/{id}',      [App\Http\Controllers\Api\VariantController::class, 'destroy']);
+    Route::get('/items/{itemId}/variants', [App\Http\Controllers\Api\VariantController::class, 'index']);
+    Route::post('/items/{itemId}/variants', [App\Http\Controllers\Api\VariantController::class, 'store']);
+    Route::patch('/items/{itemId}/variants/{id}', [App\Http\Controllers\Api\VariantController::class, 'update']);
+    Route::delete('/items/{itemId}/variants/{id}', [App\Http\Controllers\Api\VariantController::class, 'destroy']);
 });
 
 // ─── Item Photo Gallery ───────────────────────────────────────────────────────
@@ -571,9 +570,9 @@ Route::get('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoControll
 
 // Admin: manage photos
 Route::middleware(['auth:sanctum', 'permission:menu.manage'])->group(function () {
-    Route::post('/items/{itemId}/photos',            [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
+    Route::post('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
     Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
-    Route::delete('/items/{itemId}/photos/{photoId}',[App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
+    Route::delete('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
 });
 
 // ─── Daily Specials ───────────────────────────────────────────────────────────
@@ -583,9 +582,9 @@ Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class,
 
 // Admin: CRUD
 Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/specials')->group(function () {
-    Route::get('/',        [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
-    Route::post('/',       [App\Http\Controllers\Api\DailySpecialController::class, 'store']);
-    Route::patch('/{id}',  [App\Http\Controllers\Api\DailySpecialController::class, 'update']);
+    Route::get('/', [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
+    Route::post('/', [App\Http\Controllers\Api\DailySpecialController::class, 'store']);
+    Route::patch('/{id}', [App\Http\Controllers\Api\DailySpecialController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\DailySpecialController::class, 'destroy']);
 });
 
@@ -595,7 +594,7 @@ Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/spe
 Route::get('/push/vapid-key', [App\Http\Controllers\Api\PushSubscriptionController::class, 'vapidKey']);
 
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
-    Route::post('/push/subscribe',   [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
+    Route::post('/push/subscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
         ->middleware('throttle:5,1');
     Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])
         ->middleware('throttle:5,1');
@@ -604,7 +603,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 // ─── Favorites & Quick Reorder ───────────────────────────────────────────────
 
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
-    Route::get('/customer/favorites',               [App\Http\Controllers\Api\FavoritesController::class, 'index']);
+    Route::get('/customer/favorites', [App\Http\Controllers\Api\FavoritesController::class, 'index']);
     Route::post('/customer/favorites/{itemId}/toggle', [App\Http\Controllers\Api\FavoritesController::class, 'toggle']);
     Route::get('/customer/orders/{orderId}/reorder', [App\Http\Controllers\Api\FavoritesController::class, 'reorder']);
 });
@@ -612,7 +611,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 // ─── Pre-Orders (Event / Catering orders) ────────────────────────────────────
 
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
-    Route::get('/customer/pre-orders',  [App\Http\Controllers\Api\PreOrderApiController::class, 'index']);
+    Route::get('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'index']);
     Route::post('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'store']);
 });
 
@@ -623,21 +622,21 @@ Route::get('/items/{itemId}/reviews', [App\Http\Controllers\Api\ReviewController
 
 // Customer: submit + list own reviews
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
-    Route::post('/reviews',            [App\Http\Controllers\Api\ReviewController::class, 'store']);
-    Route::get('/customer/reviews',    [App\Http\Controllers\Api\ReviewController::class, 'myReviews']);
+    Route::post('/reviews', [App\Http\Controllers\Api\ReviewController::class, 'store']);
+    Route::get('/customer/reviews', [App\Http\Controllers\Api\ReviewController::class, 'myReviews']);
 });
 
 // Admin: moderate reviews
 Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admin/reviews')->group(function () {
-    Route::get('/',           [App\Http\Controllers\Api\ReviewController::class, 'adminIndex']);
+    Route::get('/', [App\Http\Controllers\Api\ReviewController::class, 'adminIndex']);
     Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
 });
 
 // Admin: customer management
 Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admin/customers')->group(function () {
-    Route::get('/',        [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
-    Route::get('/{id}',    [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
-    Route::patch('/{id}',  [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
+    Route::get('/', [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
+    Route::get('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
+    Route::patch('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'destroy']);
 });
 
@@ -658,24 +657,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Staff: manage reservation status + settings
 Route::middleware(['auth:sanctum', 'permission:reservations.manage'])->prefix('admin/reservations')->group(function () {
-    Route::get('/',                  [ReservationController::class, 'index']);
-    Route::patch('/{id}/status',     [ReservationController::class, 'updateStatus']);
-    Route::get('/settings',          [ReservationController::class, 'getSettings']);
-    Route::patch('/settings',        [ReservationController::class, 'updateSettings']);
+    Route::get('/', [ReservationController::class, 'index']);
+    Route::patch('/{id}/status', [ReservationController::class, 'updateStatus']);
+    Route::get('/settings', [ReservationController::class, 'getSettings']);
+    Route::patch('/settings', [ReservationController::class, 'updateSettings']);
 });
 
 // ─── Time Clock ────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
-    Route::get('/time-clock/status',  [App\Http\Controllers\Api\TimeClockController::class, 'status']);
-    Route::post('/time-clock/in',     [App\Http\Controllers\Api\TimeClockController::class, 'clockIn']);
-    Route::post('/time-clock/out',    [App\Http\Controllers\Api\TimeClockController::class, 'clockOut']);
+    Route::get('/time-clock/status', [App\Http\Controllers\Api\TimeClockController::class, 'status']);
+    Route::post('/time-clock/in', [App\Http\Controllers\Api\TimeClockController::class, 'clockIn']);
+    Route::post('/time-clock/out', [App\Http\Controllers\Api\TimeClockController::class, 'clockOut']);
     Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history']);
     Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary']);
 });
 
 // ─── Barcode Label Data ──────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
-    Route::get('/items/{id}/barcode-label', [App\Http\Controllers\Api\ItemController::class, 'barcodeLabel']);
+    Route::get('/items/{id}/barcode-label', [ItemController::class, 'barcodeLabel']);
 });
 
 // ─── Customer Display (public — no auth) ────────────────────────────────────
@@ -700,13 +699,13 @@ Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class
 
 // ─── Xero OAuth ─────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:integrations.xero'])->group(function () {
-    Route::get('/xero/connect',      [App\Http\Controllers\Api\XeroController::class, 'connect']);
-    Route::get('/xero/callback',     [App\Http\Controllers\Api\XeroController::class, 'callback']);
-    Route::get('/xero/status',       [App\Http\Controllers\Api\XeroController::class, 'status']);
-    Route::post('/xero/disconnect',  [App\Http\Controllers\Api\XeroController::class, 'disconnect']);
+    Route::get('/xero/connect', [App\Http\Controllers\Api\XeroController::class, 'connect']);
+    Route::get('/xero/callback', [App\Http\Controllers\Api\XeroController::class, 'callback']);
+    Route::get('/xero/status', [App\Http\Controllers\Api\XeroController::class, 'status']);
+    Route::post('/xero/disconnect', [App\Http\Controllers\Api\XeroController::class, 'disconnect']);
     Route::post('/xero/invoices/{id}/push', [App\Http\Controllers\Api\XeroController::class, 'pushInvoice']);
     Route::post('/xero/expenses/{id}/push', [App\Http\Controllers\Api\XeroController::class, 'pushExpense']);
-    Route::get('/xero/logs',         [App\Http\Controllers\Api\XeroController::class, 'logs']);
+    Route::get('/xero/logs', [App\Http\Controllers\Api\XeroController::class, 'logs']);
 });
 
 // ─── Webhook Subscriptions (admin-only) ────────────────────────────────────
@@ -725,9 +724,9 @@ Route::middleware(['auth:sanctum', 'permission:integrations.webhooks'])->group(f
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
     ->middleware('throttle:60,1');
 Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function () {
-    Route::get('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
-    Route::put('/site-settings',          [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
-    Route::post('/site-settings/upload',  [App\Http\Controllers\Api\SiteSettingsController::class, 'upload']);
+    Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
+    Route::put('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
+    Route::post('/site-settings/upload', [App\Http\Controllers\Api\SiteSettingsController::class, 'upload']);
 });
 
 // ─── Permissions Management (Owner only) ───────────────────────────────────

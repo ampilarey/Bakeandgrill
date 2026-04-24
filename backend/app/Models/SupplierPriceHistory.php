@@ -15,7 +15,18 @@ class SupplierPriceHistory extends Model
 
     protected $casts = ['recorded_at' => 'date'];
 
-    public function supplier(): BelongsTo       { return $this->belongsTo(Supplier::class); }
-    public function inventoryItem(): BelongsTo  { return $this->belongsTo(InventoryItem::class); }
-    public function purchase(): BelongsTo       { return $this->belongsTo(Purchase::class); }
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class);
+    }
+
+    public function purchase(): BelongsTo
+    {
+        return $this->belongsTo(Purchase::class);
+    }
 }

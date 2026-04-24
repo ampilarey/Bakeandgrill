@@ -9,7 +9,6 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\WebhookLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -30,31 +29,31 @@ class WebhookIdempotencyTest extends TestCase
         parent::setUp();
 
         $this->customer = Customer::create([
-            'name'  => 'Webhook Customer',
+            'name' => 'Webhook Customer',
             'phone' => '+9607440001',
         ]);
 
         $this->order = Order::create([
-            'order_number'    => 'WH-IDEM-001',
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 150.00,
-            'tax_amount'      => 0,
+            'order_number' => 'WH-IDEM-001',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 150.00,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 150.00,
-            'total_laar'      => 15000,
+            'total' => 150.00,
+            'total_laar' => 15000,
         ]);
 
         $this->payment = Payment::create([
-            'order_id'        => $this->order->id,
-            'method'          => 'bml',
-            'amount'          => 150.00,
-            'amount_laar'     => 15000,
-            'status'          => 'pending',
+            'order_id' => $this->order->id,
+            'method' => 'bml',
+            'amount' => 150.00,
+            'amount_laar' => 15000,
+            'status' => 'pending',
             'idempotency_key' => 'bml:init:' . $this->order->id . ':test',
-            'local_id'        => 'LOCAL-WH-IDEM-001',
-            'transaction_id'  => 'TXN-WH-IDEM-001',
+            'local_id' => 'LOCAL-WH-IDEM-001',
+            'transaction_id' => 'TXN-WH-IDEM-001',
         ]);
     }
 
@@ -66,11 +65,11 @@ class WebhookIdempotencyTest extends TestCase
         // Simulate a webhook log already existing (first call already processed)
         WebhookLog::create([
             'idempotency_key' => $idempotencyKey,
-            'gateway'         => 'bml',
-            'event_type'      => 'CONFIRMED',
-            'raw_body'        => json_encode(['transactionId' => $transactionId]),
-            'payload'         => ['transactionId' => $transactionId],
-            'status'          => 'processed',
+            'gateway' => 'bml',
+            'event_type' => 'CONFIRMED',
+            'raw_body' => json_encode(['transactionId' => $transactionId]),
+            'payload' => ['transactionId' => $transactionId],
+            'status' => 'processed',
         ]);
 
         $initialPaymentCount = Payment::count();
@@ -78,16 +77,18 @@ class WebhookIdempotencyTest extends TestCase
         // Send a webhook with the same transactionId — should be a no-op
         $webhookBody = json_encode([
             'transactionId' => $transactionId,
-            'localId'       => 'LOCAL-WH-IDEM-001',
-            'state'         => 'CONFIRMED',
-            'amount'        => '150.00',
-            'currency'      => 'MVR',
+            'localId' => 'LOCAL-WH-IDEM-001',
+            'state' => 'CONFIRMED',
+            'amount' => '150.00',
+            'currency' => 'MVR',
         ]);
 
         $response = $this->call(
             'POST',
             '/api/payments/bml/webhook',
-            [], [], [],
+            [],
+            [],
+            [],
             ['CONTENT_TYPE' => 'application/json', 'HTTP_X-BML-Signature' => 'invalid'],
             $webhookBody,
         );
@@ -106,7 +107,7 @@ class WebhookIdempotencyTest extends TestCase
     public function test_webhook_idempotency_key_is_transaction_id_based(): void
     {
         // Verify the idempotency key format used in WebhookLog
-        $transactionId  = 'TXN-FORMAT-TEST';
+        $transactionId = 'TXN-FORMAT-TEST';
         $idempotencyKey = 'bml:webhook:' . $transactionId;
 
         // This tests the naming convention matches what PaymentService uses
@@ -120,20 +121,20 @@ class WebhookIdempotencyTest extends TestCase
 
         WebhookLog::create([
             'idempotency_key' => $key,
-            'gateway'         => 'bml',
-            'event_type'      => 'CONFIRMED',
-            'raw_body'        => '{}',
-            'status'          => 'received',
+            'gateway' => 'bml',
+            'event_type' => 'CONFIRMED',
+            'raw_body' => '{}',
+            'status' => 'received',
         ]);
 
         $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
 
         WebhookLog::create([
             'idempotency_key' => $key,
-            'gateway'         => 'bml',
-            'event_type'      => 'CONFIRMED',
-            'raw_body'        => '{}',
-            'status'          => 'received',
+            'gateway' => 'bml',
+            'event_type' => 'CONFIRMED',
+            'raw_body' => '{}',
+            'status' => 'received',
         ]);
     }
 
@@ -144,16 +145,18 @@ class WebhookIdempotencyTest extends TestCase
         // A FAILED/CANCELLED state should not transition order to paid
         $webhookBody = json_encode([
             'transactionId' => 'TXN-FAILED-001',
-            'localId'       => 'LOCAL-WH-IDEM-001',
-            'state'         => 'CANCELLED',
-            'amount'        => '150.00',
-            'currency'      => 'MVR',
+            'localId' => 'LOCAL-WH-IDEM-001',
+            'state' => 'CANCELLED',
+            'amount' => '150.00',
+            'currency' => 'MVR',
         ]);
 
         $this->call(
             'POST',
             '/api/payments/bml/webhook',
-            [], [], [],
+            [],
+            [],
+            [],
             ['CONTENT_TYPE' => 'application/json', 'HTTP_X-BML-Signature' => 'invalid'],
             $webhookBody,
         );
@@ -175,16 +178,18 @@ class WebhookIdempotencyTest extends TestCase
 
         $webhookBody = json_encode([
             'transactionId' => 'TXN-BAD-SIG-001',
-            'localId'       => 'LOCAL-WH-IDEM-001',
-            'state'         => 'CONFIRMED',
-            'amount'        => '150.00',
-            'currency'      => 'MVR',
+            'localId' => 'LOCAL-WH-IDEM-001',
+            'state' => 'CONFIRMED',
+            'amount' => '150.00',
+            'currency' => 'MVR',
         ]);
 
         $response = $this->call(
             'POST',
             '/api/payments/bml/webhook',
-            [], [], [],
+            [],
+            [],
+            [],
             ['CONTENT_TYPE' => 'application/json', 'HTTP_X-BML-Signature' => 'badsignature'],
             $webhookBody,
         );
@@ -207,25 +212,27 @@ class WebhookIdempotencyTest extends TestCase
         config(['bml.enforce_signature' => false, 'bml.webhook_secret' => null]);
 
         $transactionId = 'TXN-NO-SIG-001';
-        $webhookBody   = json_encode([
+        $webhookBody = json_encode([
             'transactionId' => $transactionId,
-            'localId'       => $this->payment->local_id,
-            'state'         => 'CONFIRMED',
-            'amount'        => '150.00',
-            'currency'      => 'MVR',
+            'localId' => $this->payment->local_id,
+            'state' => 'CONFIRMED',
+            'amount' => '150.00',
+            'currency' => 'MVR',
         ]);
 
         // Update payment to reference this transaction
         $this->payment->update([
-            'local_id'               => $this->payment->local_id,
+            'local_id' => $this->payment->local_id,
             'provider_transaction_id' => $transactionId,
-            'status'                 => 'initiated',
+            'status' => 'initiated',
         ]);
 
         $response = $this->call(
             'POST',
             '/api/payments/bml/webhook',
-            [], [], [],
+            [],
+            [],
+            [],
             ['CONTENT_TYPE' => 'application/json'],
             $webhookBody,
         );
@@ -233,7 +240,7 @@ class WebhookIdempotencyTest extends TestCase
         $this->assertSame(200, $response->status());
         // Webhook log must be created
         $this->assertDatabaseHas('webhook_logs', [
-            'gateway'         => 'bml',
+            'gateway' => 'bml',
             'idempotency_key' => 'bml:webhook:' . $transactionId,
         ]);
     }

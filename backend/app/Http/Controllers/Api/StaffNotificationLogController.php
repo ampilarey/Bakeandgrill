@@ -58,10 +58,10 @@ class StaffNotificationLogController extends Controller
             ));
 
             $log->update([
-                'status'     => $smsLog->status === 'sent' ? 'sent' : 'failed',
+                'status' => $smsLog->status === 'sent' ? 'sent' : 'failed',
                 'sms_log_id' => $smsLog->id,
-                'sent_at'    => $smsLog->status === 'sent' ? now() : null,
-                'failed_at'  => $smsLog->status !== 'sent' ? now() : null,
+                'sent_at' => $smsLog->status === 'sent' ? now() : null,
+                'failed_at' => $smsLog->status !== 'sent' ? now() : null,
             ]);
 
             return response()->json(['message' => 'Resent successfully.', 'log' => $this->format($log->fresh())]);
@@ -73,21 +73,21 @@ class StaffNotificationLogController extends Controller
     private function format(StaffNotificationLog $l): array
     {
         return [
-            'id'             => $l->id,
-            'order_id'       => $l->order_id,
-            'order_number'   => $l->order?->order_number,
-            'order_type'     => $l->order?->type,
-            'event_type'     => $l->event_type,
+            'id' => $l->id,
+            'order_id' => $l->order_id,
+            'order_number' => $l->order?->order_number,
+            'order_type' => $l->order?->type,
+            'event_type' => $l->event_type,
             'recipient_type' => $l->recipient_type,
-            'recipient_id'   => $l->recipient_id,
-            'phone'          => $l->phone,
-            'message'        => $l->message,
-            'status'         => $l->status,
-            'fallback_used'  => $l->fallback_used,
-            'sms_log_id'     => $l->sms_log_id,
-            'sent_at'        => $l->sent_at?->toIso8601String(),
-            'failed_at'      => $l->failed_at?->toIso8601String(),
-            'created_at'     => $l->created_at?->toIso8601String(),
+            'recipient_id' => $l->recipient_id,
+            'phone' => $l->phone,
+            'message' => $l->message,
+            'status' => $l->status,
+            'fallback_used' => $l->fallback_used,
+            'sms_log_id' => $l->sms_log_id,
+            'sent_at' => $l->sent_at?->toIso8601String(),
+            'failed_at' => $l->failed_at?->toIso8601String(),
+            'created_at' => $l->created_at?->toIso8601String(),
         ];
     }
 }

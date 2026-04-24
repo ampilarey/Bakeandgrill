@@ -42,6 +42,7 @@ trait HasPermissions
         // Role default — load all role permissions in one query, then filter in PHP
         if ($this->role) {
             $this->role->loadMissing('permissions');
+
             return $this->role->permissions->contains('slug', $slug);
         }
 
@@ -90,17 +91,17 @@ trait HasPermissions
 
         if ($this->role?->slug === 'owner') {
             return Permission::all()->map(fn (Permission $p) => [
-                'slug'    => $p->slug,
-                'name'    => $p->name,
-                'group'   => $p->group,
+                'slug' => $p->slug,
+                'name' => $p->name,
+                'group' => $p->group,
                 'granted' => true,
-                'source'  => 'owner',
+                'source' => 'owner',
             ])->toArray();
         }
 
         $allPermissions = Permission::orderBy('group')->orderBy('name')->get();
-        $userOverrides  = $this->permissions()->get()->keyBy('slug');
-        $rolePerms      = $this->role
+        $userOverrides = $this->permissions()->get()->keyBy('slug');
+        $rolePerms = $this->role
             ? $this->role->permissions()->pluck('slug')->flip()
             : collect();
 
@@ -108,20 +109,20 @@ trait HasPermissions
             $override = $userOverrides->get($p->slug);
             if ($override) {
                 return [
-                    'slug'    => $p->slug,
-                    'name'    => $p->name,
-                    'group'   => $p->group,
+                    'slug' => $p->slug,
+                    'name' => $p->name,
+                    'group' => $p->group,
                     'granted' => (bool) $override->pivot->granted,
-                    'source'  => 'override',
+                    'source' => 'override',
                 ];
             }
 
             return [
-                'slug'    => $p->slug,
-                'name'    => $p->name,
-                'group'   => $p->group,
+                'slug' => $p->slug,
+                'name' => $p->name,
+                'group' => $p->group,
                 'granted' => $rolePerms->has($p->slug),
-                'source'  => 'role',
+                'source' => 'role',
             ];
         })->toArray();
     }

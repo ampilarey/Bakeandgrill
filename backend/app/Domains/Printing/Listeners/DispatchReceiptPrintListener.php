@@ -48,7 +48,7 @@ class DispatchReceiptPrintListener implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('DispatchReceiptPrintListener: dispatch failed', [
                 'order_id' => $event->data->orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }

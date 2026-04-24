@@ -49,9 +49,9 @@ class StaffNotificationRoutingService
             $fallback = $this->resolveFallback($order);
             if ($fallback->isNotEmpty()) {
                 Log::info('StaffNotificationRouting: using fallback recipients', [
-                    'order_id'   => $order->id,
+                    'order_id' => $order->id,
                     'event_type' => $eventType,
-                    'count'      => $fallback->count(),
+                    'count' => $fallback->count(),
                 ]);
 
                 return $fallback;
@@ -81,35 +81,35 @@ class StaffNotificationRoutingService
 
         return $onShift->filter(function (User $user) use ($prefs, $order, $menuGroupIds) {
             // No phone configured — cannot receive SMS
-            if (! $user->phone) {
+            if (!$user->phone) {
                 return false;
             }
 
             $pref = $prefs->get($user->id);
 
             // No pref record means default: receive everything
-            if (! $pref) {
+            if (!$pref) {
                 return true;
             }
 
-            if (! $pref->notifications_enabled) {
+            if (!$pref->notifications_enabled) {
                 return false;
             }
 
-            if (! $pref->acceptsOrderType($order->type)) {
+            if (!$pref->acceptsOrderType($order->type)) {
                 return false;
             }
 
-            if (! empty($menuGroupIds) && ! $pref->acceptsMenuGroups($menuGroupIds)) {
+            if (!empty($menuGroupIds) && !$pref->acceptsMenuGroups($menuGroupIds)) {
                 return false;
             }
 
             return true;
         })->map(fn (User $user) => [
-            'phone'          => $user->phone,
+            'phone' => $user->phone,
             'recipient_type' => 'staff',
-            'recipient_id'   => $user->id,
-            'fallback_used'  => false,
+            'recipient_id' => $user->id,
+            'fallback_used' => false,
         ])->values();
     }
 
@@ -119,17 +119,17 @@ class StaffNotificationRoutingService
             ->where('is_enabled', true)
             ->get()
             ->filter(function (SmsContact $contact) use ($order, $at) {
-                if (! $contact->isActiveAt($at)) {
+                if (!$contact->isActiveAt($at)) {
                     return false;
                 }
 
                 // If the contact has tags that include order type filtering
-                if (! empty($contact->tags)) {
+                if (!empty($contact->tags)) {
                     $orderTypes = array_filter(
                         $contact->tags,
-                        fn ($t) => in_array($t, ['dine_in', 'takeaway', 'online_pickup', 'delivery'], true)
+                        fn ($t) => in_array($t, ['dine_in', 'takeaway', 'online_pickup', 'delivery'], true),
                     );
-                    if (! empty($orderTypes) && ! in_array($order->type, $orderTypes, true)) {
+                    if (!empty($orderTypes) && !in_array($order->type, $orderTypes, true)) {
                         return false;
                     }
                 }
@@ -137,12 +137,12 @@ class StaffNotificationRoutingService
                 return true;
             })
             ->map(fn (SmsContact $contact) => [
-                'phone'          => $contact->resolvedPhone(),
+                'phone' => $contact->resolvedPhone(),
                 'recipient_type' => 'contact',
-                'recipient_id'   => $contact->id,
-                'fallback_used'  => false,
+                'recipient_id' => $contact->id,
+                'fallback_used' => false,
             ])
-            ->filter(fn ($r) => ! empty($r['phone']))
+            ->filter(fn ($r) => !empty($r['phone']))
             ->values();
     }
 
@@ -156,10 +156,10 @@ class StaffNotificationRoutingService
         return $fallbackPrefs
             ->filter(fn ($pref) => $pref->user && $pref->user->phone && $pref->user->is_active)
             ->map(fn ($pref) => [
-                'phone'          => $pref->user->phone,
+                'phone' => $pref->user->phone,
                 'recipient_type' => 'fallback',
-                'recipient_id'   => $pref->user_id,
-                'fallback_used'  => true,
+                'recipient_id' => $pref->user_id,
+                'fallback_used' => true,
             ])
             ->values();
     }
@@ -167,7 +167,7 @@ class StaffNotificationRoutingService
     private function extractMenuGroupIds(Order $order): array
     {
         // Eager load if not already loaded
-        if (! $order->relationLoaded('items')) {
+        if (!$order->relationLoaded('items')) {
             $order->load('items.item');
         }
 

@@ -38,15 +38,15 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
         $status = $event->data->status;
 
         // Only handle statuses we care about
-        if (! in_array($status, ['in_progress', 'ready', 'on_the_way'], true)) {
+        if (!in_array($status, ['in_progress', 'ready', 'on_the_way'], true)) {
             return;
         }
 
         // Check admin toggle — default true so notifications fire even before first admin save
         $settingKey = match ($status) {
             'in_progress' => 'sms_customer_preparing_enabled',
-            'ready'       => 'sms_customer_ready_enabled',
-            'on_the_way'  => 'sms_customer_on_the_way_enabled',
+            'ready' => 'sms_customer_ready_enabled',
+            'on_the_way' => 'sms_customer_on_the_way_enabled',
         };
 
         if (SiteSetting::get($settingKey, 'true') !== 'true') {
@@ -59,7 +59,7 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
         }
 
         $phone = $order->customer?->phone;
-        if (! $phone) {
+        if (!$phone) {
             return;
         }
 
@@ -101,8 +101,8 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('SendCustomerOrderStatusSmsListener: SMS failed', [
                 'order_id' => $order->id,
-                'status'   => $status,
-                'error'    => $e->getMessage(),
+                'status' => $status,
+                'error' => $e->getMessage(),
             ]);
         }
     }

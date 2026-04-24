@@ -114,7 +114,7 @@ class PublicApiSecurityTest extends TestCase
         // who can access menu-management endpoints including the recipe endpoint.
         $ownerRole = Role::firstOrCreate(
             ['slug' => 'owner'],
-            ['name' => 'Owner', 'description' => '', 'is_active' => true]
+            ['name' => 'Owner', 'description' => '', 'is_active' => true],
         );
         $staff = \App\Models\User::factory()->create(['role_id' => $ownerRole->id]);
         $token = $staff->createToken('staff', ['staff'])->plainTextToken;

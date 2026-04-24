@@ -24,10 +24,10 @@ class CashMovementController extends Controller
 
         $movement = CashMovement::create([
             'shift_id' => $shift->id,
-            'user_id'  => $request->user()?->id,
-            'type'     => $validated['type'],
-            'amount'   => $validated['amount'],
-            'reason'   => $validated['reason'],
+            'user_id' => $request->user()?->id,
+            'type' => $validated['type'],
+            'amount' => $validated['amount'],
+            'reason' => $validated['reason'],
         ]);
 
         app(AuditLogService::class)->log(

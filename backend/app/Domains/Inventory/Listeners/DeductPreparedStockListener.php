@@ -48,7 +48,7 @@ class DeductPreparedStockListener
         } catch (\Throwable $e) {
             Log::error('DeductPreparedStockListener: conversion failed', [
                 'order_id' => $event->data->orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }

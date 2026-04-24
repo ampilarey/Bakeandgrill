@@ -84,7 +84,7 @@ class StreamController extends Controller
     public function issueStreamTicket(Request $request, int $orderId): JsonResponse
     {
         $order = Order::findOrFail($orderId);
-        $user  = $request->user();
+        $user = $request->user();
 
         // Customer must own the order
         if ($user instanceof Customer && $order->customer_id !== $user->id) {
@@ -92,10 +92,10 @@ class StreamController extends Controller
         }
 
         $ticket = Str::random(64);
-        $ttl    = 60; // seconds
+        $ttl = 60; // seconds
 
         Cache::put('stream_ticket:' . $ticket, [
-            'order_id'    => $orderId,
+            'order_id' => $orderId,
             'customer_id' => $user instanceof Customer ? $user->id : null,
         ], $ttl);
 
@@ -119,7 +119,7 @@ class StreamController extends Controller
         }
 
         $cacheKey = 'stream_ticket:' . $ticketValue;
-        $payload  = Cache::get($cacheKey);
+        $payload = Cache::get($cacheKey);
 
         if ($payload === null) {
             abort(401, 'Invalid or expired stream ticket.');
@@ -166,10 +166,10 @@ class StreamController extends Controller
 
             if ($order->updated_at > $since || ($order->updated_at == $since && $order->id > $sinceId)) {
                 $eventType = match ($order->status) {
-                    'paid'      => 'order.paid',
+                    'paid' => 'order.paid',
                     'completed' => 'order.completed',
                     'cancelled' => 'order.cancelled',
-                    default     => 'order.updated',
+                    default => 'order.updated',
                 };
                 $newCursor = $order->updated_at->getPreciseTimestamp(3) . '.' . $order->id;
 
@@ -177,11 +177,11 @@ class StreamController extends Controller
                     id: $newCursor,
                     type: $eventType,
                     data: json_encode([
-                        'id'           => $order->id,
+                        'id' => $order->id,
                         'order_number' => $order->order_number,
-                        'status'       => $order->status,
-                        'paid_at'      => $order->paid_at?->toIso8601String(),
-                        'updated_at'   => $order->updated_at?->toIso8601String(),
+                        'status' => $order->status,
+                        'paid_at' => $order->paid_at?->toIso8601String(),
+                        'updated_at' => $order->updated_at?->toIso8601String(),
                     ], JSON_UNESCAPED_UNICODE),
                 )];
             }

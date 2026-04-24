@@ -42,7 +42,6 @@ return new class extends Migration
             $table->index('status');
             $table->index('scheduled_at');
         });
-
     }
 
     public function down(): void

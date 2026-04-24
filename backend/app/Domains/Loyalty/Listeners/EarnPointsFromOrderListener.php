@@ -57,9 +57,9 @@ class EarnPointsFromOrderListener implements ShouldQueue
             $this->service->earnPointsForOrder($customer, $order);
         } catch (\Throwable $e) {
             Log::error('Failed to earn loyalty points', [
-                'order_id'    => $event->data->orderId,
+                'order_id' => $event->data->orderId,
                 'customer_id' => $customerId,
-                'error'       => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             // Re-throw so the queue worker retries this job (respects $tries = 3).
             // Swallowing silently marks the job as succeeded → earned points are lost.

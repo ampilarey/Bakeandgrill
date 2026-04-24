@@ -52,46 +52,46 @@ class OnlineOrderingGateTest extends TestCase
 
         $category = Category::create(['name' => 'Food', 'slug' => 'gate-food', 'is_active' => true]);
         $this->item = Item::create([
-            'category_id'  => $category->id,
-            'name'         => 'Gate Test Item',
-            'base_price'   => 30.0,
-            'sku'          => 'GATE-001',
-            'is_active'    => true,
+            'category_id' => $category->id,
+            'name' => 'Gate Test Item',
+            'base_price' => 30.0,
+            'sku' => 'GATE-001',
+            'is_active' => true,
             'is_available' => true,
         ]);
 
         $this->customer = Customer::create([
-            'name'      => 'Gate Customer',
-            'phone'     => '+9607770099',
+            'name' => 'Gate Customer',
+            'phone' => '+9607770099',
             'is_active' => true,
         ]);
 
-        $cashierRole  = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
-        $managerRole  = Role::create(['name' => 'Manager', 'slug' => 'manager', 'is_active' => true]);
+        $cashierRole = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
+        $managerRole = Role::create(['name' => 'Manager', 'slug' => 'manager', 'is_active' => true]);
 
         $this->staffUser = User::create([
-            'name'      => 'Cashier',
-            'email'     => 'cashier@gate-test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $cashierRole->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Cashier',
+            'email' => 'cashier@gate-test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $cashierRole->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 
         $this->managerUser = User::create([
-            'name'      => 'Manager',
-            'email'     => 'manager@gate-test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $managerRole->id,
-            'pin_hash'  => Hash::make('5678'),
+            'name' => 'Manager',
+            'email' => 'manager@gate-test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $managerRole->id,
+            'pin_hash' => Hash::make('5678'),
             'is_active' => true,
         ]);
 
         Device::create([
-            'name'       => 'Gate POS',
+            'name' => 'Gate POS',
             'identifier' => 'GATE-POS-001',
-            'type'       => 'pos',
-            'is_active'  => true,
+            'type' => 'pos',
+            'is_active' => true,
         ]);
 
         // Seed required settings rows
@@ -109,10 +109,10 @@ class OnlineOrderingGateTest extends TestCase
     private function setSetting(string $key, ?string $value): void
     {
         SiteSetting::updateOrCreate(['key' => $key], [
-            'value'     => $value,
-            'type'      => 'text',
-            'group'     => 'Online Ordering',
-            'label'     => $key,
+            'value' => $value,
+            'type' => 'text',
+            'group' => 'Online Ordering',
+            'label' => $key,
             'is_public' => true,
         ]);
         Cache::forget("site_setting.{$key}");
@@ -133,7 +133,7 @@ class OnlineOrderingGateTest extends TestCase
 
         return $this->withHeader('X-Device-Identifier', 'GATE-POS-001')
             ->postJson('/api/orders', [
-                'type'  => 'takeaway',
+                'type' => 'takeaway',
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
             ]);
     }
@@ -174,7 +174,7 @@ class OnlineOrderingGateTest extends TestCase
 
         $this->setSetting('online_ordering_schedule', json_encode([
             $dayKey => [
-                'open'  => $now->clone()->subHour()->format('H:i'),
+                'open' => $now->clone()->subHour()->format('H:i'),
                 'close' => $now->clone()->addHours(2)->format('H:i'),
             ],
         ]));
@@ -191,7 +191,7 @@ class OnlineOrderingGateTest extends TestCase
 
         $this->setSetting('online_ordering_schedule', json_encode([
             $dayKey => [
-                'open'  => '00:00',
+                'open' => '00:00',
                 'close' => '00:01',
             ],
         ]));

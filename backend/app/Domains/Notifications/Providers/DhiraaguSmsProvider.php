@@ -38,10 +38,10 @@ class DhiraaguSmsProvider implements SmsProviderInterface
 
     private function credentials(): ?array
     {
-        $config   = config('services.dhiraagu');
+        $config = config('services.dhiraagu');
         $username = $config['username'] ?? null;
         $password = $config['password'] ?? null;
-        $apiUrl   = $config['api_url']  ?? null;
+        $apiUrl = $config['api_url'] ?? null;
 
         if (!$username || !$password || !$apiUrl) {
             return null;
@@ -53,10 +53,10 @@ class DhiraaguSmsProvider implements SmsProviderInterface
         }
 
         return [
-            'api_url'  => $apiUrl,
+            'api_url' => $apiUrl,
             'username' => $username,
             'password' => $password,
-            'timeout'  => (int) ($config['timeout'] ?? 30),
+            'timeout' => (int) ($config['timeout'] ?? 30),
         ];
     }
 
@@ -68,16 +68,16 @@ class DhiraaguSmsProvider implements SmsProviderInterface
             $response = Http::timeout($creds['timeout'])
                 ->withHeaders(['Content-Type' => 'application/json'])
                 ->post($creds['api_url'], [
-                    'destination'      => [$phone],
-                    'content'          => $message,
+                    'destination' => [$phone],
+                    'content' => $message,
                     'authorizationKey' => $authorizationKey,
                 ]);
 
             $data = $response->json() ?? [];
 
             Log::info('SMS: Dhiraagu response', [
-                'to'             => $phone,
-                'status'         => $response->status(),
+                'to' => $phone,
+                'status' => $response->status(),
                 'transaction_id' => $data['transactionId'] ?? null,
             ]);
 

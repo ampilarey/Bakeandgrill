@@ -80,33 +80,33 @@ class StockManagementService
 
         // Use GREATEST to floor at 0 — stock cannot go negative in the DB.
         // We still log a warning so overselling can be investigated and corrected.
-        \Illuminate\Support\Facades\DB::table('items')
+        DB::table('items')
             ->where('id', $item->id)
             ->update([
-                'stock_quantity' => \Illuminate\Support\Facades\DB::raw("GREATEST(0, stock_quantity - {$quantity})"),
+                'stock_quantity' => DB::raw("GREATEST(0, stock_quantity - {$quantity})"),
             ]);
         $item->refresh();
 
         if ($item->stock_quantity === 0 && $quantity > 0) {
             Log::warning('StockManagementService: item stock floored at 0 — possible oversell, check reservation/deduction flow', [
-                'item_id'    => $item->id,
-                'item_name'  => $item->name,
-                'quantity'   => $quantity,
-                'order_id'   => $orderId,
+                'item_id' => $item->id,
+                'item_name' => $item->name,
+                'quantity' => $quantity,
+                'order_id' => $orderId,
             ]);
         }
 
         StockMovement::create([
-            'idempotency_key'   => $idempotencyKey,
+            'idempotency_key' => $idempotencyKey,
             'inventory_item_id' => null,
-            'user_id'           => $userId,
-            'type'              => 'sale',
-            'quantity'          => -$quantity,
-            'balance_after'     => $item->stock_quantity,
-            'unit_cost'         => (float) ($item->cost ?? 0),
-            'reference_type'    => 'menu_item',
-            'reference_id'      => $item->id,
-            'notes'             => "Order #{$orderId} — prepared stock deduction",
+            'user_id' => $userId,
+            'type' => 'sale',
+            'quantity' => -$quantity,
+            'balance_after' => $item->stock_quantity,
+            'unit_cost' => (float) ($item->cost ?? 0),
+            'reference_type' => 'menu_item',
+            'reference_id' => $item->id,
+            'notes' => "Order #{$orderId} — prepared stock deduction",
         ]);
 
         if ($item->stock_quantity <= ($item->low_stock_threshold ?? 0)) {
@@ -145,16 +145,16 @@ class StockManagementService
         $locked->refresh();
 
         StockMovement::create([
-            'idempotency_key'   => $idempotencyKey,
+            'idempotency_key' => $idempotencyKey,
             'inventory_item_id' => null,
-            'user_id'           => $userId,
-            'type'              => 'refund',
-            'quantity'          => $quantity,
-            'balance_after'     => $locked->stock_quantity,
-            'unit_cost'         => (float) ($locked->cost ?? 0),
-            'reference_type'    => 'menu_item',
-            'reference_id'      => $locked->id,
-            'notes'             => "Order #{$orderId} — stock restore",
+            'user_id' => $userId,
+            'type' => 'refund',
+            'quantity' => $quantity,
+            'balance_after' => $locked->stock_quantity,
+            'unit_cost' => (float) ($locked->cost ?? 0),
+            'reference_type' => 'menu_item',
+            'reference_id' => $locked->id,
+            'notes' => "Order #{$orderId} — stock restore",
         ]);
     }
 
@@ -247,33 +247,33 @@ class StockManagementService
             return;
         }
 
-        \Illuminate\Support\Facades\DB::table('variants')
+        DB::table('variants')
             ->where('id', $variant->id)
             ->update([
-                'stock_qty' => \Illuminate\Support\Facades\DB::raw("GREATEST(0, stock_qty - {$quantity})"),
+                'stock_qty' => DB::raw("GREATEST(0, stock_qty - {$quantity})"),
             ]);
         $variant->refresh();
 
         if ($variant->stock_qty === 0 && $quantity > 0) {
             Log::warning('StockManagementService: variant stock floored at 0 — possible oversell, check reservation/deduction flow', [
-                'variant_id'  => $variant->id,
+                'variant_id' => $variant->id,
                 'variant_name' => $variant->name ?? null,
-                'quantity'    => $quantity,
-                'order_id'    => $orderId,
+                'quantity' => $quantity,
+                'order_id' => $orderId,
             ]);
         }
 
         StockMovement::create([
-            'idempotency_key'   => $idempotencyKey,
+            'idempotency_key' => $idempotencyKey,
             'inventory_item_id' => null,
-            'user_id'           => $userId,
-            'type'              => 'sale',
-            'quantity'          => -$quantity,
-            'balance_after'     => $variant->stock_qty,
-            'unit_cost'         => (float) ($variant->cost ?? 0),
-            'reference_type'    => 'variant',
-            'reference_id'      => $variant->id,
-            'notes'             => "Order #{$orderId} — variant stock deduction",
+            'user_id' => $userId,
+            'type' => 'sale',
+            'quantity' => -$quantity,
+            'balance_after' => $variant->stock_qty,
+            'unit_cost' => (float) ($variant->cost ?? 0),
+            'reference_type' => 'variant',
+            'reference_id' => $variant->id,
+            'notes' => "Order #{$orderId} — variant stock deduction",
         ]);
     }
 
@@ -305,16 +305,16 @@ class StockManagementService
         $locked->refresh();
 
         StockMovement::create([
-            'idempotency_key'   => $idempotencyKey,
+            'idempotency_key' => $idempotencyKey,
             'inventory_item_id' => null,
-            'user_id'           => $userId,
-            'type'              => 'refund',
-            'quantity'          => $quantity,
-            'balance_after'     => $locked->stock_qty,
-            'unit_cost'         => (float) ($locked->cost ?? 0),
-            'reference_type'    => 'variant',
-            'reference_id'      => $locked->id,
-            'notes'             => "Order #{$orderId} — variant stock restore",
+            'user_id' => $userId,
+            'type' => 'refund',
+            'quantity' => $quantity,
+            'balance_after' => $locked->stock_qty,
+            'unit_cost' => (float) ($locked->cost ?? 0),
+            'reference_type' => 'variant',
+            'reference_id' => $locked->id,
+            'notes' => "Order #{$orderId} — variant stock restore",
         ]);
     }
 

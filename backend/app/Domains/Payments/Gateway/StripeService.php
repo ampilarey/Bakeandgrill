@@ -28,9 +28,9 @@ class StripeService
     /**
      * Create a PaymentIntent and return client_secret for the frontend.
      *
-     * @param  int    $amountLaari  Amount in smallest unit (laari for MVR)
-     * @param  string $currency     ISO currency code, e.g. 'mvr', 'usd'
-     * @param  string $orderId      Used as metadata for reconciliation
+     * @param int $amountLaari Amount in smallest unit (laari for MVR)
+     * @param string $currency ISO currency code, e.g. 'mvr', 'usd'
+     * @param string $orderId Used as metadata for reconciliation
      * @return array{ payment_intent_id: string, client_secret: string }
      */
     public function createPaymentIntent(int $amountLaari, string $currency, string $orderId): array
@@ -38,8 +38,8 @@ class StripeService
         $response = Http::withBasicAuth(config('services.stripe.secret_key'), '')
             ->asForm()
             ->post(self::BASE_URL . '/payment_intents', [
-                'amount'      => $amountLaari,
-                'currency'    => strtolower($currency),
+                'amount' => $amountLaari,
+                'currency' => strtolower($currency),
                 'metadata[order_id]' => $orderId,
                 'automatic_payment_methods[enabled]' => 'true',
             ]);
@@ -51,7 +51,7 @@ class StripeService
 
         return [
             'payment_intent_id' => $response->json('id'),
-            'client_secret'     => $response->json('client_secret'),
+            'client_secret' => $response->json('client_secret'),
         ];
     }
 

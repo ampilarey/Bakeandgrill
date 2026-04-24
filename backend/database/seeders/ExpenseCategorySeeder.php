@@ -30,7 +30,7 @@ class ExpenseCategorySeeder extends Seeder
         foreach ($categories as $cat) {
             ExpenseCategory::firstOrCreate(
                 ['slug' => Str::slug($cat['name'])],
-                ['name' => $cat['name'], 'icon' => $cat['icon'], 'is_active' => true]
+                ['name' => $cat['name'], 'icon' => $cat['icon'], 'is_active' => true],
             );
         }
     }

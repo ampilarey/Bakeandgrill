@@ -15,8 +15,8 @@ class XeroConnection extends Model
 
     protected $casts = [
         'token_expires_at' => 'datetime',
-        'connected_at'     => 'datetime',
-        'active'           => 'boolean',
+        'connected_at' => 'datetime',
+        'active' => 'boolean',
     ];
 
     protected $hidden = ['access_token', 'refresh_token'];

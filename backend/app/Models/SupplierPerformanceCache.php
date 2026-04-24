@@ -18,10 +18,13 @@ class SupplierPerformanceCache extends Model
     ];
 
     protected $casts = [
-        'period_from'  => 'date',
-        'period_to'    => 'date',
+        'period_from' => 'date',
+        'period_to' => 'date',
         'refreshed_at' => 'datetime',
     ];
 
-    public function supplier(): BelongsTo { return $this->belongsTo(Supplier::class); }
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 }

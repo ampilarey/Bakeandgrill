@@ -17,9 +17,9 @@ class DispatchWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int   $tries   = 3;
-    public array $backoff  = [10, 60, 300]; // 10s, 1min, 5min
-    public int   $timeout  = 30; // HTTP client already has 15s timeout; job-level adds headroom
+    public int $tries = 3;
+    public array $backoff = [10, 60, 300]; // 10s, 1min, 5min
+    public int $timeout = 30; // HTTP client already has 15s timeout; job-level adds headroom
 
     public function __construct(
         public WebhookSubscription $subscription,
@@ -30,18 +30,18 @@ class DispatchWebhookJob implements ShouldQueue
     public function handle(): void
     {
         $body = json_encode([
-            'event'     => $this->event,
+            'event' => $this->event,
             'timestamp' => now()->toIso8601String(),
-            'data'      => $this->payload,
+            'data' => $this->payload,
         ]);
 
         $signature = hash_hmac('sha256', $body, $this->subscription->secret);
 
         $response = Http::timeout(15)
             ->withHeaders([
-                'Content-Type'         => 'application/json',
-                'X-Webhook-Signature'  => $signature,
-                'X-Webhook-Event'      => $this->event,
+                'Content-Type' => 'application/json',
+                'X-Webhook-Signature' => $signature,
+                'X-Webhook-Event' => $this->event,
             ])
             ->withBody($body, 'application/json')
             ->post($this->subscription->url);
@@ -50,14 +50,14 @@ class DispatchWebhookJob implements ShouldQueue
             $this->subscription->markFailed();
 
             WebhookLog::create([
-                'direction'                 => 'outgoing',
-                'webhook_subscription_id'   => $this->subscription->id,
-                'url'                       => $this->subscription->url,
-                'event'                     => $this->event,
-                'payload'                   => $this->payload,
-                'response_code'             => $response->status(),
-                'response_body'             => mb_substr($response->body(), 0, 2000),
-                'status'                    => 'failed',
+                'direction' => 'outgoing',
+                'webhook_subscription_id' => $this->subscription->id,
+                'url' => $this->subscription->url,
+                'event' => $this->event,
+                'payload' => $this->payload,
+                'response_code' => $response->status(),
+                'response_body' => mb_substr($response->body(), 0, 2000),
+                'status' => 'failed',
             ]);
 
             throw new \RuntimeException("Webhook delivery failed: HTTP {$response->status()}");
@@ -66,14 +66,14 @@ class DispatchWebhookJob implements ShouldQueue
         $this->subscription->markSuccess();
 
         WebhookLog::create([
-            'direction'                 => 'outgoing',
-            'webhook_subscription_id'   => $this->subscription->id,
-            'url'                       => $this->subscription->url,
-            'event'                     => $this->event,
-            'payload'                   => $this->payload,
-            'response_code'             => $response->status(),
-            'response_body'             => mb_substr($response->body(), 0, 500),
-            'status'                    => 'delivered',
+            'direction' => 'outgoing',
+            'webhook_subscription_id' => $this->subscription->id,
+            'url' => $this->subscription->url,
+            'event' => $this->event,
+            'payload' => $this->payload,
+            'response_code' => $response->status(),
+            'response_body' => mb_substr($response->body(), 0, 500),
+            'status' => 'delivered',
         ]);
     }
 
@@ -81,9 +81,9 @@ class DispatchWebhookJob implements ShouldQueue
     {
         \Illuminate\Support\Facades\Log::error('DispatchWebhookJob: exhausted retries', [
             'subscription_id' => $this->subscription->id,
-            'event'           => $this->event,
-            'url'             => $this->subscription->url,
-            'error'           => $e->getMessage(),
+            'event' => $this->event,
+            'url' => $this->subscription->url,
+            'error' => $e->getMessage(),
         ]);
 
         if (app()->bound('sentry')) {

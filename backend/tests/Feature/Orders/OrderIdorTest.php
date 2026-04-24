@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Orders;
 
-use App\Models\Category;
 use App\Models\Customer;
-use App\Models\Item;
 use App\Models\Order;
 use App\Models\Role;
 use App\Models\User;
@@ -41,14 +39,14 @@ class OrderIdorTest extends TestCase
         $this->tokenB = $this->customerB->createToken('test', ['customer'])->plainTextToken;
 
         $this->orderA = Order::create([
-            'order_number'    => 'IDOR-001',
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => $this->customerA->id,
-            'subtotal'        => 100,
-            'tax_amount'      => 0,
+            'order_number' => 'IDOR-001',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => $this->customerA->id,
+            'subtotal' => 100,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 100,
+            'total' => 100,
         ]);
     }
 
@@ -92,13 +90,13 @@ class OrderIdorTest extends TestCase
 
     public function test_staff_can_view_any_order(): void
     {
-        $role  = Role::firstOrCreate(['slug' => 'manager'], ['name' => 'Manager', 'description' => '', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'manager'], ['name' => 'Manager', 'description' => '', 'is_active' => true]);
         $staff = User::create([
-            'name'      => 'Manager',
-            'email'     => 'manager-idor@test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Manager',
+            'email' => 'manager-idor@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 
@@ -113,14 +111,14 @@ class OrderIdorTest extends TestCase
     {
         // Create an order for customerB
         Order::create([
-            'order_number'    => 'IDOR-002',
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => $this->customerB->id,
-            'subtotal'        => 200,
-            'tax_amount'      => 0,
+            'order_number' => 'IDOR-002',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => $this->customerB->id,
+            'subtotal' => 200,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 200,
+            'total' => 200,
         ]);
 
         $response = $this->getJson(
@@ -135,7 +133,7 @@ class OrderIdorTest extends TestCase
                 $this->assertSame(
                     $this->customerA->id,
                     $order?->customer_id,
-                    "Customer A should not see orders belonging to other customers."
+                    'Customer A should not see orders belonging to other customers.',
                 );
             }
         } else {

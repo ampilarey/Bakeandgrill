@@ -1,14 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
-use App\Domains\PrayerTimes\Actions\GetIslandCollection;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
 class PrayerImport extends Command
 {
-    protected $signature   = 'prayer:import {--path= : Path to salat.db SQLite source file}';
+    protected $signature = 'prayer:import {--path= : Path to salat.db SQLite source file}';
     protected $description = 'Import prayer categories, islands and times from the salat.db SQLite source';
 
     public function handle(): int

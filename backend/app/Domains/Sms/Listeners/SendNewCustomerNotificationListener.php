@@ -25,20 +25,20 @@ class SendNewCustomerNotificationListener implements ShouldQueue
 
     public function handle(CustomerCreated $event): void
     {
-        if (! $this->isEnabled()) {
+        if (!$this->isEnabled()) {
             return;
         }
 
         $template = SmsTemplate::where('slug', 'customer_new')->first();
 
-        if (! $template) {
+        if (!$template) {
             Log::warning('SendNewCustomerNotificationListener: customer_new template not found');
 
             return;
         }
 
         $message = $this->renderer->render($template, [
-            'name'  => $event->data->name ?? 'Unknown',
+            'name' => $event->data->name ?? 'Unknown',
             'phone' => $event->data->phone,
         ]);
 
@@ -80,9 +80,9 @@ class SendNewCustomerNotificationListener implements ShouldQueue
             ->get()
             ->filter(fn ($pref) => $pref->user && $pref->user->phone && $pref->user->is_active)
             ->map(fn ($pref) => [
-                'phone'          => $pref->user->phone,
+                'phone' => $pref->user->phone,
                 'recipient_type' => 'fallback',
-                'recipient_id'   => $pref->user_id,
+                'recipient_id' => $pref->user_id,
             ]);
 
         $recipients = $recipients->merge($fallbackPrefs);
@@ -93,11 +93,11 @@ class SendNewCustomerNotificationListener implements ShouldQueue
             ->get()
             ->filter(fn (SmsContact $c) => $c->isActiveAt(now()))
             ->map(fn (SmsContact $c) => [
-                'phone'          => $c->resolvedPhone(),
+                'phone' => $c->resolvedPhone(),
                 'recipient_type' => 'contact',
-                'recipient_id'   => $c->id,
+                'recipient_id' => $c->id,
             ])
-            ->filter(fn ($r) => ! empty($r['phone']));
+            ->filter(fn ($r) => !empty($r['phone']));
 
         $recipients = $recipients->merge($externalContacts);
 

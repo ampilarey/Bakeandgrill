@@ -18,7 +18,7 @@ class XeroController extends Controller
 {
     public function __construct(
         private XeroOAuthService $oauth,
-        private XeroSyncService  $sync,
+        private XeroSyncService $sync,
     ) {}
 
     /**
@@ -40,7 +40,7 @@ class XeroController extends Controller
     public function callback(Request $request): JsonResponse
     {
         $expected = Cache::pull('xero_oauth_state_' . $request->user()->id);
-        if (! $expected || ! hash_equals($expected, (string) $request->query('state'))) {
+        if (!$expected || !hash_equals($expected, (string) $request->query('state'))) {
             return response()->json(['message' => 'Invalid OAuth state.'], 422);
         }
 
@@ -52,9 +52,9 @@ class XeroController extends Controller
         $connection = $this->oauth->exchangeCode($code);
 
         return response()->json([
-            'message'     => 'Xero connected successfully.',
+            'message' => 'Xero connected successfully.',
             'tenant_name' => $connection->tenant_name,
-            'connected_at'=> $connection->connected_at,
+            'connected_at' => $connection->connected_at,
         ]);
     }
 
@@ -69,11 +69,11 @@ class XeroController extends Controller
         }
 
         return response()->json([
-            'connected'        => true,
-            'tenant_name'      => $conn->tenant_name,
-            'connected_at'     => $conn->connected_at,
+            'connected' => true,
+            'tenant_name' => $conn->tenant_name,
+            'connected_at' => $conn->connected_at,
             'token_expires_at' => $conn->token_expires_at,
-            'token_expired'    => $conn->isExpired(),
+            'token_expired' => $conn->isExpired(),
         ]);
     }
 
@@ -116,27 +116,27 @@ class XeroController extends Controller
     public function logs(Request $request): JsonResponse
     {
         $perPage = (int) $request->query('per_page', 20);
-        $page    = (int) $request->query('page', 1);
+        $page = (int) $request->query('page', 1);
 
         $paginator = \App\Models\XeroSyncLog::orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
 
         $data = $paginator->map(fn ($log) => [
-            'id'          => $log->id,
-            'action'      => $log->direction ?? 'push',
+            'id' => $log->id,
+            'action' => $log->direction ?? 'push',
             'entity_type' => $log->resource_type,
-            'entity_id'   => $log->resource_id,
-            'status'      => $log->status,
-            'message'     => $log->error ?? null,
-            'created_at'  => $log->created_at,
+            'entity_id' => $log->resource_id,
+            'status' => $log->status,
+            'message' => $log->error ?? null,
+            'created_at' => $log->created_at,
         ])->values();
 
         return response()->json([
             'data' => $data,
             'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
             ],
         ]);
     }

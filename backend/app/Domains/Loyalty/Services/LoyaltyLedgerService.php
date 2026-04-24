@@ -24,10 +24,10 @@ use Illuminate\Support\Facades\Log;
 class LoyaltyLedgerService
 {
     public function __construct(
-        private PointsCalculator                 $calculator,
+        private PointsCalculator $calculator,
         private LoyaltyAccountRepositoryInterface $accountRepo,
-        private LoyaltyHoldRepositoryInterface    $holdRepo,
-        private LoyaltyLedgerRepositoryInterface  $ledgerRepo,
+        private LoyaltyHoldRepositoryInterface $holdRepo,
+        private LoyaltyLedgerRepositoryInterface $ledgerRepo,
     ) {}
 
     /**
@@ -93,22 +93,22 @@ class LoyaltyLedgerService
 
             $hold = $this->holdRepo->upsertForOrder($order->id, [
                 'idempotency_key' => $idempotencyKey,
-                'customer_id'     => $customer->id,
-                'points_held'     => $pointsToRedeem,
-                'discount_laar'   => $discountLaar,
-                'status'          => 'active',
-                'expires_at'      => now()->addMinutes($ttlMinutes),
-                'consumed_at'     => null,
-                'released_at'     => null,
+                'customer_id' => $customer->id,
+                'points_held' => $pointsToRedeem,
+                'discount_laar' => $discountLaar,
+                'status' => 'active',
+                'expires_at' => now()->addMinutes($ttlMinutes),
+                'consumed_at' => null,
+                'released_at' => null,
             ]);
 
             $this->accountRepo->incrementPointsHeld($customer->id, $pointsToRedeem);
 
             Log::info('Loyalty hold created', [
-                'customer_id'  => $customer->id,
-                'order_id'     => $order->id,
-                'points_held'  => $pointsToRedeem,
-                'discount_laar'=> $discountLaar,
+                'customer_id' => $customer->id,
+                'order_id' => $order->id,
+                'points_held' => $pointsToRedeem,
+                'discount_laar' => $discountLaar,
             ]);
 
             return $hold;
@@ -134,7 +134,7 @@ class LoyaltyLedgerService
 
             if ($locked->isExpired() && $locked->status === 'active') {
                 Log::warning('Loyalty hold expired but order was paid — honoring redemption', [
-                    'hold_id'    => $locked->id,
+                    'hold_id' => $locked->id,
                     'expired_at' => $locked->expires_at,
                 ]);
             }
@@ -151,7 +151,7 @@ class LoyaltyLedgerService
                 Log::warning('Insufficient points balance at hold consumption time', [
                     'hold_id' => $hold->id,
                     'balance' => $account->points_balance,
-                    'needed'  => $hold->points_held,
+                    'needed' => $hold->points_held,
                 ]);
                 // Never fail a confirmed payment over a discount — use what we can
                 $pointsToConsume = $account->points_balance;
@@ -160,16 +160,16 @@ class LoyaltyLedgerService
             }
 
             $idempotencyKey = 'loyalty:redeem:' . $hold->order_id . ':' . $hold->id;
-            $balanceAfter   = max(0, $account->points_balance - $pointsToConsume);
+            $balanceAfter = max(0, $account->points_balance - $pointsToConsume);
 
             $this->ledgerRepo->firstOrCreateByIdempotencyKey($idempotencyKey, [
-                'customer_id'     => $hold->customer_id,
-                'order_id'        => $hold->order_id,
-                'type'            => 'redeem',
-                'points'          => -$pointsToConsume,
-                'balance_after'   => $balanceAfter,
-                'notes'           => 'Redeemed for order',
-                'occurred_at'     => now(),
+                'customer_id' => $hold->customer_id,
+                'order_id' => $hold->order_id,
+                'type' => 'redeem',
+                'points' => -$pointsToConsume,
+                'balance_after' => $balanceAfter,
+                'notes' => 'Redeemed for order',
+                'occurred_at' => now(),
             ]);
 
             $this->accountRepo->updateBalance($hold->customer_id, $balanceAfter);
@@ -218,13 +218,13 @@ class LoyaltyLedgerService
 
             $this->ledgerRepo->createEntry([
                 'idempotency_key' => $idempotencyKey,
-                'customer_id'     => $customer->id,
-                'order_id'        => null,
-                'type'            => 'bonus',
-                'points'          => $points,
-                'balance_after'   => $balanceAfter,
-                'notes'           => $notes,
-                'occurred_at'     => now(),
+                'customer_id' => $customer->id,
+                'order_id' => null,
+                'type' => 'bonus',
+                'points' => $points,
+                'balance_after' => $balanceAfter,
+                'notes' => $notes,
+                'occurred_at' => now(),
             ]);
 
             $this->accountRepo->updateBalance($customer->id, $balanceAfter, $points);
@@ -261,13 +261,13 @@ class LoyaltyLedgerService
 
             $this->ledgerRepo->createEntry([
                 'idempotency_key' => $idempotencyKey,
-                'customer_id'     => $customer->id,
-                'order_id'        => $order->id,
-                'type'            => 'earn',
-                'points'          => $points,
-                'balance_after'   => $balanceAfter,
-                'notes'           => 'Earned from order ' . $order->order_number,
-                'occurred_at'     => now(),
+                'customer_id' => $customer->id,
+                'order_id' => $order->id,
+                'type' => 'earn',
+                'points' => $points,
+                'balance_after' => $balanceAfter,
+                'notes' => 'Earned from order ' . $order->order_number,
+                'occurred_at' => now(),
             ]);
 
             $this->accountRepo->updateBalance($customer->id, $balanceAfter, $points);

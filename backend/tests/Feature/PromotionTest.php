@@ -157,7 +157,7 @@ class PromotionTest extends TestCase
 
         // Pay the order — use the post-discount total so the payment fully covers it.
         $payResponse = $this->postJson("/api/orders/{$order->id}/payments", [
-            'payments'      => [['method' => 'cash', 'amount' => $freshOrder->total]],
+            'payments' => [['method' => 'cash', 'amount' => $freshOrder->total]],
             'print_receipt' => false,
         ]);
         $payResponse->assertOk();
@@ -219,11 +219,11 @@ class PromotionTest extends TestCase
         $this->staff->grantPermission('promotions.discounts');
         Sanctum::actingAs($this->staff, ['staff']);
         $response = $this->postJson('/api/orders', [
-            'type'               => 'takeaway',
-            'device_identifier'  => $this->device->identifier,
-            'customer_id'        => $this->customer->id,
-            'print'              => false,
-            'items'              => [['item_id' => $this->item->id, 'quantity' => 1]],
+            'type' => 'takeaway',
+            'device_identifier' => $this->device->identifier,
+            'customer_id' => $this->customer->id,
+            'print' => false,
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
         ]);
         $order = Order::find($response->json('order.id'));
 
@@ -304,10 +304,10 @@ class PromotionTest extends TestCase
         $this->staff->grantPermission('promotions.discounts');
         Sanctum::actingAs($this->staff, ['staff']);
         $response = $this->postJson('/api/orders', [
-            'type'              => 'takeaway',
+            'type' => 'takeaway',
             'device_identifier' => $this->device->identifier,
-            'print'             => false,
-            'items'             => [['item_id' => $this->item->id, 'quantity' => 1]],
+            'print' => false,
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
         ]);
         $order = Order::find($response->json('order.id'));
         $originalTotal = (float) $order->total;

@@ -37,9 +37,9 @@ class CustomerTokenScopeTest extends TestCase
     use RefreshDatabase;
 
     private Customer $customer;
-    private string   $customerToken;
-    private User     $staff;
-    private string   $staffToken;
+    private string $customerToken;
+    private User $staff;
+    private string $staffToken;
 
     protected function setUp(): void
     {
@@ -47,10 +47,10 @@ class CustomerTokenScopeTest extends TestCase
 
         // ── Customer ──────────────────────────────────────────────────────────
         $this->customer = Customer::create([
-            'phone'          => '+9607001001',
-            'name'           => 'Test Customer',
+            'phone' => '+9607001001',
+            'name' => 'Test Customer',
             'loyalty_points' => 0,
-            'tier'           => 'bronze',
+            'tier' => 'bronze',
         ]);
 
         $this->customerToken = $this->customer
@@ -59,17 +59,17 @@ class CustomerTokenScopeTest extends TestCase
 
         // ── Staff ─────────────────────────────────────────────────────────────
         $role = Role::create([
-            'name'      => 'Cashier',
-            'slug'      => 'cashier',
+            'name' => 'Cashier',
+            'slug' => 'cashier',
             'is_active' => true,
         ]);
 
         $this->staff = User::create([
-            'name'      => 'Test Cashier',
-            'email'     => 'cashier@test.local',
-            'password'  => Hash::make('password'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('9999'),
+            'name' => 'Test Cashier',
+            'email' => 'cashier@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('9999'),
             'is_active' => true,
         ]);
 
@@ -80,11 +80,11 @@ class CustomerTokenScopeTest extends TestCase
         // ── Seed minimal menu data ────────────────────────────────────────────
         $category = Category::create(['name' => 'Mains', 'slug' => 'mains', 'is_active' => true]);
         Item::create([
-            'category_id'  => $category->id,
-            'name'         => 'Test Item',
-            'sku'          => 'TST-001',
-            'base_price'   => 25.00,
-            'is_active'    => true,
+            'category_id' => $category->id,
+            'name' => 'Test Item',
+            'sku' => 'TST-001',
+            'base_price' => 25.00,
+            'is_active' => true,
             'is_available' => true,
         ]);
     }

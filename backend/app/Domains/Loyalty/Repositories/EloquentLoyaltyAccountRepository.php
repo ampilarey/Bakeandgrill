@@ -38,9 +38,9 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
             DB::table('loyalty_accounts')
                 ->where('customer_id', $customerId)
                 ->update([
-                    'points_balance'  => $balance,
+                    'points_balance' => $balance,
                     'lifetime_points' => DB::raw('lifetime_points + ' . (int) $addLifetime),
-                    'tier'            => $this->tierForLifetimePoints($newLifetime),
+                    'tier' => $this->tierForLifetimePoints($newLifetime),
                 ]);
 
             return;
@@ -53,9 +53,9 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
     {
         return match (true) {
             $lifetime >= 15000 => 'platinum',
-            $lifetime >= 5000  => 'gold',
-            $lifetime >= 1000  => 'silver',
-            default            => 'bronze',
+            $lifetime >= 5000 => 'gold',
+            $lifetime >= 1000 => 'silver',
+            default => 'bronze',
         };
     }
 
@@ -69,7 +69,7 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
                 'points_held' => DB::raw(
                     'CASE WHEN points_held > ' . (int) $points
                     . ' THEN points_held - ' . (int) $points
-                    . ' ELSE 0 END'
+                    . ' ELSE 0 END',
                 ),
             ]);
     }

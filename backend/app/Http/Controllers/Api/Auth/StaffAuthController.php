@@ -22,11 +22,11 @@ class StaffAuthController extends Controller
     {
         $request->validate([
             'username' => 'required|string|email|max:255',
-            'pin'      => 'required|string|min:4|max:8',
+            'pin' => 'required|string|min:4|max:8',
             'device_identifier' => 'nullable|string',
         ]);
 
-        $pin      = $request->pin;
+        $pin = $request->pin;
         $username = strtolower(trim($request->username));
 
         // Rate-limit per username+IP to prevent credential stuffing.
@@ -62,10 +62,10 @@ class StaffAuthController extends Controller
             'message' => 'Login successful',
             'token' => $token,
             'user' => [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'email'       => $user->email,
-                'role'        => $user->role?->slug,
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role?->slug,
                 'permissions' => $this->resolvePermissionSlugs($user),
             ],
         ]);
@@ -86,15 +86,15 @@ class StaffAuthController extends Controller
     /**
      * Returns the granted permission slugs for a user (all for owner, else filtered).
      */
-    private function resolvePermissionSlugs(\App\Models\User $user): array
+    private function resolvePermissionSlugs(User $user): array
     {
         if ($user->role?->slug === 'owner') {
             return \App\Models\Permission::pluck('slug')->toArray();
         }
 
         $allPermissions = \App\Models\Permission::orderBy('slug')->get();
-        $userOverrides  = $user->permissions()->get()->keyBy('slug');
-        $rolePerms      = $user->role
+        $userOverrides = $user->permissions()->get()->keyBy('slug');
+        $rolePerms = $user->role
             ? $user->role->permissions()->pluck('slug')->flip()
             : collect();
 
@@ -113,7 +113,7 @@ class StaffAuthController extends Controller
      */
     public function me(Request $request)
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -122,10 +122,10 @@ class StaffAuthController extends Controller
 
         return response()->json([
             'user' => [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'email'       => $user->email,
-                'role'        => $user->role?->slug,
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role?->slug,
                 'permissions' => $this->resolvePermissionSlugs($user),
             ],
         ]);

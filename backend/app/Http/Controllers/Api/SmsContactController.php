@@ -24,18 +24,18 @@ class SmsContactController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'          => 'required|string|max:255',
-            'phone'         => 'required|string|max:20',
-            'type'          => 'required|in:staff,external',
-            'user_id'       => 'nullable|exists:users,id',
-            'is_enabled'    => 'boolean',
-            'tags'          => 'nullable|array',
-            'tags.*'        => 'string',
-            'active_days'   => 'nullable|array',
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'type' => 'required|in:staff,external',
+            'user_id' => 'nullable|exists:users,id',
+            'is_enabled' => 'boolean',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string',
+            'active_days' => 'nullable|array',
             'active_days.*' => 'in:mon,tue,wed,thu,fri,sat,sun',
-            'active_from'   => 'nullable|date_format:H:i',
-            'active_until'  => 'nullable|date_format:H:i',
-            'notes'         => 'nullable|string|max:500',
+            'active_from' => 'nullable|date_format:H:i',
+            'active_until' => 'nullable|date_format:H:i',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $contact = SmsContact::create($data);
@@ -49,18 +49,18 @@ class SmsContactController extends Controller
         $contact = SmsContact::findOrFail($id);
 
         $data = $request->validate([
-            'name'          => 'sometimes|string|max:255',
-            'phone'         => 'sometimes|string|max:20',
-            'type'          => 'sometimes|in:staff,external',
-            'user_id'       => 'nullable|exists:users,id',
-            'is_enabled'    => 'sometimes|boolean',
-            'tags'          => 'nullable|array',
-            'tags.*'        => 'string',
-            'active_days'   => 'nullable|array',
+            'name' => 'sometimes|string|max:255',
+            'phone' => 'sometimes|string|max:20',
+            'type' => 'sometimes|in:staff,external',
+            'user_id' => 'nullable|exists:users,id',
+            'is_enabled' => 'sometimes|boolean',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string',
+            'active_days' => 'nullable|array',
             'active_days.*' => 'in:mon,tue,wed,thu,fri,sat,sun',
-            'active_from'   => 'nullable|date_format:H:i',
-            'active_until'  => 'nullable|date_format:H:i',
-            'notes'         => 'nullable|string|max:500',
+            'active_from' => 'nullable|date_format:H:i',
+            'active_until' => 'nullable|date_format:H:i',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $contact->update($data);
@@ -79,19 +79,19 @@ class SmsContactController extends Controller
     private function format(SmsContact $c): array
     {
         return [
-            'id'           => $c->id,
-            'name'         => $c->name,
-            'phone'        => $c->phone,
-            'type'         => $c->type,
-            'user_id'      => $c->user_id,
-            'user_name'    => $c->user?->name,
-            'is_enabled'   => $c->is_enabled,
-            'tags'         => $c->tags ?? [],
-            'active_days'  => $c->active_days,
-            'active_from'  => $c->active_from,
+            'id' => $c->id,
+            'name' => $c->name,
+            'phone' => $c->phone,
+            'type' => $c->type,
+            'user_id' => $c->user_id,
+            'user_name' => $c->user?->name,
+            'is_enabled' => $c->is_enabled,
+            'tags' => $c->tags ?? [],
+            'active_days' => $c->active_days,
+            'active_from' => $c->active_from,
             'active_until' => $c->active_until,
-            'notes'        => $c->notes,
-            'created_at'   => $c->created_at?->toIso8601String(),
+            'notes' => $c->notes,
+            'created_at' => $c->created_at?->toIso8601String(),
         ];
     }
 }

@@ -33,9 +33,9 @@ class SendPaymentConfirmationListener implements ShouldQueue
 
     public function failed(OrderPaid $event, \Throwable $e): void
     {
-        \Illuminate\Support\Facades\Log::error('SendPaymentConfirmationListener: exhausted retries', [
+        Log::error('SendPaymentConfirmationListener: exhausted retries', [
             'order_id' => $event->data->orderId,
-            'error'    => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
 
         if (app()->bound('sentry')) {
@@ -49,6 +49,7 @@ class SendPaymentConfirmationListener implements ShouldQueue
 
         if (!$order) {
             Log::warning('SendPaymentConfirmationListener: order not found', ['order_id' => $event->data->orderId]);
+
             return;
         }
 

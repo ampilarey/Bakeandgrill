@@ -27,7 +27,7 @@ class ReleasePreparedStockOnCancelListener
         } catch (\Throwable $e) {
             Log::error('ReleasePreparedStockOnCancelListener: release failed', [
                 'order_id' => $event->data->orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             // Do not re-throw — a release failure must not block other cancel listeners
         }

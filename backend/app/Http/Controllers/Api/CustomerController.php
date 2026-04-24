@@ -45,7 +45,7 @@ class CustomerController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -66,7 +66,7 @@ class CustomerController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -76,27 +76,27 @@ class CustomerController extends Controller
 
         return response()->json([
             'order' => [
-                'id'                        => $order->id,
-                'order_number'              => $order->order_number,
-                'status'                    => $order->status,
-                'type'                      => $order->type,
-                'total'                     => (float) $order->total,
-                'total_laar'                => (int) ($order->total_laar ?? round((float) $order->total * 100)),
-                'subtotal'                  => (float) ($order->subtotal ?? $order->total),
-                'delivery_fee'              => (float) ($order->delivery_fee ?? 0),
-                'promo_discount_laar'       => (int) ($order->promo_discount_laar ?? 0),
-                'loyalty_discount_laar'     => (int) ($order->loyalty_discount_laar ?? 0),
-                'gift_card_discount_laar'   => (int) ($order->gift_card_discount_laar ?? 0),
-                'referral_discount_laar'    => (int) ($order->referral_discount_laar ?? 0),
-                'paid_at'                   => $order->paid_at?->toIso8601String(),
-                'created_at'               => $order->created_at->toIso8601String(),
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'type' => $order->type,
+                'total' => (float) $order->total,
+                'total_laar' => (int) ($order->total_laar ?? round((float) $order->total * 100)),
+                'subtotal' => (float) ($order->subtotal ?? $order->total),
+                'delivery_fee' => (float) ($order->delivery_fee ?? 0),
+                'promo_discount_laar' => (int) ($order->promo_discount_laar ?? 0),
+                'loyalty_discount_laar' => (int) ($order->loyalty_discount_laar ?? 0),
+                'gift_card_discount_laar' => (int) ($order->gift_card_discount_laar ?? 0),
+                'referral_discount_laar' => (int) ($order->referral_discount_laar ?? 0),
+                'paid_at' => $order->paid_at?->toIso8601String(),
+                'created_at' => $order->created_at->toIso8601String(),
                 // Delivery fields
-                'delivery_address_line1'    => $order->delivery_address_line1,
-                'delivery_address_line2'    => $order->delivery_address_line2,
-                'delivery_island'           => $order->delivery_island,
-                'delivery_contact_name'     => $order->delivery_contact_name,
-                'delivery_contact_phone'    => $order->delivery_contact_phone,
-                'delivery_notes'            => $order->delivery_notes,
+                'delivery_address_line1' => $order->delivery_address_line1,
+                'delivery_address_line2' => $order->delivery_address_line2,
+                'delivery_island' => $order->delivery_island,
+                'delivery_contact_name' => $order->delivery_contact_name,
+                'delivery_contact_phone' => $order->delivery_contact_phone,
+                'delivery_notes' => $order->delivery_notes,
             ],
         ]);
     }
@@ -109,7 +109,7 @@ class CustomerController extends Controller
         $customer = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 

@@ -31,9 +31,9 @@ return new class extends Migration
 
             // Seed default store so FK can be back-filled later
             DB::table('stores')->insert([
-                'name'       => 'Bake & Grill Main',
-                'slug'       => 'main',
-                'is_active'  => true,
+                'name' => 'Bake & Grill Main',
+                'slug' => 'main',
+                'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

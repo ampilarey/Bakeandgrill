@@ -75,7 +75,7 @@ class VariantOrderTest extends TestCase
     private function posPayload(array $items): array
     {
         return [
-            'type'  => 'dine_in',
+            'type' => 'dine_in',
             'items' => $items,
         ];
     }
@@ -83,6 +83,7 @@ class VariantOrderTest extends TestCase
     private function postOrder(array $payload): \Illuminate\Testing\TestResponse
     {
         Sanctum::actingAs($this->staff, ['*']);
+
         return $this->withHeader('X-Device-Identifier', $this->device->identifier)
             ->postJson('/api/orders', $payload);
     }
@@ -95,9 +96,9 @@ class VariantOrderTest extends TestCase
 
         $res->assertStatus(201);
         $this->assertDatabaseHas('order_items', [
-            'item_id'    => $this->simpleItem->id,
+            'item_id' => $this->simpleItem->id,
             'variant_id' => null,
-            'quantity'   => 2,
+            'quantity' => 2,
         ]);
     }
 
@@ -111,7 +112,7 @@ class VariantOrderTest extends TestCase
         $msg = strtolower($res->json('message') ?? '');
         $this->assertTrue(
             str_contains($msg, 'select') || str_contains($msg, 'option') || str_contains($msg, 'variant'),
-            "Expected error about selecting an option, got: {$msg}"
+            "Expected error about selecting an option, got: {$msg}",
         );
     }
 
@@ -142,8 +143,8 @@ class VariantOrderTest extends TestCase
 
         $res->assertStatus(201);
         $this->assertDatabaseHas('order_items', [
-            'item_id'      => $this->variantItem->id,
-            'variant_id'   => $this->variantSmall->id,
+            'item_id' => $this->variantItem->id,
+            'variant_id' => $this->variantSmall->id,
             'variant_name' => 'Small',
         ]);
     }
@@ -166,7 +167,7 @@ class VariantOrderTest extends TestCase
     {
         // The variant still exists (is_active=false) so the FK is intact — this is a model-level assertion
         $this->assertDatabaseHas('variants', [
-            'id'       => $this->inactiveVariant->id,
+            'id' => $this->inactiveVariant->id,
             'is_active' => false,
         ]);
 

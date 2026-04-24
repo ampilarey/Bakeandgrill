@@ -18,43 +18,43 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Trust all proxies so that HTTPS is detected correctly behind nginx/Cloudflare.
         // Without this, CSRF cookie SameSite + Secure attributes mismatch causes 419.
-        $middleware->trustProxies(at: '*', headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
-            \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
-            \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
-            \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
-            \Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
+        $middleware->trustProxies(at: '*', headers: Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+            Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
+            Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
+            Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
+            Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
 
-        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->append(App\Http\Middleware\SecurityHeaders::class);
 
         // Use our custom EncryptCookies so _cauth/_cauth_name stay plain-text
         // (they are short-lived handoff cookies read by the React order app via JS)
         $middleware->encryptCookies(except: ['_cauth', '_cauth_name', '_cauth_revoked']);
 
         $middleware->alias([
-            'device.active'  => App\Http\Middleware\EnsureActiveDevice::class,
-            'bml.signature'  => App\Http\Middleware\VerifyBmlSignature::class,
-            'role'           => App\Http\Middleware\RequireRole::class,
-            'permission'     => App\Http\Middleware\RequirePermission::class,
+            'device.active' => App\Http\Middleware\EnsureActiveDevice::class,
+            'bml.signature' => App\Http\Middleware\VerifyBmlSignature::class,
+            'role' => App\Http\Middleware\RequireRole::class,
+            'permission' => App\Http\Middleware\RequirePermission::class,
             'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
-            'staff.token'    => App\Http\Middleware\EnsureStaffToken::class,
-            'driver.token'   => App\Http\Middleware\EnsureDriverToken::class,
+            'staff.token' => App\Http\Middleware\EnsureStaffToken::class,
+            'driver.token' => App\Http\Middleware\EnsureDriverToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Sentry captures exceptions automatically via its Laravel integration.
         // The explicit log call below is kept as a secondary record for local log files.
-        $exceptions->report(function (\Throwable $e): void {
+        $exceptions->report(function (Throwable $e): void {
             if (app()->bound('log')) {
                 app('log')->error($e->getMessage(), [
                     'exception' => get_class($e),
-                    'file'      => $e->getFile(),
-                    'line'      => $e->getLine(),
-                    'trace'     => $e->getTraceAsString(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         });
 
-        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (Throwable $e, Illuminate\Http\Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 if ($e instanceof AuthenticationException) {
                     return response()->json(['message' => 'Unauthenticated.'], 401);
@@ -63,12 +63,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 if ($e instanceof ValidationException) {
                     return response()->json([
                         'message' => 'The given data was invalid.',
-                        'errors'  => $e->errors(),
+                        'errors' => $e->errors(),
                     ], 422);
                 }
 
-                $status  = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 $message = $status < 500 ? $e->getMessage() : 'Server error. Please try again.';
+
                 return response()->json(['message' => $message], $status);
             }
         });

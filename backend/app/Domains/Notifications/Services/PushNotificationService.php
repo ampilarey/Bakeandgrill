@@ -35,7 +35,7 @@ class PushNotificationService
         foreach ($subscriptions as $sub) {
             $webPush->queueNotification(
                 Subscription::create([
-                    'endpoint'  => $sub->endpoint,
+                    'endpoint' => $sub->endpoint,
                     'publicKey' => $sub->p256dh_key,
                     'authToken' => $sub->auth_key,
                 ]),
@@ -55,7 +55,7 @@ class PushNotificationService
             } else {
                 Log::warning('PushNotification: delivery failed', [
                     'endpoint' => substr($endpoint, 0, 60),
-                    'reason'   => $report->getReason(),
+                    'reason' => $report->getReason(),
                 ]);
             }
         }
@@ -63,9 +63,9 @@ class PushNotificationService
 
     private function makeWebPush(): ?WebPush
     {
-        $publicKey  = config('services.vapid.public_key');
+        $publicKey = config('services.vapid.public_key');
         $privateKey = config('services.vapid.private_key');
-        $subject    = config('services.vapid.subject', config('app.url'));
+        $subject = config('services.vapid.subject', config('app.url'));
 
         if (empty($publicKey) || empty($privateKey)) {
             Log::debug('PushNotificationService: VAPID keys not configured — skipping push.');
@@ -75,8 +75,8 @@ class PushNotificationService
 
         return new WebPush([
             'VAPID' => [
-                'subject'    => $subject,
-                'publicKey'  => $publicKey,
+                'subject' => $subject,
+                'publicKey' => $publicKey,
                 'privateKey' => $privateKey,
             ],
         ]);

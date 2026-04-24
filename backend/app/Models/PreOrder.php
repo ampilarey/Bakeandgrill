@@ -18,12 +18,12 @@ class PreOrder extends Model
     ];
 
     protected $casts = [
-        'items'             => 'array',
-        'subtotal'          => 'decimal:2',
-        'total'             => 'decimal:2',
-        'fulfillment_date'  => 'datetime',
+        'items' => 'array',
+        'subtotal' => 'decimal:2',
+        'total' => 'decimal:2',
+        'fulfillment_date' => 'datetime',
         'preparation_start' => 'datetime',
-        'approved_at'       => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo

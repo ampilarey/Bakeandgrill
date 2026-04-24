@@ -27,7 +27,7 @@ class DeliveryGateService
     public function assertDeliveryOpen(?string $deliveryArea = null, ?Carbon $at = null): void
     {
         $result = $this->evaluate($deliveryArea, $at);
-        if (! $result->allowed) {
+        if (!$result->allowed) {
             abort(422, $result->message);
         }
     }
@@ -39,18 +39,18 @@ class DeliveryGateService
 
     public function status(?string $deliveryArea = null, ?Carbon $at = null): array
     {
-        $result   = $this->evaluate($deliveryArea, $at);
+        $result = $this->evaluate($deliveryArea, $at);
         $schedule = $this->parseSchedule();
 
         $freeThreshold = (float) config('delivery.free_threshold', 200.00);
 
         return [
-            'delivery_open'           => $result->allowed,
-            'message'                 => $result->allowed ? null : $result->message,
-            'accepting_flag'          => $this->acceptingFlagOn(),
-            'schedule_active'         => $schedule !== null,
-            'zones_enforced'          => $this->parseZones() !== null,
-            'next_delivery_window'    => $schedule ? $this->nextWindow($schedule, $at) : null,
+            'delivery_open' => $result->allowed,
+            'message' => $result->allowed ? null : $result->message,
+            'accepting_flag' => $this->acceptingFlagOn(),
+            'schedule_active' => $schedule !== null,
+            'zones_enforced' => $this->parseZones() !== null,
+            'next_delivery_window' => $schedule ? $this->nextWindow($schedule, $at) : null,
             'free_delivery_threshold' => $freeThreshold > 0 ? $freeThreshold : null,
         ];
     }
@@ -62,29 +62,29 @@ class DeliveryGateService
     private function evaluate(?string $deliveryArea, ?Carbon $at): DeliveryGateResult
     {
         // Layer 1: existing flag
-        if (! $this->acceptingFlagOn()) {
+        if (!$this->acceptingFlagOn()) {
             return DeliveryGateResult::closed(
                 (string) SiteSetting::get(
                     'delivery_unavailable_message',
                     'Delivery is not available right now. Please try takeaway or check back later.',
-                )
+                ),
             );
         }
 
         // Layer 2: schedule
         $schedule = $this->parseSchedule();
-        if ($schedule !== null && ! $this->withinSchedule($schedule, $at)) {
+        if ($schedule !== null && !$this->withinSchedule($schedule, $at)) {
             return DeliveryGateResult::closed(
-                'Delivery is not available at this time. Please check our delivery hours.'
+                'Delivery is not available at this time. Please check our delivery hours.',
             );
         }
 
         // Layer 3: zone
         if ($deliveryArea !== null) {
             $zones = $this->parseZones();
-            if ($zones !== null && ! in_array(strtolower(trim($deliveryArea)), $zones, true)) {
+            if ($zones !== null && !in_array(strtolower(trim($deliveryArea)), $zones, true)) {
                 return DeliveryGateResult::closed(
-                    "Sorry, we don't deliver to {$deliveryArea} yet."
+                    "Sorry, we don't deliver to {$deliveryArea} yet.",
                 );
             }
         }
@@ -105,7 +105,7 @@ class DeliveryGateService
     private function parseSchedule(): ?array
     {
         $raw = SiteSetting::get('delivery_schedule');
-        if (! $raw) {
+        if (!$raw) {
             return null;
         }
         try {
@@ -114,16 +114,16 @@ class DeliveryGateService
             return null;
         }
 
-        return is_array($decoded) && ! empty($decoded) ? $decoded : null;
+        return is_array($decoded) && !empty($decoded) ? $decoded : null;
     }
 
     /**
-     * @return list<string>|null  Lowercase zone slugs, or null if no zones configured
+     * @return list<string>|null Lowercase zone slugs, or null if no zones configured
      */
     private function parseZones(): ?array
     {
         $raw = SiteSetting::get('delivery_zones');
-        if (! $raw) {
+        if (!$raw) {
             return null;
         }
         try {
@@ -132,7 +132,7 @@ class DeliveryGateService
             return null;
         }
 
-        if (! is_array($decoded) || empty($decoded)) {
+        if (!is_array($decoded) || empty($decoded)) {
             return null;
         }
 
@@ -141,17 +141,17 @@ class DeliveryGateService
 
     private function withinSchedule(array $schedule, ?Carbon $at): bool
     {
-        $tz  = config('app.timezone', 'UTC');
+        $tz = config('app.timezone', 'UTC');
         $now = ($at ?? now())->clone()->setTimezone($tz);
         $dayKey = strtolower($now->format('D'));
         $window = $schedule[$dayKey] ?? null;
 
-        if (! $window) {
+        if (!$window) {
             return false;
         }
 
         try {
-            $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+            $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
             $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
         } catch (\Throwable) {
             return false;
@@ -162,14 +162,14 @@ class DeliveryGateService
 
     private function nextWindow(array $schedule, ?Carbon $at): ?string
     {
-        $tz  = config('app.timezone', 'UTC');
+        $tz = config('app.timezone', 'UTC');
         $now = ($at ?? now())->clone()->setTimezone($tz);
 
         for ($i = 0; $i <= 7; $i++) {
             $candidate = $now->clone()->addDays($i);
-            $dayKey    = strtolower($candidate->format('D'));
-            $window    = $schedule[$dayKey] ?? null;
-            if (! $window) {
+            $dayKey = strtolower($candidate->format('D'));
+            $window = $schedule[$dayKey] ?? null;
+            if (!$window) {
                 continue;
             }
             try {
@@ -192,7 +192,7 @@ class DeliveryGateService
 final class DeliveryGateResult
 {
     private function __construct(
-        public readonly bool   $allowed,
+        public readonly bool $allowed,
         public readonly string $message,
     ) {}
 

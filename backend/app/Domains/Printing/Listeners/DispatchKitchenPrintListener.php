@@ -64,7 +64,7 @@ class DispatchKitchenPrintListener implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('DispatchKitchenPrintListener: dispatch failed', [
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }

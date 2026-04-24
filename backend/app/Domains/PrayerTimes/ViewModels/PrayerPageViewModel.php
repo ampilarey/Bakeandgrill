@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\PrayerTimes\ViewModels;
 
 use App\Domains\PrayerTimes\DTOs\IslandData;
@@ -16,9 +18,9 @@ final readonly class PrayerPageViewModel
     public Collection $grouped;
 
     public function __construct(
-        Collection              $islands,
-        public ?IslandData      $selectedIsland,
-        public Carbon           $selectedDate,
+        Collection $islands,
+        public ?IslandData $selectedIsland,
+        public Carbon $selectedDate,
         public ?PrayerTimesResult $prayers,
     ) {
         $this->islands = $islands;
@@ -29,12 +31,12 @@ final readonly class PrayerPageViewModel
     public function prayerDefs(): array
     {
         return [
-            'fajr'    => ['name' => 'ފަތިސް',       'latin' => 'Fajr',    'icon' => '🌙', 'isSunrise' => false],
+            'fajr' => ['name' => 'ފަތިސް',       'latin' => 'Fajr',    'icon' => '🌙', 'isSunrise' => false],
             'sunrise' => ['name' => 'އިރު އެރުން',   'latin' => 'Sunrise', 'icon' => '🌅', 'isSunrise' => true],
-            'dhuhr'   => ['name' => 'މެންދުރު',      'latin' => 'Dhuhr',   'icon' => '☀️', 'isSunrise' => false],
-            'asr'     => ['name' => 'އަޞްރު',        'latin' => 'Asr',     'icon' => '🌤️', 'isSunrise' => false],
+            'dhuhr' => ['name' => 'މެންދުރު',      'latin' => 'Dhuhr',   'icon' => '☀️', 'isSunrise' => false],
+            'asr' => ['name' => 'އަޞްރު',        'latin' => 'Asr',     'icon' => '🌤️', 'isSunrise' => false],
             'maghrib' => ['name' => 'މަޣްރިބް',      'latin' => 'Maghrib', 'icon' => '🌆', 'isSunrise' => false],
-            'isha'    => ['name' => 'ޢިޝާ',          'latin' => 'Isha',    'icon' => '🌟', 'isSunrise' => false],
+            'isha' => ['name' => 'ޢިޝާ',          'latin' => 'Isha',    'icon' => '🌟', 'isSunrise' => false],
         ];
     }
 
@@ -48,6 +50,7 @@ final readonly class PrayerPageViewModel
     public function pageTitle(): string
     {
         $island = $this->selectedIsland?->name ?? 'ދިވެހިރާއްޖެ';
+
         return "ނަމާދު ވަގުތު – {$island}";
     }
 }

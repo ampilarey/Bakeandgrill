@@ -35,8 +35,8 @@ class ReviewController extends Controller
 
         return response()->json([
             'average_rating' => $stats->average_rating ? (float) $stats->average_rating : null,
-            'review_count'   => (int) $stats->review_count,
-            'reviews'        => $reviews->map(fn(Review $r) => $this->format($r)),
+            'review_count' => (int) $stats->review_count,
+            'reviews' => $reviews->map(fn (Review $r) => $this->format($r)),
         ]);
     }
 
@@ -45,18 +45,18 @@ class ReviewController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'order_id'     => ['required', 'integer', 'exists:orders,id'],
-            'rating'       => ['required', 'integer', 'min:1', 'max:5'],
-            'comment'      => ['nullable', 'string', 'max:1000'],
-            'type'         => ['sometimes', 'in:order,item'],
-            'item_id'      => ['nullable', 'integer', 'exists:items,id'],
+            'order_id' => ['required', 'integer', 'exists:orders,id'],
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+            'type' => ['sometimes', 'in:order,item'],
+            'item_id' => ['nullable', 'integer', 'exists:items,id'],
             'is_anonymous' => ['sometimes', 'boolean'],
         ]);
 
         $user = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (! $user instanceof Customer) {
+        if (!$user instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -75,15 +75,15 @@ class ReviewController extends Controller
         $review = Review::updateOrCreate(
             [
                 'customer_id' => $customerId,
-                'order_id'    => $validated['order_id'],
-                'item_id'     => $validated['item_id'] ?? null,
+                'order_id' => $validated['order_id'],
+                'item_id' => $validated['item_id'] ?? null,
             ],
             [
-                'rating'       => $validated['rating'],
-                'comment'      => $validated['comment'] ?? null,
-                'type'         => $validated['type'] ?? (($validated['item_id'] ?? null) ? 'item' : 'order'),
+                'rating' => $validated['rating'],
+                'comment' => $validated['comment'] ?? null,
+                'type' => $validated['type'] ?? (($validated['item_id'] ?? null) ? 'item' : 'order'),
                 'is_anonymous' => (bool) ($validated['is_anonymous'] ?? false),
-                'status'       => 'pending',
+                'status' => 'pending',
             ],
         );
 
@@ -97,7 +97,7 @@ class ReviewController extends Controller
         $user = $request->user();
 
         // Defensive: EnsureCustomerToken middleware already enforces this.
-        if (! $user instanceof Customer) {
+        if (!$user instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -106,7 +106,7 @@ class ReviewController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return response()->json(['reviews' => $reviews->map(fn(Review $r) => $this->format($r))]);
+        return response()->json(['reviews' => $reviews->map(fn (Review $r) => $this->format($r))]);
     }
 
     // ── Admin: list + moderate ────────────────────────────────────────────────
@@ -123,11 +123,11 @@ class ReviewController extends Controller
         $paginator = $query->paginate(20);
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn(Review $r) => $this->format($r)),
+            'data' => collect($paginator->items())->map(fn (Review $r) => $this->format($r)),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
             ],
         ]);
     }
@@ -147,16 +147,16 @@ class ReviewController extends Controller
     private function format(Review $r): array
     {
         return [
-            'id'           => $r->id,
-            'rating'       => $r->rating,
-            'comment'      => $r->comment,
-            'type'         => $r->type,
-            'status'       => $r->status,
+            'id' => $r->id,
+            'rating' => $r->rating,
+            'comment' => $r->comment,
+            'type' => $r->type,
+            'status' => $r->status,
             'is_anonymous' => $r->is_anonymous,
-            'author'       => $r->is_anonymous ? 'Anonymous' : ($r->customer?->name ?? 'Guest'),
-            'item'         => $r->item   ? ['id' => $r->item->id,  'name' => $r->item->name]  : null,
-            'order'        => $r->order  ? ['id' => $r->order->id, 'order_number' => $r->order->order_number] : null,
-            'created_at'   => $r->created_at,
+            'author' => $r->is_anonymous ? 'Anonymous' : ($r->customer?->name ?? 'Guest'),
+            'item' => $r->item ? ['id' => $r->item->id,  'name' => $r->item->name] : null,
+            'order' => $r->order ? ['id' => $r->order->id, 'order_number' => $r->order->order_number] : null,
+            'created_at' => $r->created_at,
         ];
     }
 }

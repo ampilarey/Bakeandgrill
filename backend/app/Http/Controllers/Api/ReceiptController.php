@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReceiptFeedbackRequest;
 use App\Http\Requests\StoreReceiptRequest;
@@ -11,8 +13,6 @@ use App\Mail\ReceiptMail;
 use App\Models\Order;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
-use App\Domains\Notifications\DTOs\SmsMessage;
-use App\Domains\Notifications\Services\SmsService;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,7 +32,7 @@ class ReceiptController extends Controller
         $order = Order::findOrFail($orderId);
 
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (! $receipt->exists) {
+        if (!$receipt->exists) {
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
@@ -145,7 +145,7 @@ class ReceiptController extends Controller
     {
         $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();
 
-        if (! $this->orderIsPaidForReceipt($receipt->order)) {
+        if (!$this->orderIsPaidForReceipt($receipt->order)) {
             return response()->json(['message' => 'Feedback is available after payment.'], 403);
         }
 
@@ -181,10 +181,10 @@ class ReceiptController extends Controller
 
         if ($receipt->channel === 'sms') {
             $body = $this->smsBodyForReceipt($receipt);
-            $log  = app(SmsService::class)->send(new SmsMessage(
-                to:      $receipt->recipient,
+            $log = app(SmsService::class)->send(new SmsMessage(
+                to: $receipt->recipient,
                 message: $body,
-                type:    'transactional',
+                type: 'transactional',
             ));
             $sent = in_array($log->status, ['sent', 'demo'], true);
         } else {

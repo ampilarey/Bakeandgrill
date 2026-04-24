@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\PrayerTimes\Services;
 
 use App\Domains\PrayerTimes\DTOs\IslandData;
@@ -37,14 +39,14 @@ final class PrayerTimeResolver
         $offset = $island->offsetMinutes;
 
         return new PrayerTimesResult(
-            island:  $island,
-            date:    $date,
-            fajr:    PrayerTimeHelper::minutesToTime($row->fajr    + $offset),
+            island: $island,
+            date: $date,
+            fajr: PrayerTimeHelper::minutesToTime($row->fajr + $offset),
             sunrise: PrayerTimeHelper::minutesToTime($row->sunrise + $offset),
-            dhuhr:   PrayerTimeHelper::minutesToTime($row->dhuhr   + $offset),
-            asr:     PrayerTimeHelper::minutesToTime($row->asr     + $offset),
+            dhuhr: PrayerTimeHelper::minutesToTime($row->dhuhr + $offset),
+            asr: PrayerTimeHelper::minutesToTime($row->asr + $offset),
             maghrib: PrayerTimeHelper::minutesToTime($row->maghrib + $offset),
-            isha:    PrayerTimeHelper::minutesToTime($row->isha    + $offset),
+            isha: PrayerTimeHelper::minutesToTime($row->isha + $offset),
         );
     }
 }

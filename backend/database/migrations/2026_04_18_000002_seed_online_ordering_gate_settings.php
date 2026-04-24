@@ -17,47 +17,47 @@ return new class extends Migration
     {
         $settings = [
             [
-                'key'         => 'online_ordering_enabled',
-                'value'       => '1',
-                'type'        => 'boolean',
-                'group'       => 'Online Ordering',
-                'label'       => 'Online Ordering',
+                'key' => 'online_ordering_enabled',
+                'value' => '1',
+                'type' => 'boolean',
+                'group' => 'Online Ordering',
+                'label' => 'Online Ordering',
                 'description' => 'Master switch. Turn off to pause all online orders (pickup + delivery). POS is unaffected.',
-                'is_public'   => true,
+                'is_public' => true,
             ],
             [
-                'key'         => 'online_ordering_schedule',
-                'value'       => null,
-                'type'        => 'json',
-                'group'       => 'Online Ordering',
-                'label'       => 'Daily Schedule (optional)',
+                'key' => 'online_ordering_schedule',
+                'value' => null,
+                'type' => 'json',
+                'group' => 'Online Ordering',
+                'label' => 'Daily Schedule (optional)',
                 'description' => 'JSON: {"mon":{"open":"07:00","close":"22:00"},"tue":…,"sun":…}. Days not listed are treated as closed. Leave empty to ignore schedule (always open when enabled).',
-                'is_public'   => true,
+                'is_public' => true,
             ],
             [
-                'key'         => 'online_ordering_override_until',
-                'value'       => null,
-                'type'        => 'text',
-                'group'       => 'Online Ordering',
-                'label'       => 'Force-Open Until (ISO datetime)',
+                'key' => 'online_ordering_override_until',
+                'value' => null,
+                'type' => 'text',
+                'group' => 'Online Ordering',
+                'label' => 'Force-Open Until (ISO datetime)',
                 'description' => 'If set to a future datetime (e.g. 2026-04-18T23:59:00), online ordering is forced ON until that time, ignoring the schedule. Clear to deactivate.',
-                'is_public'   => true,
+                'is_public' => true,
             ],
             [
-                'key'         => 'online_ordering_closed_message',
-                'value'       => 'Online ordering is currently closed. Please check back during opening hours.',
-                'type'        => 'text',
-                'group'       => 'Online Ordering',
-                'label'       => 'Closed Message',
+                'key' => 'online_ordering_closed_message',
+                'value' => 'Online ordering is currently closed. Please check back during opening hours.',
+                'type' => 'text',
+                'group' => 'Online Ordering',
+                'label' => 'Closed Message',
                 'description' => 'Shown to customers when online ordering is unavailable.',
-                'is_public'   => true,
+                'is_public' => true,
             ],
         ];
 
         foreach ($settings as $row) {
             DB::table('site_settings')->updateOrInsert(
                 ['key' => $row['key']],
-                array_merge($row, ['created_at' => now(), 'updated_at' => now()])
+                array_merge($row, ['created_at' => now(), 'updated_at' => now()]),
             );
         }
     }

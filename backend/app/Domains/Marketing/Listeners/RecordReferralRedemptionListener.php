@@ -53,17 +53,17 @@ class RecordReferralRedemptionListener
                 if (!$existing) {
                     $code->increment('uses_count');
                     Referral::create([
-                        'referral_code_id'    => $code->id,
+                        'referral_code_id' => $code->id,
                         'referee_customer_id' => (int) $locked->customer_id,
-                        'order_id'            => $locked->id,
-                        'reward_paid'         => false,
+                        'order_id' => $locked->id,
+                        'reward_paid' => false,
                     ]);
 
                     // Credit referrer with loyalty points equivalent to their reward MVR
                     $referrer = Customer::find($code->customer_id);
                     if ($referrer) {
-                        $redeemRate  = (int) config('app.loyalty_redeem_rate', 100);
-                        $rewardMvr   = (float) ($code->referrer_reward_mvr ?? config('loyalty.referral.referrer_reward_mvr', 10.00));
+                        $redeemRate = (int) config('app.loyalty_redeem_rate', 100);
+                        $rewardMvr = (float) ($code->referrer_reward_mvr ?? config('loyalty.referral.referrer_reward_mvr', 10.00));
                         $rewardPoints = (int) round($rewardMvr * $redeemRate);
 
                         if ($rewardPoints > 0) {
@@ -81,8 +81,8 @@ class RecordReferralRedemptionListener
                             } catch (\Throwable $e) {
                                 Log::error('RecordReferralRedemptionListener: failed to credit referrer bonus', [
                                     'referral_code_id' => $code->id,
-                                    'referrer_id'      => $referrer->id,
-                                    'error'            => $e->getMessage(),
+                                    'referrer_id' => $referrer->id,
+                                    'error' => $e->getMessage(),
                                 ]);
                             }
                         }
@@ -94,7 +94,7 @@ class RecordReferralRedemptionListener
         } catch (\Throwable $e) {
             Log::error('RecordReferralRedemptionListener: failed', [
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }

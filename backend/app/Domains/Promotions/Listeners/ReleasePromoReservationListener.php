@@ -36,7 +36,7 @@ class ReleasePromoReservationListener implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('ReleasePromoReservationListener: failed', [
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }

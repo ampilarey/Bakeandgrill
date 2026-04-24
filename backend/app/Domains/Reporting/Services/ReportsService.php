@@ -31,11 +31,11 @@ class ReportsService
             ->first();
 
         $totals = [
-            'orders_count'    => (int)   ($agg->orders_count    ?? 0),
-            'subtotal'        => (float) ($agg->subtotal        ?? 0),
-            'tax_amount'      => (float) ($agg->tax_amount      ?? 0),
+            'orders_count' => (int) ($agg->orders_count ?? 0),
+            'subtotal' => (float) ($agg->subtotal ?? 0),
+            'tax_amount' => (float) ($agg->tax_amount ?? 0),
             'discount_amount' => (float) ($agg->discount_amount ?? 0),
-            'total'           => (float) ($agg->total           ?? 0),
+            'total' => (float) ($agg->total ?? 0),
         ];
 
         $payments = Payment::whereBetween('processed_at', [$from, $to])
@@ -45,9 +45,9 @@ class ReportsService
             ->pluck('total', 'method');
 
         return [
-            'from'     => $from->toDateString(),
-            'to'       => $to->toDateString(),
-            'totals'   => $totals,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'totals' => $totals,
             'payments' => $payments,
         ];
     }
@@ -91,18 +91,18 @@ class ReportsService
             ->orderByDesc('total')
             ->get()
             ->map(fn ($row) => [
-                'user_id'      => $row->user_id,
-                'name'         => $row->name,
+                'user_id' => $row->user_id,
+                'name' => $row->name,
                 'orders_count' => (int) $row->orders_count,
-                'total'        => (float) $row->total,
+                'total' => (float) $row->total,
             ]);
 
         return [
-            'from'       => $from->toDateString(),
-            'to'         => $to->toDateString(),
-            'items'      => $items,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'items' => $items,
             'categories' => $categories,
-            'employees'  => $employees,
+            'employees' => $employees,
         ];
     }
 
@@ -114,12 +114,12 @@ class ReportsService
     {
         $shift = Shift::where('user_id', $userId)->whereNull('closed_at')->latest('opened_at')->first();
 
-        if (! $shift) {
+        if (!$shift) {
             return null;
         }
 
         $from = $shift->opened_at;
-        $to   = now();
+        $to = now();
 
         $agg = Order::where('user_id', $shift->user_id)
             ->whereBetween('created_at', [$from, $to])
@@ -128,11 +128,11 @@ class ReportsService
             ->first();
 
         $totals = [
-            'orders_count'    => (int)   ($agg->orders_count    ?? 0),
-            'subtotal'        => (float) ($agg->subtotal        ?? 0),
-            'tax_amount'      => (float) ($agg->tax_amount      ?? 0),
+            'orders_count' => (int) ($agg->orders_count ?? 0),
+            'subtotal' => (float) ($agg->subtotal ?? 0),
+            'tax_amount' => (float) ($agg->tax_amount ?? 0),
             'discount_amount' => (float) ($agg->discount_amount ?? 0),
-            'total'           => (float) ($agg->total           ?? 0),
+            'total' => (float) ($agg->total ?? 0),
         ];
 
         $payments = Payment::whereBetween('processed_at', [$from, $to])
@@ -147,12 +147,12 @@ class ReportsService
             ->sum('amount');
 
         return [
-            'shift'    => $shift,
-            'from'     => $from->toDateTimeString(),
-            'to'       => $to->toDateTimeString(),
-            'totals'   => $totals,
+            'shift' => $shift,
+            'from' => $from->toDateTimeString(),
+            'to' => $to->toDateTimeString(),
+            'totals' => $totals,
             'payments' => $payments,
-            'refunds'  => $refundsTotal,
+            'refunds' => $refundsTotal,
         ];
     }
 
@@ -167,11 +167,11 @@ class ReportsService
             ->first();
 
         $totals = [
-            'orders_count'    => (int)   ($agg->orders_count    ?? 0),
-            'subtotal'        => (float) ($agg->subtotal        ?? 0),
-            'tax_amount'      => (float) ($agg->tax_amount      ?? 0),
+            'orders_count' => (int) ($agg->orders_count ?? 0),
+            'subtotal' => (float) ($agg->subtotal ?? 0),
+            'tax_amount' => (float) ($agg->tax_amount ?? 0),
             'discount_amount' => (float) ($agg->discount_amount ?? 0),
-            'total'           => (float) ($agg->total           ?? 0),
+            'total' => (float) ($agg->total ?? 0),
         ];
 
         $payments = Payment::whereBetween('processed_at', [$from, $to])
@@ -183,11 +183,11 @@ class ReportsService
         $refunds = Refund::whereBetween('created_at', [$from, $to])->sum('amount');
 
         return [
-            'from'     => $from->toDateString(),
-            'to'       => $to->toDateString(),
-            'totals'   => $totals,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'totals' => $totals,
             'payments' => $payments,
-            'refunds'  => $refunds,
+            'refunds' => $refunds,
         ];
     }
 
@@ -202,7 +202,7 @@ class ReportsService
         )->first();
 
         return [
-            'value'    => (float) ($totals->value    ?? 0),
+            'value' => (float) ($totals->value ?? 0),
             'quantity' => (float) ($totals->quantity ?? 0),
         ];
     }

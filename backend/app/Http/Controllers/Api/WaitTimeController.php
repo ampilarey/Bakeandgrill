@@ -25,7 +25,7 @@ class WaitTimeController extends Controller
 
         return response()->json([
             'wait_minutes' => $estimated,
-            'queue_depth'  => $activeOrders,
+            'queue_depth' => $activeOrders,
         ]);
     }
 }

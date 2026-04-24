@@ -41,7 +41,7 @@ class OrderCancellationTest extends TestCase
         Event::fake([OrderCancelled::class]);
 
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->pending()->create(['customer_id' => $customer->id, 'total' => 20.00]);
+        $order = Order::factory()->pending()->create(['customer_id' => $customer->id, 'total' => 20.00]);
 
         $this->cancelOrder($order);
 
@@ -51,7 +51,7 @@ class OrderCancellationTest extends TestCase
     public function test_cancelled_order_is_marked_as_cancelled(): void
     {
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->pending()->create(['customer_id' => $customer->id, 'total' => 10.00]);
+        $order = Order::factory()->pending()->create(['customer_id' => $customer->id, 'total' => 10.00]);
 
         $this->cancelOrder($order);
 
@@ -60,22 +60,22 @@ class OrderCancellationTest extends TestCase
 
     public function test_cancelling_online_order_releases_stock_reservation(): void
     {
-        $item     = $this->makeItem(trackStock: true, stock: 5);
+        $item = $this->makeItem(trackStock: true, stock: 5);
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->onlinePickup()->pending()->create([
+        $order = Order::factory()->onlinePickup()->pending()->create([
             'customer_id' => $customer->id,
-            'total'       => 10.00,
+            'total' => 10.00,
         ]);
 
         // Simulate a reservation by writing a stock movement with type=reservation
         StockMovement::create([
             'inventory_item_id' => null,  // not needed for this test — we verify listener fires
-            'type'              => 'reservation',
-            'quantity'          => -1,
-            'reference_type'    => 'order',
-            'reference_id'      => $order->id,
-            'idempotency_key'   => 'reserve:order:' . $order->id . ':item:999',
-            'notes'             => 'test reservation',
+            'type' => 'reservation',
+            'quantity' => -1,
+            'reference_type' => 'order',
+            'reference_id' => $order->id,
+            'idempotency_key' => 'reserve:order:' . $order->id . ':item:999',
+            'notes' => 'test reservation',
         ]);
 
         // The cancel listener (ReleasePreparedStockOnCancelListener) should remove the reservation
@@ -95,7 +95,7 @@ class OrderCancellationTest extends TestCase
         $token = $this->staffHeaders($owner);
 
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->cancelled()->create(['customer_id' => $customer->id, 'total' => 15.00]);
+        $order = Order::factory()->cancelled()->create(['customer_id' => $customer->id, 'total' => 15.00]);
 
         // POST /orders/{id}/hold should refuse terminal-status orders
         $response = $this->postJson("/api/orders/{$order->id}/hold", [], $token);
@@ -107,7 +107,7 @@ class OrderCancellationTest extends TestCase
     public function test_cancelling_already_cancelled_order_is_safe(): void
     {
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->cancelled()->create(['customer_id' => $customer->id, 'total' => 10.00]);
+        $order = Order::factory()->cancelled()->create(['customer_id' => $customer->id, 'total' => 10.00]);
 
         // Firing the event again must not throw or corrupt state
         $this->cancelOrder($order);
@@ -119,12 +119,12 @@ class OrderCancellationTest extends TestCase
 
     public function test_full_cancel_of_paid_order_does_not_auto_refund_but_allows_manual_refund(): void
     {
-        $owner    = $this->makeOwner();
+        $owner = $this->makeOwner();
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->paid()->create([
+        $order = Order::factory()->paid()->create([
             'customer_id' => $customer->id,
-            'total'       => 30.00,
-            'total_laar'  => 3000,
+            'total' => 30.00,
+            'total_laar' => 3000,
         ]);
 
         // Manually cancel via status change + event

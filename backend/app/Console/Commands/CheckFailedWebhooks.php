@@ -39,6 +39,7 @@ class CheckFailedWebhooks extends Command
 
         if ($failed->isEmpty()) {
             $this->info('No failed BML webhooks in the last ' . $hours . ' hour(s).');
+
             return self::SUCCESS;
         }
 
@@ -46,13 +47,13 @@ class CheckFailedWebhooks extends Command
 
         // Log at CRITICAL so any log-based alerting triggers immediately
         Log::critical("CheckFailedWebhooks: {$count} failed BML webhook(s) in the last {$hours}h — potential missed payments", [
-            'count'    => $count,
+            'count' => $count,
             'webhooks' => $failed->map(fn ($w) => [
-                'id'              => $w->id,
+                'id' => $w->id,
                 'idempotency_key' => $w->idempotency_key,
-                'event_type'      => $w->event_type,
-                'error_message'   => $w->error_message,
-                'created_at'      => $w->created_at,
+                'event_type' => $w->event_type,
+                'error_message' => $w->error_message,
+                'created_at' => $w->created_at,
             ])->toArray(),
         ]);
 

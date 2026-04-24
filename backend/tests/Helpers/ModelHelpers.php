@@ -34,8 +34,8 @@ trait ModelHelpers
         );
 
         return User::factory()->create(array_merge([
-            'role_id'   => $roleModel->id,
-            'pin_hash'  => Hash::make('1234'),
+            'role_id' => $roleModel->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ], $attrs));
     }

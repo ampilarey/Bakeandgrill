@@ -35,12 +35,12 @@ class SmsSchedulerTest extends TestCase
     private function makeScheduled(array $attrs = []): SmsScheduledMessage
     {
         return SmsScheduledMessage::create(array_merge([
-            'name'         => 'Test message',
-            'to_type'      => 'phone',
-            'to_phone'     => '+9607999000',
-            'body'         => 'Hello!',
+            'name' => 'Test message',
+            'to_type' => 'phone',
+            'to_phone' => '+9607999000',
+            'body' => 'Hello!',
             'is_recurring' => false,
-            'status'       => 'active',
+            'status' => 'active',
             'next_send_at' => Carbon::now()->subMinute(),
         ], $attrs));
     }
@@ -86,10 +86,10 @@ class SmsSchedulerTest extends TestCase
     public function test_recurring_daily_advances_next_send_at(): void
     {
         $msg = $this->makeScheduled([
-            'is_recurring'    => true,
+            'is_recurring' => true,
             'recurrence_type' => 'daily',
             'recurrence_time' => '10:00',
-            'next_send_at'    => Carbon::now()->subMinute(),
+            'next_send_at' => Carbon::now()->subMinute(),
         ]);
 
         $this->scheduler->dispatchDue(Carbon::now());
@@ -104,7 +104,7 @@ class SmsSchedulerTest extends TestCase
     public function test_compute_next_send_at_weekly(): void
     {
         $msg = new SmsScheduledMessage([
-            'is_recurring'    => true,
+            'is_recurring' => true,
             'recurrence_type' => 'weekly',
             'recurrence_days' => ['mon'],
             'recurrence_time' => '09:00',

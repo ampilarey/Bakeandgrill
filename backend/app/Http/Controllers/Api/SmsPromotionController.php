@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSmsPromotionRequest;
 use App\Jobs\SendSmsPromotionRecipient;
@@ -11,7 +12,6 @@ use App\Models\Customer;
 use App\Models\SmsPromotion;
 use App\Models\SmsPromotionRecipient;
 use App\Services\AuditLogService;
-use App\Domains\Notifications\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 

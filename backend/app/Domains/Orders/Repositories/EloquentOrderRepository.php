@@ -30,7 +30,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
         // Use model-level update (not query-builder) so OrderObserver::updated()
         // fires and dispatches OrderStatusChanged for downstream listeners (SMS, KDS push, etc.).
         $order = Order::find($id);
-        if (! $order) {
+        if (!$order) {
             return false;
         }
 

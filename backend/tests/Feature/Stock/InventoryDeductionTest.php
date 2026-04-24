@@ -31,10 +31,10 @@ class InventoryDeductionTest extends TestCase
     private function makeInventoryItem(float $stock = 100): InventoryItem
     {
         return InventoryItem::create([
-            'name'          => 'Ingredient ' . uniqid(),
-            'unit'          => 'kg',
+            'name' => 'Ingredient ' . uniqid(),
+            'unit' => 'kg',
             'current_stock' => $stock,
-            'is_active'     => true,
+            'is_active' => true,
         ]);
     }
 
@@ -44,16 +44,16 @@ class InventoryDeductionTest extends TestCase
         $item = $this->makeItem(false, 0, ['category_id' => $category->id]);
 
         $recipe = Recipe::create([
-            'item_id'          => $item->id,
-            'yield_quantity'   => 1,
-            'instructions'     => null,
-            'total_cost'       => 0,
+            'item_id' => $item->id,
+            'yield_quantity' => 1,
+            'instructions' => null,
+            'total_cost' => 0,
         ]);
 
         RecipeItem::create([
-            'recipe_id'          => $recipe->id,
-            'inventory_item_id'  => $inventoryItem->id,
-            'quantity'           => $quantityPerUnit,
+            'recipe_id' => $recipe->id,
+            'inventory_item_id' => $inventoryItem->id,
+            'quantity' => $quantityPerUnit,
         ]);
 
         return $item;
@@ -65,11 +65,11 @@ class InventoryDeductionTest extends TestCase
         $order = Order::factory()->paid()->create(['customer_id' => $customer->id, 'total' => $item->base_price * $qty]);
 
         OrderItem::create([
-            'order_id'    => $order->id,
-            'item_id'     => $item->id,
-            'item_name'   => $item->name,
-            'quantity'    => $qty,
-            'unit_price'  => $item->base_price,
+            'order_id' => $order->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => $qty,
+            'unit_price' => $item->base_price,
             'total_price' => $item->base_price * $qty,
         ]);
 
@@ -86,8 +86,8 @@ class InventoryDeductionTest extends TestCase
     public function test_inventory_deducted_when_item_has_recipe(): void
     {
         $inventoryItem = $this->makeInventoryItem(100);
-        $menuItem      = $this->makeItemWithRecipe($inventoryItem, quantityPerUnit: 0.5);
-        $order         = $this->makeInventoryOrder($menuItem, qty: 2);
+        $menuItem = $this->makeItemWithRecipe($inventoryItem, quantityPerUnit: 0.5);
+        $order = $this->makeInventoryOrder($menuItem, qty: 2);
 
         $this->fireOrderPaid($order);
 
@@ -99,8 +99,8 @@ class InventoryDeductionTest extends TestCase
     public function test_no_deduction_when_item_has_no_recipe(): void
     {
         $inventoryItem = $this->makeInventoryItem(100);
-        $item          = $this->makeItem(false); // no recipe
-        $customer      = $this->makeCustomer();
+        $item = $this->makeItem(false); // no recipe
+        $customer = $this->makeCustomer();
         $order = Order::factory()->paid()->create(['customer_id' => $customer->id, 'total' => 10.00]);
         OrderItem::create([
             'order_id' => $order->id, 'item_id' => $item->id,
@@ -117,8 +117,8 @@ class InventoryDeductionTest extends TestCase
     public function test_deduction_is_idempotent(): void
     {
         $inventoryItem = $this->makeInventoryItem(100);
-        $menuItem      = $this->makeItemWithRecipe($inventoryItem, 1.0);
-        $order         = $this->makeInventoryOrder($menuItem, 1);
+        $menuItem = $this->makeItemWithRecipe($inventoryItem, 1.0);
+        $order = $this->makeInventoryOrder($menuItem, 1);
 
         // Fire twice — second run must be a no-op
         $this->fireOrderPaid($order);
@@ -137,11 +137,11 @@ class InventoryDeductionTest extends TestCase
     public function test_multiple_items_with_same_ingredient_are_each_deducted(): void
     {
         $inventoryItem = $this->makeInventoryItem(100);
-        $menuItem1     = $this->makeItemWithRecipe($inventoryItem, 0.5);
-        $menuItem2     = $this->makeItemWithRecipe($inventoryItem, 0.5);
+        $menuItem1 = $this->makeItemWithRecipe($inventoryItem, 0.5);
+        $menuItem2 = $this->makeItemWithRecipe($inventoryItem, 0.5);
 
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->paid()->create(['customer_id' => $customer->id, 'total' => 20.00]);
+        $order = Order::factory()->paid()->create(['customer_id' => $customer->id, 'total' => 20.00]);
         OrderItem::create([
             'order_id' => $order->id, 'item_id' => $menuItem1->id,
             'item_name' => $menuItem1->name, 'quantity' => 1,
@@ -163,8 +163,8 @@ class InventoryDeductionTest extends TestCase
     public function test_stock_movement_record_is_created(): void
     {
         $inventoryItem = $this->makeInventoryItem(50);
-        $menuItem      = $this->makeItemWithRecipe($inventoryItem, 2.0);
-        $order         = $this->makeInventoryOrder($menuItem, 1);
+        $menuItem = $this->makeItemWithRecipe($inventoryItem, 2.0);
+        $order = $this->makeInventoryOrder($menuItem, 1);
 
         $this->fireOrderPaid($order);
 

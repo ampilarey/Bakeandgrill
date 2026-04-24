@@ -1,30 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\PrayerTimes\DTOs;
 
 final readonly class PrayerTimesResult
 {
     public function __construct(
-        public IslandData      $island,
-        public \Carbon\Carbon  $date,
-        public string          $fajr,
-        public string          $sunrise,
-        public string          $dhuhr,
-        public string          $asr,
-        public string          $maghrib,
-        public string          $isha,
+        public IslandData $island,
+        public \Carbon\Carbon $date,
+        public string $fajr,
+        public string $sunrise,
+        public string $dhuhr,
+        public string $asr,
+        public string $maghrib,
+        public string $isha,
     ) {}
 
     /** @return array<string, string> */
     public function toArray(): array
     {
         return [
-            'fajr'    => $this->fajr,
+            'fajr' => $this->fajr,
             'sunrise' => $this->sunrise,
-            'dhuhr'   => $this->dhuhr,
-            'asr'     => $this->asr,
+            'dhuhr' => $this->dhuhr,
+            'asr' => $this->asr,
             'maghrib' => $this->maghrib,
-            'isha'    => $this->isha,
+            'isha' => $this->isha,
         ];
     }
 
@@ -32,11 +34,11 @@ final readonly class PrayerTimesResult
     public function prayersOnly(): array
     {
         return [
-            'fajr'    => $this->fajr,
-            'dhuhr'   => $this->dhuhr,
-            'asr'     => $this->asr,
+            'fajr' => $this->fajr,
+            'dhuhr' => $this->dhuhr,
+            'asr' => $this->asr,
             'maghrib' => $this->maghrib,
-            'isha'    => $this->isha,
+            'isha' => $this->isha,
         ];
     }
 }

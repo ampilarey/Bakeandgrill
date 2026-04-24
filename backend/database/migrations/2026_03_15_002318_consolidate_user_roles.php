@@ -22,26 +22,26 @@ return new class extends Migration
 
         // 3. Ensure 'staff' role exists (upsert from cashier or create fresh)
         $cashierId = DB::table('roles')->where('slug', 'cashier')->value('id');
-        $staffId   = DB::table('roles')->where('slug', 'staff')->value('id');
+        $staffId = DB::table('roles')->where('slug', 'staff')->value('id');
 
         if ($cashierId && !$staffId) {
             // Rename cashier row to staff
             DB::table('roles')->where('id', $cashierId)->update([
-                'slug'        => 'staff',
-                'name'        => 'Staff',
+                'slug' => 'staff',
+                'name' => 'Staff',
                 'description' => 'Front-line staff member with limited access',
-                'updated_at'  => now(),
+                'updated_at' => now(),
             ]);
             $staffId = $cashierId;
         } elseif (!$staffId) {
             // Create staff from scratch
             $staffId = DB::table('roles')->insertGetId([
-                'slug'        => 'staff',
-                'name'        => 'Staff',
+                'slug' => 'staff',
+                'name' => 'Staff',
                 'description' => 'Front-line staff member with limited access',
-                'is_active'   => true,
-                'created_at'  => now(),
-                'updated_at'  => now(),
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         } else {
             // Staff already exists; just reassign cashier users to it
@@ -58,21 +58,21 @@ return new class extends Migration
     {
         // Recreate admin and cashier roles for rollback
         $adminId = DB::table('roles')->insertGetId([
-            'slug'        => 'admin',
-            'name'        => 'Admin',
+            'slug' => 'admin',
+            'name' => 'Admin',
             'description' => 'Administrator',
-            'is_active'   => true,
-            'created_at'  => now(),
-            'updated_at'  => now(),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         DB::table('roles')->insertGetId([
-            'slug'        => 'cashier',
-            'name'        => 'Cashier',
+            'slug' => 'cashier',
+            'name' => 'Cashier',
             'description' => 'Cashier',
-            'is_active'   => true,
-            'created_at'  => now(),
-            'updated_at'  => now(),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // Note: we cannot deterministically reverse user reassignments,

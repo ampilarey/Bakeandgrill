@@ -22,7 +22,7 @@ class AuthContractTest extends ContractTestCase
     use RefreshDatabase;
 
     private string $ownerEmail = 'contract-owner@test.com';
-    private string $ownerPin   = '9988';
+    private string $ownerPin = '9988';
 
     /**
      * These fields contain values that vary between test runs and must be
@@ -38,8 +38,8 @@ class AuthContractTest extends ContractTestCase
         parent::setUp();
 
         $this->makeOwner([
-            'name'     => 'Contract Owner',
-            'email'    => $this->ownerEmail,
+            'name' => 'Contract Owner',
+            'email' => $this->ownerEmail,
             'pin_hash' => Hash::make($this->ownerPin),
         ]);
     }
@@ -50,7 +50,7 @@ class AuthContractTest extends ContractTestCase
     {
         $response = $this->postJson('/api/auth/staff/pin-login', [
             'username' => $this->ownerEmail,
-            'pin'      => $this->ownerPin,
+            'pin' => $this->ownerPin,
         ])->assertStatus(200);
 
         $this->assertMatchesApiSnapshot($response, 'auth.staff.pin-login');
@@ -60,9 +60,9 @@ class AuthContractTest extends ContractTestCase
     {
         $this->postJson('/api/auth/staff/pin-login', [
             'username' => $this->ownerEmail,
-            'pin'      => '0000',
+            'pin' => '0000',
         ])->assertStatus(422)
-          ->assertJsonValidationErrors(['pin']);
+            ->assertJsonValidationErrors(['pin']);
     }
 
     public function test_staff_pin_login_without_username_returns_422(): void
@@ -99,7 +99,7 @@ class AuthContractTest extends ContractTestCase
     public function test_check_phone_existing_customer_without_password_shape(): void
     {
         Customer::factory()->create([
-            'phone'    => '+9607991236',
+            'phone' => '+9607991236',
             'password' => null,
         ]);
 
@@ -128,7 +128,7 @@ class AuthContractTest extends ContractTestCase
     public function test_auth_me_requires_staff_token(): void
     {
         $customer = $this->makeCustomer();
-        $token    = $this->customerHeaders($customer);
+        $token = $this->customerHeaders($customer);
 
         $this->getJson('/api/auth/me', $token)->assertStatus(403);
     }

@@ -35,9 +35,9 @@ class GiftCardController extends Controller
         }
 
         return response()->json([
-            'code'            => $card->code,
+            'code' => $card->code,
             'current_balance' => (float) $card->current_balance,
-            'expires_at'      => $card->expires_at?->toDateString(),
+            'expires_at' => $card->expires_at?->toDateString(),
         ]);
     }
 
@@ -64,6 +64,7 @@ class GiftCardController extends Controller
 
             if ($card->expires_at && $card->expires_at->isPast()) {
                 $card->update(['status' => 'expired']);
+
                 return response()->json(['message' => 'This gift card has expired.'], 422);
             }
 
@@ -76,16 +77,16 @@ class GiftCardController extends Controller
             $discountLaar = min($maxDiscount, max(0, $currentDueLaar));
 
             $order->update([
-                'gift_card_code'           => $card->code,
-                'gift_card_discount_laar'  => $discountLaar,
+                'gift_card_code' => $card->code,
+                'gift_card_discount_laar' => $discountLaar,
             ]);
 
             $calc->recalculateAndPersist($order->fresh());
 
             return response()->json([
                 'discount_laar' => $discountLaar,
-                'discount_mvr'  => number_format($discountLaar / 100, 2),
-                'card_balance'  => (float) $card->current_balance,
+                'discount_mvr' => number_format($discountLaar / 100, 2),
+                'card_balance' => (float) $card->current_balance,
             ]);
         });
     }
@@ -110,7 +111,7 @@ class GiftCardController extends Controller
     public function issue(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'amount'     => ['required', 'numeric', 'min:1'],
+            'amount' => ['required', 'numeric', 'min:1'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'expires_at' => ['nullable', 'date'],
         ]);
@@ -128,20 +129,20 @@ class GiftCardController extends Controller
         }
 
         $card = GiftCard::create([
-            'code'                     => $code,
-            'initial_balance'          => $validated['amount'],
-            'current_balance'          => $validated['amount'],
-            'issued_to_customer_id'    => $validated['customer_id'] ?? null,
+            'code' => $code,
+            'initial_balance' => $validated['amount'],
+            'current_balance' => $validated['amount'],
+            'issued_to_customer_id' => $validated['customer_id'] ?? null,
             'purchased_by_customer_id' => null,
-            'status'                   => 'active',
-            'expires_at'               => $validated['expires_at'] ?? null,
+            'status' => 'active',
+            'expires_at' => $validated['expires_at'] ?? null,
         ]);
 
         GiftCardTransaction::create([
             'gift_card_id' => $card->id,
-            'amount'       => $validated['amount'],
-            'type'         => 'load',
-            'balance_after'=> $validated['amount'],
+            'amount' => $validated['amount'],
+            'type' => 'load',
+            'balance_after' => $validated['amount'],
         ]);
 
         return response()->json(['gift_card' => $this->format($card)], 201);
@@ -156,7 +157,7 @@ class GiftCardController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'data' => collect($cards->items())->map(fn($c) => $this->format($c)),
+            'data' => collect($cards->items())->map(fn ($c) => $this->format($c)),
             'meta' => ['current_page' => $cards->currentPage(), 'last_page' => $cards->lastPage(), 'total' => $cards->total()],
         ]);
     }
@@ -164,13 +165,13 @@ class GiftCardController extends Controller
     private function format(GiftCard $c): array
     {
         return [
-            'id'              => $c->id,
-            'code'            => $c->code,
+            'id' => $c->id,
+            'code' => $c->code,
             'initial_balance' => (float) $c->initial_balance,
             'current_balance' => (float) $c->current_balance,
-            'status'          => $c->status,
-            'expires_at'      => $c->expires_at?->toDateString(),
-            'issued_to'       => $c->issuedTo ? ['id' => $c->issuedTo->id, 'name' => $c->issuedTo->name] : null,
+            'status' => $c->status,
+            'expires_at' => $c->expires_at?->toDateString(),
+            'issued_to' => $c->issuedTo ? ['id' => $c->issuedTo->id, 'name' => $c->issuedTo->name] : null,
         ];
     }
 }

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\Category;
 use App\Models\Customer;
-use App\Models\Item;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Foundation\Testing\RefreshDatabase;

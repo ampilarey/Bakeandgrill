@@ -49,9 +49,9 @@ class PaymentConfirmedListener implements ShouldQueue
     public function failed(PaymentConfirmed $event, \Throwable $e): void
     {
         Log::critical('PaymentConfirmedListener: exhausted retries', [
-            'order_id'   => $event->data->orderId,
+            'order_id' => $event->data->orderId,
             'payment_id' => $event->data->paymentId,
-            'error'      => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
 
         if (app()->bound('sentry')) {
@@ -66,6 +66,7 @@ class PaymentConfirmedListener implements ShouldQueue
         $order = $this->orders->findById($data->orderId);
         if (!$order) {
             Log::warning('PaymentConfirmedListener: order not found', ['order_id' => $data->orderId]);
+
             return;
         }
 
@@ -76,13 +77,13 @@ class PaymentConfirmedListener implements ShouldQueue
             return;
         }
 
-        $paidLaar  = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
+        $paidLaar = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
         $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
 
         Log::info('PaymentConfirmedListener: checking full payment', [
             'payment_id' => $data->paymentId,
-            'order_id'   => $order->id,
-            'paid_laar'  => $paidLaar,
+            'order_id' => $order->id,
+            'paid_laar' => $paidLaar,
             'order_laar' => $orderLaar,
         ]);
 
@@ -116,7 +117,7 @@ class PaymentConfirmedListener implements ShouldQueue
             } catch (\Throwable $e) {
                 Log::error('PaymentConfirmedListener: notification failed', [
                     'order_id' => $fresh->id,
-                    'error'    => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
                 // Do not re-throw — notification failure must not block OrderPaid.
             }

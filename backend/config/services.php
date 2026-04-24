@@ -51,23 +51,23 @@ return [
 
     'stripe' => [
         'publishable_key' => env('STRIPE_PUBLISHABLE_KEY'),
-        'secret_key'      => env('STRIPE_SECRET_KEY'),
-        'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
+        'secret_key' => env('STRIPE_SECRET_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
     'vapid' => [
-        'public_key'  => env('VAPID_PUBLIC_KEY'),
+        'public_key' => env('VAPID_PUBLIC_KEY'),
         'private_key' => env('VAPID_PRIVATE_KEY'),
-        'subject'     => env('VAPID_SUBJECT', env('APP_URL')),
+        'subject' => env('VAPID_SUBJECT', env('APP_URL')),
     ],
 
     'xero' => [
-        'client_id'       => env('XERO_CLIENT_ID'),
-        'client_secret'   => env('XERO_CLIENT_SECRET'),
-        'redirect_uri'    => env('XERO_REDIRECT_URI'), // Must be set explicitly — nested env() breaks config:cache
+        'client_id' => env('XERO_CLIENT_ID'),
+        'client_secret' => env('XERO_CLIENT_SECRET'),
+        'redirect_uri' => env('XERO_REDIRECT_URI'), // Must be set explicitly — nested env() breaks config:cache
         'revenue_account' => env('XERO_REVENUE_ACCOUNT', '200'),
         'expense_account' => env('XERO_EXPENSE_ACCOUNT', '400'),
-        'bank_account'    => env('XERO_BANK_ACCOUNT', '090'),
+        'bank_account' => env('XERO_BANK_ACCOUNT', '090'),
     ],
 
 ];

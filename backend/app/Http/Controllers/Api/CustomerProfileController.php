@@ -23,9 +23,9 @@ class CustomerProfileController extends Controller
     public function completeProfile(Request $request)
     {
         $input = $request->validate([
-            'name'                  => 'required|string|max:100',
-            'email'                 => 'nullable|email|max:100',
-            'password'              => 'required|string|min:8|confirmed',
+            'name' => 'required|string|max:100',
+            'email' => 'nullable|email|max:100',
+            'password' => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 
@@ -34,21 +34,21 @@ class CustomerProfileController extends Controller
 
         // 'password' is excluded from $fillable — must be set directly so the
         // 'hashed' cast encrypts it; mass-assignment would silently drop it.
-        $customer->name                = $input['name'];
-        $customer->email               = $input['email'] ?? $customer->email;
-        $customer->password            = $input['password'];
+        $customer->name = $input['name'];
+        $customer->email = $input['email'] ?? $customer->email;
+        $customer->password = $input['password'];
         $customer->is_profile_complete = true;
         $customer->save();
 
         return response()->json([
-            'message'  => 'Profile completed successfully',
+            'message' => 'Profile completed successfully',
             'customer' => [
-                'id'                  => $customer->id,
-                'phone'               => $customer->phone,
-                'name'                => $customer->name,
-                'email'               => $customer->email,
-                'loyalty_points'      => $customer->loyalty_points,
-                'tier'                => $customer->tier,
+                'id' => $customer->id,
+                'phone' => $customer->phone,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'loyalty_points' => $customer->loyalty_points,
+                'tier' => $customer->tier,
                 'is_profile_complete' => true,
             ],
         ]);
@@ -60,15 +60,15 @@ class CustomerProfileController extends Controller
     public function changePassword(Request $request)
     {
         $input = $request->validate([
-            'current_password'      => 'required|string',
-            'password'              => 'required|string|min:8|confirmed',
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 
         /** @var Customer $customer */
         $customer = $request->user();
 
-        if (empty($customer->password) || ! Hash::check($input['current_password'], $customer->password)) {
+        if (empty($customer->password) || !Hash::check($input['current_password'], $customer->password)) {
             throw ValidationException::withMessages([
                 'current_password' => ['Current password is incorrect.'],
             ]);

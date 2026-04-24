@@ -36,15 +36,15 @@ class BmlConnectService
     public function __construct()
     {
         $this->baseUrl = rtrim(config('bml.base_url', 'https://api.merchants.bankofmaldives.com.mv/public'), '/');
-        $this->appId   = (string) (config('bml.app_id') ?? '');
-        $this->apiKey  = (string) (config('bml.api_key') ?? '');
+        $this->appId = (string) (config('bml.app_id') ?? '');
+        $this->apiKey = (string) (config('bml.api_key') ?? '');
     }
 
     /**
      * Create a payment session with BML.
      *
-     * @param int    $amountLaar Amount in laari (e.g. 2500 = MVR 25.00)
-     * @param string $localId    Unique merchant-side transaction ID (alphanumeric, max 50 chars)
+     * @param int $amountLaar Amount in laari (e.g. 2500 = MVR 25.00)
+     * @param string $localId Unique merchant-side transaction ID (alphanumeric, max 50 chars)
      * @return array{payment_url: string, transaction_id: string, local_id: string}
      *
      * @throws \RuntimeException on gateway error
@@ -55,21 +55,21 @@ class BmlConnectService
         ?string $currency = null,
         ?string $returnUrl = null,
     ): array {
-        $currency    = $currency ?? config('bml.default_currency', 'MVR');
-        $localId     = $this->normalizeLocalId($localId);
+        $currency = $currency ?? config('bml.default_currency', 'MVR');
+        $localId = $this->normalizeLocalId($localId);
         $redirectUrl = $returnUrl ?? config('bml.return_url') ?? config('frontend.order_status_url');
 
         // paymentPortalExperience is required by BML Connect v2 API
         $portalExp = config('bml.payment_portal_experience', []);
 
         $payload = [
-            'amount'      => $amountLaar,
-            'currency'    => $currency,
-            'localId'     => $localId,
+            'amount' => $amountLaar,
+            'currency' => $currency,
+            'localId' => $localId,
             'redirectUrl' => $redirectUrl,
             'paymentPortalExperience' => [
                 'externalWebsiteTermsAccepted' => (bool) ($portalExp['external_website_terms_accepted'] ?? true),
-                'externalWebsiteTermsUrl'      => $portalExp['external_website_terms_url']
+                'externalWebsiteTermsUrl' => $portalExp['external_website_terms_url']
                                                     ?: rtrim(config('app.url', ''), '/') . '/terms',
             ],
         ];
@@ -82,16 +82,16 @@ class BmlConnectService
         $url = "{$this->baseUrl}/v2/transactions";
 
         Log::info('BML: Creating payment session', [
-            'local_id'    => $localId,
+            'local_id' => $localId,
             'amount_laar' => $amountLaar,
-            'currency'    => $currency,
-            'url'         => $url,
-            'auth_mode'   => config('bml.auth_mode', 'auto'),
+            'currency' => $currency,
+            'url' => $url,
+            'auth_mode' => config('bml.auth_mode', 'auto'),
         ]);
 
         $response = Http::withHeaders([
-            'Content-Type'  => 'application/json',
-            'Accept'        => 'application/json',
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
             'Authorization' => $this->authorizationHeader(),
         ])
             ->timeout(30)
@@ -102,15 +102,15 @@ class BmlConnectService
 
         if (!$response->successful()) {
             Log::error('BML: Payment creation failed', [
-                'local_id'     => $localId,
-                'status'       => $response->status(),
-                'body'         => $response->body(),
+                'local_id' => $localId,
+                'status' => $response->status(),
+                'body' => $response->body(),
                 'payload_sent' => $payload,
             ]);
             throw new \RuntimeException("BML payment creation failed ({$response->status()}): " . $response->body());
         }
 
-        $paymentUrl    = $body['url'] ?? $body['shortUrl'] ?? $body['paymentUrl'] ?? $body['redirectUrl'] ?? null;
+        $paymentUrl = $body['url'] ?? $body['shortUrl'] ?? $body['paymentUrl'] ?? $body['redirectUrl'] ?? null;
         $transactionId = $body['id'] ?? $body['transactionId'] ?? $body['transaction_id'] ?? '';
 
         if (!$paymentUrl) {
@@ -119,15 +119,15 @@ class BmlConnectService
         }
 
         Log::info('BML: Payment session created', [
-            'local_id'       => $localId,
+            'local_id' => $localId,
             'transaction_id' => $transactionId,
-            'payment_url'    => $paymentUrl,
+            'payment_url' => $paymentUrl,
         ]);
 
         return [
-            'payment_url'    => $paymentUrl,
+            'payment_url' => $paymentUrl,
             'transaction_id' => $transactionId,
-            'local_id'       => $localId,
+            'local_id' => $localId,
         ];
     }
 
@@ -139,10 +139,12 @@ class BmlConnectService
         $secret = config('bml.webhook_secret');
         if (!$secret) {
             Log::warning('BML: Webhook secret not configured');
+
             return false;
         }
 
         $expected = hash_hmac('sha256', $rawBody, $secret);
+
         return hash_equals($expected, strtolower($signature));
     }
 
@@ -152,7 +154,7 @@ class BmlConnectService
     public function getTransactionStatus(string $transactionId): array
     {
         $response = Http::withHeaders([
-            'Accept'        => 'application/json',
+            'Accept' => 'application/json',
             'Authorization' => $this->authorizationHeader(),
         ])
             ->timeout(15)
@@ -183,13 +185,13 @@ class BmlConnectService
     private function authorizationHeader(): string
     {
         $mode = config('bml.auth_mode', 'auto');
-        $key  = trim($this->apiKey);
+        $key = trim($this->apiKey);
 
         return match ($mode) {
-            'raw'          => $key,
-            'bearer_jwt'   => "Bearer {$key}",
+            'raw' => $key,
+            'bearer_jwt' => "Bearer {$key}",
             'bearer_basic' => 'Bearer ' . base64_encode($key . ':' . $this->appId),
-            default        => str_starts_with($key, 'eyJ')
+            default => str_starts_with($key, 'eyJ')
                                 ? "Bearer {$key}"
                                 : 'Bearer ' . base64_encode($key . ':' . $this->appId),
         };

@@ -35,6 +35,7 @@ class AlertFailedJobs extends Command
 
         if ($failed->isEmpty()) {
             $this->info("No failed jobs in the last {$hours} hour(s).");
+
             return self::SUCCESS;
         }
 
@@ -42,19 +43,20 @@ class AlertFailedJobs extends Command
 
         $summary = $failed->map(function ($job) {
             $payload = json_decode($job->payload, true);
+
             return [
-                'id'         => $job->id,
-                'uuid'       => $job->uuid,
-                'queue'      => $job->queue,
-                'job'        => $payload['displayName'] ?? 'unknown',
-                'failed_at'  => $job->failed_at,
-                'exception'  => mb_substr($job->exception ?? '', 0, 120),
+                'id' => $job->id,
+                'uuid' => $job->uuid,
+                'queue' => $job->queue,
+                'job' => $payload['displayName'] ?? 'unknown',
+                'failed_at' => $job->failed_at,
+                'exception' => mb_substr($job->exception ?? '', 0, 120),
             ];
         })->toArray();
 
         Log::critical("AlertFailedJobs: {$count} job(s) failed in the last {$hours}h", [
             'count' => $count,
-            'jobs'  => $summary,
+            'jobs' => $summary,
         ]);
 
         if (app()->bound('sentry')) {

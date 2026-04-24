@@ -14,7 +14,7 @@ class DeliveryFeeCalculatorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->calculator = new DeliveryFeeCalculator();
+        $this->calculator = new DeliveryFeeCalculator;
     }
 
     public function test_known_island_returns_correct_fee(): void

@@ -18,6 +18,7 @@ class DemoUserSeeder extends Seeder
     {
         if (app()->isProduction()) {
             $this->command->warn('DemoUserSeeder: skipped in production — would create trivial PINs.');
+
             return;
         }
 
@@ -33,10 +34,10 @@ class DemoUserSeeder extends Seeder
             User::updateOrCreate(
                 ['email' => $userData['email']],
                 [
-                    'name'      => $userData['name'],
-                    'password'  => Hash::make('password'),
-                    'role_id'   => $role?->id,
-                    'pin_hash'  => Hash::make($userData['pin']),
+                    'name' => $userData['name'],
+                    'password' => Hash::make('password'),
+                    'role_id' => $role?->id,
+                    'pin_hash' => Hash::make($userData['pin']),
                     'is_active' => true,
                 ],
             );

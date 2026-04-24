@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
-use App\Domains\Notifications\DTOs\CustomerCreatedData;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Events\CustomerCreated;
 use App\Domains\Notifications\Services\SmsService;

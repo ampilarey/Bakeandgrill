@@ -16,7 +16,7 @@ class StoreCashMovementRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type'   => 'required|string|in:cash_in,cash_out,paid_in,paid_out',
+            'type' => 'required|string|in:cash_in,cash_out,paid_in,paid_out',
             'amount' => 'required|numeric|min:0.01|max:999999',
             'reason' => 'required|string|max:500',
         ];

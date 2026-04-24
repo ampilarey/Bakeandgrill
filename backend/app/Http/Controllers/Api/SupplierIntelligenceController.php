@@ -6,9 +6,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Purchase;
 use App\Models\Supplier;
+use App\Models\SupplierPerformanceCache;
 use App\Models\SupplierPriceHistory;
 use App\Models\SupplierRating;
-use App\Models\SupplierPerformanceCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -25,16 +25,16 @@ class SupplierIntelligenceController extends Controller
         $supplier = Supplier::findOrFail($supplierId);
 
         $validated = $request->validate([
-            'purchase_id'      => ['nullable', 'integer', 'exists:purchases,id'],
-            'quality_score'    => ['required', 'integer', 'min:1', 'max:5'],
-            'delivery_score'   => ['required', 'integer', 'min:1', 'max:5'],
-            'accuracy_score'   => ['required', 'integer', 'min:1', 'max:5'],
-            'price_score'      => ['required', 'integer', 'min:1', 'max:5'],
-            'notes'            => ['nullable', 'string', 'max:1000'],
+            'purchase_id' => ['nullable', 'integer', 'exists:purchases,id'],
+            'quality_score' => ['required', 'integer', 'min:1', 'max:5'],
+            'delivery_score' => ['required', 'integer', 'min:1', 'max:5'],
+            'accuracy_score' => ['required', 'integer', 'min:1', 'max:5'],
+            'price_score' => ['required', 'integer', 'min:1', 'max:5'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $validated['supplier_id'] = $supplierId;
-        $validated['user_id']     = $request->user()->id;
+        $validated['user_id'] = $request->user()->id;
 
         $rating = SupplierRating::create($validated);
 
@@ -53,7 +53,7 @@ class SupplierIntelligenceController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'data' => collect($ratings->items())->map(fn($r) => $this->formatRating($r)),
+            'data' => collect($ratings->items())->map(fn ($r) => $this->formatRating($r)),
             'meta' => ['current_page' => $ratings->currentPage(), 'last_page' => $ratings->lastPage(), 'total' => $ratings->total()],
         ]);
     }
@@ -64,25 +64,25 @@ class SupplierIntelligenceController extends Controller
 
     public function performance(int $supplierId): JsonResponse
     {
-        $supplier    = Supplier::findOrFail($supplierId);
-        $cache       = SupplierPerformanceCache::firstOrNew(['supplier_id' => $supplierId]);
-        $isStale     = !$cache->refreshed_at || $cache->refreshed_at->lt(now()->subHours(6));
+        $supplier = Supplier::findOrFail($supplierId);
+        $cache = SupplierPerformanceCache::firstOrNew(['supplier_id' => $supplierId]);
+        $isStale = !$cache->refreshed_at || $cache->refreshed_at->lt(now()->subHours(6));
 
         if ($isStale) {
             $cache = $this->refreshPerformanceCache($supplierId);
         }
 
         return response()->json([
-            'supplier_id'      => $supplierId,
-            'supplier_name'    => $supplier->name,
-            'purchase_count'   => $cache->purchase_count,
-            'total_spend'      => (float) $cache->total_spend,
-            'avg_quality'      => $cache->avg_quality ? (float) $cache->avg_quality : null,
-            'avg_delivery'     => $cache->avg_delivery ? (float) $cache->avg_delivery : null,
-            'avg_accuracy'     => $cache->avg_accuracy ? (float) $cache->avg_accuracy : null,
-            'avg_price_score'  => $cache->avg_price_score ? (float) $cache->avg_price_score : null,
-            'overall_rating'   => $cache->overall_rating ? (float) $cache->overall_rating : null,
-            'refreshed_at'     => $cache->refreshed_at,
+            'supplier_id' => $supplierId,
+            'supplier_name' => $supplier->name,
+            'purchase_count' => $cache->purchase_count,
+            'total_spend' => (float) $cache->total_spend,
+            'avg_quality' => $cache->avg_quality ? (float) $cache->avg_quality : null,
+            'avg_delivery' => $cache->avg_delivery ? (float) $cache->avg_delivery : null,
+            'avg_accuracy' => $cache->avg_accuracy ? (float) $cache->avg_accuracy : null,
+            'avg_price_score' => $cache->avg_price_score ? (float) $cache->avg_price_score : null,
+            'overall_rating' => $cache->overall_rating ? (float) $cache->overall_rating : null,
+            'refreshed_at' => $cache->refreshed_at,
         ]);
     }
 
@@ -93,15 +93,15 @@ class SupplierIntelligenceController extends Controller
             ->get();
 
         return response()->json([
-            'suppliers' => $perfs->map(fn($p) => [
-                'supplier_id'    => $p->supplier_id,
-                'supplier_name'  => $p->supplier?->name,
-                'is_active'      => $p->supplier?->is_active,
+            'suppliers' => $perfs->map(fn ($p) => [
+                'supplier_id' => $p->supplier_id,
+                'supplier_name' => $p->supplier?->name,
+                'is_active' => $p->supplier?->is_active,
                 'purchase_count' => $p->purchase_count,
-                'total_spend'    => (float) $p->total_spend,
+                'total_spend' => (float) $p->total_spend,
                 'overall_rating' => $p->overall_rating ? (float) $p->overall_rating : null,
-                'avg_quality'    => $p->avg_quality ? (float) $p->avg_quality : null,
-                'avg_delivery'   => $p->avg_delivery ? (float) $p->avg_delivery : null,
+                'avg_quality' => $p->avg_quality ? (float) $p->avg_quality : null,
+                'avg_delivery' => $p->avg_delivery ? (float) $p->avg_delivery : null,
             ]),
         ]);
     }
@@ -124,6 +124,7 @@ class SupplierIntelligenceController extends Controller
                     ->where('recorded_at', $row->latest_date)
                     ->with('supplier:id,name,is_active')
                     ->first();
+
                 return $detail;
             })
             ->filter()
@@ -132,18 +133,18 @@ class SupplierIntelligenceController extends Controller
 
         return response()->json([
             'inventory_item_id' => $inventoryItemId,
-            'prices' => $latestPrices->map(fn($p) => [
-                'supplier_id'   => $p->supplier_id,
+            'prices' => $latestPrices->map(fn ($p) => [
+                'supplier_id' => $p->supplier_id,
                 'supplier_name' => $p->supplier?->name,
-                'is_active'     => $p->supplier?->is_active,
-                'unit_price'    => (float) $p->unit_price,
-                'unit'          => $p->unit,
-                'recorded_at'   => $p->recorded_at?->toDateString(),
+                'is_active' => $p->supplier?->is_active,
+                'unit_price' => (float) $p->unit_price,
+                'unit' => $p->unit,
+                'recorded_at' => $p->recorded_at?->toDateString(),
             ]),
             'cheapest' => $latestPrices->first() ? [
-                'supplier_id'   => $latestPrices->first()->supplier_id,
+                'supplier_id' => $latestPrices->first()->supplier_id,
                 'supplier_name' => $latestPrices->first()->supplier?->name,
-                'unit_price'    => (float) $latestPrices->first()->unit_price,
+                'unit_price' => (float) $latestPrices->first()->unit_price,
             ] : null,
         ]);
     }
@@ -156,11 +157,11 @@ class SupplierIntelligenceController extends Controller
             ->get();
 
         return response()->json([
-            'supplier_id'       => $supplierId,
+            'supplier_id' => $supplierId,
             'inventory_item_id' => $inventoryItemId,
-            'history' => $history->map(fn($h) => [
-                'unit_price'  => (float) $h->unit_price,
-                'unit'        => $h->unit,
+            'history' => $history->map(fn ($h) => [
+                'unit_price' => (float) $h->unit_price,
+                'unit' => $h->unit,
                 'recorded_at' => $h->recorded_at?->toDateString(),
                 'purchase_id' => $h->purchase_id,
             ]),
@@ -189,37 +190,37 @@ class SupplierIntelligenceController extends Controller
 
         $overall = null;
         if ($ratings && $ratings->q) {
-            $overall = round(((float)$ratings->q + (float)$ratings->d + (float)$ratings->a + (float)$ratings->p) / 4, 2);
+            $overall = round(((float) $ratings->q + (float) $ratings->d + (float) $ratings->a + (float) $ratings->p) / 4, 2);
         }
 
         return SupplierPerformanceCache::updateOrCreate(
             ['supplier_id' => $supplierId],
             [
-                'purchase_count'  => (int) ($purchases->cnt ?? 0),
-                'total_spend'     => (float) ($purchases->spend ?? 0),
-                'avg_quality'     => $ratings->q ? round((float) $ratings->q, 2) : null,
-                'avg_delivery'    => $ratings->d ? round((float) $ratings->d, 2) : null,
-                'avg_accuracy'    => $ratings->a ? round((float) $ratings->a, 2) : null,
+                'purchase_count' => (int) ($purchases->cnt ?? 0),
+                'total_spend' => (float) ($purchases->spend ?? 0),
+                'avg_quality' => $ratings->q ? round((float) $ratings->q, 2) : null,
+                'avg_delivery' => $ratings->d ? round((float) $ratings->d, 2) : null,
+                'avg_accuracy' => $ratings->a ? round((float) $ratings->a, 2) : null,
                 'avg_price_score' => $ratings->p ? round((float) $ratings->p, 2) : null,
-                'overall_rating'  => $overall,
-                'refreshed_at'    => now(),
-            ]
+                'overall_rating' => $overall,
+                'refreshed_at' => now(),
+            ],
         );
     }
 
     private function formatRating(SupplierRating $r): array
     {
         return [
-            'id'             => $r->id,
-            'quality_score'  => $r->quality_score,
+            'id' => $r->id,
+            'quality_score' => $r->quality_score,
             'delivery_score' => $r->delivery_score,
             'accuracy_score' => $r->accuracy_score,
-            'price_score'    => $r->price_score,
-            'overall'        => round(($r->quality_score + $r->delivery_score + $r->accuracy_score + $r->price_score) / 4, 2),
-            'notes'          => $r->notes,
-            'purchase'       => $r->purchase ? ['id' => $r->purchase->id, 'number' => $r->purchase->purchase_number] : null,
-            'rated_by'       => $r->user?->name,
-            'created_at'     => $r->created_at,
+            'price_score' => $r->price_score,
+            'overall' => round(($r->quality_score + $r->delivery_score + $r->accuracy_score + $r->price_score) / 4, 2),
+            'notes' => $r->notes,
+            'purchase' => $r->purchase ? ['id' => $r->purchase->id, 'number' => $r->purchase->purchase_number] : null,
+            'rated_by' => $r->user?->name,
+            'created_at' => $r->created_at,
         ];
     }
 }

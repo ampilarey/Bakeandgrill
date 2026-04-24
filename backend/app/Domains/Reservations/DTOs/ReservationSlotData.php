@@ -8,7 +8,7 @@ readonly class ReservationSlotData
 {
     public function __construct(
         public string $timeSlot,
-        public bool   $available,
-        public int    $remainingCapacity,
+        public bool $available,
+        public int $remainingCapacity,
     ) {}
 }

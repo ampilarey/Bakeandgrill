@@ -100,7 +100,7 @@ class OrderTotalsCalculator
 
         $order->update(array_merge($breakdown->toOrderAttributes(), [
             'total_laar' => $totalWithDeliveryLaar,
-            'total'      => round($totalWithDeliveryLaar / 100, 2),
+            'total' => round($totalWithDeliveryLaar / 100, 2),
         ]));
 
         return $order->load(['items.modifiers']);

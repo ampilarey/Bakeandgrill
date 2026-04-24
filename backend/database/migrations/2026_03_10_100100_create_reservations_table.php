@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('duration_minutes')->default(60);
             $table->foreignId('table_id')->nullable()->constrained('restaurant_tables')->nullOnDelete();
             $table->enum('status', ['pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'])
-                  ->default('pending');
+                ->default('pending');
             $table->text('notes')->nullable();
             $table->string('tracking_token', 64)->unique()->nullable();
             $table->timestamps();

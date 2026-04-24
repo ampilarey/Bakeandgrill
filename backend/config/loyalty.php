@@ -16,7 +16,7 @@ return [
     |   REFERRAL_REFEREE_DISCOUNT=5.00
     */
     'referral' => [
-        'referrer_reward_mvr'  => (float) env('REFERRAL_REFERRER_REWARD', 10.00),
+        'referrer_reward_mvr' => (float) env('REFERRAL_REFERRER_REWARD', 10.00),
         'referee_discount_mvr' => (float) env('REFERRAL_REFEREE_DISCOUNT', 5.00),
     ],
 ];

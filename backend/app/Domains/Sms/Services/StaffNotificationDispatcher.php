@@ -21,22 +21,22 @@ class StaffNotificationDispatcher
      * Event types → SmsTemplate slugs mapping.
      */
     private const EVENT_TEMPLATE_MAP = [
-        'new_order'              => 'order_new',
-        'order_confirmed'        => 'order_new',
-        'order_ready'            => 'order_ready',
+        'new_order' => 'order_new',
+        'order_confirmed' => 'order_new',
+        'order_ready' => 'order_ready',
         'order_out_for_delivery' => 'order_out_for_delivery',
-        'no_staff_found'         => 'no_staff_found',
+        'no_staff_found' => 'no_staff_found',
     ];
 
     /**
      * SiteSetting keys for enabling/disabling each event.
      */
     private const EVENT_SETTING_MAP = [
-        'new_order'              => 'staff_sms_new_order_enabled',
-        'order_confirmed'        => 'staff_sms_order_confirmed_enabled',
-        'order_ready'            => 'staff_sms_order_ready_enabled',
+        'new_order' => 'staff_sms_new_order_enabled',
+        'order_confirmed' => 'staff_sms_order_confirmed_enabled',
+        'order_ready' => 'staff_sms_order_ready_enabled',
         'order_out_for_delivery' => 'staff_sms_order_out_for_delivery_enabled',
-        'no_staff_found'         => 'staff_sms_no_staff_found_enabled',
+        'no_staff_found' => 'staff_sms_no_staff_found_enabled',
     ];
 
     public function dispatch(Order $order, string $eventType, ?Carbon $at = null): void
@@ -45,10 +45,10 @@ class StaffNotificationDispatcher
 
         // Check if this event type is enabled
         $settingKey = self::EVENT_SETTING_MAP[$eventType] ?? null;
-        if ($settingKey && ! $this->isEventEnabled($settingKey)) {
+        if ($settingKey && !$this->isEventEnabled($settingKey)) {
             Log::info('StaffNotificationDispatcher: event disabled', [
                 'event_type' => $eventType,
-                'order_id'   => $order->id,
+                'order_id' => $order->id,
             ]);
 
             return;
@@ -59,7 +59,7 @@ class StaffNotificationDispatcher
 
         if ($recipients->isEmpty()) {
             Log::warning('StaffNotificationDispatcher: no recipients found', [
-                'order_id'   => $order->id,
+                'order_id' => $order->id,
                 'event_type' => $eventType,
             ]);
 
@@ -87,22 +87,22 @@ class StaffNotificationDispatcher
     {
         $templateSlug = self::EVENT_TEMPLATE_MAP[$eventType] ?? null;
 
-        if (! $templateSlug) {
+        if (!$templateSlug) {
             return "Order #{$order->order_number} requires attention.";
         }
 
         $template = SmsTemplate::where('slug', $templateSlug)->first();
 
-        if (! $template) {
+        if (!$template) {
             return "Order #{$order->order_number} - {$eventType}.";
         }
 
         $orderTypeLabel = match ($order->type) {
-            'dine_in'        => 'dine-in',
-            'takeaway'       => 'takeaway',
-            'online_pickup'  => 'online pickup',
-            'delivery'       => 'delivery',
-            default          => $order->type,
+            'dine_in' => 'dine-in',
+            'takeaway' => 'takeaway',
+            'online_pickup' => 'online pickup',
+            'delivery' => 'delivery',
+            default => $order->type,
         };
 
         $itemCount = $order->relationLoaded('items')
@@ -117,11 +117,11 @@ class StaffNotificationDispatcher
         $total = 'MVR ' . number_format((float) ($order->total ?? 0), 2);
 
         return $this->templateRenderer->render($template, [
-            'order_number'   => $order->order_number,
-            'order_type'     => $orderTypeLabel,
-            'item_count'     => $itemCount,
+            'order_number' => $order->order_number,
+            'order_type' => $orderTypeLabel,
+            'item_count' => $itemCount,
             'customer_phone' => $customerPhone,
-            'total'          => $total,
+            'total' => $total,
         ]);
     }
 

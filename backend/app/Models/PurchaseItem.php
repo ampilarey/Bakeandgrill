@@ -21,13 +21,13 @@ class PurchaseItem extends Model
     ];
 
     protected $casts = [
-        'purchase_id'        => 'integer',
-        'inventory_item_id'  => 'integer',
-        'quantity'           => 'decimal:4',
-        'received_quantity'  => 'decimal:4',
-        'unit_cost'          => 'decimal:2',
-        'total_cost'         => 'decimal:2',
-        'received_at'        => 'datetime',
+        'purchase_id' => 'integer',
+        'inventory_item_id' => 'integer',
+        'quantity' => 'decimal:4',
+        'received_quantity' => 'decimal:4',
+        'unit_cost' => 'decimal:2',
+        'total_cost' => 'decimal:2',
+        'received_at' => 'datetime',
     ];
 
     public function purchase(): BelongsTo

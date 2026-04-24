@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\SmsModule;
 
-use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Sms\Jobs\SendStaffNotificationJob;
 use App\Models\Order;
 use App\Models\StaffNotificationLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class StaffNotificationDeduplicationTest extends TestCase
@@ -21,10 +19,10 @@ class StaffNotificationDeduplicationTest extends TestCase
     {
         return Order::create([
             'order_number' => 'BG-DEDUP-' . uniqid(),
-            'type'         => 'takeaway',
-            'status'       => 'pending',
-            'total'        => 100,
-            'total_laar'   => 10000,
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'total' => 100,
+            'total_laar' => 10000,
         ]);
     }
 
@@ -33,11 +31,11 @@ class StaffNotificationDeduplicationTest extends TestCase
     {
         // Create a real SmsLog so foreign-key constraints are satisfied
         $smsLog = \App\Models\SmsLog::create([
-            'to'         => '+9607111111',
-            'message'    => 'Test message',
-            'type'       => 'staff_notification',
-            'status'     => 'sent',
-            'sent_at'    => now(),
+            'to' => '+9607111111',
+            'message' => 'Test message',
+            'type' => 'staff_notification',
+            'status' => 'sent',
+            'sent_at' => now(),
         ]);
 
         $mockSmsService = $this->createMock(SmsService::class);
@@ -102,9 +100,9 @@ class StaffNotificationDeduplicationTest extends TestCase
         $job->handle($mockSmsService);
 
         $this->assertDatabaseHas('staff_notification_logs', [
-            'order_id'       => $order->id,
-            'event_type'     => 'new_order',
-            'phone'          => '+9607222222',
+            'order_id' => $order->id,
+            'event_type' => 'new_order',
+            'phone' => '+9607222222',
             'recipient_type' => 'staff',
         ]);
     }
@@ -136,9 +134,9 @@ class StaffNotificationDeduplicationTest extends TestCase
         $job->handle($mockSmsService);
 
         $this->assertDatabaseHas('staff_notification_logs', [
-            'order_id'       => $order->id,
-            'event_type'     => 'no_staff_found',
-            'fallback_used'  => true,
+            'order_id' => $order->id,
+            'event_type' => 'no_staff_found',
+            'fallback_used' => true,
             'recipient_type' => 'fallback',
         ]);
     }

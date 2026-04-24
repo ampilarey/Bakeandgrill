@@ -68,15 +68,15 @@ class OrderStatusMachine
         // 'pending' is used by PaymentConfirmedListener to move confirmed online
         // orders back into the kitchen queue before KDS picks them up.
         'payment_pending' => ['paid', 'pending', 'cancelled'],
-        'pending'         => ['in_progress', 'ready', 'held', 'paid', 'partial', 'cancelled'],
-        'paid'            => ['in_progress', 'ready', 'completed', 'refunded', 'cancelled'],
-        'partial'         => ['paid', 'in_progress', 'cancelled'],
-        'in_progress'     => ['ready', 'held', 'cancelled'],
-        'ready'           => ['completed', 'cancelled'],
-        'held'            => ['pending', 'cancelled'],
-        'completed'       => ['refunded'],
-        'cancelled'       => [],
-        'refunded'        => [],
+        'pending' => ['in_progress', 'ready', 'held', 'paid', 'partial', 'cancelled'],
+        'paid' => ['in_progress', 'ready', 'completed', 'refunded', 'cancelled'],
+        'partial' => ['paid', 'in_progress', 'cancelled'],
+        'in_progress' => ['ready', 'held', 'cancelled'],
+        'ready' => ['completed', 'cancelled'],
+        'held' => ['pending', 'cancelled'],
+        'completed' => ['refunded'],
+        'cancelled' => [],
+        'refunded' => [],
     ];
 
     /** All recognised statuses. */
@@ -102,10 +102,10 @@ class OrderStatusMachine
      */
     public function assertTransitionAllowed(Order $order, string $toStatus): void
     {
-        if (! $this->isAllowed($order->status, $toStatus)) {
+        if (!$this->isAllowed($order->status, $toStatus)) {
             abort(
                 422,
-                "Invalid status transition: '{$order->status}' → '{$toStatus}' is not allowed."
+                "Invalid status transition: '{$order->status}' → '{$toStatus}' is not allowed.",
             );
         }
     }

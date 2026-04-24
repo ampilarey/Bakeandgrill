@@ -47,9 +47,9 @@ class HomeController extends Controller
 
     public function hours()
     {
-        $openingHours  = app(OpeningHoursService::class);
-        $isOpen        = $openingHours->isOpenNow();
-        $hours         = $openingHours->getHoursForDisplay();
+        $openingHours = app(OpeningHoursService::class);
+        $isOpen = $openingHours->isOpenNow();
+        $hours = $openingHours->getHoursForDisplay();
         $closureReason = $openingHours->getClosureReason();
 
         return view('hours', compact('isOpen', 'hours', 'closureReason'));
@@ -69,5 +69,4 @@ class HomeController extends Controller
     {
         return view('refund');
     }
-
 }

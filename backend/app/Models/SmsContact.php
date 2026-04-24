@@ -27,8 +27,8 @@ class SmsContact extends Model
     protected function casts(): array
     {
         return [
-            'is_enabled'  => 'boolean',
-            'tags'        => 'array',
+            'is_enabled' => 'boolean',
+            'tags' => 'array',
             'active_days' => 'array',
         ];
     }
@@ -44,7 +44,7 @@ class SmsContact extends Model
             SmsContactGroup::class,
             'sms_contact_group_members',
             'contact_id',
-            'group_id'
+            'group_id',
         );
     }
 
@@ -54,13 +54,13 @@ class SmsContact extends Model
      */
     public function isActiveAt(Carbon $at): bool
     {
-        if (! $this->is_enabled) {
+        if (!$this->is_enabled) {
             return false;
         }
 
         if ($this->active_days !== null) {
             $dayName = strtolower($at->format('D')); // mon, tue, …
-            if (! in_array($dayName, $this->active_days, true)) {
+            if (!in_array($dayName, $this->active_days, true)) {
                 return false;
             }
         }

@@ -9,7 +9,6 @@ use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Domains\Sms\Services\StaffNotificationDispatcher;
 use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Log;
 
 class SendStaffOrderNotificationListener implements ShouldQueue
 {
@@ -38,7 +37,7 @@ class SendStaffOrderNotificationListener implements ShouldQueue
     {
         $order = Order::with('items.item')->find($event->data->orderId);
 
-        if (! $order) {
+        if (!$order) {
             return;
         }
 
@@ -57,13 +56,13 @@ class SendStaffOrderNotificationListener implements ShouldQueue
     {
         $order = Order::with('items.item')->find($event->data->orderId);
 
-        if (! $order) {
+        if (!$order) {
             return;
         }
 
         $eventType = $this->mapStatusToEventType($event->data->status, $order);
 
-        if (! $eventType) {
+        if (!$eventType) {
             return;
         }
 
@@ -81,13 +80,13 @@ class SendStaffOrderNotificationListener implements ShouldQueue
     private function mapStatusToEventType(string $status, Order $order): ?string
     {
         return match ($status) {
-            'pending'             => in_array($order->type, ['online_pickup', 'delivery'], true)
+            'pending' => in_array($order->type, ['online_pickup', 'delivery'], true)
                                         ? 'new_order'
                                         : null,
             'in_progress', 'paid' => 'order_confirmed',
-            'ready'               => 'order_ready',
-            'on_the_way'          => 'order_out_for_delivery',
-            default               => null,
+            'ready' => 'order_ready',
+            'on_the_way' => 'order_out_for_delivery',
+            default => null,
         };
     }
 }

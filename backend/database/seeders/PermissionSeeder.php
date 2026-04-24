@@ -130,7 +130,7 @@ class PermissionSeeder extends Seeder
         $owner = Role::where('slug', 'owner')->first();
         if ($owner) {
             $owner->permissions()->sync(
-                Permission::whereIn('slug', $allSlugs)->pluck('id')
+                Permission::whereIn('slug', $allSlugs)->pluck('id'),
             );
         }
 
@@ -139,7 +139,7 @@ class PermissionSeeder extends Seeder
         if ($manager) {
             $managerSlugs = $allSlugs->diff(self::MANAGER_EXCLUDED);
             $manager->permissions()->sync(
-                Permission::whereIn('slug', $managerSlugs)->pluck('id')
+                Permission::whereIn('slug', $managerSlugs)->pluck('id'),
             );
         }
 
@@ -147,7 +147,7 @@ class PermissionSeeder extends Seeder
         $staff = Role::where('slug', 'staff')->first();
         if ($staff) {
             $staff->permissions()->sync(
-                Permission::whereIn('slug', self::STAFF_GRANTED)->pluck('id')
+                Permission::whereIn('slug', self::STAFF_GRANTED)->pluck('id'),
             );
         }
     }

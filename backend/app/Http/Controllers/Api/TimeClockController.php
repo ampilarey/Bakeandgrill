@@ -38,9 +38,9 @@ class TimeClockController extends Controller
         ]);
 
         $punch = TimePunch::create([
-            'user_id'       => $userId,
+            'user_id' => $userId,
             'clocked_in_at' => now(),
-            'notes'         => $validated['notes'] ?? null,
+            'notes' => $validated['notes'] ?? null,
         ]);
 
         return response()->json(['punch' => $punch], 201);
@@ -66,8 +66,8 @@ class TimeClockController extends Controller
         $breakMinutes = (float) ($clockOutValidated['break_minutes'] ?? 0);
 
         $punch->clocked_out_at = now();
-        $punch->break_minutes  = $breakMinutes;
-        $punch->total_hours    = $punch->calculateHours();
+        $punch->break_minutes = $breakMinutes;
+        $punch->total_hours = $punch->calculateHours();
         $punch->save();
 
         return response()->json(['punch' => $punch]);
@@ -76,14 +76,18 @@ class TimeClockController extends Controller
     public function history(Request $request): JsonResponse
     {
         $from = $request->query('from');
-        $to   = $request->query('to');
+        $to = $request->query('to');
 
         $query = TimePunch::with('user:id,name')
             ->whereNotNull('clocked_out_at')
             ->orderByDesc('clocked_in_at');
 
-        if ($from) $query->whereDate('clocked_in_at', '>=', $from);
-        if ($to)   $query->whereDate('clocked_in_at', '<=', $to);
+        if ($from) {
+            $query->whereDate('clocked_in_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('clocked_in_at', '<=', $to);
+        }
 
         // Non-manager users see only their own records
         $user = $request->user();
@@ -99,8 +103,8 @@ class TimeClockController extends Controller
         $totalHours = $punches->sum('total_hours');
 
         return response()->json([
-            'data'        => $punches->items(),
-            'meta'        => ['current_page' => $punches->currentPage(), 'last_page' => $punches->lastPage(), 'total' => $punches->total()],
+            'data' => $punches->items(),
+            'meta' => ['current_page' => $punches->currentPage(), 'last_page' => $punches->lastPage(), 'total' => $punches->total()],
             'total_hours' => round($totalHours, 2),
         ]);
     }
@@ -114,7 +118,7 @@ class TimeClockController extends Controller
         abort_unless(in_array($roleSlug, ['manager', 'owner'], true), 403);
 
         $from = $request->query('from', now()->startOfWeek()->toDateString());
-        $to   = $request->query('to', now()->toDateString());
+        $to = $request->query('to', now()->toDateString());
 
         $punches = TimePunch::with('user:id,name')
             ->whereNotNull('clocked_out_at')
@@ -123,17 +127,18 @@ class TimeClockController extends Controller
 
         $summary = $punches->groupBy('user_id')->map(function ($userPunches) {
             $user = $userPunches->first()->user;
+
             return [
-                'user_id'       => $user?->id,
-                'user_name'     => $user?->name ?? 'Unknown',
-                'punch_count'   => $userPunches->count(),
-                'total_hours'   => round($userPunches->sum('total_hours'), 2),
+                'user_id' => $user?->id,
+                'user_name' => $user?->name ?? 'Unknown',
+                'punch_count' => $userPunches->count(),
+                'total_hours' => round($userPunches->sum('total_hours'), 2),
             ];
         })->values();
 
         return response()->json([
-            'from'    => $from,
-            'to'      => $to,
+            'from' => $from,
+            'to' => $to,
             'summary' => $summary,
         ]);
     }

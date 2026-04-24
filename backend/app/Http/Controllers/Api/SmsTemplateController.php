@@ -27,9 +27,9 @@ class SmsTemplateController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'        => 'required|string|max:255',
-            'body'        => 'required|string',
-            'type'        => 'required|in:order_notification,schedule_reminder,duty_reminder,custom',
+            'name' => 'required|string|max:255',
+            'body' => 'required|string',
+            'type' => 'required|in:order_notification,schedule_reminder,duty_reminder,custom',
             'description' => 'nullable|string|max:500',
         ]);
 
@@ -47,9 +47,9 @@ class SmsTemplateController extends Controller
 
         // System templates can have their body edited but not deleted
         $data = $request->validate([
-            'name'        => 'sometimes|string|max:255',
-            'body'        => 'sometimes|string',
-            'type'        => 'sometimes|in:order_notification,schedule_reminder,duty_reminder,custom',
+            'name' => 'sometimes|string|max:255',
+            'body' => 'sometimes|string',
+            'type' => 'sometimes|in:order_notification,schedule_reminder,duty_reminder,custom',
             'description' => 'nullable|string|max:500',
         ]);
 
@@ -77,7 +77,7 @@ class SmsTemplateController extends Controller
         $template = SmsTemplate::findOrFail($id);
 
         return response()->json([
-            'preview'   => $this->renderer->preview($template),
+            'preview' => $this->renderer->preview($template),
             'variables' => $template->extractVariables(),
         ]);
     }
@@ -85,15 +85,15 @@ class SmsTemplateController extends Controller
     private function format(SmsTemplate $t): array
     {
         return [
-            'id'          => $t->id,
-            'name'        => $t->name,
-            'slug'        => $t->slug,
-            'body'        => $t->body,
-            'type'        => $t->type,
+            'id' => $t->id,
+            'name' => $t->name,
+            'slug' => $t->slug,
+            'body' => $t->body,
+            'type' => $t->type,
             'description' => $t->description,
-            'is_system'   => $t->is_system,
-            'variables'   => $t->variables ?? [],
-            'created_at'  => $t->created_at?->toIso8601String(),
+            'is_system' => $t->is_system,
+            'variables' => $t->variables ?? [],
+            'created_at' => $t->created_at?->toIso8601String(),
         ];
     }
 }

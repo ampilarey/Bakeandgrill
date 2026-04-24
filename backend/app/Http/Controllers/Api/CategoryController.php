@@ -46,12 +46,12 @@ class CategoryController extends Controller
             $data['image_url'] = null;
         }
         $validated = validator($data, [
-            'name'       => 'required|string|max:255',
-            'name_dv'    => 'nullable|string|max:255',
-            'description'=> 'nullable|string',
+            'name' => 'required|string|max:255',
+            'name_dv' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
             'sort_order' => 'nullable|integer',
-            'is_active'  => 'nullable|boolean',
-            'image_url'  => 'nullable|url',
+            'is_active' => 'nullable|boolean',
+            'image_url' => 'nullable|url',
         ])->validate();
 
         // MySQL: column is NOT NULL DEFAULT 0; omit null so the DB default applies
@@ -91,12 +91,12 @@ class CategoryController extends Controller
             $data['image_url'] = null;
         }
         $validated = validator($data, [
-            'name'        => 'sometimes|string|max:255',
-            'name_dv'     => 'nullable|string|max:255',
+            'name' => 'sometimes|string|max:255',
+            'name_dv' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'sort_order'  => 'nullable|integer',
-            'is_active'   => 'sometimes|boolean',
-            'image_url'   => 'nullable|url',
+            'sort_order' => 'nullable|integer',
+            'is_active' => 'sometimes|boolean',
+            'image_url' => 'nullable|url',
         ])->validate();
 
         // MySQL: column is NOT NULL DEFAULT 0; omit null so existing value is preserved

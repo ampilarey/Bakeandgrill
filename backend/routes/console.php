@@ -35,12 +35,12 @@ Artisan::command('menu:sync-item-images', function () {
  * Helper: builds a generic onFailure handler that logs critical + notifies Sentry.
  * All critical scheduled tasks call this so failures are never silent.
  */
-$alertOnFailure = function (string $command): \Closure {
+$alertOnFailure = function (string $command): Closure {
     return function () use ($command): void {
         $msg = "Scheduled task FAILED: {$command}";
         Log::critical($msg);
         if (app()->bound('sentry')) {
-            \Sentry\captureMessage($msg, \Sentry\Severity::error());
+            \Sentry\captureMessage($msg, Sentry\Severity::error());
         }
     };
 };

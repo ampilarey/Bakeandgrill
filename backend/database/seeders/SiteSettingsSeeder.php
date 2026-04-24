@@ -31,7 +31,7 @@ class SiteSettingsSeeder extends Seeder
             // Footer
             ['key' => 'footer_text',      'type' => 'textarea', 'group' => 'Footer',   'label' => 'Footer Text',       'description' => 'Copyright or tagline in footer', 'value' => '© 2026 Bake & Grill. All rights reserved.', 'is_public' => true],
             ['key' => 'footer_links',     'type' => 'json',     'group' => 'Footer',   'label' => 'Footer Links',      'description' => 'JSON array of {label, url}', 'value' => json_encode([['label' => 'Privacy Policy', 'url' => '/privacy'], ['label' => 'Terms', 'url' => '/terms']]), 'is_public' => true],
-            ['key' => 'show_social_links','type' => 'boolean',  'group' => 'Footer',   'label' => 'Show Social Links', 'description' => null, 'value' => 'true', 'is_public' => true],
+            ['key' => 'show_social_links', 'type' => 'boolean',  'group' => 'Footer',   'label' => 'Show Social Links', 'description' => null, 'value' => 'true', 'is_public' => true],
 
             // Social Media
             ['key' => 'social_facebook',  'type' => 'text',     'group' => 'Social',   'label' => 'Facebook URL',      'description' => null, 'value' => '', 'is_public' => true],

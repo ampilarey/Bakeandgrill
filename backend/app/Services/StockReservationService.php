@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\Models\Item;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Variant;
 use Illuminate\Support\Facades\DB;
 
@@ -105,7 +104,7 @@ class StockReservationService
         $order->loadMissing('items.item', 'items.variant');
 
         foreach ($order->items as $orderItem) {
-            $item    = $orderItem->item;
+            $item = $orderItem->item;
             $variant = $orderItem->variant;
 
             // ── Variant-level reservation ─────────────────────────────────────
@@ -128,11 +127,11 @@ class StockReservationService
                     ->delete();
 
                 DB::table('stock_reservations')->insert([
-                    'item_id'    => $item?->id,
+                    'item_id' => $item?->id,
                     'variant_id' => $lockedVariant->id,
-                    'order_id'   => $order->id,
+                    'order_id' => $order->id,
                     'session_id' => 'order:' . $order->id,
-                    'quantity'   => $orderItem->quantity,
+                    'quantity' => $orderItem->quantity,
                     'expires_at' => now()->addMinutes($ttl),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -164,11 +163,11 @@ class StockReservationService
                 ->delete();
 
             DB::table('stock_reservations')->insert([
-                'item_id'    => $locked->id,
+                'item_id' => $locked->id,
                 'variant_id' => null,
-                'order_id'   => $order->id,
+                'order_id' => $order->id,
                 'session_id' => 'order:' . $order->id,
-                'quantity'   => $orderItem->quantity,
+                'quantity' => $orderItem->quantity,
                 'expires_at' => now()->addMinutes($ttl),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -200,7 +199,7 @@ class StockReservationService
 
         DB::transaction(function () use ($order, $userId, $stockService): void {
             foreach ($order->items as $orderItem) {
-                $item    = $orderItem->item;
+                $item = $orderItem->item;
                 $variant = $orderItem->variant;
 
                 $key = 'online:order:' . $order->id . ':item:' . $orderItem->id;
@@ -210,7 +209,7 @@ class StockReservationService
                     $lockedVariant = Variant::lockForUpdate()->find($variant->id);
                     if (!$lockedVariant) {
                         \Illuminate\Support\Facades\Log::warning(
-                            "StockReservationService: variant {$variant->id} not found during convertToDeduction for order {$order->id}"
+                            "StockReservationService: variant {$variant->id} not found during convertToDeduction for order {$order->id}",
                         );
                         continue;
                     }
@@ -232,7 +231,7 @@ class StockReservationService
                 $locked = Item::lockForUpdate()->find($item->id);
                 if (!$locked) {
                     \Illuminate\Support\Facades\Log::warning(
-                        "StockReservationService: item {$item->id} not found during convertToDeduction for order {$order->id}"
+                        "StockReservationService: item {$item->id} not found during convertToDeduction for order {$order->id}",
                     );
                     continue;
                 }

@@ -33,16 +33,16 @@ class OrderObserver
 
     public function updated(Order $order): void
     {
-        if (! $order->wasChanged('status')) {
+        if (!$order->wasChanged('status')) {
             return;
         }
 
         OrderStatusChanged::dispatch(new OrderStatusChangedData(
-            orderId:     $order->id,
-            status:      $order->status,
-            customerId:  $order->customer_id,
+            orderId: $order->id,
+            status: $order->status,
+            customerId: $order->customer_id,
             orderNumber: $order->order_number ?? "#{$order->id}",
-            updatedAt:   $order->updated_at?->toIso8601String() ?? now()->toIso8601String(),
+            updatedAt: $order->updated_at?->toIso8601String() ?? now()->toIso8601String(),
         ));
     }
 }

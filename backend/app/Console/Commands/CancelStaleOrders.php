@@ -62,10 +62,10 @@ class CancelStaleOrders extends Command
                     ->update(['released_at' => now(), 'status' => 'released']);
 
                 Log::info('CancelStaleOrders: cancelled stale payment_pending order', [
-                    'order_id'     => $order->id,
+                    'order_id' => $order->id,
                     'order_number' => $order->order_number,
-                    'created_at'   => $order->created_at,
-                    'ttl_minutes'  => $ttl,
+                    'created_at' => $order->created_at,
+                    'ttl_minutes' => $ttl,
                 ]);
 
                 DB::afterCommit(function () use ($order): void {

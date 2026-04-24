@@ -21,11 +21,22 @@ class Review extends Model
     ];
 
     protected $casts = [
-        'rating'       => 'integer',
+        'rating' => 'integer',
         'is_anonymous' => 'boolean',
     ];
 
-    public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
-    public function order(): BelongsTo    { return $this->belongsTo(Order::class); }
-    public function item(): BelongsTo     { return $this->belongsTo(Item::class); }
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Item::class);
+    }
 }

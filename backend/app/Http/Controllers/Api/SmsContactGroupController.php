@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\SmsContact;
 use App\Models\SmsContactGroup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,9 +26,9 @@ class SmsContactGroupController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'        => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
-            'is_enabled'  => 'boolean',
+            'is_enabled' => 'boolean',
         ]);
 
         $data['slug'] = Str::slug($data['name']) . '-' . Str::random(4);
@@ -46,9 +45,9 @@ class SmsContactGroupController extends Controller
         $group = SmsContactGroup::findOrFail($id);
 
         $data = $request->validate([
-            'name'        => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string|max:500',
-            'is_enabled'  => 'sometimes|boolean',
+            'is_enabled' => 'sometimes|boolean',
         ]);
 
         $group->update($data);
@@ -91,16 +90,16 @@ class SmsContactGroupController extends Controller
     private function format(SmsContactGroup $g): array
     {
         return [
-            'id'             => $g->id,
-            'name'           => $g->name,
-            'slug'           => $g->slug,
-            'description'    => $g->description,
-            'is_enabled'     => $g->is_enabled,
+            'id' => $g->id,
+            'name' => $g->name,
+            'slug' => $g->slug,
+            'description' => $g->description,
+            'is_enabled' => $g->is_enabled,
             'contacts_count' => $g->contacts_count ?? $g->contacts->count(),
-            'contacts'       => $g->relationLoaded('contacts')
+            'contacts' => $g->relationLoaded('contacts')
                 ? $g->contacts->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'phone' => $c->phone, 'type' => $c->type])->values()
                 : [],
-            'created_at'     => $g->created_at?->toIso8601String(),
+            'created_at' => $g->created_at?->toIso8601String(),
         ];
     }
 }

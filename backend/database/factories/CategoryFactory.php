@@ -20,10 +20,10 @@ class CategoryFactory extends Factory
         $name = fake()->unique()->words(2, true);
 
         return [
-            'name'      => ucwords($name),
-            'slug'      => Str::slug($name) . '-' . fake()->unique()->randomNumber(4),
+            'name' => ucwords($name),
+            'slug' => Str::slug($name) . '-' . fake()->unique()->randomNumber(4),
             'is_active' => true,
-            'sort_order'=> fake()->numberBetween(1, 20),
+            'sort_order' => fake()->numberBetween(1, 20),
         ];
     }
 

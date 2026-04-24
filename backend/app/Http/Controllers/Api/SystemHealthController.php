@@ -24,10 +24,10 @@ class SystemHealthController extends Controller
     public function admin(): JsonResponse
     {
         return response()->json([
-            'status'      => 'ok',
+            'status' => 'ok',
             'environment' => config('app.env'),
-            'database'    => 'connected',
-            'timestamp'   => now()->toIso8601String(),
+            'database' => 'connected',
+            'timestamp' => now()->toIso8601String(),
         ]);
     }
 }

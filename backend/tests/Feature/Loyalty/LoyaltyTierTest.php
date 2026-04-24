@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Loyalty;
 
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
-use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyLedger;
 use App\Models\Order;
-use App\Models\OrderItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -71,7 +69,7 @@ class LoyaltyTierTest extends TestCase
     public function test_earn_points_credits_account_after_order_paid(): void
     {
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->paid()->forCustomer($customer)->create([
+        $order = Order::factory()->paid()->forCustomer($customer)->create([
             'total' => 100.00,
             'total_laar' => 10000,
         ]);
@@ -88,8 +86,8 @@ class LoyaltyTierTest extends TestCase
     public function test_earn_is_idempotent_on_duplicate_order_paid_event(): void
     {
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->paid()->forCustomer($customer)->create([
-            'total'      => 50.00,
+        $order = Order::factory()->paid()->forCustomer($customer)->create([
+            'total' => 50.00,
             'total_laar' => 5000,
         ]);
 
@@ -115,7 +113,7 @@ class LoyaltyTierTest extends TestCase
         $customer = $this->makeCustomer();
 
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => 100,
+            'delta' => 100,
             'reason' => 'Goodwill credit',
         ], $this->adminHeaders)->assertStatus(200);
 
@@ -129,13 +127,13 @@ class LoyaltyTierTest extends TestCase
 
         // First credit
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => 200,
+            'delta' => 200,
             'reason' => 'Initial credit',
         ], $this->adminHeaders)->assertStatus(200);
 
         // Then debit
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => -50,
+            'delta' => -50,
             'reason' => 'Correction debit',
         ], $this->adminHeaders)->assertStatus(200);
 
@@ -149,13 +147,13 @@ class LoyaltyTierTest extends TestCase
 
         // Start at 50 points
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => 50,
+            'delta' => 50,
             'reason' => 'Initial',
         ], $this->adminHeaders)->assertStatus(200);
 
         // Debit 200 — balance should floor at 0, not go negative
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => -200,
+            'delta' => -200,
             'reason' => 'Over-debit test',
         ], $this->adminHeaders)->assertStatus(200);
 
@@ -168,7 +166,7 @@ class LoyaltyTierTest extends TestCase
         $customer = $this->makeCustomer();
 
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => 0,
+            'delta' => 0,
             'reason' => 'Nothing',
         ], $this->adminHeaders)->assertStatus(422);
     }
@@ -178,14 +176,14 @@ class LoyaltyTierTest extends TestCase
         $customer = $this->makeCustomer();
 
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => 75,
+            'delta' => 75,
             'reason' => 'Test ledger',
         ], $this->adminHeaders)->assertStatus(200);
 
         $this->assertDatabaseHas('loyalty_ledger', [
             'customer_id' => $customer->id,
-            'type'        => 'admin_credit',
-            'points'      => 75,
+            'type' => 'admin_credit',
+            'points' => 75,
         ]);
     }
 
@@ -194,18 +192,18 @@ class LoyaltyTierTest extends TestCase
     public function test_hold_reduces_available_points(): void
     {
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->pending()->forCustomer($customer)->create();
+        $order = Order::factory()->pending()->forCustomer($customer)->create();
 
         // Give them 200 points via admin (minimum hold is 100)
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => 200,
+            'delta' => 200,
             'reason' => 'Setup',
         ], $this->adminHeaders);
 
         Sanctum::actingAs($customer, ['customer']);
 
         $this->postJson('/api/loyalty/hold', [
-            'points'   => 100,
+            'points' => 100,
             'order_id' => $order->id,
         ])->assertSuccessful();
 
@@ -217,17 +215,17 @@ class LoyaltyTierTest extends TestCase
     public function test_hold_release_restores_available_points(): void
     {
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->pending()->forCustomer($customer)->create();
+        $order = Order::factory()->pending()->forCustomer($customer)->create();
 
         $this->postJson("/api/admin/loyalty/accounts/{$customer->id}/adjust", [
-            'delta'  => 200,
+            'delta' => 200,
             'reason' => 'Setup',
         ], $this->adminHeaders);
 
         Sanctum::actingAs($customer, ['customer']);
 
         $this->postJson('/api/loyalty/hold', [
-            'points'   => 100,
+            'points' => 100,
             'order_id' => $order->id,
         ])->assertSuccessful();
 

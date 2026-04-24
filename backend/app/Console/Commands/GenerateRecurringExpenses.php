@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class GenerateRecurringExpenses extends Command
 {
-    protected $signature   = 'expenses:generate-recurring {--dry-run : Preview without saving}';
+    protected $signature = 'expenses:generate-recurring {--dry-run : Preview without saving}';
     protected $description = 'Create new expense entries for recurring expenses that are due today';
 
     public function handle(): int
@@ -26,6 +26,7 @@ class GenerateRecurringExpenses extends Command
 
         if ($ids->isEmpty()) {
             $this->info('No recurring expenses due today.');
+
             return 0;
         }
 
@@ -39,7 +40,7 @@ class GenerateRecurringExpenses extends Command
             DB::transaction(function () use ($parentId, $today, &$created): void {
                 $parent = Expense::lockForUpdate()->find($parentId);
 
-                if (! $parent) {
+                if (!$parent) {
                     return;
                 }
 
@@ -50,22 +51,22 @@ class GenerateRecurringExpenses extends Command
 
                 $this->line("  → {$parent->description} (MVR {$parent->amount}) [{$parent->recurrence_interval}]");
 
-                if (! $this->option('dry-run')) {
+                if (!$this->option('dry-run')) {
                     $newExpense = Expense::create([
-                        'expense_number'      => $this->generateExpenseNumber(),
+                        'expense_number' => $this->generateExpenseNumber(),
                         'expense_category_id' => $parent->expense_category_id,
-                        'supplier_id'         => $parent->supplier_id,
-                        'user_id'             => $parent->user_id,
-                        'description'         => $parent->description,
-                        'amount'              => $parent->amount,
-                        'amount_laar'         => $parent->amount_laar,
-                        'tax_amount'          => $parent->tax_amount,
-                        'tax_laar'            => $parent->tax_laar,
-                        'payment_method'      => $parent->payment_method,
-                        'expense_date'        => $today,
-                        'is_recurring'        => false,
-                        'status'              => 'approved',
-                        'notes'               => "Auto-generated from recurring expense #{$parent->expense_number}",
+                        'supplier_id' => $parent->supplier_id,
+                        'user_id' => $parent->user_id,
+                        'description' => $parent->description,
+                        'amount' => $parent->amount,
+                        'amount_laar' => $parent->amount_laar,
+                        'tax_amount' => $parent->tax_amount,
+                        'tax_laar' => $parent->tax_laar,
+                        'payment_method' => $parent->payment_method,
+                        'expense_date' => $today,
+                        'is_recurring' => false,
+                        'status' => 'approved',
+                        'notes' => "Auto-generated from recurring expense #{$parent->expense_number}",
                     ]);
 
                     // Advance the next_recurrence_date INSIDE the transaction so a second
@@ -80,7 +81,7 @@ class GenerateRecurringExpenses extends Command
         }
 
         if ($this->option('dry-run')) {
-            $this->warn("Dry-run mode: nothing was saved.");
+            $this->warn('Dry-run mode: nothing was saved.');
         } else {
             $this->info("Created {$created} expense(s).");
         }
@@ -91,18 +92,19 @@ class GenerateRecurringExpenses extends Command
     private function nextDate(string $from, ?string $interval): string
     {
         return match ($interval) {
-            'daily'     => now()->parse($from)->addDay()->toDateString(),
-            'weekly'    => now()->parse($from)->addWeek()->toDateString(),
+            'daily' => now()->parse($from)->addDay()->toDateString(),
+            'weekly' => now()->parse($from)->addWeek()->toDateString(),
             'quarterly' => now()->parse($from)->addMonths(3)->toDateString(),
-            'yearly'    => now()->parse($from)->addYear()->toDateString(),
-            default     => now()->parse($from)->addMonth()->toDateString(),
+            'yearly' => now()->parse($from)->addYear()->toDateString(),
+            default => now()->parse($from)->addMonth()->toDateString(),
         };
     }
 
     private function generateExpenseNumber(): string
     {
-        $date  = now()->format('Ymd');
+        $date = now()->format('Ymd');
         $count = Expense::whereDate('created_at', now()->toDateString())->withTrashed()->count() + 1;
+
         return 'EXP-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
     }
 }

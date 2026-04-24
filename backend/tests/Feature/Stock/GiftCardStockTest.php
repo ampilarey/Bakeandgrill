@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Stock;
 
 use App\Models\GiftCard;
-use App\Models\GiftCardTransaction;
 use App\Models\Order;
-use App\Models\OrderItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -71,7 +68,7 @@ class GiftCardStockTest extends TestCase
         $customer = $this->makeCustomer();
 
         $response = $this->postJson('/api/admin/gift-cards', [
-            'amount'      => 100,
+            'amount' => 100,
             'customer_id' => $customer->id,
         ], $this->adminHeaders)->assertStatus(201);
 
@@ -85,10 +82,10 @@ class GiftCardStockTest extends TestCase
     public function test_balance_check_returns_current_balance(): void
     {
         $card = GiftCard::create([
-            'code'            => 'TEST-BLNC-1234',
+            'code' => 'TEST-BLNC-1234',
             'initial_balance' => 75,
             'current_balance' => 75,
-            'status'          => 'active',
+            'status' => 'active',
         ]);
 
         $response = $this->getJson('/api/gift-cards/TEST-BLNC-1234/balance')
@@ -106,10 +103,10 @@ class GiftCardStockTest extends TestCase
     public function test_balance_check_returns_404_for_depleted_card(): void
     {
         GiftCard::create([
-            'code'            => 'DEPL-ETED-1234',
+            'code' => 'DEPL-ETED-1234',
             'initial_balance' => 50,
             'current_balance' => 0,
-            'status'          => 'depleted',
+            'status' => 'depleted',
         ]);
 
         $this->getJson('/api/gift-cards/DEPL-ETED-1234/balance')
@@ -119,11 +116,11 @@ class GiftCardStockTest extends TestCase
     public function test_balance_check_returns_404_for_expired_card(): void
     {
         GiftCard::create([
-            'code'            => 'EXPR-IRED-1234',
+            'code' => 'EXPR-IRED-1234',
             'initial_balance' => 50,
             'current_balance' => 50,
-            'status'          => 'active',
-            'expires_at'      => now()->subDay(),
+            'status' => 'active',
+            'expires_at' => now()->subDay(),
         ]);
 
         $this->getJson('/api/gift-cards/EXPR-IRED-1234/balance')
@@ -135,27 +132,27 @@ class GiftCardStockTest extends TestCase
     public function test_customer_can_apply_gift_card_to_pending_order(): void
     {
         $card = GiftCard::create([
-            'code'            => 'GIFT-CARD-1234',
+            'code' => 'GIFT-CARD-1234',
             'initial_balance' => 20,
             'current_balance' => 20,
-            'status'          => 'active',
+            'status' => 'active',
         ]);
 
         $customer = $this->makeCustomer();
-        $item     = $this->makeItem();
-        $order    = Order::create([
-            'order_number'    => 'BG-TEST-0001',
-            'tracking_token'  => 'abc123',
-            'type'            => 'online_pickup',
-            'status'          => 'pending',
-            'customer_id'     => $customer->id,
-            'subtotal'        => 30.00,
-            'subtotal_laar'   => 3000,
-            'tax_amount'      => 0,
+        $item = $this->makeItem();
+        $order = Order::create([
+            'order_number' => 'BG-TEST-0001',
+            'tracking_token' => 'abc123',
+            'type' => 'online_pickup',
+            'status' => 'pending',
+            'customer_id' => $customer->id,
+            'subtotal' => 30.00,
+            'subtotal_laar' => 3000,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 30.00,
-            'total_laar'      => 3000,
-            'delivery_fee'    => 0,
+            'total' => 30.00,
+            'total_laar' => 3000,
+            'delivery_fee' => 0,
             'delivery_fee_laar' => 0,
         ]);
 
@@ -173,19 +170,19 @@ class GiftCardStockTest extends TestCase
     public function test_invalid_gift_card_code_is_rejected(): void
     {
         $customer = $this->makeCustomer();
-        $order    = Order::create([
-            'order_number'    => 'BG-TEST-0002',
-            'tracking_token'  => 'def456',
-            'type'            => 'online_pickup',
-            'status'          => 'pending',
-            'customer_id'     => $customer->id,
-            'subtotal'        => 30.00,
-            'subtotal_laar'   => 3000,
-            'tax_amount'      => 0,
+        $order = Order::create([
+            'order_number' => 'BG-TEST-0002',
+            'tracking_token' => 'def456',
+            'type' => 'online_pickup',
+            'status' => 'pending',
+            'customer_id' => $customer->id,
+            'subtotal' => 30.00,
+            'subtotal_laar' => 3000,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 30.00,
-            'total_laar'      => 3000,
-            'delivery_fee'    => 0,
+            'total' => 30.00,
+            'total_laar' => 3000,
+            'delivery_fee' => 0,
             'delivery_fee_laar' => 0,
         ]);
 
@@ -199,28 +196,28 @@ class GiftCardStockTest extends TestCase
     public function test_customer_cannot_apply_gift_card_to_another_customers_order(): void
     {
         $card = GiftCard::create([
-            'code'            => 'IDOR-TEST-CARD',
+            'code' => 'IDOR-TEST-CARD',
             'initial_balance' => 50,
             'current_balance' => 50,
-            'status'          => 'active',
+            'status' => 'active',
         ]);
 
         $customerA = $this->makeCustomer(['phone' => '+9607800001']);
         $customerB = $this->makeCustomer(['phone' => '+9607800002']);
 
         $order = Order::create([
-            'order_number'    => 'BG-IDOR-0001',
-            'tracking_token'  => 'ghi789',
-            'type'            => 'online_pickup',
-            'status'          => 'pending',
-            'customer_id'     => $customerA->id,
-            'subtotal'        => 20.00,
-            'subtotal_laar'   => 2000,
-            'tax_amount'      => 0,
+            'order_number' => 'BG-IDOR-0001',
+            'tracking_token' => 'ghi789',
+            'type' => 'online_pickup',
+            'status' => 'pending',
+            'customer_id' => $customerA->id,
+            'subtotal' => 20.00,
+            'subtotal_laar' => 2000,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 20.00,
-            'total_laar'      => 2000,
-            'delivery_fee'    => 0,
+            'total' => 20.00,
+            'total_laar' => 2000,
+            'delivery_fee' => 0,
             'delivery_fee_laar' => 0,
         ]);
 
@@ -236,10 +233,10 @@ class GiftCardStockTest extends TestCase
     public function test_admin_can_list_gift_cards(): void
     {
         GiftCard::create([
-            'code'            => 'LIST-TEST-1234',
+            'code' => 'LIST-TEST-1234',
             'initial_balance' => 10,
             'current_balance' => 10,
-            'status'          => 'active',
+            'status' => 'active',
         ]);
 
         $this->getJson('/api/admin/gift-cards', $this->adminHeaders)

@@ -13,6 +13,13 @@ class ComboItem extends Model
 
     protected $casts = ['quantity' => 'integer', 'is_optional' => 'boolean'];
 
-    public function combo(): BelongsTo { return $this->belongsTo(Item::class, 'combo_id'); }
-    public function item(): BelongsTo  { return $this->belongsTo(Item::class, 'item_id'); }
+    public function combo(): BelongsTo
+    {
+        return $this->belongsTo(Item::class, 'combo_id');
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Item::class, 'item_id');
+    }
 }

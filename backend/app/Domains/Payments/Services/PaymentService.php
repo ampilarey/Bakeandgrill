@@ -182,8 +182,8 @@ class PaymentService
 
             return array_merge($result, [
                 'remaining_balance_before_laar' => $remainingLaar,
-                'remaining_balance_after_laar'  => $remainingLaar - $amountLaar,
-                'amount_laar'                   => $amountLaar,
+                'remaining_balance_after_laar' => $remainingLaar - $amountLaar,
+                'amount_laar' => $amountLaar,
             ]);
         });
     }
@@ -205,7 +205,7 @@ class PaymentService
 
         if (!$payment) {
             Log::info('BML return: no payment record for order', [
-                'order_id'       => $orderId,
+                'order_id' => $orderId,
                 'transaction_id' => $transactionId,
             ]);
 
@@ -233,7 +233,7 @@ class PaymentService
         // even when 3DS authentication was rejected.
         $bmlStatus = [];
         try {
-            $fetched  = $this->bml->getTransactionStatus($transactionId);
+            $fetched = $this->bml->getTransactionStatus($transactionId);
             $apiState = $fetched['state'] ?? $fetched['status'] ?? null;
 
             if ($apiState === 'CONFIRMED') {
@@ -243,9 +243,9 @@ class PaymentService
                 // Treat any non-CONFIRMED API response as authoritative and abort.
                 Log::warning('BML return: API returned non-CONFIRMED state — aborting confirmation', [
                     'transaction_id' => $transactionId,
-                    'api_state'      => $apiState,
-                    'order_id'       => $orderId,
-                    'payment_id'     => $payment->id,
+                    'api_state' => $apiState,
+                    'order_id' => $orderId,
+                    'payment_id' => $payment->id,
                 ]);
 
                 return;
@@ -254,21 +254,21 @@ class PaymentService
             // API unreachable or timed out — fall through and trust the return URL.
             Log::warning('BML return: status API unreachable — proceeding on return URL state', [
                 'transaction_id' => $transactionId,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
 
         Log::info('BML return: confirming payment via return URL fallback', [
-            'order_id'       => $orderId,
+            'order_id' => $orderId,
             'transaction_id' => $transactionId,
-            'payment_id'     => $payment->id,
+            'payment_id' => $payment->id,
         ]);
 
         $this->confirmPayment($payment, array_merge($bmlStatus, [
             'transactionId' => $transactionId,
-            'localId'       => $payment->local_id,
-            'state'         => 'CONFIRMED',
-            'source'        => 'return_url_fallback',
+            'localId' => $payment->local_id,
+            'state' => 'CONFIRMED',
+            'source' => 'return_url_fallback',
         ]));
     }
 
@@ -364,9 +364,9 @@ class PaymentService
             } else {
                 // Late or duplicate webhook — payment already in a terminal state; ignore.
                 Log::info('BML: Payment cannot transition to terminal state (late/duplicate webhook)', [
-                    'payment_id'     => $payment->id,
+                    'payment_id' => $payment->id,
                     'current_status' => $payment->status,
-                    'webhook_state'  => $state,
+                    'webhook_state' => $state,
                 ]);
             }
 
@@ -387,7 +387,7 @@ class PaymentService
 
             if (!$locked || !$sm->can('confirmed')) {
                 Log::info('BML: Payment already confirmed or cannot transition (concurrent request), skipping', [
-                    'payment_id'     => $payment->id,
+                    'payment_id' => $payment->id,
                     'current_status' => $locked?->status ?? 'not found',
                 ]);
 
@@ -409,14 +409,14 @@ class PaymentService
 
             // C-2: Compare in laari (integer) to avoid float precision errors where
             // e.g. 100.00 (float) >= 100.00 (float) could fail with 99.9999... representation.
-            $paidLaar  = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
+            $paidLaar = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
             $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
 
             Log::info('BML: Payment confirmed', [
-                'payment_id'  => $locked->id,
-                'order_id'    => $order->id,
-                'paid_laar'   => $paidLaar,
-                'order_laar'  => $orderLaar,
+                'payment_id' => $locked->id,
+                'order_id' => $order->id,
+                'paid_laar' => $paidLaar,
+                'order_laar' => $orderLaar,
             ]);
 
             PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($locked, $order));
@@ -441,9 +441,9 @@ class PaymentService
                             OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
                         }
                     } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::error('confirmBmlPayment: post-commit notification failed', [
+                        Log::error('confirmBmlPayment: post-commit notification failed', [
                             'order_id' => $order->id,
-                            'error'    => $e->getMessage(),
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 });
@@ -469,8 +469,8 @@ class PaymentService
             $this->orders->updateStatus($order->id, 'cancelled');
 
             Log::info('BML: Order cancelled due to payment failure', [
-                'order_id'      => $order->id,
-                'order_number'  => $order->order_number,
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
                 'payment_state' => $paymentState,
             ]);
 
@@ -478,9 +478,9 @@ class PaymentService
                 try {
                     OrderCancelled::dispatch(OrderCancelledData::fromOrder($order));
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::error('cancelOrderOnPaymentFailure: post-commit dispatch failed', [
+                    Log::error('cancelOrderOnPaymentFailure: post-commit dispatch failed', [
                         'order_id' => $order->id,
-                        'error'    => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                 }
             });
@@ -513,23 +513,23 @@ class PaymentService
             return;
         }
 
-        $deductLaar       = (int) $order->gift_card_discount_laar;
-        $currentLaar      = (int) round((float) $giftCard->current_balance * 100);
-        $newBalanceLaar   = max(0, $currentLaar - $deductLaar);
-        $newBalanceMvr    = round($newBalanceLaar / 100, 2);
-        $deductMvr        = round($deductLaar / 100, 2);
+        $deductLaar = (int) $order->gift_card_discount_laar;
+        $currentLaar = (int) round((float) $giftCard->current_balance * 100);
+        $newBalanceLaar = max(0, $currentLaar - $deductLaar);
+        $newBalanceMvr = round($newBalanceLaar / 100, 2);
+        $deductMvr = round($deductLaar / 100, 2);
 
         $giftCard->update([
             'current_balance' => $newBalanceMvr,
-            'status'          => $newBalanceLaar <= 0 ? 'depleted' : 'active',
+            'status' => $newBalanceLaar <= 0 ? 'depleted' : 'active',
         ]);
 
         \App\Models\GiftCardTransaction::create([
-            'gift_card_id'  => $giftCard->id,
-            'amount'        => -$deductMvr,
-            'type'          => 'redeem',
+            'gift_card_id' => $giftCard->id,
+            'amount' => -$deductMvr,
+            'type' => 'redeem',
             'balance_after' => $newBalanceMvr,
-            'order_id'      => $order->id,
+            'order_id' => $order->id,
         ]);
     }
 
@@ -575,9 +575,9 @@ class PaymentService
                         OrderPaid::dispatch(OrderPaidData::fromOrder($fresh, true));
                     }
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::error('completeZeroBalance: post-commit notification failed', [
+                    Log::error('completeZeroBalance: post-commit notification failed', [
                         'order_id' => $dispatchId,
-                        'error'    => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                 }
             });

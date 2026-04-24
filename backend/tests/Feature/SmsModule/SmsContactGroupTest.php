@@ -26,9 +26,9 @@ class SmsContactGroupTest extends TestCase
     private function makeContact(array $attrs = []): SmsContact
     {
         return SmsContact::create(array_merge([
-            'name'       => 'Test Contact',
-            'phone'      => '+9607111111',
-            'type'       => 'external',
+            'name' => 'Test Contact',
+            'phone' => '+9607111111',
+            'type' => 'external',
             'is_enabled' => true,
         ], $attrs));
     }
@@ -36,8 +36,8 @@ class SmsContactGroupTest extends TestCase
     private function makeGroup(): SmsContactGroup
     {
         return SmsContactGroup::create([
-            'name'       => 'Test Group',
-            'slug'       => 'test-group-' . uniqid(),
+            'name' => 'Test Group',
+            'slug' => 'test-group-' . uniqid(),
             'is_enabled' => true,
         ]);
     }
@@ -46,9 +46,9 @@ class SmsContactGroupTest extends TestCase
     public function test_resolves_active_contact_in_time_window(): void
     {
         $contact = $this->makeContact([
-            'active_from'  => '08:00',
+            'active_from' => '08:00',
             'active_until' => '18:00',
-            'active_days'  => ['mon', 'tue', 'wed', 'thu', 'fri'],
+            'active_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
         ]);
 
         $at = Carbon::parse('next Monday 10:00:00');
@@ -61,7 +61,7 @@ class SmsContactGroupTest extends TestCase
     public function test_returns_null_outside_time_window(): void
     {
         $contact = $this->makeContact([
-            'active_from'  => '08:00',
+            'active_from' => '08:00',
             'active_until' => '18:00',
         ]);
 
@@ -115,8 +115,8 @@ class SmsContactGroupTest extends TestCase
     public function test_disabled_group_returns_empty(): void
     {
         $group = SmsContactGroup::create([
-            'name'       => 'Disabled Group',
-            'slug'       => 'disabled-group',
+            'name' => 'Disabled Group',
+            'slug' => 'disabled-group',
             'is_enabled' => false,
         ]);
         $c1 = $this->makeContact();

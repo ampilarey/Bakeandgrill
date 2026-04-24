@@ -12,7 +12,6 @@ use App\Models\Reservation;
 use App\Models\ReservationSetting;
 use App\Models\RestaurantTable;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class ReservationService
@@ -28,7 +27,7 @@ class ReservationService
      */
     public function availableSlots(string $date, int $partySize): array
     {
-        $settings   = ReservationSetting::current();
+        $settings = ReservationSetting::current();
         $parsedDate = Carbon::parse($date);
 
         if ($parsedDate->isPast() && !$parsedDate->isToday()) {
@@ -46,9 +45,9 @@ class ReservationService
         $result = [];
 
         foreach ($slots as $slot) {
-            $bookedForSlot = $existing->filter(fn(Reservation $r) =>
-                $r->time_slot === $slot &&
-                !in_array($r->status, ['cancelled', 'no_show'], true)
+            $bookedForSlot = $existing->filter(
+                fn (Reservation $r) => $r->time_slot === $slot &&
+                !in_array($r->status, ['cancelled', 'no_show'], true),
             );
 
             $bookedPartySize = $bookedForSlot->sum('party_size');
@@ -63,8 +62,8 @@ class ReservationService
             }
 
             $result[] = new ReservationSlotData(
-                timeSlot:          $slot,
-                available:         $remaining >= $partySize,
+                timeSlot: $slot,
+                available: $remaining >= $partySize,
                 remainingCapacity: $remaining,
             );
         }
@@ -75,15 +74,15 @@ class ReservationService
     public function create(CreateReservationData $data): Reservation
     {
         $reservation = $this->reservations->create([
-            'customer_id'    => $data->customerId,
-            'customer_name'  => $data->customerName,
+            'customer_id' => $data->customerId,
+            'customer_name' => $data->customerName,
             'customer_phone' => $data->customerPhone,
-            'party_size'     => $data->partySize,
-            'date'           => $data->date,
-            'time_slot'      => $data->timeSlot,
+            'party_size' => $data->partySize,
+            'date' => $data->date,
+            'time_slot' => $data->timeSlot,
             'duration_minutes' => ReservationSetting::current()->slot_duration_minutes,
-            'notes'          => $data->notes,
-            'status'         => 'pending',
+            'notes' => $data->notes,
+            'status' => 'pending',
             'tracking_token' => Str::random(32),
         ]);
 
@@ -137,7 +136,7 @@ class ReservationService
     public function markNoShows(int $minutesGrace): int
     {
         $overdue = $this->reservations->overdueUnseated($minutesGrace);
-        $count   = 0;
+        $count = 0;
 
         foreach ($overdue as $reservation) {
             $this->reservations->updateStatus($reservation->id, 'no_show');
@@ -151,12 +150,12 @@ class ReservationService
 
     private function generateSlots(ReservationSetting $settings): array
     {
-        $slots    = [];
+        $slots = [];
         // Use DB-stored opening/closing times; fall back to 09:00–22:00 if not set
-        [$openH, $openM]  = array_map('intval', explode(':', $settings->opening_time ?? '09:00'));
+        [$openH, $openM] = array_map('intval', explode(':', $settings->opening_time ?? '09:00'));
         [$closeH, $closeM] = array_map('intval', explode(':', $settings->closing_time ?? '22:00'));
-        $start    = Carbon::createFromTime($openH, $openM);
-        $end      = Carbon::createFromTime($closeH, $closeM);
+        $start = Carbon::createFromTime($openH, $openM);
+        $end = Carbon::createFromTime($closeH, $closeM);
         $interval = $settings->slot_duration_minutes + $settings->buffer_minutes_between;
 
         while ($start->lte($end)) {
@@ -177,11 +176,11 @@ class ReservationService
         $existing = $this->reservations->forDate($reservation->date->toDateString());
 
         foreach ($tables as $table) {
-            $hasConflict = $existing->contains(fn(Reservation $r) =>
-                $r->id !== $reservation->id &&
+            $hasConflict = $existing->contains(
+                fn (Reservation $r) => $r->id !== $reservation->id &&
                 $r->table_id === $table->id &&
                 $r->time_slot === $reservation->time_slot &&
-                !in_array($r->status, ['cancelled', 'no_show'], true)
+                !in_array($r->status, ['cancelled', 'no_show'], true),
             );
 
             if (!$hasConflict) {

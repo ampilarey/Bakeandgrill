@@ -15,9 +15,9 @@ interface SmsProviderInterface
     /**
      * Send a raw SMS to a normalised phone number.
      *
-     * @param  string  $to      Normalised E.164 number (e.g. "+9607654321")
-     * @param  string  $message Message body
-     * @return array{0: bool, 1: mixed, 2: string|null}  [$success, $response, $error]
+     * @param string $to Normalised E.164 number (e.g. "+9607654321")
+     * @param string $message Message body
+     * @return array{0: bool, 1: mixed, 2: string|null} [$success, $response, $error]
      */
     public function send(string $to, string $message): array;
 }

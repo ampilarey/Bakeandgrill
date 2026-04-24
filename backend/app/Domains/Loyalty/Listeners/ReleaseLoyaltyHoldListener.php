@@ -38,9 +38,9 @@ class ReleaseLoyaltyHoldListener implements ShouldQueue
             $this->service->releaseHold($hold);
         } catch (\Throwable $e) {
             Log::error('ReleaseLoyaltyHoldListener: failed to release hold', [
-                'hold_id'  => $hold->id,
+                'hold_id' => $hold->id,
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             // Re-throw so the queue worker retries this job (respects $tries = 3).
             throw $e;

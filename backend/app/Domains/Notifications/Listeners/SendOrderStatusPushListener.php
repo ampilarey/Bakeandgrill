@@ -40,7 +40,7 @@ class SendOrderStatusPushListener
         } catch (\Throwable $e) {
             Log::warning('SendOrderStatusPushListener: push notification failed', [
                 'order_id' => $data->orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -49,13 +49,13 @@ class SendOrderStatusPushListener
     private function resolveMessage(string $status, string $orderNum): array
     {
         return match ($status) {
-            'paid'             => ['Order Confirmed!',     "Order {$orderNum} has been confirmed and is being prepared."],
-            'in_progress'      => ['Preparing Your Order', "Order {$orderNum} is now being prepared in the kitchen."],
-            'ready'            => ['Order Ready!',         "Order {$orderNum} is ready for pickup or out for delivery!"],
+            'paid' => ['Order Confirmed!',     "Order {$orderNum} has been confirmed and is being prepared."],
+            'in_progress' => ['Preparing Your Order', "Order {$orderNum} is now being prepared in the kitchen."],
+            'ready' => ['Order Ready!',         "Order {$orderNum} is ready for pickup or out for delivery!"],
             'out_for_delivery' => ['Out for Delivery!',    "Order {$orderNum} is on its way to you."],
-            'completed'        => ['Order Delivered!',     "Order {$orderNum} has been completed. Enjoy your meal!"],
-            'cancelled'        => ['Order Cancelled',      "Order {$orderNum} has been cancelled. Please contact us if you have questions."],
-            default            => [null, ''],
+            'completed' => ['Order Delivered!',     "Order {$orderNum} has been completed. Enjoy your meal!"],
+            'cancelled' => ['Order Cancelled',      "Order {$orderNum} has been cancelled. Please contact us if you have questions."],
+            default => [null, ''],
         };
     }
 }

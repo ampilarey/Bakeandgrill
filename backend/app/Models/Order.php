@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
-
 class Order extends Model
 {
     use HasFactory, SoftDeletes;
@@ -147,6 +146,6 @@ class Order extends Model
 
     public function store(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Store::class);
+        return $this->belongsTo(Store::class);
     }
 }

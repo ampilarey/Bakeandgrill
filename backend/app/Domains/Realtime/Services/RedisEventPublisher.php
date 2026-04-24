@@ -30,22 +30,22 @@ class RedisEventPublisher
      */
     public function publishOrderEvent(int $orderId, string $eventType, array $payload): void
     {
-        if (! $this->enabled) {
+        if (!$this->enabled) {
             return;
         }
 
         $message = json_encode([
-            'type'    => $eventType,
+            'type' => $eventType,
             'payload' => $payload,
         ]);
 
         try {
-            Redis::publish("orders", $message);
+            Redis::publish('orders', $message);
             Redis::publish("order.{$orderId}", $message);
         } catch (\Throwable $e) {
             // Redis failures must never break the main request
             Log::warning('RedisEventPublisher: publish failed', [
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'order_id' => $orderId,
             ]);
         }

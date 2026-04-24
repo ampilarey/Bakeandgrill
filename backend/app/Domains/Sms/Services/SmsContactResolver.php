@@ -17,7 +17,7 @@ class SmsContactResolver
      */
     public function resolveForContact(SmsContact $contact, Carbon $at): ?string
     {
-        if (! $contact->isActiveAt($at)) {
+        if (!$contact->isActiveAt($at)) {
             return null;
         }
 
@@ -32,7 +32,7 @@ class SmsContactResolver
      */
     public function resolveForGroup(SmsContactGroup $group, Carbon $at): Collection
     {
-        if (! $group->is_enabled) {
+        if (!$group->is_enabled) {
             return collect();
         }
 
@@ -54,7 +54,7 @@ class SmsContactResolver
         ?SmsContact $contact,
         ?SmsContactGroup $group,
         ?string $rawPhone,
-        Carbon $at
+        Carbon $at,
     ): Collection {
         return match ($toType) {
             'contact' => $contact

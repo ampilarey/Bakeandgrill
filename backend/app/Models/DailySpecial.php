@@ -17,13 +17,13 @@ class DailySpecial extends Model
     ];
 
     protected $casts = [
-        'start_date'   => 'date',
-        'end_date'     => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
         'days_of_week' => 'array',
-        'is_active'    => 'boolean',
-        'special_price'=> 'decimal:2',
+        'is_active' => 'boolean',
+        'special_price' => 'decimal:2',
         'discount_pct' => 'integer',
-        'sold_count'   => 'integer',
+        'sold_count' => 'integer',
         'max_quantity' => 'integer',
     ];
 
@@ -34,24 +34,40 @@ class DailySpecial extends Model
 
     public function isCurrentlyActive(): bool
     {
-        $now  = Carbon::now();
+        $now = Carbon::now();
         $date = $now->toDateString();
         $time = $now->format('H:i:s');
 
-        if (!$this->is_active) return false;
-        if ($date < $this->start_date->toDateString() || $date > $this->end_date->toDateString()) return false;
-        if ($this->days_of_week && !in_array($now->dayOfWeek, $this->days_of_week, true)) return false;
-        if ($this->start_time && $time < $this->start_time) return false;
-        if ($this->end_time   && $time > $this->end_time)   return false;
-        if ($this->max_quantity && $this->sold_count >= $this->max_quantity) return false;
+        if (!$this->is_active) {
+            return false;
+        }
+        if ($date < $this->start_date->toDateString() || $date > $this->end_date->toDateString()) {
+            return false;
+        }
+        if ($this->days_of_week && !in_array($now->dayOfWeek, $this->days_of_week, true)) {
+            return false;
+        }
+        if ($this->start_time && $time < $this->start_time) {
+            return false;
+        }
+        if ($this->end_time && $time > $this->end_time) {
+            return false;
+        }
+        if ($this->max_quantity && $this->sold_count >= $this->max_quantity) {
+            return false;
+        }
 
         return true;
     }
 
     public function getEffectivePriceFor(float $basePrice): float
     {
-        if ($this->special_price) return (float) $this->special_price;
-        if ($this->discount_pct) return round($basePrice * (1 - $this->discount_pct / 100), 2);
+        if ($this->special_price) {
+            return (float) $this->special_price;
+        }
+        if ($this->discount_pct) {
+            return round($basePrice * (1 - $this->discount_pct / 100), 2);
+        }
 
         return $basePrice;
     }

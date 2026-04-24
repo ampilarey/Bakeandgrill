@@ -44,6 +44,7 @@ class VariantCrudTest extends TestCase
     private function actingAsOwner(): static
     {
         Sanctum::actingAs($this->owner, ['*']);
+
         return $this;
     }
 

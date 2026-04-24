@@ -15,10 +15,10 @@ class TimePunch extends Model
     ];
 
     protected $casts = [
-        'clocked_in_at'  => 'datetime',
+        'clocked_in_at' => 'datetime',
         'clocked_out_at' => 'datetime',
-        'break_minutes'  => 'float',
-        'total_hours'    => 'float',
+        'break_minutes' => 'float',
+        'total_hours' => 'float',
     ];
 
     public function user(): BelongsTo
@@ -32,6 +32,7 @@ class TimePunch extends Model
             return 0.0;
         }
         $minutes = $this->clocked_in_at->diffInMinutes($this->clocked_out_at);
+
         return round(($minutes - $this->break_minutes) / 60, 4);
     }
 }

@@ -138,7 +138,7 @@ class PrintJobService
     private function buildReceiptPayload(Order $order, Printer $printer): array
     {
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (! $receipt->exists) {
+        if (!$receipt->exists) {
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;

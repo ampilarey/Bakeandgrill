@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Http\Requests\ReceiptFeedbackRequest;
 use App\Mail\ReceiptMail;
 use App\Models\Order;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
-use App\Domains\Notifications\DTOs\SmsMessage;
-use App\Domains\Notifications\Services\SmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -38,7 +38,7 @@ class ReceiptPageController extends Controller
             ->where('token', $token)
             ->firstOrFail();
 
-        if (! $this->orderIsPaidForReceipt($receipt->order)) {
+        if (!$this->orderIsPaidForReceipt($receipt->order)) {
             abort(403, 'PDF is available after payment is complete.');
         }
 
@@ -76,7 +76,7 @@ class ReceiptPageController extends Controller
     {
         $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();
 
-        if (! $this->orderIsPaidForReceipt($receipt->order)) {
+        if (!$this->orderIsPaidForReceipt($receipt->order)) {
             return redirect()->back()->with('error', 'Feedback is available after payment.');
         }
 

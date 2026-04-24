@@ -28,28 +28,28 @@ class CustomerDisplayController extends Controller
         $order = Order::with(['items' => function ($q) {
             $q->select('id', 'order_id', 'item_name', 'quantity', 'unit_price', 'total_price', 'notes');
         }])
-        ->where('tracking_token', $token)
-        ->whereIn('status', ['pending', 'open', 'preparing', 'ready'])
-        ->select('id', 'order_number', 'tracking_token', 'status', 'type', 'subtotal', 'tax_amount', 'discount_amount', 'tip_amount', 'total', 'created_at')
-        ->firstOrFail();
+            ->where('tracking_token', $token)
+            ->whereIn('status', ['pending', 'open', 'preparing', 'ready'])
+            ->select('id', 'order_number', 'tracking_token', 'status', 'type', 'subtotal', 'tax_amount', 'discount_amount', 'tip_amount', 'total', 'created_at')
+            ->firstOrFail();
 
         return response()->json([
             'order' => [
                 'order_number' => $order->order_number,
-                'status'       => $order->status,
-                'type'         => $order->type,
-                'items'        => $order->items->map(fn ($i) => [
-                    'name'       => $i->item_name,
-                    'quantity'   => $i->quantity,
+                'status' => $order->status,
+                'type' => $order->type,
+                'items' => $order->items->map(fn ($i) => [
+                    'name' => $i->item_name,
+                    'quantity' => $i->quantity,
                     'unit_price' => $i->unit_price,
-                    'total'      => $i->total_price,
-                    'notes'      => $i->notes,
+                    'total' => $i->total_price,
+                    'notes' => $i->notes,
                 ]),
                 'subtotal' => $order->subtotal,
-                'tax'      => $order->tax_amount,
+                'tax' => $order->tax_amount,
                 'discount' => $order->discount_amount,
-                'tip'      => $order->tip_amount,
-                'total'    => $order->total,
+                'tip' => $order->tip_amount,
+                'total' => $order->total,
             ],
         ]);
     }

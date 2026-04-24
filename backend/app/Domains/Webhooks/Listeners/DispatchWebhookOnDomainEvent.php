@@ -26,22 +26,22 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 class DispatchWebhookOnDomainEvent implements ShouldQueue
 {
     public bool $afterCommit = true;
-    public int  $tries       = 3;
-    public int  $backoff     = 10;
-    public int  $timeout     = 30;
+    public int $tries = 3;
+    public int $backoff = 10;
+    public int $timeout = 30;
 
     private const EVENT_MAP = [
-        OrderCreated::class       => 'order.created',
-        OrderPaid::class          => 'order.paid',
-        OrderCompleted::class     => 'order.completed',
-        OrderCancelled::class     => 'order.cancelled',
-        OrderRefunded::class      => 'order.refunded',
-        PaymentConfirmed::class   => 'payment.confirmed',
-        StockLevelChanged::class  => 'stock.changed',
-        LowStockReached::class    => 'stock.low',
-        ShiftOpened::class        => 'shift.opened',
-        ShiftClosed::class        => 'shift.closed',
-        CustomerCreated::class    => 'customer.created',
+        OrderCreated::class => 'order.created',
+        OrderPaid::class => 'order.paid',
+        OrderCompleted::class => 'order.completed',
+        OrderCancelled::class => 'order.cancelled',
+        OrderRefunded::class => 'order.refunded',
+        PaymentConfirmed::class => 'payment.confirmed',
+        StockLevelChanged::class => 'stock.changed',
+        LowStockReached::class => 'stock.low',
+        ShiftOpened::class => 'shift.opened',
+        ShiftClosed::class => 'shift.closed',
+        CustomerCreated::class => 'customer.created',
         ReservationCreated::class => 'reservation.created',
     ];
 

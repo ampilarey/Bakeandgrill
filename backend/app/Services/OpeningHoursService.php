@@ -23,7 +23,7 @@ class OpeningHoursService
                 // JSON object keys are strings; cast to int for array-key compatibility.
                 return array_combine(
                     array_map('intval', array_keys($decoded)),
-                    array_values($decoded)
+                    array_values($decoded),
                 );
             }
         }
@@ -62,12 +62,12 @@ class OpeningHoursService
      */
     public function isOpenNow(): bool
     {
-        $now         = Carbon::now(config('opening_hours.timezone'));
-        $today       = $now->dayOfWeek; // 0 = Sunday, 6 = Saturday
+        $now = Carbon::now(config('opening_hours.timezone'));
+        $today = $now->dayOfWeek; // 0 = Sunday, 6 = Saturday
         $currentTime = $now->format('H:i');
 
         // Check special closures first.
-        $closures   = $this->getClosures();
+        $closures = $this->getClosures();
         $dateString = $now->format('Y-m-d');
         if (isset($closures[$dateString])) {
             return false;
@@ -79,7 +79,7 @@ class OpeningHoursService
             return false;
         }
 
-        $openTime  = $hours['open'];
+        $openTime = $hours['open'];
         $closeTime = $hours['close'];
 
         // Handle overnight hours (e.g. open 22:00, close 02:00 next day).
@@ -95,7 +95,7 @@ class OpeningHoursService
      */
     public function getTodayHours(): ?array
     {
-        $now   = Carbon::now(config('opening_hours.timezone'));
+        $now = Carbon::now(config('opening_hours.timezone'));
         $today = $now->dayOfWeek;
 
         return $this->getHours()[$today] ?? null;
@@ -106,13 +106,13 @@ class OpeningHoursService
      */
     public function getNextOpenTime(): ?Carbon
     {
-        $now   = Carbon::now(config('opening_hours.timezone'));
+        $now = Carbon::now(config('opening_hours.timezone'));
         $hours = $this->getHours();
 
         for ($i = 0; $i < 7; $i++) {
             $checkDate = $now->copy()->addDays($i);
             $dayOfWeek = $checkDate->dayOfWeek;
-            $dayHours  = $hours[$dayOfWeek] ?? null;
+            $dayHours = $hours[$dayOfWeek] ?? null;
 
             if (!$dayHours || ($dayHours['closed'] ?? false)) {
                 continue;
@@ -133,9 +133,9 @@ class OpeningHoursService
      */
     public function getClosureReason(): ?string
     {
-        $now        = Carbon::now(config('opening_hours.timezone'));
+        $now = Carbon::now(config('opening_hours.timezone'));
         $dateString = $now->format('Y-m-d');
-        $closures   = $this->getClosures();
+        $closures = $this->getClosures();
 
         return $closures[$dateString] ?? null;
     }

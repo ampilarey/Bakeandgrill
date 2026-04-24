@@ -17,9 +17,9 @@ class PushSubscriptionController extends Controller
     public function subscribe(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'endpoint'   => ['required', 'string', 'max:1000'],
+            'endpoint' => ['required', 'string', 'max:1000'],
             'p256dh_key' => ['required', 'string', 'max:500'],
-            'auth_key'   => ['required', 'string', 'max:100'],
+            'auth_key' => ['required', 'string', 'max:100'],
         ]);
 
         $customerId = $request->user()?->id;
@@ -28,8 +28,8 @@ class PushSubscriptionController extends Controller
             ['endpoint' => $validated['endpoint']],
             [
                 'customer_id' => $customerId,
-                'p256dh_key'  => $validated['p256dh_key'],
-                'auth_key'    => $validated['auth_key'],
+                'p256dh_key' => $validated['p256dh_key'],
+                'auth_key' => $validated['auth_key'],
             ],
         );
 

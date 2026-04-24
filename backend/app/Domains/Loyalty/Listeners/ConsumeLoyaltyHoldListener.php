@@ -46,9 +46,9 @@ class ConsumeLoyaltyHoldListener implements ShouldQueue
             $this->service->consumeHold($hold);
         } catch (\Throwable $e) {
             Log::error('Failed to consume loyalty hold', [
-                'hold_id'  => $hold->id,
+                'hold_id' => $hold->id,
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             // Re-throw so the queue worker retries this job (respects $tries = 3).
             // Swallowing the exception would mark the job as succeeded and silently

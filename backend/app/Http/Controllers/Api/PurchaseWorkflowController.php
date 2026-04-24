@@ -31,7 +31,7 @@ class PurchaseWorkflowController extends Controller
         }
 
         $purchase->update([
-            'status'      => 'ordered',
+            'status' => 'ordered',
             'approved_by' => $request->user()->id,
             'approved_at' => now(),
         ]);
@@ -53,7 +53,7 @@ class PurchaseWorkflowController extends Controller
 
         $purchase->update([
             'status' => 'cancelled',
-            'notes'  => ($purchase->notes ? $purchase->notes . "\n" : '') . 'Rejected: ' . ($validated['reason'] ?? 'No reason given'),
+            'notes' => ($purchase->notes ? $purchase->notes . "\n" : '') . 'Rejected: ' . ($validated['reason'] ?? 'No reason given'),
         ]);
 
         $this->audit->log('purchase.rejected', 'Purchase', $id, [], [], [], $request);
@@ -68,11 +68,11 @@ class PurchaseWorkflowController extends Controller
     public function receive(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'actual_delivery_date'     => ['nullable', 'date'],
-            'items'                    => ['required', 'array', 'min:1'],
+            'actual_delivery_date' => ['nullable', 'date'],
+            'items' => ['required', 'array', 'min:1'],
             'items.*.purchase_item_id' => ['required', 'integer'],
-            'items.*.received_quantity'=> ['required', 'numeric', 'min:0'],
-            'items.*.rejected'         => ['nullable', 'boolean'],
+            'items.*.received_quantity' => ['required', 'numeric', 'min:0'],
+            'items.*.rejected' => ['nullable', 'boolean'],
         ]);
 
         $purchase = Purchase::with('items.inventoryItem')->findOrFail($id);
@@ -88,7 +88,7 @@ class PurchaseWorkflowController extends Controller
                     ->firstOrFail();
 
                 $incomingQty = (float) $line['received_quantity'];
-                $isRejected  = (bool) ($line['rejected'] ?? false);
+                $isRejected = (bool) ($line['rejected'] ?? false);
 
                 if ($isRejected) {
                     $pItem->receive_status = 'rejected';
@@ -107,17 +107,17 @@ class PurchaseWorkflowController extends Controller
 
                 // Update inventory stock and WAC
                 if ($pItem->inventoryItem && $incomingQty > 0) {
-                    $invItem  = $pItem->inventoryItem;
+                    $invItem = $pItem->inventoryItem;
                     $oldStock = max(0, (float) ($invItem->current_stock ?? 0));
-                    $oldCost  = (float) ($invItem->unit_cost ?? 0);
-                    $newCost  = (float) $pItem->unit_cost;
+                    $oldCost = (float) ($invItem->unit_cost ?? 0);
+                    $newCost = (float) $pItem->unit_cost;
 
                     $invItem->current_stock = $oldStock + $incomingQty;
 
                     if ($invItem->current_stock > 0) {
                         $invItem->unit_cost = round(
                             ($oldStock * $oldCost + $incomingQty * $newCost) / $invItem->current_stock,
-                            4
+                            4,
                         );
                     }
                     $invItem->last_purchase_price = $newCost;
@@ -125,23 +125,23 @@ class PurchaseWorkflowController extends Controller
 
                     StockMovement::create([
                         'inventory_item_id' => $invItem->id,
-                        'user_id'           => $request->user()?->id,
-                        'type'              => 'purchase',
-                        'quantity'          => $incomingQty,
-                        'balance_after'     => $invItem->current_stock,
-                        'unit_cost'         => $newCost,
-                        'reference_type'    => 'purchase',
-                        'reference_id'      => $purchase->id,
-                        'notes'             => 'Partial receiving',
+                        'user_id' => $request->user()?->id,
+                        'type' => 'purchase',
+                        'quantity' => $incomingQty,
+                        'balance_after' => $invItem->current_stock,
+                        'unit_cost' => $newCost,
+                        'reference_type' => 'purchase',
+                        'reference_id' => $purchase->id,
+                        'notes' => 'Partial receiving',
                     ]);
                 }
             }
 
             // Update overall purchase status
             $purchase->refresh();
-            $allItems    = $purchase->items;
-            $allComplete = $allItems->every(fn($i) => in_array($i->receive_status, ['complete', 'rejected']));
-            $anyReceived = $allItems->some(fn($i) => in_array($i->receive_status, ['partial', 'complete']));
+            $allItems = $purchase->items;
+            $allComplete = $allItems->every(fn ($i) => in_array($i->receive_status, ['complete', 'rejected']));
+            $anyReceived = $allItems->some(fn ($i) => in_array($i->receive_status, ['partial', 'complete']));
 
             if ($allComplete) {
                 $purchase->status = 'received';
@@ -182,7 +182,7 @@ class PurchaseWorkflowController extends Controller
         $suggested = $lowItems->map(function ($item) {
             $suggestedQty = max(
                 ($item->reorder_quantity ?? $item->reorder_point ?? 1),
-                (($item->reorder_point ?? 0) * 2) - ($item->current_stock ?? 0)
+                (($item->reorder_point ?? 0) * 2) - ($item->current_stock ?? 0),
             );
 
             // Find cheapest supplier via price history
@@ -194,35 +194,35 @@ class PurchaseWorkflowController extends Controller
                 ->first();
 
             return [
-                'inventory_item_id'   => $item->id,
-                'name'                => $item->name,
-                'unit'                => $item->unit,
-                'current_stock'       => (float) $item->current_stock,
-                'reorder_point'       => (float) $item->reorder_point,
-                'suggested_quantity'  => max(1, round($suggestedQty, 2)),
-                'last_unit_cost'      => $item->last_purchase_price ? (float) $item->last_purchase_price : null,
-                'suggested_supplier'  => $cheapest?->supplier ? [
-                    'id'   => $cheapest->supplier_id,
+                'inventory_item_id' => $item->id,
+                'name' => $item->name,
+                'unit' => $item->unit,
+                'current_stock' => (float) $item->current_stock,
+                'reorder_point' => (float) $item->reorder_point,
+                'suggested_quantity' => max(1, round($suggestedQty, 2)),
+                'last_unit_cost' => $item->last_purchase_price ? (float) $item->last_purchase_price : null,
+                'suggested_supplier' => $cheapest?->supplier ? [
+                    'id' => $cheapest->supplier_id,
                     'name' => $cheapest->supplier->name,
-                    'price'=> (float) $cheapest->min_price,
+                    'price' => (float) $cheapest->min_price,
                 ] : null,
             ];
         });
 
         if ($supplierFilter) {
-            $suggested = $suggested->filter(fn($s) => ($s['suggested_supplier'] ?? null) !== null && ($s['suggested_supplier']['id'] ?? null) == $supplierFilter)->values();
+            $suggested = $suggested->filter(fn ($s) => ($s['suggested_supplier'] ?? null) !== null && ($s['suggested_supplier']['id'] ?? null) == $supplierFilter)->values();
         }
 
         // Group by supplier for easy PO creation
-        $bySup = $suggested->groupBy(fn($s) => ($s['suggested_supplier'] ?? null)['id'] ?? 'unknown');
+        $bySup = $suggested->groupBy(fn ($s) => ($s['suggested_supplier'] ?? null)['id'] ?? 'unknown');
 
         return response()->json([
-            'items'      => $suggested,
-            'by_supplier'=> $bySup->map(fn($items, $supId) => [
-                'supplier_id'   => $supId !== 'unknown' ? (int) $supId : null,
+            'items' => $suggested,
+            'by_supplier' => $bySup->map(fn ($items, $supId) => [
+                'supplier_id' => $supId !== 'unknown' ? (int) $supId : null,
                 'supplier_name' => ($items->first()['suggested_supplier'] ?? null)['name'] ?? 'Unknown',
-                'items'         => $items->values(),
-                'estimated_total' => round($items->sum(fn($i) => $i['suggested_quantity'] * ($i['last_unit_cost'] ?? 0)), 2),
+                'items' => $items->values(),
+                'estimated_total' => round($items->sum(fn ($i) => $i['suggested_quantity'] * ($i['last_unit_cost'] ?? 0)), 2),
             ])->values(),
         ]);
     }
@@ -234,27 +234,27 @@ class PurchaseWorkflowController extends Controller
     public function createFromSuggest(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'supplier_id'         => ['required', 'integer', 'exists:suppliers,id'],
+            'supplier_id' => ['required', 'integer', 'exists:suppliers,id'],
             'expected_delivery_date' => ['nullable', 'date'],
-            'items'               => ['required', 'array', 'min:1'],
+            'items' => ['required', 'array', 'min:1'],
             'items.*.inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
-            'items.*.quantity'    => ['required', 'numeric', 'min:0.001'],
-            'items.*.unit_cost'   => ['required', 'numeric', 'min:0'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
+            'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
         ]);
 
         $purchase = DB::transaction(function () use ($validated, $request) {
             $subtotal = 0.0;
 
             $po = Purchase::create([
-                'purchase_number'        => $this->generatePO(),
-                'supplier_id'            => $validated['supplier_id'],
-                'user_id'                => $request->user()->id,
-                'status'                 => 'draft',
-                'subtotal'               => 0,
-                'total'                  => 0,
-                'purchase_date'          => now()->toDateString(),
+                'purchase_number' => $this->generatePO(),
+                'supplier_id' => $validated['supplier_id'],
+                'user_id' => $request->user()->id,
+                'status' => 'draft',
+                'subtotal' => 0,
+                'total' => 0,
+                'purchase_date' => now()->toDateString(),
                 'expected_delivery_date' => $validated['expected_delivery_date'] ?? null,
-                'notes'                  => 'Auto-generated from low-stock suggestion',
+                'notes' => 'Auto-generated from low-stock suggestion',
             ]);
 
             foreach ($validated['items'] as $line) {
@@ -262,11 +262,11 @@ class PurchaseWorkflowController extends Controller
                 $subtotal += $lineTotal;
 
                 PurchaseItem::create([
-                    'purchase_id'       => $po->id,
+                    'purchase_id' => $po->id,
                     'inventory_item_id' => $line['inventory_item_id'],
-                    'quantity'          => $line['quantity'],
-                    'unit_cost'         => $line['unit_cost'],
-                    'total_cost'        => $lineTotal,
+                    'quantity' => $line['quantity'],
+                    'unit_cost' => $line['unit_cost'],
+                    'total_cost' => $lineTotal,
                 ]);
             }
 
@@ -280,8 +280,9 @@ class PurchaseWorkflowController extends Controller
 
     private function generatePO(): string
     {
-        $date  = now()->format('Ymd');
+        $date = now()->format('Ymd');
         $count = Purchase::whereDate('purchase_date', now()->toDateString())->count() + 1;
+
         return 'PO-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
     }
 }

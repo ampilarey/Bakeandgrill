@@ -12,7 +12,7 @@ class StaffSchedule extends Model
     protected $fillable = ['user_id', 'date', 'shift_start', 'shift_end', 'role_override', 'notes', 'is_confirmed'];
 
     protected $casts = [
-        'date'         => 'date',
+        'date' => 'date',
         'is_confirmed' => 'boolean',
     ];
 

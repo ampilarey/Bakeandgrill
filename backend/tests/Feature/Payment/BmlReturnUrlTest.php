@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Payment;
 
-use App\Models\Category;
 use App\Models\Customer;
-use App\Models\Item;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,21 +28,21 @@ class BmlReturnUrlTest extends TestCase
         parent::setUp();
 
         $this->customer = Customer::create([
-            'name'  => 'BML Test Customer',
+            'name' => 'BML Test Customer',
             'phone' => '+9607990001',
         ]);
         $this->token = $this->customer->createToken('test', ['customer'])->plainTextToken;
 
         $this->order = Order::create([
-            'order_number'    => 'ORD-BML-URL-001',
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 100.00,
-            'tax_amount'      => 0,
+            'order_number' => 'ORD-BML-URL-001',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 100.00,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 100.00,
-            'total_laar'      => 10000,
+            'total' => 100.00,
+            'total_laar' => 10000,
         ]);
     }
 
@@ -55,7 +53,7 @@ class BmlReturnUrlTest extends TestCase
         Http::fake([
             '*/v2/transactions' => Http::response([
                 'transactionId' => 'TXN-TEST-BML-001',
-                'url'           => 'https://pay.bml.mv/test?orderId=xxx',
+                'url' => 'https://pay.bml.mv/test?orderId=xxx',
             ], 200),
         ]);
 
@@ -85,9 +83,9 @@ class BmlReturnUrlTest extends TestCase
         config(['frontend.order_status_url' => 'https://app.example.com/orders/']);
 
         // The return URL should strip trailing slash before appending /{id}
-        $base   = rtrim(config('frontend.order_status_url'), '/');
+        $base = rtrim(config('frontend.order_status_url'), '/');
         $orderId = 42;
-        $url    = "{$base}/{$orderId}?payment=pending";
+        $url = "{$base}/{$orderId}?payment=pending";
 
         $this->assertStringNotContainsString('//', str_replace('https://', '', $url));
         $this->assertStringEndsWith('/42?payment=pending', $url);
@@ -97,7 +95,7 @@ class BmlReturnUrlTest extends TestCase
     {
         config(['frontend.order_status_url' => 'https://app.example.com/orders']);
 
-        $base    = config('frontend.order_status_url');
+        $base = config('frontend.order_status_url');
         $orderId = 123;
 
         foreach (['pending', 'CONFIRMED', 'FAILED'] as $state) {
@@ -110,23 +108,23 @@ class BmlReturnUrlTest extends TestCase
     public function test_webhook_marks_order_paid_and_does_not_change_return_url(): void
     {
         $payment = Payment::create([
-            'order_id'        => $this->order->id,
-            'method'          => 'bml',
-            'amount'          => 100.00,
-            'amount_laar'     => 10000,
-            'status'          => 'pending',
+            'order_id' => $this->order->id,
+            'method' => 'bml',
+            'amount' => 100.00,
+            'amount_laar' => 10000,
+            'status' => 'pending',
             'idempotency_key' => 'bml:init:' . $this->order->id . ':' . now()->format('Ymd'),
-            'local_id'        => 'LOCAL-BML-001',
-            'transaction_id'  => 'TXN-BML-WH-001',
+            'local_id' => 'LOCAL-BML-001',
+            'transaction_id' => 'TXN-BML-WH-001',
         ]);
 
         // A valid-looking BML webhook body
         $webhookBody = json_encode([
             'transactionId' => 'TXN-BML-WH-001',
-            'localId'       => 'LOCAL-BML-001',
-            'state'         => 'CONFIRMED',
-            'amount'        => '100.00',
-            'currency'      => 'MVR',
+            'localId' => 'LOCAL-BML-001',
+            'state' => 'CONFIRMED',
+            'amount' => '100.00',
+            'currency' => 'MVR',
         ]);
 
         // Note: signature verification will likely reject this in test, that's expected

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\PrayerTimes\Services;
 
 use App\Domains\PrayerTimes\DTOs\IslandData;
@@ -24,7 +26,7 @@ final class NearestIslandFinder
                     * cos(radians(longitude) - radians(?))
                     + sin(radians(?)) * sin(radians(latitude))
                 )) AS distance',
-                [$lat, $lng, $lat]
+                [$lat, $lng, $lat],
             )
             ->orderBy('distance')
             ->first();

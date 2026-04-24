@@ -31,25 +31,25 @@ class OrderStreamAuthTest extends TestCase
         parent::setUp();
 
         $this->customer = Customer::create([
-            'name'  => 'Stream Customer',
+            'name' => 'Stream Customer',
             'phone' => '+9607770001',
         ]);
         $this->customerToken = $this->customer->createToken('test', ['customer'])->plainTextToken;
 
         $this->otherCustomer = Customer::create([
-            'name'  => 'Other Customer',
+            'name' => 'Other Customer',
             'phone' => '+9607770002',
         ]);
 
         $this->order = Order::create([
-            'order_number'    => 'SSE-AUTH-001',
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 50,
-            'tax_amount'      => 0,
+            'order_number' => 'SSE-AUTH-001',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50,
+            'total' => 50,
         ]);
     }
 
@@ -79,14 +79,14 @@ class OrderStreamAuthTest extends TestCase
     public function test_customer_cannot_get_ticket_for_another_customers_order(): void
     {
         $otherOrder = Order::create([
-            'order_number'    => 'SSE-AUTH-002',
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => $this->otherCustomer->id,
-            'subtotal'        => 50,
-            'tax_amount'      => 0,
+            'order_number' => 'SSE-AUTH-002',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => $this->otherCustomer->id,
+            'subtotal' => 50,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50,
+            'total' => 50,
         ]);
 
         $this->postJson(
@@ -150,14 +150,14 @@ class OrderStreamAuthTest extends TestCase
     public function test_stream_ticket_for_wrong_order_returns_403(): void
     {
         $anotherOrder = Order::create([
-            'order_number'    => 'SSE-AUTH-003',
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => $this->customer->id,
-            'subtotal'        => 50,
-            'tax_amount'      => 0,
+            'order_number' => 'SSE-AUTH-003',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50,
+            'tax_amount' => 0,
             'discount_amount' => 0,
-            'total'           => 50,
+            'total' => 50,
         ]);
 
         // Get a ticket for $this->order
@@ -179,13 +179,13 @@ class OrderStreamAuthTest extends TestCase
 
     public function test_staff_can_access_orders_stream_without_ticket(): void
     {
-        $role  = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
         $staff = User::create([
-            'name'      => 'Staff Member',
-            'email'     => 'staff-stream@test.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Staff Member',
+            'email' => 'staff-stream@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 

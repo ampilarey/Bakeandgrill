@@ -23,9 +23,9 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
-    public int $backoff  = 60;
-    public int $timeout  = 60;
+    public int $tries = 3;
+    public int $backoff = 60;
+    public int $timeout = 60;
 
     public function __construct(
         private SmsCampaignRecipient $recipient,
@@ -40,12 +40,13 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
         // Re-load campaign fresh; the serialised relation may be stale or deleted.
         $campaign = SmsCampaign::find($this->recipient->sms_campaign_id);
 
-        if (! $campaign) {
+        if (!$campaign) {
             Log::warning('SendSmsCampaignRecipientJob: campaign not found, marking recipient failed', [
                 'recipient_id' => $this->recipient->id,
-                'campaign_id'  => $this->recipient->sms_campaign_id,
+                'campaign_id' => $this->recipient->sms_campaign_id,
             ]);
             $this->recipient->markFailed('Campaign no longer exists');
+
             // Do not rethrow — nothing to retry.
             return;
         }
@@ -70,8 +71,8 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
         } catch (\Throwable $e) {
             Log::error('SendSmsCampaignRecipientJob: send failed', [
                 'recipient_id' => $this->recipient->id,
-                'campaign_id'  => $campaign->id,
-                'error'        => $e->getMessage(),
+                'campaign_id' => $campaign->id,
+                'error' => $e->getMessage(),
             ]);
 
             $this->recipient->markFailed($e->getMessage());
@@ -85,9 +86,9 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        \Illuminate\Support\Facades\Log::error('SendSmsCampaignRecipientJob: exhausted retries', [
+        Log::error('SendSmsCampaignRecipientJob: exhausted retries', [
             'recipient_id' => $this->recipient->id,
-            'error'        => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
 
         if (app()->bound('sentry')) {

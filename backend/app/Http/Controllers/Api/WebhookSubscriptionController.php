@@ -26,15 +26,15 @@ class WebhookSubscriptionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'   => ['required', 'string', 'max:100'],
-            'url'    => ['required', 'url', 'max:500'],
+            'name' => ['required', 'string', 'max:100'],
+            'url' => ['required', 'url', 'max:500'],
             'events' => ['required', 'array', 'min:1'],
             'events.*' => ['string', 'in:' . implode(',', DispatchWebhookOnDomainEvent::getSupportedEventNames())],
         ]);
 
         $subscription = WebhookSubscription::create([
-            'name'   => $validated['name'],
-            'url'    => $validated['url'],
+            'name' => $validated['name'],
+            'url' => $validated['url'],
             'events' => $validated['events'],
             'secret' => Str::random(40),
             'active' => true,
@@ -46,7 +46,7 @@ class WebhookSubscriptionController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $subscription = WebhookSubscription::with(['logs' => fn($q) => $q->orderByDesc('created_at')->limit(20)])
+        $subscription = WebhookSubscription::with(['logs' => fn ($q) => $q->orderByDesc('created_at')->limit(20)])
             ->findOrFail($id);
 
         return response()->json(['subscription' => $this->safeSubscription($subscription)]);
@@ -57,8 +57,8 @@ class WebhookSubscriptionController extends Controller
         $subscription = WebhookSubscription::findOrFail($id);
 
         $validated = $request->validate([
-            'name'   => ['sometimes', 'string', 'max:100'],
-            'url'    => ['sometimes', 'url', 'max:500'],
+            'name' => ['sometimes', 'string', 'max:100'],
+            'url' => ['sometimes', 'url', 'max:500'],
             'events' => ['sometimes', 'array', 'min:1'],
             'events.*' => ['string', 'in:' . implode(',', DispatchWebhookOnDomainEvent::getSupportedEventNames())],
             'active' => ['sometimes', 'boolean'],

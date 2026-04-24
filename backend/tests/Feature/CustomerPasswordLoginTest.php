@@ -6,7 +6,6 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
@@ -32,11 +31,11 @@ class CustomerPasswordLoginTest extends TestCase
         parent::setUp();
 
         $this->customer = Customer::create([
-            'name'           => 'Test Customer',
-            'phone'          => '+9607001234',
+            'name' => 'Test Customer',
+            'phone' => '+9607001234',
             'loyalty_points' => 0,
-            'tier'           => 'bronze',
-            'is_active'      => true,
+            'tier' => 'bronze',
+            'is_active' => true,
         ]);
 
         // Assign password directly (excluded from $fillable, uses hashed cast)
@@ -47,7 +46,7 @@ class CustomerPasswordLoginTest extends TestCase
     public function test_customer_can_login_with_correct_password(): void
     {
         $response = $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'secret123',
         ]);
 
@@ -58,7 +57,7 @@ class CustomerPasswordLoginTest extends TestCase
     public function test_wrong_password_returns_422(): void
     {
         $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'wrongpassword',
         ])->assertStatus(422);
     }
@@ -66,7 +65,7 @@ class CustomerPasswordLoginTest extends TestCase
     public function test_unknown_phone_returns_422(): void
     {
         $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9609999999',
+            'phone' => '+9609999999',
             'password' => 'secret123',
         ])->assertStatus(422);
     }
@@ -76,7 +75,7 @@ class CustomerPasswordLoginTest extends TestCase
         $this->customer->update(['is_active' => false]);
 
         $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'secret123',
         ])->assertStatus(422);
     }
@@ -85,7 +84,7 @@ class CustomerPasswordLoginTest extends TestCase
     {
         for ($i = 0; $i < 5; $i++) {
             $this->postJson('/api/auth/customer/login', [
-                'phone'    => '+9607001234',
+                'phone' => '+9607001234',
                 'password' => 'wrong',
             ]);
         }
@@ -94,7 +93,7 @@ class CustomerPasswordLoginTest extends TestCase
         // controller-level RateLimiter (422 with a friendly message).
         // Both are correct; what matters is that the request is rejected.
         $response = $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'wrong',
         ]);
 
@@ -106,7 +105,7 @@ class CustomerPasswordLoginTest extends TestCase
         // Trigger a few failures
         for ($i = 0; $i < 3; $i++) {
             $this->postJson('/api/auth/customer/login', [
-                'phone'    => '+9607001234',
+                'phone' => '+9607001234',
                 'password' => 'wrong',
             ]);
         }
@@ -116,7 +115,7 @@ class CustomerPasswordLoginTest extends TestCase
         RateLimiter::clear($rateKey);
 
         $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'secret123',
         ])->assertOk();
     }
@@ -126,26 +125,26 @@ class CustomerPasswordLoginTest extends TestCase
         // A few failures, then a success — the limiter should be cleared
         for ($i = 0; $i < 2; $i++) {
             $this->postJson('/api/auth/customer/login', [
-                'phone'    => '+9607001234',
+                'phone' => '+9607001234',
                 'password' => 'wrong',
             ]);
         }
 
         // Success clears the bucket
         $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'secret123',
         ])->assertOk();
 
         // Subsequent failure starts the count from 1, not from 3
         $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'wrong',
         ])->assertStatus(422);
 
         // Should NOT be locked out yet (only 1 failure since success)
         $response = $this->postJson('/api/auth/customer/login', [
-            'phone'    => '+9607001234',
+            'phone' => '+9607001234',
             'password' => 'secret123',
         ]);
         $response->assertOk();

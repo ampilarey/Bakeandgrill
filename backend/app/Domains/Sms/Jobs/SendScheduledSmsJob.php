@@ -21,9 +21,9 @@ class SendScheduledSmsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
-    public int $backoff  = 60;
-    public int $timeout  = 120; // May send to many recipients; allow 2 min before killing
+    public int $tries = 3;
+    public int $backoff = 60;
+    public int $timeout = 120; // May send to many recipients; allow 2 min before killing
 
     public function __construct(
         public readonly int $scheduledMessageId,
@@ -38,7 +38,7 @@ class SendScheduledSmsJob implements ShouldQueue
         $scheduled = SmsScheduledMessage::with(['contact.user', 'group.contacts.user', 'template'])
             ->find($this->scheduledMessageId);
 
-        if (! $scheduled) {
+        if (!$scheduled) {
             Log::warning('SendScheduledSmsJob: scheduled message not found', ['id' => $this->scheduledMessageId]);
 
             return;
@@ -92,7 +92,7 @@ class SendScheduledSmsJob implements ShouldQueue
                 ));
             } catch (\Throwable $e) {
                 Log::error('SendScheduledSmsJob: failed to send to recipient', [
-                    'id'    => $this->scheduledMessageId,
+                    'id' => $this->scheduledMessageId,
                     'phone' => $phone,
                     'error' => $e->getMessage(),
                 ]);
@@ -100,7 +100,7 @@ class SendScheduledSmsJob implements ShouldQueue
             }
         }
 
-        if (! empty($failures)) {
+        if (!empty($failures)) {
             // Re-throw so the job enters failed_jobs and retry logic applies.
             // Idempotency keys ensure already-sent messages are not re-sent on retry.
             throw new \RuntimeException(
@@ -113,7 +113,7 @@ class SendScheduledSmsJob implements ShouldQueue
     {
         Log::critical('SendScheduledSmsJob: exhausted retries', [
             'scheduled_message_id' => $this->scheduledMessageId,
-            'error'                => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
 
         if (app()->bound('sentry')) {

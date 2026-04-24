@@ -84,9 +84,9 @@ class Item extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function reviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function reviews(): HasMany
     {
-        return $this->hasMany(\App\Models\Review::class);
+        return $this->hasMany(Review::class);
     }
 
     public function comboItems(): HasMany
@@ -116,24 +116,24 @@ class Item extends Model
     }
 
     protected $casts = [
-        'category_id'  => 'integer',
+        'category_id' => 'integer',
         'menu_group_id' => 'integer',
-        'is_active'    => 'boolean',
+        'is_active' => 'boolean',
         'is_available' => 'boolean',
         'has_variants' => 'boolean',
-        'track_stock'  => 'boolean',
+        'track_stock' => 'boolean',
         'allow_pre_order' => 'boolean',
-        'base_price'   => 'decimal:2',
+        'base_price' => 'decimal:2',
         'cost' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'stock_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'pre_order_lead_time_minutes' => 'integer',
         'dietary_tags' => 'array',
-        'allergens'    => 'array',
-        'calories'     => 'integer',
+        'allergens' => 'array',
+        'calories' => 'integer',
         'prep_time_minutes' => 'integer',
-        'is_combo'     => 'boolean',
+        'is_combo' => 'boolean',
         'combo_discount_pct' => 'decimal:2',
     ];
 
@@ -144,7 +144,7 @@ class Item extends Model
     }
 
     /** Active variants ordered by sort_order. */
-    public function activeVariants(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function activeVariants(): HasMany
     {
         return $this->variants()->where('is_active', true)->orderBy('sort_order');
     }

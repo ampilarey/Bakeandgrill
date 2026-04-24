@@ -22,16 +22,16 @@ class ItemFactory extends Factory
         $name = fake()->unique()->words(2, true);
 
         return [
-            'category_id'       => Category::factory(),
-            'name'              => ucwords($name),
-            'sku'               => strtoupper(Str::random(4)) . '-' . fake()->unique()->randomNumber(4),
-            'base_price'        => fake()->randomFloat(2, 5, 80),
-            'is_active'         => true,
-            'is_available'      => true,
-            'track_stock'       => false,
+            'category_id' => Category::factory(),
+            'name' => ucwords($name),
+            'sku' => strtoupper(Str::random(4)) . '-' . fake()->unique()->randomNumber(4),
+            'base_price' => fake()->randomFloat(2, 5, 80),
+            'is_active' => true,
+            'is_available' => true,
+            'track_stock' => false,
             'availability_type' => 'made_to_order',
-            'stock_quantity'    => 0,
-            'has_variants'      => false,
+            'stock_quantity' => 0,
+            'has_variants' => false,
         ];
     }
 
@@ -41,9 +41,9 @@ class ItemFactory extends Factory
     public function prepared(int $stock = 10): static
     {
         return $this->state(fn () => [
-            'track_stock'       => true,
+            'track_stock' => true,
             'availability_type' => 'stock_based',
-            'stock_quantity'    => $stock,
+            'stock_quantity' => $stock,
             'low_stock_threshold' => 2,
         ]);
     }
@@ -54,7 +54,7 @@ class ItemFactory extends Factory
     public function madeToOrder(): static
     {
         return $this->state(fn () => [
-            'track_stock'       => false,
+            'track_stock' => false,
             'availability_type' => 'made_to_order',
         ]);
     }

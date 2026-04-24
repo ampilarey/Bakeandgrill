@@ -18,7 +18,7 @@ class OpeningHoursController extends Controller
      */
     public function status(): JsonResponse
     {
-        $open    = $this->service->isOpenNow();
+        $open = $this->service->isOpenNow();
         $message = null;
 
         if (!$open) {
@@ -27,14 +27,14 @@ class OpeningHoursController extends Controller
         }
 
         $todayRow = $this->service->getTodayHours();
-        $today    = null;
+        $today = null;
 
         if ($todayRow !== null) {
             $closed = (bool) ($todayRow['closed'] ?? false);
-            $today  = [
+            $today = [
                 'closed' => $closed,
-                'open'   => $closed ? null : ($todayRow['open']  ?? null),
-                'close'  => $closed ? null : ($todayRow['close'] ?? null),
+                'open' => $closed ? null : ($todayRow['open'] ?? null),
+                'close' => $closed ? null : ($todayRow['close'] ?? null),
             ];
         }
 
@@ -50,8 +50,8 @@ class OpeningHoursController extends Controller
         $schedule = config('opening_hours.hours', []);
 
         return response()->json([
-            'schedule'       => $schedule,
-            'open'           => $this->service->isOpenNow(),
+            'schedule' => $schedule,
+            'open' => $this->service->isOpenNow(),
             'closure_reason' => $this->service->getClosureReason(),
         ]);
     }

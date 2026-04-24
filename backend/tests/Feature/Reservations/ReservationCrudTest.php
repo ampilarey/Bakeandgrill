@@ -34,20 +34,20 @@ class ReservationCrudTest extends TestCase
         ReservationSetting::updateOrCreate(
             [],
             [
-                'max_party_size'        => 20,
-                'advance_booking_days'  => 30,
+                'max_party_size' => 20,
+                'advance_booking_days' => 30,
                 'slot_duration_minutes' => 30,
-                'opening_time'          => '08:00',
-                'closing_time'          => '22:00',
+                'opening_time' => '08:00',
+                'closing_time' => '22:00',
             ],
         );
 
         $this->basePayload = [
-            'customer_name'  => 'Test Guest',
+            'customer_name' => 'Test Guest',
             'customer_phone' => '+9607771234',
-            'party_size'     => 2,
-            'date'           => today()->addDays(2)->toDateString(),
-            'time_slot'      => '12:00',
+            'party_size' => 2,
+            'date' => today()->addDays(2)->toDateString(),
+            'time_slot' => '12:00',
         ];
     }
 
@@ -129,7 +129,7 @@ class ReservationCrudTest extends TestCase
             ['status' => 'confirmed'],
             $this->ownerHeaders,
         )->assertStatus(200)
-        ->assertJsonPath('reservation.status', 'confirmed');
+            ->assertJsonPath('reservation.status', 'confirmed');
     }
 
     public function test_admin_can_cancel_a_reservation(): void
@@ -143,7 +143,7 @@ class ReservationCrudTest extends TestCase
             ['status' => 'cancelled'],
             $this->ownerHeaders,
         )->assertStatus(200)
-        ->assertJsonPath('reservation.status', 'cancelled');
+            ->assertJsonPath('reservation.status', 'cancelled');
     }
 
     public function test_status_update_rejects_invalid_status(): void
@@ -180,7 +180,7 @@ class ReservationCrudTest extends TestCase
     {
         // Create reservation for customer A (unauthenticated, no customer_id linked)
         $response = $this->postJson('/api/reservations', $this->basePayload)->assertStatus(201);
-        $id       = $response->json('reservation.id');
+        $id = $response->json('reservation.id');
 
         // Manually set customer_id for customer A
         $customerA = $this->makeCustomer(['phone' => '+9607100001']);
@@ -205,7 +205,7 @@ class ReservationCrudTest extends TestCase
     public function test_admin_can_update_reservation_settings(): void
     {
         $this->patchJson('/api/admin/reservations/settings', [
-            'max_party_size'  => 8,
+            'max_party_size' => 8,
         ], $this->ownerHeaders)->assertStatus(200);
 
         $this->assertDatabaseHas('reservation_settings', ['max_party_size' => 8]);

@@ -20,21 +20,21 @@ class OrderFactory extends Factory
     public function definition(): array
     {
         $subtotal = fake()->randomFloat(2, 10, 200);
-        $tax      = round($subtotal * 0.08, 2);
-        $total    = $subtotal + $tax;
+        $tax = round($subtotal * 0.08, 2);
+        $total = $subtotal + $tax;
 
         return [
-            'order_number'    => 'BG-' . date('Ymd') . '-' . str_pad((string) self::$seq++, 4, '0', STR_PAD_LEFT),
-            'tracking_token'  => \Illuminate\Support\Str::random(32),
-            'type'            => 'takeaway',
-            'status'          => 'pending',
-            'customer_id'     => Customer::factory(),
-            'subtotal'        => $subtotal,
-            'tax_amount'      => $tax,
+            'order_number' => 'BG-' . date('Ymd') . '-' . str_pad((string) self::$seq++, 4, '0', STR_PAD_LEFT),
+            'tracking_token' => \Illuminate\Support\Str::random(32),
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'customer_id' => Customer::factory(),
+            'subtotal' => $subtotal,
+            'tax_amount' => $tax,
             'discount_amount' => 0,
-            'total'           => $total,
-            'total_laar'      => (int) round($total * 100),
-            'delivery_fee'    => 0,
+            'total' => $total,
+            'total_laar' => (int) round($total * 100),
+            'delivery_fee' => 0,
             'delivery_fee_laar' => 0,
         ];
     }
@@ -52,13 +52,13 @@ class OrderFactory extends Factory
     public function delivery(): static
     {
         return $this->state(fn () => [
-            'type'                   => 'delivery',
-            'delivery_island'        => 'Male',
+            'type' => 'delivery',
+            'delivery_island' => 'Male',
             'delivery_address_line1' => fake()->streetAddress(),
-            'delivery_contact_name'  => fake()->name(),
+            'delivery_contact_name' => fake()->name(),
             'delivery_contact_phone' => '+960' . fake()->numerify('#######'),
-            'delivery_fee'           => 20.00,
-            'delivery_fee_laar'      => 2000,
+            'delivery_fee' => 20.00,
+            'delivery_fee_laar' => 2000,
         ]);
     }
 
@@ -70,7 +70,7 @@ class OrderFactory extends Factory
     public function paid(): static
     {
         return $this->state(fn () => [
-            'status'  => 'paid',
+            'status' => 'paid',
             'paid_at' => now(),
         ]);
     }

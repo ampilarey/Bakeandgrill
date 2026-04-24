@@ -66,7 +66,7 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
     {
         return Reservation::whereIn('status', ['pending', 'confirmed'])
             ->whereDate('date', today())
-            ->whereRaw("TIME(time_slot) < TIME(DATE_SUB(NOW(), INTERVAL ? MINUTE))", [$minutesGrace])
+            ->whereRaw('TIME(time_slot) < TIME(DATE_SUB(NOW(), INTERVAL ? MINUTE))', [$minutesGrace])
             ->get();
     }
 }

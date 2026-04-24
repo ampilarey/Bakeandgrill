@@ -51,7 +51,8 @@ return new class extends Migration
         Schema::table('inventory_items', function (Blueprint $table): void {
             try {
                 $table->dropForeign(['preferred_supplier_id']);
-            } catch (\Throwable) {}
+            } catch (Throwable) {
+            }
 
             $table->string('preferred_supplier_id')->nullable()->change();
         });

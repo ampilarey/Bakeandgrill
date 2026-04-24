@@ -19,8 +19,8 @@ class Modifier extends Model
 
     protected $casts = [
         'sort_order' => 'integer',
-        'price'      => 'decimal:2',
-        'is_active'  => 'boolean',
+        'price' => 'decimal:2',
+        'is_active' => 'boolean',
     ];
 
     public function items(): BelongsToMany

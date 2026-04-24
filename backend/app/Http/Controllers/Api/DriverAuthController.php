@@ -22,7 +22,7 @@ class DriverAuthController extends Controller
     {
         $validated = $request->validate([
             'phone' => ['required', 'string'],
-            'pin'   => ['required', 'string', 'min:4', 'max:6'],
+            'pin' => ['required', 'string', 'min:4', 'max:6'],
         ]);
 
         $driver = DeliveryDriver::where('phone', $validated['phone'])
@@ -41,7 +41,7 @@ class DriverAuthController extends Controller
         $driver->update(['last_login_at' => now()]);
 
         return response()->json([
-            'token'  => $token,
+            'token' => $token,
             'driver' => $this->driverData($driver),
         ]);
     }
@@ -69,12 +69,12 @@ class DriverAuthController extends Controller
     private function driverData(DeliveryDriver $driver): array
     {
         return [
-            'id'           => $driver->id,
-            'name'         => $driver->name,
-            'phone'        => $driver->phone,
+            'id' => $driver->id,
+            'name' => $driver->name,
+            'phone' => $driver->phone,
             'vehicle_type' => $driver->vehicle_type,
-            'is_active'    => $driver->is_active,
-            'has_pin'      => (bool) $driver->pin,
+            'is_active' => $driver->is_active,
+            'has_pin' => (bool) $driver->pin,
             'last_login_at' => $driver->last_login_at?->toIso8601String(),
         ];
     }

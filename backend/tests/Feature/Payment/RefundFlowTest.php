@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Payment;
 
-use App\Models\Category;
-use App\Models\Item;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Refund;
@@ -43,14 +41,14 @@ class RefundFlowTest extends TestCase
         );
 
         $this->owner = User::factory()->create([
-            'role_id'   => $ownerRole->id,
-            'pin_hash'  => Hash::make('1234'),
+            'role_id' => $ownerRole->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 
         $this->staff = User::factory()->create([
-            'role_id'   => $staffRole->id,
-            'pin_hash'  => Hash::make('1234'),
+            'role_id' => $staffRole->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
 
@@ -66,10 +64,10 @@ class RefundFlowTest extends TestCase
 
         return Order::factory()->paid()->create([
             'customer_id' => $customer->id,
-            'total'       => $total,
-            'total_laar'  => $totalLaar ?? (int) round($total * 100),
-            'subtotal'    => $total,
-            'tax_amount'  => 0,
+            'total' => $total,
+            'total_laar' => $totalLaar ?? (int) round($total * 100),
+            'subtotal' => $total,
+            'tax_amount' => 0,
         ]);
     }
 
@@ -96,7 +94,7 @@ class RefundFlowTest extends TestCase
 
         $this->assertDatabaseHas('refunds', [
             'order_id' => $order->id,
-            'amount'   => 10.00,
+            'amount' => 10.00,
         ]);
     }
 
@@ -181,23 +179,23 @@ class RefundFlowTest extends TestCase
     public function test_full_refund_restores_stock_for_tracked_items(): void
     {
         $category = $this->makeCategory();
-        $item     = $this->makeItem(trackStock: true, stock: 5);
+        $item = $this->makeItem(trackStock: true, stock: 5);
 
         $customer = $this->makeCustomer();
-        $order    = Order::factory()->paid()->create([
+        $order = Order::factory()->paid()->create([
             'customer_id' => $customer->id,
-            'total'       => 15.00,
-            'total_laar'  => 1500,
-            'subtotal'    => 15.00,
-            'tax_amount'  => 0,
+            'total' => 15.00,
+            'total_laar' => 1500,
+            'subtotal' => 15.00,
+            'tax_amount' => 0,
         ]);
 
         OrderItem::create([
-            'order_id'    => $order->id,
-            'item_id'     => $item->id,
-            'item_name'   => $item->name,
-            'quantity'    => 2,
-            'unit_price'  => 7.50,
+            'order_id' => $order->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 2,
+            'unit_price' => 7.50,
             'total_price' => 15.00,
         ]);
 
@@ -228,8 +226,8 @@ class RefundFlowTest extends TestCase
     public function test_customer_token_cannot_create_refund(): void
     {
         $customer = $this->makeCustomer();
-        $order    = $this->makeRefundableOrder();
-        $token    = $customer->createToken('test', ['customer'])->plainTextToken;
+        $order = $this->makeRefundableOrder();
+        $token = $customer->createToken('test', ['customer'])->plainTextToken;
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",

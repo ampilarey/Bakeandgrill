@@ -26,7 +26,7 @@ class InventoryConfigController extends Controller
     public function storeCategory(Request $request)
     {
         $validated = $request->validate([
-            'name'        => 'required|string|max:100',
+            'name' => 'required|string|max:100',
             'description' => 'nullable|string',
         ]);
 
@@ -43,9 +43,9 @@ class InventoryConfigController extends Controller
         $cat = InventoryCategory::findOrFail($id);
 
         $cat->update($request->validate([
-            'name'        => 'sometimes|string|max:100',
+            'name' => 'sometimes|string|max:100',
             'description' => 'nullable|string',
-            'is_active'   => 'sometimes|boolean',
+            'is_active' => 'sometimes|boolean',
         ]));
 
         return response()->json(['category' => $cat]);
@@ -62,8 +62,8 @@ class InventoryConfigController extends Controller
     {
         $v = $request->validate([
             'from_unit' => 'required|string|max:20',
-            'to_unit'   => 'required|string|max:20',
-            'factor'    => 'required|numeric|min:0.000001',
+            'to_unit' => 'required|string|max:20',
+            'factor' => 'required|numeric|min:0.000001',
         ]);
 
         $uc = UnitConversion::updateOrCreate(

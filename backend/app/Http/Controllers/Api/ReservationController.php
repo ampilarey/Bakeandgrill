@@ -15,8 +15,8 @@ use Illuminate\Routing\Controller;
 class ReservationController extends Controller
 {
     public function __construct(
-        private ReservationService              $service,
-        private ReservationRepositoryInterface  $reservations,
+        private ReservationService $service,
+        private ReservationRepositoryInterface $reservations,
     ) {}
 
     // ── Public: availability ─────────────────────────────────────────────────
@@ -24,16 +24,16 @@ class ReservationController extends Controller
     public function availability(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'date'       => ['required', 'date', 'after_or_equal:today'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
             'party_size' => ['required', 'integer', 'min:1', 'max:20'],
         ]);
 
         $slots = $this->service->availableSlots($validated['date'], (int) $validated['party_size']);
 
         return response()->json([
-            'slots' => array_map(fn($s) => [
-                'time_slot'          => substr($s->timeSlot, 0, 5),
-                'available'          => $s->available,
+            'slots' => array_map(fn ($s) => [
+                'time_slot' => substr($s->timeSlot, 0, 5),
+                'available' => $s->available,
                 'remaining_capacity' => $s->remainingCapacity,
             ], $slots),
         ]);
@@ -44,25 +44,25 @@ class ReservationController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'customer_name'  => ['required', 'string', 'max:120'],
+            'customer_name' => ['required', 'string', 'max:120'],
             'customer_phone' => ['required', 'string', 'max:20'],
-            'party_size'     => ['required', 'integer', 'min:1', 'max:20'],
-            'date'           => ['required', 'date', 'after_or_equal:today'],
-            'time_slot'      => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
-            'notes'          => ['nullable', 'string', 'max:500'],
+            'party_size' => ['required', 'integer', 'min:1', 'max:20'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'time_slot' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
         $actor = $request->user();
         $customerId = ($actor instanceof \App\Models\Customer) ? $actor->id : null;
 
         $reservation = $this->service->create(new CreateReservationData(
-            customerName:  $validated['customer_name'],
+            customerName: $validated['customer_name'],
             customerPhone: $validated['customer_phone'],
-            partySize:     (int) $validated['party_size'],
-            date:          $validated['date'],
-            timeSlot:      $validated['time_slot'] . ':00',
-            notes:         $validated['notes'] ?? null,
-            customerId:    $customerId,
+            partySize: (int) $validated['party_size'],
+            date: $validated['date'],
+            timeSlot: $validated['time_slot'] . ':00',
+            notes: $validated['notes'] ?? null,
+            customerId: $customerId,
         ));
 
         return response()->json(['reservation' => $this->format($reservation)], 201);
@@ -78,7 +78,7 @@ class ReservationController extends Controller
         if ($user?->tokenCan('customer')) {
             $items = $this->reservations->forCustomer($user->id);
 
-            return response()->json(['data' => $items->map(fn($r) => $this->format($r))]);
+            return response()->json(['data' => $items->map(fn ($r) => $this->format($r))]);
         }
 
         // Staff sees all, paginated — requires reservations.manage permission
@@ -87,22 +87,22 @@ class ReservationController extends Controller
         }
 
         $validated = $request->validate([
-            'date'     => ['nullable', 'date'],
-            'status'   => ['nullable', 'string'],
+            'date' => ['nullable', 'date'],
+            'status' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $paginator = $this->reservations->paginated(
-            filters: array_filter($validated, fn($v) => $v !== null),
+            filters: array_filter($validated, fn ($v) => $v !== null),
             perPage: (int) ($validated['per_page'] ?? 20),
         );
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn($r) => $this->format($r)),
+            'data' => collect($paginator->items())->map(fn ($r) => $this->format($r)),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
             ],
         ]);
     }
@@ -125,13 +125,13 @@ class ReservationController extends Controller
     public function destroy(Request $request, int $id): JsonResponse
     {
         $isCustomer = $request->user()?->tokenCan('customer');
-        $isStaff    = $request->user()?->tokenCan('staff');
+        $isStaff = $request->user()?->tokenCan('staff');
 
         if ($isCustomer) {
             $customerId = $request->user()->id;
         } elseif ($isStaff) {
             // Staff must have reservations.manage permission to cancel any booking
-            if (! $request->user()->hasPermission('reservations.manage')) {
+            if (!$request->user()->hasPermission('reservations.manage')) {
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
             $customerId = null; // bypass ownership check — staff acting on behalf
@@ -154,13 +154,13 @@ class ReservationController extends Controller
     public function updateSettings(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'slot_duration_minutes'  => ['sometimes', 'integer', 'min:15', 'max:240'],
-            'max_party_size'         => ['sometimes', 'integer', 'min:1', 'max:50'],
-            'advance_booking_days'   => ['sometimes', 'integer', 'min:1', 'max:365'],
+            'slot_duration_minutes' => ['sometimes', 'integer', 'min:15', 'max:240'],
+            'max_party_size' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'advance_booking_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'buffer_minutes_between' => ['sometimes', 'integer', 'min:0', 'max:120'],
-            'auto_cancel_minutes'    => ['sometimes', 'integer', 'min:5', 'max:120'],
-            'opening_time'           => ['sometimes', 'date_format:H:i'],
-            'closing_time'           => ['sometimes', 'date_format:H:i', 'after:opening_time'],
+            'auto_cancel_minutes' => ['sometimes', 'integer', 'min:5', 'max:120'],
+            'opening_time' => ['sometimes', 'date_format:H:i'],
+            'closing_time' => ['sometimes', 'date_format:H:i', 'after:opening_time'],
         ]);
 
         $settings = ReservationSetting::current();
@@ -174,18 +174,18 @@ class ReservationController extends Controller
     private function format(\App\Models\Reservation $r): array
     {
         return [
-            'id'             => $r->id,
-            'customer_name'  => $r->customer_name,
+            'id' => $r->id,
+            'customer_name' => $r->customer_name,
             'customer_phone' => $r->customer_phone,
-            'party_size'     => $r->party_size,
-            'date'           => $r->date->toDateString(),
-            'time_slot'      => substr($r->time_slot, 0, 5),
+            'party_size' => $r->party_size,
+            'date' => $r->date->toDateString(),
+            'time_slot' => substr($r->time_slot, 0, 5),
             'duration_minutes' => $r->duration_minutes,
-            'status'         => $r->status,
-            'notes'          => $r->notes,
-            'table'          => $r->table ? ['id' => $r->table->id, 'name' => $r->table->name] : null,
+            'status' => $r->status,
+            'notes' => $r->notes,
+            'table' => $r->table ? ['id' => $r->table->id, 'name' => $r->table->name] : null,
             'tracking_token' => $r->tracking_token,
-            'created_at'     => $r->created_at,
+            'created_at' => $r->created_at,
         ];
     }
 }

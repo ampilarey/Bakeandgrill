@@ -22,13 +22,13 @@ return new class extends Migration
 
         // Insert default settings row
         DB::table('reservation_settings')->insert([
-            'slot_duration_minutes'  => 60,
-            'max_party_size'         => 10,
-            'advance_booking_days'   => 30,
+            'slot_duration_minutes' => 60,
+            'max_party_size' => 10,
+            'advance_booking_days' => 30,
             'buffer_minutes_between' => 15,
-            'auto_cancel_minutes'    => 15,
-            'created_at'             => now(),
-            'updated_at'             => now(),
+            'auto_cancel_minutes' => 15,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 

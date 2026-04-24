@@ -37,10 +37,10 @@ class PointsCalculator
     public function pointsForOrder(Order $order, ?LoyaltyAccount $account = null): int
     {
         // Exclude delivery fee — points are earned on food value only.
-        $totalLaar      = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
-        $deliveryLaar   = (int) ($order->delivery_fee_laar ?? 0);
-        $foodLaar       = max(0, $totalLaar - $deliveryLaar);
-        $amountMvr      = $foodLaar / 100;
+        $totalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
+        $deliveryLaar = (int) ($order->delivery_fee_laar ?? 0);
+        $foodLaar = max(0, $totalLaar - $deliveryLaar);
+        $amountMvr = $foodLaar / 100;
         $basePoints = (int) floor($amountMvr * $this->earnRatePerMvr());
 
         if ($account && config('app.loyalty_tiers_enabled', false)) {

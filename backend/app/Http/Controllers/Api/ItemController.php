@@ -49,7 +49,7 @@ class ItemController extends Controller
 
         if (!$isAdmin) {
             $query->withCount(['reviews as review_count' => fn ($q) => $q->where('status', 'approved')])
-                  ->withAvg(['reviews as avg_rating' => fn ($q) => $q->where('status', 'approved')], 'rating');
+                ->withAvg(['reviews as avg_rating' => fn ($q) => $q->where('status', 'approved')], 'rating');
         }
 
         $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
@@ -121,21 +121,21 @@ class ItemController extends Controller
                 'variants' => $item->variants
                     ->sortBy('sort_order')
                     ->map(fn ($v) => $isAdmin ? [
-                        'id'          => $v->id,
-                        'name'        => $v->name,
-                        'name_dv'     => $v->name_dv,
-                        'price'       => $v->price,
-                        'cost'        => $v->cost,
-                        'sku'         => $v->sku,
+                        'id' => $v->id,
+                        'name' => $v->name,
+                        'name_dv' => $v->name_dv,
+                        'price' => $v->price,
+                        'cost' => $v->cost,
+                        'sku' => $v->sku,
                         'track_stock' => $v->track_stock,
-                        'stock_qty'   => $v->stock_qty,
-                        'is_active'   => $v->is_active,
-                        'sort_order'  => $v->sort_order,
+                        'stock_qty' => $v->stock_qty,
+                        'is_active' => $v->is_active,
+                        'sort_order' => $v->sort_order,
                     ] : [
-                        'id'        => $v->id,
-                        'name'      => $v->name,
-                        'name_dv'   => $v->name_dv,
-                        'price'     => $v->price,
+                        'id' => $v->id,
+                        'name' => $v->name,
+                        'name_dv' => $v->name_dv,
+                        'price' => $v->price,
                         'is_active' => $v->is_active,
                         'sort_order' => $v->sort_order,
                     ])
@@ -149,18 +149,18 @@ class ItemController extends Controller
 
             // Public callers receive extra customer-facing fields
             if (!$isAdmin) {
-                $data['spice_level']     = $item->spice_level ?? null;
-                $data['is_combo']        = (bool) ($item->is_combo ?? false);
-                $data['dietary_tags']    = $item->dietary_tags ?? [];
+                $data['spice_level'] = $item->spice_level ?? null;
+                $data['is_combo'] = (bool) ($item->is_combo ?? false);
+                $data['dietary_tags'] = $item->dietary_tags ?? [];
                 $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
-                $data['avg_rating']      = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
-                $data['review_count']    = (int) ($item->review_count ?? 0);
+                $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
+                $data['review_count'] = (int) ($item->review_count ?? 0);
 
                 $result = $availability->check($item, $channel);
                 $data['availability'] = [
-                    'available'       => $result->allowed,
-                    'reason_code'     => $result->reasonCode,
-                    'reason_message'  => $result->message ?: null,
+                    'available' => $result->allowed,
+                    'reason_code' => $result->reasonCode,
+                    'reason_message' => $result->message ?: null,
                     'available_stock' => $result->availableStock,
                 ];
             }
@@ -209,9 +209,9 @@ class ItemController extends Controller
             ->where('is_active', true)
             ->findOrFail($id);
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -237,11 +237,11 @@ class ItemController extends Controller
                     ->where('is_active', true)
                     ->sortBy('sort_order')
                     ->map(fn ($v) => [
-                        'id'         => $v->id,
-                        'name'       => $v->name,
-                        'name_dv'    => $v->name_dv,
-                        'price'      => $v->price,
-                        'is_active'  => $v->is_active,
+                        'id' => $v->id,
+                        'name' => $v->name,
+                        'name_dv' => $v->name_dv,
+                        'price' => $v->price,
+                        'is_active' => $v->is_active,
                         'sort_order' => $v->sort_order,
                     ])
                     ->values(),
@@ -338,7 +338,7 @@ class ItemController extends Controller
 
         // Detect GS1-128 weight barcode: starts with 2, 13 digits
         if (preg_match('/^2(\d{5})(\d{5})\d$/', $barcode, $m)) {
-            $itemCode  = $m[1];           // 5-digit item reference
+            $itemCode = $m[1];           // 5-digit item reference
             $weightGrams = (int) $m[2];   // grams encoded in the barcode
             $lookupBarcode = $itemCode;   // look up item by the short code
         }
@@ -346,15 +346,15 @@ class ItemController extends Controller
         $item = Item::with(['category', 'variants', 'modifiers'])
             ->where(function ($q) use ($lookupBarcode) {
                 $q->where('barcode', $lookupBarcode)
-                  ->orWhere('sku', $lookupBarcode);
+                    ->orWhere('sku', $lookupBarcode);
             })
             ->where('is_active', true)
             ->where('is_available', true)
             ->firstOrFail();
 
-        if (! $isStaff) {
+        if (!$isStaff) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -381,11 +381,11 @@ class ItemController extends Controller
 
         return response()->json([
             'label' => [
-                'item_id'      => $item->id,
-                'name'         => $item->name,
-                'barcode'      => $item->barcode,
-                'sku'          => $item->sku ?? null,
-                'price'        => $item->base_price,
+                'item_id' => $item->id,
+                'name' => $item->name,
+                'barcode' => $item->barcode,
+                'sku' => $item->sku ?? null,
+                'price' => $item->base_price,
                 'generated_at' => now()->toIso8601String(),
             ],
         ]);
@@ -423,8 +423,8 @@ class ItemController extends Controller
         }
 
         // Public/customer callers receive availability booleans only — no raw stock counts
-        $public = $items->map(fn($item) => [
-            'id'           => $item->id,
+        $public = $items->map(fn ($item) => [
+            'id' => $item->id,
             'is_available' => $item->availability_type !== 'unavailable'
                 && (!$item->track_stock || $item->stock_quantity > 0),
         ]);

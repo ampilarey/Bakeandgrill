@@ -17,18 +17,18 @@ class StaffAuthTest extends TestCase
     private function createOwner(string $email = 'owner@example.com'): User
     {
         $role = Role::create([
-            'name'        => 'Owner',
-            'slug'        => 'owner',
+            'name' => 'Owner',
+            'slug' => 'owner',
             'description' => 'Owner role',
-            'is_active'   => true,
+            'is_active' => true,
         ]);
 
         return User::create([
-            'name'      => 'Test User',
-            'email'     => $email,
-            'password'  => Hash::make('password'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Test User',
+            'email' => $email,
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
     }
@@ -38,8 +38,8 @@ class StaffAuthTest extends TestCase
         $this->createOwner();
 
         $response = $this->postJson('/api/auth/staff/pin-login', [
-            'username'          => 'owner@example.com',
-            'pin'               => '1234',
+            'username' => 'owner@example.com',
+            'pin' => '1234',
             'device_identifier' => 'POS-001',
         ]);
 
@@ -55,7 +55,7 @@ class StaffAuthTest extends TestCase
         $this->createOwner();
 
         $response = $this->postJson('/api/auth/staff/pin-login', [
-            'pin'               => '1234',
+            'pin' => '1234',
             'device_identifier' => 'POS-001',
         ]);
 
@@ -68,8 +68,8 @@ class StaffAuthTest extends TestCase
         $this->createOwner();
 
         $response = $this->postJson('/api/auth/staff/pin-login', [
-            'username'          => 'owner@example.com',
-            'pin'               => '9999',
+            'username' => 'owner@example.com',
+            'pin' => '9999',
             'device_identifier' => 'POS-001',
         ]);
 
@@ -80,8 +80,8 @@ class StaffAuthTest extends TestCase
     public function test_login_with_unknown_email_returns_422(): void
     {
         $response = $this->postJson('/api/auth/staff/pin-login', [
-            'username'          => 'nobody@example.com',
-            'pin'               => '1234',
+            'username' => 'nobody@example.com',
+            'pin' => '1234',
             'device_identifier' => 'POS-001',
         ]);
 
@@ -97,17 +97,17 @@ class StaffAuthTest extends TestCase
         );
 
         User::create([
-            'name'      => 'Inactive',
-            'email'     => 'inactive@example.com',
-            'password'  => Hash::make('password'),
-            'role_id'   => $role->id,
-            'pin_hash'  => Hash::make('1234'),
+            'name' => 'Inactive',
+            'email' => 'inactive@example.com',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
             'is_active' => false,
         ]);
 
         $response = $this->postJson('/api/auth/staff/pin-login', [
-            'username'          => 'inactive@example.com',
-            'pin'               => '1234',
+            'username' => 'inactive@example.com',
+            'pin' => '1234',
             'device_identifier' => 'POS-001',
         ]);
 

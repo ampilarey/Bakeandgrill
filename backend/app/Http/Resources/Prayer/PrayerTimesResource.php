@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources\Prayer;
 
 use App\Domains\PrayerTimes\DTOs\PrayerTimesResult;
@@ -17,14 +19,14 @@ class PrayerTimesResource extends JsonResource
     {
         return [
             'island' => new IslandResource($this->resource->island),
-            'date'   => $this->resource->date->toDateString(),
+            'date' => $this->resource->date->toDateString(),
             'prayers' => [
-                'fajr'    => $this->resource->fajr,
+                'fajr' => $this->resource->fajr,
                 'sunrise' => $this->resource->sunrise,
-                'dhuhr'   => $this->resource->dhuhr,
-                'asr'     => $this->resource->asr,
+                'dhuhr' => $this->resource->dhuhr,
+                'asr' => $this->resource->asr,
                 'maghrib' => $this->resource->maghrib,
-                'isha'    => $this->resource->isha,
+                'isha' => $this->resource->isha,
             ],
         ];
     }

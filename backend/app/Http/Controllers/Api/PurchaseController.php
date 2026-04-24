@@ -77,9 +77,9 @@ class PurchaseController extends Controller
         $purchase = Purchase::with('items.inventoryItem')->findOrFail($id);
 
         $validated = $request->validate([
-            'items'                       => ['required', 'array', 'min:1'],
-            'items.*.purchase_item_id'    => ['required', 'integer'],
-            'items.*.received_quantity'   => ['required', 'numeric', 'min:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.purchase_item_id' => ['required', 'integer'],
+            'items.*.received_quantity' => ['required', 'numeric', 'min:0'],
         ]);
 
         DB::transaction(function () use ($purchase, $validated, $request) {
@@ -92,13 +92,13 @@ class PurchaseController extends Controller
                     continue;
                 }
 
-                $oldReceived    = (float) ($purchaseItem->received_quantity ?? 0);
-                $newReceived    = (float) $row['received_quantity'];
-                $delta          = $newReceived - $oldReceived;
+                $oldReceived = (float) ($purchaseItem->received_quantity ?? 0);
+                $newReceived = (float) $row['received_quantity'];
+                $delta = $newReceived - $oldReceived;
 
                 $purchaseItem->update([
                     'received_quantity' => $newReceived,
-                    'received_at'       => now(),
+                    'received_at' => now(),
                 ]);
 
                 // Adjust inventory stock for the delta
@@ -113,14 +113,14 @@ class PurchaseController extends Controller
 
                         StockMovement::create([
                             'inventory_item_id' => $invItem->id,
-                            'user_id'           => $request->user()?->id,
-                            'type'              => 'purchase',
-                            'quantity'          => $delta,
-                            'balance_after'     => $invItem->current_stock,
-                            'unit_cost'         => $purchaseItem->unit_price ?? null,
-                            'reference_type'    => 'purchase',
-                            'reference_id'      => $purchase->id,
-                            'notes'             => "Partial receive for PO #{$purchase->id}",
+                            'user_id' => $request->user()?->id,
+                            'type' => 'purchase',
+                            'quantity' => $delta,
+                            'balance_after' => $invItem->current_stock,
+                            'unit_cost' => $purchaseItem->unit_price ?? null,
+                            'reference_type' => 'purchase',
+                            'reference_id' => $purchase->id,
+                            'notes' => "Partial receive for PO #{$purchase->id}",
                         ]);
                     }
                 }
@@ -197,6 +197,7 @@ class PurchaseController extends Controller
         while (($data = fgetcsv($handle)) !== false) {
             if (count($rows) >= 2000) {
                 fclose($handle);
+
                 return response()->json(['message' => 'CSV exceeds the maximum of 2,000 rows.'], 422);
             }
 
@@ -242,8 +243,8 @@ class PurchaseController extends Controller
     private function generatePurchaseNumber(): string
     {
         // Lock the latest record to prevent duplicate number generation under concurrency
-        $date     = now()->format('Ymd');
-        $count    = Purchase::whereDate('purchase_date', now()->toDateString())->lockForUpdate()->count() + 1;
+        $date = now()->format('Ymd');
+        $count = Purchase::whereDate('purchase_date', now()->toDateString())->lockForUpdate()->count() + 1;
         $sequence = str_pad((string) $count, 4, '0', STR_PAD_LEFT);
 
         return "PO-{$date}-{$sequence}";
@@ -285,9 +286,9 @@ class PurchaseController extends Controller
 
                 if ($inventoryItem) {
                     $oldStock = max(0, ($inventoryItem->current_stock ?? 0));
-                    $oldCost  = (float) ($inventoryItem->unit_cost ?? 0);
-                    $newQty   = (float) $itemPayload['quantity'];
-                    $newCost  = (float) $itemPayload['unit_cost'];
+                    $oldCost = (float) ($inventoryItem->unit_cost ?? 0);
+                    $newQty = (float) $itemPayload['quantity'];
+                    $newCost = (float) $itemPayload['unit_cost'];
 
                     $inventoryItem->current_stock = $oldStock + $newQty;
                     $inventoryItem->last_purchase_price = $newCost;
@@ -297,7 +298,7 @@ class PurchaseController extends Controller
                     if ($totalStock > 0) {
                         $inventoryItem->unit_cost = round(
                             ($oldStock * $oldCost + $newQty * $newCost) / $totalStock,
-                            4
+                            4,
                         );
                     }
                     $inventoryItem->save();
@@ -317,12 +318,12 @@ class PurchaseController extends Controller
                     // Record supplier price history for intelligence
                     if ($purchase->supplier_id) {
                         SupplierPriceHistory::create([
-                            'supplier_id'       => $purchase->supplier_id,
+                            'supplier_id' => $purchase->supplier_id,
                             'inventory_item_id' => $inventoryItem->id,
-                            'purchase_id'       => $purchase->id,
-                            'unit_price'        => $itemPayload['unit_cost'],
-                            'unit'              => $inventoryItem->unit,
-                            'recorded_at'       => $purchase->purchase_date ?? now()->toDateString(),
+                            'purchase_id' => $purchase->id,
+                            'unit_price' => $itemPayload['unit_cost'],
+                            'unit' => $inventoryItem->unit,
+                            'recorded_at' => $purchase->purchase_date ?? now()->toDateString(),
                         ]);
                     }
                 }

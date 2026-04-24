@@ -54,9 +54,9 @@ class RefundController extends Controller
         [$refund, $order] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request) {
             $order = Order::with(['items.item', 'items.variant'])->lockForUpdate()->findOrFail($orderId);
 
-            $orderTotalLaar     = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
+            $orderTotalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
             $alreadyRefundedLaar = (int) round(
-                (float) $order->refunds()->where('status', '!=', 'rejected')->sum('amount') * 100
+                (float) $order->refunds()->where('status', '!=', 'rejected')->sum('amount') * 100,
             );
 
             if ($amountLaar + $alreadyRefundedLaar > $orderTotalLaar) {

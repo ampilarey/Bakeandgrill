@@ -38,11 +38,11 @@ class StaffScheduleNotificationTest extends TestCase
         $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff']);
 
         return User::create([
-            'name'      => 'Test Staff',
-            'email'     => $phone . '@example.mv',
-            'phone'     => $phone,
-            'password'  => bcrypt('secret'),
-            'role_id'   => $role->id,
+            'name' => 'Test Staff',
+            'email' => $phone . '@example.mv',
+            'phone' => $phone,
+            'password' => bcrypt('secret'),
+            'role_id' => $role->id,
             'is_active' => true,
         ]);
     }
@@ -54,10 +54,10 @@ class StaffScheduleNotificationTest extends TestCase
         $tomorrow = Carbon::tomorrow();
 
         StaffSchedule::create([
-            'user_id'      => $staff->id,
-            'date'         => $tomorrow->toDateString(),
-            'shift_start'  => '09:00',
-            'shift_end'    => '17:00',
+            'user_id' => $staff->id,
+            'date' => $tomorrow->toDateString(),
+            'shift_start' => '09:00',
+            'shift_end' => '17:00',
             'is_confirmed' => true,
         ]);
 
@@ -82,17 +82,17 @@ class StaffScheduleNotificationTest extends TestCase
         $tomorrow = Carbon::tomorrow();
 
         $schedule = StaffSchedule::create([
-            'user_id'      => $staff->id,
-            'date'         => $tomorrow->toDateString(),
-            'shift_start'  => '09:00',
-            'shift_end'    => '17:00',
+            'user_id' => $staff->id,
+            'date' => $tomorrow->toDateString(),
+            'shift_start' => '09:00',
+            'shift_end' => '17:00',
             'is_confirmed' => true,
         ]);
 
         // Now update the shift time
         $schedule->update([
             'shift_start' => '14:00',
-            'shift_end'   => '22:00',
+            'shift_end' => '22:00',
         ]);
 
         $contact = SmsContact::where('user_id', $staff->id)->first();
@@ -112,7 +112,7 @@ class StaffScheduleNotificationTest extends TestCase
         $staff = $this->makeSmsStaff('+9607300300');
 
         StaffNotificationPref::create([
-            'user_id'               => $staff->id,
+            'user_id' => $staff->id,
             'notifications_enabled' => false,
         ]);
 
@@ -124,10 +124,10 @@ class StaffScheduleNotificationTest extends TestCase
         $this->app->instance(SmsService::class, $mockSmsService);
 
         StaffSchedule::create([
-            'user_id'      => $staff->id,
-            'date'         => Carbon::tomorrow()->toDateString(),
-            'shift_start'  => '09:00',
-            'shift_end'    => '17:00',
+            'user_id' => $staff->id,
+            'date' => Carbon::tomorrow()->toDateString(),
+            'shift_start' => '09:00',
+            'shift_end' => '17:00',
             'is_confirmed' => true,
         ]);
     }

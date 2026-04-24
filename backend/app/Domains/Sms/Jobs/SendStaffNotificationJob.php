@@ -18,9 +18,9 @@ class SendStaffNotificationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
-    public int $backoff  = 60;
-    public int $timeout  = 60;
+    public int $tries = 3;
+    public int $backoff = 60;
+    public int $timeout = 60;
 
     public function __construct(
         public readonly int $orderId,
@@ -48,15 +48,15 @@ class SendStaffNotificationJob implements ShouldQueue
         $logRecord = StaffNotificationLog::updateOrCreate(
             ['idempotency_key' => $idempotencyKey],
             [
-                'order_id'       => $this->orderId,
-                'event_type'     => $this->eventType,
+                'order_id' => $this->orderId,
+                'event_type' => $this->eventType,
                 'recipient_type' => $this->recipientType,
-                'recipient_id'   => $this->recipientId,
-                'phone'          => $this->phone,
-                'message'        => $this->message,
-                'status'         => 'queued',
-                'fallback_used'  => $this->fallbackUsed,
-            ]
+                'recipient_id' => $this->recipientId,
+                'phone' => $this->phone,
+                'message' => $this->message,
+                'status' => 'queued',
+                'fallback_used' => $this->fallbackUsed,
+            ],
         );
 
         try {
@@ -73,22 +73,22 @@ class SendStaffNotificationJob implements ShouldQueue
             // Treat it the same as 'sent' so ops dashboards don't show false failures.
             $success = in_array($smsLog->status, ['sent', 'demo'], true);
             $logRecord->update([
-                'status'     => $success ? 'sent' : 'failed',
+                'status' => $success ? 'sent' : 'failed',
                 'sms_log_id' => $smsLog->id,
-                'sent_at'    => $success ? now() : null,
-                'failed_at'  => $success ? null : now(),
+                'sent_at' => $success ? now() : null,
+                'failed_at' => $success ? null : now(),
             ]);
         } catch (\Throwable $e) {
             $logRecord->update([
-                'status'    => 'failed',
+                'status' => 'failed',
                 'failed_at' => now(),
             ]);
 
             Log::error('SendStaffNotificationJob: SMS send failed', [
-                'order_id'   => $this->orderId,
+                'order_id' => $this->orderId,
                 'event_type' => $this->eventType,
-                'phone'      => $this->phone,
-                'error'      => $e->getMessage(),
+                'phone' => $this->phone,
+                'error' => $e->getMessage(),
             ]);
 
             throw $e;
@@ -98,10 +98,10 @@ class SendStaffNotificationJob implements ShouldQueue
     public function failed(\Throwable $e): void
     {
         Log::critical('SendStaffNotificationJob: exhausted retries', [
-            'order_id'   => $this->orderId,
+            'order_id' => $this->orderId,
             'event_type' => $this->eventType,
-            'phone'      => $this->phone,
-            'error'      => $e->getMessage(),
+            'phone' => $this->phone,
+            'error' => $e->getMessage(),
         ]);
 
         if (app()->bound('sentry')) {

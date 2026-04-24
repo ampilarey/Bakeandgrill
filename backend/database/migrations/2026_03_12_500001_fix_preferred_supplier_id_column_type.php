@@ -22,7 +22,7 @@ return new class extends Migration
                 // Drop the FK constraint first (MySQL won't allow dropping the column otherwise)
                 try {
                     $table->dropForeign(['preferred_supplier_id']);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     // No FK existed on this column (it was a plain varchar) — safe to continue
                 }
                 $table->dropColumn('preferred_supplier_id');

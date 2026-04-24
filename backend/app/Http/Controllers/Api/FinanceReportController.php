@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Expense;
 use App\Models\Invoice;
-use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\WasteLog;
@@ -14,8 +13,8 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class FinanceReportController extends Controller
 {
@@ -50,34 +49,34 @@ class FinanceReportController extends Controller
         // Waste cost
         $wasteCost = WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
-        $grossRevenue   = (float) ($revenue->total ?? 0);
-        $grossProfit    = round($grossRevenue - (float) $cogs, 2);
+        $grossRevenue = (float) ($revenue->total ?? 0);
+        $grossProfit = round($grossRevenue - (float) $cogs, 2);
         $operatingProfit = round($grossProfit - $opexTotal - $wasteCost, 2);
 
         return response()->json([
             'from' => $from->toDateString(),
-            'to'   => $to->toDateString(),
+            'to' => $to->toDateString(),
             'revenue' => [
-                'gross'     => $grossRevenue,
-                'tax'       => (float) ($revenue->tax ?? 0),
+                'gross' => $grossRevenue,
+                'tax' => (float) ($revenue->tax ?? 0),
                 'discounts' => (float) ($revenue->discount ?? 0),
-                'net'       => round($grossRevenue - (float) ($revenue->tax ?? 0), 2),
-                'orders'    => (int) ($revenue->orders ?? 0),
+                'net' => round($grossRevenue - (float) ($revenue->tax ?? 0), 2),
+                'orders' => (int) ($revenue->orders ?? 0),
             ],
-            'cogs'          => (float) $cogs,
-            'gross_profit'  => $grossProfit,
+            'cogs' => (float) $cogs,
+            'gross_profit' => $grossProfit,
             'gross_margin_pct' => $grossRevenue > 0 ? round($grossProfit / $grossRevenue * 100, 2) : 0,
             'expenses' => [
-                'total'       => (float) $opexTotal,
-                'by_category' => $opex->map(fn($e) => [
+                'total' => (float) $opexTotal,
+                'by_category' => $opex->map(fn ($e) => [
                     'category' => $e->category?->name ?? 'Unknown',
-                    'icon'     => $e->category?->icon,
-                    'total'    => (float) $e->total,
+                    'icon' => $e->category?->icon,
+                    'total' => (float) $e->total,
                 ]),
             ],
-            'waste_cost'          => (float) $wasteCost,
-            'operating_profit'    => $operatingProfit,
-            'net_profit_margin_pct'=> $grossRevenue > 0 ? round($operatingProfit / $grossRevenue * 100, 2) : 0,
+            'waste_cost' => (float) $wasteCost,
+            'operating_profit' => $operatingProfit,
+            'net_profit_margin_pct' => $grossRevenue > 0 ? round($operatingProfit / $grossRevenue * 100, 2) : 0,
         ]);
     }
 
@@ -92,7 +91,7 @@ class FinanceReportController extends Controller
         // Inflows: completed order revenue by day
         $inflows = Order::whereBetween('created_at', [$from, $to])
             ->where('status', 'completed')
-            ->selectRaw("DATE(created_at) as date, SUM(total) as amount")
+            ->selectRaw('DATE(created_at) as date, SUM(total) as amount')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
@@ -115,40 +114,40 @@ class FinanceReportController extends Controller
             ->keyBy('date');
 
         // Build day-by-day series
-        $days    = [];
+        $days = [];
         $current = $from->copy();
         $runningBalance = 0.0;
 
         while ($current->lte($to)) {
-            $dateKey  = $current->toDateString();
-            $in       = (float) ($inflows[$dateKey]->amount ?? 0);
+            $dateKey = $current->toDateString();
+            $in = (float) ($inflows[$dateKey]->amount ?? 0);
             $expenses = (float) ($expenseByDay[$dateKey]->amount ?? 0);
             $purchases = (float) ($purchaseByDay[$dateKey]->amount ?? 0);
-            $out      = $expenses + $purchases;
-            $net      = $in - $out;
+            $out = $expenses + $purchases;
+            $net = $in - $out;
             $runningBalance += $net;
 
             $days[] = [
-                'date'            => $dateKey,
-                'inflow'          => $in,
-                'outflow'         => $out,
-                'net'             => round($net, 2),
+                'date' => $dateKey,
+                'inflow' => $in,
+                'outflow' => $out,
+                'net' => round($net, 2),
                 'running_balance' => round($runningBalance, 2),
             ];
 
             $current->addDay();
         }
 
-        $totalInflow  = array_sum(array_column($days, 'inflow'));
+        $totalInflow = array_sum(array_column($days, 'inflow'));
         $totalOutflow = array_sum(array_column($days, 'outflow'));
 
         return response()->json([
-            'from'          => $from->toDateString(),
-            'to'            => $to->toDateString(),
-            'total_inflow'  => round($totalInflow, 2),
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'total_inflow' => round($totalInflow, 2),
             'total_outflow' => round($totalOutflow, 2),
             'net_cash_flow' => round($totalInflow - $totalOutflow, 2),
-            'days'          => $days,
+            'days' => $days,
         ]);
     }
 
@@ -160,10 +159,10 @@ class FinanceReportController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
-        $monthExpr = match(DB::getDriverName()) {
-            'sqlite'  => "strftime('%Y-%m', created_at)",
-            'pgsql'   => "TO_CHAR(created_at, 'YYYY-MM')",
-            default   => 'DATE_FORMAT(created_at, "%Y-%m")',
+        $monthExpr = match (DB::getDriverName()) {
+            'sqlite' => "strftime('%Y-%m', created_at)",
+            'pgsql' => "TO_CHAR(created_at, 'YYYY-MM')",
+            default => 'DATE_FORMAT(created_at, "%Y-%m")',
         };
 
         $taxable = Order::whereBetween('created_at', [$from, $to])
@@ -174,7 +173,7 @@ class FinanceReportController extends Controller
             ->orderByRaw($monthExpr)
             ->get();
 
-        $totalTaxable   = $taxable->sum('taxable_amount');
+        $totalTaxable = $taxable->sum('taxable_amount');
         $totalCollected = $taxable->sum('tax_collected');
 
         // Input tax on purchases (if tracked on invoice)
@@ -184,20 +183,20 @@ class FinanceReportController extends Controller
             ->sum('tax_amount');
 
         return response()->json([
-            'from'           => $from->toDateString(),
-            'to'             => $to->toDateString(),
-            'output_tax'     => [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'output_tax' => [
                 'taxable_revenue' => (float) $totalTaxable,
-                'tax_collected'   => (float) $totalCollected,
-                'by_period'       => $taxable->map(fn($r) => [
-                    'period'           => $r->period,
-                    'taxable_amount'   => (float) $r->taxable_amount,
-                    'tax_collected'    => (float) $r->tax_collected,
-                    'transactions'     => (int) $r->transactions,
+                'tax_collected' => (float) $totalCollected,
+                'by_period' => $taxable->map(fn ($r) => [
+                    'period' => $r->period,
+                    'taxable_amount' => (float) $r->taxable_amount,
+                    'tax_collected' => (float) $r->tax_collected,
+                    'transactions' => (int) $r->transactions,
                 ]),
             ],
-            'input_tax'      => (float) $inputTax,
-            'net_tax_payable'=> round((float) $totalCollected - (float) $inputTax, 2),
+            'input_tax' => (float) $inputTax,
+            'net_tax_payable' => round((float) $totalCollected - (float) $inputTax, 2),
         ]);
     }
 
@@ -210,18 +209,18 @@ class FinanceReportController extends Controller
         $request->validate(['date' => 'nullable|date_format:Y-m-d']);
         $date = $request->query('date', now()->toDateString());
         $from = Carbon::parse($date)->startOfDay();
-        $to   = Carbon::parse($date)->endOfDay();
+        $to = Carbon::parse($date)->endOfDay();
 
         $orders = Order::whereBetween('created_at', [$from, $to])->where('status', 'completed');
         $orderCount = (clone $orders)->count();
-        $revenue    = (float) (clone $orders)->sum('total');
-        $tax        = (float) (clone $orders)->sum('tax_amount');
-        $discounts  = (float) (clone $orders)->sum('discount_amount');
-        $avgOrder   = $orderCount > 0 ? round($revenue / $orderCount, 2) : 0;
+        $revenue = (float) (clone $orders)->sum('total');
+        $tax = (float) (clone $orders)->sum('tax_amount');
+        $discounts = (float) (clone $orders)->sum('discount_amount');
+        $avgOrder = $orderCount > 0 ? round($revenue / $orderCount, 2) : 0;
 
-        $expenses   = (float) Expense::whereDate('expense_date', $date)->where('status', 'approved')->sum('amount');
-        $purchases  = (float) Purchase::whereDate('purchase_date', $date)->sum('total');
-        $wasteCost  = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
+        $expenses = (float) Expense::whereDate('expense_date', $date)->where('status', 'approved')->sum('amount');
+        $purchases = (float) Purchase::whereDate('purchase_date', $date)->sum('total');
+        $wasteCost = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
         $profit = round($revenue - $expenses - $purchases - $wasteCost, 2);
 
@@ -245,24 +244,24 @@ class FinanceReportController extends Controller
             ->get();
 
         return response()->json([
-            'date'       => $date,
-            'revenue'    => $revenue,
-            'tax'        => $tax,
-            'discounts'  => $discounts,
-            'orders'     => $orderCount,
-            'avg_order'  => $avgOrder,
-            'expenses'   => $expenses,
-            'purchases'  => $purchases,
+            'date' => $date,
+            'revenue' => $revenue,
+            'tax' => $tax,
+            'discounts' => $discounts,
+            'orders' => $orderCount,
+            'avg_order' => $avgOrder,
+            'expenses' => $expenses,
+            'purchases' => $purchases,
             'waste_cost' => $wasteCost,
             'net_profit' => $profit,
-            'by_type'    => $byType->map(fn($r) => [
-                'type'    => $r->order_type ?? 'unknown',
-                'count'   => (int) $r->count,
+            'by_type' => $byType->map(fn ($r) => [
+                'type' => $r->order_type ?? 'unknown',
+                'count' => (int) $r->count,
                 'revenue' => (float) $r->revenue,
             ]),
-            'top_items' => $topItems->map(fn($r) => [
-                'name'    => $r->name,
-                'qty'     => (float) $r->qty,
+            'top_items' => $topItems->map(fn ($r) => [
+                'name' => $r->name,
+                'qty' => (float) $r->qty,
                 'revenue' => (float) $r->revenue,
             ]),
         ]);
@@ -298,19 +297,19 @@ class FinanceReportController extends Controller
 
         return response()->json([
             'total_outstanding' => round((float) ($totals->total_outstanding ?? 0), 2),
-            'overdue_count'     => (int) ($totals->overdue_count ?? 0),
-            'truncated'         => $truncated,
-            'items'             => $unpaid->map(fn($inv) => [
-                'id'             => $inv->id,
+            'overdue_count' => (int) ($totals->overdue_count ?? 0),
+            'truncated' => $truncated,
+            'items' => $unpaid->map(fn ($inv) => [
+                'id' => $inv->id,
                 'invoice_number' => $inv->invoice_number,
-                'supplier'       => $inv->supplier ? ['id' => $inv->supplier->id, 'name' => $inv->supplier->name, 'phone' => $inv->supplier->phone] : null,
-                'purchase'       => $inv->purchase ? ['id' => $inv->purchase->id, 'number' => $inv->purchase->purchase_number] : null,
-                'total'          => (float) $inv->total,
-                'due_date'       => $inv->due_date?->toDateString(),
-                'days_overdue'   => $inv->due_date && $inv->due_date->toDateString() < $today
+                'supplier' => $inv->supplier ? ['id' => $inv->supplier->id, 'name' => $inv->supplier->name, 'phone' => $inv->supplier->phone] : null,
+                'purchase' => $inv->purchase ? ['id' => $inv->purchase->id, 'number' => $inv->purchase->purchase_number] : null,
+                'total' => (float) $inv->total,
+                'due_date' => $inv->due_date?->toDateString(),
+                'days_overdue' => $inv->due_date && $inv->due_date->toDateString() < $today
                     ? (int) $inv->due_date->diffInDays(now())
                     : 0,
-                'status'         => $inv->status,
+                'status' => $inv->status,
             ]),
         ]);
     }
@@ -344,18 +343,18 @@ class FinanceReportController extends Controller
 
         return response()->json([
             'total_outstanding' => round((float) ($totals->total_outstanding ?? 0), 2),
-            'overdue_count'     => (int) ($totals->overdue_count ?? 0),
-            'truncated'         => $truncated,
-            'items'             => $unpaid->map(fn($inv) => [
-                'id'             => $inv->id,
+            'overdue_count' => (int) ($totals->overdue_count ?? 0),
+            'truncated' => $truncated,
+            'items' => $unpaid->map(fn ($inv) => [
+                'id' => $inv->id,
                 'invoice_number' => $inv->invoice_number,
-                'customer'       => $inv->customer ? ['id' => $inv->customer->id, 'name' => $inv->customer->name, 'phone' => $inv->customer->phone] : null,
-                'total'          => (float) $inv->total,
-                'due_date'       => $inv->due_date?->toDateString(),
-                'days_overdue'   => $inv->due_date && $inv->due_date->toDateString() < $today
+                'customer' => $inv->customer ? ['id' => $inv->customer->id, 'name' => $inv->customer->name, 'phone' => $inv->customer->phone] : null,
+                'total' => (float) $inv->total,
+                'due_date' => $inv->due_date?->toDateString(),
+                'days_overdue' => $inv->due_date && $inv->due_date->toDateString() < $today
                     ? (int) $inv->due_date->diffInDays(now())
                     : 0,
-                'status'         => $inv->status,
+                'status' => $inv->status,
             ]),
         ]);
     }

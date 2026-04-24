@@ -33,17 +33,17 @@ class StaffController extends Controller
     private function formatUser(User $user): array
     {
         return [
-            'id'            => $user->id,
-            'name'          => $user->name,
-            'email'         => $user->email,
-            'phone'         => $user->phone,
-            'role'          => $user->role?->slug,
-            'role_name'     => $user->role?->name,
-            'role_id'       => $user->role_id,
-            'is_active'     => $user->is_active,
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role?->slug,
+            'role_name' => $user->role?->name,
+            'role_id' => $user->role_id,
+            'is_active' => $user->is_active,
             'last_login_at' => $user->last_login_at?->toIso8601String(),
-            'has_pin'       => !is_null($user->pin_hash),
-            'created_at'    => $user->created_at->toIso8601String(),
+            'has_pin' => !is_null($user->pin_hash),
+            'created_at' => $user->created_at->toIso8601String(),
         ];
     }
 
@@ -64,20 +64,20 @@ class StaffController extends Controller
         $this->authorizePermission($request, 'staff.create');
 
         $validated = $request->validate([
-            'name'    => 'required|string|max:255',
-            'email'   => 'required|email|unique:users,email',
-            'phone'   => 'nullable|string|max:20',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
             'role_id' => 'required|exists:roles,id',
-            'pin'     => 'required|digits_between:4,8',
+            'pin' => 'required|digits_between:4,8',
         ]);
 
         $user = User::create([
-            'name'      => $validated['name'],
-            'email'     => strtolower(trim($validated['email'])),
-            'phone'     => $validated['phone'] ?? null,
-            'password'  => Hash::make(str()->random(32)),
-            'role_id'   => $validated['role_id'],
-            'pin_hash'  => Hash::make($validated['pin']),
+            'name' => $validated['name'],
+            'email' => strtolower(trim($validated['email'])),
+            'phone' => $validated['phone'] ?? null,
+            'password' => Hash::make(str()->random(32)),
+            'role_id' => $validated['role_id'],
+            'pin_hash' => Hash::make($validated['pin']),
             'is_active' => true,
         ]);
 
@@ -94,10 +94,10 @@ class StaffController extends Controller
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'name'      => 'sometimes|string|max:255',
-            'email'     => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($user->id)],
-            'phone'     => 'nullable|string|max:20',
-            'role_id'   => 'sometimes|exists:roles,id',
+            'name' => 'sometimes|string|max:255',
+            'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => 'nullable|string|max:20',
+            'role_id' => 'sometimes|exists:roles,id',
             'is_active' => 'sometimes|boolean',
         ]);
 
