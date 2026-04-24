@@ -220,10 +220,8 @@ jobs:
     name: Playwright E2E (smoke)
     runs-on: ubuntu-latest
     needs: [frontend, test]
-    # E2E runs against the live test server — skip on forks that don't have the secrets
-    if: >
-      (github.event_name == 'push' || github.event_name == 'pull_request') &&
-      secrets.DEPLOY_HOST != ''
+    # E2E runs against the live test server — skip on forks (no secrets)
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
 
     steps:
       - uses: actions/checkout@v4
