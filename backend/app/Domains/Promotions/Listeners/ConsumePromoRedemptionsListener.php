@@ -39,7 +39,7 @@ class ConsumePromoRedemptionsListener
         try {
             DB::transaction(function () use ($orderId, $customerId, $draftPromotions): void {
                 foreach ($draftPromotions as $orderPromo) {
-                    $idempotencyKey = 'promo:redeem:'.$orderId.':'.$orderPromo->promotion_id;
+                    $idempotencyKey = 'promo:redeem:' . $orderId . ':' . $orderPromo->promotion_id;
 
                     PromotionRedemption::firstOrCreate(
                         ['idempotency_key' => $idempotencyKey],

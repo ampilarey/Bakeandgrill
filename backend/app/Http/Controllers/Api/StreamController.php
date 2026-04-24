@@ -94,7 +94,7 @@ class StreamController extends Controller
         $ticket = Str::random(64);
         $ttl = 60; // seconds
 
-        Cache::put('stream_ticket:'.$ticket, [
+        Cache::put('stream_ticket:' . $ticket, [
             'order_id' => $orderId,
             'customer_id' => $user instanceof Customer ? $user->id : null,
         ], $ttl);
@@ -118,7 +118,7 @@ class StreamController extends Controller
             abort(401, 'Stream ticket required.');
         }
 
-        $cacheKey = 'stream_ticket:'.$ticketValue;
+        $cacheKey = 'stream_ticket:' . $ticketValue;
         $payload = Cache::get($cacheKey);
 
         if ($payload === null) {
@@ -171,7 +171,7 @@ class StreamController extends Controller
                     'cancelled' => 'order.cancelled',
                     default => 'order.updated',
                 };
-                $newCursor = $order->updated_at->getPreciseTimestamp(3).'.'.$order->id;
+                $newCursor = $order->updated_at->getPreciseTimestamp(3) . '.' . $order->id;
 
                 return [new \App\Domains\Realtime\DTOs\StreamEvent(
                     id: $newCursor,

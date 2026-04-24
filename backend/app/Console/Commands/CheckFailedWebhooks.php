@@ -38,7 +38,7 @@ class CheckFailedWebhooks extends Command
             ->get(['id', 'idempotency_key', 'event_type', 'error_message', 'created_at']);
 
         if ($failed->isEmpty()) {
-            $this->info('No failed BML webhooks in the last '.$hours.' hour(s).');
+            $this->info('No failed BML webhooks in the last ' . $hours . ' hour(s).');
 
             return self::SUCCESS;
         }

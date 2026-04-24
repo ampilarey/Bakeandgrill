@@ -80,7 +80,7 @@ class SmsScheduledMessage extends Model
      */
     public function computeNextSendAt(Carbon $after): ?Carbon
     {
-        if (! $this->is_recurring || ! $this->recurrence_type || ! $this->recurrence_time) {
+        if (!$this->is_recurring || !$this->recurrence_type || !$this->recurrence_time) {
             return null;
         }
 
@@ -96,7 +96,7 @@ class SmsScheduledMessage extends Model
             };
         }
 
-        if ($this->recurrence_type === 'weekly' && ! empty($this->recurrence_days)) {
+        if ($this->recurrence_type === 'weekly' && !empty($this->recurrence_days)) {
             // Find the next matching day of week
             $days = $this->recurrence_days; // ['mon','tue',...]
             for ($i = 0; $i < 7; $i++) {

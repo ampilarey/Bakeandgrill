@@ -160,7 +160,7 @@ class PrintPayloadContractTest extends ContractTestCase
 
         Http::assertSent(function ($request) {
             $payload = $request->data();
-            if (! isset($payload['order']['subtotal'])) {
+            if (!isset($payload['order']['subtotal'])) {
                 return false;
             }
 

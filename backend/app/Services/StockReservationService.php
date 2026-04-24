@@ -18,7 +18,7 @@ class StockReservationService
      */
     public function getAvailableStock(Item $item): int
     {
-        if (! $item->track_stock || $item->availability_type !== 'stock_based') {
+        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
             return 9999;
         }
 
@@ -38,7 +38,7 @@ class StockReservationService
      */
     public function getAvailableVariantStock(Variant $variant): int
     {
-        if (! $variant->track_stock) {
+        if (!$variant->track_stock) {
             return 9999;
         }
 
@@ -59,7 +59,7 @@ class StockReservationService
     {
         $item = Item::find($itemId);
 
-        if (! $item || ! $item->track_stock || $item->availability_type !== 'stock_based') {
+        if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
             return true; // No reservation needed
         }
 
@@ -110,7 +110,7 @@ class StockReservationService
             // ── Variant-level reservation ─────────────────────────────────────
             if ($variant && $variant->track_stock) {
                 $lockedVariant = Variant::lockForUpdate()->find($variant->id);
-                if (! $lockedVariant) {
+                if (!$lockedVariant) {
                     abort(422, "Option \"{$variant->name}\" for \"{$item->name}\" is no longer available.");
                 }
 
@@ -130,7 +130,7 @@ class StockReservationService
                     'item_id' => $item?->id,
                     'variant_id' => $lockedVariant->id,
                     'order_id' => $order->id,
-                    'session_id' => 'order:'.$order->id,
+                    'session_id' => 'order:' . $order->id,
                     'quantity' => $orderItem->quantity,
                     'expires_at' => now()->addMinutes($ttl),
                     'created_at' => now(),
@@ -141,12 +141,12 @@ class StockReservationService
             }
 
             // ── Item-level reservation (unchanged behaviour) ──────────────────
-            if (! $item || ! $item->track_stock || $item->availability_type !== 'stock_based') {
+            if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
                 continue;
             }
 
             $locked = Item::lockForUpdate()->find($item->id);
-            if (! $locked) {
+            if (!$locked) {
                 abort(422, "Item {$item->name} is no longer available.");
             }
 
@@ -167,7 +167,7 @@ class StockReservationService
                 'item_id' => $locked->id,
                 'variant_id' => null,
                 'order_id' => $order->id,
-                'session_id' => 'order:'.$order->id,
+                'session_id' => 'order:' . $order->id,
                 'quantity' => $orderItem->quantity,
                 'expires_at' => now()->addMinutes($ttl),
                 'created_at' => now(),
@@ -203,12 +203,12 @@ class StockReservationService
                 $item = $orderItem->item;
                 $variant = $orderItem->variant;
 
-                $key = 'online:order:'.$order->id.':item:'.$orderItem->id;
+                $key = 'online:order:' . $order->id . ':item:' . $orderItem->id;
 
                 // ── Variant-level deduction ───────────────────────────────────
                 if ($variant && $variant->track_stock) {
                     $lockedVariant = Variant::lockForUpdate()->find($variant->id);
-                    if (! $lockedVariant) {
+                    if (!$lockedVariant) {
                         \Illuminate\Support\Facades\Log::warning(
                             "StockReservationService: variant {$variant->id} not found during convertToDeduction for order {$order->id}",
                         );
@@ -227,12 +227,12 @@ class StockReservationService
                 }
 
                 // ── Item-level deduction (unchanged behaviour) ────────────────
-                if (! $item || ! $item->track_stock || $item->availability_type !== 'stock_based') {
+                if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
                     continue;
                 }
 
                 $locked = Item::lockForUpdate()->find($item->id);
-                if (! $locked) {
+                if (!$locked) {
                     \Illuminate\Support\Facades\Log::warning(
                         "StockReservationService: item {$item->id} not found during convertToDeduction for order {$order->id}",
                     );

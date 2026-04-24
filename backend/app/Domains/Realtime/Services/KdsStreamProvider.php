@@ -41,7 +41,7 @@ class KdsStreamProvider
 
         $events = [];
         foreach ($orders as $order) {
-            $cursor = $order->updated_at->getPreciseTimestamp(3).'.'.$order->id;
+            $cursor = $order->updated_at->getPreciseTimestamp(3) . '.' . $order->id;
 
             $events[] = new StreamEvent(
                 id: $cursor,

@@ -15,7 +15,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {
+        if (!Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {
             return;
         }
 
@@ -48,7 +48,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (! Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {
+        if (!Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {
             return;
         }
 

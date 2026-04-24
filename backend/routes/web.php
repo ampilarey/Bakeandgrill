@@ -104,7 +104,7 @@ Route::redirect('/order/terms', '/terms', 301);
 
 Route::get('/order/{any}', function () {
     $path = public_path('order/index.html');
-    abort_if(! file_exists($path), 503, 'Order app not deployed.');
+    abort_if(!file_exists($path), 503, 'Order app not deployed.');
 
     return response(file_get_contents($path), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
@@ -115,7 +115,7 @@ Route::get('/order/{any}', function () {
 // Admin Dashboard SPA — catch-all for /admin/* sub-paths
 Route::get('/admin/{any}', function () {
     $path = public_path('admin/index.html');
-    abort_if(! file_exists($path), 503, 'Admin app not deployed.');
+    abort_if(!file_exists($path), 503, 'Admin app not deployed.');
 
     return response(file_get_contents($path), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
@@ -129,7 +129,7 @@ Route::get('/kds', function () {
 })->name('kds.redirect');
 Route::get('/kds/{any}', function () {
     $path = public_path('kds/index.html');
-    abort_if(! file_exists($path), 503, 'KDS app not deployed.');
+    abort_if(!file_exists($path), 503, 'KDS app not deployed.');
 
     return response(file_get_contents($path), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
@@ -143,7 +143,7 @@ Route::get('/pos', function () {
 })->name('pos.redirect');
 Route::get('/pos/{any}', function () {
     $path = public_path('pos/index.html');
-    abort_if(! file_exists($path), 503, 'POS app not deployed.');
+    abort_if(!file_exists($path), 503, 'POS app not deployed.');
 
     return response(file_get_contents($path), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
@@ -156,7 +156,7 @@ Route::get('/driver', function () {
     return redirect('/driver/');
 })->name('driver.redirect');
 Route::get('/driver/{any}', function () {
-    abort_if(! file_exists(public_path('driver/index.html')), 503, 'Driver app not deployed.');
+    abort_if(!file_exists(public_path('driver/index.html')), 503, 'Driver app not deployed.');
 
     return response()->file(public_path('driver/index.html'))
         ->header('Cache-Control', 'no-store, no-cache, must-revalidate');

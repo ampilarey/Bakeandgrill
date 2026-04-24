@@ -41,7 +41,7 @@ abstract class StateMachine
     {
         $from = $this->model->{$this->statusField()};
 
-        if (! $this->can($to)) {
+        if (!$this->can($to)) {
             throw new InvalidTransitionException(
                 sprintf(
                     '%s cannot transition from [%s] to [%s].',

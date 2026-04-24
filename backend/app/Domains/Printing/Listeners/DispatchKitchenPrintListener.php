@@ -39,21 +39,21 @@ class DispatchKitchenPrintListener implements ShouldQueue
     {
         if ($event instanceof OrderCreated) {
             // POS path: printKitchen=false means the caller suppressed it (e.g. customer online orders).
-            if (! $event->data->printKitchen) {
+            if (!$event->data->printKitchen) {
                 return;
             }
             $orderId = $event->data->orderId;
         } else {
             // OrderPaid path: only print kitchen for online orders.
             // POS orders were already printed on OrderCreated.
-            if (! in_array($event->data->orderType, ['online_pickup', 'delivery'], true)) {
+            if (!in_array($event->data->orderType, ['online_pickup', 'delivery'], true)) {
                 return;
             }
             $orderId = $event->data->orderId;
         }
 
         $order = $this->orders->findWithRelations($orderId, ['items.modifiers']);
-        if (! $order) {
+        if (!$order) {
             Log::error('DispatchKitchenPrintListener: order not found', ['order_id' => $orderId]);
 
             return;

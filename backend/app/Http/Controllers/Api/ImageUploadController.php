@@ -26,25 +26,25 @@ class ImageUploadController extends Controller
                 'required',
                 'image',
                 'mimes:jpeg,png,webp',
-                'max:'.self::MAX_SIZE_KB,
+                'max:' . self::MAX_SIZE_KB,
                 'dimensions:max_width=4096,max_height=4096',
             ],
         ]);
 
         $file = $request->file('image');
 
-        if (! in_array($file->getMimeType(), self::ALLOWED_MIME, true)) {
+        if (!in_array($file->getMimeType(), self::ALLOWED_MIME, true)) {
             return response()->json(['message' => 'Invalid file type.'], 422);
         }
 
         // Sanitised filename: random prefix + original extension
         $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-        $filename = Str::uuid().'.'.$ext;
+        $filename = Str::uuid() . '.' . $ext;
 
         // Store in storage/app/public/menu/ (publicly accessible via /storage/menu/)
         $file->storeAs('menu', $filename, 'public');
 
-        $url = asset('storage/menu/'.$filename);
+        $url = asset('storage/menu/' . $filename);
 
         return response()->json(['url' => $url], 201);
     }

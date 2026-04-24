@@ -18,7 +18,7 @@ class StaffNotificationDeduplicationTest extends TestCase
     private function makeSmsOrder(): Order
     {
         return Order::create([
-            'order_number' => 'BG-DEDUP-'.uniqid(),
+            'order_number' => 'BG-DEDUP-' . uniqid(),
             'type' => 'takeaway',
             'status' => 'pending',
             'total' => 100,

@@ -21,7 +21,7 @@ class AdminCustomerController extends Controller
             ->orderByDesc('created_at');
 
         if ($search = $request->query('search')) {
-            $like = '%'.$search.'%';
+            $like = '%' . $search . '%';
             $query->where(function ($q) use ($like) {
                 $q->where('name', 'like', $like)
                     ->orWhere('phone', 'like', $like)

@@ -18,8 +18,8 @@ class DeviceFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Device-'.fake()->unique()->randomNumber(4),
-            'identifier' => strtoupper(Str::random(4)).'-'.fake()->unique()->randomNumber(6),
+            'name' => 'Device-' . fake()->unique()->randomNumber(4),
+            'identifier' => strtoupper(Str::random(4)) . '-' . fake()->unique()->randomNumber(6),
             'type' => 'pos',
             'is_active' => true,
         ];

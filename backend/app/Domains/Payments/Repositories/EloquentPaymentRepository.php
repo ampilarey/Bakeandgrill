@@ -48,8 +48,8 @@ class EloquentPaymentRepository implements PaymentRepositoryInterface
     }
 
     /**
-     * @param  array<string, mixed>  $match
-     * @param  array<string, mixed>  $values
+     * @param array<string, mixed> $match
+     * @param array<string, mixed> $values
      */
     public function firstOrCreate(array $match, array $values): Payment
     {

@@ -41,7 +41,7 @@ class PrintJobService
         }
 
         foreach ($printers as $printer) {
-            $idempotencyKey = 'kitchen:'.$order->id.':'.$printer->id;
+            $idempotencyKey = 'kitchen:' . $order->id . ':' . $printer->id;
 
             $job = PrintJob::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
@@ -75,7 +75,7 @@ class PrintJobService
         }
 
         foreach ($printers as $printer) {
-            $idempotencyKey = 'receipt:'.$order->id.':'.$printer->id;
+            $idempotencyKey = 'receipt:' . $order->id . ':' . $printer->id;
 
             $job = PrintJob::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
@@ -138,13 +138,13 @@ class PrintJobService
     private function buildReceiptPayload(Order $order, Printer $printer): array
     {
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (! $receipt->exists) {
+        if (!$receipt->exists) {
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
         $receipt->save();
 
-        $receiptUrl = rtrim((string) config('app.url'), '/').'/receipts/'.$receipt->token;
+        $receiptUrl = rtrim((string) config('app.url'), '/') . '/receipts/' . $receipt->token;
 
         return [
             'printer_name' => $printer->name,

@@ -41,7 +41,7 @@ class PaymentConfirmationNotifier
         $email = $order->customer?->email;
         $name = $order->customer?->name ?? 'Customer';
 
-        if (! $phone) {
+        if (!$phone) {
             return;
         }
 
@@ -49,11 +49,11 @@ class PaymentConfirmationNotifier
 
         // Ensure a Receipt row exists for every paid order (online: for completion SMS + web receipt; POS: SMS + email).
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (! $receipt->exists) {
+        if (!$receipt->exists) {
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
-        if (! $isOnline) {
+        if (!$isOnline) {
             $receipt->fill([
                 'channel' => 'sms',
                 'recipient' => $phone,
@@ -65,11 +65,11 @@ class PaymentConfirmationNotifier
         $receipt->save();
 
         if ($isOnline) {
-            $url = rtrim(config('frontend.order_status_url', config('app.url').'/order/orders'), '/').'/'.$order->id.'?tok='.$order->tracking_token;
-            $message = 'Bake & Grill: Payment received! Order #'.$order->order_number.' is confirmed. Track: '.$url;
+            $url = rtrim(config('frontend.order_status_url', config('app.url') . '/order/orders'), '/') . '/' . $order->id . '?tok=' . $order->tracking_token;
+            $message = 'Bake & Grill: Payment received! Order #' . $order->order_number . ' is confirmed. Track: ' . $url;
         } else {
-            $url = rtrim(config('app.url'), '/').'/receipts/'.$receipt->token;
-            $message = 'Bake & Grill: Thanks for dining with us! Your receipt for order #'.$order->order_number.': '.$url;
+            $url = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+            $message = 'Bake & Grill: Thanks for dining with us! Your receipt for order #' . $order->order_number . ': ' . $url;
         }
 
         try {
@@ -80,7 +80,7 @@ class PaymentConfirmationNotifier
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,
-                idempotencyKey: 'order:paid:confirm:'.$order->id,
+                idempotencyKey: 'order:paid:confirm:' . $order->id,
             ));
         } catch (\Throwable $e) {
             Log::error('PaymentConfirmationNotifier: SMS failed', [

@@ -19,7 +19,7 @@ class UpdateInventoryItemRequest extends FormRequest
 
         return [
             'name' => 'sometimes|string|max:255',
-            'sku' => 'nullable|string|max:100|unique:inventory_items,sku,'.$itemId,
+            'sku' => 'nullable|string|max:100|unique:inventory_items,sku,' . $itemId,
             'unit' => 'sometimes|string|max:50',
             'current_stock' => 'nullable|numeric|min:0',
             'reorder_point' => 'nullable|numeric|min:0',

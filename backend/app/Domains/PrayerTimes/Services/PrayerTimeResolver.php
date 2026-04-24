@@ -23,7 +23,7 @@ final class PrayerTimeResolver
         // The source data was generated for a leap year (366 rows, days 1–366).
         // In non-leap years Carbon's dayOfYear skips day 60 (Feb 29), so from
         // Mar 1 onward every lookup would land one row early. Add 1 to realign.
-        if (! $date->isLeapYear() && $dayOfYear >= 60) {
+        if (!$date->isLeapYear() && $dayOfYear >= 60) {
             $dayOfYear++;
         }
 

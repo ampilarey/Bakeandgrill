@@ -28,7 +28,7 @@ class TimePunch extends Model
 
     public function calculateHours(): float
     {
-        if (! $this->clocked_out_at) {
+        if (!$this->clocked_out_at) {
             return 0.0;
         }
         $minutes = $this->clocked_in_at->diffInMinutes($this->clocked_out_at);

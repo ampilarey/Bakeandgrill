@@ -68,11 +68,11 @@ class DriverLocationController extends Controller
     public function forOrder(Request $request, Order $order): JsonResponse
     {
         // Only expose location while the driver is actively delivering
-        if (! in_array($order->status, ['picked_up', 'on_the_way'], true)) {
+        if (!in_array($order->status, ['picked_up', 'on_the_way'], true)) {
             return response()->json(['location' => null, 'message' => 'Driver not yet on the way.']);
         }
 
-        if (! $order->delivery_driver_id) {
+        if (!$order->delivery_driver_id) {
             return response()->json(['location' => null]);
         }
 
@@ -92,7 +92,7 @@ class DriverLocationController extends Controller
 
         $cached = Cache::get("driver_location:{$order->delivery_driver_id}");
 
-        if (! $cached) {
+        if (!$cached) {
             // Fallback to DB
             $dbLocation = DriverLocation::where('delivery_driver_id', $order->delivery_driver_id)
                 ->orderByDesc('recorded_at')

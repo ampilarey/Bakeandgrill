@@ -329,7 +329,7 @@ class AddLatinNames extends Command
         $this->info("Updated {$updated} / {$total} islands with Latin names.");
 
         // Show unmatched islands so user can add them
-        $unmatched = $islands->filter(fn ($i) => ! isset($this->islandMap[$i->name]));
+        $unmatched = $islands->filter(fn ($i) => !isset($this->islandMap[$i->name]));
         if ($unmatched->count()) {
             $this->warn("Islands without Latin names ({$unmatched->count()}):");
             foreach ($unmatched as $i) {

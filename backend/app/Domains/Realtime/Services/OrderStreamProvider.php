@@ -39,7 +39,7 @@ class OrderStreamProvider
         $events = [];
         foreach ($orders as $order) {
             $eventType = $this->resolveEventType($order);
-            $cursor = $order->updated_at->getPreciseTimestamp(3).'.'.$order->id;
+            $cursor = $order->updated_at->getPreciseTimestamp(3) . '.' . $order->id;
 
             $events[] = new StreamEvent(
                 id: $cursor,

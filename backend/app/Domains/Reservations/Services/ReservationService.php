@@ -30,7 +30,7 @@ class ReservationService
         $settings = ReservationSetting::current();
         $parsedDate = Carbon::parse($date);
 
-        if ($parsedDate->isPast() && ! $parsedDate->isToday()) {
+        if ($parsedDate->isPast() && !$parsedDate->isToday()) {
             return [];
         }
 
@@ -47,7 +47,7 @@ class ReservationService
         foreach ($slots as $slot) {
             $bookedForSlot = $existing->filter(
                 fn (Reservation $r) => $r->time_slot === $slot &&
-                ! in_array($r->status, ['cancelled', 'no_show'], true),
+                !in_array($r->status, ['cancelled', 'no_show'], true),
             );
 
             $bookedPartySize = $bookedForSlot->sum('party_size');
@@ -55,7 +55,7 @@ class ReservationService
 
             // Skip past slots for today
             if ($parsedDate->isToday()) {
-                $slotTime = Carbon::parse($date.' '.$slot);
+                $slotTime = Carbon::parse($date . ' ' . $slot);
                 if ($slotTime->isPast()) {
                     continue;
                 }
@@ -98,13 +98,13 @@ class ReservationService
     {
         $reservation = $this->reservations->findById($id);
 
-        if (! $reservation) {
+        if (!$reservation) {
             throw new \InvalidArgumentException("Reservation #{$id} not found.");
         }
 
         $allowed = ['pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'];
 
-        if (! in_array($status, $allowed, true)) {
+        if (!in_array($status, $allowed, true)) {
             throw new \InvalidArgumentException("Invalid status: {$status}");
         }
 
@@ -117,12 +117,12 @@ class ReservationService
     {
         $reservation = $this->reservations->findById($id);
 
-        if (! $reservation) {
+        if (!$reservation) {
             abort(404, "Reservation #{$id} not found.");
         }
 
         // Customers may only cancel their own reservations; staff bypass ownership check
-        if (! $isStaff && $requestingCustomerId !== null && $reservation->customer_id !== $requestingCustomerId) {
+        if (!$isStaff && $requestingCustomerId !== null && $reservation->customer_id !== $requestingCustomerId) {
             abort(403, 'Not authorised to cancel this reservation.');
         }
 
@@ -180,10 +180,10 @@ class ReservationService
                 fn (Reservation $r) => $r->id !== $reservation->id &&
                 $r->table_id === $table->id &&
                 $r->time_slot === $reservation->time_slot &&
-                ! in_array($r->status, ['cancelled', 'no_show'], true),
+                !in_array($r->status, ['cancelled', 'no_show'], true),
             );
 
-            if (! $hasConflict) {
+            if (!$hasConflict) {
                 $reservation->update(['table_id' => $table->id]);
 
                 return;

@@ -21,7 +21,7 @@ class OpeningHoursController extends Controller
         $open = $this->service->isOpenNow();
         $message = null;
 
-        if (! $open) {
+        if (!$open) {
             $message = $this->service->getClosureReason()
                 ?? config('opening_hours.closed_message', 'We are currently closed. Please check our opening hours.');
         }

@@ -54,13 +54,13 @@ class SmsContact extends Model
      */
     public function isActiveAt(Carbon $at): bool
     {
-        if (! $this->is_enabled) {
+        if (!$this->is_enabled) {
             return false;
         }
 
         if ($this->active_days !== null) {
             $dayName = strtolower($at->format('D')); // mon, tue, …
-            if (! in_array($dayName, $this->active_days, true)) {
+            if (!in_array($dayName, $this->active_days, true)) {
                 return false;
             }
         }

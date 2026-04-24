@@ -45,7 +45,7 @@ class StaffNotificationDispatcher
 
         // Check if this event type is enabled
         $settingKey = self::EVENT_SETTING_MAP[$eventType] ?? null;
-        if ($settingKey && ! $this->isEventEnabled($settingKey)) {
+        if ($settingKey && !$this->isEventEnabled($settingKey)) {
             Log::info('StaffNotificationDispatcher: event disabled', [
                 'event_type' => $eventType,
                 'order_id' => $order->id,
@@ -87,13 +87,13 @@ class StaffNotificationDispatcher
     {
         $templateSlug = self::EVENT_TEMPLATE_MAP[$eventType] ?? null;
 
-        if (! $templateSlug) {
+        if (!$templateSlug) {
             return "Order #{$order->order_number} requires attention.";
         }
 
         $template = SmsTemplate::where('slug', $templateSlug)->first();
 
-        if (! $template) {
+        if (!$template) {
             return "Order #{$order->order_number} - {$eventType}.";
         }
 
@@ -114,7 +114,7 @@ class StaffNotificationDispatcher
             ?? ($order->relationLoaded('customer') ? optional($order->customer)->phone : optional($order->customer()->first())->phone)
             ?? 'N/A';
 
-        $total = 'MVR '.number_format((float) ($order->total ?? 0), 2);
+        $total = 'MVR ' . number_format((float) ($order->total ?? 0), 2);
 
         return $this->templateRenderer->render($template, [
             'order_number' => $order->order_number,

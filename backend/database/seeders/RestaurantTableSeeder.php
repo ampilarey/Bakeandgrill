@@ -16,7 +16,7 @@ class RestaurantTableSeeder extends Seeder
     {
         for ($i = 1; $i <= 10; $i++) {
             RestaurantTable::firstOrCreate(
-                ['name' => 'T'.$i],
+                ['name' => 'T' . $i],
                 ['capacity' => 2, 'status' => 'available'],
             );
         }

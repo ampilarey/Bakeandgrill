@@ -76,7 +76,7 @@ class RefundFlowTest extends TestCase
 
     protected function authHeader(User $user): array
     {
-        return ['Authorization' => 'Bearer '.$user->createToken('test', ['staff'])->plainTextToken];
+        return ['Authorization' => 'Bearer ' . $user->createToken('test', ['staff'])->plainTextToken];
     }
 
     // ── Issue refund ──────────────────────────────────────────────────────────

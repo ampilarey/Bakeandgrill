@@ -72,7 +72,7 @@ final readonly class Money
      * Calculate a percentage discount.
      * Uses floor() — always rounds DOWN to favour the merchant.
      *
-     * @param  int  $basisPoints  e.g. 1000 = 10.00%, 500 = 5.00%
+     * @param int $basisPoints e.g. 1000 = 10.00%, 500 = 5.00%
      */
     public function percentageDiscount(int $basisPoints): self
     {
@@ -89,7 +89,7 @@ final readonly class Money
      * Tax = amount - (amount / (1 + rate))
      * Uses round() per standard accounting.
      *
-     * @param  int  $rateBp  e.g. 1200 = 12.00% GST
+     * @param int $rateBp e.g. 1200 = 12.00% GST
      */
     public function extractTax(int $rateBp): self
     {
@@ -105,7 +105,7 @@ final readonly class Money
      * Add tax on top of a tax-exclusive price.
      * Uses round() per standard accounting.
      *
-     * @param  int  $rateBp  e.g. 1200 = 12.00%
+     * @param int $rateBp e.g. 1200 = 12.00%
      */
     public function addTax(int $rateBp): self
     {

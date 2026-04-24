@@ -60,7 +60,7 @@ class ReservationController extends Controller
             customerPhone: $validated['customer_phone'],
             partySize: (int) $validated['party_size'],
             date: $validated['date'],
-            timeSlot: $validated['time_slot'].':00',
+            timeSlot: $validated['time_slot'] . ':00',
             notes: $validated['notes'] ?? null,
             customerId: $customerId,
         ));
@@ -82,7 +82,7 @@ class ReservationController extends Controller
         }
 
         // Staff sees all, paginated — requires reservations.manage permission
-        if (! $user?->hasPermission('reservations.manage')) {
+        if (!$user?->hasPermission('reservations.manage')) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -131,7 +131,7 @@ class ReservationController extends Controller
             $customerId = $request->user()->id;
         } elseif ($isStaff) {
             // Staff must have reservations.manage permission to cancel any booking
-            if (! $request->user()->hasPermission('reservations.manage')) {
+            if (!$request->user()->hasPermission('reservations.manage')) {
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
             $customerId = null; // bypass ownership check — staff acting on behalf

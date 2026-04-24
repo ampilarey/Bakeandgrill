@@ -42,7 +42,7 @@ class KdsController extends Controller
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
             $machine = app(OrderStatusMachine::class);
-            if (! $machine->isAllowed($order->status, 'in_progress')) {
+            if (!$machine->isAllowed($order->status, 'in_progress')) {
                 return ['error' => 'Only pending or paid orders can be started.'];
             }
 
@@ -69,7 +69,7 @@ class KdsController extends Controller
             // Determine target status through the machine
             $targetStatus = $order->status === 'ready' ? 'completed' : 'ready';
             $machine = app(OrderStatusMachine::class);
-            if (! $machine->isAllowed($order->status, $targetStatus)) {
+            if (!$machine->isAllowed($order->status, $targetStatus)) {
                 return ['error' => 'Order cannot be bumped.'];
             }
 
@@ -114,7 +114,7 @@ class KdsController extends Controller
     {
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
-            if (! in_array($order->status, ['ready', 'completed'], true)) {
+            if (!in_array($order->status, ['ready', 'completed'], true)) {
                 return ['error' => 'Only ready or completed orders can be recalled.'];
             }
 

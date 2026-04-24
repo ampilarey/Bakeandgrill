@@ -44,7 +44,7 @@ class CancelStaleOrders extends Command
                 // cron run from cancelling the same order twice.
                 $order = Order::lockForUpdate()->find($staleOrder->id);
 
-                if (! $order || $order->status !== 'payment_pending') {
+                if (!$order || $order->status !== 'payment_pending') {
                     return; // Already processed by a concurrent run
                 }
 

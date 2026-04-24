@@ -42,8 +42,8 @@ class StaffNotificationRoutingTest extends TestCase
     private function makeSmsStaff(Role $role, string $phone): User
     {
         return User::create([
-            'name' => 'Staff '.$phone,
-            'email' => $phone.'@test.mv',
+            'name' => 'Staff ' . $phone,
+            'email' => $phone . '@test.mv',
             'phone' => $phone,
             'password' => bcrypt('secret'),
             'role_id' => $role->id,
@@ -54,7 +54,7 @@ class StaffNotificationRoutingTest extends TestCase
     private function makeSmsOrder(string $type = 'takeaway'): Order
     {
         return Order::create([
-            'order_number' => 'BG-TEST-'.uniqid(),
+            'order_number' => 'BG-TEST-' . uniqid(),
             'type' => $type,
             'status' => 'pending',
             'total' => 100,

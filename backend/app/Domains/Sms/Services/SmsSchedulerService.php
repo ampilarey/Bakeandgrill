@@ -35,7 +35,7 @@ class SmsSchedulerService
                     // duplicate dispatch when two scheduler runs overlap.
                     $scheduled = SmsScheduledMessage::lockForUpdate()->find($id);
 
-                    if (! $scheduled || $scheduled->status !== 'active') {
+                    if (!$scheduled || $scheduled->status !== 'active') {
                         return; // Already picked up by another process.
                     }
                     if ($scheduled->next_send_at > $now) {

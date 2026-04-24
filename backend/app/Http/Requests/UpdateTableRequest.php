@@ -18,7 +18,7 @@ class UpdateTableRequest extends FormRequest
         $tableId = $this->route('id');
 
         return [
-            'name' => 'sometimes|string|max:255|unique:restaurant_tables,name,'.$tableId,
+            'name' => 'sometimes|string|max:255|unique:restaurant_tables,name,' . $tableId,
             'capacity' => 'sometimes|integer|min:1',
             'status' => 'sometimes|string|max:50',
             'location' => 'nullable|string|max:255',

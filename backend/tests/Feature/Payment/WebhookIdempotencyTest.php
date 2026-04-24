@@ -53,7 +53,7 @@ class WebhookIdempotencyTest extends TestCase
             'amount' => 150.00,
             'amount_laar' => 15000,
             'status' => 'pending',
-            'idempotency_key' => 'bml:init:'.$this->order->id.':test',
+            'idempotency_key' => 'bml:init:' . $this->order->id . ':test',
             'local_id' => 'LOCAL-WH-IDEM-001',
             'transaction_id' => 'TXN-WH-IDEM-001',
         ]);
@@ -62,7 +62,7 @@ class WebhookIdempotencyTest extends TestCase
     public function test_duplicate_bml_webhook_does_not_create_duplicate_payment(): void
     {
         $transactionId = 'TXN-WH-IDEM-DUP-001';
-        $idempotencyKey = 'bml:webhook:'.$transactionId;
+        $idempotencyKey = 'bml:webhook:' . $transactionId;
 
         // Simulate a webhook log already existing (first call already processed)
         WebhookLog::create([
@@ -110,7 +110,7 @@ class WebhookIdempotencyTest extends TestCase
     {
         // Verify the idempotency key format used in WebhookLog
         $transactionId = 'TXN-FORMAT-TEST';
-        $idempotencyKey = 'bml:webhook:'.$transactionId;
+        $idempotencyKey = 'bml:webhook:' . $transactionId;
 
         // This tests the naming convention matches what PaymentService uses
         $this->assertStringStartsWith('bml:webhook:', $idempotencyKey);
@@ -243,7 +243,7 @@ class WebhookIdempotencyTest extends TestCase
         // Webhook log must be created
         $this->assertDatabaseHas('webhook_logs', [
             'gateway' => 'bml',
-            'idempotency_key' => 'bml:webhook:'.$transactionId,
+            'idempotency_key' => 'bml:webhook:' . $transactionId,
         ]);
     }
 }

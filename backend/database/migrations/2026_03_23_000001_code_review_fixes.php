@@ -21,7 +21,7 @@ return new class extends Migration
     public function up(): void
     {
         // ── C-2: received_quantity column ─────────────────────────────────────
-        if (Schema::hasTable('purchase_items') && ! Schema::hasColumn('purchase_items', 'received_quantity')) {
+        if (Schema::hasTable('purchase_items') && !Schema::hasColumn('purchase_items', 'received_quantity')) {
             Schema::table('purchase_items', function (Blueprint $table) {
                 $table->decimal('received_quantity', 10, 3)->default(0)->after('quantity');
             });
@@ -40,7 +40,7 @@ return new class extends Migration
             $fkExists = collect(Schema::getForeignKeys('purchases'))
                 ->contains('name', 'purchases_supplier_id_foreign');
 
-            if (! $fkExists) {
+            if (!$fkExists) {
                 Schema::table('purchases', function (Blueprint $table) {
                     $table->foreign('supplier_id')
                         ->references('id')
@@ -53,10 +53,10 @@ return new class extends Migration
         // ── H-7: Missing indexes on date columns used in reports ──────────────
         if (Schema::hasTable('orders')) {
             Schema::table('orders', function (Blueprint $table) {
-                if (! $this->indexExists('orders', 'orders_paid_at_index')) {
+                if (!$this->indexExists('orders', 'orders_paid_at_index')) {
                     $table->index('paid_at');
                 }
-                if (! $this->indexExists('orders', 'orders_completed_at_index')) {
+                if (!$this->indexExists('orders', 'orders_completed_at_index')) {
                     $table->index('completed_at');
                 }
             });
@@ -64,7 +64,7 @@ return new class extends Migration
 
         if (Schema::hasTable('customers')) {
             Schema::table('customers', function (Blueprint $table) {
-                if (! $this->indexExists('customers', 'customers_created_at_index')) {
+                if (!$this->indexExists('customers', 'customers_created_at_index')) {
                     $table->index('created_at');
                 }
             });
@@ -72,7 +72,7 @@ return new class extends Migration
 
         if (Schema::hasTable('invoices')) {
             Schema::table('invoices', function (Blueprint $table) {
-                if (! $this->indexExists('invoices', 'invoices_created_at_index')) {
+                if (!$this->indexExists('invoices', 'invoices_created_at_index')) {
                     $table->index('created_at');
                 }
                 // Note: invoices.token already has a unique constraint (unique index)
@@ -83,7 +83,7 @@ return new class extends Migration
         // ── M-16: Composite index on sms_logs(customer_id, created_at) ────────
         if (Schema::hasTable('sms_logs')) {
             Schema::table('sms_logs', function (Blueprint $table) {
-                if (! $this->indexExists('sms_logs', 'sms_logs_customer_id_created_at_index')) {
+                if (!$this->indexExists('sms_logs', 'sms_logs_customer_id_created_at_index')) {
                     $table->index(['customer_id', 'created_at']);
                 }
             });

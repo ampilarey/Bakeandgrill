@@ -26,7 +26,7 @@ class OrderCreationService
     public function createFromPayload(array $payload, ?object $user): Order
     {
         $device = null;
-        if (! empty($payload['device_identifier'])) {
+        if (!empty($payload['device_identifier'])) {
             $device = Device::where('identifier', $payload['device_identifier'])->first();
         }
 
@@ -41,7 +41,7 @@ class OrderCreationService
 
         $printKitchen = $isCustomerOnlineOrder
             ? false
-            : (! array_key_exists('print', $payload) || $payload['print'] === true);
+            : (!array_key_exists('print', $payload) || $payload['print'] === true);
 
         return DB::transaction(function () use ($payload, $user, $device, $printKitchen, $initialStatus): Order {
             $order = Order::create([
@@ -82,7 +82,7 @@ class OrderCreationService
             // Enforce minimum order value (not applicable to dine-in)
             $minOrderMvr = (float) config('ordering.minimum_order_mvr', 0);
             if ($minOrderMvr > 0 && $order->total < $minOrderMvr && ($payload['type'] ?? '') !== 'dine_in') {
-                abort(422, 'Minimum order amount is MVR '.number_format($minOrderMvr, 2));
+                abort(422, 'Minimum order amount is MVR ' . number_format($minOrderMvr, 2));
             }
 
             $order->load(['items.modifiers']);
@@ -93,7 +93,7 @@ class OrderCreationService
                 // Unified customer history: update last_order_at regardless of POS vs online.
                 // storeCustomer() does this inline; for POS staff-created orders with a
                 // customer_id we mirror the same update so the customer's profile stays current.
-                if (! empty($payload['customer_id'])) {
+                if (!empty($payload['customer_id'])) {
                     Customer::where('id', $payload['customer_id'])
                         ->update(['last_order_at' => now()]);
                 }
@@ -142,7 +142,7 @@ class OrderCreationService
             $itemId = $itemPayload['item_id'];
             $itemModel = $itemMap->get($itemId);
 
-            if (! $itemModel) {
+            if (!$itemModel) {
                 abort(422, "Item {$itemId} not found or unavailable");
             }
 
@@ -154,24 +154,24 @@ class OrderCreationService
 
             if ($itemModel->has_variants) {
                 // Variant selection is mandatory for variant products
-                if (! $variantId) {
+                if (!$variantId) {
                     abort(422, "Please select a size/option for \"{$itemModel->name}\".");
                 }
 
                 $variant = $itemModel->variants()->where('id', $variantId)->first();
-                if (! $variant) {
+                if (!$variant) {
                     abort(422, "Variant {$variantId} does not belong to item {$itemId}.");
                 }
-                if (! $variant->is_active) {
+                if (!$variant->is_active) {
                     abort(422, "The selected option \"{$variant->name}\" for \"{$itemModel->name}\" is no longer available.");
                 }
             } elseif ($variantId) {
                 // Non-variant product: validate if a variant was still passed
                 $variant = $itemModel->variants()->where('id', $variantId)->first();
-                if (! $variant) {
+                if (!$variant) {
                     abort(422, "Variant {$variantId} not found for item {$itemId}.");
                 }
-                if (! $variant->is_active) {
+                if (!$variant->is_active) {
                     abort(422, "The selected option \"{$variant->name}\" for \"{$itemModel->name}\" is no longer available.");
                 }
             }
@@ -215,9 +215,9 @@ class OrderCreationService
 
             // POS only: deduct stock immediately upon order creation.
             // Online orders are handled via reserveForOrder() after the full loop.
-            if (! $isOnlineOrder) {
+            if (!$isOnlineOrder) {
                 if ($variant && $variant->track_stock) {
-                    $key = 'pos:order:'.$order->id.':item:'.$orderItem->id;
+                    $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductVariantStock(
                         $lockedVariant ?? $variant,
                         $quantity,
@@ -226,7 +226,7 @@ class OrderCreationService
                         $user?->id,
                     );
                 } elseif ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
-                    $key = 'pos:order:'.$order->id.':item:'.$orderItem->id;
+                    $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductPreparedStock(
                         $lockedItem,
                         $quantity,
@@ -237,13 +237,13 @@ class OrderCreationService
                 }
             }
 
-            if (! empty($itemPayload['modifiers'])) {
+            if (!empty($itemPayload['modifiers'])) {
                 foreach ($itemPayload['modifiers'] as $modifierPayload) {
                     $modifierId = $modifierPayload['modifier_id'];
 
                     // Use already-loaded collection — no extra DB query per modifier
                     $modifierModel = $itemModel->modifiers->firstWhere('id', $modifierId);
-                    if (! $modifierModel) {
+                    if (!$modifierModel) {
                         abort(422, "Modifier {$modifierId} not valid for item {$itemId}");
                     }
                     $modifierPrice = (float) $modifierModel->price;
@@ -291,7 +291,7 @@ class OrderCreationService
                 ->lockForUpdate()
                 ->first();
 
-            if (! $dailySeq) {
+            if (!$dailySeq) {
                 DB::table('daily_sequences')->insert([
                     'date' => $date,
                     'last_order_number' => 1,

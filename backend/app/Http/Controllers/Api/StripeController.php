@@ -38,7 +38,7 @@ class StripeController extends Controller
             if ($order->customer_id !== $user->id) {
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
-        } elseif (! $user?->tokenCan('staff')) {
+        } elseif (!$user?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -79,7 +79,7 @@ class StripeController extends Controller
                 $order = Order::find($orderId);
                 if ($order) {
                     $payment = Payment::firstOrCreate(
-                        ['idempotency_key' => 'stripe:'.$pi['id']],
+                        ['idempotency_key' => 'stripe:' . $pi['id']],
                         [
                             'order_id' => $order->id,
                             'method' => 'stripe',

@@ -47,7 +47,7 @@ class SendOrderConfirmationListener implements ShouldQueue
 
         $order = Order::with(['items.item', 'customer'])->find($data->orderId);
 
-        if (! $order) {
+        if (!$order) {
             return;
         }
 
@@ -56,11 +56,11 @@ class SendOrderConfirmationListener implements ShouldQueue
         $name = $order->customer?->name ?? 'Customer';
 
         // Orders with no linked customer phone — skip
-        if (! $phone) {
+        if (!$phone) {
             return;
         }
 
-        $url = rtrim(config('app.url'), '/').'/order/orders/'.$order->id.'?tok='.$order->tracking_token;
+        $url = rtrim(config('app.url'), '/') . '/order/orders/' . $order->id . '?tok=' . $order->tracking_token;
 
         // SMS — idempotency key prevents duplicate sends on queue retry
         try {
@@ -71,7 +71,7 @@ class SendOrderConfirmationListener implements ShouldQueue
                 customerId: $data->customerId,
                 referenceType: 'order',
                 referenceId: (string) $order->id,
-                idempotencyKey: 'order:confirm:'.$order->id,
+                idempotencyKey: 'order:confirm:' . $order->id,
             ));
         } catch (\Throwable $e) {
             Log::error('SendOrderConfirmationListener: SMS failed', [

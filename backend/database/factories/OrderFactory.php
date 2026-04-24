@@ -24,7 +24,7 @@ class OrderFactory extends Factory
         $total = $subtotal + $tax;
 
         return [
-            'order_number' => 'BG-'.date('Ymd').'-'.str_pad((string) self::$seq++, 4, '0', STR_PAD_LEFT),
+            'order_number' => 'BG-' . date('Ymd') . '-' . str_pad((string) self::$seq++, 4, '0', STR_PAD_LEFT),
             'tracking_token' => \Illuminate\Support\Str::random(32),
             'type' => 'takeaway',
             'status' => 'pending',
@@ -56,7 +56,7 @@ class OrderFactory extends Factory
             'delivery_island' => 'Male',
             'delivery_address_line1' => fake()->streetAddress(),
             'delivery_contact_name' => fake()->name(),
-            'delivery_contact_phone' => '+960'.fake()->numerify('#######'),
+            'delivery_contact_phone' => '+960' . fake()->numerify('#######'),
             'delivery_fee' => 20.00,
             'delivery_fee_laar' => 2000,
         ]);

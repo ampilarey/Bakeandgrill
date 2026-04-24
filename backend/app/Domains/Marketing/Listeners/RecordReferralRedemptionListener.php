@@ -26,7 +26,7 @@ class RecordReferralRedemptionListener
         try {
             DB::transaction(function () use ($orderId): void {
                 $locked = Order::where('id', $orderId)->lockForUpdate()->first();
-                if (! $locked || empty($locked->referral_code) || (int) ($locked->referral_discount_laar ?? 0) <= 0) {
+                if (!$locked || empty($locked->referral_code) || (int) ($locked->referral_discount_laar ?? 0) <= 0) {
                     return;
                 }
                 if ($locked->referral_redemption_recorded) {
@@ -34,7 +34,7 @@ class RecordReferralRedemptionListener
                 }
 
                 $code = ReferralCode::where('code', $locked->referral_code)->lockForUpdate()->first();
-                if (! $code || ! $locked->customer_id) {
+                if (!$code || !$locked->customer_id) {
                     $locked->update(['referral_redemption_recorded' => true]);
 
                     return;
@@ -50,7 +50,7 @@ class RecordReferralRedemptionListener
                     ->where('referee_customer_id', $locked->customer_id)
                     ->first();
 
-                if (! $existing) {
+                if (!$existing) {
                     $code->increment('uses_count');
                     Referral::create([
                         'referral_code_id' => $code->id,
@@ -68,11 +68,11 @@ class RecordReferralRedemptionListener
 
                         if ($rewardPoints > 0) {
                             try {
-                                $idempotencyKey = 'referral:reward:'.$code->id.':'.$locked->id;
+                                $idempotencyKey = 'referral:reward:' . $code->id . ':' . $locked->id;
                                 app(LoyaltyLedgerService::class)->creditBonus(
                                     $referrer,
                                     $rewardPoints,
-                                    'Referral reward — friend used code '.$code->code,
+                                    'Referral reward — friend used code ' . $code->code,
                                     $idempotencyKey,
                                 );
                                 Referral::where('referral_code_id', $code->id)

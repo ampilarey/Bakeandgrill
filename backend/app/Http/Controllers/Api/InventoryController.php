@@ -24,7 +24,7 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         // SECURITY: Staff only
-        if (! $request->user()->tokenCan('staff')) {
+        if (!$request->user()->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -213,7 +213,7 @@ class InventoryController extends Controller
             ->orderBy('min_cost')
             ->first();
 
-        if (! $record || ! $record->supplier_id) {
+        if (!$record || !$record->supplier_id) {
             return response()->json(['supplier' => null]);
         }
 

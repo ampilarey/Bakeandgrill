@@ -52,7 +52,7 @@ trait HasPermissions
     public function grantPermission(string $slug, ?int $grantedBy = null): void
     {
         $permission = Permission::where('slug', $slug)->first();
-        if (! $permission) {
+        if (!$permission) {
             return;
         }
 
@@ -64,7 +64,7 @@ trait HasPermissions
     public function revokePermission(string $slug, ?int $grantedBy = null): void
     {
         $permission = Permission::where('slug', $slug)->first();
-        if (! $permission) {
+        if (!$permission) {
             return;
         }
 

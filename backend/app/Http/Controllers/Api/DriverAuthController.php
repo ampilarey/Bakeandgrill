@@ -29,7 +29,7 @@ class DriverAuthController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (! $driver || ! $driver->pin || ! Hash::check($validated['pin'], $driver->pin)) {
+        if (!$driver || !$driver->pin || !Hash::check($validated['pin'], $driver->pin)) {
             return response()->json(['message' => 'Invalid phone number or PIN.'], 401);
         }
 

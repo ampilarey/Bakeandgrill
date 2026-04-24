@@ -37,7 +37,7 @@ class SendStaffOrderNotificationListener implements ShouldQueue
     {
         $order = Order::with('items.item')->find($event->data->orderId);
 
-        if (! $order) {
+        if (!$order) {
             return;
         }
 
@@ -56,13 +56,13 @@ class SendStaffOrderNotificationListener implements ShouldQueue
     {
         $order = Order::with('items.item')->find($event->data->orderId);
 
-        if (! $order) {
+        if (!$order) {
             return;
         }
 
         $eventType = $this->mapStatusToEventType($event->data->status, $order);
 
-        if (! $eventType) {
+        if (!$eventType) {
             return;
         }
 

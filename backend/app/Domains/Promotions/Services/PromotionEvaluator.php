@@ -37,11 +37,11 @@ class PromotionEvaluator
 
         $promotion = $this->promotionRepo->findByCodeWithRelations($normalizedCode, ['targets']);
 
-        if (! $promotion) {
+        if (!$promotion) {
             return $this->reject('Promo code not found.');
         }
 
-        if (! $promotion->isValid()) {
+        if (!$promotion->isValid()) {
             return $this->reject('Promo code is not valid or has expired.');
         }
 
@@ -141,8 +141,8 @@ class PromotionEvaluator
                 continue;
             }
 
-            if (! empty($includedItemIds) || ! empty($includedCategoryIds)) {
-                if (! in_array($itemId, $includedItemIds) && ! in_array($categoryId, $includedCategoryIds)) {
+            if (!empty($includedItemIds) || !empty($includedCategoryIds)) {
+                if (!in_array($itemId, $includedItemIds) && !in_array($categoryId, $includedCategoryIds)) {
                     continue;
                 }
             }
@@ -167,7 +167,7 @@ class PromotionEvaluator
             ->sortBy('unit_price')
             ->first();
 
-        if (! $cheapestItem) {
+        if (!$cheapestItem) {
             return 0;
         }
 

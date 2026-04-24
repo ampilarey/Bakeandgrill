@@ -47,14 +47,14 @@ class ItemController extends Controller
         }
         $query = Item::with($with);
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $query->withCount(['reviews as review_count' => fn ($q) => $q->where('status', 'approved')])
                 ->withAvg(['reviews as avg_rating' => fn ($q) => $q->where('status', 'approved')], 'rating');
         }
 
         $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $query->where('is_active', true);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
         }
@@ -75,7 +75,7 @@ class ItemController extends Controller
         }
 
         // Filter by availability (public only)
-        if (! $isAdmin && $request->has('available_only')) {
+        if (!$isAdmin && $request->has('available_only')) {
             $query->where('is_available', true);
         }
 
@@ -148,7 +148,7 @@ class ItemController extends Controller
             ];
 
             // Public callers receive extra customer-facing fields
-            if (! $isAdmin) {
+            if (!$isAdmin) {
                 $data['spice_level'] = $item->spice_level ?? null;
                 $data['is_combo'] = (bool) ($item->is_combo ?? false);
                 $data['dietary_tags'] = $item->dietary_tags ?? [];
@@ -209,9 +209,9 @@ class ItemController extends Controller
             ->where('is_active', true)
             ->findOrFail($id);
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -352,9 +352,9 @@ class ItemController extends Controller
             ->where('is_available', true)
             ->firstOrFail();
 
-        if (! $isStaff) {
+        if (!$isStaff) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -397,7 +397,7 @@ class ItemController extends Controller
     public function toggleAvailability($id)
     {
         $item = Item::findOrFail($id);
-        $item->update(['is_available' => ! $item->is_available]);
+        $item->update(['is_available' => !$item->is_available]);
 
         return response()->json([
             'message' => 'Item availability updated',
@@ -426,7 +426,7 @@ class ItemController extends Controller
         $public = $items->map(fn ($item) => [
             'id' => $item->id,
             'is_available' => $item->availability_type !== 'unavailable'
-                && (! $item->track_stock || $item->stock_quantity > 0),
+                && (!$item->track_stock || $item->stock_quantity > 0),
         ]);
 
         return response()->json(['items' => $public]);

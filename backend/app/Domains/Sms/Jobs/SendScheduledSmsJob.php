@@ -40,7 +40,7 @@ class SendScheduledSmsJob implements ShouldQueue
         $scheduled = SmsScheduledMessage::with(['contact.user', 'group.contacts.user', 'template'])
             ->find($this->scheduledMessageId);
 
-        if (! $scheduled) {
+        if (!$scheduled) {
             Log::warning('SendScheduledSmsJob: scheduled message not found', ['id' => $this->scheduledMessageId]);
 
             return;
@@ -81,7 +81,7 @@ class SendScheduledSmsJob implements ShouldQueue
         $failures = [];
 
         foreach ($phones as $phone) {
-            $idempotencyKey = 'scheduled:'.$this->scheduledMessageId.':'.$at->format('YmdHi').':'.$phone;
+            $idempotencyKey = 'scheduled:' . $this->scheduledMessageId . ':' . $at->format('YmdHi') . ':' . $phone;
 
             try {
                 $smsService->send(new SmsMessage(
@@ -98,15 +98,15 @@ class SendScheduledSmsJob implements ShouldQueue
                     'phone' => $phone,
                     'error' => $e->getMessage(),
                 ]);
-                $failures[] = $phone.': '.$e->getMessage();
+                $failures[] = $phone . ': ' . $e->getMessage();
             }
         }
 
-        if (! empty($failures)) {
+        if (!empty($failures)) {
             // Re-throw so the job enters failed_jobs and retry logic applies.
             // Idempotency keys ensure already-sent messages are not re-sent on retry.
             throw new \RuntimeException(
-                'SendScheduledSmsJob: '.count($failures).' recipient(s) failed — '.implode('; ', $failures),
+                'SendScheduledSmsJob: ' . count($failures) . ' recipient(s) failed — ' . implode('; ', $failures),
             );
         }
     }

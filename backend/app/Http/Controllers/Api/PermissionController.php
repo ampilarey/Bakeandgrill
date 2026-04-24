@@ -59,7 +59,7 @@ class PermissionController extends Controller
         // Non-owners can only grant permissions they themselves hold
         $isOwner = $actor?->role?->slug === 'owner';
         foreach ($validated['permissions'] as $slug => $value) {
-            if ($value === true && ! $isOwner && ! $actor->hasPermission($slug)) {
+            if ($value === true && !$isOwner && !$actor->hasPermission($slug)) {
                 abort(403, "You cannot grant the '{$slug}' permission you do not hold.");
             }
 

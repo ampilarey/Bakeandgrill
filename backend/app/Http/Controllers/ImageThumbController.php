@@ -24,16 +24,16 @@ class ImageThumbController extends Controller
     {
         // Get full path from request so slashes are preserved (e.g. images/cafe/Kavaabu.png)
         $path = trim(Str::after($request->path(), 'thumb/'), '/') ?: trim($path, '/');
-        if (! str_starts_with($path, self::ALLOWED_PREFIX)) {
+        if (!str_starts_with($path, self::ALLOWED_PREFIX)) {
             abort(404);
         }
         $originalPath = public_path($path);
-        if (! is_file($originalPath) || ! is_readable($originalPath)) {
+        if (!is_file($originalPath) || !is_readable($originalPath)) {
             abort(404);
         }
 
-        $cacheRelative = 'thumbs/'.$path;
-        $cachePath = storage_path('app/public/'.$cacheRelative);
+        $cacheRelative = 'thumbs/' . $path;
+        $cachePath = storage_path('app/public/' . $cacheRelative);
 
         if (is_file($cachePath) && is_readable($cachePath)) {
             return $this->serveFile($cachePath, $path);
@@ -45,7 +45,7 @@ class ImageThumbController extends Controller
         }
 
         $dir = dirname($cachePath);
-        if (! is_dir($dir)) {
+        if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
         if (file_put_contents($cachePath, $resized) !== false) {

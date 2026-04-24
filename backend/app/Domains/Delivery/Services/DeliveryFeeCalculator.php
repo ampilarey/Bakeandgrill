@@ -17,8 +17,8 @@ class DeliveryFeeCalculator
     /**
      * Calculate delivery fee in MVR.
      *
-     * @param  string  $island  Destination island/atoll e.g. "Male", "Hulhumale"
-     * @param  int  $subtotalLaar  Order subtotal in laari (for potential threshold-based free delivery)
+     * @param string $island Destination island/atoll e.g. "Male", "Hulhumale"
+     * @param int $subtotalLaar Order subtotal in laari (for potential threshold-based free delivery)
      */
     public function calculate(string $island, int $subtotalLaar = 0): float
     {
@@ -60,7 +60,7 @@ class DeliveryFeeCalculator
     {
         $configured = config('delivery.zones', []);
 
-        if (! empty($configured)) {
+        if (!empty($configured)) {
             return $configured;
         }
 

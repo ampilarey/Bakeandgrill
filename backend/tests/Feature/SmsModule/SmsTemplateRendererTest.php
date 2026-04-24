@@ -23,7 +23,7 @@ class SmsTemplateRendererTest extends TestCase
 
     private function makeTemplate(string $body): SmsTemplate
     {
-        $template = new SmsTemplate(['body' => $body, 'name' => 'Test', 'slug' => 'test-'.uniqid(), 'type' => 'custom']);
+        $template = new SmsTemplate(['body' => $body, 'name' => 'Test', 'slug' => 'test-' . uniqid(), 'type' => 'custom']);
         $template->id = 1;
 
         return $template;

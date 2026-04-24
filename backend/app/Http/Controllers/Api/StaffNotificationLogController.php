@@ -66,7 +66,7 @@ class StaffNotificationLogController extends Controller
 
             return response()->json(['message' => 'Resent successfully.', 'log' => $this->format($log->fresh())]);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to resend: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to resend: ' . $e->getMessage()], 500);
         }
     }
 

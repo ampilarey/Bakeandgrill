@@ -80,7 +80,7 @@ class SmsLoggingTest extends TestCase
 
     public function test_sms_idempotency_prevents_duplicate_send(): void
     {
-        $key = 'test-idempotent-'.uniqid();
+        $key = 'test-idempotent-' . uniqid();
 
         $first = $this->smsService->send(new SmsMessage(
             to: '+9607654323',

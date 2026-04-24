@@ -64,7 +64,7 @@ class PaymentConfirmedListener implements ShouldQueue
         $data = $event->data;
 
         $order = $this->orders->findById($data->orderId);
-        if (! $order) {
+        if (!$order) {
             Log::warning('PaymentConfirmedListener: order not found', ['order_id' => $data->orderId]);
 
             return;
@@ -95,7 +95,7 @@ class PaymentConfirmedListener implements ShouldQueue
         DB::transaction(function () use ($order): void {
             // Lock the row before reading status to prevent concurrent transitions.
             $locked = Order::lockForUpdate()->find($order->id);
-            if (! $locked
+            if (!$locked
                 || $locked->paid_at !== null
                 || in_array($locked->status, ['paid', 'completed', 'cancelled'], true)
             ) {
@@ -108,7 +108,7 @@ class PaymentConfirmedListener implements ShouldQueue
             $this->orders->updateStatus($locked->id, $newStatus, ['paid_at' => now()]);
 
             $fresh = $this->orders->findById($locked->id);
-            if (! $fresh) {
+            if (!$fresh) {
                 return;
             }
 

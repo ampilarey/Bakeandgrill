@@ -102,7 +102,7 @@ class OrderStatusMachine
      */
     public function assertTransitionAllowed(Order $order, string $toStatus): void
     {
-        if (! $this->isAllowed($order->status, $toStatus)) {
+        if (!$this->isAllowed($order->status, $toStatus)) {
             abort(
                 422,
                 "Invalid status transition: '{$order->status}' → '{$toStatus}' is not allowed.",

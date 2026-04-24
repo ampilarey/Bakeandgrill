@@ -36,7 +36,7 @@ class SendStaffNotificationJob implements ShouldQueue
 
     public function handle(SmsService $smsService): void
     {
-        $idempotencyKey = 'staff-notif:'.$this->orderId.':'.$this->eventType.':'.$this->phone;
+        $idempotencyKey = 'staff-notif:' . $this->orderId . ':' . $this->eventType . ':' . $this->phone;
 
         // Idempotency check: skip if already sent
         $existing = StaffNotificationLog::where('idempotency_key', $idempotencyKey)->first();
@@ -68,7 +68,7 @@ class SendStaffNotificationJob implements ShouldQueue
                 type: 'staff_notification',
                 referenceType: 'order',
                 referenceId: (string) $this->orderId,
-                idempotencyKey: $idempotencyKey.':sms',
+                idempotencyKey: $idempotencyKey . ':sms',
             ));
 
             // 'demo' is a successful no-op send (local/staging without real credentials).

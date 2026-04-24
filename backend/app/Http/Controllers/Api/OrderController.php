@@ -32,7 +32,7 @@ class OrderController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -43,7 +43,7 @@ class OrderController extends Controller
             $statuses = explode(',', $request->input('status'));
             $validStatuses = ['pending', 'paid', 'payment_pending', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled', 'partial', 'refunded'];
             $filtered = array_intersect($statuses, $validStatuses);
-            if (! empty($filtered)) {
+            if (!empty($filtered)) {
                 count($filtered) === 1
                     ? $query->where('status', reset($filtered))
                     : $query->whereIn('status', $filtered);
@@ -66,7 +66,7 @@ class OrderController extends Controller
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        if (! $request->user()->tokenCan('staff')) {
+        if (!$request->user()->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -82,12 +82,12 @@ class OrderController extends Controller
 
     public function storeCustomer(StoreCustomerOrderRequest $request): JsonResponse
     {
-        if (! $request->user()->tokenCan('customer')) {
+        if (!$request->user()->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden - customer access only'], 403);
         }
 
         $customer = $request->user();
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -138,7 +138,7 @@ class OrderController extends Controller
     {
         // Only staff (User model) may use this endpoint.
         // Customers must use the customer-scoped endpoint which enforces ownership.
-        if (! $request->user() instanceof \App\Models\User) {
+        if (!$request->user() instanceof \App\Models\User) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -150,7 +150,7 @@ class OrderController extends Controller
 
     public function hold(Request $request, int $id): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -169,7 +169,7 @@ class OrderController extends Controller
 
     public function resume(Request $request, int $id): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
@@ -188,12 +188,12 @@ class OrderController extends Controller
 
     public function addPayments(StoreOrderPaymentsRequest $request, int $id): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
         $validated = $request->validated();
-        $printReceipt = ! array_key_exists('print_receipt', $validated) || $validated['print_receipt'] === true;
+        $printReceipt = !array_key_exists('print_receipt', $validated) || $validated['print_receipt'] === true;
 
         // Single transaction with row-lock to prevent concurrent split-payment race conditions
         // where two requests both read paidTotal < total and both set status = 'partial'.
@@ -273,7 +273,7 @@ class OrderController extends Controller
             ->where('tracking_token', $token)
             ->first();
 
-        if (! $order) {
+        if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
@@ -304,7 +304,7 @@ class OrderController extends Controller
      */
     public function sendBill(Request $request, int $id): JsonResponse
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -320,7 +320,7 @@ class OrderController extends Controller
             ['phone' => $phone],
             ['loyalty_points' => 0, 'tier' => 'bronze'],
         );
-        if (! $order->customer_id) {
+        if (!$order->customer_id) {
             $order->update(['customer_id' => $customer->id]);
             $order->setRelation('customer', $customer);
         }
@@ -329,14 +329,14 @@ class OrderController extends Controller
         $invoice = app(InvoiceController::class)->createFromOrderInternal($order, $request->user());
 
         // Send SMS with invoice link
-        $link = rtrim(config('app.url'), '/').'/invoices/'.$invoice->token;
+        $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
         app(SmsService::class)->send(new SmsMessage(
             to: $phone,
-            message: 'Bake & Grill: Your bill #'.$invoice->invoice_number.' — MVR '.number_format((float) $invoice->total, 2).'. View: '.$link,
+            message: 'Bake & Grill: Your bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
             type: 'transactional',
             referenceType: 'invoice',
             referenceId: (string) $invoice->id,
-            idempotencyKey: 'invoice:bill:'.$invoice->id,
+            idempotencyKey: 'invoice:bill:' . $invoice->id,
         ));
 
         $invoice->update([

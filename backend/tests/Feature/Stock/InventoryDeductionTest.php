@@ -31,7 +31,7 @@ class InventoryDeductionTest extends TestCase
     private function makeInventoryItem(float $stock = 100): InventoryItem
     {
         return InventoryItem::create([
-            'name' => 'Ingredient '.uniqid(),
+            'name' => 'Ingredient ' . uniqid(),
             'unit' => 'kg',
             'current_stock' => $stock,
             'is_active' => true,

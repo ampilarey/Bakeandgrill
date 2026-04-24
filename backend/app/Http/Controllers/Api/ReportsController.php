@@ -207,7 +207,7 @@ class ReportsController extends Controller
 
         return response($csv, 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
 
@@ -221,7 +221,7 @@ class ReportsController extends Controller
         }
         $string = (string) $value;
         if (preg_match('/^[=+\\-@]/', $string)) {
-            return "'".$string;
+            return "'" . $string;
         }
 
         return $string;

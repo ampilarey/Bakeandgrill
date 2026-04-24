@@ -75,7 +75,7 @@ class OpeningHoursService
 
         $hours = $this->getHours()[$today] ?? null;
 
-        if (! $hours || ($hours['closed'] ?? false)) {
+        if (!$hours || ($hours['closed'] ?? false)) {
             return false;
         }
 
@@ -114,11 +114,11 @@ class OpeningHoursService
             $dayOfWeek = $checkDate->dayOfWeek;
             $dayHours = $hours[$dayOfWeek] ?? null;
 
-            if (! $dayHours || ($dayHours['closed'] ?? false)) {
+            if (!$dayHours || ($dayHours['closed'] ?? false)) {
                 continue;
             }
 
-            $openTime = Carbon::parse($checkDate->format('Y-m-d').' '.$dayHours['open']);
+            $openTime = Carbon::parse($checkDate->format('Y-m-d') . ' ' . $dayHours['open']);
 
             if ($openTime->isFuture()) {
                 return $openTime;

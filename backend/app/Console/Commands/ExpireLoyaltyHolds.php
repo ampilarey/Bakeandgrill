@@ -30,7 +30,7 @@ class ExpireLoyaltyHolds extends Command
                     ->lockForUpdate()
                     ->first();
 
-                if (! $locked) {
+                if (!$locked) {
                     return; // Already processed by a concurrent instance
                 }
 

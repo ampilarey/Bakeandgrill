@@ -25,7 +25,7 @@ final class SendOnlineOrderCompletionReceiptSmsListener
     public function handle(OrderStatusChanged $event): void
     {
         $status = $event->data->status;
-        if (! in_array($status, ['completed', 'delivered'], true)) {
+        if (!in_array($status, ['completed', 'delivered'], true)) {
             return;
         }
 
@@ -34,24 +34,24 @@ final class SendOnlineOrderCompletionReceiptSmsListener
             return;
         }
 
-        if (! in_array($order->type, self::ONLINE_TYPES, true)) {
+        if (!in_array($order->type, self::ONLINE_TYPES, true)) {
             return;
         }
 
         $phone = $order->customer?->phone;
-        if (! $phone) {
+        if (!$phone) {
             return;
         }
 
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (! $receipt->exists) {
+        if (!$receipt->exists) {
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
         $receipt->save();
 
-        $link = rtrim(config('app.url'), '/').'/receipts/'.$receipt->token;
-        $message = 'Bake & Grill: Your order #'.$order->order_number.' is complete! View your receipt: '.$link;
+        $link = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+        $message = 'Bake & Grill: Your order #' . $order->order_number . ' is complete! View your receipt: ' . $link;
 
         try {
             $this->sms->send(new SmsMessage(
@@ -61,7 +61,7 @@ final class SendOnlineOrderCompletionReceiptSmsListener
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,
-                idempotencyKey: 'order:complete:receipt:'.$order->id,
+                idempotencyKey: 'order:complete:receipt:' . $order->id,
             ));
         } catch (\Throwable $e) {
             Log::error('SendOnlineOrderCompletionReceiptSmsListener: SMS failed', [

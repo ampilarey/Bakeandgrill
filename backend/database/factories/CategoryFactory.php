@@ -21,7 +21,7 @@ class CategoryFactory extends Factory
 
         return [
             'name' => ucwords($name),
-            'slug' => Str::slug($name).'-'.fake()->unique()->randomNumber(4),
+            'slug' => Str::slug($name) . '-' . fake()->unique()->randomNumber(4),
             'is_active' => true,
             'sort_order' => fake()->numberBetween(1, 20),
         ];

@@ -55,7 +55,7 @@ class TimeClockController extends Controller
             ->latest('clocked_in_at')
             ->first();
 
-        if (! $punch) {
+        if (!$punch) {
             return response()->json(['message' => 'Not clocked in.'], 422);
         }
 
@@ -94,7 +94,7 @@ class TimeClockController extends Controller
         $user->loadMissing('role');
         $roleSlug = $user->role?->slug;
 
-        if (! in_array($roleSlug, ['manager', 'owner'], true)) {
+        if (!in_array($roleSlug, ['manager', 'owner'], true)) {
             $query->where('user_id', $user->id);
         }
 
@@ -122,7 +122,7 @@ class TimeClockController extends Controller
 
         $punches = TimePunch::with('user:id,name')
             ->whereNotNull('clocked_out_at')
-            ->whereBetween('clocked_in_at', [$from.' 00:00:00', $to.' 23:59:59'])
+            ->whereBetween('clocked_in_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
             ->get();
 
         $summary = $punches->groupBy('user_id')->map(function ($userPunches) {

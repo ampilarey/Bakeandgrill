@@ -41,7 +41,7 @@ class GenerateRecurringExpenses extends Command
             DB::transaction(function () use ($parentId, $today, &$created): void {
                 $parent = Expense::lockForUpdate()->find($parentId);
 
-                if (! $parent) {
+                if (!$parent) {
                     return;
                 }
 
@@ -52,7 +52,7 @@ class GenerateRecurringExpenses extends Command
 
                 $this->line("  → {$parent->description} (MVR {$parent->amount}) [{$parent->recurrence_interval}]");
 
-                if (! $this->option('dry-run')) {
+                if (!$this->option('dry-run')) {
                     $newExpense = Expense::create([
                         'expense_number' => $this->generateExpenseNumber(),
                         'expense_category_id' => $parent->expense_category_id,
@@ -106,6 +106,6 @@ class GenerateRecurringExpenses extends Command
         $date = now()->format('Ymd');
         $count = Expense::whereDate('created_at', now()->toDateString())->withTrashed()->count() + 1;
 
-        return 'EXP-'.$date.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        return 'EXP-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
     }
 }

@@ -126,15 +126,15 @@ class SmsPromotionController extends Controller
         }
 
         $includeOptedOut = $filters['include_opted_out'] ?? false;
-        if (! $includeOptedOut) {
+        if (!$includeOptedOut) {
             $query->where('sms_opt_out', false);
         }
 
-        if (! empty($filters['last_order_days'])) {
+        if (!empty($filters['last_order_days'])) {
             $query->where('last_order_at', '>=', now()->subDays((int) $filters['last_order_days']));
         }
 
-        if (! empty($filters['min_orders'])) {
+        if (!empty($filters['min_orders'])) {
             $query->withCount('orders')
                 ->having('orders_count', '>=', (int) $filters['min_orders']);
         }

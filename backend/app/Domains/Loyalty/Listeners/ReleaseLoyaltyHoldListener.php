@@ -30,7 +30,7 @@ class ReleaseLoyaltyHoldListener implements ShouldQueue
             ->where('status', 'active')
             ->first();
 
-        if (! $hold) {
+        if (!$hold) {
             return;
         }
 

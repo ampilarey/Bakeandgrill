@@ -37,7 +37,7 @@ class OnlineOrderingGateService
     public function assertOpen(?Carbon $at = null): void
     {
         $result = $this->evaluate($at);
-        if (! $result->allowed) {
+        if (!$result->allowed) {
             abort(422, $result->message);
         }
     }
@@ -53,11 +53,11 @@ class OnlineOrderingGateService
 
         // Determine human-readable reason code for the frontend
         $reason = null;
-        if (! $masterOn) {
+        if (!$masterOn) {
             $reason = 'master_switch_off';
         } elseif ($overrideActive) {
             $reason = 'override_active';
-        } elseif ($schedule && ! $this->withinSchedule($schedule, $at ?? now())) {
+        } elseif ($schedule && !$this->withinSchedule($schedule, $at ?? now())) {
             $reason = 'schedule';
         }
 
@@ -89,7 +89,7 @@ class OnlineOrderingGateService
         }
 
         // Layer 2 — master switch
-        if (! $this->masterSwitchOn()) {
+        if (!$this->masterSwitchOn()) {
             return GateResult::closed($this->closedMessage());
         }
 
@@ -116,7 +116,7 @@ class OnlineOrderingGateService
     private function overrideIsActive(?Carbon $at): bool
     {
         $raw = SiteSetting::get('online_ordering_override_until');
-        if (! $raw) {
+        if (!$raw) {
             return false;
         }
 
@@ -147,7 +147,7 @@ class OnlineOrderingGateService
     private function parseSchedule(): ?array
     {
         $raw = SiteSetting::get('online_ordering_schedule');
-        if (! $raw) {
+        if (!$raw) {
             return null;
         }
 
@@ -157,7 +157,7 @@ class OnlineOrderingGateService
             return null;
         }
 
-        if (! is_array($decoded) || empty($decoded)) {
+        if (!is_array($decoded) || empty($decoded)) {
             return null;
         }
 
@@ -165,7 +165,7 @@ class OnlineOrderingGateService
     }
 
     /**
-     * @param  array<string, array{open: string, close: string}>  $schedule
+     * @param array<string, array{open: string, close: string}> $schedule
      */
     private function withinSchedule(array $schedule, Carbon $at): bool
     {
@@ -175,7 +175,7 @@ class OnlineOrderingGateService
         $dayKey = strtolower($now->format('D')); // mon, tue, …, sun
 
         $window = $schedule[$dayKey] ?? null;
-        if (! $window) {
+        if (!$window) {
             return false; // day not listed = closed
         }
 
@@ -193,7 +193,7 @@ class OnlineOrderingGateService
      * Returns the next opening datetime string (ISO 8601) or null if it cannot
      * be determined (schedule not set, or no open day found within 7 days).
      *
-     * @param  array<string, array{open: string, close: string}>  $schedule
+     * @param array<string, array{open: string, close: string}> $schedule
      */
     private function nextOpenWindow(array $schedule, ?Carbon $at): ?string
     {
@@ -205,7 +205,7 @@ class OnlineOrderingGateService
             $dayKey = strtolower($candidate->format('D'));
             $window = $schedule[$dayKey] ?? null;
 
-            if (! $window) {
+            if (!$window) {
                 continue;
             }
 

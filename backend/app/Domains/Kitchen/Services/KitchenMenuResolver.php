@@ -66,17 +66,17 @@ final class KitchenMenuResolver
     {
         $at ??= now();
 
-        if (! $item->is_active || ! $item->is_available) {
+        if (!$item->is_active || !$item->is_available) {
             return false;
         }
 
-        if (! in_array($channel, self::CHANNELS, true)) {
+        if (!in_array($channel, self::CHANNELS, true)) {
             return false;
         }
 
         if ($item->menu_group_id !== null) {
             $active = $this->activeMenuGroupIds();
-            if ($active !== [] && ! in_array((int) $item->menu_group_id, $active, true)) {
+            if ($active !== [] && !in_array((int) $item->menu_group_id, $active, true)) {
                 return false;
             }
         }
@@ -86,7 +86,7 @@ final class KitchenMenuResolver
             ->where('channel', $channel)
             ->first();
 
-        if ($row === null || ! $row->is_enabled) {
+        if ($row === null || !$row->is_enabled) {
             return false;
         }
 
@@ -97,7 +97,7 @@ final class KitchenMenuResolver
             return false;
         }
 
-        if ($channel === 'delivery' && ! $this->isDeliveryServiceAccepting()) {
+        if ($channel === 'delivery' && !$this->isDeliveryServiceAccepting()) {
             return false;
         }
 
@@ -105,7 +105,7 @@ final class KitchenMenuResolver
     }
 
     /**
-     * @param  iterable<Item>  $items
+     * @param iterable<Item> $items
      * @return list<int>
      */
     public function filterItemIdsForChannel(iterable $items, string $channel, ?Carbon $at = null): array
@@ -121,14 +121,14 @@ final class KitchenMenuResolver
     }
 
     /**
-     * @param  array<int, Item>  $itemMap  keyed by id
-     * @param  list<array{item_id: int}>  $lineItems
+     * @param array<int, Item> $itemMap keyed by id
+     * @param list<array{item_id: int}> $lineItems
      */
     public function assertLineItemsAllowedForOrderType(array $itemMap, array $lineItems, string $orderType): void
     {
         $channel = $this->channelForOrderType($orderType);
 
-        if ($channel === 'delivery' && ! $this->isDeliveryServiceAccepting()) {
+        if ($channel === 'delivery' && !$this->isDeliveryServiceAccepting()) {
             abort(422, $this->deliveryUnavailableMessage());
         }
 
@@ -136,16 +136,16 @@ final class KitchenMenuResolver
         foreach ($lineItems as $line) {
             $id = (int) $line['item_id'];
             $item = $itemMap[$id] ?? null;
-            if (! $item) {
+            if (!$item) {
                 continue;
             }
-            if (! $this->isItemVisibleForChannel($item, $channel)) {
+            if (!$this->isItemVisibleForChannel($item, $channel)) {
                 $bad[] = $item->name;
             }
         }
 
         if ($bad !== []) {
-            abort(422, 'These items are not available for this order type: '.implode(', ', $bad));
+            abort(422, 'These items are not available for this order type: ' . implode(', ', $bad));
         }
     }
 
@@ -179,7 +179,7 @@ final class KitchenMenuResolver
                 });
         });
 
-        if ($channel === 'delivery' && ! $this->isDeliveryServiceAccepting()) {
+        if ($channel === 'delivery' && !$this->isDeliveryServiceAccepting()) {
             $query->whereRaw('1 = 0');
         }
     }

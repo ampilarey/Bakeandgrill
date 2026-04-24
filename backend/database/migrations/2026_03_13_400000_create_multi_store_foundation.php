@@ -17,7 +17,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('stores')) {
+        if (!Schema::hasTable('stores')) {
             Schema::create('stores', function (Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -42,7 +42,7 @@ return new class extends Migration
         // Add nullable store_id to operational tables
         $tables = ['orders', 'shifts', 'users', 'inventory_items', 'items'];
         foreach ($tables as $t) {
-            if (Schema::hasTable($t) && ! Schema::hasColumn($t, 'store_id')) {
+            if (Schema::hasTable($t) && !Schema::hasColumn($t, 'store_id')) {
                 Schema::table($t, function (Blueprint $table) {
                     $table->foreignId('store_id')->nullable()->after('id')
                         ->constrained('stores')->nullOnDelete();

@@ -16,18 +16,18 @@ class EnsureActiveDevice
         $identifier = $request->header('X-Device-Identifier')
             ?? $request->header('X-Device-Id');
 
-        if (! $identifier) {
+        if (!$identifier) {
             return response()->json([
                 'message' => 'Device identifier required. Send the X-Device-Identifier header.',
             ], 422);
         }
 
         $device = Device::where('identifier', $identifier)->first();
-        if (! $device) {
+        if (!$device) {
             return response()->json(['message' => 'Device not registered.'], 403);
         }
 
-        if (! $device->is_active) {
+        if (!$device->is_active) {
             return response()->json(['message' => 'Device disabled.'], 403);
         }
 

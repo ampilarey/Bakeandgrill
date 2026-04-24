@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-if (! function_exists('thumb_path')) {
+if (!function_exists('thumb_path')) {
     /**
      * Return thumbnail path for local cafe images (e.g. thumb/images/cafe/file.png), or null.
      */
@@ -14,14 +14,14 @@ if (! function_exists('thumb_path')) {
         $path = preg_replace('#^https?://[^/]+#', '', $imageUrl);
         $path = trim($path, '/');
         if (str_starts_with($path, 'images/cafe/')) {
-            return 'thumb/'.$path;
+            return 'thumb/' . $path;
         }
 
         return null;
     }
 }
 
-if (! function_exists('thumb_url')) {
+if (!function_exists('thumb_url')) {
     /**
      * Return thumbnail URL for local cafe images (faster load). External URLs unchanged.
      */

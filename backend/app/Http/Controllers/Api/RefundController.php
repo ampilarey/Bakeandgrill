@@ -60,7 +60,7 @@ class RefundController extends Controller
             );
 
             if ($amountLaar + $alreadyRefundedLaar > $orderTotalLaar) {
-                abort(422, 'Refund would exceed order total. Already refunded: '.number_format($alreadyRefundedLaar / 100, 2));
+                abort(422, 'Refund would exceed order total. Already refunded: ' . number_format($alreadyRefundedLaar / 100, 2));
             }
 
             $refund = Refund::create([
@@ -81,7 +81,7 @@ class RefundController extends Controller
                 $stockService = app(StockManagementService::class);
                 foreach ($order->items as $orderItem) {
                     $item = $orderItem->item;
-                    if (! $item) {
+                    if (!$item) {
                         continue;
                     }
 
@@ -89,7 +89,7 @@ class RefundController extends Controller
                     // its own inventory (mirrors the deduction logic in OrderCreationService).
                     $variant = $orderItem->variant;
                     if ($variant && $variant->track_stock) {
-                        $key = 'refund:order:'.$order->id.':variant:'.$orderItem->id;
+                        $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id;
                         $stockService->restoreVariantStock(
                             $variant,
                             (int) $orderItem->quantity,
@@ -102,10 +102,10 @@ class RefundController extends Controller
                     }
 
                     // Item-level stock (non-variant tracked products).
-                    if (! $item->track_stock || $item->availability_type !== 'stock_based') {
+                    if (!$item->track_stock || $item->availability_type !== 'stock_based') {
                         continue;
                     }
-                    $key = 'refund:order:'.$order->id.':item:'.$orderItem->id;
+                    $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id;
                     $stockService->restorePreparedStock(
                         $item,
                         (int) $orderItem->quantity,

@@ -35,7 +35,7 @@ class RequireRole
     {
         $user = $request->user();
 
-        if (! $user) {
+        if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
@@ -45,13 +45,13 @@ class RequireRole
         }
 
         // Load role relationship if not already loaded
-        if (! $user->relationLoaded('role')) {
+        if (!$user->relationLoaded('role')) {
             $user->load('role');
         }
 
         $roleSlug = $user->role?->slug;
 
-        if (! $roleSlug || ! in_array($roleSlug, $roles, true)) {
+        if (!$roleSlug || !in_array($roleSlug, $roles, true)) {
             return response()->json(['message' => 'Forbidden. Insufficient role.'], 403);
         }
 

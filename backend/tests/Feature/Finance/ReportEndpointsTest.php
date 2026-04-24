@@ -72,8 +72,8 @@ class ReportEndpointsTest extends TestCase
     public function test_tax_report_returns_200_for_owner(): void
     {
         $this->getJson(
-            '/api/reports/finance/tax?from='.today()->startOfMonth()->toDateString()
-            .'&to='.today()->toDateString(),
+            '/api/reports/finance/tax?from=' . today()->startOfMonth()->toDateString()
+            . '&to=' . today()->toDateString(),
             $this->ownerHeaders(),
         )->assertStatus(200);
     }

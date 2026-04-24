@@ -30,12 +30,12 @@ class StaffAuthController extends Controller
         $username = strtolower(trim($request->username));
 
         // Rate-limit per username+IP to prevent credential stuffing.
-        $rateKey = 'staff-pin:'.$username.':'.$request->ip();
+        $rateKey = 'staff-pin:' . $username . ':' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
             throw ValidationException::withMessages([
-                'pin' => ['Too many attempts. Try again in '.ceil($seconds / 60).' minutes.'],
+                'pin' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
             ]);
         }
 
@@ -45,7 +45,7 @@ class StaffAuthController extends Controller
             ->whereNotNull('pin_hash')
             ->first();
 
-        if (! $user || ! Hash::check($pin, $user->pin_hash)) {
+        if (!$user || !Hash::check($pin, $user->pin_hash)) {
             RateLimiter::hit($rateKey, 900); // 15-minute decay
             throw ValidationException::withMessages([
                 'pin' => ['Invalid email or PIN.'],
@@ -56,7 +56,7 @@ class StaffAuthController extends Controller
         $user->update(['last_login_at' => now()]);
 
         // Create token with 'staff' ability
-        $token = $user->createToken('staff-'.$user->id, ['staff'])->plainTextToken;
+        $token = $user->createToken('staff-' . $user->id, ['staff'])->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
@@ -113,7 +113,7 @@ class StaffAuthController extends Controller
      */
     public function me(Request $request)
     {
-        if (! $request->user()?->tokenCan('staff')) {
+        if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 

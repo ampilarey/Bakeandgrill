@@ -54,7 +54,7 @@ class BulkSmsService
      */
     public function dispatch(SmsCampaign $campaign): SmsCampaign
     {
-        if (! $campaign->canStart()) {
+        if (!$campaign->canStart()) {
             throw new \RuntimeException("Campaign {$campaign->id} cannot be started (status: {$campaign->status}).");
         }
 
@@ -104,12 +104,12 @@ class BulkSmsService
         }
 
         // Loyalty tier filter
-        if (! empty($criteria['tier'])) {
+        if (!empty($criteria['tier'])) {
             $query->whereIn('tier', (array) $criteria['tier']);
         }
 
         // Last order filter
-        if (! empty($criteria['last_order_days'])) {
+        if (!empty($criteria['last_order_days'])) {
             $days = (int) $criteria['last_order_days'];
             $query->whereHas('orders', function ($q) use ($days): void {
                 $q->where('created_at', '>=', now()->subDays($days))
@@ -118,7 +118,7 @@ class BulkSmsService
         }
 
         // Only customers with a loyalty account
-        if (! empty($criteria['has_loyalty'])) {
+        if (!empty($criteria['has_loyalty'])) {
             $query->whereHas('loyaltyAccount');
         }
 

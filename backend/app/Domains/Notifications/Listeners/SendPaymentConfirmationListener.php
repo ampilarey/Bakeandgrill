@@ -51,7 +51,7 @@ class SendPaymentConfirmationListener implements ShouldQueue
     {
         $order = Order::with(['items.item', 'customer'])->find($event->data->orderId);
 
-        if (! $order) {
+        if (!$order) {
             Log::warning('SendPaymentConfirmationListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;

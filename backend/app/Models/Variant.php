@@ -41,7 +41,7 @@ class Variant extends Model
     /** True when this variant still has available stock (or does not track stock). */
     public function inStock(): bool
     {
-        return ! $this->track_stock || $this->stock_qty > 0;
+        return !$this->track_stock || $this->stock_qty > 0;
     }
 
     public function displayName(): string
@@ -52,6 +52,6 @@ class Variant extends Model
     /** e.g. "Tea - Large" */
     public function fullDisplayName(): string
     {
-        return $this->item->name.' - '.$this->name;
+        return $this->item->name . ' - ' . $this->name;
     }
 }

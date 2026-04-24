@@ -156,7 +156,7 @@ class ItemAvailabilityServiceTest extends TestCase
         $response->assertOk();
 
         $items = $response->json('data');
-        if (! empty($items)) {
+        if (!empty($items)) {
             $this->assertArrayNotHasKey('availability', $items[0]);
         }
     }

@@ -35,7 +35,7 @@ class GiftCard extends Model
         $segments = explode('-', $this->attributes['code']);
 
         return implode('-', array_map(
-            fn (string $seg) => str_repeat('*', max(0, strlen($seg) - 4)).substr($seg, -4),
+            fn (string $seg) => str_repeat('*', max(0, strlen($seg) - 4)) . substr($seg, -4),
             $segments,
         ));
     }

@@ -29,12 +29,12 @@ class CreateStaffUserCommand extends Command
     public function handle(): int
     {
         if (app()->isProduction()) {
-            if (! filter_var(env('ALLOW_STAFF_CLI_CREATE', false), FILTER_VALIDATE_BOOLEAN)) {
+            if (!filter_var(env('ALLOW_STAFF_CLI_CREATE', false), FILTER_VALIDATE_BOOLEAN)) {
                 $this->error('Refused in production. Set ALLOW_STAFF_CLI_CREATE=true in .env for a deliberate one-shot, then remove it.');
 
                 return 1;
             }
-            if (! $this->option('force')) {
+            if (!$this->option('force')) {
                 $this->error('Refused in production without --force.');
 
                 return 1;
@@ -46,7 +46,7 @@ class CreateStaffUserCommand extends Command
         $roleSlug = strtolower((string) $this->option('role'));
         $name = $this->option('name') ?: Str::title(str_replace(['.', '_', '-'], ' ', Str::before($email, '@')));
 
-        if (strlen($pin) < 4 || strlen($pin) > 8 || ! ctype_digit($pin)) {
+        if (strlen($pin) < 4 || strlen($pin) > 8 || !ctype_digit($pin)) {
             $this->error('PIN must be 4–8 digits.');
 
             return 1;

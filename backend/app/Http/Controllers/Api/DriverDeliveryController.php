@@ -57,7 +57,7 @@ class DriverDeliveryController extends Controller
             ->where('delivery_driver_id', $driver->id)
             ->whereIn('status', ['delivered', 'completed']);
 
-        if (! empty($validated['date'])) {
+        if (!empty($validated['date'])) {
             $query->whereDate('delivered_at', $validated['date']);
         }
 

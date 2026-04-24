@@ -29,7 +29,7 @@ class WebhookSubscriptionController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'url' => ['required', 'url', 'max:500'],
             'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['string', 'in:'.implode(',', DispatchWebhookOnDomainEvent::getSupportedEventNames())],
+            'events.*' => ['string', 'in:' . implode(',', DispatchWebhookOnDomainEvent::getSupportedEventNames())],
         ]);
 
         $subscription = WebhookSubscription::create([
@@ -60,7 +60,7 @@ class WebhookSubscriptionController extends Controller
             'name' => ['sometimes', 'string', 'max:100'],
             'url' => ['sometimes', 'url', 'max:500'],
             'events' => ['sometimes', 'array', 'min:1'],
-            'events.*' => ['string', 'in:'.implode(',', DispatchWebhookOnDomainEvent::getSupportedEventNames())],
+            'events.*' => ['string', 'in:' . implode(',', DispatchWebhookOnDomainEvent::getSupportedEventNames())],
             'active' => ['sometimes', 'boolean'],
         ]);
 

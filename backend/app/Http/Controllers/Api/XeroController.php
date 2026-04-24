@@ -27,7 +27,7 @@ class XeroController extends Controller
     public function connect(Request $request): JsonResponse
     {
         $state = Str::random(40);
-        Cache::put('xero_oauth_state_'.$request->user()->id, $state, 300);
+        Cache::put('xero_oauth_state_' . $request->user()->id, $state, 300);
 
         return response()->json([
             'redirect_url' => $this->oauth->getAuthorizationUrl($state),
@@ -39,13 +39,13 @@ class XeroController extends Controller
      */
     public function callback(Request $request): JsonResponse
     {
-        $expected = Cache::pull('xero_oauth_state_'.$request->user()->id);
-        if (! $expected || ! hash_equals($expected, (string) $request->query('state'))) {
+        $expected = Cache::pull('xero_oauth_state_' . $request->user()->id);
+        if (!$expected || !hash_equals($expected, (string) $request->query('state'))) {
             return response()->json(['message' => 'Invalid OAuth state.'], 422);
         }
 
         $code = $request->query('code');
-        if (! $code) {
+        if (!$code) {
             return response()->json(['message' => 'Authorization code missing.'], 422);
         }
 
@@ -64,7 +64,7 @@ class XeroController extends Controller
     public function status(): JsonResponse
     {
         $conn = $this->oauth->getActiveConnection();
-        if (! $conn) {
+        if (!$conn) {
             return response()->json(['connected' => false]);
         }
 

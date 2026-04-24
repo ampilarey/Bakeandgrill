@@ -38,13 +38,13 @@ class DailySpecial extends Model
         $date = $now->toDateString();
         $time = $now->format('H:i:s');
 
-        if (! $this->is_active) {
+        if (!$this->is_active) {
             return false;
         }
         if ($date < $this->start_date->toDateString() || $date > $this->end_date->toDateString()) {
             return false;
         }
-        if ($this->days_of_week && ! in_array($now->dayOfWeek, $this->days_of_week, true)) {
+        if ($this->days_of_week && !in_array($now->dayOfWeek, $this->days_of_week, true)) {
             return false;
         }
         if ($this->start_time && $time < $this->start_time) {

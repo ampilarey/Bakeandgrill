@@ -65,7 +65,7 @@ class DispatchWebhookOnDomainEvent implements ShouldQueue
     public function handle(object $event): void
     {
         $eventName = self::EVENT_MAP[get_class($event)] ?? null;
-        if (! $eventName) {
+        if (!$eventName) {
             return;
         }
 

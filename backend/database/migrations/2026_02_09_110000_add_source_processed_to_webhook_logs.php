@@ -15,11 +15,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('webhook_logs', function (Blueprint $table): void {
-            if (! Schema::hasColumn('webhook_logs', 'source')) {
+            if (!Schema::hasColumn('webhook_logs', 'source')) {
                 $table->string('source')->nullable()->after('status');
             }
 
-            if (! Schema::hasColumn('webhook_logs', 'processed')) {
+            if (!Schema::hasColumn('webhook_logs', 'processed')) {
                 $table->boolean('processed')->default(false)->after('processed_at');
             }
         });

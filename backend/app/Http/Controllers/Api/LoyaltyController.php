@@ -30,7 +30,7 @@ class LoyaltyController extends Controller
     public function me(Request $request): JsonResponse
     {
         $customer = $request->user();
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -62,13 +62,13 @@ class LoyaltyController extends Controller
         ]);
 
         $customer = $request->user();
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         // IDOR guard: ensure the order belongs to this customer.
         $order = Order::find($request->integer('order_id'));
-        if (! $order || (int) $order->customer_id !== (int) $customer->id) {
+        if (!$order || (int) $order->customer_id !== (int) $customer->id) {
             return response()->json(['message' => 'Order not found.'], 404);
         }
 
@@ -95,7 +95,7 @@ class LoyaltyController extends Controller
         ]);
 
         $customer = $request->user();
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -131,7 +131,7 @@ class LoyaltyController extends Controller
     public function releaseHold(Request $request, int $orderId): JsonResponse
     {
         $customer = $request->user();
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -140,7 +140,7 @@ class LoyaltyController extends Controller
             ->where('status', 'active')
             ->first();
 
-        if (! $hold) {
+        if (!$hold) {
             return response()->json(['message' => 'No active hold found.'], 404);
         }
 
@@ -165,7 +165,7 @@ class LoyaltyController extends Controller
             ->orderByDesc('lifetime_points');
 
         if ($request->filled('search')) {
-            $search = '%'.$request->input('search').'%';
+            $search = '%' . $request->input('search') . '%';
             $query->whereHas('customer', fn ($q) => $q
                 ->where('name', 'like', $search)
                 ->orWhere('phone', 'like', $search));
@@ -229,7 +229,7 @@ class LoyaltyController extends Controller
                 'points' => $delta,
                 'balance_after' => $newBalance,
                 'notes' => $request->input('reason'),
-                'idempotency_key' => 'admin-adjust:'.$customer->id.':'.Str::uuid(),
+                'idempotency_key' => 'admin-adjust:' . $customer->id . ':' . Str::uuid(),
                 'occurred_at' => now(),
             ]);
 
