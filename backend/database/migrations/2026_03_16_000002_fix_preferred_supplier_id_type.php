@@ -25,7 +25,11 @@ return new class extends Migration
 
         Schema::table('inventory_items', function (Blueprint $table) use ($hasFk): void {
             if ($hasFk) {
-                $table->dropForeign(['preferred_supplier_id']);
+                try {
+                    $table->dropForeign(['preferred_supplier_id']);
+                } catch (Throwable) {
+                    // Constraint name varies across DB drivers — safe to continue
+                }
             }
 
             $table->unsignedBigInteger('preferred_supplier_id')
