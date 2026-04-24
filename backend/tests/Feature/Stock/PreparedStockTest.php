@@ -359,10 +359,14 @@ class PreparedStockTest extends TestCase
             'total' => 50.0,
         ]);
 
-        // Force the created_at into the past so CancelStaleOrders picks it up
+        // Force the created_at and updated_at into the past so CancelStaleOrders picks it up.
+        // Both must be old: created_at exceeds the TTL, updated_at exceeds the 5-min grace period.
         DB::table('orders')
             ->where('id', $staleOrder->id)
-            ->update(['created_at' => now()->subMinutes(45)]);
+            ->update([
+                'created_at' => now()->subMinutes(45),
+                'updated_at' => now()->subMinutes(45),
+            ]);
 
         DB::table('stock_reservations')->insert([
             'item_id' => $item->id,
