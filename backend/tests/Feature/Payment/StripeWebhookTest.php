@@ -29,7 +29,7 @@ class StripeWebhookTest extends TestCase
     {
         parent::setUp();
         config(['services.stripe.webhook_secret' => self::WEBHOOK_SECRET]);
-        config(['services.stripe.secret_key' => 'sk_test_placeholder']);
+        config(['services.stripe.secret_key' => 'sk_test_placeholder']); // gitleaks:allow
     }
 
     // ──────────────────────────────────────────────────────────────────────────
