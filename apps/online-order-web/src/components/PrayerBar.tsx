@@ -13,6 +13,7 @@ interface Island {
 
 interface PrayerData {
   fajr: string;
+  sunrise: string;
   dhuhr: string;
   asr: string;
   maghrib: string;
@@ -39,9 +40,9 @@ interface DropPos {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PRAYERS: (keyof PrayerData)[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+const PRAYERS: (keyof PrayerData)[] = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
 const PRAYER_EN: Record<keyof PrayerData, string> = {
-  fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha',
+  fajr: 'Fajr', sunrise: 'Sunrise', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha',
 };
 const ATOLL_ABBR: Record<string, string> = {
   'Haa Alif': 'HA', 'Haa Dhaalu': 'HDh', 'Shaviyani': 'Sh', 'Noonu': 'N',
@@ -97,7 +98,9 @@ function computeTick(prayers: PrayerData, tomorrowPrayers?: PrayerData | null): 
   const nowMin = mv.getUTCHours() * 60 + mv.getUTCMinutes();
   let pName = '', pTime = '', cdStr = '';
   for (const key of PRAYERS) {
-    const pMin = parseHHMM(prayers[key]);
+    const raw = prayers[key];
+    if (!raw) continue; // sunrise may be absent from older cached data
+    const pMin = parseHHMM(raw);
     if (pMin > nowMin) {
       const ms = (pMin - nowMin) * 60000 - mv.getUTCSeconds() * 1000;
       pName = PRAYER_EN[key];
