@@ -67,6 +67,10 @@ return Application::configure(basePath: dirname(__DIR__))
                     ], 422);
                 }
 
+                if ($e instanceof InvalidArgumentException) {
+                    return response()->json(['message' => $e->getMessage()], 422);
+                }
+
                 $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 $message = $status < 500 ? $e->getMessage() : 'Server error. Please try again.';
 

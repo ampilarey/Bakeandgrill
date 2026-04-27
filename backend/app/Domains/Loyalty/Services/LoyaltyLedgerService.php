@@ -56,14 +56,23 @@ class LoyaltyLedgerService
                 throw new \InvalidArgumentException("Minimum redemption is {$minRedeem} points.");
             }
 
-            // Release stale holds from other abandoned checkouts first so they
+            // Release any existing active hold for THIS order first, so its held
+            // points are freed before we calculate availablePoints(). Without this,
+            // a retry (e.g. first payment attempt failed) would see all points as
+            // "held" and throw "You can only redeem up to 0 points." (masked 500).
+            $existing = $this->holdRepo->findActiveByOrderId($order->id);
+            if ($existing) {
+                $this->releaseHold($existing, $account);
+            }
+
+            // Release stale holds from other abandoned checkouts so they
             // don't inflate points_held and make availablePoints() incorrectly zero.
             $staleHolds = $this->holdRepo->findActiveByCustomerId($customer->id, excludeOrderId: $order->id);
             foreach ($staleHolds as $staleHold) {
                 $this->releaseHold($staleHold, $account);
             }
 
-            // Re-read account after releasing stale holds so availablePoints() is accurate.
+            // Re-read account after releasing all holds so availablePoints() is accurate.
             $account->refresh();
 
             $maxRedeem = min(
@@ -81,11 +90,6 @@ class LoyaltyLedgerService
             if ($discountLaar > $maxDiscountLaar) {
                 $discountLaar = $maxDiscountLaar;
                 $pointsToRedeem = $this->calculator->pointsNeededForDiscountLaar($discountLaar);
-            }
-
-            $existing = $this->holdRepo->findActiveByOrderId($order->id);
-            if ($existing) {
-                $this->releaseHold($existing, $account);
             }
 
             $idempotencyKey = 'hold:' . $customer->id . ':' . $order->id . ':' . $pointsToRedeem;
