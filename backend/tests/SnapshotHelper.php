@@ -49,6 +49,13 @@ trait SnapshotHelper
         'last_order_at',
         'tracking_token',
         'order_number',
+        // FKs differ across DB drivers / migration order (e.g. PG vs SQLite autoincrement)
+        'item_id',
+        'variant_id',
+        'modifier_id',
+        'order_item_id',
+        'inventory_item_id',
+        'restaurant_table_id',
     ];
 
     public function assertMatchesApiSnapshot(
