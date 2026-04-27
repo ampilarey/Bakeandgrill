@@ -56,6 +56,8 @@ trait SnapshotHelper
         'order_item_id',
         'inventory_item_id',
         'restaurant_table_id',
+        'category_id',
+        'parent_id',
     ];
 
     public function assertMatchesApiSnapshot(
