@@ -17,17 +17,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('inventory_items', function (Blueprint $table): void {
-            if (Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {
-                // Drop the FK constraint first (MySQL won't allow dropping the column otherwise)
-                try {
+        if (Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {
+            try {
+                Schema::table('inventory_items', function (Blueprint $table): void {
                     $table->dropForeign(['preferred_supplier_id']);
-                } catch (Throwable) {
-                    // No FK existed on this column (it was a plain varchar) — safe to continue
-                }
-                $table->dropColumn('preferred_supplier_id');
+                });
+            } catch (Throwable) {
+                // No FK or name mismatch — column may still be droppable
             }
-        });
+
+            Schema::table('inventory_items', function (Blueprint $table): void {
+                $table->dropColumn('preferred_supplier_id');
+            });
+        }
 
         Schema::table('inventory_items', function (Blueprint $table): void {
             $table->foreignId('preferred_supplier_id')

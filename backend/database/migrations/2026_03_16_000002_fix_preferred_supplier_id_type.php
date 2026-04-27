@@ -20,23 +20,26 @@ return new class extends Migration
         }
 
         // Drop FK only if it actually exists — portable check via Schema builder.
+        // Blueprint commands run after the closure returns, so try/catch must wrap
+        // the whole Schema::table() call, not dropForeign() inside the closure.
         $hasFk = collect(Schema::getForeignKeys('inventory_items'))
             ->contains(fn (array $fk) => in_array('preferred_supplier_id', $fk['columns'], true));
 
-        Schema::table('inventory_items', function (Blueprint $table) use ($hasFk): void {
-            if ($hasFk) {
-                try {
+        if ($hasFk) {
+            try {
+                Schema::table('inventory_items', function (Blueprint $table): void {
                     $table->dropForeign(['preferred_supplier_id']);
-                } catch (Throwable) {
-                    // Constraint name varies across DB drivers — safe to continue
-                }
+                });
+            } catch (Throwable) {
+                // Name mismatch vs getForeignKeys() on some drivers — safe to continue
             }
+        }
 
+        Schema::table('inventory_items', function (Blueprint $table): void {
             $table->unsignedBigInteger('preferred_supplier_id')
                 ->nullable()
                 ->change();
 
-            // Only add the FK if the suppliers table exists
             if (Schema::hasTable('suppliers')) {
                 $table->foreign('preferred_supplier_id')
                     ->references('id')
@@ -52,12 +55,14 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('inventory_items', function (Blueprint $table): void {
-            try {
+        try {
+            Schema::table('inventory_items', function (Blueprint $table): void {
                 $table->dropForeign(['preferred_supplier_id']);
-            } catch (Throwable) {
-            }
+            });
+        } catch (Throwable) {
+        }
 
+        Schema::table('inventory_items', function (Blueprint $table): void {
             $table->string('preferred_supplier_id')->nullable()->change();
         });
     }
