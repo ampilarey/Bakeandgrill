@@ -28,7 +28,7 @@ class FinanceContractTest extends ContractTestCase
         'opened_at', 'closed_at', 'expires_at', 'consumed_at', 'released_at',
         'tracking_token', 'order_number',
         // Finance-specific volatile fields
-        'created_by', 'name', 'invoice_number',
+        'created_by', 'name', 'invoice_number', 'issue_date', 'due_date',
     ];
 
     private array $ownerHeaders;

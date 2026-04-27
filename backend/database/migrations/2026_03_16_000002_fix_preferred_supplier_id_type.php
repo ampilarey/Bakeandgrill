@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    /**
+     * PostgreSQL aborts the whole migration transaction on a failed ALTER;
+     * we may attempt dropForeign when the constraint name does not match.
+     */
+    public $withinTransaction = false;
+
     public function up(): void
     {
         if (!Schema::hasColumn('inventory_items', 'preferred_supplier_id')) {

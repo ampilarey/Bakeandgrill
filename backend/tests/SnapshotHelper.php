@@ -59,7 +59,9 @@ trait SnapshotHelper
         $snapshotPath = $this->snapshotPath($snapshotName);
 
         if (file_exists($snapshotPath) && !$this->shouldUpdateSnapshots()) {
-            $expected = json_decode(file_get_contents($snapshotPath), true);
+            $expected = $this->normalizeForSnapshot(
+                json_decode(file_get_contents($snapshotPath), true),
+            );
             $this->assertEquals(
                 $expected,
                 $actual,
