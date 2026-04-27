@@ -455,9 +455,14 @@ class InvoiceController extends Controller
 
     private function generateInvoiceNumber(): string
     {
-        // Lock the count to prevent duplicate invoice numbers under concurrency
+        // Lock today's invoice rows to prevent duplicate numbers under concurrency.
+        // PostgreSQL rejects FOR UPDATE with COUNT(*); materialize rows then count in PHP.
         $date = now()->format('Ymd');
-        $count = Invoice::whereDate('created_at', now()->toDateString())->withTrashed()->lockForUpdate()->count() + 1;
+        $count = Invoice::whereDate('created_at', now()->toDateString())
+            ->withTrashed()
+            ->lockForUpdate()
+            ->get(['id'])
+            ->count() + 1;
 
         return 'INV-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
     }
