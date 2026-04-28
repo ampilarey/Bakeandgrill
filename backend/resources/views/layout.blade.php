@@ -1028,8 +1028,8 @@
     'use strict';
 
     /* ── Constants ──────────────────────────────────────────────────────── */
-    var PRAYERS   = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
-    var PRAYER_EN = { fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
+    var PRAYERS   = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
+    var PRAYER_EN = { fajr: 'Fajr', sunrise: 'Sunrise', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
     var ATOLL_ABBR = {
         'Haa Alif':'HA','Haa Dhaalu':'HDh','Shaviyani':'Sh','Noonu':'N','Raa':'R',
         'Baa':'B','Lhaviyani':'Lh','Kaafu':'K','Alif Alif':'AA','Alif Dhaalu':'ADh',
@@ -1084,7 +1084,9 @@
         var mv=getMVT(), nowMin=mv.getUTCHours()*60+mv.getUTCMinutes();
         var pName='', pTime='', cdStr='';
         for (var i=0; i<PRAYERS.length; i++) {
-            var key=PRAYERS[i], pMin=parseHHMM(prayers[key]);
+            var key=PRAYERS[i];
+            if (!prayers[key]) continue; // sunrise absent from older cached data
+            var pMin=parseHHMM(prayers[key]);
             if (pMin>nowMin) {
                 var ms=(pMin-nowMin)*60000-mv.getUTCSeconds()*1000;
                 pName=PRAYER_EN[key]; pTime=prayers[key]; cdStr='('+fmtCountdown(ms)+')';
@@ -1121,7 +1123,7 @@
     /* ── Pre-fetch tomorrow's prayers ───────────────────────────────────── */
     function prefetchTomorrow(islandId) {
         var tom=mvtDateStr(1), tKey='pt_day_'+tom+'_'+islandId;
-        try { var c=localStorage.getItem(tKey); if(c){ tomorrowPrayers=JSON.parse(c); return; } } catch(e){}
+        try { var c=localStorage.getItem(tKey); if(c){ var tp=JSON.parse(c); if(tp.sunrise){ tomorrowPrayers=tp; return; } else { localStorage.removeItem(tKey); } } } catch(e){}
         fetch('/api/prayer-times?island_id='+islandId+'&date='+tom)
             .then(function(r){ return r.json(); })
             .then(function(d){ if(d.prayers){ tomorrowPrayers=d.prayers; try{localStorage.setItem(tKey,JSON.stringify(d.prayers));}catch(e){} } })
@@ -1132,8 +1134,8 @@
     function loadPrayers(islandId, cb) {
         var today=mvtDateStr(), cKey='pt_day_'+today+'_'+islandId;
         // Restore cached tomorrow right away
-        try { var ct=localStorage.getItem('pt_day_'+mvtDateStr(1)+'_'+islandId); if(ct) tomorrowPrayers=JSON.parse(ct); } catch(e){}
-        try { var c=localStorage.getItem(cKey); if(c){ prayers=JSON.parse(c); cb(); prefetchTomorrow(islandId); return; } } catch(e){}
+        try { var ct=localStorage.getItem('pt_day_'+mvtDateStr(1)+'_'+islandId); if(ct){ var pt=JSON.parse(ct); if(pt.sunrise) tomorrowPrayers=pt; else localStorage.removeItem('pt_day_'+mvtDateStr(1)+'_'+islandId); } } catch(e){}
+        try { var c=localStorage.getItem(cKey); if(c){ var p=JSON.parse(c); if(!p.sunrise){ localStorage.removeItem(cKey); } else { prayers=p; cb(); prefetchTomorrow(islandId); return; } } } catch(e){}
         fetch('/api/prayer-times?island_id='+islandId+'&date='+today)
             .then(function(r){ return r.json(); })
             .then(function(d){ if(d.prayers){ prayers=d.prayers; try{localStorage.setItem(cKey,JSON.stringify(prayers));}catch(e){} } cb(); prefetchTomorrow(islandId); })
