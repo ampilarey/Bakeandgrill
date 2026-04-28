@@ -168,17 +168,27 @@ export function PrayerBar() {
     // Restore both days from cache synchronously if available
     try {
       const ct = localStorage.getItem(tKey);
-      if (ct) tomorrowPrayersRef.current = JSON.parse(ct);
+      if (ct) {
+        const parsed = JSON.parse(ct);
+        if (parsed.sunrise) tomorrowPrayersRef.current = parsed;
+        else localStorage.removeItem(tKey);
+      }
     } catch { /* ignore */ }
 
     try {
       const c = localStorage.getItem(cKey);
       if (c) {
-        prayersRef.current = JSON.parse(c);
-        cb();
-        // Still prefetch tomorrow in parallel if not yet cached
-        if (!tomorrowPrayersRef.current) prefetchTomorrow(islandId, tKey);
-        return;
+        const parsed = JSON.parse(c);
+        // Invalidate cache if sunrise is missing (old cached data pre-dates the sunrise field)
+        if (!parsed.sunrise) {
+          localStorage.removeItem(cKey);
+        } else {
+          prayersRef.current = parsed;
+          cb();
+          // Still prefetch tomorrow in parallel if not yet cached
+          if (!tomorrowPrayersRef.current) prefetchTomorrow(islandId, tKey);
+          return;
+        }
       }
     } catch { /* ignore */ }
 
