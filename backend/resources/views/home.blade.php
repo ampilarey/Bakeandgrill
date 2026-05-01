@@ -828,6 +828,21 @@
         document.querySelectorAll('.banner-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
         slides.forEach(function(s, i) { s.classList.toggle('active', i === idx); });
     }
+
+    // Touch swipe support for mobile
+    var touchStartX = null;
+    var banner = document.querySelector('.hero-banner');
+    if (banner) {
+        banner.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+        banner.addEventListener('touchend', function(e) {
+            if (touchStartX === null) return;
+            var dx = e.changedTouches[0].clientX - touchStartX;
+            touchStartX = null;
+            if (Math.abs(dx) > 40) move(dx < 0 ? 1 : -1);
+        }, { passive: true });
+    }
 })();
 </script>
 
