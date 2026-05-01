@@ -37,7 +37,15 @@ export async function fetchOrderingEligibility(): Promise<OrderingEligibility> {
 export interface OnlineOrderingStatus {
   open: boolean;
   message: string;
-  reason: string | null;
+  reason: 'master_switch_off' | 'schedule' | 'override_active' | null;
+  master_switch: boolean;
+  override_active: boolean;
+  override_until: string | null;
+  schedule_active: boolean;
+  /** ISO 8601 end of the active window (when open). Used for "Closes X:XX PM". */
+  current_close: string | null;
+  /** ISO 8601 start of the next window (when closed). Used for "Opens X:XX PM". */
+  next_open_window: string | null;
 }
 
 export async function fetchOnlineOrderingStatus(): Promise<OnlineOrderingStatus> {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { fetchItems, fetchOpeningHoursStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, API_ORIGIN } from '../api';
-import type { Item, OpeningHoursStatus, DailySpecial, Order } from '../api';
+import { fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, API_ORIGIN } from '../api';
+import type { Item, DailySpecial, Order } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
@@ -24,9 +24,9 @@ export function HomePage() {
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
-  const [hoursReason, setHoursReason] = useState<OpeningHoursStatus['reason']>(null);
+  const [hoursReason, setHoursReason] = useState<'master_switch_off' | 'schedule' | 'override_active' | null>(null);
+  const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
-  const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [reordering, setReordering] = useState(false);
   const { settings: s, trustItems, heroSlides } = useSiteSettingsContext();
@@ -49,12 +49,12 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
-    fetchOpeningHoursStatus().then(({ open, message, reason, next_open_window, today }) => {
-      setIsOpen(open);
-      setHoursMsg(message ?? null);
-      setHoursReason(reason ?? null);
-      setNextOpenWindow(next_open_window ?? null);
-      setTodayHours(today ?? null);
+    fetchOnlineOrderingStatus().then((gate) => {
+      setIsOpen(gate.open);
+      setHoursMsg(gate.open ? null : (gate.message ?? null));
+      setHoursReason(gate.reason ?? null);
+      setCurrentClose(gate.current_close ?? null);
+      setNextOpenWindow(gate.next_open_window ?? null);
     }).catch(() => setIsOpen(false));
 
     fetchActiveSpecials().then(({ specials: sp }) => {
@@ -78,8 +78,8 @@ export function HomePage() {
     isOpen !== null ? (
       <OpeningStatusBadge
         open={isOpen}
-        today={todayHours}
         reason={hoursReason}
+        currentClose={currentClose}
         nextOpenWindow={nextOpenWindow}
         closedDetail={hoursMsg}
         className="opening-status-badge-hero"

@@ -70,7 +70,10 @@ class OnlineOrderingGateService
             'override_until' => $overrideUntil,
             'override_active' => $overrideActive,
             'schedule_active' => $schedule !== null,
-            'next_open_window' => $schedule ? $this->nextOpenWindow($schedule, $at) : null,
+            // When open: ISO 8601 end of the current window so the badge can show "Closes X:XX PM"
+            'current_close' => $result->allowed ? $this->currentWindowClose($schedule, $at) : null,
+            // When closed: ISO 8601 start of the next window so the badge can show "Opens X:XX PM"
+            'next_open_window' => !$result->allowed && $schedule ? $this->nextOpenWindow($schedule, $at) : null,
         ];
     }
 
@@ -236,6 +239,43 @@ class OnlineOrderingGateService
         }
 
         return false;
+    }
+
+    /**
+     * Returns the ISO 8601 close time of whichever window is active right now,
+     * or null if no window is currently active (ordering is closed or no schedule).
+     *
+     * @param array<string, list<array{open: string, close: string}>>|null $schedule
+     */
+    private function currentWindowClose(?array $schedule, ?Carbon $at): ?string
+    {
+        if ($schedule === null) {
+            return null; // no schedule = always open, no close time
+        }
+
+        $tz = config('app.timezone', 'UTC');
+        $now = ($at ?? now())->clone()->setTimezone($tz);
+        $dayKey = strtolower($now->format('D'));
+        $windows = $schedule[$dayKey] ?? null;
+
+        if (!$windows) {
+            return null;
+        }
+
+        foreach ($windows as $window) {
+            try {
+                $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+                $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if ($now->between($open, $close)) {
+                return $close->toIso8601String();
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { fetchCategories, fetchItems, fetchOpeningHoursStatus, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
-import type { Category, Item, Modifier, OpeningHoursStatus } from '../api';
+import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
+import type { Category, Item, Modifier } from '../api';
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
@@ -37,9 +37,9 @@ export function MenuPage() {
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
-  const [hoursReason, setHoursReason] = useState<OpeningHoursStatus['reason']>(null);
+  const [hoursReason, setHoursReason] = useState<'master_switch_off' | 'schedule' | 'override_active' | null>(null);
+  const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
-  const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -72,23 +72,17 @@ export function MenuPage() {
     Promise.all([
       fetchCategories(),
       fetchItems(),
-      fetchOpeningHoursStatus(),
-      fetchOnlineOrderingStatus().catch(() => null),
+      fetchOnlineOrderingStatus(),
     ])
-      .then(([cats, its, hours, gate]) => {
+      .then(([cats, its, gate]) => {
         setCategories(cats.data ?? []);
         setItems(its.data ?? []);
-        setTodayHours(hours.today ?? null);
-        setNextOpenWindow(hours.next_open_window ?? null);
-        if (gate && !gate.open) {
-          setIsOpen(false);
-          setHoursReason(hours.reason ?? null);
-          setClosedMessage(gate.message ?? 'Online ordering is currently closed.');
-        } else {
-          setIsOpen(hours.open);
-          setHoursReason(hours.open ? null : (hours.reason ?? null));
-          setClosedMessage(hours.open ? null : (hours.message ?? 'We are currently closed.'));
-        }
+        // Gate API is the single source of truth for ordering status
+        setIsOpen(gate.open);
+        setHoursReason(gate.reason ?? null);
+        setCurrentClose(gate.current_close ?? null);
+        setNextOpenWindow(gate.next_open_window ?? null);
+        setClosedMessage(gate.open ? null : (gate.message ?? 'Online ordering is currently closed.'));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -282,8 +276,8 @@ export function MenuPage() {
             )}
             <OpeningStatusBadge
               open={isOpen}
-              today={todayHours}
               reason={hoursReason}
+              currentClose={currentClose}
               nextOpenWindow={nextOpenWindow}
               closedDetail={closedMessage}
               timeDisplay="12h"

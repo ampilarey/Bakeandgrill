@@ -1,75 +1,82 @@
-import type { OpeningHoursStatus } from '../api';
+import type { OnlineOrderingStatus } from '../api';
 
 type Props = {
   open: boolean;
-  today?: OpeningHoursStatus['today'];
-  reason?: OpeningHoursStatus['reason'];
-  nextOpenWindow?: OpeningHoursStatus['next_open_window'];
+  reason?: OnlineOrderingStatus['reason'];
+  /** ISO 8601 end of the active window — used for "Closes X:XX PM" when open */
+  currentClose?: string | null;
+  /** ISO 8601 start of the next window — used for "Opens X:XX PM" when closed */
+  nextOpenWindow?: string | null;
+  /** Explicit message to show when closed (e.g. from gate API) */
   closedDetail?: string | null;
   timeDisplay?: '24h' | '12h';
   className?: string;
   style?: React.CSSProperties;
 };
 
-/** HH:MM schedule string → "HH:MM" */
-function fmt24h(t: string | null): string {
-  if (!t) return '';
-  const [h, m] = t.split(':').map(Number);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-/** HH:MM schedule string → "9:00 PM" */
-function fmt12h(t: string | null): string {
-  if (!t) return '';
-  const [h, m] = t.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-}
-
-/** ISO 8601 datetime → "9:00 PM" or "9:00 PM Mon" if not today */
-function fmtNextWindow(iso: string | null | undefined, fmt: (t: string | null) => string): string {
-  if (!iso) return '';
+/** ISO 8601 datetime → "HH:MM" */
+function toHHMM(iso: string): string {
   try {
     const d = new Date(iso);
-    const now = new Date();
-    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    const sameDay = d.toDateString() === now.toDateString();
-    return sameDay
-      ? fmt(timeStr)
-      : `${fmt(timeStr)} ${d.toLocaleDateString('en-US', { weekday: 'short' })}`;
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  } catch {
+    return '';
+  }
+}
+
+/** ISO 8601 datetime → "9:00 PM" */
+function to12h(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
   } catch {
     return '';
   }
 }
 
 /**
- * Pill badge matching the main-site hero design.
+ * Formats an ISO 8601 datetime as a time string.
+ * Appends the weekday abbreviation if not today (e.g. "6:00 PM Mon").
+ */
+function fmtWindow(iso: string | null | undefined, use12h: boolean): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const timeStr = use12h ? to12h(iso) : toHHMM(iso);
+    const sameDay = d.toDateString() === new Date().toDateString();
+    return sameDay ? timeStr : `${timeStr} ${d.toLocaleDateString('en-US', { weekday: 'short' })}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Pill badge — single source of truth is the online ordering gate API.
  *
- * Open:   dark-green pill, pulsing dot, "We're open · Closes HH:MM"
- * Closed: dark-red pill, static dot
- *   - master switch off → "Online ordering is currently closed"
- *   - outside schedule  → "Closed · Opens HH:MM [day]"
- *   - fallback          → "Online ordering is currently closed"
+ * Open:   "We're open · Closes 10:30 PM"
+ * Closed by schedule: "Closed · Opens 6:00 PM" (or "6:00 PM Mon" if next day)
+ * Closed by master switch / no schedule: "Online ordering is currently closed"
  */
 export function OpeningStatusBadge({
-  open, today, reason, nextOpenWindow, closedDetail, timeDisplay = '24h', className = '', style,
+  open, reason, currentClose, nextOpenWindow, closedDetail, timeDisplay = '24h', className = '', style,
 }: Props) {
-  const fmtTime = timeDisplay === '12h' ? fmt12h : fmt24h;
+  const use12h = timeDisplay === '12h';
   let label: string;
 
   if (open) {
     label = "We're open";
-    if (today?.close) label += ` · Closes ${fmtTime(today.close)}`;
+    const closeStr = currentClose ? fmtWindow(currentClose, use12h) : '';
+    if (closeStr) label += ` · Closes ${closeStr}`;
   } else {
-    if (reason === 'master_switch_off') {
-      // Master switch is off — don't show schedule times, they are irrelevant
-      label = closedDetail ?? 'Online ordering is currently closed';
-    } else if (reason === 'schedule' || (!reason && today && !today.closed && today.open)) {
-      // Closed by schedule — show when it opens next
-      const next = fmtNextWindow(nextOpenWindow, fmtTime);
-      label = next ? `Closed · Opens ${next}` : 'Online ordering is currently closed';
+    if (reason === 'schedule') {
+      const nextStr = nextOpenWindow ? fmtWindow(nextOpenWindow, use12h) : '';
+      label = nextStr ? `Closed · Opens ${nextStr}` : 'Online ordering is currently closed';
     } else {
+      // master_switch_off, override shouldn't close, or unknown — show generic / explicit message
       label = closedDetail ?? 'Online ordering is currently closed';
     }
   }
