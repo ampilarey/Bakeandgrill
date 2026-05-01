@@ -55,7 +55,18 @@ const ATOLL_ABBR: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getMVT() { return new Date(Date.now() + 5 * 3600 * 1000); }
+function getMVT() { return new Date(Date.now() + timeSkew + 5 * 3600 * 1000); }
+
+// Sync server clock once: eliminates drift when device clock is wrong
+let timeSkew = 0;
+(function syncClock() {
+  fetch('/api/health', { method: 'HEAD' }).then(r => {
+    try {
+      const d = r.headers.get('Date');
+      if (d) { const s = new Date(d).getTime(); if (!isNaN(s)) timeSkew = s - Date.now(); }
+    } catch { /* ignore */ }
+  }).catch(() => { /* ignore */ });
+})();
 
 function parseHHMM(s: string) {
   const [h, m] = s.split(':');

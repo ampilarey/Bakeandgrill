@@ -947,7 +947,12 @@
     /* ══════════════════════════════════════════════════════════════════════
        Maldives live clock (UTC+5)
     ══════════════════════════════════════════════════════════════════════ */
-    function getMVT() { return new Date(Date.now() + 5 * 3600 * 1000); }
+    // timeSkew computed from PHP-embedded server time so clock ignores device clock drift
+    let timeSkew = {{ now()->timestamp * 1000 }} - Date.now();
+    function getMVT() { return new Date(Date.now() + timeSkew + 5 * 3600 * 1000); }
+    function applyServerDate(r) {
+        try { const d = r.headers.get('Date'); if (d) { const s = new Date(d).getTime(); if (!isNaN(s)) timeSkew = s - Date.now(); } } catch(e) {}
+    }
 
     (function initClock() {
         const display = document.getElementById('clockDisplay');

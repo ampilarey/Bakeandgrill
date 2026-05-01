@@ -36,8 +36,17 @@ function formatCountdown(ms: number): string {
 }
 
 /** Returns a Date whose UTC fields represent the current Maldives time (UTC+5). */
+let timeSkew = 0;
+(function syncClock() {
+  fetch('/api/health', { method: 'HEAD' }).then(r => {
+    try {
+      const d = r.headers.get('Date');
+      if (d) { const s = new Date(d).getTime(); if (!isNaN(s)) timeSkew = s - Date.now(); }
+    } catch { /* ignore */ }
+  }).catch(() => { /* ignore */ });
+})();
 function getMVT(): Date {
-  return new Date(Date.now() + 5 * 3600 * 1000);
+  return new Date(Date.now() + timeSkew + 5 * 3600 * 1000);
 }
 
 /** Today's date string in Maldives timezone (YYYY-MM-DD). */

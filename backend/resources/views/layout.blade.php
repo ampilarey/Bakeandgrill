@@ -1038,8 +1038,18 @@
     };
 
     /* ── Time helpers ───────────────────────────────────────────────────── */
-    function getMVT()    { return new Date(Date.now() + 5 * 3600 * 1000); }
+    /* timeSkew: offset (ms) between server clock and local clock.
+       Computed once from the PHP-embedded server timestamp so the prayer
+       clock always shows real Maldives time even if the device clock is wrong. */
+    var timeSkew = {{ now()->timestamp * 1000 }} - Date.now();
+    function getMVT()    { return new Date(Date.now() + timeSkew + 5 * 3600 * 1000); }
     function parseHHMM(s){ var p=s.split(':'); return +p[0]*60 + +p[1]; }
+    function applyServerDate(response) {
+        try {
+            var d = response.headers.get('Date');
+            if (d) { var s = new Date(d).getTime(); if (!isNaN(s)) timeSkew = s - Date.now(); }
+        } catch(e) {}
+    }
 
     function mvtDateStr(offsetDays) {
         var d=getMVT();
@@ -1137,7 +1147,7 @@
         try { var ct=localStorage.getItem('pt_day_'+mvtDateStr(1)+'_'+islandId); if(ct){ var pt=JSON.parse(ct); if(pt.sunrise) tomorrowPrayers=pt; else localStorage.removeItem('pt_day_'+mvtDateStr(1)+'_'+islandId); } } catch(e){}
         try { var c=localStorage.getItem(cKey); if(c){ var p=JSON.parse(c); if(!p.sunrise){ localStorage.removeItem(cKey); } else { prayers=p; cb(); prefetchTomorrow(islandId); return; } } } catch(e){}
         fetch('/api/prayer-times?island_id='+islandId+'&date='+today)
-            .then(function(r){ return r.json(); })
+            .then(function(r){ applyServerDate(r); return r.json(); })
             .then(function(d){ if(d.prayers){ prayers=d.prayers; try{localStorage.setItem(cKey,JSON.stringify(prayers));}catch(e){} } cb(); prefetchTomorrow(islandId); })
             .catch(function(){ cb(); });
     }
@@ -1283,7 +1293,7 @@
         /* 3-second timeout: show Malé fallback if API hasn't responded */
         var fallbackTimer = setTimeout(function() { useIsland(MALE_FALLBACK); }, 3000);
         fetch('/api/prayer-times/islands')
-            .then(function(r){ return r.json(); })
+            .then(function(r){ applyServerDate(r); return r.json(); })
             .then(function(d){
                 clearTimeout(fallbackTimer);
                 allIslands=d.islands||[];
