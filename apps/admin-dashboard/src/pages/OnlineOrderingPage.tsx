@@ -1,13 +1,58 @@
 import { useState, useEffect } from 'react';
-import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/SharedUI';
 import {
   getOnlineOrderingStatus,
   toggleOnlineOrdering,
   setOnlineOrderingOverride,
+  getSiteSettings,
+  updateSiteSettings,
   type OnlineOrderingGateStatus,
 } from '../api';
+
+const DAYS = [
+  { key: 'mon', label: 'Monday' },
+  { key: 'tue', label: 'Tuesday' },
+  { key: 'wed', label: 'Wednesday' },
+  { key: 'thu', label: 'Thursday' },
+  { key: 'fri', label: 'Friday' },
+  { key: 'sat', label: 'Saturday' },
+  { key: 'sun', label: 'Sunday' },
+] as const;
+
+type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+type DaySchedule = { open: string; close: string; enabled: boolean };
+type Schedule = Record<DayKey, DaySchedule>;
+
+const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
+  DAYS.map(({ key }) => [key, { open: '10:00', close: '22:00', enabled: true }])
+) as Schedule;
+
+function parseSchedule(raw: string): Schedule {
+  try {
+    const parsed = JSON.parse(raw);
+    const result = { ...DEFAULT_SCHEDULE };
+    for (const { key } of DAYS) {
+      if (parsed[key]) {
+        result[key] = {
+          open: parsed[key].open ?? '10:00',
+          close: parsed[key].close ?? '22:00',
+          enabled: parsed[key].enabled !== false,
+        };
+      }
+    }
+    return result;
+  } catch {
+    return DEFAULT_SCHEDULE;
+  }
+}
+
+function serializeSchedule(schedule: Schedule): string {
+  const out: Record<string, { open: string; close: string; enabled: boolean }> = {};
+  for (const { key } of DAYS) out[key] = schedule[key];
+  return JSON.stringify(out);
+}
 
 const S = {
   card: {
@@ -108,6 +153,10 @@ export default function OnlineOrderingPage() {
   const [toast, setToast]         = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
   const [error, setError]         = useState('');
 
+  const [schedule, setSchedule]     = useState<Schedule>(DEFAULT_SCHEDULE);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleSaving, setScheduleSaving]   = useState(false);
+
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -131,6 +180,35 @@ export default function OnlineOrderingPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    getSiteSettings().then(({ settings }) => {
+      const raw = Object.values(settings).flat().find((s: any) => s.key === 'online_ordering_schedule')?.value ?? '';
+      if (raw) setSchedule(parseSchedule(raw));
+    }).finally(() => setScheduleLoading(false));
+  }, []);
+
+  const saveSchedule = async () => {
+    setScheduleSaving(true);
+    try {
+      await updateSiteSettings({ online_ordering_schedule: serializeSchedule(schedule) });
+      showToast('Schedule saved.');
+    } catch {
+      showToast('Failed to save schedule.', 'err');
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const updateDay = (day: DayKey, field: keyof DaySchedule, value: string | boolean) => {
+    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
+  };
+
+  const setAllDays = (enabled: boolean) => {
+    setSchedule((prev) => Object.fromEntries(
+      DAYS.map(({ key }) => [key, { ...prev[key], enabled }])
+    ) as Schedule);
+  };
 
   const handleToggle = async () => {
     if (!status) return;
@@ -320,20 +398,78 @@ export default function OnlineOrderingPage() {
         </div>
       </div>
 
-      {/* Schedule hint */}
-      <div style={{ ...S.card, background: '#F7F2EC', border: '1px dashed #D8C9B8' }}>
-        <p style={S.sectionTitle}>Daily Schedule</p>
-        <p style={{ fontSize: 13, color: '#6B5D4F', lineHeight: 1.6 }}>
-          To set daily open/close times for online ordering, edit the{' '}
-          <strong>online_ordering_schedule</strong> key in{' '}
-          <a href="/admin/settings" style={{ color: '#D4813A', textDecoration: 'underline' }}>
-            Settings → Online Ordering
-          </a>.
-          The JSON format is:{' '}
-          <code style={{ fontSize: 12, background: '#EDE4D4', padding: '1px 5px', borderRadius: 4 }}>
-            {'{"mon":{"open":"07:00","close":"22:00"},"tue":…}'}
-          </code>
+      {/* Daily Schedule Editor */}
+      <div style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '1rem' }}>
+          <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Daily Schedule</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllDays(true)}>All open</button>
+            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllDays(false)}>All closed</button>
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
+          Online ordering will automatically open and close at these times each day.
         </p>
+
+        {scheduleLoading ? (
+          <p style={{ color: '#9C8575', fontSize: 13 }}>Loading schedule…</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {DAYS.map(({ key, label }) => {
+              const day = schedule[key];
+              return (
+                <div key={key} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  padding: '10px 12px', borderRadius: 10,
+                  background: day.enabled ? '#FDFAF7' : '#F5F0EB',
+                  border: `1px solid ${day.enabled ? '#E8E0D8' : '#DDD5CB'}`,
+                  opacity: day.enabled ? 1 : 0.6,
+                }}>
+                  {/* Day toggle */}
+                  <button
+                    style={S.toggleTrack(day.enabled)}
+                    onClick={() => updateDay(key, 'enabled', !day.enabled)}
+                    role="switch" aria-checked={day.enabled} aria-label={label}
+                  >
+                    <span style={S.toggleThumb(day.enabled)} />
+                  </button>
+                  <span style={{ width: 88, fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
+                  {day.enabled ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <label style={{ fontSize: 12, color: '#9C8575' }}>Open</label>
+                        <input
+                          type="time"
+                          value={day.open}
+                          onChange={(e) => updateDay(key, 'open', e.target.value)}
+                          style={{ ...S.input, width: 110, padding: '6px 8px' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <label style={{ fontSize: 12, color: '#9C8575' }}>Close</label>
+                        <input
+                          type="time"
+                          value={day.close}
+                          onChange={(e) => updateDay(key, 'close', e.target.value)}
+                          style={{ ...S.input, width: 110, padding: '6px 8px' }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{ marginTop: 16 }}>
+          <button style={S.btnPrimary} onClick={saveSchedule} disabled={scheduleSaving}>
+            <Save size={14} />
+            {scheduleSaving ? 'Saving…' : 'Save Schedule'}
+          </button>
+        </div>
       </div>
     </div>
   );
