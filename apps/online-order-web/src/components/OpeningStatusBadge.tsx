@@ -74,7 +74,7 @@ export function OpeningStatusBadge({
   } else {
     if (reason === 'schedule') {
       const nextStr = nextOpenWindow ? fmtWindow(nextOpenWindow, use12h) : '';
-      label = nextStr ? `Closed · Opens ${nextStr}` : 'Online ordering is currently closed';
+      label = nextStr ? `Online ordering closed · Opens ${nextStr}` : 'Online ordering is currently closed';
     } else {
       // master_switch_off, override shouldn't close, or unknown — show generic / explicit message
       label = closedDetail ?? 'Online ordering is currently closed';
