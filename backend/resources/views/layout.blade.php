@@ -1054,10 +1054,10 @@
     }
 
     function fmtClock(d) {
-        var h24=d.getUTCHours(), h12=h24%12||12, m=String(d.getUTCMinutes()).padStart(2,'0');
+        var h=String(d.getUTCHours()).padStart(2,'0'), m=String(d.getUTCMinutes()).padStart(2,'0');
         var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        return String(h12).padStart(2,'0')+':'+m+(h24>=12?' PM':' AM')+'  ·  '+days[d.getUTCDay()]+' '+d.getUTCDate()+' '+months[d.getUTCMonth()];
+        return h+':'+m+'  ·  '+days[d.getUTCDay()]+' '+d.getUTCDate()+' '+months[d.getUTCMonth()];
     }
 
     function makeLabel(atollLatin, nameLatin) {

@@ -955,12 +955,10 @@
 
         function tick() {
             const mv  = getMVT();
-            const h24 = mv.getUTCHours(), h12 = h24 % 12 || 12;
+            const h   = String(mv.getUTCHours()).padStart(2, '0');
             const m   = String(mv.getUTCMinutes()).padStart(2, '0');
             const s   = String(mv.getUTCSeconds()).padStart(2, '0');
-            const ap  = h24 >= 12 ? 'PM' : 'AM';
-            display.innerHTML = String(h12).padStart(2, '0') + ':' + m + ':' + s +
-                ' <span class="pt-clock-ampm">' + ap + '</span>';
+            display.innerHTML = h + ':' + m + ':' + s;
         }
 
         tick();

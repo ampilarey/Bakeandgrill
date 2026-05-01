@@ -80,12 +80,11 @@ function fmtCountdown(ms: number) {
 }
 
 function fmtClock(d: Date) {
-  const h24 = d.getUTCHours();
-  const h12 = h24 % 12 || 12;
+  const h = String(d.getUTCHours()).padStart(2, '0');
   const m = String(d.getUTCMinutes()).padStart(2, '0');
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${String(h12).padStart(2, '0')}:${m}${h24 >= 12 ? ' PM' : ' AM'}  ·  ${days[d.getUTCDay()]} ${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
+  return `${h}:${m}  ·  ${days[d.getUTCDay()]} ${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
 }
 
 function makeLabel(atollLatin: string, nameLatin: string) {
