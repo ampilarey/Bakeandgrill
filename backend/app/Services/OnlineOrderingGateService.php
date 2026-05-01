@@ -160,11 +160,28 @@ class OnlineOrderingGateService
         // Normalise every day value to a list of {open, close} windows.
         $normalised = [];
         foreach ($decoded as $day => $value) {
-            if (!is_string($day)) {
+            if (!is_string($day) || !is_array($value)) {
                 continue;
             }
 
-            // Array of windows: [{"open":…,"close":…}, …]
+            // New UI format: {"enabled": bool, "windows": [{"open":…,"close":…}, …]}
+            if (isset($value['windows']) && is_array($value['windows'])) {
+                if (isset($value['enabled']) && $value['enabled'] === false) {
+                    continue; // day explicitly disabled
+                }
+                $windows = [];
+                foreach ($value['windows'] as $win) {
+                    if (is_array($win) && !empty($win['open']) && !empty($win['close'])) {
+                        $windows[] = ['open' => $win['open'], 'close' => $win['close']];
+                    }
+                }
+                if (!empty($windows)) {
+                    $normalised[$day] = $windows;
+                }
+                continue;
+            }
+
+            // Bare array of windows: [{"open":…,"close":…}, …]
             if (isset($value[0]) && is_array($value[0])) {
                 $windows = [];
                 foreach ($value as $win) {
@@ -178,9 +195,8 @@ class OnlineOrderingGateService
                 continue;
             }
 
-            // Single window object: {"open":…,"close":…,"enabled":…}
-            if (is_array($value) && !empty($value['open']) && !empty($value['close'])) {
-                // Respect the 'enabled' flag added by the admin schedule editor
+            // Old single-window object: {"open":…,"close":…,"enabled":…}
+            if (!empty($value['open']) && !empty($value['close'])) {
                 if (isset($value['enabled']) && $value['enabled'] === false) {
                     continue; // day explicitly disabled
                 }
