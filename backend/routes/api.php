@@ -81,6 +81,12 @@ Route::get('/ordering/delivery-status', [App\Http\Controllers\Api\DeliveryStatus
 Route::prefix('auth/staff')->group(function () {
     Route::post('/pin-login', [StaffAuthController::class, 'pinLogin'])
         ->middleware('throttle:10,1');
+    Route::post('/login', [StaffAuthController::class, 'phoneLogin'])
+        ->middleware('throttle:10,1');
+    Route::post('/password/reset-request', [StaffAuthController::class, 'passwordResetRequest'])
+        ->middleware('throttle:5,1');
+    Route::post('/password/reset-verify', [StaffAuthController::class, 'passwordResetVerify'])
+        ->middleware('throttle:5,1');
 });
 
 /*

@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -69,6 +72,128 @@ class StaffAuthController extends Controller
                 'permissions' => $this->resolvePermissionSlugs($user),
             ],
         ]);
+    }
+
+    /**
+     * Phone + password login for admin dashboard.
+     */
+    public function phoneLogin(Request $request)
+    {
+        $request->validate([
+            'phone'    => 'required|string|max:20',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $phone    = trim($request->phone);
+        $rateKey  = 'staff-phone-login:' . $phone . ':' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateKey);
+            throw ValidationException::withMessages([
+                'phone' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
+            ]);
+        }
+
+        $user = User::where('phone', $phone)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            RateLimiter::hit($rateKey, 900);
+            throw ValidationException::withMessages([
+                'phone' => ['Invalid phone number or password.'],
+            ]);
+        }
+
+        RateLimiter::clear($rateKey);
+        $user->update(['last_login_at' => now()]);
+
+        $token = $user->createToken('staff-' . $user->id, ['staff'])->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login successful',
+            'token'   => $token,
+            'user'    => [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'phone'       => $user->phone,
+                'role'        => $user->role?->slug,
+                'permissions' => $this->resolvePermissionSlugs($user),
+            ],
+        ]);
+    }
+
+    /**
+     * Request a password-reset OTP — sends SMS to the registered phone.
+     */
+    public function passwordResetRequest(Request $request)
+    {
+        $request->validate(['phone' => 'required|string|max:20']);
+
+        $phone   = trim($request->phone);
+        $rateKey = 'staff-pwd-reset-req:' . $phone;
+
+        if (RateLimiter::tooManyAttempts($rateKey, 3)) {
+            return response()->json(['message' => 'Too many OTP requests. Please wait a few minutes.'], 429);
+        }
+
+        // Always return 200 regardless of whether the phone exists (prevents enumeration).
+        $user = User::where('phone', $phone)->where('is_active', true)->first();
+
+        if ($user) {
+            $otp     = (string) random_int(100000, 999999);
+            $cacheKey = 'staff-pwd-reset:' . $phone;
+            Cache::put($cacheKey, Hash::make($otp), now()->addMinutes(10));
+
+            app(SmsService::class)->send(new SmsMessage(
+                to: $phone,
+                message: "Your Bake & Grill admin password reset code is: {$otp}. Valid for 10 minutes.",
+                type: 'staff_password_reset',
+            ));
+
+            RateLimiter::hit($rateKey, 300);
+        }
+
+        return response()->json(['message' => 'If this number is registered, an OTP has been sent.']);
+    }
+
+    /**
+     * Verify OTP and set a new password.
+     */
+    public function passwordResetVerify(Request $request)
+    {
+        $request->validate([
+            'phone'        => 'required|string|max:20',
+            'otp'          => 'required|string|size:6',
+            'password'     => 'required|string|min:8|confirmed',
+        ]);
+
+        $phone    = trim($request->phone);
+        $cacheKey = 'staff-pwd-reset:' . $phone;
+        $stored   = Cache::get($cacheKey);
+
+        if (! $stored || ! Hash::check($request->otp, $stored)) {
+            throw ValidationException::withMessages([
+                'otp' => ['Invalid or expired OTP.'],
+            ]);
+        }
+
+        $user = User::where('phone', $phone)->where('is_active', true)->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'phone' => ['Account not found.'],
+            ]);
+        }
+
+        $user->update(['password' => Hash::make($request->password)]);
+        Cache::forget($cacheKey);
+
+        // Revoke all existing staff tokens so old sessions are invalidated.
+        $user->tokens()->where('name', 'like', 'staff-%')->delete();
+
+        return response()->json(['message' => 'Password updated. Please log in with your new password.']);
     }
 
     /**

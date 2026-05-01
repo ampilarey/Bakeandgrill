@@ -7,6 +7,26 @@ export async function pinLogin(username: string, pin: string): Promise<{ token: 
   return req('/auth/staff/pin-login', { method: 'POST', body: JSON.stringify({ username, pin }) });
 }
 
+export async function phoneLogin(phone: string, password: string): Promise<{ token: string; user: StaffUser }> {
+  return req('/auth/staff/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+}
+
+export async function staffPasswordResetRequest(phone: string): Promise<{ message: string }> {
+  return req('/auth/staff/password/reset-request', { method: 'POST', body: JSON.stringify({ phone }) });
+}
+
+export async function staffPasswordResetVerify(
+  phone: string,
+  otp: string,
+  password: string,
+  password_confirmation: string,
+): Promise<{ message: string }> {
+  return req('/auth/staff/password/reset-verify', {
+    method: 'POST',
+    body: JSON.stringify({ phone, otp, password, password_confirmation }),
+  });
+}
+
 export async function getMe(): Promise<{ user: StaffUser }> {
   return req('/auth/me');
 }
