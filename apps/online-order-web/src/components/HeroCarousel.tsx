@@ -150,36 +150,18 @@ export function HeroCarousel({ slides, apiOrigin, fallback, statusSlot }: Props)
       </div>
 
       {n > 1 && (
-        <>
-          <button
-            type="button"
-            className="order-banner-arrow prev"
-            aria-label="Previous slide"
-            onClick={() => move(-1)}
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            className="order-banner-arrow next"
-            aria-label="Next slide"
-            onClick={() => move(1)}
-          >
-            ›
-          </button>
-          <div className="order-banner-dots" role="tablist" aria-label="Hero slides">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                className={`order-banner-dot${i === idx ? ' active' : ''}`}
-                aria-label={`Slide ${i + 1}`}
-                aria-selected={i === idx}
-                onClick={() => setIdx(i)}
-              />
-            ))}
-          </div>
-        </>
+        <div className="order-banner-dots" role="tablist" aria-label="Hero slides">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              className={`order-banner-dot${i === idx ? ' active' : ''}`}
+              aria-label={`Slide ${i + 1}`}
+              aria-selected={i === idx}
+              onClick={() => setIdx(i)}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
