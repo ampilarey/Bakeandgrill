@@ -423,6 +423,33 @@
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
 }
+/* Prev / Next arrows — desktop only, matches main site .banner-btn */
+.order-banner-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.order-banner-btn:hover { background: rgba(255, 255, 255, 0.22); }
+.order-banner-btn.prev { left: 1.5rem; }
+.order-banner-btn.next { right: 1.5rem; }
+@media (max-width: 768px) { .order-banner-btn { display: none; } }
+
 .order-banner-dots {
   position: absolute;
   bottom: 1.5rem;
