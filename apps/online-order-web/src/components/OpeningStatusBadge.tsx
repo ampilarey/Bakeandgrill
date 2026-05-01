@@ -68,7 +68,7 @@ export function OpeningStatusBadge({
   let label: string;
 
   if (open) {
-    label = "We're open";
+    label = 'Online ordering open';
     const closeStr = currentClose ? fmtWindow(currentClose, use12h) : '';
     if (closeStr) label += ` · Closes ${closeStr}`;
   } else {
