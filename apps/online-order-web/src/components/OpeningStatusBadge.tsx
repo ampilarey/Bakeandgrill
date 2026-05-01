@@ -43,12 +43,14 @@ export function OpeningStatusBadge({ open, today, closedDetail, timeDisplay = '2
     label = 'We\'re open';
     if (today?.close) label += ` · Closes ${fmtTime(today.close)}`;
   } else {
-    label = 'Online ordering is currently closed';
-    if (today && !today.closed && today.open) {
+    if (closedDetail) {
+      // Explicit message from admin gate (master switch off) — use it directly, no schedule hint
+      label = closedDetail;
+    } else if (today && !today.closed && today.open) {
+      // Closed by schedule — show next opening time
       label = `Online ordering closed · Opens ${fmtTime(today.open)}`;
-    } else if (closedDetail) {
-      const short = closedDetail.length > 40 ? closedDetail.slice(0, 38) + '…' : closedDetail;
-      label = `Online ordering closed · ${short}`;
+    } else {
+      label = 'Online ordering is currently closed';
     }
   }
 
