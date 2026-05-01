@@ -1268,22 +1268,33 @@
             return;
         }
 
-        /* Default: find Malé from the islands list, no location prompt */
+        /* Default: find Malé from the islands list, no location prompt.
+           If the API is slow or offline, fall back to the hardcoded Malé entry
+           so the prayer bar always appears on first visit. */
+        var MALE_FALLBACK = { id: 1, atollLatin: 'Kaafu', nameLatin: 'Malé' };
+        var didLoad = false;
+        function useIsland(found) {
+            if (didLoad) return; didLoad = true;
+            isl = found;
+            currentIsland = isl;
+            try { localStorage.setItem('pt_island', JSON.stringify(isl)); } catch(e) {}
+            loadPrayers(isl.id, function() { if (prayers) showPill(isl); });
+        }
+        /* 3-second timeout: show Malé fallback if API hasn't responded */
+        var fallbackTimer = setTimeout(function() { useIsland(MALE_FALLBACK); }, 3000);
         fetch('/api/prayer-times/islands')
             .then(function(r){ return r.json(); })
             .then(function(d){
+                clearTimeout(fallbackTimer);
                 allIslands=d.islands||[];
                 try{ localStorage.setItem('pt_islands_list', JSON.stringify(allIslands)); }catch(e){}
                 var male=allIslands.find(function(i){
                     return (i.name_latin||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z]/g,'').toLowerCase()==='male';
                 });
-                if (male) {
-                    isl={ id:male.id, atollLatin:male.atoll_latin||'Kaafu', nameLatin:male.name_latin||'Malé' };
-                    currentIsland=isl;
-                    try{ localStorage.setItem('pt_island', JSON.stringify(isl)); }catch(e){}
-                    loadPrayers(isl.id, function(){ if(prayers) showPill(isl); });
-                }
-            }).catch(function(){});
+                useIsland(male
+                    ? { id:male.id, atollLatin:male.atoll_latin||'Kaafu', nameLatin:male.name_latin||'Malé' }
+                    : MALE_FALLBACK);
+            }).catch(function(){ clearTimeout(fallbackTimer); useIsland(MALE_FALLBACK); });
     }
 
     if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);

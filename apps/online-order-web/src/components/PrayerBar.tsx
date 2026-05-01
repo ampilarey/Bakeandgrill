@@ -277,34 +277,37 @@ export function PrayerBar() {
       return;
     }
 
-    // Default to Malé
+    // Default to Malé — with 3-second fallback so the bar shows even if API is slow
+    const MALE_FALLBACK: IslandInfo = { id: 1, atollLatin: 'Kaafu', nameLatin: 'Malé' };
+    let didLoad = false;
+    const useIsland = (info: IslandInfo) => {
+      if (didLoad) return; didLoad = true;
+      setIsland(info);
+      try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
+      loadPrayers(info.id, () => {
+        if (prayersRef.current) {
+          setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
+          setLoaded(true);
+          startTick();
+        }
+      });
+    };
+    const fallbackTimer = setTimeout(() => useIsland(MALE_FALLBACK), 3000);
     fetch('/api/prayer-times/islands')
       .then(r => r.json())
       .then(d => {
+        clearTimeout(fallbackTimer);
         const islands: Island[] = d.islands || [];
         setAllIslands(islands);
         try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
         const male = islands.find(i =>
           (i.name_latin || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase() === 'male'
         );
-        if (male) {
-          const info: IslandInfo = {
-            id: male.id,
-            atollLatin: male.atoll_latin || 'Kaafu',
-            nameLatin: male.name_latin || 'Malé',
-          };
-          setIsland(info);
-          try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
-          loadPrayers(info.id, () => {
-            if (prayersRef.current) {
-              setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
-              setLoaded(true);
-              startTick();
-            }
-          });
-        }
+        useIsland(male
+          ? { id: male.id, atollLatin: male.atoll_latin || 'Kaafu', nameLatin: male.name_latin || 'Malé' }
+          : MALE_FALLBACK);
       })
-      .catch(() => { /* ignore */ });
+      .catch(() => { clearTimeout(fallbackTimer); useIsland(MALE_FALLBACK); });
   }, [loadPrayers, startTick]);
 
   // ── Cleanup tick on unmount ─────────────────────────────────────────────
