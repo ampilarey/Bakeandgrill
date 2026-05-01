@@ -22,11 +22,12 @@ const DAYS = [
 ] as const;
 
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
-type DaySchedule = { open: string; close: string; enabled: boolean };
+type TimeWindow = { open: string; close: string };
+type DaySchedule = { enabled: boolean; windows: TimeWindow[] };
 type Schedule = Record<DayKey, DaySchedule>;
 
 const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
-  DAYS.map(({ key }) => [key, { open: '10:00', close: '22:00', enabled: true }])
+  DAYS.map(({ key }) => [key, { enabled: true, windows: [{ open: '10:00', close: '22:00' }] }])
 ) as Schedule;
 
 function parseSchedule(raw: string): Schedule {
@@ -34,11 +35,17 @@ function parseSchedule(raw: string): Schedule {
     const parsed = JSON.parse(raw);
     const result = { ...DEFAULT_SCHEDULE };
     for (const { key } of DAYS) {
-      if (parsed[key]) {
+      const val = parsed[key];
+      if (!val) continue;
+      // Array of windows format
+      if (Array.isArray(val)) {
+        result[key] = { enabled: true, windows: val.map((w: any) => ({ open: w.open ?? '10:00', close: w.close ?? '22:00' })) };
+      } else if (typeof val === 'object') {
         result[key] = {
-          open: parsed[key].open ?? '10:00',
-          close: parsed[key].close ?? '22:00',
-          enabled: parsed[key].enabled !== false,
+          enabled: val.enabled !== false,
+          windows: val.windows
+            ? val.windows.map((w: any) => ({ open: w.open, close: w.close }))
+            : [{ open: val.open ?? '10:00', close: val.close ?? '22:00' }],
         };
       }
     }
@@ -49,7 +56,7 @@ function parseSchedule(raw: string): Schedule {
 }
 
 function serializeSchedule(schedule: Schedule): string {
-  const out: Record<string, { open: string; close: string; enabled: boolean }> = {};
+  const out: Record<string, { enabled: boolean; windows: TimeWindow[] }> = {};
   for (const { key } of DAYS) out[key] = schedule[key];
   return JSON.stringify(out);
 }
@@ -200,8 +207,29 @@ export default function OnlineOrderingPage() {
     }
   };
 
-  const updateDay = (day: DayKey, field: keyof DaySchedule, value: string | boolean) => {
-    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
+  const toggleDayEnabled = (day: DayKey) => {
+    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }));
+  };
+
+  const updateWindow = (day: DayKey, idx: number, field: 'open' | 'close', value: string) => {
+    setSchedule((prev) => {
+      const windows = prev[day].windows.map((w, i) => i === idx ? { ...w, [field]: value } : w);
+      return { ...prev, [day]: { ...prev[day], windows } };
+    });
+  };
+
+  const addWindow = (day: DayKey) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], windows: [...prev[day].windows, { open: '18:00', close: '22:00' }] },
+    }));
+  };
+
+  const removeWindow = (day: DayKey, idx: number) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], windows: prev[day].windows.filter((_, i) => i !== idx) },
+    }));
   };
 
   const setAllDays = (enabled: boolean) => {
@@ -414,49 +442,56 @@ export default function OnlineOrderingPage() {
         {scheduleLoading ? (
           <p style={{ color: '#9C8575', fontSize: 13 }}>Loading schedule…</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {DAYS.map(({ key, label }) => {
               const day = schedule[key];
               return (
                 <div key={key} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                  padding: '10px 12px', borderRadius: 10,
+                  padding: '10px 14px', borderRadius: 10,
                   background: day.enabled ? '#FDFAF7' : '#F5F0EB',
                   border: `1px solid ${day.enabled ? '#E8E0D8' : '#DDD5CB'}`,
-                  opacity: day.enabled ? 1 : 0.6,
+                  opacity: day.enabled ? 1 : 0.65,
                 }}>
-                  {/* Day toggle */}
-                  <button
-                    style={S.toggleTrack(day.enabled)}
-                    onClick={() => updateDay(key, 'enabled', !day.enabled)}
-                    role="switch" aria-checked={day.enabled} aria-label={label}
-                  >
-                    <span style={S.toggleThumb(day.enabled)} />
-                  </button>
-                  <span style={{ width: 88, fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
-                  {day.enabled ? (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <label style={{ fontSize: 12, color: '#9C8575' }}>Open</label>
-                        <input
-                          type="time"
-                          value={day.open}
-                          onChange={(e) => updateDay(key, 'open', e.target.value)}
-                          style={{ ...S.input, width: 110, padding: '6px 8px' }}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <label style={{ fontSize: 12, color: '#9C8575' }}>Close</label>
-                        <input
-                          type="time"
-                          value={day.close}
-                          onChange={(e) => updateDay(key, 'close', e.target.value)}
-                          style={{ ...S.input, width: 110, padding: '6px 8px' }}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
+                    <button
+                      style={S.toggleTrack(day.enabled)}
+                      onClick={() => toggleDayEnabled(key)}
+                      role="switch" aria-checked={day.enabled} aria-label={label}
+                    >
+                      <span style={S.toggleThumb(day.enabled)} />
+                    </button>
+                    <span style={{ width: 88, fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
+                    {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
+                  </div>
+
+                  {day.enabled && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 50 }}>
+                      {day.windows.map((win, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Open</label>
+                            <input type="time" value={win.open}
+                              onChange={(e) => updateWindow(key, idx, 'open', e.target.value)}
+                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Close</label>
+                            <input type="time" value={win.close}
+                              onChange={(e) => updateWindow(key, idx, 'close', e.target.value)}
+                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
+                          </div>
+                          {day.windows.length > 1 && (
+                            <button onClick={() => removeWindow(key, idx)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C0392B', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
+                              title="Remove this window">×</button>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={() => addWindow(key)}
+                        style={{ alignSelf: 'flex-start', fontSize: 12, color: '#7B5E3A', background: 'none', border: '1px dashed #C2A87A', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', marginTop: 2 }}>
+                        + Add window
+                      </button>
+                    </div>
                   )}
                 </div>
               );

@@ -132,17 +132,13 @@ class OnlineOrderingGateService
     /**
      * Parses the JSON schedule setting.
      *
-     * Expected format:
-     * {
-     *   "mon": {"open": "07:00", "close": "22:00"},
-     *   "tue": {"open": "07:00", "close": "22:00"},
-     *   ...
-     *   "sun": {"open": "09:00", "close": "21:00"}
-     * }
+     * Supports two formats per day:
+     *   Single window: {"mon": {"open": "07:00", "close": "22:00", "enabled": true}}
+     *   Multi window:  {"mon": [{"open": "11:00", "close": "15:00"}, {"open": "18:00", "close": "22:00"}]}
      *
      * Returns null when the setting is empty/invalid (= no schedule, always open).
      *
-     * @return array<string, array{open: string, close: string}>|null
+     * @return array<string, list<array{open: string, close: string}>>|null
      */
     private function parseSchedule(): ?array
     {
@@ -161,11 +157,42 @@ class OnlineOrderingGateService
             return null;
         }
 
-        return $decoded;
+        // Normalise every day value to a list of {open, close} windows.
+        $normalised = [];
+        foreach ($decoded as $day => $value) {
+            if (!is_string($day)) {
+                continue;
+            }
+
+            // Array of windows: [{"open":…,"close":…}, …]
+            if (isset($value[0]) && is_array($value[0])) {
+                $windows = [];
+                foreach ($value as $win) {
+                    if (!empty($win['open']) && !empty($win['close'])) {
+                        $windows[] = ['open' => $win['open'], 'close' => $win['close']];
+                    }
+                }
+                if (!empty($windows)) {
+                    $normalised[$day] = $windows;
+                }
+                continue;
+            }
+
+            // Single window object: {"open":…,"close":…,"enabled":…}
+            if (is_array($value) && !empty($value['open']) && !empty($value['close'])) {
+                // Respect the 'enabled' flag added by the admin schedule editor
+                if (isset($value['enabled']) && $value['enabled'] === false) {
+                    continue; // day explicitly disabled
+                }
+                $normalised[$day] = [['open' => $value['open'], 'close' => $value['close']]];
+            }
+        }
+
+        return empty($normalised) ? null : $normalised;
     }
 
     /**
-     * @param array<string, array{open: string, close: string}> $schedule
+     * @param array<string, list<array{open: string, close: string}>> $schedule
      */
     private function withinSchedule(array $schedule, Carbon $at): bool
     {
@@ -174,26 +201,32 @@ class OnlineOrderingGateService
 
         $dayKey = strtolower($now->format('D')); // mon, tue, …, sun
 
-        $window = $schedule[$dayKey] ?? null;
-        if (!$window) {
+        $windows = $schedule[$dayKey] ?? null;
+        if (!$windows) {
             return false; // day not listed = closed
         }
 
-        try {
-            $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
-            $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
-        } catch (\Throwable) {
-            return false;
+        foreach ($windows as $window) {
+            try {
+                $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+                $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if ($now->between($open, $close)) {
+                return true;
+            }
         }
 
-        return $now->between($open, $close);
+        return false;
     }
 
     /**
      * Returns the next opening datetime string (ISO 8601) or null if it cannot
      * be determined (schedule not set, or no open day found within 7 days).
      *
-     * @param array<string, array{open: string, close: string}> $schedule
+     * @param array<string, list<array{open: string, close: string}>> $schedule
      */
     private function nextOpenWindow(array $schedule, ?Carbon $at): ?string
     {
@@ -203,25 +236,26 @@ class OnlineOrderingGateService
         for ($i = 0; $i <= 7; $i++) {
             $candidate = $now->clone()->addDays($i);
             $dayKey = strtolower($candidate->format('D'));
-            $window = $schedule[$dayKey] ?? null;
+            $windows = $schedule[$dayKey] ?? null;
 
-            if (!$window) {
+            if (!$windows) {
                 continue;
             }
 
-            try {
-                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)
-                    ->setDateFrom($candidate);
-            } catch (\Throwable) {
-                continue;
-            }
+            foreach ($windows as $window) {
+                try {
+                    $open = Carbon::createFromFormat('H:i', $window['open'], $tz)
+                        ->setDateFrom($candidate);
+                } catch (\Throwable) {
+                    continue;
+                }
 
-            // Today: open must be in the future
-            if ($i === 0 && $open->lte($now)) {
-                continue;
-            }
+                if ($i === 0 && $open->lte($now)) {
+                    continue;
+                }
 
-            return $open->toIso8601String();
+                return $open->toIso8601String();
+            }
         }
 
         return null;

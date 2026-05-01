@@ -24,6 +24,8 @@ export function HomePage() {
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
+  const [hoursReason, setHoursReason] = useState<OpeningHoursStatus['reason']>(null);
+  const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -47,9 +49,11 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
-    fetchOpeningHoursStatus().then(({ open, message, today }) => {
+    fetchOpeningHoursStatus().then(({ open, message, reason, next_open_window, today }) => {
       setIsOpen(open);
       setHoursMsg(message ?? null);
+      setHoursReason(reason ?? null);
+      setNextOpenWindow(next_open_window ?? null);
       setTodayHours(today ?? null);
     }).catch(() => setIsOpen(false));
 
@@ -75,6 +79,8 @@ export function HomePage() {
       <OpeningStatusBadge
         open={isOpen}
         today={todayHours}
+        reason={hoursReason}
+        nextOpenWindow={nextOpenWindow}
         closedDetail={hoursMsg}
         className="opening-status-badge-hero"
         timeDisplay="24h"

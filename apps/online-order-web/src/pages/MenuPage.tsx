@@ -37,6 +37,8 @@ export function MenuPage() {
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
+  const [hoursReason, setHoursReason] = useState<OpeningHoursStatus['reason']>(null);
+  const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [todayHours, setTodayHours] = useState<OpeningHoursStatus['today']>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
@@ -77,13 +79,14 @@ export function MenuPage() {
         setCategories(cats.data ?? []);
         setItems(its.data ?? []);
         setTodayHours(hours.today ?? null);
-        // Combine physical hours with the admin-controlled online ordering gate.
-        // Either can independently prevent checkout.
+        setNextOpenWindow(hours.next_open_window ?? null);
         if (gate && !gate.open) {
           setIsOpen(false);
+          setHoursReason(hours.reason ?? null);
           setClosedMessage(gate.message ?? 'Online ordering is currently closed.');
         } else {
           setIsOpen(hours.open);
+          setHoursReason(hours.open ? null : (hours.reason ?? null));
           setClosedMessage(hours.open ? null : (hours.message ?? 'We are currently closed.'));
         }
       })
@@ -280,6 +283,8 @@ export function MenuPage() {
             <OpeningStatusBadge
               open={isOpen}
               today={todayHours}
+              reason={hoursReason}
+              nextOpenWindow={nextOpenWindow}
               closedDetail={closedMessage}
               timeDisplay="12h"
               className="opening-status-badge-menu"

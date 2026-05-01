@@ -42,6 +42,12 @@ export type LoyaltyHoldPreview = {
 export type OpeningHoursStatus = {
   open: boolean;
   message: string | null;
+  reason: 'master_switch_off' | 'schedule' | 'override_active' | null;
+  master_switch: boolean;
+  override_active: boolean;
+  override_until: string | null;
+  schedule_active: boolean;
+  next_open_window: string | null;
   today: {
     closed: boolean;
     open: string | null;
