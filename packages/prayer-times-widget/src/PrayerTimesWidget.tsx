@@ -35,8 +35,23 @@ function formatCountdown(ms: number): string {
   return [h, min, sec].map(v => String(v).padStart(2, '0')).join(':');
 }
 
+/** Returns a Date whose UTC fields represent the current Maldives time (UTC+5). */
+function getMVT(): Date {
+  return new Date(Date.now() + 5 * 3600 * 1000);
+}
+
+/** Today's date string in Maldives timezone (YYYY-MM-DD). */
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = getMVT();
+  return d.getUTCFullYear() + '-'
+    + String(d.getUTCMonth() + 1).padStart(2, '0') + '-'
+    + String(d.getUTCDate()).padStart(2, '0');
+}
+
+/** Current time in minutes since midnight, Maldives timezone. */
+function mvtNowMin(): number {
+  const d = getMVT();
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
 }
 
 /* ═══════════════════════ sub-components ═══════════════════════ */
@@ -93,19 +108,15 @@ export function PrayerTimesWidget({
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
 
-  // live countdown
-  const [nowMin, setNowMin] = useState<number>(() => {
-    const d = new Date();
-    return d.getHours() * 60 + d.getMinutes();
-  });
+  // live countdown — always in Maldives time
+  const [nowMin, setNowMin] = useState<number>(() => mvtNowMin());
   const [tick, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ── tick every second ── */
   useEffect(() => {
     timerRef.current = setInterval(() => {
-      const d = new Date();
-      setNowMin(d.getHours() * 60 + d.getMinutes());
+      setNowMin(mvtNowMin());
       setTick(t => t + 1);
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
@@ -156,8 +167,8 @@ export function PrayerTimesWidget({
   /* ── compute next prayer ── */
   const { nextKey, countdown } = useMemo(() => {
     if (!prayers) return { nextKey: null, countdown: '––:––:––' };
-    const now = new Date();
-    const nm  = now.getHours() * 60 + now.getMinutes();
+    const nm = mvtNowMin();
+    const mvt = getMVT();
     let nextKey: PrayerKey | null = null;
     for (const k of KEYS) {
       if (parseHHMM(prayers[k]) > nm) { nextKey = k; break; }
@@ -165,8 +176,10 @@ export function PrayerTimesWidget({
     let countdown = '––:––:––';
     if (nextKey) {
       const [nh, nmin] = prayers[nextKey].split(':').map(Number);
-      const target = new Date(); target.setHours(nh, nmin, 0, 0);
-      countdown = formatCountdown(target.getTime() - now.getTime());
+      // Build target as a UTC timestamp representing that time in MVT
+      const target = new Date(mvt);
+      target.setUTCHours(nh, nmin, 0, 0);
+      countdown = formatCountdown(target.getTime() - Date.now() - 5 * 3600 * 1000);
     }
     return { nextKey, countdown };
   // eslint-disable-next-line react-hooks/exhaustive-deps
