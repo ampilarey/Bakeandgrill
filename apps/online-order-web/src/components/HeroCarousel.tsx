@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../context/SiteSettingsContext';
@@ -59,6 +59,7 @@ type Props = {
 export function HeroCarousel({ slides, apiOrigin, fallback, statusSlot }: Props) {
   const [idx, setIdx] = useState(0);
   const n = slides.length;
+  const touchStartX = useRef<number | null>(null);
 
   const move = useCallback(
     (delta: number) => {
@@ -74,10 +75,21 @@ export function HeroCarousel({ slides, apiOrigin, fallback, statusSlot }: Props)
     return () => clearInterval(t);
   }, [n, move]);
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) > 40) move(dx < 0 ? 1 : -1);
+  };
+
   if (n === 0) return <>{fallback}</>;
 
   return (
-    <div className="order-hero-banner">
+    <div className="order-hero-banner" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {statusSlot}
       <div
         className="order-banner-track"
@@ -138,18 +150,36 @@ export function HeroCarousel({ slides, apiOrigin, fallback, statusSlot }: Props)
       </div>
 
       {n > 1 && (
-        <div className="order-banner-dots" role="tablist" aria-label="Hero slides">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`order-banner-dot${i === idx ? ' active' : ''}`}
-              aria-label={`Slide ${i + 1}`}
-              aria-selected={i === idx}
-              onClick={() => setIdx(i)}
-            />
-          ))}
-        </div>
+        <>
+          <button
+            type="button"
+            className="order-banner-arrow prev"
+            aria-label="Previous slide"
+            onClick={() => move(-1)}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="order-banner-arrow next"
+            aria-label="Next slide"
+            onClick={() => move(1)}
+          >
+            ›
+          </button>
+          <div className="order-banner-dots" role="tablist" aria-label="Hero slides">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`order-banner-dot${i === idx ? ' active' : ''}`}
+                aria-label={`Slide ${i + 1}`}
+                aria-selected={i === idx}
+                onClick={() => setIdx(i)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
