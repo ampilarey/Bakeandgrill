@@ -43,13 +43,12 @@ export function OpeningStatusBadge({ open, today, closedDetail, timeDisplay = '2
     label = 'We\'re open';
     if (today?.close) label += ` · Closes ${fmtTime(today.close)}`;
   } else {
-    label = 'Closed now';
+    label = 'Online ordering is currently closed';
     if (today && !today.closed && today.open) {
-      label += ` · Opens ${fmtTime(today.open)}`;
+      label = `Online ordering closed · Opens ${fmtTime(today.open)}`;
     } else if (closedDetail) {
-      // Trim to keep pill compact
       const short = closedDetail.length > 40 ? closedDetail.slice(0, 38) + '…' : closedDetail;
-      label += ` · ${short}`;
+      label = `Online ordering closed · ${short}`;
     }
   }
 
