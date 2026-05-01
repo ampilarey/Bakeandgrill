@@ -1057,7 +1057,7 @@
                             String(tmrw.getUTCMonth()+1).padStart(2,'0') + '-' +
                             String(tmrw.getUTCDate()).padStart(2,'0');
                         fetch('/api/prayer-times?island_id=' + islandId + '&date=' + tmrwStr)
-                            .then(r => r.json())
+                            .then(r => { applyServerDate(r); return r.json(); })
                             .then(data => { window._tomorrowFajrTime = data?.prayers?.fajr ?? null; })
                             .catch(() => {});
                     }
