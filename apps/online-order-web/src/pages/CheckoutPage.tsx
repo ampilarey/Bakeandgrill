@@ -508,7 +508,7 @@ export function CheckoutPage() {
     <div style={S.complianceBox}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
         <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
-        <img src="/card-brands.png" alt="Amex, Visa, Mastercard, Maestro" style={{ height: '36px', objectFit: 'contain' }} />
+        <img src="/card-brands.png" alt="Amex, Visa, Mastercard, Maestro" style={{ height: '44px', objectFit: 'contain' }} />
       </div>
       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
         Amount charged in <strong>MVR (Maldivian Rufiyaa)</strong>. Merchant located in the <strong>Maldives</strong>.
