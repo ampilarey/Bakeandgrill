@@ -508,33 +508,7 @@ export function CheckoutPage() {
     <div style={S.complianceBox}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
         <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
-
-        {/* American Express */}
-        <svg viewBox="0 0 42 28" height="22" xmlns="http://www.w3.org/2000/svg" aria-label="American Express" role="img">
-          <rect width="42" height="28" rx="4" fill="#006FCF"/>
-          <text x="21" y="12" textAnchor="middle" fill="#FFF" fontFamily="Arial,sans-serif" fontSize="8" fontWeight="bold">AM</text>
-          <text x="21" y="21" textAnchor="middle" fill="#FFF" fontFamily="Arial,sans-serif" fontSize="8" fontWeight="bold">EX</text>
-        </svg>
-
-        {/* Visa */}
-        <svg viewBox="0 0 60 24" height="22" xmlns="http://www.w3.org/2000/svg" aria-label="Visa" role="img">
-          <text x="2" y="19" fill="#1A1F71" fontFamily="Arial Black,Arial,sans-serif" fontSize="22" fontWeight="900" fontStyle="italic">VISA</text>
-        </svg>
-
-        {/* Mastercard */}
-        <svg viewBox="0 0 38 24" height="22" xmlns="http://www.w3.org/2000/svg" aria-label="Mastercard" role="img">
-          <circle cx="13" cy="12" r="11" fill="#EB001B"/>
-          <circle cx="25" cy="12" r="11" fill="#F79E1B"/>
-          <path d="M19 3.2a11 11 0 0 1 0 17.6A11 11 0 0 1 19 3.2" fill="#FF5F00"/>
-        </svg>
-
-        {/* Maestro */}
-        <svg viewBox="0 0 72 24" height="22" xmlns="http://www.w3.org/2000/svg" aria-label="Maestro" role="img">
-          <circle cx="13" cy="12" r="11" fill="#EB001B"/>
-          <circle cx="25" cy="12" r="11" fill="#0099DF"/>
-          <path d="M19 3.2a11 11 0 0 1 0 17.6A11 11 0 0 1 19 3.2" fill="#7375CF" fillOpacity="0.85"/>
-          <text x="40" y="17" fill="#231F20" fontFamily="Arial,sans-serif" fontSize="12" fontStyle="italic" fontWeight="500">maestro.</text>
-        </svg>
+        <img src="/card-brands.png" alt="Amex, Visa, Mastercard, Maestro" style={{ height: '28px', objectFit: 'contain' }} />
       </div>
       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
         Amount charged in <strong>MVR (Maldivian Rufiyaa)</strong>. Merchant located in the <strong>Maldives</strong>.
