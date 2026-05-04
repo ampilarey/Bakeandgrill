@@ -22,7 +22,7 @@ export function Layout() {
   const logoUrl    = s.logo             || '/logo.png';
   const phone      = s.business_phone   || '+960 912 0011';
   const phoneTel   = 'tel:' + phone.replace(/[^+\d]/g, '');
-  const email      = s.business_email   || 'hello@bakeandgrill.mv';
+  const email      = s.business_email   || 'admin@bakeandgrill.mv';
   const address    = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
   const landmark   = s.business_landmark|| 'Near H. Sahara';
   const mapsUrl    = s.business_maps_url|| 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives';

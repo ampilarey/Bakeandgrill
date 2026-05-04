@@ -29,7 +29,7 @@ return new class extends Migration
             ],
             [
                 'key' => 'business_email',
-                'value' => config('business.email', 'hello@bakeandgrill.mv'),
+                'value' => config('business.email', 'admin@bakeandgrill.mv'),
                 'type' => 'text',
                 'group' => 'Contact',
                 'label' => 'Business Email Address',

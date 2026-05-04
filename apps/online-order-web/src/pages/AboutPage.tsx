@@ -15,7 +15,7 @@ export function AboutPage() {
   const address  = s.business_address  || 'Majeedhee Magu, Malé, Maldives';
   const landmark = s.business_landmark || 'Near the ferry terminal';
   const phone    = s.business_phone    || '+960 912 0011';
-  const email    = s.business_email    || 'hello@bakeandgrill.mv';
+  const email    = s.business_email    || 'admin@bakeandgrill.mv';
   return (
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '3rem var(--page-gutter)' }}>
       {/* Header */}

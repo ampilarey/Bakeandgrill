@@ -2,7 +2,7 @@
 @php
     $phone     = \App\Models\SiteSetting::get('business_phone',    '+960 912 0011');
     $phoneTel  = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
-    $email     = \App\Models\SiteSetting::get('business_email',    'hello@bakeandgrill.mv');
+    $email     = \App\Models\SiteSetting::get('business_email',    'admin@bakeandgrill.mv');
     $address   = \App\Models\SiteSetting::get('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
     $landmark  = \App\Models\SiteSetting::get('business_landmark', 'Near H. Sahara');
     $mapsUrl   = \App\Models\SiteSetting::get('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');

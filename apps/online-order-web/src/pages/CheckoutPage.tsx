@@ -171,7 +171,7 @@ export function CheckoutPage() {
   const siteName    = s.site_name        || 'Bake & Grill';
   const phone       = s.business_phone   || '+960 912 0011';
   const phoneTel    = 'tel:' + phone.replace(/[^+\d]/g, '');
-  const email       = s.business_email   || 'hello@bakeandgrill.mv';
+  const email       = s.business_email   || 'admin@bakeandgrill.mv';
   const address     = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
   const waLink      = s.business_whatsapp|| 'https://wa.me/9609120011';
   const viberLink   = s.business_viber   || 'viber://chat?number=9609120011';

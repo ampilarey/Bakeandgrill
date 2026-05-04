@@ -16,7 +16,7 @@ declare(strict_types=1);
 return [
     'name' => env('BUSINESS_NAME', 'Bake & Grill'),
     'phone' => env('BUSINESS_PHONE', '+960 912 0011'),
-    'email' => env('BUSINESS_EMAIL', 'hello@bakeandgrill.mv'),
+    'email' => env('BUSINESS_EMAIL', 'admin@bakeandgrill.mv'),
     'address' => [
         'line1' => env('BUSINESS_ADDRESS_LINE1', 'Kalaafaanu Hingun'),
         'city' => env('BUSINESS_ADDRESS_CITY', 'Malé'),
