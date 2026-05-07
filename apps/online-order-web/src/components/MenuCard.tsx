@@ -23,14 +23,6 @@ const MAX_QTY = 99;
 export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false, onToggleFavourite }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [imgError, setImgError] = useState(false);
-  const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
-
-  const activeVariants = item.has_variants && item.variants
-    ? item.variants.filter((v) => v.is_active)
-    : [];
-
-  // Use inline variant pills when: has variants, ≤5 options, no modifiers (simple case)
-  const useInlinePills = activeVariants.length > 0 && activeVariants.length <= 5 && (!item.modifiers || item.modifiers.length === 0);
 
   const imgSrc = (!imgError && item.image_url)
     ? item.image_url.startsWith('http')
@@ -218,86 +210,39 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
             >
               Out of stock
             </button>
-          ) : item.has_variants && useInlinePills ? (
-            /* Inline variant pills — select size, then qty + add row appears */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                {activeVariants.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setSelectedVariant(selectedVariant?.id === v.id ? null : v); }}
-                    style={{
-                      padding: '0.25rem 0.625rem',
-                      borderRadius: 'var(--radius-full)',
-                      border: `1.5px solid ${selectedVariant?.id === v.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      background: selectedVariant?.id === v.id ? 'var(--color-primary-light)' : 'var(--color-surface-alt)',
-                      color: selectedVariant?.id === v.id ? 'var(--color-primary)' : 'var(--color-text)',
-                      fontSize: '0.75rem', fontWeight: 600,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {v.name} <span style={{ opacity: 0.7 }}>MVR {Number(v.price).toFixed(2)}</span>
-                  </button>
-                ))}
-              </div>
-              {selectedVariant && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center',
-                    border: '1.5px solid var(--color-border)',
-                    borderRadius: 'var(--radius-lg)', overflow: 'hidden', flexShrink: 0,
-                  }}>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.max(1, q - 1)); }}
-                      style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      aria-label="Decrease quantity">−</button>
-                    <span style={{ minWidth: '1.625rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{quantity}</span>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(MAX_QTY, q + 1)); }}
-                      style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      aria-label="Increase quantity">+</button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddToCart(item, quantity, selectedVariant);
-                      setQuantity(1);
-                      setSelectedVariant(null);
-                    }}
-                    className="card-add-btn"
-                    style={{
-                      flex: 1, padding: '0.5rem', height: '32px',
-                      background: 'var(--color-primary)', color: 'white',
-                      border: 'none', borderRadius: 'var(--radius-lg)',
-                      fontSize: '0.85rem', fontWeight: 700,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                    aria-label={`Add ${item.name} (${selectedVariant.name}) to cart`}
-                  >
-                    Add{quantity > 1 ? ` (${quantity})` : ''}
-                  </button>
-                </div>
-              )}
-            </div>
           ) : item.has_variants ? (
-            /* Complex variant products (many options / modifiers): open modal */
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
-              className="card-add-btn"
-              style={{
-                width: '100%', padding: '0.5rem',
-                background: 'var(--color-primary)', color: 'white',
-                border: 'none', borderRadius: 'var(--radius-lg)',
-                fontSize: '0.85rem', fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-              aria-label={`Choose options for ${item.name}`}
-            >
-              Choose options
-            </button>
+            /* Variant items: − qty + on left, + opens modal on right */
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                border: '1.5px solid var(--color-border)',
+                borderRadius: 'var(--radius-lg)', overflow: 'hidden', flexShrink: 0,
+              }}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.max(1, q - 1)); }}
+                  style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  aria-label="Decrease quantity">−</button>
+                <span style={{ minWidth: '1.625rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{quantity}</span>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(MAX_QTY, q + 1)); }}
+                  style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  aria-label="Increase quantity">+</button>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
+                className="card-add-btn"
+                style={{
+                  flex: 1, padding: '0.5rem', height: '32px',
+                  background: 'var(--color-primary)', color: 'white',
+                  border: 'none', borderRadius: 'var(--radius-lg)',
+                  fontSize: '0.85rem', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+                }}
+                aria-label={`Select options for ${item.name}`}
+              >
+                Add{quantity > 1 ? ` (${quantity})` : ''}
+              </button>
+            </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {/* Quantity stepper */}
