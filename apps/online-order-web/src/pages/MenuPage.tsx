@@ -29,6 +29,7 @@ export function MenuPage() {
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const [activeSubId, setActiveSubId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
 
@@ -173,7 +174,9 @@ export function MenuPage() {
 
   const filteredItems = useMemo(() => {
     let list = items;
-    if (activeCategoryId !== null) {
+    if (activeSubId !== null) {
+      list = list.filter((i) => i.category_id === activeSubId);
+    } else if (activeCategoryId !== null) {
       const subcategoryIds = categories.filter((c) => c.parent_id === activeCategoryId).map((c) => c.id);
       list = subcategoryIds.length > 0
         ? list.filter((i) => i.category_id !== null && (i.category_id === activeCategoryId || subcategoryIds.includes(i.category_id)))
@@ -186,11 +189,11 @@ export function MenuPage() {
     if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
     if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
-  }, [items, categories, activeCategoryId, searchQuery, sortBy]);
+  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy]);
 
-  // When a parent category is active, group items by subcategory
+  // When a parent category is active (and no sub selected), group items by subcategory
   const itemGroups = useMemo(() => {
-    if (activeCategoryId === null || searchQuery.trim()) {
+    if (activeSubId !== null || activeCategoryId === null || searchQuery.trim()) {
       return [{ label: null as string | null, items: filteredItems }];
     }
     const subs = categories.filter((c) => c.parent_id === activeCategoryId);
@@ -204,7 +207,7 @@ export function MenuPage() {
       if (subItems.length > 0) groups.push({ label: sub.name, items: subItems });
     }
     return groups;
-  }, [filteredItems, categories, activeCategoryId, searchQuery]);
+  }, [filteredItems, categories, activeCategoryId, activeSubId, searchQuery]);
 
   const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(qty); setSelectedModifiers([]); };
   const toggleModifier = (mod: Modifier) => {
@@ -267,21 +270,21 @@ export function MenuPage() {
                 <CatButton
                   label="All Items"
                   active={activeCategoryId === null}
-                  onClick={() => setActiveCategoryId(null)}
+                  onClick={() => { setActiveCategoryId(null); setActiveSubId(null); }}
                 />
                 {categories.filter((cat) => !cat.parent_id).map((cat) => (
                   <div key={cat.id}>
                     <CatButton
                       label={cat.name}
                       active={activeCategoryId === cat.id}
-                      onClick={() => setActiveCategoryId(cat.id)}
+                      onClick={() => { setActiveCategoryId(cat.id); setActiveSubId(null); }}
                     />
                     {categories.filter((sub) => sub.parent_id === cat.id).map((sub) => (
                       <div key={sub.id} style={{ paddingLeft: '0.75rem' }}>
                         <CatButton
                           label={'↳ ' + sub.name}
-                          active={activeCategoryId === sub.id}
-                          onClick={() => setActiveCategoryId(sub.id)}
+                          active={activeSubId === sub.id}
+                          onClick={() => { setActiveCategoryId(cat.id); setActiveSubId(sub.id); }}
                         />
                       </div>
                     ))}
@@ -326,21 +329,41 @@ export function MenuPage() {
           <div className="sticky-cat-bar-inner" ref={pillContainerRef}>
             <button
               className={`category-pill${activeCategoryId === null ? ' active' : ''}`}
-              onClick={() => setActiveCategoryId(null)}
+              onClick={() => { setActiveCategoryId(null); setActiveSubId(null); }}
             >
               All
             </button>
             {categories.filter((cat) => !cat.parent_id).map((cat) => (
               <button
                 key={cat.id}
-                ref={activeCategoryId === cat.id || categories.some((s) => s.parent_id === cat.id && s.id === activeCategoryId) ? activePillRef : undefined}
+                ref={activeCategoryId === cat.id ? activePillRef : undefined}
                 className={`category-pill${activeCategoryId === cat.id ? ' active' : ''}`}
-                onClick={() => setActiveCategoryId(cat.id)}
+                onClick={() => { setActiveCategoryId(cat.id); setActiveSubId(null); }}
               >
                 {cat.name}
               </button>
             ))}
           </div>
+          {/* Subcategory row — shown only when active parent has subs */}
+          {activeCategoryId !== null && categories.some((c) => c.parent_id === activeCategoryId) && (
+            <div className="sticky-sub-bar">
+              <button
+                className={`sub-pill${activeSubId === null ? ' active' : ''}`}
+                onClick={() => setActiveSubId(null)}
+              >
+                All
+              </button>
+              {categories.filter((c) => c.parent_id === activeCategoryId).map((sub) => (
+                <button
+                  key={sub.id}
+                  className={`sub-pill${activeSubId === sub.id ? ' active' : ''}`}
+                  onClick={() => setActiveSubId(sub.id)}
+                >
+                  {sub.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Search + sort */}
