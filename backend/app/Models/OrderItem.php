@@ -22,6 +22,7 @@ class OrderItem extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'tax_rate',
         'notes',
         'status',
     ];
@@ -33,6 +34,7 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'total_price' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
     ];
 
     public function order(): BelongsTo

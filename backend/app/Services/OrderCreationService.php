@@ -209,6 +209,7 @@ class OrderCreationService
                 'quantity' => $quantity,
                 'unit_price' => $basePrice,
                 'total_price' => 0,
+                'tax_rate' => (float) $itemModel->tax_rate,
                 'notes' => null,
                 'status' => 'pending',
             ]);
