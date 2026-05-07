@@ -14,6 +14,7 @@ export type {
   Category,
   MenuItem as Item,
   Modifier,
+  Variant,
   Order,
   OrderItem,
   LoyaltyAccount,

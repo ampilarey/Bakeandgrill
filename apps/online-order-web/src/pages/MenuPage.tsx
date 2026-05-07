@@ -422,7 +422,7 @@ export function MenuPage() {
                 <MenuCard
                   item={item}
                   onSelectItem={handleSelectItem}
-                  onAddToCart={(it, qty) => { addItem(it, qty); showToast(`${it.name} added to cart`); }}
+                  onAddToCart={(it, qty, variant) => { addItem(it, qty, [], variant ?? null); showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`); }}
                   isFavourite={favouriteIds.has(item.id)}
                   onToggleFavourite={handleToggleFavourite}
                 />
