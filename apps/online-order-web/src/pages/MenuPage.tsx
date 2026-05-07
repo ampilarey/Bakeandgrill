@@ -173,7 +173,12 @@ export function MenuPage() {
 
   const filteredItems = useMemo(() => {
     let list = items;
-    if (activeCategoryId !== null) list = list.filter((i) => i.category_id === activeCategoryId);
+    if (activeCategoryId !== null) {
+      const subcategoryIds = categories.filter((c) => c.parent_id === activeCategoryId).map((c) => c.id);
+      list = subcategoryIds.length > 0
+        ? list.filter((i) => i.category_id !== null && (i.category_id === activeCategoryId || subcategoryIds.includes(i.category_id)))
+        : list.filter((i) => i.category_id === activeCategoryId);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
@@ -181,7 +186,25 @@ export function MenuPage() {
     if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
     if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
-  }, [items, activeCategoryId, searchQuery, sortBy]);
+  }, [items, categories, activeCategoryId, searchQuery, sortBy]);
+
+  // When a parent category is active, group items by subcategory
+  const itemGroups = useMemo(() => {
+    if (activeCategoryId === null || searchQuery.trim()) {
+      return [{ label: null as string | null, items: filteredItems }];
+    }
+    const subs = categories.filter((c) => c.parent_id === activeCategoryId);
+    if (subs.length === 0) return [{ label: null as string | null, items: filteredItems }];
+    const groups: { label: string | null; items: typeof filteredItems }[] = [];
+    const subIds = new Set(subs.map((s) => s.id));
+    const direct = filteredItems.filter((i) => i.category_id === null || !subIds.has(i.category_id));
+    if (direct.length > 0) groups.push({ label: null, items: direct });
+    for (const sub of subs) {
+      const subItems = filteredItems.filter((i) => i.category_id === sub.id);
+      if (subItems.length > 0) groups.push({ label: sub.name, items: subItems });
+    }
+    return groups;
+  }, [filteredItems, categories, activeCategoryId, searchQuery]);
 
   const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(qty); setSelectedModifiers([]); };
   const toggleModifier = (mod: Modifier) => {
@@ -418,16 +441,29 @@ export function MenuPage() {
 
         {/* Items grid */}
         {!loading && filteredItems.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '1.25rem var(--page-gutter)' }}>
-            {filteredItems.map((item) => (
-              <div key={item.id} className="menu-item-anim">
-                <MenuCard
-                  item={item}
-                  onSelectItem={(it, qty) => handleSelectItem(it, qty)}
-                  onAddToCart={(it, qty, variant) => { addItem(it, qty, [], variant ?? null); showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`); }}
-                  isFavourite={favouriteIds.has(item.id)}
-                  onToggleFavourite={handleToggleFavourite}
-                />
+          <div>
+            {itemGroups.map((group, gi) => (
+              <div key={gi}>
+                {group.label && (
+                  <div style={{ padding: `${gi === 0 ? '1.25rem' : '0.5rem'} var(--page-gutter) 0.5rem` }}>
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                      {group.label}
+                    </h3>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: `${group.label || gi > 0 ? '0' : '1.25rem'} var(--page-gutter) 1.25rem` }}>
+                  {group.items.map((item) => (
+                    <div key={item.id} className="menu-item-anim">
+                      <MenuCard
+                        item={item}
+                        onSelectItem={(it, qty) => handleSelectItem(it, qty)}
+                        onAddToCart={(it, qty, variant) => { addItem(it, qty, [], variant ?? null); showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`); }}
+                        isFavourite={favouriteIds.has(item.id)}
+                        onToggleFavourite={handleToggleFavourite}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
