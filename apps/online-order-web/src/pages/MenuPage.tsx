@@ -191,6 +191,23 @@ export function MenuPage() {
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
   }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy]);
 
+  // Item counts per category (for bottom sheet badges)
+  const catItemCounts = useMemo(() => {
+    const direct: Record<number, number> = {};
+    for (const item of items) {
+      if (item.category_id !== null) direct[item.category_id] = (direct[item.category_id] ?? 0) + 1;
+    }
+    const total: Record<number, number> = {};
+    for (const cat of categories.filter((c) => !c.parent_id)) {
+      const subs = categories.filter((c) => c.parent_id === cat.id).map((c) => c.id);
+      total[cat.id] = (direct[cat.id] ?? 0) + subs.reduce((s, id) => s + (direct[id] ?? 0), 0);
+    }
+    for (const cat of categories.filter((c) => c.parent_id)) {
+      total[cat.id] = direct[cat.id] ?? 0;
+    }
+    return total;
+  }, [items, categories]);
+
   // When a parent category is active (and no sub selected), group items by subcategory
   const itemGroups = useMemo(() => {
     if (activeSubId !== null || activeCategoryId === null || searchQuery.trim()) {
@@ -336,27 +353,32 @@ export function MenuPage() {
           </div>
         )}
 
-        {/* Mobile category picker — bottom sheet trigger */}
-        <div className="mobile-category-pills">
-          <div style={{ padding: '0.75rem var(--page-gutter) 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        {/* Mobile category picker — sticky trigger */}
+        <div className="mobile-category-pills cat-trigger-bar">
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.6rem var(--page-gutter)' }}>
             <button
               className="cat-sheet-trigger"
               onClick={() => setCatSheetOpen(true)}
               aria-label="Browse categories"
             >
               <span style={{ fontSize: '1rem', lineHeight: 1 }}>☰</span>
-              <span style={{ flex: 1, textAlign: 'left' }}>
+              <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {activeCatLabel}{activeSubLabel ? ` › ${activeSubLabel}` : ''}
               </span>
-              <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>▾</span>
+              <span style={{ fontSize: '0.75rem', opacity: 0.5, flexShrink: 0 }}>▾</span>
             </button>
+            {!loading && (
+              <span style={{ flexShrink: 0, fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-primary-light)', padding: '0.25rem 0.6rem', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
+              </span>
+            )}
             {(activeCategoryId !== null || activeSubId !== null) && (
               <button
                 onClick={() => { setActiveCategoryId(null); setActiveSubId(null); }}
-                style={{ flexShrink: 0, padding: '0 0.6rem', height: '40px', border: '1.5px solid var(--color-border)', borderRadius: '999px', background: 'transparent', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'inherit' }}
-                aria-label="Clear category filter"
+                style={{ flexShrink: 0, padding: '0 0.6rem', height: '36px', border: '1.5px solid var(--color-border)', borderRadius: '999px', background: 'transparent', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--color-text-muted)', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                aria-label="Clear filter"
               >
-                ✕ Clear
+                ✕
               </button>
             )}
           </div>
@@ -365,68 +387,74 @@ export function MenuPage() {
         {/* Category bottom sheet */}
         {catSheetOpen && typeof document !== 'undefined' && createPortal(
           <div
-            style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number, background: 'rgba(0,0,0,0.45)' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number, background: 'rgba(0,0,0,0.5)' }}
             onClick={() => setCatSheetOpen(false)}
           >
             <div
-              style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '20px 20px 0 0',
-                padding: '1.25rem var(--page-gutter)',
-                paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
-                maxHeight: '75vh', overflowY: 'auto',
-              }}
-              className="animate-fade-in"
+              className="cat-sheet-panel"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Handle */}
+              {/* Drag handle */}
               <div style={{ width: 40, height: 4, borderRadius: 99, background: 'var(--color-border)', margin: '0 auto 1.25rem' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-dark)' }}>Browse Menu</h3>
-                <button onClick={() => setCatSheetOpen(false)} style={{ background: 'var(--color-primary-light)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: '1rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                <button onClick={() => setCatSheetOpen(false)} style={{ background: 'var(--color-primary-light)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: '1.1rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
 
-              {/* All Items button */}
+              {/* All Items */}
               <button
                 className={`cat-sheet-item${activeCategoryId === null ? ' active' : ''}`}
                 onClick={() => { setActiveCategoryId(null); setActiveSubId(null); setCatSheetOpen(false); }}
               >
-                🍽️ All Items
+                <span>🍽️ All Items</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{items.length} items</span>
+                  {activeCategoryId === null && <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>✓</span>}
+                </span>
               </button>
 
               {/* Parent category grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
-                {categories.filter((cat) => !cat.parent_id).map((cat) => (
-                  <button
-                    key={cat.id}
-                    className={`cat-sheet-card${activeCategoryId === cat.id ? ' active' : ''}`}
-                    onClick={() => {
-                      setActiveCategoryId(cat.id);
-                      setActiveSubId(null);
-                      if (!categories.some((c) => c.parent_id === cat.id)) setCatSheetOpen(false);
-                    }}
-                  >
-                    {cat.name}
-                    {categories.some((c) => c.parent_id === cat.id) && (
-                      <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.55, marginTop: 2 }}>▾ subs</span>
-                    )}
-                  </button>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.75rem' }}>
+                {categories.filter((cat) => !cat.parent_id).map((cat) => {
+                  const isActive = activeCategoryId === cat.id;
+                  const count = catItemCounts[cat.id] ?? 0;
+                  const hasSubs = categories.some((c) => c.parent_id === cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      className={`cat-sheet-card${isActive ? ' active' : ''}`}
+                      onClick={() => {
+                        setActiveCategoryId(cat.id);
+                        setActiveSubId(null);
+                        if (!hasSubs) setCatSheetOpen(false);
+                      }}
+                    >
+                      {cat.image_url && (
+                        <img src={cat.image_url.startsWith('http') ? cat.image_url : `${window.location.origin}${cat.image_url}`}
+                          alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', marginBottom: 4, display: 'block', margin: '0 auto 4px' }} />
+                      )}
+                      <span style={{ display: 'block', lineHeight: 1.3 }}>{cat.name}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, marginTop: 3 }}>
+                        <span style={{ fontSize: '0.68rem', opacity: 0.5, fontWeight: 500 }}>{count > 0 ? `${count} items` : ''}{hasSubs ? (count > 0 ? ' · subs' : 'subs') : ''}</span>
+                        {isActive && <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 800 }}>✓</span>}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Subcategory chips — appear below grid when parent selected */}
+              {/* Subcategory chips */}
               {sheetSubs.length > 0 && (
-                <div style={{ marginTop: '1rem' }}>
-                  <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                    {activeCatLabel}
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+                  <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: '0.6rem' }}>
+                    {activeCatLabel} — pick a section
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                     <button
                       className={`sub-pill${activeSubId === null ? ' active' : ''}`}
                       onClick={() => { setActiveSubId(null); setCatSheetOpen(false); }}
                     >
-                      All
+                      All {catItemCounts[activeCategoryId!] ? `(${catItemCounts[activeCategoryId!]})` : ''}
                     </button>
                     {sheetSubs.map((sub) => (
                       <button
@@ -434,7 +462,7 @@ export function MenuPage() {
                         className={`sub-pill${activeSubId === sub.id ? ' active' : ''}`}
                         onClick={() => { setActiveSubId(sub.id); setCatSheetOpen(false); }}
                       >
-                        {sub.name}
+                        {sub.name}{catItemCounts[sub.id] ? ` (${catItemCounts[sub.id]})` : ''}
                       </button>
                     ))}
                   </div>

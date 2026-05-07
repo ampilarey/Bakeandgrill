@@ -1377,17 +1377,25 @@ textarea.field-input {
 /* ════════════════════════════════════════════════════════════
    MOBILE CATEGORY BOTTOM SHEET
 ════════════════════════════════════════════════════════════ */
+.cat-trigger-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky-bar);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
 .cat-sheet-trigger {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 0 1rem;
-  height: 44px;
+  height: 40px;
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   border-radius: 999px;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text);
   font-family: inherit;
@@ -1396,19 +1404,37 @@ textarea.field-input {
   transition: border-color 0.15s;
 }
 .cat-sheet-trigger:active { border-color: var(--color-primary); }
+.cat-sheet-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--color-surface);
+  border-radius: 20px 20px 0 0;
+  padding: 1.25rem var(--page-gutter);
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  max-height: 78vh;
+  overflow-y: auto;
+  animation: sheetSlideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
 .cat-sheet-item {
   width: 100%;
   padding: 0.65rem 1rem;
   border-radius: 10px;
   border: 1.5px solid var(--color-border);
   background: var(--color-surface);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text);
   font-family: inherit;
   cursor: pointer;
-  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .cat-sheet-item.active {
   border-color: var(--color-primary);
@@ -1416,11 +1442,11 @@ textarea.field-input {
   color: var(--color-primary);
 }
 .cat-sheet-card {
-  padding: 0.75rem 0.5rem;
+  padding: 0.75rem 0.4rem;
   border-radius: 12px;
   border: 1.5px solid var(--color-border);
   background: var(--color-surface);
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-text);
   font-family: inherit;
@@ -1429,6 +1455,7 @@ textarea.field-input {
   transition: all 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
+.cat-sheet-card:active { transform: scale(0.96); }
 .cat-sheet-card.active {
   border-color: var(--color-primary);
   background: var(--color-primary-light);
