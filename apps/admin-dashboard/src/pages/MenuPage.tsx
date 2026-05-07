@@ -397,8 +397,13 @@ function ItemFormModal({
                   style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
                 >
                   <option value="">— No category —</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={String(c.id)}>{c.name}</option>
+                  {categories.filter((c) => !c.parent_id).map((parent) => (
+                    <optgroup key={parent.id} label={parent.name}>
+                      <option value={String(parent.id)}>{parent.name}</option>
+                      {categories.filter((c) => c.parent_id === parent.id).map((sub) => (
+                        <option key={sub.id} value={String(sub.id)}>{'↳ ' + sub.name}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </Field>
@@ -921,8 +926,13 @@ export function MenuPage() {
               style={{ border: '1px solid #E8E0D8', borderRadius: 9, padding: '8px 12px', fontSize: 14, minWidth: 180 }}
             >
               <option value="">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              {categories.filter((c) => !c.parent_id).map((parent) => (
+                <optgroup key={parent.id} label={parent.name}>
+                  <option value={parent.id}>{parent.name}</option>
+                  {categories.filter((c) => c.parent_id === parent.id).map((sub) => (
+                    <option key={sub.id} value={sub.id}>{'↳ ' + sub.name}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <div style={{ flex: 1, minWidth: 180 }}>
