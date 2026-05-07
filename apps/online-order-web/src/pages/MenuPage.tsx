@@ -209,6 +209,18 @@ export function MenuPage() {
     return groups;
   }, [filteredItems, categories, activeCategoryId, activeSubId, searchQuery]);
 
+  const [catSheetOpen, setCatSheetOpen] = useState(false);
+
+  const activeCatLabel = activeCategoryId === null
+    ? 'All Items'
+    : (categories.find((c) => c.id === activeCategoryId)?.name ?? 'All Items');
+  const activeSubLabel = activeSubId !== null
+    ? categories.find((c) => c.id === activeSubId)?.name
+    : null;
+  const sheetSubs = activeCategoryId !== null
+    ? categories.filter((c) => c.parent_id === activeCategoryId)
+    : [];
+
   const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(qty); setSelectedModifiers([]); };
   const toggleModifier = (mod: Modifier) => {
     setSelectedModifiers((prev) => {
@@ -324,47 +336,114 @@ export function MenuPage() {
           </div>
         )}
 
-        {/* Mobile sticky category bar */}
-        <div className="mobile-category-pills sticky-cat-bar">
-          <div className="sticky-cat-bar-inner" ref={pillContainerRef}>
+        {/* Mobile category picker — bottom sheet trigger */}
+        <div className="mobile-category-pills">
+          <div style={{ padding: '0.75rem var(--page-gutter) 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
-              className={`category-pill${activeCategoryId === null ? ' active' : ''}`}
-              onClick={() => { setActiveCategoryId(null); setActiveSubId(null); }}
+              className="cat-sheet-trigger"
+              onClick={() => setCatSheetOpen(true)}
+              aria-label="Browse categories"
             >
-              All
+              <span style={{ fontSize: '1rem', lineHeight: 1 }}>☰</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>
+                {activeCatLabel}{activeSubLabel ? ` › ${activeSubLabel}` : ''}
+              </span>
+              <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>▾</span>
             </button>
-            {categories.filter((cat) => !cat.parent_id).map((cat) => (
+            {(activeCategoryId !== null || activeSubId !== null) && (
               <button
-                key={cat.id}
-                ref={activeCategoryId === cat.id ? activePillRef : undefined}
-                className={`category-pill${activeCategoryId === cat.id ? ' active' : ''}`}
-                onClick={() => { setActiveCategoryId(cat.id); setActiveSubId(null); }}
+                onClick={() => { setActiveCategoryId(null); setActiveSubId(null); }}
+                style={{ flexShrink: 0, padding: '0 0.6rem', height: '40px', border: '1.5px solid var(--color-border)', borderRadius: '999px', background: 'transparent', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'inherit' }}
+                aria-label="Clear category filter"
               >
-                {cat.name}
+                ✕ Clear
               </button>
-            ))}
+            )}
           </div>
-          {/* Subcategory row — shown only when active parent has subs */}
-          {activeCategoryId !== null && categories.some((c) => c.parent_id === activeCategoryId) && (
-            <div className="sticky-sub-bar">
-              <button
-                className={`sub-pill${activeSubId === null ? ' active' : ''}`}
-                onClick={() => setActiveSubId(null)}
-              >
-                All
-              </button>
-              {categories.filter((c) => c.parent_id === activeCategoryId).map((sub) => (
-                <button
-                  key={sub.id}
-                  className={`sub-pill${activeSubId === sub.id ? ' active' : ''}`}
-                  onClick={() => setActiveSubId(sub.id)}
-                >
-                  {sub.name}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
+
+        {/* Category bottom sheet */}
+        {catSheetOpen && typeof document !== 'undefined' && createPortal(
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number, background: 'rgba(0,0,0,0.45)' }}
+            onClick={() => setCatSheetOpen(false)}
+          >
+            <div
+              style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '20px 20px 0 0',
+                padding: '1.25rem var(--page-gutter)',
+                paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+                maxHeight: '75vh', overflowY: 'auto',
+              }}
+              className="animate-fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div style={{ width: 40, height: 4, borderRadius: 99, background: 'var(--color-border)', margin: '0 auto 1.25rem' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-dark)' }}>Browse Menu</h3>
+                <button onClick={() => setCatSheetOpen(false)} style={{ background: 'var(--color-primary-light)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: '1rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              </div>
+
+              {/* All Items button */}
+              <button
+                className={`cat-sheet-item${activeCategoryId === null ? ' active' : ''}`}
+                onClick={() => { setActiveCategoryId(null); setActiveSubId(null); setCatSheetOpen(false); }}
+              >
+                🍽️ All Items
+              </button>
+
+              {/* Parent category grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {categories.filter((cat) => !cat.parent_id).map((cat) => (
+                  <button
+                    key={cat.id}
+                    className={`cat-sheet-card${activeCategoryId === cat.id ? ' active' : ''}`}
+                    onClick={() => {
+                      setActiveCategoryId(cat.id);
+                      setActiveSubId(null);
+                      if (!categories.some((c) => c.parent_id === cat.id)) setCatSheetOpen(false);
+                    }}
+                  >
+                    {cat.name}
+                    {categories.some((c) => c.parent_id === cat.id) && (
+                      <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.55, marginTop: 2 }}>▾ subs</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Subcategory chips — appear below grid when parent selected */}
+              {sheetSubs.length > 0 && (
+                <div style={{ marginTop: '1rem' }}>
+                  <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                    {activeCatLabel}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <button
+                      className={`sub-pill${activeSubId === null ? ' active' : ''}`}
+                      onClick={() => { setActiveSubId(null); setCatSheetOpen(false); }}
+                    >
+                      All
+                    </button>
+                    {sheetSubs.map((sub) => (
+                      <button
+                        key={sub.id}
+                        className={`sub-pill${activeSubId === sub.id ? ' active' : ''}`}
+                        onClick={() => { setActiveSubId(sub.id); setCatSheetOpen(false); }}
+                      >
+                        {sub.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
 
         {/* Search + sort */}
         <div style={{ display: 'flex', gap: '0.75rem', padding: '1.25rem var(--page-gutter) 0', flexWrap: 'wrap' }}>
