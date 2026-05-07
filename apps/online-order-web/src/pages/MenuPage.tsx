@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
@@ -331,26 +331,14 @@ export function MenuPage() {
               All
             </button>
             {categories.filter((cat) => !cat.parent_id).map((cat) => (
-              <React.Fragment key={cat.id}>
-                <button
-                  ref={activeCategoryId === cat.id ? activePillRef : undefined}
-                  className={`category-pill${activeCategoryId === cat.id ? ' active' : ''}`}
-                  onClick={() => setActiveCategoryId(cat.id)}
-                >
-                  {cat.name}
-                </button>
-                {categories.filter((sub) => sub.parent_id === cat.id).map((sub) => (
-                  <button
-                    key={sub.id}
-                    ref={activeCategoryId === sub.id ? activePillRef : undefined}
-                    className={`category-pill${activeCategoryId === sub.id ? ' active' : ''}`}
-                    onClick={() => setActiveCategoryId(sub.id)}
-                    style={{ paddingLeft: '0.5rem' }}
-                  >
-                    ↳ {sub.name}
-                  </button>
-                ))}
-              </React.Fragment>
+              <button
+                key={cat.id}
+                ref={activeCategoryId === cat.id || categories.some((s) => s.parent_id === cat.id && s.id === activeCategoryId) ? activePillRef : undefined}
+                className={`category-pill${activeCategoryId === cat.id ? ' active' : ''}`}
+                onClick={() => setActiveCategoryId(cat.id)}
+              >
+                {cat.name}
+              </button>
             ))}
           </div>
         </div>
