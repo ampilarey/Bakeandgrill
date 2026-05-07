@@ -33,6 +33,7 @@ export function MenuPage() {
   const [sortBy, setSortBy] = useState('name');
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [selectedQty, setSelectedQty] = useState(1);
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
@@ -182,7 +183,7 @@ export function MenuPage() {
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
   }, [items, activeCategoryId, searchQuery, sortBy]);
 
-  const handleSelectItem = (item: Item) => { setSelectedItem(item); setSelectedModifiers([]); };
+  const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(qty); setSelectedModifiers([]); };
   const toggleModifier = (mod: Modifier) => {
     setSelectedModifiers((prev) => {
       const exists = prev.some((m) => m.id === mod.id);
@@ -191,10 +192,11 @@ export function MenuPage() {
   };
   const handleModalAdd = (variant?: Variant | null) => {
     if (!selectedItem) return;
-    addItem(selectedItem, 1, selectedModifiers, variant ?? null);
+    addItem(selectedItem, selectedQty, selectedModifiers, variant ?? null);
     const label = variant ? `${selectedItem.name} (${variant.name})` : selectedItem.name;
     showToast(`${label} added to cart`);
     setSelectedItem(null);
+    setSelectedQty(1);
     setSelectedModifiers([]);
   };
 
@@ -421,7 +423,7 @@ export function MenuPage() {
               <div key={item.id} className="menu-item-anim">
                 <MenuCard
                   item={item}
-                  onSelectItem={handleSelectItem}
+                  onSelectItem={(it, qty) => handleSelectItem(it, qty)}
                   onAddToCart={(it, qty, variant) => { addItem(it, qty, [], variant ?? null); showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`); }}
                   isFavourite={favouriteIds.has(item.id)}
                   onToggleFavourite={handleToggleFavourite}
@@ -494,6 +496,7 @@ export function MenuPage() {
       {selectedItem && (
         <ItemModal
           item={selectedItem}
+          qty={selectedQty}
           selectedModifiers={selectedModifiers}
           onToggleModifier={toggleModifier}
           onAddToCart={handleModalAdd}

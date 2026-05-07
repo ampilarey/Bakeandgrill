@@ -4,7 +4,7 @@ import type { Item, Variant } from '../api';
 
 type Props = {
   item: Item;
-  onSelectItem: (item: Item) => void;
+  onSelectItem: (item: Item, qty: number) => void;
   onAddToCart: (item: Item, quantity: number, variant?: Variant | null) => void;
   isFavourite?: boolean;
   onToggleFavourite?: (itemId: number) => void;
@@ -56,8 +56,8 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
       <div
         role={isUnavailable ? undefined : 'button'}
         tabIndex={isUnavailable ? undefined : 0}
-        onClick={() => { if (!isUnavailable) onSelectItem(item); }}
-        onKeyDown={(e) => { if (!isUnavailable && e.key === 'Enter') onSelectItem(item); }}
+        onClick={() => { if (!isUnavailable) onSelectItem(item, quantity); }}
+        onKeyDown={(e) => { if (!isUnavailable && e.key === 'Enter') onSelectItem(item, quantity); }}
         style={{
           width: '100%',
           aspectRatio: '4 / 3',
@@ -228,7 +228,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
               </div>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
+                onClick={(e) => { e.stopPropagation(); onSelectItem(item, quantity); setQuantity(1); }}
                 className="card-add-btn"
                 style={{
                   flex: 1, padding: '0.5rem', height: '32px',
@@ -298,7 +298,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
           {!isUnavailable && !item.has_variants && item.modifiers && item.modifiers.length > 0 && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
+              onClick={(e) => { e.stopPropagation(); onSelectItem(item, quantity); }}
               className="card-customise-btn"
               style={{
                 width: '100%', marginTop: '0.4rem',

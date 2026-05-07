@@ -5,13 +5,14 @@ import type { Variant } from '@shared/types';
 
 type Props = {
   item: Item;
+  qty: number;
   selectedModifiers: Modifier[];
   onToggleModifier: (modifier: Modifier) => void;
   onAddToCart: (variant?: Variant | null) => void;
   onClose: () => void;
 };
 
-export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCart, onClose }: Props) {
+export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAddToCart, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
 
@@ -260,7 +261,7 @@ export function ItemModal({ item, selectedModifiers, onToggleModifier, onAddToCa
           }}
         >
           {canAdd
-            ? `Add to Cart — MVR ${totalPrice.toFixed(2)}`
+            ? `Add${qty > 1 ? ` ${qty}×` : ''} to Cart — MVR ${(totalPrice * qty).toFixed(2)}`
             : 'Select an option first'
           }
         </button>
