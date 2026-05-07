@@ -8,6 +8,7 @@ export type MenuCategory = {
   image_url?: string | null;
   sort_order?: number | null;
   is_active: boolean;
+  parent_id?: number | null;
   items?: MenuItem[];
 };
 
@@ -128,6 +129,7 @@ export async function createCategory(data: {
   description?: string | null;
   image_url?: string | null;
   sort_order?: number | null;
+  parent_id?: number | null;
 }): Promise<{ category: MenuCategory }> {
   return req('/categories', { method: 'POST', body: JSON.stringify(data) });
 }
@@ -141,6 +143,7 @@ export async function updateCategory(
     image_url: string | null;
     sort_order: number | null;
     is_active: boolean;
+    parent_id: number | null;
   }>
 ): Promise<{ category: MenuCategory }> {
   return req(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) });

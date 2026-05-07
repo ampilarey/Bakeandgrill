@@ -41,7 +41,7 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url']);
+        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url', 'parent_id']);
         if (isset($data['image_url']) && $data['image_url'] === '') {
             $data['image_url'] = null;
         }
@@ -52,11 +52,14 @@ class CategoryController extends Controller
             'sort_order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
             'image_url' => 'nullable|url',
+            'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
-        // MySQL: column is NOT NULL DEFAULT 0; omit null so the DB default applies
         if (array_key_exists('sort_order', $validated) && $validated['sort_order'] === null) {
             unset($validated['sort_order']);
+        }
+        if (array_key_exists('parent_id', $validated) && $validated['parent_id'] === null) {
+            $validated['parent_id'] = null;
         }
 
         $category = Category::create($validated);
@@ -86,7 +89,7 @@ class CategoryController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url']);
+        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url', 'parent_id']);
         if (isset($data['image_url']) && $data['image_url'] === '') {
             $data['image_url'] = null;
         }
@@ -97,14 +100,26 @@ class CategoryController extends Controller
             'sort_order' => 'nullable|integer',
             'is_active' => 'sometimes|boolean',
             'image_url' => 'nullable|url',
+            'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
-        // MySQL: column is NOT NULL DEFAULT 0; omit null so existing value is preserved
         if (array_key_exists('sort_order', $validated) && $validated['sort_order'] === null) {
             unset($validated['sort_order']);
         }
 
         $category = Category::findOrFail($id);
+
+        // Prevent circular reference: a category cannot be its own parent or descendant.
+        if (!empty($validated['parent_id'])) {
+            if ($validated['parent_id'] === (int) $id) {
+                return response()->json(['message' => 'A category cannot be its own parent.'], 422);
+            }
+            $parent = Category::find($validated['parent_id']);
+            if ($parent && $parent->parent_id === (int) $id) {
+                return response()->json(['message' => 'Circular subcategory reference detected.'], 422);
+            }
+        }
+
         $category->update($validated);
 
         return response()->json([

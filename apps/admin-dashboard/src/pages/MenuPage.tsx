@@ -113,22 +113,31 @@ function FormTextarea({ value, onChange, placeholder, rows = 3 }: {
 type CatForm = {
   name: string; name_dv: string; description: string;
   image_url: string; sort_order: string; is_active: boolean;
+  parent_id: string;
 };
 
-const EMPTY_CAT: CatForm = { name: '', name_dv: '', description: '', image_url: '', sort_order: '', is_active: true };
+const EMPTY_CAT: CatForm = { name: '', name_dv: '', description: '', image_url: '', sort_order: '', is_active: true, parent_id: '' };
 
 function CategoryFormModal({
-  initial, title, onSave, onClose,
+  initial, title, onSave, onClose, categories, editingId,
 }: {
   initial: CatForm;
   title: string;
   onSave: (f: CatForm) => Promise<void>;
   onClose: () => void;
+  categories: MenuCategory[];
+  editingId?: number;
 }) {
   const [form, setForm] = useState<CatForm>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const set = <K extends keyof CatForm>(k: K, v: CatForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Only top-level categories (no parent) can be parents — no deeper than 2 levels.
+  // Also exclude the category being edited from the dropdown.
+  const parentOptions = categories.filter(
+    (c) => !c.parent_id && c.id !== editingId
+  );
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Category name is required.'); return; }
@@ -136,6 +145,12 @@ function CategoryFormModal({
     try { await onSave(form); }
     catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
+  };
+
+  const selectStyle: React.CSSProperties = {
+    width: '100%', border: '1px solid #E8E0D8', borderRadius: 9,
+    padding: '9px 12px', fontSize: 14, fontFamily: 'inherit',
+    background: '#fff', cursor: 'pointer', boxSizing: 'border-box',
   };
 
   return (
@@ -150,6 +165,14 @@ function CategoryFormModal({
             <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
           </Field>
         </div>
+        <Field label="Parent Category — optional">
+          <select value={form.parent_id} onChange={(e) => set('parent_id', e.target.value)} style={selectStyle}>
+            <option value="">— None (top-level category) —</option>
+            {parentOptions.map((c) => (
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
+            ))}
+          </select>
+        </Field>
         <Field label="Description">
           <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Short description…" rows={2} />
         </Field>
@@ -653,6 +676,7 @@ export function MenuPage() {
         description: form.description.trim() || null,
         image_url: form.image_url.trim() || null,
         sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
+        parent_id: form.parent_id !== '' ? parseInt(form.parent_id) : null,
       });
       setCreatingCat(false);
       await loadCategories();
@@ -668,6 +692,7 @@ export function MenuPage() {
         image_url: form.image_url.trim() || null,
         sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
         is_active: form.is_active,
+        parent_id: form.parent_id !== '' ? parseInt(form.parent_id) : null,
       });
       setEditingCat(null);
       await loadCategories();
@@ -794,38 +819,70 @@ export function MenuPage() {
           <Card><EmptyState message="No categories yet. Add your first one." /></Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {categories.map((cat) => (
-              <Card key={cat.id} style={{ padding: '14px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  {cat.image_url && (
-                    <img src={cat.image_url} alt={cat.name}
-                      style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
-                      <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
-                      {cat.name_dv && <span style={{ color: '#94a3b8', fontSize: 13 }}>{cat.name_dv}</span>}
-                      <Badge label={cat.is_active ? 'Active' : 'Hidden'} color={cat.is_active ? 'green' : 'gray'} />
-                    </div>
-                    {cat.description && (
-                      <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {cat.description}
-                      </p>
+            {categories.filter((c) => !c.parent_id).map((cat) => (
+              <div key={cat.id}>
+                <Card style={{ padding: '14px 18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {cat.image_url && (
+                      <img src={cat.image_url} alt={cat.name}
+                        style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     )}
-                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>
-                      Sort: {cat.sort_order ?? 0} · {cat.items?.length ?? '?'} items
-                    </p>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+                        <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
+                        {cat.name_dv && <span style={{ color: '#94a3b8', fontSize: 13 }}>{cat.name_dv}</span>}
+                        <Badge label={cat.is_active ? 'Active' : 'Hidden'} color={cat.is_active ? 'green' : 'gray'} />
+                      </div>
+                      {cat.description && (
+                        <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {cat.description}
+                        </p>
+                      )}
+                      <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>
+                        Sort: {cat.sort_order ?? 0} · {cat.items?.length ?? '?'} items
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <Btn small variant="ghost" onClick={() => handleToggleCat(cat)}>
+                        {cat.is_active ? 'Hide' : 'Show'}
+                      </Btn>
+                      <Btn small variant="secondary" onClick={() => setEditingCat(cat)}>Edit</Btn>
+                      <Btn small variant="danger" onClick={() => handleDeleteCat(cat.id)}>Delete</Btn>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <Btn small variant="ghost" onClick={() => handleToggleCat(cat)}>
-                      {cat.is_active ? 'Hide' : 'Show'}
-                    </Btn>
-                    <Btn small variant="secondary" onClick={() => setEditingCat(cat)}>Edit</Btn>
-                    <Btn small variant="danger" onClick={() => handleDeleteCat(cat.id)}>Delete</Btn>
-                  </div>
-                </div>
-              </Card>
+                </Card>
+                {/* Subcategories indented beneath parent */}
+                {categories.filter((c) => c.parent_id === cat.id).map((sub) => (
+                  <Card key={sub.id} style={{ padding: '12px 18px', marginTop: 6, marginLeft: 28, borderLeft: '3px solid #E8E0D8' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ fontSize: 16, color: '#94a3b8', flexShrink: 0 }}>↳</span>
+                      {sub.image_url && (
+                        <img src={sub.image_url} alt={sub.name}
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+                          <span style={{ fontWeight: 600, fontSize: 14 }}>{sub.name}</span>
+                          {sub.name_dv && <span style={{ color: '#94a3b8', fontSize: 13 }}>{sub.name_dv}</span>}
+                          <Badge label={sub.is_active ? 'Active' : 'Hidden'} color={sub.is_active ? 'green' : 'gray'} />
+                        </div>
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+                          Sort: {sub.sort_order ?? 0} · {sub.items?.length ?? '?'} items
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <Btn small variant="ghost" onClick={() => handleToggleCat(sub)}>
+                          {sub.is_active ? 'Hide' : 'Show'}
+                        </Btn>
+                        <Btn small variant="secondary" onClick={() => setEditingCat(sub)}>Edit</Btn>
+                        <Btn small variant="danger" onClick={() => handleDeleteCat(sub.id)}>Delete</Btn>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             ))}
           </div>
         )
@@ -985,6 +1042,7 @@ export function MenuPage() {
           title="New Category"
           onSave={handleCreateCat}
           onClose={() => setCreatingCat(false)}
+          categories={categories}
         />
       )}
       {editingCat && (
@@ -995,10 +1053,13 @@ export function MenuPage() {
             description: editingCat.description ?? '', image_url: editingCat.image_url ?? '',
             sort_order: editingCat.sort_order != null ? String(editingCat.sort_order) : '',
             is_active: editingCat.is_active,
+            parent_id: editingCat.parent_id != null ? String(editingCat.parent_id) : '',
           }}
           title={`Edit: ${editingCat.name}`}
           onSave={handleUpdateCat}
           onClose={() => setEditingCat(null)}
+          categories={categories}
+          editingId={editingCat.id}
         />
       )}
       {creatingItem && (
