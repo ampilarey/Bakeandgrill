@@ -982,7 +982,13 @@ export function MenuPage() {
                           {item.sku && <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.sku}</div>}
                         </td>
                         <td style={{ padding: '10px 14px', color: '#6B5D4F', fontSize: 13 }}>
-                          {item.category?.name ?? <span style={{ color: '#cbd5e1' }}>—</span>}
+                          {item.category ? (() => {
+                            const cat = categories.find((c) => c.id === item.category_id);
+                            const parent = cat?.parent_id ? categories.find((c) => c.id === cat.parent_id) : null;
+                            return parent
+                              ? <span>{parent.name} <span style={{ color: '#94a3b8' }}>› {cat?.name}</span></span>
+                              : cat?.name ?? item.category.name;
+                          })() : <span style={{ color: '#cbd5e1' }}>—</span>}
                         </td>
                         <td style={{ padding: '10px 14px', fontWeight: 700, color: '#D4813A' }}>
                           MVR {parseFloat(String(item.base_price)).toFixed(2)}

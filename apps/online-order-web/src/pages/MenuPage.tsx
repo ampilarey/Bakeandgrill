@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
@@ -244,13 +244,23 @@ export function MenuPage() {
                   active={activeCategoryId === null}
                   onClick={() => setActiveCategoryId(null)}
                 />
-                {categories.map((cat) => (
-                  <CatButton
-                    key={cat.id}
-                    label={cat.name}
-                    active={activeCategoryId === cat.id}
-                    onClick={() => setActiveCategoryId(cat.id)}
-                  />
+                {categories.filter((cat) => !cat.parent_id).map((cat) => (
+                  <div key={cat.id}>
+                    <CatButton
+                      label={cat.name}
+                      active={activeCategoryId === cat.id}
+                      onClick={() => setActiveCategoryId(cat.id)}
+                    />
+                    {categories.filter((sub) => sub.parent_id === cat.id).map((sub) => (
+                      <div key={sub.id} style={{ paddingLeft: '0.75rem' }}>
+                        <CatButton
+                          label={'↳ ' + sub.name}
+                          active={activeCategoryId === sub.id}
+                          onClick={() => setActiveCategoryId(sub.id)}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 ))}
               </>
             )
@@ -295,15 +305,27 @@ export function MenuPage() {
             >
               All
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                ref={activeCategoryId === cat.id ? activePillRef : undefined}
-                className={`category-pill${activeCategoryId === cat.id ? ' active' : ''}`}
-                onClick={() => setActiveCategoryId(cat.id)}
-              >
-                {cat.name}
-              </button>
+            {categories.filter((cat) => !cat.parent_id).map((cat) => (
+              <React.Fragment key={cat.id}>
+                <button
+                  ref={activeCategoryId === cat.id ? activePillRef : undefined}
+                  className={`category-pill${activeCategoryId === cat.id ? ' active' : ''}`}
+                  onClick={() => setActiveCategoryId(cat.id)}
+                >
+                  {cat.name}
+                </button>
+                {categories.filter((sub) => sub.parent_id === cat.id).map((sub) => (
+                  <button
+                    key={sub.id}
+                    ref={activeCategoryId === sub.id ? activePillRef : undefined}
+                    className={`category-pill${activeCategoryId === sub.id ? ' active' : ''}`}
+                    onClick={() => setActiveCategoryId(sub.id)}
+                    style={{ paddingLeft: '0.5rem' }}
+                  >
+                    ↳ {sub.name}
+                  </button>
+                ))}
+              </React.Fragment>
             ))}
           </div>
         </div>
