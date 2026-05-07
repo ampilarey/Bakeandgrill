@@ -219,7 +219,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
               Out of stock
             </button>
           ) : item.has_variants && useInlinePills ? (
-            /* Inline variant pills — select size then add */
+            /* Inline variant pills — select size, then qty + add row appears */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
                 {activeVariants.map((v) => (
@@ -242,47 +242,44 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
                   </button>
                 ))}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center',
-                  border: '1.5px solid var(--color-border)',
-                  borderRadius: 'var(--radius-lg)', overflow: 'hidden', flexShrink: 0,
-                }}>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.max(1, q - 1)); }}
-                    style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    aria-label="Decrease quantity">−</button>
-                  <span style={{ minWidth: '1.625rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{quantity}</span>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(MAX_QTY, q + 1)); }}
-                    style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    aria-label="Increase quantity">+</button>
+              {selectedVariant && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center',
+                    border: '1.5px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)', overflow: 'hidden', flexShrink: 0,
+                  }}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.max(1, q - 1)); }}
+                      style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      aria-label="Decrease quantity">−</button>
+                    <span style={{ minWidth: '1.625rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{quantity}</span>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(MAX_QTY, q + 1)); }}
+                      style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      aria-label="Increase quantity">+</button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToCart(item, quantity, selectedVariant);
+                      setQuantity(1);
+                      setSelectedVariant(null);
+                    }}
+                    className="card-add-btn"
+                    style={{
+                      flex: 1, padding: '0.5rem', height: '32px',
+                      background: 'var(--color-primary)', color: 'white',
+                      border: 'none', borderRadius: 'var(--radius-lg)',
+                      fontSize: '0.85rem', fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                    aria-label={`Add ${item.name} (${selectedVariant.name}) to cart`}
+                  >
+                    Add{quantity > 1 ? ` (${quantity})` : ''}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!selectedVariant) return;
-                    onAddToCart(item, quantity, selectedVariant);
-                    setQuantity(1);
-                    setSelectedVariant(null);
-                  }}
-                  disabled={!selectedVariant}
-                  className="card-add-btn"
-                  style={{
-                    flex: 1, padding: '0.5rem', height: '32px',
-                    background: selectedVariant ? 'var(--color-primary)' : 'var(--color-surface-alt)',
-                    color: selectedVariant ? 'white' : 'var(--color-text-muted)',
-                    border: 'none', borderRadius: 'var(--radius-lg)',
-                    fontSize: '0.85rem', fontWeight: 700,
-                    cursor: selectedVariant ? 'pointer' : 'default',
-                    fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.15s',
-                  }}
-                  aria-label={selectedVariant ? `Add ${item.name} (${selectedVariant.name}) to cart` : 'Select a size first'}
-                >
-                  {selectedVariant ? `Add${quantity > 1 ? ` (${quantity})` : ''}` : 'Select size'}
-                </button>
-              </div>
+              )}
             </div>
           ) : item.has_variants ? (
             /* Complex variant products (many options / modifiers): open modal */
