@@ -3,6 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, API_ORIGIN } from '../api';
 import type { Item, DailySpecial, Order } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
+
+function fmtOrderingTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const isToday = d.toDateString() === new Date().toDateString();
+  const h = d.getHours(), m = d.getMinutes();
+  const time = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  return isToday ? `today at ${time}` : `${d.toLocaleDateString('en-US', { weekday: 'short' })} at ${time}`;
+}
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
@@ -123,21 +132,16 @@ export function HomePage() {
   return (
     <div>
 
-      {/* Compact closed notice — shown above hero when ordering is closed */}
-      {isOpen === false && (
-        <div className="closed-notice-card">
-          <span className="closed-notice-icon">🔒</span>
-          <span className="closed-notice-title">
-            Closed
-            {nextOpenWindow && (() => {
-              const d = new Date(nextOpenWindow);
-              const isToday = d.toDateString() === new Date().toDateString();
-              const h = d.getHours(), m = d.getMinutes();
-              const time = `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
-              return ` · Opens ${isToday ? 'today' : d.toLocaleDateString('en-US',{weekday:'short'})} at ${time}`;
-            })()}
+      {/* Online ordering status bar — shown above hero */}
+      {isOpen !== null && (
+        <div className={`ordering-status-bar ${isOpen ? 'open' : 'closed'}`}>
+          <span className="ordering-status-bar-dot" />
+          <span className="ordering-status-bar-text">
+            {isOpen
+              ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
+              : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
+            }
           </span>
-          <a href="/hours" className="closed-notice-link">Hours →</a>
         </div>
       )}
 

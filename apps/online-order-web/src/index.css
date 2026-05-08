@@ -804,49 +804,45 @@ a { text-decoration: none; color: inherit; }
   flex-wrap: wrap;
 }
 
-/* ── Compact closed notice bar ─────────────────────────────── */
-.closed-notice-card {
+/* ── Online ordering status bar (home + menu pages) ───────── */
+.ordering-status-bar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0.75rem var(--page-gutter) 0;
   padding: 0.65rem 1rem;
-  background: rgba(220, 38, 38, 0.06);
-  border: 1.5px solid rgba(220, 38, 38, 0.2);
-  border-left: 4px solid #DC2626;
   border-radius: 10px;
   overflow: hidden;
 }
-.closed-notice-icon {
-  font-size: 0.9rem;
+.ordering-status-bar.open {
+  background: rgba(22, 163, 74, 0.07);
+  border: 1.5px solid rgba(22, 163, 74, 0.25);
+  border-left: 4px solid #16A34A;
+}
+.ordering-status-bar.closed {
+  background: rgba(220, 38, 38, 0.06);
+  border: 1.5px solid rgba(220, 38, 38, 0.2);
+  border-left: 4px solid #DC2626;
+}
+.ordering-status-bar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
-.closed-notice-title {
+.ordering-status-bar.open  .ordering-status-bar-dot { background: #16A34A; animation: pulse-dot 2s infinite; }
+.ordering-status-bar.closed .ordering-status-bar-dot { background: #DC2626; }
+.ordering-status-bar-text {
   flex: 1;
   min-width: 0;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #DC2626;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.closed-notice-link {
-  flex-shrink: 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  text-decoration: none;
-  padding: 0.25rem 0.65rem;
-  border: 1.5px solid var(--color-primary);
-  border-radius: 999px;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-.closed-notice-link:hover {
-  background: var(--color-primary);
-  color: #fff;
-}
+.ordering-status-bar.open  .ordering-status-bar-text { color: #15803D; }
+.ordering-status-bar.closed .ordering-status-bar-text { color: #DC2626; }
 
 @media (max-width: 768px) {
   .opening-status-badge-hero.opening-status-badge {

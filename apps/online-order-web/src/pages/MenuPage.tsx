@@ -3,9 +3,17 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
 import type { Category, Item, Modifier } from '../api';
+
+function fmtOrderingTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const isToday = d.toDateString() === new Date().toDateString();
+  const h = d.getHours(), m = d.getMinutes();
+  const time = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  return isToday ? `today at ${time}` : `${d.toLocaleDateString('en-US', { weekday: 'short' })} at ${time}`;
+}
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
-import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { MenuCard } from '../components/MenuCard';
 import { ItemModal } from '../components/ItemModal';
 import { CartDrawer } from '../components/CartDrawer';
@@ -39,7 +47,6 @@ export function MenuPage() {
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
-  const [hoursReason, setHoursReason] = useState<'master_switch_off' | 'schedule' | 'override_active' | null>(null);
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
 
@@ -81,7 +88,6 @@ export function MenuPage() {
         setItems(its.data ?? []);
         // Gate API is the single source of truth for ordering status
         setIsOpen(gate.open);
-        setHoursReason(gate.reason ?? null);
         setCurrentClose(gate.current_close ?? null);
         setNextOpenWindow(gate.next_open_window ?? null);
         setClosedMessage(gate.open ? null : (gate.message ?? 'Online ordering is currently closed.'));
@@ -331,53 +337,22 @@ export function MenuPage() {
       {/* ── Main content ──────────────────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0 }}>
 
-        {/* Opening status + wait time */}
+        {/* Online ordering status bar */}
         {isOpen !== null && (
-          <>
-            {/* ── Closed notice — compact bar ───────────────────────── */}
-            {!isOpen && (
-              <div className="closed-notice-card">
-                <span className="closed-notice-icon">🔒</span>
-                <span className="closed-notice-title">
-                  Closed
-                  {nextOpenWindow && (() => {
-                    const d = new Date(nextOpenWindow);
-                    const isToday = d.toDateString() === new Date().toDateString();
-                    const h = d.getHours(), m = d.getMinutes();
-                    const time = `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
-                    return ` · Opens ${isToday ? 'today' : d.toLocaleDateString('en-US',{weekday:'short'})} at ${time}`;
-                  })()}
-                </span>
-                <a href="/hours" className="closed-notice-link">Hours →</a>
-              </div>
+          <div className={`ordering-status-bar ${isOpen ? 'open' : 'closed'}`}>
+            <span className="ordering-status-bar-dot" />
+            <span className="ordering-status-bar-text">
+              {isOpen
+                ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
+                : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
+              }
+            </span>
+            {waitMinutes !== null && isOpen && (
+              <span style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, color: '#15803D', background: '#DCFCE7', padding: '2px 8px', borderRadius: 999 }}>
+                ⏱ ~{waitMinutes} min
+              </span>
             )}
-
-            {/* ── Open: small pill + wait time ──────────────────────── */}
-            {isOpen && (
-              <div className="status-pill-row">
-                {waitMinutes !== null && (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    fontSize: 12, fontWeight: 600,
-                    color: waitMinutes <= 15 ? '#15803D' : waitMinutes <= 30 ? '#92400E' : '#991B1B',
-                    background: waitMinutes <= 15 ? '#DCFCE7' : waitMinutes <= 30 ? '#FEF3C7' : '#FEE2E2',
-                    padding: '3px 10px', borderRadius: 99,
-                  }}>
-                    ⏱ ~{waitMinutes} min wait
-                  </span>
-                )}
-                <OpeningStatusBadge
-                  open={isOpen}
-                  reason={hoursReason}
-                  currentClose={currentClose}
-                  nextOpenWindow={nextOpenWindow}
-                  closedDetail={closedMessage}
-                  timeDisplay="12h"
-                  className="opening-status-badge-menu"
-                />
-              </div>
-            )}
-          </>
+          </div>
         )}
 
         {/* Mobile category picker — sticky trigger */}
