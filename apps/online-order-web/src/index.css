@@ -804,42 +804,32 @@ a { text-decoration: none; color: inherit; }
   flex-wrap: wrap;
 }
 
-/* ── Modern closed notice card ─────────────────────────────── */
+/* ── Compact closed notice bar ─────────────────────────────── */
 .closed-notice-card {
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin: 1rem var(--page-gutter) 0;
-  padding: 1.1rem 1.25rem;
-  background: var(--color-surface);
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem var(--page-gutter) 0;
+  padding: 0.65rem 1rem;
+  background: rgba(220, 38, 38, 0.06);
   border: 1.5px solid rgba(220, 38, 38, 0.2);
   border-left: 4px solid #DC2626;
-  border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border-radius: 10px;
+  overflow: hidden;
 }
 .closed-notice-icon {
-  font-size: 1.5rem;
-  line-height: 1;
+  font-size: 0.9rem;
   flex-shrink: 0;
-  margin-top: 1px;
 }
 .closed-notice-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--color-dark);
-  margin: 0 0 0.2rem;
-}
-.closed-notice-sub {
-  font-size: 0.875rem;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #DC2626;
-  margin: 0 0 0.3rem;
-}
-.closed-notice-hint {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  margin: 0;
-  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .closed-notice-link {
   flex-shrink: 0;
@@ -847,20 +837,15 @@ a { text-decoration: none; color: inherit; }
   font-weight: 700;
   color: var(--color-primary);
   text-decoration: none;
-  padding: 0.3rem 0.75rem;
+  padding: 0.25rem 0.65rem;
   border: 1.5px solid var(--color-primary);
   border-radius: 999px;
   white-space: nowrap;
-  align-self: center;
   transition: all 0.15s;
 }
 .closed-notice-link:hover {
   background: var(--color-primary);
   color: #fff;
-}
-@media (max-width: 480px) {
-  .closed-notice-card { flex-wrap: wrap; }
-  .closed-notice-link { margin-top: 0.25rem; }
 }
 
 @media (max-width: 768px) {

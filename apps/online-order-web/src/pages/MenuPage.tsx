@@ -334,21 +334,20 @@ export function MenuPage() {
         {/* Opening status + wait time */}
         {isOpen !== null && (
           <>
-            {/* ── Modern closed notice card ─────────────────────────── */}
+            {/* ── Closed notice — compact bar ───────────────────────── */}
             {!isOpen && (
               <div className="closed-notice-card">
-                <div className="closed-notice-icon">🔒</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="closed-notice-title">We're closed right now</p>
-                  <p className="closed-notice-sub">
-                    {closedMessage
-                      ? closedMessage
-                      : nextOpenWindow
-                        ? `Opens ${new Date(nextOpenWindow).toLocaleDateString('en-US', { weekday: 'short' }) === new Date().toLocaleDateString('en-US', { weekday: 'short' }) ? 'today' : new Date(nextOpenWindow).toLocaleDateString('en-US', { weekday: 'long' })} at ${(() => { const d = new Date(nextOpenWindow); const h = d.getHours(); const m = d.getMinutes(); return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`; })()}`
-                        : 'Please check back during opening hours'}
-                  </p>
-                  <p className="closed-notice-hint">You can still browse the menu and place an order when we reopen.</p>
-                </div>
+                <span className="closed-notice-icon">🔒</span>
+                <span className="closed-notice-title">
+                  Closed
+                  {nextOpenWindow && (() => {
+                    const d = new Date(nextOpenWindow);
+                    const isToday = d.toDateString() === new Date().toDateString();
+                    const h = d.getHours(), m = d.getMinutes();
+                    const time = `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                    return ` · Opens ${isToday ? 'today' : d.toLocaleDateString('en-US',{weekday:'short'})} at ${time}`;
+                  })()}
+                </span>
                 <a href="/hours" className="closed-notice-link">Hours →</a>
               </div>
             )}
