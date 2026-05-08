@@ -334,10 +334,39 @@ export function MenuPage() {
         {/* Opening status + wait time */}
         {isOpen !== null && (
           <>
-            {/* Closed full-width strip on mobile */}
+            {/* ── Modern closed notice card ─────────────────────────── */}
             {!isOpen && (
-              <div className="closed-strip">
-                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#FCA5A5', flexShrink: 0 }} />
+              <div className="closed-notice-card">
+                <div className="closed-notice-icon">🔒</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="closed-notice-title">We're closed right now</p>
+                  <p className="closed-notice-sub">
+                    {closedMessage
+                      ? closedMessage
+                      : nextOpenWindow
+                        ? `Opens ${new Date(nextOpenWindow).toLocaleDateString('en-US', { weekday: 'short' }) === new Date().toLocaleDateString('en-US', { weekday: 'short' }) ? 'today' : new Date(nextOpenWindow).toLocaleDateString('en-US', { weekday: 'long' })} at ${(() => { const d = new Date(nextOpenWindow); const h = d.getHours(); const m = d.getMinutes(); return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`; })()}`
+                        : 'Please check back during opening hours'}
+                  </p>
+                  <p className="closed-notice-hint">You can still browse the menu and place an order when we reopen.</p>
+                </div>
+                <a href="/hours" className="closed-notice-link">Hours →</a>
+              </div>
+            )}
+
+            {/* ── Open: small pill + wait time ──────────────────────── */}
+            {isOpen && (
+              <div className="status-pill-row">
+                {waitMinutes !== null && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    fontSize: 12, fontWeight: 600,
+                    color: waitMinutes <= 15 ? '#15803D' : waitMinutes <= 30 ? '#92400E' : '#991B1B',
+                    background: waitMinutes <= 15 ? '#DCFCE7' : waitMinutes <= 30 ? '#FEF3C7' : '#FEE2E2',
+                    padding: '3px 10px', borderRadius: 99,
+                  }}>
+                    ⏱ ~{waitMinutes} min wait
+                  </span>
+                )}
                 <OpeningStatusBadge
                   open={isOpen}
                   reason={hoursReason}
@@ -345,33 +374,10 @@ export function MenuPage() {
                   nextOpenWindow={nextOpenWindow}
                   closedDetail={closedMessage}
                   timeDisplay="12h"
-                  className="opening-status-badge-strip"
+                  className="opening-status-badge-menu"
                 />
               </div>
             )}
-            {/* Pill row (open state on mobile, all states on desktop) */}
-            <div className={`status-pill-row${!isOpen ? ' hide-on-mobile' : ''}`}>
-              {waitMinutes !== null && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  fontSize: 12, fontWeight: 600,
-                  color: waitMinutes <= 15 ? '#15803D' : waitMinutes <= 30 ? '#92400E' : '#991B1B',
-                  background: waitMinutes <= 15 ? '#DCFCE7' : waitMinutes <= 30 ? '#FEF3C7' : '#FEE2E2',
-                  padding: '3px 10px', borderRadius: 99,
-                }}>
-                  ⏱ ~{waitMinutes} min wait
-                </span>
-              )}
-              <OpeningStatusBadge
-                open={isOpen}
-                reason={hoursReason}
-                currentClose={currentClose}
-                nextOpenWindow={nextOpenWindow}
-                closedDetail={closedMessage}
-                timeDisplay="12h"
-                className="opening-status-badge-menu"
-              />
-            </div>
           </>
         )}
 
