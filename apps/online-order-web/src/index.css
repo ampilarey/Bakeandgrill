@@ -785,6 +785,44 @@ a { text-decoration: none; color: inherit; }
 .opening-status-badge-menu {
   /* nothing extra; positioning handled by parent flex container */
 }
+/* strip variant inside closed-strip */
+.opening-status-badge-strip {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  font-size: 0.85rem !important;
+  white-space: normal;
+}
+.status-pill-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 0.75rem var(--page-gutter) 0;
+  flex-wrap: wrap;
+}
+.closed-strip {
+  display: none;
+}
+@media (max-width: 900px) {
+  .closed-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem var(--page-gutter);
+    background: rgba(120, 20, 15, 0.9);
+    color: #FCA5A5;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-sizing: border-box;
+  }
+  .status-pill-row.hide-on-mobile {
+    display: none;
+  }
+}
 
 @media (max-width: 768px) {
   .opening-status-badge-hero.opening-status-badge {

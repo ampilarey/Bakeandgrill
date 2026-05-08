@@ -106,7 +106,10 @@ export function MenuPage() {
 
   useEffect(() => {
     getWaitTimeEstimate()
-      .then(({ wait_minutes }) => setWaitMinutes(wait_minutes))
+      .then(({ wait_minutes, queue_depth }) => {
+        // Only show wait time when there are actual orders in the queue
+        if (queue_depth > 0) setWaitMinutes(wait_minutes);
+      })
       .catch(() => { /* non-blocking */ });
   }, []);
 
@@ -328,29 +331,48 @@ export function MenuPage() {
       {/* ── Main content ──────────────────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0 }}>
 
-        {/* Opening status badge + wait time */}
+        {/* Opening status + wait time */}
         {isOpen !== null && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, padding: '0.75rem var(--page-gutter) 0', flexWrap: 'wrap' }}>
-            {waitMinutes !== null && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                fontSize: 12, fontWeight: 600, color: waitMinutes <= 15 ? '#15803D' : waitMinutes <= 30 ? '#92400E' : '#991B1B',
-                background: waitMinutes <= 15 ? '#DCFCE7' : waitMinutes <= 30 ? '#FEF3C7' : '#FEE2E2',
-                padding: '3px 10px', borderRadius: 99,
-              }}>
-                ⏱ ~{waitMinutes} min wait
-              </span>
+          <>
+            {/* Closed full-width strip on mobile */}
+            {!isOpen && (
+              <div className="closed-strip">
+                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#FCA5A5', flexShrink: 0 }} />
+                <OpeningStatusBadge
+                  open={isOpen}
+                  reason={hoursReason}
+                  currentClose={currentClose}
+                  nextOpenWindow={nextOpenWindow}
+                  closedDetail={closedMessage}
+                  timeDisplay="12h"
+                  className="opening-status-badge-strip"
+                />
+              </div>
             )}
-            <OpeningStatusBadge
-              open={isOpen}
-              reason={hoursReason}
-              currentClose={currentClose}
-              nextOpenWindow={nextOpenWindow}
-              closedDetail={closedMessage}
-              timeDisplay="12h"
-              className="opening-status-badge-menu"
-            />
-          </div>
+            {/* Pill row (open state on mobile, all states on desktop) */}
+            <div className={`status-pill-row${!isOpen ? ' hide-on-mobile' : ''}`}>
+              {waitMinutes !== null && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: 12, fontWeight: 600,
+                  color: waitMinutes <= 15 ? '#15803D' : waitMinutes <= 30 ? '#92400E' : '#991B1B',
+                  background: waitMinutes <= 15 ? '#DCFCE7' : waitMinutes <= 30 ? '#FEF3C7' : '#FEE2E2',
+                  padding: '3px 10px', borderRadius: 99,
+                }}>
+                  ⏱ ~{waitMinutes} min wait
+                </span>
+              )}
+              <OpeningStatusBadge
+                open={isOpen}
+                reason={hoursReason}
+                currentClose={currentClose}
+                nextOpenWindow={nextOpenWindow}
+                closedDetail={closedMessage}
+                timeDisplay="12h"
+                className="opening-status-badge-menu"
+              />
+            </div>
+          </>
         )}
 
         {/* Mobile category picker — sticky trigger */}
