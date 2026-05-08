@@ -346,12 +346,8 @@ export function MenuPage() {
                 ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
                 : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
               }
+              {isOpen && waitMinutes !== null && ` · ~${waitMinutes} min wait`}
             </span>
-            {waitMinutes !== null && isOpen && (
-              <span style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, color: '#15803D', background: '#DCFCE7', padding: '2px 8px', borderRadius: 999 }}>
-                ⏱ ~{waitMinutes} min
-              </span>
-            )}
           </div>
         )}
 
