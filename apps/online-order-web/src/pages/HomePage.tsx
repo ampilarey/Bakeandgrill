@@ -85,9 +85,7 @@ export function HomePage() {
         className="opening-status-badge-hero"
         timeDisplay="24h"
       />
-    ) : null;
-
-  const gradientHeroFallback = (
+    ) : null;  const gradientHeroFallback = (
     <section
       className="home-hero"
       style={{
@@ -125,11 +123,29 @@ export function HomePage() {
   return (
     <div>
 
+      {/* Compact closed notice — shown above hero when ordering is closed */}
+      {isOpen === false && (
+        <div className="closed-notice-card">
+          <span className="closed-notice-icon">🔒</span>
+          <span className="closed-notice-title">
+            Closed
+            {nextOpenWindow && (() => {
+              const d = new Date(nextOpenWindow);
+              const isToday = d.toDateString() === new Date().toDateString();
+              const h = d.getHours(), m = d.getMinutes();
+              const time = `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+              return ` · Opens ${isToday ? 'today' : d.toLocaleDateString('en-US',{weekday:'short'})} at ${time}`;
+            })()}
+          </span>
+          <a href="/hours" className="closed-notice-link">Hours →</a>
+        </div>
+      )}
+
       <HeroCarousel
         slides={heroSlides}
         apiOrigin={API_ORIGIN}
         fallback={gradientHeroFallback}
-        statusSlot={statusBadge}
+        statusSlot={isOpen ? statusBadge : null}
       />
 
       {/* ── "Your usual" returning-customer block ──────────────────────────── */}
