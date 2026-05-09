@@ -79,7 +79,7 @@ class OnlineOrderingController extends Controller
 
         $status = $this->gate->status();
         $deliveryStatus = $this->deliveryGate->status();
-        $status['delivery_available'] = $deliveryStatus['delivery_open'];
+        $status['delivery_available'] = $status['open'] && $deliveryStatus['delivery_open'];
         $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
 
         return response()->json([
