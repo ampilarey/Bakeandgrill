@@ -9,7 +9,7 @@ import {
   getDeliveryStatus, toggleDelivery, updateDeliverySchedule,
   getOnlineOrderingStatus, toggleOnlineOrdering, setOnlineOrderingOverride, updateOnlineOrderingSchedule,
 } from '../api';
-import type { Device, DeliveryGateStatus, DeliveryDayWindow, OnlineOrderingGateStatus, OnlineOrderingDayWindow } from '../api';
+import type { Device, DeliveryGateStatus, OnlineOrderingGateStatus } from '../api';
 
 // ─── Sub-page cards ───────────────────────────────────────────────────────────
 const HUB_CARDS = [
@@ -285,31 +285,119 @@ function NotificationsSettings() {
   );
 }
 
-// ─── Online Ordering sub-page ─────────────────────────────────────────────────
-const WEEK_DAYS_ORDERING = [
-  { key: 'mon', label: 'Monday' }, { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' }, { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' }, { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
+// ─── Shared multi-window schedule editor ─────────────────────────────────────
+type DaySchedule = { enabled: boolean; windows: { open: string; close: string }[] };
+type ScheduleMap = Record<string, DaySchedule>;
+
+const WEEK_DAYS = [
+  { key: 'mon', label: 'Mon' }, { key: 'tue', label: 'Tue' },
+  { key: 'wed', label: 'Wed' }, { key: 'thu', label: 'Thu' },
+  { key: 'fri', label: 'Fri' }, { key: 'sat', label: 'Sat' },
+  { key: 'sun', label: 'Sun' },
 ] as const;
 
-type OrdDayKey = typeof WEEK_DAYS_ORDERING[number]['key'];
+const DEFAULT_WINDOW = { open: '11:00', close: '22:00' };
 
-const EMPTY_ORD_SCHEDULE: Record<OrdDayKey, OnlineOrderingDayWindow> = {
-  mon: { open: '07:00', close: '22:00', enabled: true },
-  tue: { open: '07:00', close: '22:00', enabled: true },
-  wed: { open: '07:00', close: '22:00', enabled: true },
-  thu: { open: '07:00', close: '22:00', enabled: true },
-  fri: { open: '07:00', close: '22:00', enabled: true },
-  sat: { open: '07:00', close: '22:00', enabled: true },
-  sun: { open: '07:00', close: '22:00', enabled: true },
-};
+function makeDefaultSchedule(defaultOpen = '11:00', defaultClose = '22:00'): ScheduleMap {
+  return Object.fromEntries(
+    WEEK_DAYS.map(({ key }) => [key, { enabled: true, windows: [{ open: defaultOpen, close: defaultClose }] }]),
+  );
+}
 
+function ScheduleEditor({ schedule, onChange }: { schedule: ScheduleMap; onChange: (s: ScheduleMap) => void }) {
+  const setDay = (day: string, patch: Partial<DaySchedule>) =>
+    onChange({ ...schedule, [day]: { ...schedule[day], ...patch } });
+
+  const setWindow = (day: string, idx: number, field: 'open' | 'close', val: string) => {
+    const wins = [...schedule[day].windows];
+    wins[idx] = { ...wins[idx], [field]: val };
+    setDay(day, { windows: wins });
+  };
+
+  const addWindow = (day: string) =>
+    setDay(day, { windows: [...schedule[day].windows, { ...DEFAULT_WINDOW }] });
+
+  const removeWindow = (day: string, idx: number) => {
+    const wins = schedule[day].windows.filter((_, i) => i !== idx);
+    setDay(day, { windows: wins.length ? wins : [{ ...DEFAULT_WINDOW }] });
+  };
+
+  return (
+    <div style={{ border: '1.5px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
+      {WEEK_DAYS.map(({ key, label }, di) => {
+        const day = schedule[key] ?? { enabled: true, windows: [{ ...DEFAULT_WINDOW }] };
+        return (
+          <div key={key} style={{
+            borderTop: di === 0 ? 'none' : '1px solid #F0EBE5',
+            background: day.enabled ? '#fff' : '#FAFAFA',
+          }}>
+            {/* Day header row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px' }}>
+              <span style={{ width: 36, fontSize: 13, fontWeight: 700, color: '#1C1408', flexShrink: 0 }}>{label}</span>
+              {day.enabled ? (
+                <span style={{ flex: 1, fontSize: 11, color: '#9C8E7E' }}>
+                  {day.windows.length} window{day.windows.length !== 1 ? 's' : ''}
+                </span>
+              ) : (
+                <span style={{ flex: 1, fontSize: 12, color: '#9C8E7E', fontStyle: 'italic' }}>Closed</span>
+              )}
+              {/* Day enabled toggle */}
+              <button
+                onClick={() => setDay(key, { enabled: !day.enabled })}
+                style={{
+                  flexShrink: 0, width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: day.enabled ? '#D4813A' : '#D1D5DB', position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 2, left: day.enabled ? 18 : 2,
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                }} />
+              </button>
+            </div>
+
+            {/* Windows */}
+            {day.enabled && day.windows.map((win, wi) => (
+              <div key={wi} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '5px 14px 5px 50px',
+                background: wi % 2 === 0 ? '#FAFAF8' : '#F5F0EB',
+              }}>
+                <input type="time" value={win.open} onChange={(e) => setWindow(key, wi, 'open', e.target.value)}
+                  style={{ width: 95, height: 28, padding: '0 7px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
+                <span style={{ fontSize: 12, color: '#9C8E7E' }}>–</span>
+                <input type="time" value={win.close} onChange={(e) => setWindow(key, wi, 'close', e.target.value)}
+                  style={{ width: 95, height: 28, padding: '0 7px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
+                <button onClick={() => removeWindow(key, wi)}
+                  style={{ marginLeft: 4, width: 22, height: 22, borderRadius: '50%', border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontSize: 14, lineHeight: '20px', color: '#9C8E7E', flexShrink: 0 }}>
+                  ×
+                </button>
+              </div>
+            ))}
+
+            {/* Add window button */}
+            {day.enabled && (
+              <div style={{ padding: '4px 14px 8px 50px' }}>
+                <button onClick={() => addWindow(key)}
+                  style={{ fontSize: 11, fontWeight: 600, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  + Add window
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Online Ordering sub-page ─────────────────────────────────────────────────
 function OnlineOrderingSettings() {
   const [status, setStatus] = useState<OnlineOrderingGateStatus | null>(null);
   const [toggling, setToggling] = useState(false);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
-  const [schedule, setSchedule] = useState<Record<OrdDayKey, OnlineOrderingDayWindow>>(EMPTY_ORD_SCHEDULE);
+  const [schedule, setSchedule] = useState<ScheduleMap>(makeDefaultSchedule('07:00', '22:00'));
   const [overrideUntil, setOverrideUntil] = useState('');
   const [savingSched, setSavingSched] = useState(false);
   const [savedSched, setSavedSched] = useState(false);
@@ -320,64 +408,61 @@ function OnlineOrderingSettings() {
     getOnlineOrderingStatus().then((s) => {
       setStatus(s);
       setScheduleEnabled(s.schedule_active);
-      if (s.override_until) setOverrideUntil(s.override_until.slice(0, 16)); // trim to datetime-local format
+      if (s.override_until) setOverrideUntil(s.override_until.slice(0, 16));
     }).catch((e: Error) => setError(e.message));
   }, []);
 
   const handleToggle = async (enabled: boolean) => {
     setToggling(true); setError(null);
-    try {
-      const res = await toggleOnlineOrdering(enabled);
-      setStatus(res.status);
-    } catch (e: unknown) { setError((e as Error).message); }
+    try { const res = await toggleOnlineOrdering(enabled); setStatus(res.status); }
+    catch (e: unknown) { setError((e as Error).message); }
     finally { setToggling(false); }
   };
 
   const handleSaveSchedule = async () => {
     setSavingSched(true); setError(null);
     try {
-      const payload = scheduleEnabled ? schedule : null;
-      const res = await updateOnlineOrderingSchedule(payload);
+      const res = await updateOnlineOrderingSchedule(scheduleEnabled ? schedule : null);
       setStatus(res.status);
       setSavedSched(true); setTimeout(() => setSavedSched(false), 2500);
     } catch (e: unknown) { setError((e as Error).message); }
     finally { setSavingSched(false); }
   };
 
-  const handleSaveOverride = async () => {
+  const handleSaveOverride = async (clear = false) => {
     setSavingOverride(true); setError(null);
     try {
-      await setOnlineOrderingOverride(overrideUntil || null);
+      await setOnlineOrderingOverride(clear ? null : (overrideUntil || null));
       const fresh = await getOnlineOrderingStatus();
       setStatus(fresh);
+      if (clear) setOverrideUntil('');
     } catch (e: unknown) { setError((e as Error).message); }
     finally { setSavingOverride(false); }
-  };
-
-  const updateDay = (day: OrdDayKey, field: keyof OnlineOrderingDayWindow, value: string | boolean) => {
-    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
   };
 
   const isOpen = status?.open ?? false;
   const masterOn = status?.master_switch ?? true;
   const overrideActive = status?.override_active ?? false;
-
   const fmtTime = (iso: string | null | undefined) => {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return new Date(iso).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   };
+
+  const Toggle = ({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) => (
+    <button disabled={disabled} onClick={onClick} style={{
+      flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none',
+      cursor: disabled ? 'wait' : 'pointer', background: on ? '#16A34A' : '#D1D5DB',
+      position: 'relative', transition: 'background 0.2s',
+    }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+    </button>
+  );
 
   return (
     <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 20 }}>
       {error && <p style={{ color: '#dc2626', fontSize: 13, margin: 0, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>{error}</p>}
 
-      {/* Status banner */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12,
-        background: isOpen ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.07)',
-        border: `1.5px solid ${isOpen ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.2)'}`,
-      }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, background: isOpen ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.07)', border: `1.5px solid ${isOpen ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.2)'}` }}>
         <span style={{ width: 9, height: 9, borderRadius: '50%', background: isOpen ? '#16A34A' : '#DC2626', flexShrink: 0, display: 'inline-block' }} />
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: isOpen ? '#15803D' : '#DC2626' }}>
           Online ordering is currently <strong>{isOpen ? 'open' : 'closed'}</strong>
@@ -387,180 +472,58 @@ function OnlineOrderingSettings() {
         </p>
       </div>
 
-      {/* Master toggle */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Accept online orders</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
-              Master switch — when off, the order app shows "Online ordering is closed" and blocks new orders entirely.
-              Overrides the schedule below.
-            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>Master switch — when off, all online ordering is blocked entirely regardless of schedule.</p>
           </div>
-          <button
-            disabled={toggling}
-            onClick={() => void handleToggle(!masterOn)}
-            style={{
-              flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none',
-              cursor: toggling ? 'wait' : 'pointer',
-              background: masterOn ? '#16A34A' : '#D1D5DB',
-              position: 'relative', transition: 'background 0.2s',
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: 3, left: masterOn ? 23 : 3,
-              width: 18, height: 18, borderRadius: '50%', background: '#fff',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }} />
-          </button>
+          <Toggle on={masterOn} onClick={() => void handleToggle(!masterOn)} disabled={toggling} />
         </div>
       </Card>
 
-      {/* Schedule */}
       <Card>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: scheduleEnabled ? 16 : 0 }}>
           <div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Ordering hours schedule</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
-              Automatically open/close ordering at set times each day.
-              When off, ordering is available all day while the master switch is on.
-            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>Auto open/close each day. Supports multiple windows per day (e.g. lunch + dinner). Off = open all day.</p>
           </div>
-          <button
-            onClick={() => setScheduleEnabled((v) => !v)}
-            style={{
-              flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: scheduleEnabled ? '#16A34A' : '#D1D5DB',
-              position: 'relative', transition: 'background 0.2s',
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: 3, left: scheduleEnabled ? 23 : 3,
-              width: 18, height: 18, borderRadius: '50%', background: '#fff',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }} />
-          </button>
+          <Toggle on={scheduleEnabled} onClick={() => setScheduleEnabled(v => !v)} />
         </div>
-
-        {scheduleEnabled && (
-          <div style={{ border: '1.5px solid #E8E0D8', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
-            {WEEK_DAYS_ORDERING.map(({ key, label }, i) => {
-              const day = schedule[key];
-              return (
-                <div key={key} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                  borderTop: i === 0 ? 'none' : '1px solid #F0EBE5',
-                  background: day.enabled ? '#fff' : '#FAFAFA',
-                }}>
-                  <span style={{ width: 86, fontSize: 13, fontWeight: 600, color: '#1C1408', flexShrink: 0 }}>{label}</span>
-                  {day.enabled ? (
-                    <>
-                      <input type="time" value={day.open} onChange={(e) => updateDay(key, 'open', e.target.value)}
-                        style={{ width: 100, height: 30, padding: '0 8px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
-                      <span style={{ fontSize: 12, color: '#9C8E7E' }}>to</span>
-                      <input type="time" value={day.close} onChange={(e) => updateDay(key, 'close', e.target.value)}
-                        style={{ width: 100, height: 30, padding: '0 8px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
-                    </>
-                  ) : (
-                    <span style={{ flex: 1, fontSize: 12, color: '#9C8E7E', fontStyle: 'italic' }}>Closed</span>
-                  )}
-                  <button
-                    onClick={() => updateDay(key, 'enabled', !day.enabled)}
-                    style={{
-                      marginLeft: 'auto', flexShrink: 0,
-                      width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
-                      background: day.enabled ? '#D4813A' : '#D1D5DB',
-                      position: 'relative', transition: 'background 0.2s',
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute', top: 2, left: day.enabled ? 18 : 2,
-                      width: 16, height: 16, borderRadius: '50%', background: '#fff',
-                      transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                    }} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
+        {scheduleEnabled && <div style={{ marginBottom: 16 }}><ScheduleEditor schedule={schedule} onChange={setSchedule} /></div>}
         <div style={{ display: 'flex', gap: 10 }}>
           <Button onClick={() => void handleSaveSchedule()} disabled={savingSched}>
             {savingSched ? 'Saving…' : savedSched ? '✓ Saved' : 'Save Schedule'}
           </Button>
-          {scheduleEnabled && (
-            <Button variant="secondary" onClick={() => { setScheduleEnabled(false); void updateOnlineOrderingSchedule(null).catch(() => null); }}>
-              Clear Schedule
-            </Button>
-          )}
+          {scheduleEnabled && <Button variant="secondary" onClick={() => { setScheduleEnabled(false); void updateOnlineOrderingSchedule(null).catch(() => null); }}>Clear Schedule</Button>}
         </div>
       </Card>
 
-      {/* Force-open override */}
       <Card>
-        <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Force-open override</p>
-        <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
-          Force ordering open until a specific date/time — overrides both the master switch and the schedule.
-          Useful for special events. Leave blank to clear.
-        </p>
-        {overrideActive && (
-          <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#D4813A' }}>
-            ⚡ Override active until {fmtTime(status?.override_until ?? null)}
-          </p>
-        )}
+        <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Force-open override</p>
+        <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>Force ordering open until a datetime — overrides master switch AND schedule. Leave blank to clear.</p>
+        {overrideActive && <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#D4813A' }}>⚡ Override active until {fmtTime(status?.override_until ?? null)}</p>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            type="datetime-local"
-            value={overrideUntil}
-            onChange={(e) => setOverrideUntil(e.target.value)}
-            style={{ height: 34, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', flex: 1, minWidth: 200 }}
-          />
-          <Button onClick={() => void handleSaveOverride()} disabled={savingOverride}>
-            {savingOverride ? 'Saving…' : overrideActive ? 'Update Override' : 'Set Override'}
-          </Button>
-          {overrideActive && (
-            <Button variant="secondary" onClick={() => { setOverrideUntil(''); void handleSaveOverride(); }}>
-              Clear
-            </Button>
-          )}
+          <input type="datetime-local" value={overrideUntil} onChange={(e) => setOverrideUntil(e.target.value)}
+            style={{ height: 34, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', flex: 1, minWidth: 200 }} />
+          <Button onClick={() => void handleSaveOverride()} disabled={savingOverride}>{savingOverride ? 'Saving…' : overrideActive ? 'Update' : 'Set Override'}</Button>
+          {overrideActive && <Button variant="secondary" onClick={() => void handleSaveOverride(true)}>Clear</Button>}
         </div>
       </Card>
 
       <div style={{ padding: '12px 16px', background: '#FFF7ED', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
-        <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.6 }}>
-          💡 Changes take effect immediately. The order app status pill and checkout both reflect the current state in real time.
-        </p>
+        <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.6 }}>💡 Changes take effect immediately. The order app status pill reflects the current state in real time.</p>
       </div>
     </div>
   );
 }
 
 // ─── Delivery Availability sub-page ──────────────────────────────────────────
-const WEEK_DAYS_DELIVERY = [
-  { key: 'mon', label: 'Monday' }, { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' }, { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' }, { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
-] as const;
-
-type DayKey = typeof WEEK_DAYS_DELIVERY[number]['key'];
-
-const EMPTY_SCHEDULE: Record<DayKey, DeliveryDayWindow> = {
-  mon: { open: '11:00', close: '22:00', enabled: true },
-  tue: { open: '11:00', close: '22:00', enabled: true },
-  wed: { open: '11:00', close: '22:00', enabled: true },
-  thu: { open: '11:00', close: '22:00', enabled: true },
-  fri: { open: '11:00', close: '22:00', enabled: true },
-  sat: { open: '11:00', close: '22:00', enabled: true },
-  sun: { open: '11:00', close: '22:00', enabled: false },
-};
-
 function DeliverySettings() {
   const [status, setStatus] = useState<DeliveryGateStatus | null>(null);
   const [toggling, setToggling] = useState(false);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
-  const [schedule, setSchedule] = useState<Record<DayKey, DeliveryDayWindow>>(EMPTY_SCHEDULE);
+  const [schedule, setSchedule] = useState<ScheduleMap>(makeDefaultSchedule('11:00', '22:00'));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -573,52 +536,40 @@ function DeliverySettings() {
   }, []);
 
   const handleToggle = async (enabled: boolean) => {
-    setToggling(true);
-    setError(null);
-    try {
-      const res = await toggleDelivery(enabled);
-      setStatus(res.delivery_status);
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setToggling(false);
-    }
+    setToggling(true); setError(null);
+    try { const res = await toggleDelivery(enabled); setStatus(res.delivery_status); }
+    catch (e: unknown) { setError((e as Error).message); }
+    finally { setToggling(false); }
   };
 
   const handleSaveSchedule = async () => {
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
     try {
-      const payload = scheduleEnabled ? schedule : null;
-      const res = await updateDeliverySchedule(payload);
+      const res = await updateDeliverySchedule(scheduleEnabled ? schedule : null);
       setStatus(res.delivery_status);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateDay = (day: DayKey, field: keyof DeliveryDayWindow, value: string | boolean) => {
-    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } catch (e: unknown) { setError((e as Error).message); }
+    finally { setSaving(false); }
   };
 
   const isOpen = status?.delivery_open ?? false;
   const acceptingFlag = status?.accepting_flag ?? true;
 
+  const Toggle = ({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) => (
+    <button disabled={disabled} onClick={onClick} style={{
+      flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none',
+      cursor: disabled ? 'wait' : 'pointer', background: on ? '#16A34A' : '#D1D5DB',
+      position: 'relative', transition: 'background 0.2s',
+    }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+    </button>
+  );
+
   return (
     <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 20 }}>
       {error && <p style={{ color: '#dc2626', fontSize: 13, margin: 0, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>{error}</p>}
 
-      {/* Status banner */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 16px', borderRadius: 12,
-        background: isOpen ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.07)',
-        border: `1.5px solid ${isOpen ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.2)'}`,
-      }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, background: isOpen ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.07)', border: `1.5px solid ${isOpen ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.2)'}` }}>
         <span style={{ width: 9, height: 9, borderRadius: '50%', background: isOpen ? '#16A34A' : '#DC2626', flexShrink: 0, display: 'inline-block' }} />
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: isOpen ? '#15803D' : '#DC2626' }}>
           Delivery is currently <strong>{isOpen ? 'available' : 'unavailable'}</strong>
@@ -626,119 +577,36 @@ function DeliverySettings() {
         </p>
       </div>
 
-      {/* Manual toggle */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Accept deliveries</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
-              When off, the delivery option is hidden at checkout. Customers can still order for takeaway.
-              This overrides the schedule below.
-            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>When off, delivery is hidden at checkout. Customers can still order for takeaway. Overrides schedule.</p>
           </div>
-          <button
-            disabled={toggling}
-            onClick={() => void handleToggle(!acceptingFlag)}
-            style={{
-              flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none', cursor: toggling ? 'wait' : 'pointer',
-              background: acceptingFlag ? '#16A34A' : '#D1D5DB',
-              position: 'relative', transition: 'background 0.2s',
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: 3, left: acceptingFlag ? 23 : 3,
-              width: 18, height: 18, borderRadius: '50%', background: '#fff',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }} />
-          </button>
+          <Toggle on={acceptingFlag} onClick={() => void handleToggle(!acceptingFlag)} disabled={toggling} />
         </div>
       </Card>
 
-      {/* Schedule */}
       <Card>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: scheduleEnabled ? 16 : 0 }}>
           <div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Delivery hours schedule</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
-              Set per-day delivery windows separate from general ordering hours.
-              When off, delivery is available all day (while the toggle above is on).
-            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>Set per-day delivery windows separate from ordering hours. Supports multiple windows per day. Off = available all day.</p>
           </div>
-          <button
-            onClick={() => setScheduleEnabled((v) => !v)}
-            style={{
-              flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: scheduleEnabled ? '#16A34A' : '#D1D5DB',
-              position: 'relative', transition: 'background 0.2s',
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: 3, left: scheduleEnabled ? 23 : 3,
-              width: 18, height: 18, borderRadius: '50%', background: '#fff',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }} />
-          </button>
+          <Toggle on={scheduleEnabled} onClick={() => setScheduleEnabled(v => !v)} />
         </div>
-
-        {scheduleEnabled && (
-          <div style={{ border: '1.5px solid #E8E0D8', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
-            {WEEK_DAYS_DELIVERY.map(({ key, label }, i) => {
-              const day = schedule[key];
-              return (
-                <div key={key} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                  borderTop: i === 0 ? 'none' : '1px solid #F0EBE5',
-                  background: day.enabled ? '#fff' : '#FAFAFA',
-                }}>
-                  <span style={{ width: 86, fontSize: 13, fontWeight: 600, color: '#1C1408', flexShrink: 0 }}>{label}</span>
-                  {day.enabled ? (
-                    <>
-                      <input type="time" value={day.open}  onChange={(e) => updateDay(key, 'open',  e.target.value)}
-                        style={{ width: 100, height: 30, padding: '0 8px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
-                      <span style={{ fontSize: 12, color: '#9C8E7E' }}>to</span>
-                      <input type="time" value={day.close} onChange={(e) => updateDay(key, 'close', e.target.value)}
-                        style={{ width: 100, height: 30, padding: '0 8px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
-                    </>
-                  ) : (
-                    <span style={{ flex: 1, fontSize: 12, color: '#9C8E7E', fontStyle: 'italic' }}>Closed</span>
-                  )}
-                  <button
-                    onClick={() => updateDay(key, 'enabled', !day.enabled)}
-                    style={{
-                      marginLeft: 'auto', flexShrink: 0,
-                      width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
-                      background: day.enabled ? '#D4813A' : '#D1D5DB',
-                      position: 'relative', transition: 'background 0.2s',
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute', top: 2, left: day.enabled ? 18 : 2,
-                      width: 16, height: 16, borderRadius: '50%', background: '#fff',
-                      transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                    }} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
+        {scheduleEnabled && <div style={{ marginBottom: 16 }}><ScheduleEditor schedule={schedule} onChange={setSchedule} /></div>}
         <div style={{ display: 'flex', gap: 10 }}>
           <Button onClick={() => void handleSaveSchedule()} disabled={saving}>
             {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Schedule'}
           </Button>
-          {scheduleEnabled && (
-            <Button variant="secondary" onClick={() => { setScheduleEnabled(false); void updateDeliverySchedule(null).catch(() => null); }}>
-              Clear Schedule
-            </Button>
-          )}
+          {scheduleEnabled && <Button variant="secondary" onClick={() => { setScheduleEnabled(false); void updateDeliverySchedule(null).catch(() => null); }}>Clear Schedule</Button>}
         </div>
       </Card>
 
       <div style={{ padding: '12px 16px', background: '#FFF7ED', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
         <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.6 }}>
-          💡 When delivery is off or outside schedule, the order app shows an amber <strong>"Takeaway only"</strong> pill.
-          Customers can still order — they just won't see the delivery option at checkout.
+          💡 When delivery is off or outside schedule, the order app shows an amber <strong>"Takeaway only"</strong> pill. Customers can still place takeaway orders.
         </p>
       </div>
     </div>

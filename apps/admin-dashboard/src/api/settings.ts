@@ -65,9 +65,8 @@ export async function setOnlineOrderingOverride(until: string | null): Promise<{
 }
 
 export interface OnlineOrderingDayWindow {
-  open: string;    // "HH:MM"
-  close: string;   // "HH:MM"
   enabled: boolean;
+  windows: { open: string; close: string }[];
 }
 
 export async function updateOnlineOrderingSchedule(
@@ -95,9 +94,8 @@ export async function toggleDelivery(enabled: boolean): Promise<{ delivery_accep
 }
 
 export interface DeliveryDayWindow {
-  open: string;   // "HH:MM"
-  close: string;  // "HH:MM"
   enabled: boolean;
+  windows: { open: string; close: string }[];
 }
 
 export async function updateDeliverySchedule(

@@ -100,7 +100,14 @@ class DeliveryGateService
     }
 
     /**
-     * @return array<string, array{open: string, close: string}>|null
+     * Parses the JSON delivery schedule — identical multi-window format to OnlineOrderingGateService.
+     *
+     * Supports three formats per day:
+     *   New UI format:    {"mon": {"enabled": true, "windows": [{"open":"11:00","close":"15:00"}, ...]}}
+     *   Bare array:       {"mon": [{"open":"11:00","close":"15:00"}, ...]}
+     *   Old single-window:{"mon": {"open":"11:00","close":"22:00","enabled":true}}
+     *
+     * @return array<string, list<array{open: string, close: string}>>|null
      */
     private function parseSchedule(): ?array
     {
@@ -114,7 +121,57 @@ class DeliveryGateService
             return null;
         }
 
-        return is_array($decoded) && !empty($decoded) ? $decoded : null;
+        if (!is_array($decoded) || empty($decoded)) {
+            return null;
+        }
+
+        $normalised = [];
+        foreach ($decoded as $day => $value) {
+            if (!is_string($day) || !is_array($value)) {
+                continue;
+            }
+
+            // New UI format: {"enabled": bool, "windows": [...]}
+            if (isset($value['windows']) && is_array($value['windows'])) {
+                if (isset($value['enabled']) && $value['enabled'] === false) {
+                    continue;
+                }
+                $windows = [];
+                foreach ($value['windows'] as $win) {
+                    if (is_array($win) && !empty($win['open']) && !empty($win['close'])) {
+                        $windows[] = ['open' => $win['open'], 'close' => $win['close']];
+                    }
+                }
+                if (!empty($windows)) {
+                    $normalised[$day] = $windows;
+                }
+                continue;
+            }
+
+            // Bare array of windows: [{"open":…,"close":…}, …]
+            if (isset($value[0]) && is_array($value[0])) {
+                $windows = [];
+                foreach ($value as $win) {
+                    if (!empty($win['open']) && !empty($win['close'])) {
+                        $windows[] = ['open' => $win['open'], 'close' => $win['close']];
+                    }
+                }
+                if (!empty($windows)) {
+                    $normalised[$day] = $windows;
+                }
+                continue;
+            }
+
+            // Old single-window: {"open":…,"close":…,"enabled":…}
+            if (!empty($value['open']) && !empty($value['close'])) {
+                if (isset($value['enabled']) && $value['enabled'] === false) {
+                    continue;
+                }
+                $normalised[$day] = [['open' => $value['open'], 'close' => $value['close']]];
+            }
+        }
+
+        return empty($normalised) ? null : $normalised;
     }
 
     /**
@@ -144,20 +201,25 @@ class DeliveryGateService
         $tz = config('app.timezone', 'UTC');
         $now = ($at ?? now())->clone()->setTimezone($tz);
         $dayKey = strtolower($now->format('D'));
-        $window = $schedule[$dayKey] ?? null;
+        $windows = $schedule[$dayKey] ?? null;
 
-        if (!$window) {
+        if (!$windows) {
             return false;
         }
 
-        try {
-            $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
-            $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
-        } catch (\Throwable) {
-            return false;
+        foreach ($windows as $window) {
+            try {
+                $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+                $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
+            } catch (\Throwable) {
+                continue;
+            }
+            if ($now->between($open, $close)) {
+                return true;
+            }
         }
 
-        return $now->between($open, $close);
+        return false;
     }
 
     private function nextWindow(array $schedule, ?Carbon $at): ?string
@@ -168,20 +230,21 @@ class DeliveryGateService
         for ($i = 0; $i <= 7; $i++) {
             $candidate = $now->clone()->addDays($i);
             $dayKey = strtolower($candidate->format('D'));
-            $window = $schedule[$dayKey] ?? null;
-            if (!$window) {
+            $windows = $schedule[$dayKey] ?? null;
+            if (!$windows) {
                 continue;
             }
-            try {
-                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($candidate);
-            } catch (\Throwable) {
-                continue;
+            foreach ($windows as $window) {
+                try {
+                    $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($candidate);
+                } catch (\Throwable) {
+                    continue;
+                }
+                if ($i === 0 && $open->lte($now)) {
+                    continue;
+                }
+                return $open->toIso8601String();
             }
-            if ($i === 0 && $open->lte($now)) {
-                continue;
-            }
-
-            return $open->toIso8601String();
         }
 
         return null;

@@ -30,9 +30,10 @@ class OnlineOrderingController extends Controller
     {
         $status = $this->gate->status();
 
-        // Merge delivery availability so the order app status pill can show "Takeaway only"
+        // Delivery is only meaningful when online ordering is open.
+        // If the ordering gate is closed, delivery is also unavailable regardless of its own flag.
         $deliveryStatus = $this->deliveryGate->status();
-        $status['delivery_available'] = $deliveryStatus['delivery_open'];
+        $status['delivery_available'] = $status['open'] && $deliveryStatus['delivery_open'];
         $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
 
         return response()->json($status);
