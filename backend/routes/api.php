@@ -150,6 +150,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::prefix('admin/ordering')->middleware('role:owner,manager')->group(function () {
         Route::post('/toggle', [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggle']);
         Route::post('/override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'override']);
+        Route::post('/delivery-toggle', [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggleDelivery']);
+        Route::put('/delivery-schedule', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateDeliverySchedule']);
     });
 
     // Device Management (Admin only)

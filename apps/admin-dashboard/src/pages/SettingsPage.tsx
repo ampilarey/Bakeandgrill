@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Shield, Smartphone, Link2, Bell } from 'lucide-react';
+import { Globe, Shield, Smartphone, Link2, Bell, Truck } from 'lucide-react';
 import { Button, Card } from '../components/ui';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
-import { fetchDevices, enableDevice, disableDevice, getSiteSettings, updateSiteSettings } from '../api';
-import type { Device } from '../api';
+import { fetchDevices, enableDevice, disableDevice, getSiteSettings, updateSiteSettings, getDeliveryStatus, toggleDelivery, updateDeliverySchedule } from '../api';
+import type { Device, DeliveryGateStatus, DeliveryDayWindow } from '../api';
 
 // ─── Sub-page cards ───────────────────────────────────────────────────────────
 const HUB_CARDS = [
@@ -14,6 +14,7 @@ const HUB_CARDS = [
   { id: 'devices',       icon: Smartphone,  label: 'Devices',              desc: 'Register and manage POS/KDS devices' },
   { id: 'notifications', icon: Bell,        label: 'Notifications',        desc: 'Customer SMS alerts for order status changes' },
   { id: 'integrations',  icon: Link2,       label: 'Integrations',         desc: 'Xero, Webhooks, SMS provider' },
+  { id: 'delivery',      icon: Truck,       label: 'Delivery Availability', desc: 'Toggle delivery on/off and set delivery hours separately from ordering hours' },
 ];
 
 // ─── Devices sub-page ────────────────────────────────────────────────────────
@@ -279,6 +280,215 @@ function NotificationsSettings() {
   );
 }
 
+// ─── Delivery Availability sub-page ──────────────────────────────────────────
+const WEEK_DAYS_DELIVERY = [
+  { key: 'mon', label: 'Monday' }, { key: 'tue', label: 'Tuesday' },
+  { key: 'wed', label: 'Wednesday' }, { key: 'thu', label: 'Thursday' },
+  { key: 'fri', label: 'Friday' }, { key: 'sat', label: 'Saturday' },
+  { key: 'sun', label: 'Sunday' },
+] as const;
+
+type DayKey = typeof WEEK_DAYS_DELIVERY[number]['key'];
+
+const EMPTY_SCHEDULE: Record<DayKey, DeliveryDayWindow> = {
+  mon: { open: '11:00', close: '22:00', enabled: true },
+  tue: { open: '11:00', close: '22:00', enabled: true },
+  wed: { open: '11:00', close: '22:00', enabled: true },
+  thu: { open: '11:00', close: '22:00', enabled: true },
+  fri: { open: '11:00', close: '22:00', enabled: true },
+  sat: { open: '11:00', close: '22:00', enabled: true },
+  sun: { open: '11:00', close: '22:00', enabled: false },
+};
+
+function DeliverySettings() {
+  const [status, setStatus] = useState<DeliveryGateStatus | null>(null);
+  const [toggling, setToggling] = useState(false);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [schedule, setSchedule] = useState<Record<DayKey, DeliveryDayWindow>>(EMPTY_SCHEDULE);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getDeliveryStatus().then((s) => {
+      setStatus(s);
+      setScheduleEnabled(s.schedule_active);
+    }).catch((e: Error) => setError(e.message));
+  }, []);
+
+  const handleToggle = async (enabled: boolean) => {
+    setToggling(true);
+    setError(null);
+    try {
+      const res = await toggleDelivery(enabled);
+      setStatus(res.delivery_status);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const payload = scheduleEnabled ? schedule : null;
+      const res = await updateDeliverySchedule(payload);
+      setStatus(res.delivery_status);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateDay = (day: DayKey, field: keyof DeliveryDayWindow, value: string | boolean) => {
+    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
+  };
+
+  const isOpen = status?.delivery_open ?? false;
+  const acceptingFlag = status?.accepting_flag ?? true;
+
+  return (
+    <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {error && <p style={{ color: '#dc2626', fontSize: 13, margin: 0, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>{error}</p>}
+
+      {/* Status banner */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 16px', borderRadius: 12,
+        background: isOpen ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.07)',
+        border: `1.5px solid ${isOpen ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.2)'}`,
+      }}>
+        <span style={{ width: 9, height: 9, borderRadius: '50%', background: isOpen ? '#16A34A' : '#DC2626', flexShrink: 0, display: 'inline-block' }} />
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: isOpen ? '#15803D' : '#DC2626' }}>
+          Delivery is currently <strong>{isOpen ? 'available' : 'unavailable'}</strong>
+          {!isOpen && status?.next_delivery_window ? ` · Next window: ${new Date(status.next_delivery_window).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}
+        </p>
+      </div>
+
+      {/* Manual toggle */}
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Accept deliveries</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
+              When off, the delivery option is hidden at checkout. Customers can still order for takeaway.
+              This overrides the schedule below.
+            </p>
+          </div>
+          <button
+            disabled={toggling}
+            onClick={() => void handleToggle(!acceptingFlag)}
+            style={{
+              flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none', cursor: toggling ? 'wait' : 'pointer',
+              background: acceptingFlag ? '#16A34A' : '#D1D5DB',
+              position: 'relative', transition: 'background 0.2s',
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: acceptingFlag ? 23 : 3,
+              width: 18, height: 18, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            }} />
+          </button>
+        </div>
+      </Card>
+
+      {/* Schedule */}
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+          <div>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Delivery hours schedule</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
+              Set per-day delivery windows separate from general ordering hours.
+              When off, delivery is available all day (while the toggle above is on).
+            </p>
+          </div>
+          <button
+            onClick={() => setScheduleEnabled((v) => !v)}
+            style={{
+              flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: scheduleEnabled ? '#16A34A' : '#D1D5DB',
+              position: 'relative', transition: 'background 0.2s',
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: scheduleEnabled ? 23 : 3,
+              width: 18, height: 18, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            }} />
+          </button>
+        </div>
+
+        {scheduleEnabled && (
+          <div style={{ border: '1.5px solid #E8E0D8', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+            {WEEK_DAYS_DELIVERY.map(({ key, label }, i) => {
+              const day = schedule[key];
+              return (
+                <div key={key} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                  borderTop: i === 0 ? 'none' : '1px solid #F0EBE5',
+                  background: day.enabled ? '#fff' : '#FAFAFA',
+                }}>
+                  <span style={{ width: 86, fontSize: 13, fontWeight: 600, color: '#1C1408', flexShrink: 0 }}>{label}</span>
+                  {day.enabled ? (
+                    <>
+                      <input type="time" value={day.open}  onChange={(e) => updateDay(key, 'open',  e.target.value)}
+                        style={{ width: 100, height: 30, padding: '0 8px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
+                      <span style={{ fontSize: 12, color: '#9C8E7E' }}>to</span>
+                      <input type="time" value={day.close} onChange={(e) => updateDay(key, 'close', e.target.value)}
+                        style={{ width: 100, height: 30, padding: '0 8px', border: '1px solid #E8E0D8', borderRadius: 7, fontSize: 13, fontFamily: 'inherit' }} />
+                    </>
+                  ) : (
+                    <span style={{ flex: 1, fontSize: 12, color: '#9C8E7E', fontStyle: 'italic' }}>Closed</span>
+                  )}
+                  <button
+                    onClick={() => updateDay(key, 'enabled', !day.enabled)}
+                    style={{
+                      marginLeft: 'auto', flexShrink: 0,
+                      width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+                      background: day.enabled ? '#D4813A' : '#D1D5DB',
+                      position: 'relative', transition: 'background 0.2s',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 2, left: day.enabled ? 18 : 2,
+                      width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                      transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                    }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button onClick={() => void handleSaveSchedule()} disabled={saving}>
+            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Schedule'}
+          </Button>
+          {scheduleEnabled && (
+            <Button variant="secondary" onClick={() => { setScheduleEnabled(false); void updateDeliverySchedule(null).catch(() => null); }}>
+              Clear Schedule
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <div style={{ padding: '12px 16px', background: '#FFF7ED', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
+        <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.6 }}>
+          💡 When delivery is off or outside schedule, the order app shows an amber <strong>"Takeaway only"</strong> pill.
+          Customers can still order — they just won't see the delivery option at checkout.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main SettingsPage ────────────────────────────────────────────────────────
 export function SettingsPage() {
   const [active, setActive] = useState<string | null>(null);
@@ -315,6 +525,7 @@ export function SettingsPage() {
         {active === 'devices'        && <DevicesSettings />}
         {active === 'notifications'  && <NotificationsSettings />}
         {active === 'integrations'   && <IntegrationsSettings />}
+        {active === 'delivery'       && <DeliverySettings />}
       </div>
     );
   }

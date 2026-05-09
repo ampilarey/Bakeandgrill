@@ -60,6 +60,36 @@ export async function setOnlineOrderingOverride(until: string | null): Promise<{
   return req('/admin/ordering/override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
 }
 
+// ── Delivery Gate ─────────────────────────────────────────────────────────────
+
+export interface DeliveryGateStatus {
+  delivery_open: boolean;
+  message: string | null;
+  accepting_flag: boolean;
+  schedule_active: boolean;
+  next_delivery_window: string | null;
+}
+
+export async function getDeliveryStatus(): Promise<DeliveryGateStatus> {
+  return req('/ordering/delivery-status');
+}
+
+export async function toggleDelivery(enabled: boolean): Promise<{ delivery_accepting_orders: boolean; delivery_status: DeliveryGateStatus }> {
+  return req('/admin/ordering/delivery-toggle', { method: 'POST', body: JSON.stringify({ enabled }) });
+}
+
+export interface DeliveryDayWindow {
+  open: string;   // "HH:MM"
+  close: string;  // "HH:MM"
+  enabled: boolean;
+}
+
+export async function updateDeliverySchedule(
+  schedule: Record<string, DeliveryDayWindow> | null,
+): Promise<{ delivery_schedule: unknown; delivery_status: DeliveryGateStatus }> {
+  return req('/admin/ordering/delivery-schedule', { method: 'PUT', body: JSON.stringify({ schedule }) });
+}
+
 // ── Permissions ───────────────────────────────────────────────────────────────
 
 export interface PermissionItem {

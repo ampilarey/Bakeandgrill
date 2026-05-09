@@ -49,6 +49,8 @@ export function MenuPage() {
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
+  const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
+  const [nextDeliveryWindow, setNextDeliveryWindow] = useState<string | null>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -90,6 +92,8 @@ export function MenuPage() {
         setIsOpen(gate.open);
         setCurrentClose(gate.current_close ?? null);
         setNextOpenWindow(gate.next_open_window ?? null);
+        setDeliveryAvailable(gate.delivery_available ?? true);
+        setNextDeliveryWindow(gate.next_delivery_window ?? null);
         setClosedMessage(gate.open ? null : (gate.message ?? 'Online ordering is currently closed.'));
       })
       .catch((e) => setError((e as Error).message))
@@ -339,14 +343,15 @@ export function MenuPage() {
 
         {/* Online ordering status bar */}
         {isOpen !== null && (
-          <div className={`ordering-status-bar ${isOpen ? 'open' : 'closed'}`}>
+          <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'takeaway-only') : 'closed'}`}>
             <span className="ordering-status-bar-dot" />
             <span className="ordering-status-bar-text">
               {isOpen
-                ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
+                ? deliveryAvailable
+                  ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}${waitMinutes !== null ? ` · ~${waitMinutes} min` : ''}`
+                  : `Online ordering is open · Takeaway only${nextDeliveryWindow ? ` · Delivery from ${fmtOrderingTime(nextDeliveryWindow)}` : ''}${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
                 : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
               }
-              {isOpen && waitMinutes !== null && ` · ~${waitMinutes} min wait`}
             </span>
           </div>
         )}

@@ -46,6 +46,10 @@ export interface OnlineOrderingStatus {
   current_close: string | null;
   /** ISO 8601 start of the next window (when closed). Used for "Opens X:XX PM". */
   next_open_window: string | null;
+  /** Whether delivery is currently available (false = takeaway only). */
+  delivery_available: boolean;
+  /** ISO 8601 start of the next delivery window, when delivery is currently unavailable. */
+  next_delivery_window: string | null;
 }
 
 export async function fetchOnlineOrderingStatus(): Promise<OnlineOrderingStatus> {
