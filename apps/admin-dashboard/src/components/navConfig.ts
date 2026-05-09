@@ -83,8 +83,9 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/staff',           icon: Users,       label: 'Staff',           permission: 'staff.view'            },
       { to: '/time-clock',      icon: Clock,       label: 'Time Clock',      permission: 'staff.view'            },
-      { to: '/settings',        icon: Settings,    label: 'Settings',        permission: 'website.manage'        },
-      { to: '/online-ordering', icon: ShoppingBag, label: 'Online Ordering', permission: 'settings.update'       },
+      { to: '/settings',        icon: Settings,    label: 'Settings',           permission: 'website.manage'        },
+      { to: '/online-ordering', icon: ShoppingBag, label: 'Online Ordering',    permission: 'settings.update'       },
+      { to: '/delivery-settings', icon: Truck,     label: 'Delivery Settings',  permission: 'settings.update'       },
       { to: '/devices',         icon: Monitor,     label: 'Devices',         permission: 'devices.manage'        },
       { to: '/print-jobs',      icon: Printer,     label: 'Print Queue',     permission: 'devices.manage'        },
       { to: '/webhooks',        icon: Webhook,     label: 'Webhooks',        permission: 'integrations.webhooks' },

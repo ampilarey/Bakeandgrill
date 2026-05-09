@@ -83,6 +83,8 @@ export interface DeliveryGateStatus {
   accepting_flag: boolean;
   schedule_active: boolean;
   next_delivery_window: string | null;
+  override_active: boolean;
+  override_until: string | null;
 }
 
 export async function getDeliveryStatus(): Promise<DeliveryGateStatus> {
@@ -102,6 +104,10 @@ export async function updateDeliverySchedule(
   schedule: Record<string, DeliveryDayWindow> | null,
 ): Promise<{ delivery_schedule: unknown; delivery_status: DeliveryGateStatus }> {
   return req('/admin/ordering/delivery-schedule', { method: 'PUT', body: JSON.stringify({ schedule }) });
+}
+
+export async function setDeliveryOverride(until: string | null): Promise<{ override_until: string | null; delivery_status: DeliveryGateStatus }> {
+  return req('/admin/ordering/delivery-override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
 }
 
 // ── Permissions ───────────────────────────────────────────────────────────────

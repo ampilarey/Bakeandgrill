@@ -42,6 +42,7 @@ const ReferralsPage           = lazy(() => import('./pages/ReferralsPage'));
 const PrintJobsPage           = lazy(() => import('./pages/PrintJobsPage'));
 const XeroPage                = lazy(() => import('./pages/XeroPage'));
 const OnlineOrderingPage      = lazy(() => import('./pages/OnlineOrderingPage'));
+const DeliverySettingsPage    = lazy(() => import('./pages/DeliverySettingsPage'));
 
 function PageFallback() {
   return (
@@ -349,6 +350,11 @@ export default function App() {
                 <Route path="online-ordering" element={
                   <PermissionGuard user={user} permission="settings.update">
                     <OnlineOrderingPage />
+                  </PermissionGuard>
+                } />
+                <Route path="delivery-settings" element={
+                  <PermissionGuard user={user} permission="settings.update">
+                    <DeliverySettingsPage />
                   </PermissionGuard>
                 } />
                 <Route path="*"                     element={<Navigate to="/orders" replace />} />

@@ -41,18 +41,36 @@ class DeliveryGateService
     {
         $result = $this->evaluate($deliveryArea, $at);
         $schedule = $this->parseSchedule();
+        $overrideUntil = SiteSetting::get('delivery_override_until');
+        $overrideActive = $this->isOverrideActive($at);
 
         $freeThreshold = (float) config('delivery.free_threshold', 200.00);
 
         return [
-            'delivery_open' => $result->allowed,
-            'message' => $result->allowed ? null : $result->message,
-            'accepting_flag' => $this->acceptingFlagOn(),
-            'schedule_active' => $schedule !== null,
-            'zones_enforced' => $this->parseZones() !== null,
-            'next_delivery_window' => $schedule ? $this->nextWindow($schedule, $at) : null,
-            'free_delivery_threshold' => $freeThreshold > 0 ? $freeThreshold : null,
+            'delivery_open'          => $result->allowed,
+            'message'                => $result->allowed ? null : $result->message,
+            'accepting_flag'         => $this->acceptingFlagOn(),
+            'schedule_active'        => $schedule !== null,
+            'zones_enforced'         => $this->parseZones() !== null,
+            'next_delivery_window'   => $schedule ? $this->nextWindow($schedule, $at) : null,
+            'free_delivery_threshold'=> $freeThreshold > 0 ? $freeThreshold : null,
+            'override_active'        => $overrideActive,
+            'override_until'         => $overrideUntil ?: null,
         ];
+    }
+
+    public function isOverrideActive(?Carbon $at = null): bool
+    {
+        $raw = SiteSetting::get('delivery_override_until');
+        if (!$raw) {
+            return false;
+        }
+        try {
+            $until = Carbon::parse($raw);
+            return ($at ?? now())->lt($until);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -61,6 +79,11 @@ class DeliveryGateService
 
     private function evaluate(?string $deliveryArea, ?Carbon $at): DeliveryGateResult
     {
+        // Layer 0: force-open override
+        if ($this->isOverrideActive($at)) {
+            return DeliveryGateResult::open();
+        }
+
         // Layer 1: existing flag
         if (!$this->acceptingFlagOn()) {
             return DeliveryGateResult::closed(

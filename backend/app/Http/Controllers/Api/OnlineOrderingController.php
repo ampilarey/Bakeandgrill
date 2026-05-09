@@ -135,6 +135,25 @@ class OnlineOrderingController extends Controller
     }
 
     /**
+     * Set or clear the delivery force-open override.
+     * Body: { "override_until": "2026-05-09T23:59:00" }  — set
+     *       { "override_until": null }                    — clear
+     */
+    public function deliveryOverride(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'override_until' => 'nullable|date',
+        ]);
+
+        SiteSetting::set('delivery_override_until', $validated['override_until'] ?? null);
+
+        return response()->json([
+            'override_until'  => $validated['override_until'],
+            'delivery_status' => $this->deliveryGate->status(),
+        ]);
+    }
+
+    /**
      * Set or clear the force-open override.
      * Body: { "override_until": "2026-04-18T23:59:00" }  — set
      *       { "override_until": null }                    — clear
