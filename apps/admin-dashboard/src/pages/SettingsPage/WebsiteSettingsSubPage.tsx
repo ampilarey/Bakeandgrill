@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Upload, Save } from 'lucide-react';
+import { Upload, Save, ShoppingBag, Truck, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getSiteSettings, updateSiteSettings, uploadSiteLogo, type SiteSettingsGroup } from '../../api';
 import { Button, Input, Tabs, TabList, Tab, TabPanel, Toggle, useToast } from '../../components/ui';
 
@@ -216,6 +217,68 @@ function CategoriesEditor({ label, description, value, onChange, triggerUpload }
   );
 }
 
+// ─── Ordering redirect panel ─────────────────────────────────────────────────
+function OrderingRedirectPanel() {
+  const navigate = useNavigate();
+  const links = [
+    {
+      icon: ShoppingBag,
+      label: 'Online Ordering',
+      desc: 'Master switch, force-open override, and per-day ordering hours schedule.',
+      to: '/online-ordering',
+      color: '#16A34A',
+      bg: '#F0FDF4',
+      border: 'rgba(22,163,74,0.2)',
+    },
+    {
+      icon: Truck,
+      label: 'Delivery Settings',
+      desc: 'Delivery master switch, force-open override, and per-day delivery windows.',
+      to: '/delivery-settings',
+      color: '#D4813A',
+      bg: '#FFF7ED',
+      border: 'rgba(212,129,58,0.2)',
+    },
+  ];
+
+  return (
+    <div style={{ paddingTop: 24, maxWidth: 580 }}>
+      <div style={{ marginBottom: 20, padding: '12px 16px', background: '#F0F9FF', border: '1px solid rgba(14,165,233,0.25)', borderRadius: 10 }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#0369A1', lineHeight: 1.6 }}>
+          Online ordering and delivery availability are managed on their own dedicated pages with live toggles, schedules, and override controls.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {links.map(({ icon: Icon, label, desc, to, color, bg, border }) => (
+          <button
+            key={to}
+            onClick={() => navigate(to)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 16,
+              padding: '16px 20px', background: bg,
+              border: `1.5px solid ${border}`, borderRadius: 14,
+              cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+              transition: 'box-shadow 0.15s',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)')}
+            onMouseOut={(e) => (e.currentTarget.style.boxShadow = 'none')}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fff', border: `1.5px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color }}>
+              <Icon size={22} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{label}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6B5D4F', lineHeight: 1.5 }}>{desc}</p>
+            </div>
+            <ExternalLink size={16} style={{ color: '#9C8E7E', flexShrink: 0 }} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function WebsiteSettings() {
   const { success, error } = useToast();
   const [activeTab, setActiveTab] = useState('general');
@@ -285,7 +348,19 @@ export function WebsiteSettings() {
           {tabs.map((g) => <Tab key={g} id={g.toLowerCase()}>{g}</Tab>)}
         </TabList>
 
-        {tabs.map((group) => (
+        {tabs.map((group) => {
+          const groupKey = group.toLowerCase();
+
+          // Ordering and Delivery tabs are managed by dedicated pages — show redirect cards instead
+          if (groupKey === 'ordering') {
+            return (
+              <TabPanel key={group} id={groupKey}>
+                <OrderingRedirectPanel />
+              </TabPanel>
+            );
+          }
+
+          return (
           <TabPanel key={group} id={group.toLowerCase()}>
             <div style={{ paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 680 }}>
               {(settings[group] ?? []).map((item) => {
@@ -379,7 +454,8 @@ export function WebsiteSettings() {
               </div>
             </div>
           </TabPanel>
-        ))}
+          );
+        })}
       </Tabs>
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
