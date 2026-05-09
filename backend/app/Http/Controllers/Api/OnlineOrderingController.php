@@ -63,6 +63,31 @@ class OnlineOrderingController extends Controller
     }
 
     /**
+     * Update the online ordering schedule.
+     * Body: { "schedule": { "mon": {"open":"07:00","close":"22:00","enabled":true}, ... } }
+     * Send { "schedule": null } to clear (always open when master switch is on).
+     */
+    public function updateSchedule(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'schedule' => 'nullable|array',
+        ]);
+
+        $schedule = $validated['schedule'] ?? null;
+        SiteSetting::set('online_ordering_schedule', $schedule ? json_encode($schedule) : null);
+
+        $status = $this->gate->status();
+        $deliveryStatus = $this->deliveryGate->status();
+        $status['delivery_available'] = $deliveryStatus['delivery_open'];
+        $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
+
+        return response()->json([
+            'online_ordering_schedule' => $schedule,
+            'status' => $status,
+        ]);
+    }
+
+    /**
      * Toggle the delivery accepting flag.
      * Body: { "enabled": true|false }  or  no body (flips current state).
      */

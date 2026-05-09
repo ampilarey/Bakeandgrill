@@ -46,18 +46,34 @@ export interface OnlineOrderingGateStatus {
   reason: string | null;
   master_switch: boolean;
   override_until: string | null;
+  override_active: boolean;
+  schedule_active: boolean;
+  current_close: string | null;
+  next_open_window: string | null;
 }
 
 export async function getOnlineOrderingStatus(): Promise<OnlineOrderingGateStatus> {
   return req('/ordering/status');
 }
 
-export async function toggleOnlineOrdering(enabled: boolean): Promise<{ enabled: boolean }> {
+export async function toggleOnlineOrdering(enabled: boolean): Promise<{ online_ordering_enabled: boolean; status: OnlineOrderingGateStatus }> {
   return req('/admin/ordering/toggle', { method: 'POST', body: JSON.stringify({ enabled }) });
 }
 
 export async function setOnlineOrderingOverride(until: string | null): Promise<{ override_until: string | null }> {
   return req('/admin/ordering/override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
+}
+
+export interface OnlineOrderingDayWindow {
+  open: string;    // "HH:MM"
+  close: string;   // "HH:MM"
+  enabled: boolean;
+}
+
+export async function updateOnlineOrderingSchedule(
+  schedule: Record<string, OnlineOrderingDayWindow> | null,
+): Promise<{ online_ordering_schedule: unknown; status: OnlineOrderingGateStatus }> {
+  return req('/admin/ordering/schedule', { method: 'PUT', body: JSON.stringify({ schedule }) });
 }
 
 // ── Delivery Gate ─────────────────────────────────────────────────────────────
