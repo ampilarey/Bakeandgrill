@@ -62,22 +62,21 @@ function fmtWindow(iso: string | null | undefined, use12h: boolean): string {
  * Closed by master switch / no schedule: "Online ordering is currently closed"
  */
 export function OpeningStatusBadge({
-  open, reason, currentClose, nextOpenWindow, closedDetail, timeDisplay = '24h', className = '', style,
-}: Props) {
+  open, reason, currentClose, nextOpenWindow, timeDisplay = '24h', className = '', style,
+}: Omit<Props, 'closedDetail'> & { closedDetail?: string | null }) {
   const use12h = timeDisplay === '12h';
   let label: string;
 
   if (open) {
-    label = 'Online ordering open';
+    label = 'Open now';
     const closeStr = currentClose ? fmtWindow(currentClose, use12h) : '';
     if (closeStr) label += ` · Closes ${closeStr}`;
   } else {
     if (reason === 'schedule') {
       const nextStr = nextOpenWindow ? fmtWindow(nextOpenWindow, use12h) : '';
-      label = nextStr ? `Online ordering closed · Opens ${nextStr}` : 'Online ordering is currently closed';
+      label = nextStr ? `Closed · Opens ${nextStr}` : 'Ordering closed';
     } else {
-      // master_switch_off, override shouldn't close, or unknown — show generic / explicit message
-      label = closedDetail ?? 'Online ordering is currently closed';
+      label = 'Ordering closed';
     }
   }
 
