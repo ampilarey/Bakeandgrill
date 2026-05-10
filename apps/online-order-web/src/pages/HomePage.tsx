@@ -3,15 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, API_ORIGIN } from '../api';
 import type { Item, DailySpecial, Order } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
-
-function fmtOrderingTime(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const isToday = d.toDateString() === new Date().toDateString();
-  const h = d.getHours(), m = d.getMinutes();
-  const time = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-  return isToday ? `today at ${time}` : `${d.toLocaleDateString('en-US', { weekday: 'short' })} at ${time}`;
-}
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
@@ -134,21 +125,13 @@ export function HomePage() {
   return (
     <div>
 
-      {/* Online ordering status bar — shown above hero only when CLOSED */}
-      {isOpen === false && (
-        <div className={`ordering-status-bar closed`}>
-          <span className="ordering-status-bar-dot" />
-          <span className="ordering-status-bar-text">
-            {`Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`}
-          </span>
-        </div>
-      )}
+      {/* Online ordering status — shown inside hero top-right corner always */}
 
       <HeroCarousel
         slides={heroSlides}
         apiOrigin={API_ORIGIN}
         fallback={gradientHeroFallback}
-        statusSlot={isOpen ? statusBadge : null}
+        statusSlot={statusBadge}
       />
 
       {/* ── "Your usual" returning-customer block ──────────────────────────── */}
