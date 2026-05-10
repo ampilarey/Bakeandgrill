@@ -30,7 +30,10 @@ class SiteSetting extends Model
 
     public static function set(string $key, mixed $value): void
     {
-        static::updateOrCreate(['key' => $key], ['value' => $value]);
+        static::updateOrCreate(
+            ['key' => $key],
+            ['value' => $value, 'type' => 'text', 'group' => 'System', 'label' => $key, 'is_public' => false],
+        );
         Cache::forget("site_setting.{$key}");
         Cache::forget('site_settings.public');
         Cache::forget('site_settings.all');
