@@ -36,8 +36,7 @@ export function HomePage() {
   const [hoursReason, setHoursReason] = useState<'master_switch_off' | 'schedule' | 'override_active' | null>(null);
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
-  const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
-  const [nextDeliveryWindow, setNextDeliveryWindow] = useState<string | null>(null);
+  const [, setDeliveryAvailable] = useState<boolean>(true);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [reordering, setReordering] = useState(false);
   const { settings: s, trustItems, heroSlides } = useSiteSettingsContext();
@@ -66,8 +65,7 @@ export function HomePage() {
       setHoursReason(gate.reason ?? null);
       setCurrentClose(gate.current_close ?? null);
       setNextOpenWindow(gate.next_open_window ?? null);
-      setDeliveryAvailable(gate.delivery_available ?? true);
-      setNextDeliveryWindow(gate.next_delivery_window ?? null);
+      setDeliveryAvailable(gate.delivery_available ?? true); // kept for future use
     }).catch(() => setIsOpen(false));
 
     fetchActiveSpecials().then(({ specials: sp }) => {
@@ -136,17 +134,12 @@ export function HomePage() {
   return (
     <div>
 
-      {/* Online ordering status bar — shown above hero */}
-      {isOpen !== null && (
-        <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'takeaway-only') : 'closed'}`}>
+      {/* Online ordering status bar — shown above hero only when CLOSED */}
+      {isOpen === false && (
+        <div className={`ordering-status-bar closed`}>
           <span className="ordering-status-bar-dot" />
           <span className="ordering-status-bar-text">
-            {isOpen
-              ? deliveryAvailable
-                ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
-                : `Online ordering is open · Takeaway only${nextDeliveryWindow ? ` · Delivery from ${fmtOrderingTime(nextDeliveryWindow)}` : ''}${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
-              : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
-            }
+            {`Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`}
           </span>
         </div>
       )}
