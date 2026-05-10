@@ -254,12 +254,15 @@ export default function OnlineOrderingPage() {
   };
 
   const handleSetOverride = async () => {
+    if (!overrideUntil) {
+      showToast('Please pick a date and time first.', 'err');
+      return;
+    }
     setSavingOverride(true);
     try {
-      // Convert datetime-local value to ISO string
-      const isoVal = overrideUntil ? new Date(overrideUntil).toISOString() : null;
+      const isoVal = new Date(overrideUntil).toISOString();
       await setOnlineOrderingOverride(isoVal);
-      showToast(isoVal ? 'Force-open override set.' : 'Override cleared.');
+      showToast('Force-open override set.');
       load();
     } catch {
       showToast('Failed to save override.', 'err');
@@ -403,12 +406,13 @@ export default function OnlineOrderingPage() {
               style={S.input}
               value={overrideUntil}
               onChange={(e) => setOverrideUntil(e.target.value)}
+              onInput={(e) => setOverrideUntil((e.target as HTMLInputElement).value)}
             />
           </div>
           <button
             style={S.btnPrimary}
             onClick={handleSetOverride}
-            disabled={savingOverride || !overrideUntil}
+            disabled={savingOverride}
           >
             <Unlock size={14} />
             {savingOverride ? 'Saving…' : 'Set Override'}
