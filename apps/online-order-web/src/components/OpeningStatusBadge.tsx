@@ -74,9 +74,9 @@ export function OpeningStatusBadge({
   } else {
     if (reason === 'schedule') {
       const nextStr = nextOpenWindow ? fmtWindow(nextOpenWindow, use12h) : '';
-      label = nextStr ? `Closed · Opens ${nextStr}` : 'Ordering closed';
+      label = nextStr ? `Online ordering closed · Opens ${nextStr}` : 'Online ordering closed';
     } else {
-      label = 'Ordering closed';
+      label = 'Online ordering closed';
     }
   }
 
