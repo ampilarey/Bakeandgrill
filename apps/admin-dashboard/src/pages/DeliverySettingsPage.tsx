@@ -364,7 +364,7 @@ export default function DeliverySettingsPage() {
               onChange={(e) => setOverrideUntil(e.target.value)}
             />
           </div>
-          <button style={S.btnPrimary} onClick={handleSetOverride} disabled={savingOverride}>
+          <button style={S.btnPrimary} onClick={handleSetOverride} disabled={savingOverride || !overrideUntil}>
             <Unlock size={14} />
             {savingOverride ? 'Saving…' : overrideActive ? 'Update Override' : 'Set Override'}
           </button>

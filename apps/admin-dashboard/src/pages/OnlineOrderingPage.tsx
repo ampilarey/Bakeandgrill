@@ -408,7 +408,7 @@ export default function OnlineOrderingPage() {
           <button
             style={S.btnPrimary}
             onClick={handleSetOverride}
-            disabled={savingOverride}
+            disabled={savingOverride || !overrideUntil}
           >
             <Unlock size={14} />
             {savingOverride ? 'Saving…' : 'Set Override'}
