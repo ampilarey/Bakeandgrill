@@ -115,5 +115,5 @@ const S: Record<string, React.CSSProperties> = {
   h1: { fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark, #1c1408)', marginBottom: '0.375rem', letterSpacing: '-0.03em' },
   updated: { color: 'var(--color-text-muted, #78716c)', fontSize: '0.9rem', marginBottom: '2.5rem', display: 'block' },
   h2: { fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary, #d97706)', marginBottom: '0.75rem' },
-  body: { fontSize: '0.95rem', lineHeight: 1.8, color: '#44403c' },
+  body: { fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--color-text)' },
 };

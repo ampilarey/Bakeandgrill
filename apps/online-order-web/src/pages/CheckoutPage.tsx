@@ -582,7 +582,7 @@ export function CheckoutPage() {
               <span style={{
                 display: 'flex', alignItems: 'center', gap: '0.25rem',
                 fontSize: 'var(--text-xs)', fontWeight: 700,
-                color: '#d97706', background: '#fef3c7',
+                color: 'var(--color-warning)', background: 'var(--color-warning-bg)',
                 borderRadius: '999px', padding: '0.2rem 0.6rem',
               }}>
                 ⭐ {loyaltyAccount.points_balance} pts
@@ -778,7 +778,7 @@ const S = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     background: 'var(--color-success-bg)',
     borderRadius: 10, padding: '10px 14px', fontSize: 'var(--text-base)',
-    border: '1px solid rgba(22,163,74,0.2)',
+    border: '1px solid var(--color-success-bg)',
   } as React.CSSProperties,
 
   removeBtn: {

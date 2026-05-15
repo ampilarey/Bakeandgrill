@@ -73,10 +73,10 @@ function SectionCard({ title, children }: { title: string; children: React.React
 }
 
 const TIER_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-  bronze:   { bg: '#FEF3E2', text: '#92400E', border: '#FCD34D' },
-  silver:   { bg: '#F1F5F9', text: '#475569', border: '#CBD5E1' },
-  gold:     { bg: '#FFFBEB', text: '#92400E', border: '#FCD34D' },
-  platinum: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
+  bronze:   { bg: 'var(--tier-bronze-bg)',   text: 'var(--tier-bronze-text)',   border: 'var(--tier-bronze-border)' },
+  silver:   { bg: 'var(--tier-silver-bg)',   text: 'var(--tier-silver-text)',   border: 'var(--tier-silver-border)' },
+  gold:     { bg: 'var(--tier-gold-bg)',     text: 'var(--tier-gold-text)',     border: 'var(--tier-gold-border)' },
+  platinum: { bg: 'var(--tier-platinum-bg)', text: 'var(--tier-platinum-text)', border: 'var(--tier-platinum-border)' },
 };
 
 export function AccountPage() {
@@ -316,11 +316,11 @@ export function AccountPage() {
 
   const statusBadge = (s: string) => {
     const colors: Record<string, { bg: string; color: string }> = {
-      confirmed: { bg: '#DCFCE7', color: '#15803D' },
-      pending:   { bg: '#FEF3C7', color: '#92400E' },
-      cancelled: { bg: '#FEE2E2', color: '#991B1B' },
-      no_show:   { bg: '#F3F4F6', color: '#6B7280' },
-      completed: { bg: '#EFF6FF', color: '#1D4ED8' },
+      confirmed: { bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
+      pending:   { bg: 'var(--color-warning-bg)', color: 'var(--color-warning)' },
+      cancelled: { bg: 'var(--color-error-bg)',   color: 'var(--color-error)' },
+      no_show:   { bg: 'var(--color-surface-alt)', color: 'var(--color-text-muted)' },
+      completed: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
     };
     const c = colors[s] ?? { bg: '#F3F4F6', color: '#374151' };
     return (
@@ -814,7 +814,7 @@ export function AccountPage() {
                 const nextTier = TIERS[currentIdx + 1];
                 if (!nextTier) {
                   return (
-                    <div style={{ textAlign: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.04)', borderRadius: 12, fontSize: 13, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', fontWeight: 600 }}>
+                    <div style={{ textAlign: 'center', padding: '0.75rem', background: 'var(--color-surface-alt)', borderRadius: 12, fontSize: 13, color: 'var(--tier-platinum-text)', fontWeight: 600 }}>
                       💎 You've reached Platinum — the highest tier!
                     </div>
                   );

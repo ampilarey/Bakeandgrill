@@ -134,67 +134,67 @@ const STATUS_CONFIG: Record<string, {
     label: "Payment received!",
     sub: "We're confirming your order — this usually takes under 30 seconds.",
     next: "Your order will go to the kitchen as soon as it's confirmed",
-    color: "#1d4ed8", bg: "#dbeafe", icon: "⏳",
+    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "⏳",
   },
   pending: {
     label: "Order confirmed!",
     sub: "Payment received. Your order is in the queue.",
     next: "Up next: kitchen will start preparing",
-    color: "#92400e", bg: "#fef3c7", icon: "✅",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "✅",
   },
   paid: {
     label: "Order confirmed!",
     sub: "Payment received. The kitchen is being notified.",
     next: "Up next: kitchen will start preparing",
-    color: "#065f46", bg: "#d1fae5", icon: "✅",
+    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "✅",
   },
   preparing: {
     label: "Being prepared",
     sub: "Your food is being freshly made right now.",
     next: "Up next: ready for pickup or delivery",
-    color: "#1e40af", bg: "#dbeafe", icon: "👨‍🍳",
+    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "👨‍🍳",
   },
   ready: {
     label: "Ready!",
     sub: "Your order is ready.",
     next: undefined,
-    color: "#065f46", bg: "#d1fae5", icon: "🎉",
+    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "🎉",
   },
   out_for_delivery: {
     label: "Out for delivery",
     sub: "Your order is on the way. Estimated: 15–30 min.",
     next: undefined,
-    color: "#c2410c", bg: "#ffedd5", icon: "🛵",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "🛵",
   },
   picked_up: {
     label: "Driver picked up your order",
     sub: "Your driver has collected your order and is heading your way!",
     next: undefined,
-    color: "#c2410c", bg: "#ffedd5", icon: "✅",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "✅",
   },
   on_the_way: {
     label: "Driver is on the way!",
     sub: "Your order is almost there. Keep an eye out for your driver.",
     next: undefined,
-    color: "#9a3412", bg: "#fed7aa", icon: "🏃",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "🏃",
   },
   delivered: {
     label: "Delivered!",
     sub: "Your order has been delivered. Enjoy your meal!",
     next: undefined,
-    color: "#065f46", bg: "#d1fae5", icon: "🎉",
+    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "🎉",
   },
   completed: {
     label: "Delivered!",
     sub: "Your order was delivered. Enjoy your meal!",
     next: undefined,
-    color: "#6b7280", bg: "#f3f4f6", icon: "🎉",
+    color: "var(--color-text-muted)", bg: "var(--color-surface-alt)", icon: "🎉",
   },
   cancelled: {
     label: "Order cancelled",
     sub: "This order was cancelled. If you were charged, your money will be refunded within 3–5 business days. Message us on WhatsApp if you need help.",
     next: undefined,
-    color: "#991b1b", bg: "#fee2e2", icon: "✕",
+    color: "var(--color-error)", bg: "var(--color-error-bg)", icon: "✕",
   },
 };
 
@@ -571,25 +571,25 @@ export function OrderStatusPage() {
                     <span>MVR {parseFloat(String(order.subtotal)).toFixed(2)}</span>
                   </div>
                   {(order.promo_discount_laar ?? 0) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
                       <span>🏷️ Promo</span>
                       <span>-MVR {((order.promo_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.loyalty_discount_laar ?? 0) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
                       <span>⭐ Loyalty</span>
                       <span>-MVR {((order.loyalty_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.gift_card_discount_laar ?? 0) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
                       <span>🎁 Gift Card</span>
                       <span>-MVR {((order.gift_card_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.referral_discount_laar ?? 0) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: '#16a34a', paddingBottom: '0.375rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
                       <span>👥 Referral</span>
                       <span>-MVR {((order.referral_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>

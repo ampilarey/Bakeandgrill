@@ -38,6 +38,12 @@
     margin-bottom: 2rem;
     display: flex; align-items: flex-start; gap: 0.75rem;
     font-size: 0.9rem;
+    color: #7a5c00;
+}
+[data-theme="dark"] .closure-notice {
+    background: rgba(250, 204, 21, 0.1);
+    border-color: rgba(250, 204, 21, 0.3);
+    color: #fde047;
 }
 .closure-notice .cn-icon { font-size: 1.25rem; flex-shrink: 0; margin-top: 0.1rem; }
 

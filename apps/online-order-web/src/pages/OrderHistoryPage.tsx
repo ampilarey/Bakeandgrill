@@ -9,13 +9,13 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  payment_pending: { label: 'Awaiting payment',  color: '#92400e', bg: '#fef3c7' },
-  pending:         { label: 'Payment received',  color: '#1e40af', bg: '#dbeafe' },
-  paid:            { label: 'Confirmed',          color: '#065f46', bg: '#d1fae5' },
-  preparing:       { label: 'Being prepared',    color: '#1e40af', bg: '#dbeafe' },
-  ready:           { label: 'Ready for pickup',  color: '#065f46', bg: '#d1fae5' },
-  completed:       { label: 'Completed',         color: '#374151', bg: '#f3f4f6' },
-  cancelled:       { label: 'Cancelled',         color: '#991b1b', bg: '#fee2e2' },
+  payment_pending: { label: 'Awaiting payment',  color: 'var(--color-warning)',    bg: 'var(--color-warning-bg)' },
+  pending:         { label: 'Payment received',  color: 'var(--color-primary)',    bg: 'var(--color-primary-light)' },
+  paid:            { label: 'Confirmed',          color: 'var(--color-success)',    bg: 'var(--color-success-bg)' },
+  preparing:       { label: 'Being prepared',    color: 'var(--color-primary)',    bg: 'var(--color-primary-light)' },
+  ready:           { label: 'Ready for pickup',  color: 'var(--color-success)',    bg: 'var(--color-success-bg)' },
+  completed:       { label: 'Completed',         color: 'var(--color-text-muted)', bg: 'var(--color-surface-alt)' },
+  cancelled:       { label: 'Cancelled',         color: 'var(--color-error)',      bg: 'var(--color-error-bg)' },
 };
 
 function fmtDate(iso: string) {

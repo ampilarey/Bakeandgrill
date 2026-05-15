@@ -90,19 +90,19 @@ export function Layout() {
   const annStyle   = s.announcement_style  || 'info';
 
   const annBgMap: Record<string, string> = {
-    info:    '#eff6ff',
-    warning: '#fffbeb',
-    promo:   '#f0fdf4',
+    info:    'var(--color-primary-light)',
+    warning: 'var(--color-warning-bg)',
+    promo:   'var(--color-success-bg)',
   };
   const annColorMap: Record<string, string> = {
-    info:    '#1e40af',
-    warning: '#92400e',
-    promo:   '#166534',
+    info:    'var(--color-primary)',
+    warning: 'var(--color-warning)',
+    promo:   'var(--color-success)',
   };
   const annBorderMap: Record<string, string> = {
-    info:    '#bfdbfe',
-    warning: '#fcd34d',
-    promo:   '#bbf7d0',
+    info:    'var(--color-primary-light)',
+    warning: 'var(--color-warning-bg)',
+    promo:   'var(--color-success-bg)',
   };
 
   return (

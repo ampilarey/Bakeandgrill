@@ -11,10 +11,10 @@ import { useCart } from '../context/CartContext';
 
 // ─── Category shortcuts data ──────────────────────────────────────────────────
 const CATEGORIES = [
-  { icon: '🥐', name: 'Hedhikaa', slug: 'hedhikaa', hook: 'Ready by 7am, made the right way', color: '#fef3e8' },
-  { icon: '🍞', name: 'Fresh Bakes', slug: 'fresh-bakes', hook: 'Croissants that crackle. Baked at dawn.', color: '#fff7ed' },
-  { icon: '🔥', name: 'Grills', slug: 'grills', hook: 'Proper char. Proper flavor.', color: '#fef2f2' },
-  { icon: '🎂', name: 'Special Orders', slug: 'special-orders', hook: 'Cakes made to order. Call ahead.', color: '#fdf4ff' },
+  { icon: '🥐', name: 'Hedhikaa', slug: 'hedhikaa', hook: 'Ready by 7am, made the right way', color: 'var(--color-surface-alt)' },
+  { icon: '🍞', name: 'Fresh Bakes', slug: 'fresh-bakes', hook: 'Croissants that crackle. Baked at dawn.', color: 'var(--color-surface-alt)' },
+  { icon: '🔥', name: 'Grills', slug: 'grills', hook: 'Proper char. Proper flavor.', color: 'var(--color-surface-alt)' },
+  { icon: '🎂', name: 'Special Orders', slug: 'special-orders', hook: 'Cakes made to order. Call ahead.', color: 'var(--color-surface-alt)' },
 ];
 
 export function HomePage() {
@@ -91,7 +91,7 @@ export function HomePage() {
     <section
       className="home-hero"
       style={{
-        background: 'linear-gradient(135deg, var(--color-primary-light) 0%, #fff7ed 40%, var(--color-surface-alt) 100%)',
+        background: 'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-surface-alt) 40%, var(--color-bg) 100%)',
         borderBottom: '1px solid var(--color-border)',
         padding: '3.5rem var(--page-gutter) 3rem',
         textAlign: 'center',
@@ -136,7 +136,7 @@ export function HomePage() {
 
       {/* ── "Your usual" returning-customer block ──────────────────────────── */}
       {lastOrder && (
-        <section style={{ background: 'linear-gradient(135deg, #FEF9F0, #FFF7ED)', borderBottom: '1px solid var(--color-border)', padding: '1.25rem var(--page-gutter)' }}>
+        <section style={{ background: 'var(--color-surface-alt)', borderBottom: '1px solid var(--color-border)', padding: '1.25rem var(--page-gutter)' }}>
           <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
             <div>
               <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)', margin: '0 0 0.2rem' }}>
@@ -273,7 +273,7 @@ export function HomePage() {
                       overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
                     }}
                   >
-                    <div style={{ height: 110, background: '#F9F5F0', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ height: 110, background: 'var(--color-surface-alt)', position: 'relative', overflow: 'hidden' }}>
                       {imgSrc
                         ? <img src={imgSrc} alt={sp.item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.3 }}>🍽️</div>
@@ -340,7 +340,7 @@ export function HomePage() {
                   >
                     <div style={{
                       height: '150px', flexShrink: 0, overflow: 'hidden',
-                      background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), #f7e0c4)',
+                      background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       {imgSrc ? (

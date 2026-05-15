@@ -61,7 +61,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         style={{
           width: '100%',
           aspectRatio: '4 / 3',
-          background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), #f7e4c8)',
+          background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: isUnavailable ? 'default' : 'pointer',
           overflow: 'hidden', flexShrink: 0, position: 'relative',

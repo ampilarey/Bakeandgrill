@@ -1028,10 +1028,10 @@
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
                         @if($isOpen)
-                            <span style="color:#195C36;font-weight:700;">Open now</span>
+                            <span style="color:var(--success-text);font-weight:700;">Open now</span>
                             @if($todayHours) · Closes {{ $todayHours['close'] }} @endif
                         @else
-                            <span style="color:#8C1C0E;font-weight:700;">Closed now</span>
+                            <span style="color:var(--danger-text);font-weight:700;">Closed now</span>
                             @if($todayHours) · Opens {{ $todayHours['open'] }} @endif
                         @endif
                         <small><a href="/hours" style="color:var(--amber);">See full schedule →</a></small>

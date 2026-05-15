@@ -119,7 +119,7 @@ export function PreOrderPage() {
         {step === 'items' && (
           <>
             {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px', padding: '0.75rem', color: '#dc2626', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              <div style={{ background: 'var(--color-error-bg)', border: '1px solid var(--color-error-bg)', borderRadius: '8px', padding: '0.75rem', color: 'var(--color-error)', fontSize: '0.875rem', marginBottom: '1rem' }}>
                 {error}
               </div>
             )}

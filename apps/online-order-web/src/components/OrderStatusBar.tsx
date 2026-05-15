@@ -5,13 +5,13 @@ import { fetchCustomerOrders } from '../api';
 import type { Order } from '../api';
 
 const STATUS: Record<string, { label: string; color: string; dot: string }> = {
-  payment_pending: { label: 'Awaiting payment', color: '#92400e', dot: '#f59e0b' },
-  pending:         { label: 'Payment received',  color: '#1e40af', dot: '#3b82f6' },
-  paid:            { label: 'Confirmed',          color: '#065f46', dot: '#10b981' },
-  preparing:       { label: 'Being prepared',     color: '#1e40af', dot: '#3b82f6' },
-  ready:           { label: 'Ready for pickup',   color: '#065f46', dot: '#10b981' },
-  completed:       { label: 'Completed',          color: '#374151', dot: '#9ca3af' },
-  cancelled:       { label: 'Cancelled',          color: '#991b1b', dot: '#ef4444' },
+  payment_pending: { label: 'Awaiting payment', color: 'var(--color-warning)',      dot: 'var(--color-warning)' },
+  pending:         { label: 'Payment received',  color: 'var(--color-primary)',      dot: 'var(--color-primary)' },
+  paid:            { label: 'Confirmed',          color: 'var(--color-success)',      dot: 'var(--color-success)' },
+  preparing:       { label: 'Being prepared',     color: 'var(--color-primary)',      dot: 'var(--color-primary)' },
+  ready:           { label: 'Ready for pickup',   color: 'var(--color-success)',      dot: 'var(--color-success)' },
+  completed:       { label: 'Completed',          color: 'var(--color-text-muted)',   dot: 'var(--color-text-muted)' },
+  cancelled:       { label: 'Cancelled',          color: 'var(--color-error)',        dot: 'var(--color-error)' },
 };
 
 const ACTIVE = new Set(['payment_pending', 'pending', 'paid', 'preparing', 'ready']);

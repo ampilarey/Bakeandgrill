@@ -115,7 +115,7 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
         {/* Photo gallery */}
         {photos.length > 0 && (
           <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '16/9', background: '#F9F5F0', position: 'relative' }}>
+            <div style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '16/9', background: 'var(--color-surface-alt)', position: 'relative' }}>
               <img
                 src={photos[activePhoto].url.startsWith('http') ? photos[activePhoto].url : `${API_ORIGIN}${photos[activePhoto].url.startsWith('/') ? '' : '/'}${photos[activePhoto].url}`}
                 alt={item.name}
@@ -144,7 +144,7 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
             <div style={{ display: 'flex', gap: 2 }}>
               {Array.from({ length: 5 }).map((_, i) => (
-                <span key={i} style={{ fontSize: 14, color: i < Math.round(avgRating) ? '#F59E0B' : '#D1D5DB' }}>★</span>
+                <span key={i} style={{ fontSize: 14, color: i < Math.round(avgRating) ? '#F59E0B' : 'var(--color-border)' }}>★</span>
               ))}
             </div>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
@@ -250,7 +250,7 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
           style={{
             width: '100%',
             padding: '0.9rem',
-            background: canAdd ? 'var(--color-primary)' : '#cbd5e1',
+                background: canAdd ? 'var(--color-primary)' : 'var(--color-surface-alt)',
             color: 'white',
             border: 'none',
             borderRadius: '12px',
@@ -275,7 +275,7 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
                 <div key={rv.id} style={{ background: 'var(--color-surface-alt)', borderRadius: 10, padding: '0.75rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <span key={i} style={{ fontSize: 11, color: i < rv.rating ? '#F59E0B' : '#D1D5DB' }}>★</span>
+                      <span key={i} style={{ fontSize: 11, color: i < rv.rating ? '#F59E0B' : 'var(--color-border)' }}>★</span>
                     ))}
                     <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 4 }}>
                       {new Date(rv.created_at).toLocaleDateString()}

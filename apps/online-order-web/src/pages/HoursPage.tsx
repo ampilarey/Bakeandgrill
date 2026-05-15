@@ -119,7 +119,7 @@ export function HoursPage() {
       </div>
 
       {/* Note */}
-      <div style={{ background: 'var(--color-warning-bg)', border: '1px solid #fde68a', borderRadius: '12px', padding: '1.25rem', marginBottom: '2rem', fontSize: '0.875rem', color: 'var(--color-warning)', lineHeight: 1.6 }}>
+      <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-bg)', borderRadius: '12px', padding: '1.25rem', marginBottom: '2rem', fontSize: '0.875rem', color: 'var(--color-warning)', lineHeight: 1.6 }}>
         <strong>Note:</strong> Hours may vary on public holidays and special occasions. For the latest updates, contact us directly or check our WhatsApp.
       </div>
 

@@ -91,7 +91,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                     </span>
                     <button
                       onClick={() => updateQuantity(index, entry.quantity + 1)}
-                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #EDE4D4', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: '#5C4A2A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       aria-label="Increase quantity"
                     >
                       +
@@ -128,7 +128,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
               </div>
             )}
             {cartTotal >= FREE_DELIVERY_MVR && (
-              <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: '#15803d', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: '#dcfce7', borderRadius: 8 }}>
+              <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: 'var(--color-success-bg)', borderRadius: 8 }}>
                 🎉 You qualify for free delivery!
               </div>
             )}

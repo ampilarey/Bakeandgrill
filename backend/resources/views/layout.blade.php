@@ -110,6 +110,7 @@
             --danger-text:  #8C1C0E;
             /* Dark bars with light text (hero, proof) — not the same as --dark heading text */
             --inverse-section-bg: #1C1408;
+            --surface-alt:  #f7f3ec;
         }
 
         [data-theme="dark"] {
@@ -128,6 +129,7 @@
             --danger-bg:    #2d0f0a;
             --danger-text:  #f87171;
             --inverse-section-bg: #0e0a04;
+            --surface-alt:  #2a1e0e;
         }
         [data-theme="dark"] .site-header,
         [data-theme="dark"] .mobile-header,
@@ -141,6 +143,9 @@
             border: 1.5px solid rgba(224, 146, 66, 0.55);
             box-sizing: border-box;
         }
+        [data-theme="dark"] .site-announcement--info    { background: rgba(96,165,250,0.1); color: #93c5fd; border-bottom-color: rgba(96,165,250,0.25); }
+        [data-theme="dark"] .site-announcement--warning { background: rgba(250,204,21,0.1);  color: #fde047; border-bottom-color: rgba(250,204,21,0.25); }
+        [data-theme="dark"] .site-announcement--promo   { background: rgba(74,222,128,0.1);  color: #86efac; border-bottom-color: rgba(74,222,128,0.25); }
         [data-theme="dark"] .mob-nav-preorder:hover {
             background: rgba(224, 146, 66, 0.32);
             border-color: var(--amber);
