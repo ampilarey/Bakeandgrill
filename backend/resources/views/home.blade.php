@@ -158,6 +158,8 @@
     border-radius: 999px;
     font-size: 0.72rem;
     font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }
