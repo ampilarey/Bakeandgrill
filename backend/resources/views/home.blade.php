@@ -154,9 +154,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.4rem 1rem;
+    padding: 0.35rem 0.75rem;
     border-radius: 999px;
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     font-weight: 700;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -182,7 +182,7 @@
     50% { opacity: 0.4; }
 }
 @media (max-width: 768px) {
-    .hero-status { top: 1rem; right: 1rem; font-size: 0.72rem; padding: 0.35rem 0.75rem; }
+    .hero-status { top: 1rem; right: 1rem; }
 }
 
 /* Carousel nav */
