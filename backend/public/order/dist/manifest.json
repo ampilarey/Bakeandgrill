@@ -1,0 +1,22 @@
+{
+  "name": "Bake & Grill — Order Online",
+  "short_name": "Bake & Grill",
+  "description": "Order food online from Bake & Grill, Male', Maldives.",
+  "start_url": "/order/",
+  "scope": "/order/",
+  "display": "standalone",
+  "background_color": "#1C1917",
+  "theme_color": "#D97706",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["food", "lifestyle"]
+}

@@ -743,9 +743,9 @@ a { text-decoration: none; color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.4rem 1rem;
+  padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -855,8 +855,6 @@ a { text-decoration: none; color: inherit; }
   .opening-status-badge-hero.opening-status-badge {
     top: 1rem;
     right: 1rem;
-    font-size: 0.72rem;
-    padding: 0.35rem 0.75rem;
   }
   .opening-status-badge:not(.opening-status-badge-hero) {
     font-size: 0.75rem;
