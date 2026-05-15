@@ -2,7 +2,12 @@
     /* ── Order status bar data ─────────────────────────────── */
     $orderBar = null;
     if (Auth::guard('customer')->check()) {
+        $activeStatuses = ['payment_pending', 'pending', 'paid', 'preparing', 'ready'];
         $orderBar = \App\Models\Order::where('customer_id', Auth::guard('customer')->id())
+            ->whereIn('status', $activeStatuses)
+            ->orderBy('created_at', 'desc')
+            ->first(['id', 'order_number', 'status'])
+            ?? \App\Models\Order::where('customer_id', Auth::guard('customer')->id())
             ->orderBy('created_at', 'desc')
             ->first(['id', 'order_number', 'status']);
     }
