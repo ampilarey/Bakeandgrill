@@ -9,6 +9,7 @@ use App\Models\ItemChannelAvailability;
 use App\Models\KitchenMenuState;
 use App\Models\MenuGroup;
 use App\Models\SiteSetting;
+use App\Services\DeliveryGateService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,10 @@ use Illuminate\Support\Facades\DB;
 final class KitchenMenuResolver
 {
     public const CHANNELS = ['dine_in', 'takeaway', 'online_pickup', 'delivery'];
+
+    public function __construct(
+        private readonly DeliveryGateService $deliveryGate,
+    ) {}
 
     public function channelForOrderType(string $orderType): string
     {
@@ -34,11 +39,7 @@ final class KitchenMenuResolver
 
     public function isDeliveryServiceAccepting(): bool
     {
-        $raw = SiteSetting::get('delivery_accepting_orders', '1');
-
-        return filter_var($raw, FILTER_VALIDATE_BOOLEAN)
-            || $raw === '1'
-            || $raw === 1;
+        return $this->deliveryGate->isDeliveryOpen();
     }
 
     public function deliveryUnavailableMessage(): string
