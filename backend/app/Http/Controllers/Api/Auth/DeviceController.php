@@ -151,20 +151,7 @@ class DeviceController extends Controller
     {
         $device = Device::findOrFail($id);
         $device->update(['is_active' => false]);
-
-        app(AuditLogService::class)->log(
-            'device.disabled',
-            'Device',
-            $device->id,
-            ['is_active' => true],
-            ['is_active' => false],
-            [],
-            request(),
-        );
-
-        return response()->json([
-            'device' => $device,
-        ]);
+        return response()->json(['device' => $device]);
     }
 
     /**
@@ -174,19 +161,6 @@ class DeviceController extends Controller
     {
         $device = Device::findOrFail($id);
         $device->update(['is_active' => true]);
-
-        app(AuditLogService::class)->log(
-            'device.enabled',
-            'Device',
-            $device->id,
-            ['is_active' => false],
-            ['is_active' => true],
-            [],
-            request(),
-        );
-
-        return response()->json([
-            'device' => $device,
-        ]);
+        return response()->json(['device' => $device]);
     }
 }

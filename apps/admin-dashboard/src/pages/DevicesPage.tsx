@@ -76,12 +76,22 @@ export default function DevicesPage() {
 
   const handleToggle = async (device: Device) => {
     setActionLoading(device.id);
+    setError('');
     try {
-      if (device.is_active) { await disableDevice(device.id); }
-      else                  { await enableDevice(device.id); }
-      void load();
-    } catch (e) { setError((e as Error).message); }
-    finally { setActionLoading(null); }
+      if (device.is_active) {
+        await disableDevice(device.id);
+      } else {
+        await enableDevice(device.id);
+      }
+      await load();
+    } catch (e) {
+      const msg = (e as Error).message;
+      setError(msg);
+      // eslint-disable-next-line no-alert
+      window.alert('Device action failed: ' + msg);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const openApproveModal = (device: Device) => {
