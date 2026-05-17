@@ -41,11 +41,15 @@ export default function DevicesPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const [devRes, pendRes] = await Promise.all([fetchDevices(), fetchPendingDevices()]);
+      const devRes = await fetchDevices();
       setDevices(devRes.data ?? []);
-      setPending(pendRes.devices ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
+    // Load pending separately so a failure doesn't break the main table
+    try {
+      const pendRes = await fetchPendingDevices();
+      setPending(pendRes.devices ?? []);
+    } catch { /* silent */ }
   };
 
   useEffect(() => { void load(); }, []);
@@ -103,7 +107,8 @@ export default function DevicesPage() {
     finally { setActionLoading(null); }
   };
 
-  const approved = devices.filter(d => d.status === 'approved' || (!d.status && d.is_active));
+  // Exclude pending/rejected from the main table — show approved + legacy null-status (including disabled)
+  const approved = devices.filter(d => d.status !== 'pending' && d.status !== 'rejected');
   const active   = devices.filter(d => d.is_active).length;
   const disabled = devices.filter(d => !d.is_active && d.status !== 'pending').length;
 
