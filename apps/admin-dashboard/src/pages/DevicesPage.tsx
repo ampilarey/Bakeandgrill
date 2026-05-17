@@ -81,7 +81,7 @@ export default function DevicesPage() {
       const res = device.is_active
         ? await disableDevice(device.id)
         : await enableDevice(device.id);
-      // Update device in local state directly — no reload needed
+      window.alert('API response: ' + JSON.stringify(res));
       setDevices(prev => prev.map(d => d.id === device.id ? res.device : d));
     } catch (e) {
       const msg = (e as Error).message;
