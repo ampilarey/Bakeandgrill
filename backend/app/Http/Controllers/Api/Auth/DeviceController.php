@@ -17,20 +17,22 @@ class DeviceController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:100',
-            'identifier' => 'required|string|max:100',
-            'type' => 'required|string|max:50',
+            'name'       => 'required|string|max:100',
+            'identifier' => 'nullable|string|max:100',
+            'type'       => 'required|string|max:50',
             'ip_address' => 'nullable|string|max:50',
         ]);
 
+        $identifier = $data['identifier'] ?? 'ADMIN-' . strtoupper(substr(md5(uniqid()), 0, 8));
+
         $device = Device::updateOrCreate(
-            ['identifier' => $data['identifier']],
+            ['identifier' => $identifier],
             [
-                'name' => $data['name'],
-                'type' => $data['type'],
-                'ip_address' => $data['ip_address'] ?? null,
-                'is_active' => true,
-                'status' => 'approved',
+                'name'         => $data['name'],
+                'type'         => $data['type'],
+                'ip_address'   => $data['ip_address'] ?? null,
+                'is_active'    => true,
+                'status'       => 'approved',
                 'last_seen_at' => now(),
             ],
         );
@@ -133,7 +135,7 @@ class DeviceController extends Controller
     public function index()
     {
         return response()->json([
-            'devices' => Device::orderBy('name')->get(),
+            'data' => Device::orderBy('name')->get(),
         ]);
     }
 
