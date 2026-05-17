@@ -509,13 +509,7 @@ function App() {
           <ShiftHistoryPanel onClose={() => setPane("sales")} />
         )}
 
-        {pane === 'ops' && (
-          <div style={{ flex: 1, overflow: 'auto', background: '#FFFFFF', borderRadius: 12, padding: 16 }}>
-            <div className="grid grid-cols-12 gap-4">
-              <OpsPanel {...ops} />
-            </div>
-          </div>
-        )}
+        {pane === 'ops' && <OpsPanel {...ops} />}
       </main>
 
       <SideDrawer
