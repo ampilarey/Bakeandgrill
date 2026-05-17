@@ -114,62 +114,56 @@ function App() {
     return () => window.removeEventListener('pos_device_blocked', onBlocked);
   }, []);
 
-  // ── Single coordinated device-status lifecycle ─────────────────────────────
-  // One effect, one interval. Cadence depends on current status:
-  //   pending / registration_failed → 4 s (we want quick approval)
-  //   approved                      → 20 s (just watching for disable)
-  //   else                          → no polling
-  // This replaces the previous TWO overlapping intervals which made the
-  // logic hard to reason about and risked concurrent checks during state
-  // transitions.
+  // ── Device-status lifecycle ────────────────────────────────────────────────
+  // Two effects, deliberately separated to avoid a feedback loop:
+  //   (1) one-shot self-register when the cashier logs in
+  //   (2) recurring poll whose cadence depends on the current status
+  // The shared helper updates state without restarting the polling interval.
+
+  const applyDeviceStatus = (apiStatus: string, isActive?: boolean) => {
+    if (apiStatus === 'pending')                            setDeviceStatus('pending');
+    else if (apiStatus === 'rejected')                      setDeviceStatus('rejected');
+    else if (apiStatus === 'unregistered')                  setDeviceStatus('pending');
+    else if (apiStatus === 'approved' && isActive === false) setDeviceStatus('rejected');
+    else if (apiStatus === 'approved')                      setDeviceStatus('approved');
+  };
+
+  // (1) One-shot registration when the user logs in or device id changes.
   useEffect(() => {
     if (!isLoggedIn) return;
-
     let cancelled = false;
-    let interval: ReturnType<typeof setInterval> | null = null;
-
-    const applyStatus = (apiStatus: string, isActive?: boolean) => {
-      if (cancelled) return;
-      if (apiStatus === 'pending')                   setDeviceStatus('pending');
-      else if (apiStatus === 'rejected')             setDeviceStatus('rejected');
-      else if (apiStatus === 'unregistered')         setDeviceStatus('pending');
-      else if (apiStatus === 'approved' && isActive === false) setDeviceStatus('rejected');
-      else if (apiStatus === 'approved')             setDeviceStatus('approved');
-    };
-
-    const initialRegister = async () => {
-      setDeviceStatus('checking');
+    setDeviceStatus('checking');
+    void (async () => {
       try {
         const res = await selfRegisterDevice(deviceId, `POS ${deviceId}`);
-        applyStatus(res.status);
+        if (!cancelled) applyDeviceStatus(res.status);
       } catch {
-        // FAIL CLOSED: if self-register can't reach the server we cannot
-        // verify this device — do NOT silently treat it as approved.
+        // FAIL CLOSED: don't silently treat the device as approved.
         if (!cancelled) setDeviceStatus('registration_failed');
       }
-    };
+    })();
+    return () => { cancelled = true; };
+  }, [isLoggedIn, deviceId]);
 
-    const poll = async () => {
-      try {
-        const s = await selfDeviceStatus(deviceId);
-        applyStatus(s.status, s.is_active);
-      } catch {
-        // network blip — try again next tick
-      }
-    };
-
-    void initialRegister();
-
-    // Set up polling based on the latest status. We rerun this effect every
-    // time deviceStatus flips, which cleans up the previous interval.
-    interval = setInterval(() => {
-      void poll();
-    }, deviceStatus === 'approved' ? 20000 : 4000);
-
-    return () => {
-      cancelled = true;
-      if (interval) clearInterval(interval);
-    };
+  // (2) Poll the server on a cadence that depends on the current status:
+  //   pending → 4 s (we want fast approval)
+  //   approved → 20 s (just watching for disable)
+  //   else   → no polling
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (deviceStatus !== 'pending' && deviceStatus !== 'approved') return;
+    const cadence = deviceStatus === 'approved' ? 20000 : 4000;
+    const interval = setInterval(() => {
+      void (async () => {
+        try {
+          const s = await selfDeviceStatus(deviceId);
+          applyDeviceStatus(s.status, s.is_active);
+        } catch {
+          // network blip — try again next tick
+        }
+      })();
+    }, cadence);
+    return () => clearInterval(interval);
   }, [isLoggedIn, deviceId, deviceStatus]);
 
   // ── Login handler ───────────────────────────────────────────────────────────
