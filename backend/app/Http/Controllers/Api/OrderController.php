@@ -41,7 +41,7 @@ class OrderController extends Controller
 
         if ($request->filled('status')) {
             $statuses = explode(',', $request->input('status'));
-            $validStatuses = ['pending', 'paid', 'payment_pending', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled', 'partial', 'refunded'];
+            $validStatuses = ['pending', 'paid', 'payment_pending', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled', 'partial', 'refunded', 'held'];
             $filtered = array_intersect($statuses, $validStatuses);
             if (!empty($filtered)) {
                 count($filtered) === 1
@@ -56,6 +56,47 @@ class OrderController extends Controller
 
         if ($request->filled('date')) {
             $query->whereDate('created_at', $request->input('date'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
+        // POS receipts panel — restrict to one device or one shift.
+        if ($request->filled('device_id')) {
+            $query->where('device_id', (int) $request->input('device_id'));
+        }
+        if ($request->filled('device_identifier')) {
+            $query->whereHas('device', fn ($q) => $q->where('identifier', $request->input('device_identifier')));
+        }
+        if ($request->filled('shift_id')) {
+            $query->where('shift_id', (int) $request->input('shift_id'));
+        }
+        if ($request->filled('current_shift') && $request->boolean('current_shift')) {
+            $openShiftId = \App\Models\Shift::where('user_id', $request->user()->id)
+                ->whereNull('closed_at')
+                ->value('id');
+            $query->where('shift_id', $openShiftId ?? 0);
+        }
+
+        // Open-tickets feed for the POS — only orders the cashier has parked.
+        if ($request->filled('held_only') && $request->boolean('held_only')) {
+            $query->where('status', 'held');
+        }
+
+        // Receipt search: order number, ticket name, customer phone, customer name.
+        if ($request->filled('q')) {
+            $q = trim((string) $request->input('q'));
+            $query->where(function ($w) use ($q) {
+                $w->where('order_number', 'like', "%{$q}%")
+                  ->orWhere('ticket_name', 'like', "%{$q}%")
+                  ->orWhereHas('customer', function ($c) use ($q) {
+                      $c->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%");
+                  });
+            });
         }
 
         $perPage = min(100, max(10, (int) $request->input('per_page', 30)));
@@ -154,12 +195,24 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
-        $order = DB::transaction(function () use ($id, $request) {
+        $payload = $request->validate([
+            'ticket_name' => 'nullable|string|max:80',
+            'ticket_note' => 'nullable|string|max:255',
+        ]);
+
+        $order = DB::transaction(function () use ($id, $request, $payload) {
             $order = Order::lockForUpdate()->findOrFail($id);
             app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'held');
             $oldStatus = $order->status;
-            $order->update(['status' => 'held', 'held_at' => now()]);
-            app(AuditLogService::class)->log('order.held', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'held'], [], $request);
+            $update = ['status' => 'held', 'held_at' => now()];
+            if (array_key_exists('ticket_name', $payload)) {
+                $update['ticket_name'] = $payload['ticket_name'] ?: null;
+            }
+            if (array_key_exists('ticket_note', $payload)) {
+                $update['ticket_note'] = $payload['ticket_note'] ?: null;
+            }
+            $order->update($update);
+            app(AuditLogService::class)->log('order.held', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'held', 'ticket_name' => $order->ticket_name], [], $request);
 
             return $order;
         });

@@ -21,17 +21,14 @@ type Props = {
   discountAmount: string;
   setDiscountAmount: (v: string) => void;
 
-  lastHeldOrderId: number | null;
   isSubmitting: boolean;
   pendingPaymentForOrderId: number | null;
   lastCreatedOrderId: number | null;
+  openTicketsCount: number;
 
-  onAddPaymentRow: () => void;
-  onUpdatePaymentRow: (id: string, changes: Partial<PaymentRow>) => void;
-  onRemovePaymentRow: (id: string) => void;
   onClearCart: () => void;
-  onHoldOrder: () => void;
-  onResumeLastHold: () => void;
+  onSaveTicket: () => void;
+  onOpenTickets: () => void;
   onCheckout: () => void;
   onRetryPayment: () => void;
   onOpenSendBill: () => void;
@@ -234,9 +231,9 @@ export function OrderCart(p: Props) {
           </>
         )}
 
-        {/* Discount + split payments — compact row */}
+        {/* Discount — single line */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Disc</label>
+          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Discount</label>
           <input
             value={p.discountAmount}
             onChange={(e) => p.setDiscountAmount(e.target.value)}
@@ -247,75 +244,29 @@ export function OrderCart(p: Props) {
               border: `1px solid ${C.border2}`, fontSize: 13, textAlign: 'right',
             }}
           />
-          <button
-            onClick={p.onAddPaymentRow}
-            style={{
-              fontSize: 11, fontWeight: 700, color: C.muted,
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            + Split
-          </button>
         </div>
 
-        {/* Payment splits (only show extras) */}
-        {p.payments.length > 1 && (
-          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {p.payments.map((row, index) => (
-              <div key={row.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <select
-                  value={row.method}
-                  onChange={(e) => p.onUpdatePaymentRow(row.id, { method: e.target.value as PaymentRow["method"] })}
-                  style={{
-                    padding: '6px 8px', borderRadius: 6,
-                    border: `1px solid ${C.border2}`, fontSize: 12,
-                  }}
-                >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="digital_wallet">Wallet</option>
-                </select>
-                <input
-                  value={row.amount}
-                  onChange={(e) => p.onUpdatePaymentRow(row.id, { amount: e.target.value })}
-                  placeholder="0.00"
-                  inputMode="decimal"
-                  style={{
-                    flex: 1, padding: '6px 8px', borderRadius: 6,
-                    border: `1px solid ${C.border2}`, fontSize: 12, textAlign: 'right',
-                  }}
-                />
-                {index > 0 && (
-                  <button
-                    onClick={() => p.onRemovePaymentRow(row.id)}
-                    style={{
-                      fontSize: 16, color: C.subtle, background: 'none',
-                      border: 'none', cursor: 'pointer', padding: 4,
-                    }}
-                    aria-label="Remove split"
-                  >×</button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Hold / Resume small buttons */}
+        {/* Save ticket / Open tickets */}
         <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
           <button
-            onClick={p.onHoldOrder}
+            onClick={p.onSaveTicket}
             disabled={p.cartItems.length === 0 || p.isSubmitting}
             style={smallBtn(p.cartItems.length === 0 || p.isSubmitting)}
           >
-            Hold
+            🎫 Save ticket
           </button>
           <button
-            onClick={p.onResumeLastHold}
-            disabled={!p.lastHeldOrderId || p.isSubmitting}
-            style={smallBtn(!p.lastHeldOrderId || p.isSubmitting)}
+            onClick={p.onOpenTickets}
+            disabled={p.isSubmitting}
+            style={{ ...smallBtn(p.isSubmitting), position: 'relative' }}
           >
-            Resume{p.lastHeldOrderId ? ` #${p.lastHeldOrderId}` : ''}
+            Open tickets
+            {p.openTicketsCount > 0 && (
+              <span style={{
+                marginLeft: 6, padding: '1px 8px', borderRadius: 999,
+                background: '#D4813A', color: '#fff', fontSize: 11, fontWeight: 800,
+              }}>{p.openTicketsCount}</span>
+            )}
           </button>
         </div>
 

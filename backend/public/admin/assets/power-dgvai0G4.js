@@ -1,1 +1,0 @@
-import{o}from"./index-B9A_C9VJ.js";const e=[["rect",{width:"18",height:"11",x:"3",y:"11",rx:"2",ry:"2",key:"1w4ew1"}],["path",{d:"M7 11V7a5 5 0 0 1 9.9-1",key:"1mm8w8"}]],n=o("lock-open",e);const t=[["path",{d:"M12 2v10",key:"mnfbl"}],["path",{d:"M18.4 6.6a9 9 0 1 1-12.77.04",key:"obofu9"}]],a=o("power",t);export{n as L,a as P};

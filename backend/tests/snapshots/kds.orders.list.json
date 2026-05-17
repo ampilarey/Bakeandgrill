@@ -52,11 +52,14 @@
             "referral_code": null,
             "referral_discount_laar": 0,
             "referral_redemption_recorded": false,
+            "shift_id": null,
+            "ticket_name": null,
+            "ticket_note": null,
             "items": [
                 {
                     "id": "__VOLATILE__",
                     "order_id": "__VOLATILE__",
-                    "item_id": 1,
+                    "item_id": "__VOLATILE__",
                     "variant_id": null,
                     "item_name": "Classic Burger",
                     "variant_name": null,
@@ -68,6 +71,7 @@
                     "created_at": "__VOLATILE__",
                     "updated_at": "__VOLATILE__",
                     "deleted_at": null,
+                    "tax_rate": "0.00",
                     "modifiers": []
                 }
             ]

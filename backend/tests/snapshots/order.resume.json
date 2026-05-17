@@ -50,6 +50,9 @@
         "gift_card_discount_laar": 0,
         "referral_code": null,
         "referral_discount_laar": 0,
-        "referral_redemption_recorded": false
+        "referral_redemption_recorded": false,
+        "shift_id": null,
+        "ticket_name": null,
+        "ticket_note": null
     }
 }

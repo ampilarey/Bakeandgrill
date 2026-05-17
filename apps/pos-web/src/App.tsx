@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus } from "./api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -7,30 +7,39 @@ import { useMenu }          from "./hooks/useMenu";
 import { useCart }          from "./hooks/useCart";
 import { useOrderCreation } from "./hooks/useOrderCreation";
 import { useOps }           from "./hooks/useOps";
+import { useShift }         from "./hooks/useShift";
 
-import { LoginPage }      from "./pages/LoginPage";
-import { MenuGrid }       from "./components/MenuGrid";
-import { OrderCart }      from "./components/OrderCart";
-import { OpsPanel }       from "./components/OpsPanel";
-import { SendBillPanel }  from "./components/SendBillPanel";
+import { LoginPage }         from "./pages/LoginPage";
+import { MenuGrid }          from "./components/MenuGrid";
+import { OrderCart }         from "./components/OrderCart";
+import { OpsPanel }          from "./components/OpsPanel";
+import { SendBillPanel }     from "./components/SendBillPanel";
+import { OpenShiftModal }    from "./components/OpenShiftModal";
+import { CloseShiftModal }   from "./components/CloseShiftModal";
+import { ShiftClosedGate }   from "./components/ShiftClosedGate";
+import { ChargeOverlay }     from "./components/ChargeOverlay";
+import { SaveTicketModal }   from "./components/SaveTicketModal";
+import { OpenTicketsPanel }  from "./components/OpenTicketsPanel";
+import { ReceiptsPanel }     from "./components/ReceiptsPanel";
+import { ShiftPanel }        from "./components/ShiftPanel";
+import { ShiftHistoryPanel } from "./components/ShiftHistoryPanel";
+import { SideDrawer }        from "./components/SideDrawer";
+import { TimeClockPanel }    from "./components/TimeClockPanel";
+import { LockScreen }        from "./components/LockScreen";
 
 const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
 
-type DeviceStatus =
-  | 'unknown'
-  | 'checking'
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'registration_failed';
+type DeviceStatus = 'unknown' | 'checking' | 'pending' | 'approved' | 'rejected' | 'registration_failed';
+
+type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | "ops";
 
 function App() {
-  const [showSendBill, setShowSendBill] = useState(false);
   // ── Auth ────────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn]   = useState(() => !!localStorage.getItem('pos_token'));
   const [username, setUsername]       = useState("");
   const [pin, setPin]                 = useState("");
+  const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
   const [deviceId]                    = useState(() => {
     const stored = localStorage.getItem("pos_device_id");
     if (stored) return stored;
@@ -40,15 +49,27 @@ function App() {
   });
   const [authError, setAuthError]     = useState("");
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>('unknown');
+  const [showTimeClock, setShowTimeClock] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   // ── View + connectivity ─────────────────────────────────────────────────────
-  const [viewMode, setViewMode]               = useState<"pos" | "ops">("pos");
-  const [isOnline, setIsOnline]               = useState(navigator.onLine);
+  const [pane, setPane] = useState<Pane>("sales");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineQueueCount, setOfflineQueueCount] = useState(getQueueCount());
 
+  // Modals/overlays
+  const [showSendBill, setShowSendBill] = useState(false);
+  const [showCharge, setShowCharge] = useState(false);
+  const [showSaveTicket, setShowSaveTicket] = useState(false);
+  const [showOpenShift, setShowOpenShift] = useState(false);
+  const [showCloseShift, setShowCloseShift] = useState(false);
+  const [openShiftBusy, setOpenShiftBusy] = useState(false);
+  const [openTicketsCount, setOpenTicketsCount] = useState(0);
+
   // ── Tables / order type ─────────────────────────────────────────────────────
-  const [orderType, setOrderType]           = useState<OrderType>("Takeaway");
-  const [tables, setTables]                 = useState<RestaurantTable[]>([]);
+  const [orderType, setOrderType] = useState<OrderType>("Takeaway");
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
 
   // ── Online / offline events ─────────────────────────────────────────────────
@@ -65,27 +86,26 @@ function App() {
 
   useEffect(() => { setOfflineQueueCount(getQueueCount()); }, [isOnline]);
 
-  // ── Load tables after login ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    fetchTables()
-      .then((r) => {
-        setTables(r.tables);
-        setSelectedTableId(r.tables.find((t) => t.is_active)?.id ?? null);
-      })
-      .catch(() => { setTables([]); setSelectedTableId(null); });
-  }, [isLoggedIn]);
-
   // ── Hooks ───────────────────────────────────────────────────────────────────
   const menu = useMenu(isLoggedIn);
   const cart = useCart();
+  const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
+  const shift = useShift(isLoggedIn, deviceStatus === "approved");
 
   const filteredItems = useMemo(
     () => menu.items.filter((item) => item.category_id === menu.selectedCategoryId),
     [menu.items, menu.selectedCategoryId],
   );
 
-  const ops = useOps(isLoggedIn, viewMode);
+  const refreshOpenTickets = useCallback(async () => {
+    if (!isLoggedIn || deviceStatus !== "approved") return;
+    try {
+      const res = await fetchReceipts({ held_only: true, device_identifier: deviceId, per_page: 50 });
+      setOpenTicketsCount(res.data.length);
+    } catch { /* best-effort */ }
+  }, [isLoggedIn, deviceStatus, deviceId]);
+
+  useEffect(() => { void refreshOpenTickets(); }, [refreshOpenTickets, pane, shift.current?.id]);
 
   const order = useOrderCreation({
     isOnline,
@@ -100,7 +120,19 @@ function App() {
     setCartItems:     cart.setCartItems,
     setSelectedItem:  cart.setSelectedItem,
     setOfflineQueueCount,
+    onOrderSettled: () => { void refreshOpenTickets(); void shift.refreshSummary(); },
   });
+
+  // ── Load tables after login ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchTables()
+      .then((r) => {
+        setTables(r.tables);
+        setSelectedTableId(r.tables.find((t) => t.is_active)?.id ?? null);
+      })
+      .catch(() => { setTables([]); setSelectedTableId(null); });
+  }, [isLoggedIn]);
 
   // ── Device-blocked event (dispatched by api.ts when middleware rejects) ────
   useEffect(() => {
@@ -113,8 +145,6 @@ function App() {
     return () => window.removeEventListener('pos_device_blocked', onBlocked);
   }, []);
 
-  // Map server status string → UI device state, in one place so the polling
-  // and the one-shot register both produce consistent results.
   const applyDeviceStatus = (apiStatus: string, isActive?: boolean) => {
     if (apiStatus === 'pending')                            setDeviceStatus('pending');
     else if (apiStatus === 'rejected')                      setDeviceStatus('rejected');
@@ -123,8 +153,6 @@ function App() {
     else if (apiStatus === 'approved')                      setDeviceStatus('approved');
   };
 
-  // (1) One-shot self-register on login. Crucially this effect does NOT
-  // depend on deviceStatus — otherwise we'd flicker forever.
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
@@ -140,8 +168,6 @@ function App() {
     return () => { cancelled = true; };
   }, [isLoggedIn, deviceId]);
 
-  // (2) Poll the server for status changes (approval / disable) — cadence
-  // depends on the current status: 4 s while pending, 20 s once approved.
   useEffect(() => {
     if (!isLoggedIn) return;
     if (deviceStatus !== 'pending' && deviceStatus !== 'approved') return;
@@ -165,6 +191,9 @@ function App() {
     try {
       const response = await staffLogin(username.trim(), pin.trim(), deviceId.trim());
       localStorage.setItem("pos_token", response.token);
+      const name = response.user?.name ?? username.trim();
+      localStorage.setItem("pos_cashier_name", name);
+      setCashierName(name);
       setAuthToken(response.token);
       setIsLoggedIn(true);
       setPin("");
@@ -175,31 +204,82 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem("pos_token");
+    localStorage.removeItem("pos_cashier_name");
     setAuthToken(null);
     setIsLoggedIn(false);
     setDeviceStatus('unknown');
+    setCashierName("");
+    setIsLocked(false);
+  };
+
+  const handleOpenShift = async (openingCash: number, notes?: string) => {
+    setOpenShiftBusy(true);
+    try { await shift.open(openingCash, notes); setShowOpenShift(false); }
+    finally { setOpenShiftBusy(false); }
+  };
+  const handleCloseShift = async (closingCash: number, notes?: string) => {
+    await shift.close(closingCash, notes);
+    setShowCloseShift(false);
+    setPane("sales");
+  };
+  const handleSaveTicketSubmit = async (name: string, note?: string) => {
+    await order.handleSaveTicket(name, note);
+    setShowSaveTicket(false);
+    void refreshOpenTickets();
+  };
+
+  // Unlock = verify PIN against the saved token's user — keeps the shift.
+  const handleUnlock = async (testPin: string): Promise<boolean> => {
+    try {
+      const res = await staffLogin(username || cashierName || "", testPin, deviceId);
+      // Re-bind the token in case it was rotated server-side.
+      localStorage.setItem("pos_token", res.token);
+      setAuthToken(res.token);
+      setIsLocked(false);
+      return true;
+    } catch { return false; }
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  if (showTimeClock) {
+    return <TimeClockPanel deviceId={deviceId} onBack={() => setShowTimeClock(false)} />;
+  }
+
   if (!isLoggedIn) {
     return (
-      <LoginPage
-        username={username} setUsername={setUsername}
-        pin={pin} setPin={setPin}
-        deviceId={deviceId}
-        authError={authError} onLogin={handleLogin}
+      <>
+        <LoginPage
+          username={username} setUsername={setUsername}
+          pin={pin} setPin={setPin}
+          deviceId={deviceId}
+          authError={authError} onLogin={handleLogin}
+        />
+        <button
+          onClick={() => setShowTimeClock(true)}
+          style={{
+            position: "fixed", bottom: 24, right: 24, zIndex: 5,
+            padding: "12px 18px", borderRadius: 999,
+            background: "#fff", border: "none", color: "#0F172A",
+            fontWeight: 700, fontSize: 14, cursor: "pointer",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+          }}
+        >⏰ Time Clock</button>
+      </>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <LockScreen
+        cashierName={cashierName}
+        onUnlock={handleUnlock}
+        onSwitchUser={handleLogout}
       />
     );
   }
 
   if (deviceStatus === 'checking' || deviceStatus === 'unknown') {
-    return (
-      <FullScreenCard
-        emoji="⏳"
-        title="Checking device…"
-        body="Please wait"
-      />
-    );
+    return <FullScreenCard emoji="⏳" title="Checking device…" body="Please wait" />;
   }
 
   if (deviceStatus === 'registration_failed') {
@@ -238,74 +318,91 @@ function App() {
     );
   }
 
+  // Hard shift gate — POS UI is unreachable until a shift is open.
+  if (!shift.loading && !shift.current) {
+    return (
+      <>
+        <ShiftClosedGate
+          onOpenShift={() => setShowOpenShift(true)}
+          onLogout={handleLogout}
+          onSwitchUser={() => setIsLocked(true)}
+        />
+        {showOpenShift && (
+          <OpenShiftModal
+            onConfirm={handleOpenShift}
+            onCancel={() => setShowOpenShift(false)}
+            busy={openShiftBusy}
+          />
+        )}
+      </>
+    );
+  }
+
+  const drawerItems = [
+    { id: "sales",          label: "Sales",          icon: "🛒", group: "main" as const },
+    { id: "receipts",       label: "Receipts",       icon: "🧾", group: "main" as const },
+    { id: "open_tickets",   label: "Open Tickets",   icon: "🎫", group: "main" as const,
+      badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined },
+    { id: "shift",          label: "Current Shift",  icon: "💰", group: "main" as const },
+    { id: "shift_history",  label: "Shift History",  icon: "📚", group: "main" as const },
+    { id: "ops",            label: "Operations",     icon: "🛠", group: "main" as const },
+    { id: "lock",           label: "Switch user",    icon: "🔄", group: "user" as const },
+    { id: "logout",         label: "Log out",        icon: "↩",  group: "user" as const },
+  ];
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#F5F6F8',
-      color: '#1E293B',
-      display: 'flex',
-      flexDirection: 'column',
+      background: '#F5F6F8', color: '#1E293B',
+      display: 'flex', flexDirection: 'column',
     }}>
       {/* ── Top bar ────────────────────────────────────────────────── */}
       <header style={{
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E2E8F0',
-        padding: '10px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        flexShrink: 0,
+        background: '#FFFFFF', borderBottom: '1px solid #E2E8F0',
+        padding: '10px 16px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', gap: 12, flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: '#D4813A', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 800, fontSize: 16,
-          }}>B&G</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: '#F1F5F9', border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: 18,
+            }}>☰</button>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.1 }}>Bake & Grill POS</div>
-            <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2 }}>Device {deviceId}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.1 }}>
+              {paneTitle(pane)}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2 }}>
+              {cashierName || 'Cashier'} · {deviceId}
+            </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {/* POS / OPS toggle */}
-          <div style={{ display: 'inline-flex', background: '#F1F5F9', borderRadius: 8, padding: 3 }}>
-            {(["pos", "ops"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                style={{
-                  padding: '6px 14px', fontSize: 12, fontWeight: 700,
-                  border: 'none', cursor: 'pointer', borderRadius: 6,
-                  background: viewMode === mode ? '#FFFFFF' : 'transparent',
-                  color: viewMode === mode ? '#0F172A' : '#64748B',
-                  boxShadow: viewMode === mode ? '0 1px 2px rgba(15,23,42,0.08)' : 'none',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {mode.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          {/* Sales chip — quick at-a-glance shift KPI */}
+          {shift.summary && (
+            <span style={{
+              padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+              background: '#0F172A', color: '#fff',
+            }}>
+              {shift.summary.sales_summary.order_count} orders · MVR {shift.summary.sales_summary.net_sales.toFixed(0)}
+            </span>
+          )}
 
-          {/* Online indicator */}
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
             background: isOnline ? '#DCFCE7' : '#FEE2E2',
             color: isOnline ? '#15803D' : '#B91C1C',
           }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: isOnline ? '#22C55E' : '#EF4444',
-            }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: isOnline ? '#22C55E' : '#EF4444' }} />
             {isOnline ? 'Online' : 'Offline'}
           </span>
 
-          {/* Queue + sync */}
           {offlineQueueCount > 0 && (
             <button
               onClick={order.handleSyncQueue}
@@ -318,54 +415,21 @@ function App() {
               🔄 Sync {offlineQueueCount}
             </button>
           )}
-
-          {/* Log out + site */}
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '6px 10px', fontSize: 12, fontWeight: 600,
-              background: 'transparent', color: '#64748B', border: 'none', cursor: 'pointer',
-            }}
-          >
-            Log out
-          </button>
-          <a href="/" style={{ fontSize: 12, color: '#94A3B8', textDecoration: 'none' }}>← Site</a>
         </div>
       </header>
 
-      {/* ── Status banners ─────────────────────────────────────────── */}
+      {/* Status banners */}
       {(order.statusMessage || ops.opsMessage) && (
         <div style={{ padding: '8px 16px 0' }}>
-          {order.statusMessage && (
-            <div style={{
-              background: '#FFFFFF', borderRadius: 8, padding: '10px 14px',
-              fontSize: 13, color: '#475569', border: '1px solid #E2E8F0', marginBottom: 6,
-            }}>
-              {order.statusMessage}
-            </div>
-          )}
-          {ops.opsMessage && (
-            <div style={{
-              background: '#FFFFFF', borderRadius: 8, padding: '10px 14px',
-              fontSize: 13, color: '#475569', border: '1px solid #E2E8F0',
-            }}>
-              {ops.opsMessage}
-            </div>
-          )}
+          {order.statusMessage && <Banner text={order.statusMessage} />}
+          {ops.opsMessage && <Banner text={ops.opsMessage} />}
         </div>
       )}
 
-      {/* ── Main body ──────────────────────────────────────────────── */}
+      {/* Main body */}
       <main style={{ flex: 1, display: 'flex', minHeight: 0, padding: 12, gap: 12 }}>
-        {viewMode === 'ops' ? (
-          <div style={{ flex: 1, overflow: 'auto', background: '#FFFFFF', borderRadius: 12, padding: 16 }}>
-            <div className="grid grid-cols-12 gap-4">
-              <OpsPanel {...ops} />
-            </div>
-          </div>
-        ) : (
+        {pane === 'sales' && (
           <>
-            {/* LEFT: Cart panel (Loyverse-style) */}
             <OrderCart
               orderType={orderType}
               setOrderType={setOrderType}
@@ -380,22 +444,17 @@ function App() {
               payments={cart.payments}
               discountAmount={cart.discountAmount}
               setDiscountAmount={cart.setDiscountAmount}
-              lastHeldOrderId={order.lastHeldOrderId}
               isSubmitting={order.isSubmitting}
               pendingPaymentForOrderId={order.pendingPaymentForOrderId}
-              onAddPaymentRow={cart.addPaymentRow}
-              onUpdatePaymentRow={cart.updatePaymentRow}
-              onRemovePaymentRow={cart.removePaymentRow}
-              onClearCart={cart.clearCart}
-              onHoldOrder={order.handleHoldOrder}
-              onResumeLastHold={order.handleResumeLastHold}
-              onCheckout={order.handleCheckout}
-              onRetryPayment={order.handleRetryPayment}
               lastCreatedOrderId={order.lastCreatedOrderId}
+              openTicketsCount={openTicketsCount}
+              onClearCart={cart.clearCart}
+              onSaveTicket={() => setShowSaveTicket(true)}
+              onOpenTickets={() => setPane("open_tickets")}
+              onCheckout={() => setShowCharge(true)}
+              onRetryPayment={order.handleRetryPayment}
               onOpenSendBill={() => setShowSendBill(true)}
             />
-
-            {/* RIGHT: Menu */}
             <MenuGrid
               categories={menu.categories}
               selectedCategoryId={menu.selectedCategoryId}
@@ -415,7 +474,64 @@ function App() {
             />
           </>
         )}
+
+        {pane === 'receipts' && (
+          <ReceiptsPanel
+            onClose={() => setPane("sales")}
+            shiftId={shift.current?.id ?? null}
+          />
+        )}
+
+        {pane === 'open_tickets' && (
+          <OpenTicketsPanel
+            deviceId={deviceId}
+            onClose={() => setPane("sales")}
+            onResume={(t) => {
+              void order.handleResumeTicket(t.id).then(() => {
+                setPane("sales");
+                void refreshOpenTickets();
+              });
+            }}
+          />
+        )}
+
+        {pane === 'shift' && (
+          <ShiftPanel
+            shift={shift.current}
+            summary={shift.summary}
+            onCashMovement={shift.cashMovement}
+            onClose={() => setPane("sales")}
+            onCloseShift={() => setShowCloseShift(true)}
+          />
+        )}
+
+        {pane === 'shift_history' && (
+          <ShiftHistoryPanel onClose={() => setPane("sales")} />
+        )}
+
+        {pane === 'ops' && (
+          <div style={{ flex: 1, overflow: 'auto', background: '#FFFFFF', borderRadius: 12, padding: 16 }}>
+            <div className="grid grid-cols-12 gap-4">
+              <OpsPanel {...ops} />
+            </div>
+          </div>
+        )}
       </main>
+
+      <SideDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        items={drawerItems}
+        active={pane}
+        cashierName={cashierName}
+        shiftLabel={shift.current ? `Shift #${shift.current.id} · MVR ${(shift.summary?.cash_drawer.expected_cash ?? 0).toFixed(2)} in drawer` : 'No open shift'}
+        onSelect={(id) => {
+          setDrawerOpen(false);
+          if (id === "logout") return handleLogout();
+          if (id === "lock") return setIsLocked(true);
+          setPane(id as Pane);
+        }}
+      />
 
       {showSendBill && (
         <SendBillPanel
@@ -423,25 +539,61 @@ function App() {
           onClose={() => setShowSendBill(false)}
         />
       )}
+
+      {showCharge && (
+        <ChargeOverlay
+          total={cart.cartTotal}
+          submitting={order.isSubmitting}
+          onClose={() => setShowCharge(false)}
+          onConfirm={async (rows) => {
+            const ok = await order.handleCharge(rows);
+            if (ok) setShowCharge(false);
+          }}
+        />
+      )}
+
+      {showSaveTicket && (
+        <SaveTicketModal
+          onConfirm={handleSaveTicketSubmit}
+          onCancel={() => setShowSaveTicket(false)}
+        />
+      )}
+
+      {showCloseShift && (
+        <CloseShiftModal
+          summary={shift.summary}
+          onConfirm={handleCloseShift}
+          onCancel={() => setShowCloseShift(false)}
+        />
+      )}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tiny shared full-screen card for device-status screens. Replaces the four
-// near-duplicate inline blocks the previous version had.
+function paneTitle(p: Pane): string {
+  switch (p) {
+    case "sales": return "Sale";
+    case "receipts": return "Receipts";
+    case "open_tickets": return "Open Tickets";
+    case "shift": return "Current Shift";
+    case "shift_history": return "Shift History";
+    case "ops": return "Operations";
+  }
+}
+
+function Banner({ text }: { text: string }) {
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 8, padding: '10px 14px',
+      fontSize: 13, color: '#475569', border: '1px solid #E2E8F0', marginBottom: 6,
+    }}>{text}</div>
+  );
+}
+
 function FullScreenCard({
-  emoji,
-  title,
-  body,
-  deviceId,
-  primaryAction,
-  secondaryAction,
-  footer,
+  emoji, title, body, deviceId, primaryAction, secondaryAction, footer,
 }: {
-  emoji: string;
-  title: string;
-  body: string;
+  emoji: string; title: string; body: string;
   deviceId?: string;
   primaryAction?: { label: string; onClick: () => void };
   secondaryAction?: { label: string; onClick: () => void };

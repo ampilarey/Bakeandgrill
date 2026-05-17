@@ -236,6 +236,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 
     // Shifts + cash drawer
     Route::get('/shifts/current', [ShiftController::class, 'current']);
+    Route::get('/shifts/history', [ShiftController::class, 'history']);
+    Route::get('/shifts/{id}/summary', [ShiftController::class, 'summary']);
     Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('throttle:5,1');
     Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
     Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])->middleware('throttle:30,1');

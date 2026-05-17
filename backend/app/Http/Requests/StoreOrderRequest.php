@@ -21,6 +21,8 @@ class StoreOrderRequest extends FormRequest
             'device_identifier' => 'nullable|string|max:255',
             'restaurant_table_id' => 'nullable|integer|exists:restaurant_tables,id',
             'customer_id' => 'nullable|integer|exists:customers,id',
+            'ticket_name' => 'nullable|string|max:80',
+            'ticket_note' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
             'customer_notes' => 'nullable|string|max:1000',
             'discount_amount' => 'nullable|numeric|min:0',

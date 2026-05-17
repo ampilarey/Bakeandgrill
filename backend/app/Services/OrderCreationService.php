@@ -14,6 +14,7 @@ use App\Models\Item;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
+use App\Models\Shift;
 use Illuminate\Support\Facades\DB;
 
 class OrderCreationService
@@ -30,6 +31,26 @@ class OrderCreationService
             $device = Device::where('identifier', $payload['device_identifier'])->first();
         }
 
+        // Anchor the order to the cashier's currently-open shift so the
+        // close-shift cash drawer reconciliation includes it. Resolved by
+        // (cashier user) first, falling back to device. Customer online
+        // orders intentionally have no shift_id (no cashier responsible).
+        $shiftId = null;
+        if ($user !== null) {
+            $shiftId = Shift::query()
+                ->where('user_id', $user->id)
+                ->whereNull('closed_at')
+                ->latest('opened_at')
+                ->value('id');
+        }
+        if ($shiftId === null && $device !== null) {
+            $shiftId = Shift::query()
+                ->where('device_id', $device->id)
+                ->whereNull('closed_at')
+                ->latest('opened_at')
+                ->value('id');
+        }
+
         // Customer online orders (no staff user, type online_pickup/delivery) must start as
         // payment_pending so the KDS never shows them before payment is confirmed.
         // Kitchen print is also suppressed here — it fires via DispatchKitchenPrintListener
@@ -43,7 +64,7 @@ class OrderCreationService
             ? false
             : (!array_key_exists('print', $payload) || $payload['print'] === true);
 
-        return DB::transaction(function () use ($payload, $user, $device, $printKitchen, $initialStatus): Order {
+        return DB::transaction(function () use ($payload, $user, $device, $shiftId, $printKitchen, $initialStatus): Order {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'type' => $payload['type'],
@@ -52,6 +73,9 @@ class OrderCreationService
                 'customer_id' => $payload['customer_id'] ?? null,
                 'user_id' => $user?->id,
                 'device_id' => $device?->id,
+                'shift_id' => $shiftId,
+                'ticket_name' => $payload['ticket_name'] ?? null,
+                'ticket_note' => $payload['ticket_note'] ?? null,
                 'subtotal' => 0,
                 'tax_amount' => 0,
                 'discount_amount' => 0,

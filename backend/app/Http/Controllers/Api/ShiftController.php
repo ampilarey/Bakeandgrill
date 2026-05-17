@@ -14,6 +14,7 @@ use App\Http\Requests\OpenShiftRequest;
 use App\Models\CashMovement;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Refund;
 use App\Models\Shift;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
@@ -38,6 +39,99 @@ class ShiftController extends Controller
         }
 
         return response()->json(['shift' => $shift]);
+    }
+
+    /**
+     * Live shift summary — cash drawer breakdown + sales summary the cashier
+     * can glance at any time without having to close the shift. Returns the
+     * same numbers `close()` will use, so closing should never be a surprise.
+     */
+    public function summary(Request $request, int $id)
+    {
+        $shift = Shift::where('user_id', $request->user()?->id)->findOrFail($id);
+
+        $cashIn = (float) CashMovement::where('shift_id', $shift->id)
+            ->whereIn('type', ['cash_in', 'paid_in'])->sum('amount');
+        $cashOut = (float) CashMovement::where('shift_id', $shift->id)
+            ->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
+
+        // Cash sales/refunds based on Payment rows linked to orders in this shift.
+        $cashSales = (float) Payment::where('method', 'cash')
+            ->where('amount', '>', 0)
+            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->sum('amount');
+        $cashRefunds = (float) Payment::where('method', 'cash')
+            ->where('amount', '<', 0)
+            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->sum('amount');
+
+        $openingCash = (float) ($shift->opening_cash ?? 0);
+        $expectedCash = $openingCash + $cashIn - $cashOut + $cashSales + $cashRefunds;
+
+        // Sales summary across every order in the shift (any tender, any status
+        // except cancelled). Matches what Loyverse calls "Gross sales".
+        $orders = Order::where('shift_id', $shift->id)
+            ->whereNotIn('status', ['cancelled']);
+
+        $orderCount = (clone $orders)->count();
+        $gross = (float) (clone $orders)->sum('total');
+        $discounts = (float) (clone $orders)->sum(DB::raw('COALESCE(discount_amount,0) + COALESCE(manual_discount_laar,0)/100'));
+        $refundsTotal = (float) Refund::whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->whereNotIn('status', ['rejected'])
+            ->sum('amount');
+
+        // Tender breakdown for non-cash methods (handy for end-of-shift reports).
+        $tenders = Payment::whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->select('method', DB::raw('SUM(amount) as total'))
+            ->groupBy('method')
+            ->pluck('total', 'method');
+
+        return response()->json([
+            'shift' => [
+                'id' => $shift->id,
+                'opened_at' => $shift->opened_at,
+                'opening_cash' => $openingCash,
+                'user_id' => $shift->user_id,
+                'device_id' => $shift->device_id,
+            ],
+            'cash_drawer' => [
+                'opening_cash' => $openingCash,
+                'cash_sales'   => $cashSales,
+                'cash_refunds' => abs($cashRefunds),
+                'paid_in'      => $cashIn,
+                'paid_out'     => $cashOut,
+                'expected_cash' => $expectedCash,
+            ],
+            'sales_summary' => [
+                'order_count' => $orderCount,
+                'gross_sales' => $gross,
+                'discounts'   => $discounts,
+                'refunds'     => $refundsTotal,
+                'net_sales'   => $gross - $refundsTotal,
+            ],
+            'tenders' => $tenders,
+        ]);
+    }
+
+    /**
+     * Past shift list for this cashier (or every cashier — owners/managers).
+     * Limited to the most recent 60 shifts to keep responses small.
+     */
+    public function history(Request $request)
+    {
+        $user = $request->user();
+        $isManagerOrOwner = in_array($user?->role?->slug, ['owner', 'manager'], true);
+
+        $query = Shift::query()
+            ->whereNotNull('closed_at')
+            ->orderByDesc('opened_at')
+            ->limit(60);
+
+        if (!$isManagerOrOwner) {
+            $query->where('user_id', $user?->id);
+        }
+
+        return response()->json(['shifts' => $query->get()]);
     }
 
     public function open(OpenShiftRequest $request)

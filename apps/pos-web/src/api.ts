@@ -201,12 +201,122 @@ export async function getOrder(orderId: number): Promise<{
   return request(`/orders/${orderId}`);
 }
 
-export async function holdOrder(orderId: number): Promise<void> {
-  await request(`/orders/${orderId}/hold`, { method: "POST" });
+export async function holdOrder(
+  orderId: number,
+  payload?: { ticket_name?: string; ticket_note?: string },
+): Promise<void> {
+  await request(`/orders/${orderId}/hold`, {
+    method: "POST",
+    body: JSON.stringify(payload ?? {}),
+  });
 }
 
 export async function resumeOrder(orderId: number): Promise<void> {
   await request(`/orders/${orderId}/resume`, { method: "POST" });
+}
+
+/**
+ * Receipts/orders list shaped for the POS — same backing endpoint as admin,
+ * but with cashier-friendly filters (current shift, today, search).
+ */
+export async function fetchReceipts(params: {
+  q?: string;
+  date?: string;
+  current_shift?: boolean;
+  held_only?: boolean;
+  device_identifier?: string;
+  per_page?: number;
+  status?: string;
+} = {}): Promise<{
+  data: Array<{
+    id: number;
+    order_number: string;
+    type: string;
+    status: string;
+    total: number;
+    subtotal: number;
+    discount_amount: number;
+    created_at: string;
+    customer?: { id: number; name?: string; phone?: string } | null;
+    items?: Array<{ id: number; item_name: string; quantity: number; unit_price: number; total_price: number }>;
+    ticket_name?: string | null;
+    ticket_note?: string | null;
+  }>;
+}> {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === "") return;
+    qs.set(k, typeof v === "boolean" ? (v ? "1" : "0") : String(v));
+  });
+  return request(`/orders?${qs.toString()}`);
+}
+
+export async function getReceiptLink(orderId: number): Promise<{ link: string }> {
+  return request(`/orders/${orderId}/receipt-link`);
+}
+
+export async function sendReceipt(
+  orderId: number,
+  payload: { channel: "sms" | "email"; recipient: string },
+): Promise<{ receipt: unknown; link: string }> {
+  return request(`/receipts/${orderId}/send`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getShiftSummary(shiftId: number): Promise<{
+  shift: { id: number; opened_at: string; opening_cash: number };
+  cash_drawer: {
+    opening_cash: number;
+    cash_sales: number;
+    cash_refunds: number;
+    paid_in: number;
+    paid_out: number;
+    expected_cash: number;
+  };
+  sales_summary: {
+    order_count: number;
+    gross_sales: number;
+    discounts: number;
+    refunds: number;
+    net_sales: number;
+  };
+  tenders: Record<string, number>;
+}> {
+  return request(`/shifts/${shiftId}/summary`);
+}
+
+export async function getShiftHistory(): Promise<{
+  shifts: Array<{
+    id: number;
+    user_id: number;
+    device_id: number | null;
+    opened_at: string;
+    closed_at: string | null;
+    opening_cash: number;
+    closing_cash: number;
+    expected_cash: number;
+    variance: number;
+    notes: string | null;
+  }>;
+}> {
+  return request(`/shifts/history`);
+}
+
+export async function getTimeClockStatus(): Promise<{
+  clocked_in: boolean;
+  punch?: { id: number; clocked_in_at: string };
+}> {
+  return request(`/time-clock/status`);
+}
+
+export async function clockIn(): Promise<{ punch: { id: number; clocked_in_at: string } }> {
+  return request(`/time-clock/in`, { method: "POST" });
+}
+
+export async function clockOut(): Promise<{ punch: { id: number; clocked_out_at: string; total_hours: number } }> {
+  return request(`/time-clock/out`, { method: "POST" });
 }
 
 export async function getCurrentShift(): Promise<{

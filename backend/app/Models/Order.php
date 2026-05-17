@@ -26,6 +26,9 @@ class Order extends Model
         'customer_id',
         'user_id',
         'device_id',
+        'shift_id',
+        'ticket_name',
+        'ticket_note',
         'subtotal',
         'tax_amount',
         'discount_amount',
@@ -74,6 +77,9 @@ class Order extends Model
         'customer_id' => 'integer',
         'restaurant_table_id' => 'integer',
         'delivery_driver_id' => 'integer',
+        'shift_id' => 'integer',
+        'device_id' => 'integer',
+        'user_id' => 'integer',
         // Datetimes
         'held_at' => 'datetime',
         'paid_at' => 'datetime',
@@ -133,6 +139,11 @@ class Order extends Model
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class);
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
     }
 
     public function receipt(): HasOne

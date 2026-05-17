@@ -50,6 +50,7 @@ type Params = {
   setCartItems: (items: CartItem[]) => void;
   setSelectedItem: (item: Item | null) => void;
   setOfflineQueueCount: (n: number) => void;
+  onOrderSettled?: () => void;
 };
 
 export function useOrderCreation(params: Params) {
@@ -66,7 +67,7 @@ export function useOrderCreation(params: Params) {
   // unwittingly creating a duplicate.
   const [pendingPaymentForOrderId, setPendingPaymentForOrderId] = useState<number | null>(null);
 
-  const buildPayload = () => {
+  const buildPayload = (overrides: Partial<{ ticket_name: string; ticket_note: string }> = {}) => {
     const discount = Math.max(0, Number.parseFloat(params.discountAmount) || 0);
     return {
       type: mapOrderType(params.orderType),
@@ -75,6 +76,8 @@ export function useOrderCreation(params: Params) {
       restaurant_table_id:
         params.orderType === "Dine-in" ? params.selectedTableId ?? undefined : undefined,
       discount_amount: discount,
+      ...(overrides.ticket_name ? { ticket_name: overrides.ticket_name } : {}),
+      ...(overrides.ticket_note ? { ticket_note: overrides.ticket_note } : {}),
       items: params.cartItems.map((item) => ({
         item_id: item.id,
         name: item.name,
@@ -119,96 +122,106 @@ export function useOrderCreation(params: Params) {
     }
   };
 
-  const handleCheckout = () => {
-    if (params.cartItems.length === 0) return;
-    if (isSubmitting) return;
+  /**
+   * Charge the cart with explicit tender rows from the ChargeOverlay.
+   * The cart is only cleared after both order creation AND settlement
+   * succeed — partial successes leave the cart intact so the cashier
+   * can retry without re-entering everything.
+   */
+  const handleCharge = async (
+    rows: Array<{ method: string; amount: number }>,
+  ): Promise<boolean> => {
+    if (params.cartItems.length === 0) return false;
+    if (isSubmitting) return false;
     if (params.orderType === "Dine-in" && !params.selectedTableId) {
       setStatusMessage("Select a table for dine-in orders.");
-      return;
+      return false;
     }
 
     const payload = buildPayload();
-    const paymentSnapshot = [...params.payments];
+    const paymentSnapshot: PaymentRow[] = rows.map((r) => ({
+      id: crypto.randomUUID(),
+      method: r.method as PaymentRow["method"],
+      amount: r.amount.toFixed(2),
+    }));
 
     if (!params.isOnline) {
-      // Offline path: include payment intent so it can be settled on sync.
-      void (async () => {
-        try {
-          await enqueue({ order: payload, payments: paymentSnapshot });
-          params.setOfflineQueueCount(getQueueCount());
-          params.clearCart();
-          params.setSelectedItem(null);
-          setStatusMessage("Offline order queued. Will sync when online.");
-          setTimeout(() => setStatusMessage(""), 5000);
-        } catch (err) {
-          if (err instanceof OfflineQueueFullError) {
-            setStatusMessage(
-              `⛔ Offline queue full (${err.size} orders). Connect to internet and Sync before taking more orders.`,
-            );
-          } else {
-            setStatusMessage("Unable to save offline order. Please try again.");
-          }
+      try {
+        await enqueue({ order: payload, payments: paymentSnapshot });
+        params.setOfflineQueueCount(getQueueCount());
+        params.clearCart();
+        params.setSelectedItem(null);
+        setStatusMessage("Offline order queued. Will sync when online.");
+        setTimeout(() => setStatusMessage(""), 5000);
+        return true;
+      } catch (err) {
+        if (err instanceof OfflineQueueFullError) {
+          setStatusMessage(`⛔ Offline queue full (${err.size}). Reconnect and Sync.`);
+        } else {
+          setStatusMessage("Unable to save offline order. Please try again.");
         }
-      })();
-      return;
+        return false;
+      }
     }
 
     setIsSubmitting(true);
     let orderCreated = false;
-    let newOrderId: number | null = null;
+    try {
+      const response = await createOrder(payload);
+      orderCreated = true;
+      setLastCreatedOrderId(response.order.id);
+      const totalDue = response.order.total ?? params.cartTotal;
+      const settled = await settleOrder(response.order.id, totalDue, paymentSnapshot);
+      if (settled) {
+        params.clearCart();
+        params.setSelectedItem(null);
+        setStatusMessage("Order paid and sent to kitchen.");
+        setTimeout(() => setStatusMessage(""), 5000);
+        params.onOrderSettled?.();
+      }
+      return settled;
+    } catch (err: unknown) {
+      if (orderCreated) return false;
+      const message = (err as Error)?.message ?? "";
+      const isApiError = err instanceof ApiRequestError;
+      const status = isApiError ? err.status : undefined;
 
-    createOrder(payload)
-      .then(async (response) => {
-        orderCreated = true;
-        newOrderId = response.order.id;
-        setLastCreatedOrderId(response.order.id);
-        const totalDue = response.order.total ?? params.cartTotal;
-        const settled = await settleOrder(response.order.id, totalDue, paymentSnapshot);
-        if (settled) {
-          params.clearCart();
-          params.setSelectedItem(null);
-          setStatusMessage("Order paid and sent to kitchen.");
-          setTimeout(() => setStatusMessage(""), 5000);
-        }
-      })
-      .catch(async (err: unknown) => {
-        if (orderCreated) return; // payment error already surfaced by settleOrder
-        const message = (err as Error)?.message ?? '';
-        const isApiError = err instanceof ApiRequestError;
-        const status = isApiError ? err.status : undefined;
+      if (isApiError) {
+        const isDeviceBlock =
+          message.includes("Device disabled") ||
+          message.includes("Device pending") ||
+          message.includes("Device rejected") ||
+          message.includes("Device identifier") ||
+          message.includes("Device not registered") ||
+          status === 401 || status === 403;
+        setStatusMessage(isDeviceBlock ? `⛔ ${message}` : `Order failed: ${message}`);
+        return false;
+      }
 
-        if (isApiError) {
-          const isDeviceBlock =
-            message.includes('Device disabled') ||
-            message.includes('Device pending') ||
-            message.includes('Device rejected') ||
-            message.includes('Device identifier') ||
-            message.includes('Device not registered') ||
-            status === 401 ||
-            status === 403;
-          setStatusMessage(isDeviceBlock ? `⛔ ${message}` : `Order failed: ${message}`);
-          return;
+      try {
+        await enqueue({ order: payload, payments: paymentSnapshot });
+        params.setOfflineQueueCount(getQueueCount());
+        setStatusMessage("Network error. Order queued for sync (payments included).");
+      } catch (e) {
+        if (e instanceof OfflineQueueFullError) {
+          setStatusMessage(`⛔ Offline queue full (${e.size}). Reconnect and Sync.`);
+        } else {
+          setStatusMessage("Network error and unable to queue. Try again.");
         }
+      }
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-        // True network failure — safe to queue (with payments).
-        try {
-          await enqueue({ order: payload, payments: paymentSnapshot });
-          params.setOfflineQueueCount(getQueueCount());
-          setStatusMessage("Network error. Order queued for sync (payments included).");
-        } catch (e) {
-          if (e instanceof OfflineQueueFullError) {
-            setStatusMessage(
-              `⛔ Offline queue full (${e.size} orders). Reconnect and Sync.`,
-            );
-          } else {
-            setStatusMessage("Network error and unable to queue. Try again.");
-          }
-        }
-      })
-      .finally(() => {
-        setIsSubmitting(false);
-        void newOrderId; // silence unused-var lint when nothing uses it
-      });
+  /** Legacy single-action checkout, kept for the rare case the cashier
+   *  has explicit payment rows already set up (split tender) and just
+   *  wants to commit them without a charge overlay. */
+  const handleCheckout = () => {
+    void handleCharge(
+      normalizePayments(params.payments),
+    );
   };
 
   const handleRetryPayment = () => {
@@ -234,63 +247,64 @@ export function useOrderCreation(params: Params) {
     })();
   };
 
-  const handleHoldOrder = () => {
-    if (!params.isOnline) {
-      setStatusMessage("Go online and login to hold orders.");
-      return;
-    }
-    if (params.cartItems.length === 0) return;
+  /**
+   * Park the current cart as a named ticket. Supports multiple
+   * simultaneous tickets (one per cashier device) so it's safe to
+   * juggle dine-in + walk-in customers without overwriting holds.
+   */
+  const handleSaveTicket = async (name: string, note?: string): Promise<void> => {
+    if (!params.isOnline) throw new Error("Go online to save tickets.");
+    if (params.cartItems.length === 0) throw new Error("Add items first.");
     if (params.orderType === "Dine-in" && !params.selectedTableId) {
-      setStatusMessage("Select a table for dine-in orders.");
-      return;
+      throw new Error("Select a table for dine-in orders.");
     }
 
-    const payload = { ...buildPayload(), print: false };
+    const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
+    const response = await createOrder(payload);
+    await holdOrder(response.order.id, { ticket_name: name, ticket_note: note });
 
-    createOrder(payload)
-      .then((response) => holdOrder(response.order.id).then(() => response.order.id))
-      .then((orderId) => {
-        localStorage.setItem("pos_last_held_order", String(orderId));
-        setLastHeldOrderId(orderId);
-        params.clearCart();
-        params.setSelectedItem(null);
-        setStatusMessage(`Order ${orderId} held.`);
-      })
-      .catch((err: unknown) => {
-        const msg = (err as Error).message ?? "";
-        if (err instanceof ApiRequestError) {
-          setStatusMessage(`Hold failed: ${msg}`);
-        } else {
-          setStatusMessage("Unable to hold order. Try again.");
-        }
-      });
+    localStorage.setItem("pos_last_held_order", String(response.order.id));
+    setLastHeldOrderId(response.order.id);
+    params.clearCart();
+    params.setSelectedItem(null);
+    setStatusMessage(`Ticket "${name}" saved.`);
+    setTimeout(() => setStatusMessage(""), 4000);
+  };
+
+  /** Resume a specific held ticket by id (replaces single-hold flow). */
+  const handleResumeTicket = async (orderId: number): Promise<void> => {
+    await resumeOrder(orderId);
+    const response = await getOrder(orderId);
+    const restoredItems: CartItem[] = response.order.items.map((item) => ({
+      id: item.item_id ?? 0,
+      name: item.item_name,
+      price: item.unit_price,
+      quantity: item.quantity,
+      variant_id: item.variant_id ?? null,
+      variant_name: item.variant_name ?? null,
+      modifiers: item.modifiers?.map((m) => ({
+        id: m.modifier_id ?? 0,
+        name: m.modifier_name,
+        price: m.modifier_price,
+      })) ?? [],
+    }));
+    params.setCartItems(restoredItems);
+    localStorage.removeItem("pos_last_held_order");
+    setLastHeldOrderId(null);
+    setStatusMessage("Ticket resumed.");
+    setTimeout(() => setStatusMessage(""), 3000);
+  };
+
+  /** Legacy single-button hold — used when the user just taps Save Ticket
+   *  without naming. Falls back to a default name based on the cart. */
+  const handleHoldOrder = () => {
+    void handleSaveTicket(`Ticket ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`)
+      .catch((e) => setStatusMessage((e as Error).message));
   };
 
   const handleResumeLastHold = () => {
     if (!params.isOnline || !lastHeldOrderId) return;
-
-    resumeOrder(lastHeldOrderId)
-      .then(() => getOrder(lastHeldOrderId))
-      .then((response) => {
-        const restoredItems: CartItem[] = response.order.items.map((item) => ({
-          id: item.item_id ?? 0,
-          name: item.item_name,
-          price: item.unit_price,
-          quantity: item.quantity,
-          variant_id: item.variant_id ?? null,
-          variant_name: item.variant_name ?? null,
-          modifiers: item.modifiers?.map((m) => ({
-            id: m.modifier_id ?? 0,
-            name: m.modifier_name,
-            price: m.modifier_price,
-          })) ?? [],
-        }));
-        params.setCartItems(restoredItems);
-        localStorage.removeItem("pos_last_held_order");
-        setLastHeldOrderId(null);
-        setStatusMessage("Held order resumed.");
-      })
-      .catch(() => setStatusMessage("Unable to resume held order."));
+    void handleResumeTicket(lastHeldOrderId).catch(() => setStatusMessage("Unable to resume held order."));
   };
 
   const handleBarcodeSubmit = (
@@ -390,7 +404,10 @@ export function useOrderCreation(params: Params) {
     barcode,
     setBarcode,
     handleCheckout,
+    handleCharge,
     handleHoldOrder,
+    handleSaveTicket,
+    handleResumeTicket,
     handleResumeLastHold,
     handleBarcodeSubmit,
     handleSyncQueue,
