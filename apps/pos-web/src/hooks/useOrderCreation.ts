@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ApiRequestError } from "@shared/api";
 import {
   createOrder,
   createOrderBatch,
@@ -109,32 +110,38 @@ export function useOrderCreation(params: Params) {
         })
         .catch(async (err: unknown) => {
           const message = (err as Error)?.message ?? '';
-          // Device-level blocks — never queue, show clearly
-          if (
-            message.includes('Device disabled') ||
-            message.includes('Device pending') ||
-            message.includes('Device rejected') ||
-            message.includes('Device identifier') ||
-            message.includes('Device not registered') ||
-            message.includes('unauthorized') ||
-            message.includes('Unauthorized')
-          ) {
-            setStatusMessage(`⛔ ${message}`);
+          const isApiError = err instanceof ApiRequestError;
+          const status = isApiError ? err.status : undefined;
+
+          // Server responded with an error (4xx/5xx). Never queue — show the real reason.
+          if (isApiError) {
+            // Device-level blocks get the prominent ⛔ prefix + dispatch the blocked event
+            // so App.tsx can switch to the appropriate screen.
+            const isDeviceBlock =
+              message.includes('Device disabled') ||
+              message.includes('Device pending') ||
+              message.includes('Device rejected') ||
+              message.includes('Device identifier') ||
+              message.includes('Device not registered') ||
+              status === 401 ||
+              status === 403;
+
+            if (isDeviceBlock) {
+              setStatusMessage(`⛔ ${message}`);
+            } else {
+              // Validation / business logic errors (422, 400, 409, etc.)
+              setStatusMessage(`Order failed: ${message}`);
+            }
             return;
           }
-          // Other explicit API errors (validation, business logic)
-          const status = (err as { status?: number })?.status;
-          if (status && status >= 400 && status < 500) {
-            setStatusMessage(`Order failed: ${message}`);
-            return;
-          }
-          // Only queue for offline sync if the order was never successfully created
+
+          // True network failure (fetch threw) — safe to queue for later sync,
+          // but only if the order wasn't already created.
           if (!orderCreated) {
             await enqueue(payload);
             params.setOfflineQueueCount(getQueueCount());
             setStatusMessage("Network error. Order queued for sync.");
           } else {
-            // Order created but payment failed — show error, don't duplicate
             setStatusMessage("Order created but payment failed. Please collect payment manually.");
           }
         })

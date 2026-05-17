@@ -20,6 +20,22 @@ type ApiClientConfig = {
 
 type ApiError = { message?: string; errors?: Record<string, string[]> };
 
+/**
+ * Thrown when the server returns a non-2xx response.
+ * Carries the HTTP status so callers can distinguish a real network failure
+ * (fetch threw a TypeError) from a server-rejected request.
+ */
+export class ApiRequestError extends Error {
+  public readonly status: number;
+  public readonly body?: unknown;
+  constructor(message: string, status: number, body?: unknown) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
 export type ApiClient = ReturnType<typeof createApiClient>;
 
 export function createApiClient(config: ApiClientConfig) {
@@ -46,13 +62,15 @@ export function createApiClient(config: ApiClientConfig) {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth_expired'));
         }
-        throw new Error('Session expired. Please log in again.');
+        throw new ApiRequestError('Session expired. Please log in again.', 401);
       }
 
       const text = await response.text().catch(() => '');
       let message = 'Request failed';
+      let parsedBody: unknown = undefined;
       try {
         const body = JSON.parse(text) as ApiError;
+        parsedBody = body;
         // Prefer the first field-level error (e.g. "Invalid OTP code. 4 attempts remaining.")
         // over the generic Laravel validation message ("The given data was invalid.").
         message =
@@ -62,7 +80,7 @@ export function createApiClient(config: ApiClientConfig) {
       } catch {
         message = `Server error (${response.status})`;
       }
-      throw new Error(message);
+      throw new ApiRequestError(message, response.status, parsedBody);
     }
 
     // 204 No Content
