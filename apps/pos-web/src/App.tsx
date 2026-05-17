@@ -315,19 +315,32 @@ function App() {
    * Lock the screen without ending the session. Idempotent — safe to
    * call from the Lock button, the drawer "Lock screen" entry, the
    * Cmd/Ctrl+L shortcut, or the idle timeout.
+   *
+   * Dismisses any open overlay first so we don't leave an in-flight
+   * payment / save-ticket / shift-open behind the lock screen — when
+   * isLocked flips true the entire sales tree is replaced and any
+   * async work continues silently. Cart, shift, and attached customer
+   * are preserved (cart state lives in useCart, not in modals).
    */
   const lockScreen = useCallback(() => {
     if (!isLoggedIn) return;
+    setShowCharge(false);
+    setShowSendBill(false);
+    setShowSaveTicket(false);
+    setShowOpenShift(false);
+    setShowCloseShift(false);
     setIsLocked(true);
   }, [isLoggedIn]);
 
   // ── Auto-lock on inactivity ─────────────────────────────────────
   // Default 5 minutes; cashier-configurable via localStorage
-  // `pos_idle_lock_minutes` (0 disables). Disabled while already on
-  // the lock screen, while not logged in, or while the cashier is on
-  // the dedicated TimeClock punch screen.
+  // `pos_idle_lock_minutes` (0 disables). Auto-lock is also paused
+  // while any blocking modal is open — taking >5min on the charge
+  // overlay (counting cash, customer fishes for card) should not
+  // yank the screen out from under the cashier mid-payment.
+  const isAnyModalOpen = showCharge || showSendBill || showSaveTicket || showOpenShift || showCloseShift;
   useIdleLock({
-    enabled: isLoggedIn && !isLocked && !showTimeClock,
+    enabled: isLoggedIn && !isLocked && !showTimeClock && !isAnyModalOpen,
     timeoutMs: getIdleLockMinutes() * 60_000,
     onIdle: lockScreen,
   });

@@ -47,8 +47,23 @@ export function ReceiptActionsBanner({ orderId, customerPhone, onDismiss }: Prop
   const [sendErr, setSendErr] = useState<string | null>(null);
   const dismissTimer = useRef<number | null>(null);
 
+  // Keep the latest onDismiss reachable from a stable effect WITHOUT
+  // re-running it every render. App passes an inline arrow as onDismiss,
+  // so its identity changes on every render — including the changes
+  // this very banner triggers. Putting `onDismiss` in the deps caused
+  // the link to re-fetch and the auto-dismiss timer to restart on every
+  // parent render, so the timer effectively never fired and the network
+  // got hammered.
+  const onDismissRef = useRef(onDismiss);
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  // Link fetch — keyed only on the order, runs exactly once per order.
   useEffect(() => {
     let cancelled = false;
+    setLink(null);
+    setLinkErr(false);
     void (async () => {
       try {
         const res = await getReceiptLink(orderId);
@@ -57,15 +72,22 @@ export function ReceiptActionsBanner({ orderId, customerPhone, onDismiss }: Prop
         if (!cancelled) setLinkErr(true);
       }
     })();
-    // Auto-dismiss after a comfortable delay so the cashier isn't
-    // stuck dismissing manually after every order. 25s gives time
-    // to glance at the print button without lingering forever.
-    dismissTimer.current = window.setTimeout(onDismiss, 25_000);
     return () => {
       cancelled = true;
-      if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
     };
-  }, [orderId, onDismiss]);
+  }, [orderId]);
+
+  // Auto-dismiss — also keyed only on the order. 25s gives the cashier
+  // time to glance at print/resend without lingering forever.
+  useEffect(() => {
+    dismissTimer.current = window.setTimeout(() => {
+      onDismissRef.current();
+    }, 25_000);
+    return () => {
+      if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
+      dismissTimer.current = null;
+    };
+  }, [orderId]);
 
   const stopAutoDismiss = () => {
     if (dismissTimer.current) {

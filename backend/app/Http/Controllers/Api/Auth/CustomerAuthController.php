@@ -44,7 +44,7 @@ class CustomerAuthController extends Controller
     {
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        OtpVerification::create([
+        $otpRow = OtpVerification::create([
             'phone' => $phone,
             'code_hash' => Hash::make($otpCode),
             'expires_at' => now()->addMinutes(10),
@@ -54,13 +54,18 @@ class CustomerAuthController extends Controller
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
 
+        // Idempotency key must be unique per OTP row, otherwise back-to-back
+        // requests in the same minute share a key and SmsService::send() drops
+        // the SMS as a duplicate — the OtpVerification row stays in DB and the
+        // customer fails verification on a code they never received.
+        // Scoping to the OTP row id guarantees a fresh dispatch every time.
         $smsService->send(new SmsMessage(
             to: $phone,
             message: $smsMessage,
             type: 'otp',
             referenceType: 'otp',
-            referenceId: (string) OtpVerification::where('phone', $phone)->latest()->value('id'),
-            idempotencyKey: 'otp:' . $purpose . ':' . $phone . ':' . now()->format('YmdHi'),
+            referenceId: (string) $otpRow->id,
+            idempotencyKey: 'otp:' . $purpose . ':' . $phone . ':' . $otpRow->id,
         ));
 
         return $otpCode;
@@ -68,10 +73,16 @@ class CustomerAuthController extends Controller
 
     private function verifyAndConsumeOtp(string $phone, string $code): void
     {
+        // Order by `id` (auto-increment, monotonic) rather than `created_at`
+        // (second-precision timestamp) so two requests within the same wall-
+        // clock second still resolve to a deterministic newest row. Without
+        // this, the SQL planner may return either row first → customer types
+        // the latest code they were sent and is verified against the older
+        // hash → spurious "Invalid OTP code" errors.
         $otpRecord = OtpVerification::where('phone', $phone)
             ->whereNull('used_at')
             ->where('expires_at', '>', now())
-            ->orderBy('created_at', 'desc')
+            ->orderByDesc('id')
             ->first();
 
         if (!$otpRecord) {
@@ -208,16 +219,19 @@ class CustomerAuthController extends Controller
 
         $otpCode = $this->sendOtp($phone, $purpose);
 
-        if (!app()->environment('production')) {
-            logger()->info('OTP requested', ['phone' => $phone, 'otp' => $otpCode, 'purpose' => $purpose]);
-        }
+        // Audit trail without leaking the code. The actual code only ever lives
+        // hashed in `otp_verifications.code_hash` and (briefly) in the SMS body.
+        logger()->info('OTP requested', ['phone' => $phone, 'purpose' => $purpose]);
 
         $response = [
             'message' => 'OTP sent successfully',
             'expires_in' => 600,
         ];
 
-        if (app()->environment(['local', 'testing']) && config('app.debug')) {
+        // Dev convenience only — never in production, never just on APP_DEBUG.
+        // Requires an explicit OTP_DEV_RETURN=true to surface the code to the
+        // client so staging logs and screenshots can't accidentally leak it.
+        if (app()->environment(['local', 'testing']) && filter_var(env('OTP_DEV_RETURN'), FILTER_VALIDATE_BOOLEAN)) {
             $response['otp'] = $otpCode;
         }
 
@@ -353,16 +367,16 @@ class CustomerAuthController extends Controller
 
         $otpCode = $this->sendOtp($phone, 'reset_password');
 
-        if (!app()->environment('production')) {
-            logger()->info('Password reset OTP requested', ['phone' => $phone, 'otp' => $otpCode]);
-        }
+        // Audit trail without the code itself — see requestOtp() for the
+        // rationale on intentionally NOT logging the plaintext code.
+        logger()->info('Password reset OTP requested', ['phone' => $phone]);
 
         $response = [
             'message' => 'Password reset code sent',
             'expires_in' => 600,
         ];
 
-        if (app()->environment(['local', 'testing']) && config('app.debug')) {
+        if (app()->environment(['local', 'testing']) && filter_var(env('OTP_DEV_RETURN'), FILTER_VALIDATE_BOOLEAN)) {
             $response['otp'] = $otpCode;
         }
 

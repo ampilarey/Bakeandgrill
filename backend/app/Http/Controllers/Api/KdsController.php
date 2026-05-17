@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Orders\DTOs\OrderPaidData;
-use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Orders\DTOs\OrderCompletedData;
+use App\Domains\Orders\Events\OrderCompleted;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\AuditLogService;
@@ -93,10 +93,22 @@ class KdsController extends Controller
                 $request,
             );
 
-            // If the order wasn't already paid (edge case: KDS-only flow), fire OrderPaid
-            if ($newStatus === 'completed' && $oldStatus !== 'paid') {
-                DB::afterCommit(function () use ($order): void {
-                    OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), false));
+            // Kitchen reached the terminal "completed" state.
+            // Fire OrderCompleted (earns loyalty points + webhook) — NOT OrderPaid.
+            //
+            // Historical bug: this used to dispatch OrderPaid whenever $oldStatus
+            // wasn't already 'paid', which fired the payment-confirmation SMS,
+            // consumed loyalty holds, recorded referrals, and emitted webhooks
+            // claiming the order was paid — all on tickets that hadn't been
+            // settled yet (cash-on-pickup, dine-in pay-at-end, etc.).
+            //
+            // Payment-time listeners are owned by PaymentConfirmedListener →
+            // OrderPaid, which still fires correctly when payment is actually
+            // taken. The KDS path stays purely about kitchen completion.
+            if ($newStatus === 'completed') {
+                $orderForEvent = $order->fresh();
+                DB::afterCommit(function () use ($orderForEvent): void {
+                    OrderCompleted::dispatch(OrderCompletedData::fromOrder($orderForEvent));
                 });
             }
 

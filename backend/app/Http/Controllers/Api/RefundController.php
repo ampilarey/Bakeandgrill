@@ -55,12 +55,36 @@ class RefundController extends Controller
             $order = Order::with(['items.item', 'items.variant'])->lockForUpdate()->findOrFail($orderId);
 
             $orderTotalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
+
+            // Cap refunds against the amount the customer ACTUALLY PAID, not the
+            // order total. A partially-paid order (e.g. MVR 50 collected on a
+            // MVR 100 ticket) must never refund more than MVR 50.
+            //
+            // This matches the canonical "what counts as paid" query in
+            // OrderController::addPayments — same status whitelist, same
+            // COALESCE on the integer laari column for accuracy on legacy
+            // POS payments that only populated `amount`.
+            $paidLaar = (int) ($order->payments()
+                ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+                ->value('total_laar') ?? 0);
+
             $alreadyRefundedLaar = (int) round(
                 (float) $order->refunds()->where('status', '!=', 'rejected')->sum('amount') * 100,
             );
 
-            if ($amountLaar + $alreadyRefundedLaar > $orderTotalLaar) {
-                abort(422, 'Refund would exceed order total. Already refunded: ' . number_format($alreadyRefundedLaar / 100, 2));
+            // Defense in depth: keep the historical order-total cap as a second
+            // bound so an over-collected payment (unusual) still can't refund
+            // more than the ticket was rung up for.
+            $refundableLaar = min($paidLaar, $orderTotalLaar);
+
+            if ($amountLaar + $alreadyRefundedLaar > $refundableLaar) {
+                abort(422, sprintf(
+                    'Refund would exceed amount paid. Paid: %s, already refunded: %s, max refundable: %s.',
+                    number_format($paidLaar / 100, 2),
+                    number_format($alreadyRefundedLaar / 100, 2),
+                    number_format(max(0, $refundableLaar - $alreadyRefundedLaar) / 100, 2),
+                ));
             }
 
             $refund = Refund::create([
@@ -71,7 +95,10 @@ class RefundController extends Controller
                 'reason' => $validated['reason'] ?? null,
             ]);
 
-            $isFullRefund = ($amountLaar + $alreadyRefundedLaar >= $orderTotalLaar);
+            // "Full refund" = refunding everything that was actually collected
+            // (matches the cap above). Restoring stock for items the customer
+            // never paid for would be wrong.
+            $isFullRefund = ($amountLaar + $alreadyRefundedLaar >= $refundableLaar) && $refundableLaar > 0;
 
             if ($isFullRefund) {
                 $order->update(['status' => 'refunded']);

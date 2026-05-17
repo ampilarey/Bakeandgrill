@@ -184,13 +184,20 @@ export default function App() {
                     <DeliveryPage />
                   </PermissionGuard>
                 } />
+                {/*
+                  Promotions + Loyalty admin pages call /api/admin/promotions and
+                  /api/admin/loyalty/* respectively, both of which require the
+                  .manage slug server-side. Guarding on .view here let view-only
+                  staff into a page where every API call 403s. Tighten to .manage
+                  so the sidebar/route mirror the API contract.
+                */}
                 <Route path="promotions" element={
-                  <PermissionGuard user={user} permission="promotions.view">
+                  <PermissionGuard user={user} permission="promotions.manage">
                     <PromotionsPage />
                   </PermissionGuard>
                 } />
                 <Route path="loyalty" element={
-                  <PermissionGuard user={user} permission="loyalty.view">
+                  <PermissionGuard user={user} permission="loyalty.manage">
                     <LoyaltyPage />
                   </PermissionGuard>
                 } />

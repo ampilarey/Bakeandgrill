@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -67,12 +68,28 @@ class OrderFactory extends Factory
         return $this->state(fn () => ['type' => 'dine_in']);
     }
 
+    /**
+     * Marks the order paid AND creates a matching cash Payment row covering
+     * the full total. Mirrors reality — every paid order in production has
+     * at least one payment row. RefundController caps refunds against the
+     * sum of completed payments, so omitting the payment here would make
+     * every refund test fail with "exceeds amount paid" 422s.
+     */
     public function paid(): static
     {
         return $this->state(fn () => [
             'status' => 'paid',
             'paid_at' => now(),
-        ]);
+        ])->afterCreating(function (Order $order): void {
+            Payment::create([
+                'order_id' => $order->id,
+                'method' => 'cash',
+                'amount' => (float) $order->total,
+                'amount_laar' => $order->total_laar ?? (int) round((float) $order->total * 100),
+                'status' => 'paid',
+                'processed_at' => now(),
+            ]);
+        });
     }
 
     public function pending(): static

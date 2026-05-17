@@ -42,6 +42,10 @@ class XeroSyncService
         $tenantId = $this->tenantId();
         $headers = $this->headers($tenantId);
 
+        // Invoices store `total` as decimal MVR (e.g. 50.00 = 50 MVR).
+        // Xero expects the same decimal unit on UnitAmount — do NOT divide by 100.
+        // Bug history: this previously did `($invoice->total ?? 0) / 100` which
+        // pushed a 50 MVR invoice into Xero as 0.50.
         $payload = [
             'Type' => 'ACCREC',
             'Status' => $invoice->status === 'paid' ? 'AUTHORISED' : 'DRAFT',
@@ -53,7 +57,7 @@ class XeroSyncService
                 [
                     'Description' => "Invoice {$invoice->invoice_number}",
                     'Quantity' => 1,
-                    'UnitAmount' => ($invoice->total ?? 0) / 100,
+                    'UnitAmount' => (float) ($invoice->total ?? 0),
                     'AccountCode' => config('services.xero.revenue_account', '200'),
                 ],
             ],
@@ -90,6 +94,8 @@ class XeroSyncService
         $tenantId = $this->tenantId();
         $headers = $this->headers($tenantId);
 
+        // Expenses store `amount` as decimal MVR — same as invoices. See note
+        // on pushInvoice() for the historical /100 scaling bug.
         $payload = [
             'Type' => 'SPEND',
             'Status' => 'AUTHORISED',
@@ -100,7 +106,7 @@ class XeroSyncService
                 [
                     'Description' => $expense->description ?? "Expense #{$expense->id}",
                     'Quantity' => 1,
-                    'UnitAmount' => ($expense->amount ?? 0) / 100,
+                    'UnitAmount' => (float) ($expense->amount ?? 0),
                     'AccountCode' => config('services.xero.expense_account', '400'),
                 ],
             ],

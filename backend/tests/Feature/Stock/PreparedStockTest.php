@@ -15,6 +15,7 @@ use App\Models\Item;
 use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Role;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -440,7 +441,9 @@ class PreparedStockTest extends TestCase
     {
         $item = $this->makePreparedItem(5);
 
-        // Simulate a paid POS order (stock already deducted)
+        // Simulate a paid POS order (stock already deducted). The Payment row
+        // is required so RefundController's "refund cap = amount paid" check
+        // sees that 100 MVR was actually collected.
         $order = Order::create([
             'order_number' => 'REFUND-001',
             'type' => 'dine_in',
@@ -451,6 +454,15 @@ class PreparedStockTest extends TestCase
             'discount_amount' => 0,
             'total' => 100.0,
             'total_laar' => 10000,
+            'paid_at' => now(),
+        ]);
+        Payment::create([
+            'order_id' => $order->id,
+            'method' => 'cash',
+            'amount' => 100.0,
+            'amount_laar' => 10000,
+            'status' => 'paid',
+            'processed_at' => now(),
         ]);
 
         OrderItem::create([
