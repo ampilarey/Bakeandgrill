@@ -69,25 +69,37 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     total_cost_mvr: number;
   } | null>(null);
 
-  // Load static ops data (shift, inventory, suppliers, refunds) — only when entering ops mode
+  // Load static ops data (shift, inventory, suppliers, refunds) — only when
+  // entering ops mode. We use Promise.allSettled so that partial failures
+  // don't overwrite each other's error messages (the old code did `setOpsMessage`
+  // in 4 separate catches, so the user only saw the last one to settle —
+  // typically misleading). Instead we surface a single aggregated message.
   useEffect(() => {
     if (!isLoggedIn || viewMode !== "ops") return;
 
-    getCurrentShift()
-      .then((r) => setShift(r.shift))
-      .catch(() => setOpsMessage("Unable to load shift."));
+    void (async () => {
+      const results = await Promise.allSettled([
+        getCurrentShift(),
+        fetchInventory(),
+        fetchSuppliers(),
+        fetchRefunds(),
+      ]);
+      const labels = ["shift", "inventory", "suppliers", "refunds"] as const;
+      const failed: string[] = [];
 
-    fetchInventory()
-      .then((r) => setInventoryItems(r.items.data))
-      .catch(() => setOpsMessage("Unable to load inventory."));
+      const [shiftR, invR, supR, refR] = results;
+      if (shiftR.status === "fulfilled")        setShift(shiftR.value.shift);
+      else                                       failed.push(labels[0]);
+      if (invR.status === "fulfilled")          setInventoryItems(invR.value.items.data);
+      else                                       failed.push(labels[1]);
+      if (supR.status === "fulfilled")          setSuppliers(supR.value.suppliers.data);
+      else                                       failed.push(labels[2]);
+      if (refR.status === "fulfilled")          setRefunds(refR.value.refunds.data);
+      else                                       failed.push(labels[3]);
 
-    fetchSuppliers()
-      .then((r) => setSuppliers(r.suppliers.data))
-      .catch(() => setOpsMessage("Unable to load suppliers."));
-
-    fetchRefunds()
-      .then((r) => setRefunds(r.refunds.data))
-      .catch(() => setOpsMessage("Unable to load refunds."));
+      if (failed.length === 1)      setOpsMessage(`Unable to load ${failed[0]}.`);
+      else if (failed.length > 1)   setOpsMessage(`Unable to load: ${failed.join(", ")}.`);
+    })();
   }, [isLoggedIn, viewMode]);
 
   // Sales summary re-fetches when date range changes (separated so only 1 API call fires)

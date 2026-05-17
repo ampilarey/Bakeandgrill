@@ -11,26 +11,39 @@ type Props = {
 };
 
 export function LoginPage({ username, setUsername, pin, setPin, deviceId, authError, onLogin }: Props) {
-  const append = (d: string) => { if (pin.length < 8) setPin(pin + d); };
-  const back   = ()          => setPin(pin.slice(0, -1));
-  const clear  = ()          => setPin('');
-  const emailRef    = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
-  const isEmailFocused    = () => document.activeElement === emailRef.current;
-  const isDeviceIdFocused = () => false; // Device ID is now read-only
+  // Refs that always reflect the latest props, so the keydown listener stays
+  // stable and the effect can have an empty dependency array. The previous
+  // implementation depended on `[pin, username, onLogin]`, churning the
+  // listener on every keystroke and silencing the lint rule.
+  const pinRef = useRef(pin);
+  const usernameRef = useRef(username);
+  const onLoginRef = useRef(onLogin);
+  const setPinRef = useRef(setPin);
+  useEffect(() => { pinRef.current = pin; }, [pin]);
+  useEffect(() => { usernameRef.current = username; }, [username]);
+  useEffect(() => { onLoginRef.current = onLogin; }, [onLogin]);
+  useEffect(() => { setPinRef.current = setPin; }, [setPin]);
+
+  const isEmailFocused = () => document.activeElement === emailRef.current;
+
+  const append = (d: string) => { if (pinRef.current.length < 8) setPinRef.current(pinRef.current + d); };
+  const back   = ()          => setPinRef.current(pinRef.current.slice(0, -1));
+  const clear  = ()          => setPinRef.current('');
 
   // When the numpad is tapped, route the digit to whichever field is active.
   const handleNumpad = (d: string) => {
     if (d === '⌫') {
       if (isEmailFocused()) {
-        setUsername(username.slice(0, -1));
+        setUsername(usernameRef.current.slice(0, -1));
         emailRef.current?.focus();
       } else {
         back();
       }
     } else if (d !== '') {
       if (isEmailFocused()) {
-        setUsername(username + d);
+        setUsername(usernameRef.current + d);
         emailRef.current?.focus();
       } else {
         append(d);
@@ -41,18 +54,19 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
   // Allow typing the PIN directly from a hardware keyboard when no input is focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isEmailFocused() || isDeviceIdFocused()) return;
+      if (isEmailFocused()) return;
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
 
       if (/^[0-9]$/.test(e.key))     append(e.key);
       else if (e.key === 'Backspace') back();
       else if (e.key === 'Escape')    clear();
-      else if (e.key === 'Enter')     onLogin();
+      else if (e.key === 'Enter')     onLoginRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pin, username, onLogin]);
+    // append/back/clear read from refs; safe to depend on nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{

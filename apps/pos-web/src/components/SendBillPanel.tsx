@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { sendBill } from "../api";
 
 const RECENT_KEY = "pos_recent_phones";
@@ -28,6 +28,15 @@ export function SendBillPanel({ orderId, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const recentPhones = getRecentPhones();
 
+  // Esc dismisses the modal — matches every other modal convention.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !sending) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, sending]);
+
   const normalise = (raw: string) => {
     const digits = raw.replace(/[^0-9]/g, "");
     if (digits.length === 7) return `+960${digits}`;
@@ -56,14 +65,22 @@ export function SendBillPanel({ orderId, onClose }: Props) {
   };
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 60,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      <div style={{
-        background: "#fff", borderRadius: 16, padding: 24, width: 340,
-        boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
-      }}>
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget && !sending) onClose(); }}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 60,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 340,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+        }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <span style={{ fontWeight: 700, fontSize: 16, color: "#1C1408" }}>Send Bill via SMS</span>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#8B7355" }}>×</button>

@@ -18,6 +18,17 @@ function defaultVariantForItem(item: Item): { id: number; name: string; price: n
   };
 }
 
+/**
+ * Resolve the price that will actually be charged for an item, taking the
+ * default variant into account when the item has variants. The MenuGrid
+ * uses this to show the same number cashiers will see ringing up.
+ */
+export function effectiveItemPrice(item: Item): number {
+  const v = defaultVariantForItem(item);
+  if (v) return v.price;
+  return parseFloat(String(item.base_price ?? 0));
+}
+
 export const makeCartKey = (itemId: number, modifiers: Modifier[], variantId?: number | null) =>
   `${itemId}-v${variantId ?? 0}-${modifiers.map((m) => m.id).sort().join(",")}`;
 
@@ -30,7 +41,7 @@ export function useCart() {
     { id: crypto.randomUUID(), method: "cash", amount: "" },
   ]);
 
-  const cartTotal = useMemo(
+  const cartSubtotal = useMemo(
     () =>
       cartItems.reduce(
         (sum, item) =>
@@ -41,6 +52,19 @@ export function useCart() {
         0,
       ),
     [cartItems],
+  );
+
+  /** Manual discount in MVR (defensive parse — never NaN, never negative). */
+  const discountValue = useMemo(() => {
+    const n = parseFloat(discountAmount);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.min(n, cartSubtotal);
+  }, [discountAmount, cartSubtotal]);
+
+  /** Amount the customer actually owes after discount. */
+  const cartTotal = useMemo(
+    () => Math.max(0, cartSubtotal - discountValue),
+    [cartSubtotal, discountValue],
   );
 
   const handleSelectItem = useCallback((item: Item) => {
@@ -120,8 +144,10 @@ export function useCart() {
     selectedModifiers,
     discountAmount,
     setDiscountAmount,
+    discountValue,
     payments,
     setPayments,
+    cartSubtotal,
     cartTotal,
     handleSelectItem,
     toggleModifier,

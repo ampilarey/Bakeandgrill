@@ -1,4 +1,5 @@
 import type { Category, Item, Modifier, RestaurantTable } from "../types";
+import { effectiveItemPrice } from "../hooks/useCart";
 
 const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
@@ -121,16 +122,19 @@ export function MenuGrid({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
           {filteredItems.map((item) => (
             <button
               key={item.id}
               className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition text-left"
-              style={{ border: '1px solid #EDE4D4' }}
+              style={{ border: '1px solid #EDE4D4', minHeight: 80 }}
               onClick={() => handleSelectItem(item)}
             >
               <p className="font-semibold" style={{ color: '#2A1E0C' }}>{item.name}</p>
-              <p className="text-sm" style={{ color: '#8B7355' }}>MVR {parseFloat(String(item.base_price)).toFixed(2)}</p>
+              <p className="text-sm" style={{ color: '#8B7355' }}>
+                {item.has_variants && <span style={{ fontSize: 10, marginRight: 4 }}>from</span>}
+                MVR {effectiveItemPrice(item).toFixed(2)}
+              </p>
             </button>
           ))}
         </div>
@@ -140,7 +144,7 @@ export function MenuGrid({
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold" style={{ color: '#2A1E0C' }}>{selectedItem.name}</p>
-                <p className="text-sm" style={{ color: '#8B7355' }}>MVR {parseFloat(String(selectedItem.base_price)).toFixed(2)}</p>
+                <p className="text-sm" style={{ color: '#8B7355' }}>MVR {effectiveItemPrice(selectedItem).toFixed(2)}</p>
               </div>
               <button
                 className="rounded-lg text-white px-4 py-2 text-sm"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
@@ -17,24 +17,30 @@ import { SendBillPanel }  from "./components/SendBillPanel";
 const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
 
+// Single device status type covering every screen the POS can show.
+type DeviceStatus =
+  | 'unknown'      // initial render before first check
+  | 'checking'     // self-register call in flight
+  | 'pending'      // server says awaiting owner approval
+  | 'approved'     // ready for normal POS use
+  | 'rejected'     // disabled or rejected by owner
+  | 'registration_failed'; // self-register network error — fail closed
+
 function App() {
   const [showSendBill, setShowSendBill] = useState(false);
   // ── Auth ────────────────────────────────────────────────────────────────────
-  // Restore session from localStorage so page refresh doesn't log out the POS.
   const [isLoggedIn, setIsLoggedIn]   = useState(() => !!localStorage.getItem('pos_token'));
   const [username, setUsername]       = useState("");
   const [pin, setPin]                 = useState("");
   const [deviceId]                    = useState(() => {
-      const stored = localStorage.getItem("pos_device_id");
-      if (stored) return stored;
-      const generated = `POS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-      localStorage.setItem("pos_device_id", generated);
-      return generated;
-    },
-  );
+    const stored = localStorage.getItem("pos_device_id");
+    if (stored) return stored;
+    const generated = `POS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    localStorage.setItem("pos_device_id", generated);
+    return generated;
+  });
   const [authError, setAuthError]     = useState("");
-  const [deviceStatus, setDeviceStatus] = useState<'unknown' | 'checking' | 'pending' | 'approved' | 'rejected'>('unknown');
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>('unknown');
 
   // ── View + connectivity ─────────────────────────────────────────────────────
   const [viewMode, setViewMode]               = useState<"pos" | "ops">("pos");
@@ -68,12 +74,11 @@ function App() {
         setTables(r.tables);
         setSelectedTableId(r.tables.find((t) => t.is_active)?.id ?? null);
       })
-        .catch(() => { setTables([]); setSelectedTableId(null); });
+      .catch(() => { setTables([]); setSelectedTableId(null); });
   }, [isLoggedIn]);
 
   // ── Hooks ───────────────────────────────────────────────────────────────────
   const menu = useMenu(isLoggedIn);
-
   const cart = useCart();
 
   const filteredItems = useMemo(
@@ -98,79 +103,79 @@ function App() {
     setOfflineQueueCount,
   });
 
-  // ── Detect device being disabled/rejected mid-session ──────────────────────
+  // ── Device blocked event (dispatched by api.ts when middleware says no) ────
   useEffect(() => {
     const onBlocked = (e: Event) => {
       const msg = (e as CustomEvent<string>).detail ?? '';
-      if (msg.includes('pending'))  setDeviceStatus('pending');
+      if (msg.includes('pending')) setDeviceStatus('pending');
       else setDeviceStatus('rejected');
     };
     window.addEventListener('pos_device_blocked', onBlocked);
     return () => window.removeEventListener('pos_device_blocked', onBlocked);
   }, []);
 
-  // Poll device status every 20 s while approved so the POS reacts instantly
-  // when an owner disables it — even if the staff isn't doing anything.
-  useEffect(() => {
-    if (deviceStatus !== 'approved') return;
-    const t = setInterval(async () => {
-      try {
-        const s = await selfDeviceStatus(deviceId);
-        if (s.status === 'pending')  { setDeviceStatus('pending');  clearInterval(t); }
-        if (s.status === 'rejected') { setDeviceStatus('rejected'); clearInterval(t); }
-        if (s.status === 'unregistered') { setDeviceStatus('rejected'); clearInterval(t); }
-        // approved → nothing to do
-        // disabled is signalled by is_active=false + status=approved
-        if (s.status === 'approved' && s.is_active === false) {
-          setDeviceStatus('rejected'); clearInterval(t);
-        }
-      } catch { /* network blip — keep polling */ }
-    }, 20000);
-    return () => clearInterval(t);
-  }, [deviceStatus, deviceId]);
-
-  // ── Device registration & approval polling ─────────────────────────────────
+  // ── Single coordinated device-status lifecycle ─────────────────────────────
+  // One effect, one interval. Cadence depends on current status:
+  //   pending / registration_failed → 4 s (we want quick approval)
+  //   approved                      → 20 s (just watching for disable)
+  //   else                          → no polling
+  // This replaces the previous TWO overlapping intervals which made the
+  // logic hard to reason about and risked concurrent checks during state
+  // transitions.
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    const checkAndRegister = async () => {
+    let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const applyStatus = (apiStatus: string, isActive?: boolean) => {
+      if (cancelled) return;
+      if (apiStatus === 'pending')                   setDeviceStatus('pending');
+      else if (apiStatus === 'rejected')             setDeviceStatus('rejected');
+      else if (apiStatus === 'unregistered')         setDeviceStatus('pending');
+      else if (apiStatus === 'approved' && isActive === false) setDeviceStatus('rejected');
+      else if (apiStatus === 'approved')             setDeviceStatus('approved');
+    };
+
+    const initialRegister = async () => {
       setDeviceStatus('checking');
       try {
         const res = await selfRegisterDevice(deviceId, `POS ${deviceId}`);
-        if (res.status === 'approved') {
-          setDeviceStatus('approved');
-        } else if (res.status === 'rejected') {
-          setDeviceStatus('rejected');
-        } else {
-          setDeviceStatus('pending');
-          // Start polling every 4 seconds
-          pollRef.current = setInterval(async () => {
-            try {
-              const s = await selfDeviceStatus(deviceId);
-              if (s.status === 'approved') {
-                setDeviceStatus('approved');
-                if (pollRef.current) clearInterval(pollRef.current);
-              } else if (s.status === 'rejected') {
-                setDeviceStatus('rejected');
-                if (pollRef.current) clearInterval(pollRef.current);
-              }
-            } catch { /* network error — keep polling */ }
-          }, 4000);
-        }
+        applyStatus(res.status);
       } catch {
-        // If self-register fails, assume approved (backward compat for existing devices)
-        setDeviceStatus('approved');
+        // FAIL CLOSED: if self-register can't reach the server we cannot
+        // verify this device — do NOT silently treat it as approved.
+        if (!cancelled) setDeviceStatus('registration_failed');
       }
     };
 
-    void checkAndRegister();
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [isLoggedIn, deviceId]);
+    const poll = async () => {
+      try {
+        const s = await selfDeviceStatus(deviceId);
+        applyStatus(s.status, s.is_active);
+      } catch {
+        // network blip — try again next tick
+      }
+    };
+
+    void initialRegister();
+
+    // Set up polling based on the latest status. We rerun this effect every
+    // time deviceStatus flips, which cleans up the previous interval.
+    interval = setInterval(() => {
+      void poll();
+    }, deviceStatus === 'approved' ? 20000 : 4000);
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoggedIn, deviceId, deviceStatus]);
 
   // ── Login handler ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
     setAuthError("");
-    if (!username.trim()) { setAuthError("Enter your email address."); return; }
+    if (!username.trim()) { setAuthError("Enter your mobile or email."); return; }
     if (pin.trim().length < 4) { setAuthError("Enter a valid PIN."); return; }
     try {
       const response = await staffLogin(username.trim(), pin.trim(), deviceId.trim());
@@ -179,7 +184,7 @@ function App() {
       setIsLoggedIn(true);
       setPin("");
     } catch {
-      setAuthError("Login failed. Check your email and PIN.");
+      setAuthError("Login failed. Check your mobile/email and PIN.");
     }
   };
 
@@ -188,6 +193,7 @@ function App() {
     localStorage.removeItem("pos_token");
     setAuthToken(null);
     setIsLoggedIn(false);
+    setDeviceStatus('unknown');
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -209,6 +215,30 @@ function App() {
           <p style={{ fontSize: 24, margin: '0 0 12px' }}>⏳</p>
           <p style={{ fontWeight: 700, fontSize: 16, color: '#2A1E0C', margin: '0 0 8px' }}>Checking device…</p>
           <p style={{ color: '#8B7355', fontSize: 13, margin: 0 }}>Please wait</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (deviceStatus === 'registration_failed') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#1C1408', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px', width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <p style={{ fontSize: 40, margin: '0 0 16px' }}>📡</p>
+          <p style={{ fontWeight: 700, fontSize: 18, color: '#2A1E0C', margin: '0 0 10px' }}>Device check failed</p>
+          <p style={{ color: '#8B7355', fontSize: 14, margin: '0 0 20px', lineHeight: 1.5 }}>
+            We could not contact the server to verify this device.<br />
+            Check the internet connection and try again.
+          </p>
+          <button
+            onClick={() => setDeviceStatus('unknown')}
+            style={{ padding: '10px 24px', background: '#D4813A', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', marginRight: 10 }}
+          >
+            Retry
+          </button>
+          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#9C8E7E', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
+            Log out
+          </button>
         </div>
       </div>
     );
@@ -255,17 +285,17 @@ function App() {
   return (
     <div className="min-h-screen" style={{ background: '#FFFDF9', color: '#2A1E0C' }}>
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm" style={{ borderBottom: '1px solid #EDE4D4' }}>
+      <header className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 sm:py-4 bg-white shadow-sm" style={{ borderBottom: '1px solid #EDE4D4' }}>
         <div>
-          <h1 className="text-xl font-semibold" style={{ color: '#2A1E0C' }}>Bake & Grill POS</h1>
-          <p className="text-sm" style={{ color: '#8B7355' }}>Device {deviceId}</p>
+          <h1 className="text-base sm:text-xl font-semibold" style={{ color: '#2A1E0C' }}>Bake & Grill POS</h1>
+          <p className="text-xs sm:text-sm" style={{ color: '#8B7355' }}>Device {deviceId}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: '#EDE4D4' }}>
             {(["pos", "ops"] as const).map((mode) => (
               <button
                 key={mode}
-                className={`rounded-md px-3 py-1 text-xs font-semibold`}
+                className="rounded-md px-3 py-1 text-xs font-semibold"
                 style={viewMode === mode
                   ? { background: 'white', color: '#2A1E0C', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
                   : { color: '#8B7355' }}
@@ -289,7 +319,7 @@ function App() {
         </div>
       </header>
 
-      <main className="grid grid-cols-12 gap-4 p-6">
+      <main className="grid grid-cols-12 gap-4 p-4 sm:p-6">
         {order.statusMessage && (
           <div className="col-span-12">
             <div className="bg-white rounded-xl px-4 py-3 text-sm" style={{ border: '1px solid #EDE4D4', color: '#8B7355' }}>
@@ -322,33 +352,35 @@ function App() {
               toggleModifier={cart.toggleModifier}
               addToCart={cart.addToCart}
               barcode={order.barcode}       setBarcode={order.setBarcode}
-              onBarcodeSubmit={(e) =>
-                order.handleBarcodeSubmit(
-                  e,
-                  menu.items as unknown as Parameters<typeof order.handleBarcodeSubmit>[1],
-                  cart.addToCart,
-                )
-              }
+              onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
             />
             <OrderCart
               cartItems={cart.cartItems}         setCartItems={cart.setCartItems}
-              cartTotal={cart.cartTotal}         payments={cart.payments}
-              setPayments={cart.setPayments}     discountAmount={cart.discountAmount}
+              cartSubtotal={cart.cartSubtotal}
+              cartTotal={cart.cartTotal}
+              discountValue={cart.discountValue}
+              payments={cart.payments}
+              setPayments={cart.setPayments}
+              discountAmount={cart.discountAmount}
               setDiscountAmount={cart.setDiscountAmount}
               lastHeldOrderId={order.lastHeldOrderId}
+              isSubmitting={order.isSubmitting}
+              pendingPaymentForOrderId={order.pendingPaymentForOrderId}
               onAddPaymentRow={cart.addPaymentRow}
               onUpdatePaymentRow={cart.updatePaymentRow}
               onRemovePaymentRow={cart.removePaymentRow}
+              onClearCart={cart.clearCart}
               onHoldOrder={order.handleHoldOrder}
               onResumeLastHold={order.handleResumeLastHold}
               onCheckout={order.handleCheckout}
+              onRetryPayment={order.handleRetryPayment}
             />
             {order.lastCreatedOrderId && (
               <div className="col-span-12" style={{ textAlign: "right", marginTop: -8 }}>
                 <button
                   onClick={() => setShowSendBill(true)}
                   style={{
-                    padding: "8px 18px", borderRadius: 8,
+                    padding: "10px 18px", borderRadius: 8,
                     background: "#1C1408", color: "#fff",
                     border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer",
                   }}
