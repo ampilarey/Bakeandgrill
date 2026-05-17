@@ -46,11 +46,16 @@ type Params = {
   cartTotal: number;
   payments: PaymentRow[];
   discountAmount: string;
+  customerId: number | null;
+  /** Captured at charge time so the post-charge banner can show
+   *  "SMS sent to {phone}" / Resend without re-fetching the customer
+   *  (the cart's attachedCustomer gets cleared right after settle). */
+  customerPhone: string | null;
   clearCart: () => void;
   setCartItems: (items: CartItem[]) => void;
   setSelectedItem: (item: Item | null) => void;
   setOfflineQueueCount: (n: number) => void;
-  onOrderSettled?: () => void;
+  onOrderSettled?: (orderId: number, customerId: number | null, customerPhone: string | null) => void;
 };
 
 export function useOrderCreation(params: Params) {
@@ -75,6 +80,10 @@ export function useOrderCreation(params: Params) {
       device_identifier: params.deviceId,
       restaurant_table_id:
         params.orderType === "Dine-in" ? params.selectedTableId ?? undefined : undefined,
+      // Attach the cart's customer so the order belongs to them. Server-side
+      // PaymentConfirmationNotifier picks this up automatically and SMS's
+      // the receipt link to customer.phone once the order is fully paid.
+      ...(params.customerId ? { customer_id: params.customerId } : {}),
       discount_amount: discount,
       ...(overrides.ticket_name ? { ticket_name: overrides.ticket_name } : {}),
       ...(overrides.ticket_note ? { ticket_note: overrides.ticket_note } : {}),
@@ -173,11 +182,18 @@ export function useOrderCreation(params: Params) {
       const totalDue = response.order.total ?? params.cartTotal;
       const settled = await settleOrder(response.order.id, totalDue, paymentSnapshot);
       if (settled) {
+        // Snapshot the customer BEFORE clearCart wipes attachedCustomer.
+        const cid = params.customerId;
+        const cphone = params.customerPhone;
         params.clearCart();
         params.setSelectedItem(null);
-        setStatusMessage("Order paid and sent to kitchen.");
+        setStatusMessage(
+          cid
+            ? "Order paid. Receipt SMS sent to customer."
+            : "Order paid and sent to kitchen.",
+        );
         setTimeout(() => setStatusMessage(""), 5000);
-        params.onOrderSettled?.();
+        params.onOrderSettled?.(response.order.id, cid, cphone);
       }
       return settled;
     } catch (err: unknown) {

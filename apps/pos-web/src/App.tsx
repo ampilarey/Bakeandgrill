@@ -26,6 +26,7 @@ import { ShiftHistoryPanel } from "./components/ShiftHistoryPanel";
 import { SideDrawer }        from "./components/SideDrawer";
 import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
+import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
 
 const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
@@ -88,6 +89,15 @@ function App() {
   const [showCloseShift, setShowCloseShift] = useState(false);
   const [openShiftBusy, setOpenShiftBusy] = useState(false);
   const [openTicketsCount, setOpenTicketsCount] = useState(0);
+  // Captured by useOrderCreation.onOrderSettled so the post-charge action
+  // banner can offer Print receipt / Resend SMS. Cleared when the cashier
+  // dismisses or starts a new ticket. Phone is captured at charge time
+  // because the cart (and the attached customer) gets reset right after.
+  const [lastPaidOrder, setLastPaidOrder] = useState<{
+    orderId: number;
+    customerId: number | null;
+    customerPhone: string | null;
+  } | null>(null);
 
   // ── Tables / order type ─────────────────────────────────────────────────────
   const [orderType, setOrderType] = useState<OrderType>("Takeaway");
@@ -138,11 +148,19 @@ function App() {
     cartTotal:     cart.cartTotal,
     payments:      cart.payments,
     discountAmount: cart.discountAmount,
+    customerId:    cart.attachedCustomer?.id ?? null,
+    customerPhone: cart.attachedCustomer?.phone ?? null,
     clearCart:        cart.clearCart,
     setCartItems:     cart.setCartItems,
     setSelectedItem:  cart.setSelectedItem,
     setOfflineQueueCount,
-    onOrderSettled: () => { void refreshOpenTickets(); void shift.refreshSummary(); },
+    onOrderSettled: (orderId, customerId, customerPhone) => {
+      void refreshOpenTickets();
+      void shift.refreshSummary();
+      // Stash the just-paid order so the post-charge action banner
+      // can offer "Print receipt" / "Resend SMS" without a re-fetch.
+      setLastPaidOrder({ orderId, customerId, customerPhone });
+    },
   });
 
   // ── Load tables after login ─────────────────────────────────────────────────
@@ -441,10 +459,17 @@ function App() {
       </header>
 
       {/* Status banners */}
-      {(order.statusMessage || ops.opsMessage) && (
-        <div style={{ padding: '8px 16px 0' }}>
+      {(order.statusMessage || ops.opsMessage || lastPaidOrder) && (
+        <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {order.statusMessage && <Banner text={order.statusMessage} />}
           {ops.opsMessage && <Banner text={ops.opsMessage} />}
+          {lastPaidOrder && (
+            <ReceiptActionsBanner
+              orderId={lastPaidOrder.orderId}
+              customerPhone={lastPaidOrder.customerPhone}
+              onDismiss={() => setLastPaidOrder(null)}
+            />
+          )}
         </div>
       )}
 
@@ -470,6 +495,9 @@ function App() {
               pendingPaymentForOrderId={order.pendingPaymentForOrderId}
               lastCreatedOrderId={order.lastCreatedOrderId}
               openTicketsCount={openTicketsCount}
+              attachedCustomer={cart.attachedCustomer}
+              onAttachCustomer={cart.setAttachedCustomer}
+              onDetachCustomer={() => cart.setAttachedCustomer(null)}
               onClearCart={cart.clearCart}
               onSaveTicket={() => setShowSaveTicket(true)}
               onOpenTickets={() => setPane("open_tickets")}

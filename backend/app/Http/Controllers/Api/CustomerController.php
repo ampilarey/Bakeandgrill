@@ -7,10 +7,121 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerSmsOptOutRequest;
 use App\Models\Customer;
+use App\Services\AuditLogService;
+use App\Support\PhoneNormalizer;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
+    /**
+     * Lightweight customer search for the POS — staff-only.
+     *
+     * The existing AdminCustomerController requires the `customers.manage`
+     * permission, which a cashier rarely has. This one is purposely thin:
+     * any authenticated staff (auth:sanctum + staff.token) can match by
+     * name OR phone OR email, capped at 10 results, returning only what
+     * the POS Customer Picker needs to render. No pagination — the UI
+     * just keeps typing if 10 isn't enough.
+     */
+    public function search(Request $request)
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['data' => []]);
+        }
+
+        // If it looks like a phone number, normalise so "+960 712-3456",
+        // "+9607123456" and "07123456" all hit the same row.
+        $normalised = null;
+        if (preg_match('/^\+?[\d\s\-]+$/', $q)) {
+            try { $normalised = PhoneNormalizer::normalize($q); } catch (\Throwable) { /* fall back to LIKE */ }
+        }
+
+        $like = '%' . $q . '%';
+        $matches = Customer::query()
+            ->select(['id', 'name', 'phone', 'email', 'loyalty_points', 'tier', 'sms_opt_out', 'last_order_at'])
+            ->withCount('orders')
+            ->where(function ($w) use ($like, $normalised) {
+                $w->where('name', 'like', $like)
+                  ->orWhere('email', 'like', $like)
+                  ->orWhere('phone', 'like', $like);
+                if ($normalised) {
+                    $w->orWhere('phone', $normalised);
+                }
+            })
+            ->orderByDesc('last_order_at')
+            ->limit(10)
+            ->get();
+
+        return response()->json(['data' => $matches]);
+    }
+
+    /**
+     * Quick-create or fetch a customer by phone — staff-only.
+     *
+     * Idempotent on phone: same phone never creates a duplicate row, the
+     * existing customer is returned (so the POS can use this either as
+     * "find me by phone" or "create on first use" without branching).
+     * Name is optional (only set when not already present, so a cashier
+     * can't accidentally clobber an existing customer's profile).
+     */
+    public function quickCreate(Request $request)
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $data = $request->validate([
+            // Accept anything roughly phone-shaped: at least 5 digits with
+            // optional +, spaces, dashes. PhoneNormalizer happily eats
+            // garbage (returns "+960"), so we gate on the raw string
+            // BEFORE handing it to the normalizer.
+            'phone' => ['required', 'string', 'max:30', 'regex:/^\+?[\d\s\-]{5,}$/'],
+            'name'  => 'nullable|string|max:120',
+        ]);
+
+        try {
+            $phone = PhoneNormalizer::normalize($data['phone']);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Invalid phone number.'], 422);
+        }
+        // Defensive second check: normalizer must produce more than just
+        // the country code. If it does, the input was effectively empty.
+        if (strlen(preg_replace('/[^0-9]/', '', $phone)) < 8) {
+            return response()->json(['message' => 'Invalid phone number.'], 422);
+        }
+
+        $customer = Customer::firstOrCreate(
+            ['phone' => $phone],
+            [
+                'name' => $data['name'] ?? null,
+                'loyalty_points' => 0,
+                'tier' => 'bronze',
+                'is_active' => true,
+            ],
+        );
+
+        // Only fill in the name if the customer doesn't already have one —
+        // never overwrite an existing profile from a quick-attach.
+        if (!empty($data['name']) && empty($customer->name)) {
+            $customer->update(['name' => $data['name']]);
+        }
+
+        $wasCreated = $customer->wasRecentlyCreated;
+        if ($wasCreated) {
+            app(AuditLogService::class)->log('customer.quick_created', 'Customer', $customer->id, [], $customer->toArray(), [], $request);
+        }
+
+        return response()->json([
+            'customer' => $customer->fresh()->loadCount('orders'),
+            'created' => $wasCreated,
+        ], $wasCreated ? 201 : 200);
+    }
+
     /**
      * Get current customer info
      */

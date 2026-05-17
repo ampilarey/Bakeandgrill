@@ -234,6 +234,12 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::post('/purchases/import', [PurchaseController::class, 'import']);
     });
 
+    // Customers — lightweight POS lookup / quick-create (any authenticated staff)
+    Route::get('/customers/search', [App\Http\Controllers\Api\CustomerController::class, 'search'])
+        ->middleware('throttle:60,1');
+    Route::post('/customers/quick', [App\Http\Controllers\Api\CustomerController::class, 'quickCreate'])
+        ->middleware('throttle:30,1');
+
     // Shifts + cash drawer
     Route::get('/shifts/current', [ShiftController::class, 'current']);
     Route::get('/shifts/history', [ShiftController::class, 'history']);

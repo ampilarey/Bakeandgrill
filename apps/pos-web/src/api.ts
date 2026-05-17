@@ -115,11 +115,24 @@ export async function selfDeviceStatus(identifier: string): Promise<{ status: st
   return request<{ status: string; is_active?: boolean }>(`/devices/self-status?identifier=${encodeURIComponent(identifier)}`);
 }
 
+export type PosCustomer = {
+  id: number;
+  name: string | null;
+  phone: string | null;
+  email?: string | null;
+  loyalty_points?: number;
+  tier?: string | null;
+  sms_opt_out?: boolean;
+  last_order_at?: string | null;
+  orders_count?: number;
+};
+
 export async function createOrder(payload: {
   type: string;
   print?: boolean;
   device_identifier?: string;
   restaurant_table_id?: number | null;
+  customer_id?: number | null;
   discount_amount?: number;
   items: Array<{
     item_id?: number | null;
@@ -134,6 +147,16 @@ export async function createOrder(payload: {
   }>;
 }): Promise<{ order: { id: number; total: number } }> {
   return request("/orders", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function searchCustomers(q: string): Promise<{ data: PosCustomer[] }> {
+  return request<{ data: PosCustomer[] }>(`/customers/search?q=${encodeURIComponent(q)}`);
+}
+
+export async function quickCreateCustomer(
+  payload: { phone: string; name?: string },
+): Promise<{ customer: PosCustomer; created: boolean }> {
+  return request(`/customers/quick`, { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function fetchTables(): Promise<{ tables: RestaurantTable[] }> {
@@ -495,12 +518,21 @@ export async function sendSmsPromotion(payload: {
   });
 }
 
+/**
+ * Get the bill / invoice for an order. Two modes:
+ *   - phone provided → SMS the customer with the public bill link
+ *   - phone omitted  → ensure the invoice exists and just return its link
+ *                      (so the POS "Print bill" can open /invoices/{token}
+ *                       in a new tab without spamming an SMS).
+ * Backend is idempotent on invoice creation, so this is safe to call multiple times.
+ */
 export async function sendBill(
   orderId: number,
-  phone: string,
+  phone?: string,
 ): Promise<{ order: unknown; invoice: unknown; link: string }> {
+  const body = phone ? { phone } : {};
   return request(`/orders/${orderId}/send-bill`, {
     method: "POST",
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify(body),
   });
 }

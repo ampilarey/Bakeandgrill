@@ -203,5 +203,18 @@
             @endif
         </div>
     </div>
+
+    {{-- Auto-trigger print when the POS pops this page with ?print=1.
+         The 350ms delay lets webfonts/logos paint so the dialog
+         preview reflects the final layout instead of a half-rendered page. --}}
+    @if(request()->boolean('print'))
+        <script>
+            (function () {
+                window.addEventListener('load', function () {
+                    setTimeout(function () { try { window.print(); } catch (e) {} }, 350);
+                });
+            })();
+        </script>
+    @endif
 </body>
 </html>

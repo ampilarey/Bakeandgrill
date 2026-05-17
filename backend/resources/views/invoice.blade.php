@@ -145,5 +145,17 @@
             <a class="btn btn-primary" href="{{ url('/invoices/' . $invoice->token . '/pdf') }}">Download PDF</a>
         </div>
     </div>
+
+    {{-- Auto-print when the POS opens this page with ?print=1.
+         350ms gives the layout/logo time to settle before the dialog opens. --}}
+    @if(request()->boolean('print'))
+        <script>
+            (function () {
+                window.addEventListener('load', function () {
+                    setTimeout(function () { try { window.print(); } catch (e) {} }, 350);
+                });
+            })();
+        </script>
+    @endif
 </body>
 </html>

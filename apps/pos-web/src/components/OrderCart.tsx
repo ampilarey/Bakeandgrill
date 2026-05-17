@@ -1,6 +1,8 @@
 import type { CartItem, RestaurantTable } from "../types";
 import type { PaymentRow } from "../hooks/useCart";
 import { makeCartKey } from "../hooks/useCart";
+import type { PosCustomer } from "../api";
+import { CustomerPicker } from "./CustomerPicker";
 
 type OrderType = "Dine-in" | "Takeaway" | "Online Pickup";
 const ORDER_TYPES: OrderType[] = ["Dine-in", "Takeaway", "Online Pickup"];
@@ -25,6 +27,10 @@ type Props = {
   pendingPaymentForOrderId: number | null;
   lastCreatedOrderId: number | null;
   openTicketsCount: number;
+
+  attachedCustomer: PosCustomer | null;
+  onAttachCustomer: (c: PosCustomer) => void;
+  onDetachCustomer: () => void;
 
   onClearCart: () => void;
   onSaveTicket: () => void;
@@ -118,6 +124,14 @@ export function OrderCart(p: Props) {
             ))}
           </select>
         )}
+
+        <div style={{ marginTop: 10 }}>
+          <CustomerPicker
+            customer={p.attachedCustomer}
+            onAttach={p.onAttachCustomer}
+            onDetach={p.onDetachCustomer}
+          />
+        </div>
       </div>
 
       {/* ── Cart lines ───────────────────────────────────────────── */}

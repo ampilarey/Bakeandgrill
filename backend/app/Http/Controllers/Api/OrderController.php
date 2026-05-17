@@ -352,8 +352,20 @@ class OrderController extends Controller
     /**
      * POST /api/orders/{id}/send-bill
      *
-     * Cashier enters customer phone → link customer to order, create invoice, send SMS bill.
-     * Used for dine-in before payment so customer can review their bill.
+     * Cashier wants to surface the bill to the customer before payment.
+     *
+     * Two modes (single endpoint so we don't fan out to ensure-invoice +
+     * send-invoice):
+     *   - phone provided  → link the customer (firstOrCreate by phone),
+     *                       create the invoice, SMS the public view link.
+     *   - phone omitted   → ensure an invoice exists, return the link
+     *                       only. Used by the POS "Print bill" button so
+     *                       the cashier can pop /invoices/{token} in a
+     *                       new tab and print without spamming an SMS.
+     *
+     * Invoice creation is idempotent (createFromOrderInternal returns the
+     * existing row if one was already minted), so calling this multiple
+     * times is safe.
      */
     public function sendBill(Request $request, int $id): JsonResponse
     {
@@ -362,42 +374,64 @@ class OrderController extends Controller
         }
 
         $request->validate([
-            'phone' => ['required', 'string', 'max:30'],
+            // Same shape check as CustomerController@quickCreate — phone
+            // must be at least 5 digits when provided. PhoneNormalizer is
+            // permissive and would otherwise happily turn "!!!" into "+960".
+            'phone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[\d\s\-]{5,}$/'],
         ]);
 
         $order = Order::with(['items.item', 'customer'])->findOrFail($id);
-        $phone = PhoneNormalizer::normalize($request->phone);
+        $rawPhone = $request->input('phone');
+        $phone = null;
+        if ($rawPhone !== null && trim((string) $rawPhone) !== '') {
+            try {
+                $phone = PhoneNormalizer::normalize($rawPhone);
+            } catch (\Throwable $e) {
+                return response()->json(['message' => 'Invalid phone number.'], 422);
+            }
 
-        // Link customer to order if not already linked
-        $customer = Customer::firstOrCreate(
-            ['phone' => $phone],
-            ['loyalty_points' => 0, 'tier' => 'bronze'],
-        );
-        if (!$order->customer_id) {
-            $order->update(['customer_id' => $customer->id]);
-            $order->setRelation('customer', $customer);
+            // Phone provided → link the customer if the order isn't already
+            // attached to one. We never overwrite an existing customer link
+            // (cashier already chose who the order belongs to).
+            $customer = Customer::firstOrCreate(
+                ['phone' => $phone],
+                ['loyalty_points' => 0, 'tier' => 'bronze'],
+            );
+            if (!$order->customer_id) {
+                $order->update(['customer_id' => $customer->id]);
+                $order->setRelation('customer', $customer);
+            }
+        } else {
+            // No phone — fall back to the order's existing customer phone
+            // if any, so loyalty/SMS log relations stay consistent.
+            $phone = $order->customer?->phone;
         }
 
-        // Create invoice from order (idempotent — returns existing if already created)
+        // Idempotent: returns existing invoice if already minted.
         $invoice = app(InvoiceController::class)->createFromOrderInternal($order, $request->user());
 
-        // Send SMS with invoice link
         $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
-        app(SmsService::class)->send(new SmsMessage(
-            to: $phone,
-            message: 'Bake & Grill: Your bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
-            type: 'transactional',
-            referenceType: 'invoice',
-            referenceId: (string) $invoice->id,
-            idempotencyKey: 'invoice:bill:' . $invoice->id,
-        ));
 
-        $invoice->update([
-            'recipient_phone' => $phone,
-            'status' => 'sent',
-        ]);
+        // SMS only fires when the caller explicitly passed a phone — keeps
+        // the "Print bill" silent and prevents accidental double-SMS when
+        // the cashier prints first and sends later.
+        if (!empty($request->input('phone'))) {
+            app(SmsService::class)->send(new SmsMessage(
+                to: $phone,
+                message: 'Bake & Grill: Your bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
+                type: 'transactional',
+                referenceType: 'invoice',
+                referenceId: (string) $invoice->id,
+                idempotencyKey: 'invoice:bill:' . $invoice->id,
+            ));
 
-        app(AuditLogService::class)->log('order.bill_sent', 'Order', $order->id, [], ['phone' => $phone, 'invoice_id' => $invoice->id], [], $request);
+            $invoice->update([
+                'recipient_phone' => $phone,
+                'status' => 'sent',
+            ]);
+
+            app(AuditLogService::class)->log('order.bill_sent', 'Order', $order->id, [], ['phone' => $phone, 'invoice_id' => $invoice->id], [], $request);
+        }
 
         return response()->json([
             'order' => $order->fresh('customer'),

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { CartItem, Item, Modifier } from "../types";
+import type { PosCustomer } from "../api";
 
 export type PaymentRow = {
   id: string;
@@ -40,6 +41,20 @@ export function useCart() {
   const [payments, setPayments] = useState<PaymentRow[]>([
     { id: crypto.randomUUID(), method: "cash", amount: "" },
   ]);
+  /**
+   * Customer the cashier has attached to this ticket. Optional — only set
+   * when the cashier types/picks a phone or name in the OrderCart's Customer
+   * Picker. Drives:
+   *   - `customer_id` on the order create payload (so the order is owned by
+   *     that customer and surfaces in their /customer/orders history)
+   *   - "Send invoice SMS" / "Send receipt SMS" buttons (disabled when no
+   *     phone is attached — see OrderCart)
+   *   - Auto-fire of the post-payment receipt SMS via the existing
+   *     PaymentConfirmationNotifier (already does the right thing whenever
+   *     order.customer_id resolves to a row with a phone).
+   * Cleared by clearCart after a successful charge.
+   */
+  const [attachedCustomer, setAttachedCustomer] = useState<PosCustomer | null>(null);
 
   const cartSubtotal = useMemo(
     () =>
@@ -125,6 +140,7 @@ export function useCart() {
     setSelectedModifiers([]);
     setDiscountAmount("");
     setPayments([{ id: crypto.randomUUID(), method: "cash", amount: "" }]);
+    setAttachedCustomer(null);
   }, []);
 
   const addPaymentRow = useCallback(() =>
@@ -157,5 +173,7 @@ export function useCart() {
     addPaymentRow,
     updatePaymentRow,
     removePaymentRow,
+    attachedCustomer,
+    setAttachedCustomer,
   };
 }
