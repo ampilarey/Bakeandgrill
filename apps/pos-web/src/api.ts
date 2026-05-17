@@ -50,11 +50,19 @@ const { request: _coreRequest } = createApiClient({
   getToken: () => _token,
 });
 
-// Wraps every API call: if the server blocks the device (disabled/pending/rejected),
-// dispatch a custom event so App.tsx can immediately show the right screen.
+// Wraps every API call: injects X-Device-Identifier header and handles
+// device-blocked (disabled/pending/rejected) errors gracefully.
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const deviceId = localStorage.getItem('pos_device_id');
+  const extraHeaders: HeadersInit = deviceId
+    ? { 'X-Device-Identifier': deviceId }
+    : {};
+  const merged: RequestInit = {
+    ...options,
+    headers: { ...extraHeaders, ...(options?.headers ?? {}) },
+  };
   try {
-    return await _coreRequest<T>(path, options ?? {});
+    return await _coreRequest<T>(path, merged);
   } catch (e) {
     const msg = (e as Error).message ?? '';
     if (

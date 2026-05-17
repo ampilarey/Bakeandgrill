@@ -109,11 +109,13 @@ export function useOrderCreation(params: Params) {
         })
         .catch(async (err: unknown) => {
           const message = (err as Error)?.message ?? '';
-          // Device-level blocks (disabled, pending, rejected) — never queue, show clearly
+          // Device-level blocks — never queue, show clearly
           if (
             message.includes('Device disabled') ||
             message.includes('Device pending') ||
             message.includes('Device rejected') ||
+            message.includes('Device identifier') ||
+            message.includes('Device not registered') ||
             message.includes('unauthorized') ||
             message.includes('Unauthorized')
           ) {
