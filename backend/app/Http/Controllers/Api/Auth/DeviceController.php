@@ -12,18 +12,30 @@ use Illuminate\Http\Request;
 class DeviceController extends Controller
 {
     /**
-     * Register or update a device (owner/admin initiated — auto-approved).
+     * Pre-provision a device from the admin panel — auto-approved.
+     *
+     * The cashier normally just opens the POS in a browser and the
+     * `selfRegister` endpoint creates a pending row to approve. That covers
+     * 100 % of interactive POS flows. This endpoint is the escape hatch for
+     * headless / non-interactive setups (KDS screens, manager displays)
+     * where nobody will type a login: the owner creates the row in advance,
+     * then opens the target device once at `/pos?device=<identifier>` so
+     * it picks up the pre-assigned id and skips the pending step.
      */
     public function register(Request $request)
     {
         $data = $request->validate([
             'name'       => 'required|string|max:100',
-            'identifier' => 'nullable|string|max:100',
+            'identifier' => 'nullable|string|max:100|regex:/^[A-Za-z0-9\-_]+$/',
             'type'       => 'required|string|max:50',
             'ip_address' => 'nullable|string|max:50',
         ]);
 
-        $identifier = $data['identifier'] ?? 'ADMIN-' . strtoupper(substr(md5(uniqid()), 0, 8));
+        // Default identifier embeds the device type so KDS-… vs POS-… is
+        // obvious at a glance in the admin device list.
+        $prefix = strtoupper((string) ($data['type'] ?? 'pos'));
+        $identifier = $data['identifier']
+            ?? $prefix . '-' . strtoupper(substr(md5(uniqid('', true)), 0, 8));
 
         $device = Device::updateOrCreate(
             ['identifier' => $identifier],
@@ -39,7 +51,10 @@ class DeviceController extends Controller
 
         app(AuditLogService::class)->log('device.registered', 'Device', $device->id, [], $device->toArray(), [], $request);
 
-        return response()->json(['device' => $device]);
+        return response()->json([
+            'device'     => $device,
+            'identifier' => $device->identifier,
+        ]);
     }
 
     /**

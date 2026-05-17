@@ -41,6 +41,28 @@ function App() {
   const [pin, setPin]                 = useState("");
   const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
   const [deviceId]                    = useState(() => {
+    // Priority order:
+    //  1. `?device=<id>` in the URL — set by the owner when pre-provisioning
+    //     a headless device (KDS / display). This wins over any stored id
+    //     so a single QR/link can re-bind a fresh browser profile.
+    //  2. Previously persisted id in localStorage.
+    //  3. Newly minted POS id for first-time interactive cashier flow.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = (params.get("device") ?? params.get("device_id") ?? "").trim();
+      if (fromUrl && /^[A-Za-z0-9\-_]+$/.test(fromUrl)) {
+        localStorage.setItem("pos_device_id", fromUrl);
+        params.delete("device");
+        params.delete("device_id");
+        // Strip the query param so a hard refresh doesn't keep re-binding
+        // (e.g. after the cashier shares the screen).
+        const cleanQs = params.toString();
+        const cleanUrl = window.location.pathname + (cleanQs ? `?${cleanQs}` : "") + window.location.hash;
+        window.history.replaceState({}, "", cleanUrl);
+        return fromUrl;
+      }
+    } catch { /* ignore — fall through to existing logic */ }
+
     const stored = localStorage.getItem("pos_device_id");
     if (stored) return stored;
     const generated = `POS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;

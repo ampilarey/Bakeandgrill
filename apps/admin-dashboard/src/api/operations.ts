@@ -167,7 +167,9 @@ export async function fetchPendingDevices(): Promise<{ devices: Device[] }> {
   return req('/devices/pending');
 }
 
-export async function registerDevice(data: { name: string; type: string }): Promise<{ device: Device; token: string }> {
+export async function registerDevice(
+  data: { name: string; type: string; identifier?: string },
+): Promise<{ device: Device; identifier: string }> {
   return req('/devices/register', { method: 'POST', body: JSON.stringify(data) });
 }
 
