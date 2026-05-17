@@ -24,7 +24,7 @@ class StaffAuthController extends Controller
     public function pinLogin(Request $request)
     {
         $request->validate([
-            'username' => 'required|string|email|max:255',
+            'username' => 'required|string|max:255',
             'pin' => 'required|string|min:4|max:8',
             'device_identifier' => 'nullable|string',
         ]);
@@ -42,8 +42,11 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        // Identify the candidate with a single indexed lookup, then verify one hash.
-        $user = User::where('email', $username)
+        // Look up by phone first (primary), then fall back to email.
+        $user = User::where(function ($q) use ($username) {
+                $q->where('phone', $username)
+                  ->orWhere('email', $username);
+            })
             ->where('is_active', true)
             ->whereNotNull('pin_hash')
             ->first();

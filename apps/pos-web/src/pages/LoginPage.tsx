@@ -66,22 +66,22 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
-          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>POS — Sign in with email + PIN</p>
+          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>POS — Sign in with mobile or email + PIN</p>
         </div>
 
-        {/* Email */}
+        {/* Mobile / Email */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Email
+            Mobile or Email
           </label>
           <input
             ref={emailRef}
-            type="email"
+            type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && onLogin()}
-            placeholder="your@email.com"
-            autoComplete="email"
+            placeholder="Mobile number or email"
+            autoComplete="username"
             style={{
               width: '100%', boxSizing: 'border-box',
               borderRadius: 10, padding: '10px 12px',
