@@ -18,24 +18,16 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
   const emailRef    = useRef<HTMLInputElement>(null);
   const deviceIdRef = useRef<HTMLInputElement>(null);
 
-  // Allow typing the PIN directly from the keyboard.
-  // When a digit is pressed while the email/deviceId field is focused (e.g. after autofill),
-  // blur that field and route the digit to the PIN instead.
+  // Allow typing the PIN directly from the keyboard when no input is focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const emailFocused    = document.activeElement === emailRef.current;
       const deviceIdFocused = document.activeElement === deviceIdRef.current;
 
-      if (emailFocused || deviceIdFocused) {
-        if (/^[0-9]$/.test(e.key)) {
-          e.preventDefault();
-          (document.activeElement as HTMLElement)?.blur();
-          append(e.key);
-        }
-        return;
-      }
-
+      // Never intercept keystrokes while the user is typing in an input field.
+      if (emailFocused || deviceIdFocused) return;
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+
       if (/^[0-9]$/.test(e.key))     append(e.key);
       else if (e.key === 'Backspace') back();
       else if (e.key === 'Escape')    clear();
