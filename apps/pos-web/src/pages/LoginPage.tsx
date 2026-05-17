@@ -18,14 +18,38 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
   const emailRef    = useRef<HTMLInputElement>(null);
   const deviceIdRef = useRef<HTMLInputElement>(null);
 
-  // Allow typing the PIN directly from the keyboard when no input is focused.
+  const isEmailFocused    = () => document.activeElement === emailRef.current;
+  const isDeviceIdFocused = () => document.activeElement === deviceIdRef.current;
+
+  // When the numpad is tapped, route the digit to whichever field is active.
+  const handleNumpad = (d: string) => {
+    if (d === '⌫') {
+      if (isEmailFocused()) {
+        setUsername(username.slice(0, -1));
+        emailRef.current?.focus();
+      } else if (isDeviceIdFocused()) {
+        setDeviceId(deviceId.slice(0, -1));
+        deviceIdRef.current?.focus();
+      } else {
+        back();
+      }
+    } else if (d !== '') {
+      if (isEmailFocused()) {
+        setUsername(username + d);
+        emailRef.current?.focus();
+      } else if (isDeviceIdFocused()) {
+        setDeviceId(deviceId + d);
+        deviceIdRef.current?.focus();
+      } else {
+        append(d);
+      }
+    }
+  };
+
+  // Allow typing the PIN directly from a hardware keyboard when no input is focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const emailFocused    = document.activeElement === emailRef.current;
-      const deviceIdFocused = document.activeElement === deviceIdRef.current;
-
-      // Never intercept keystrokes while the user is typing in an input field.
-      if (emailFocused || deviceIdFocused) return;
+      if (isEmailFocused() || isDeviceIdFocused()) return;
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
 
       if (/^[0-9]$/.test(e.key))     append(e.key);
@@ -132,9 +156,10 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
           {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d) => (
             <button
               key={d}
-              onClick={() => {
-                if (d === '⌫') back();
-                else if (d !== '') append(d);
+              onMouseDown={(e) => {
+                // Prevent blur on the active input when tapping a numpad key
+                e.preventDefault();
+                handleNumpad(d);
               }}
               disabled={d === ''}
               aria-label={d === '⌫' ? 'Backspace' : d === '' ? undefined : `Digit ${d}`}
