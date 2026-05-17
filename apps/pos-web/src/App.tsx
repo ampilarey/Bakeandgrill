@@ -24,7 +24,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn]   = useState(() => !!localStorage.getItem('pos_token'));
   const [username, setUsername]       = useState("");
   const [pin, setPin]                 = useState("");
-  const [deviceId, setDeviceId]       = useState(() => {
+  const [deviceId]                    = useState(() => {
       const stored = localStorage.getItem("pos_device_id");
       if (stored) return stored;
       const generated = `POS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
@@ -165,7 +165,7 @@ function App() {
       <LoginPage
         username={username} setUsername={setUsername}
         pin={pin} setPin={setPin}
-        deviceId={deviceId} setDeviceId={setDeviceId}
+        deviceId={deviceId}
         authError={authError} onLogin={handleLogin}
       />
     );

@@ -108,13 +108,18 @@ class DeviceController extends Controller
     }
 
     /**
-     * Approve a pending device.
+     * Approve a pending device, optionally renaming it.
      */
-    public function approve(int $id)
+    public function approve(int $id, Request $request)
     {
+        $data = $request->validate(['name' => 'nullable|string|max:100']);
         $device = Device::findOrFail($id);
-        $device->update(['status' => 'approved', 'is_active' => true]);
-        app(AuditLogService::class)->log('device.approved', 'Device', $device->id, ['status' => 'pending'], ['status' => 'approved'], [], request());
+        $updates = ['status' => 'approved', 'is_active' => true];
+        if (!empty($data['name'])) {
+            $updates['name'] = $data['name'];
+        }
+        $device->update($updates);
+        app(AuditLogService::class)->log('device.approved', 'Device', $device->id, ['status' => 'pending'], ['status' => 'approved'], [], $request);
         return response()->json(['device' => $device]);
     }
 

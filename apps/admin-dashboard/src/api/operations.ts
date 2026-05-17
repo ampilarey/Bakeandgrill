@@ -179,8 +179,8 @@ export async function enableDevice(id: number): Promise<{ device: Device }> {
   return req(`/devices/${id}/enable`, { method: 'PATCH' });
 }
 
-export async function approveDevice(id: number): Promise<{ device: Device }> {
-  return req(`/devices/${id}/approve`, { method: 'PATCH' });
+export async function approveDevice(id: number, name?: string): Promise<{ device: Device }> {
+  return req(`/devices/${id}/approve`, { method: 'PATCH', body: JSON.stringify({ name }) });
 }
 
 export async function rejectDevice(id: number): Promise<{ device: Device }> {

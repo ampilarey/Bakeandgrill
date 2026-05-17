@@ -6,20 +6,18 @@ type Props = {
   pin: string;
   setPin: (v: string) => void;
   deviceId: string;
-  setDeviceId: (v: string) => void;
   authError: string;
   onLogin: () => void;
 };
 
-export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDeviceId, authError, onLogin }: Props) {
+export function LoginPage({ username, setUsername, pin, setPin, deviceId, authError, onLogin }: Props) {
   const append = (d: string) => { if (pin.length < 8) setPin(pin + d); };
   const back   = ()          => setPin(pin.slice(0, -1));
   const clear  = ()          => setPin('');
   const emailRef    = useRef<HTMLInputElement>(null);
-  const deviceIdRef = useRef<HTMLInputElement>(null);
 
   const isEmailFocused    = () => document.activeElement === emailRef.current;
-  const isDeviceIdFocused = () => document.activeElement === deviceIdRef.current;
+  const isDeviceIdFocused = () => false; // Device ID is now read-only
 
   // When the numpad is tapped, route the digit to whichever field is active.
   const handleNumpad = (d: string) => {
@@ -27,9 +25,6 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
       if (isEmailFocused()) {
         setUsername(username.slice(0, -1));
         emailRef.current?.focus();
-      } else if (isDeviceIdFocused()) {
-        setDeviceId(deviceId.slice(0, -1));
-        deviceIdRef.current?.focus();
       } else {
         back();
       }
@@ -37,9 +32,6 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
       if (isEmailFocused()) {
         setUsername(username + d);
         emailRef.current?.focus();
-      } else if (isDeviceIdFocused()) {
-        setDeviceId(deviceId + d);
-        deviceIdRef.current?.focus();
       } else {
         append(d);
       }
@@ -107,22 +99,21 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, setDev
           />
         </div>
 
-        {/* Device ID */}
+        {/* Device ID — read-only display */}
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Device ID
           </label>
-          <input
-            ref={deviceIdRef}
-            value={deviceId}
-            onChange={(e) => setDeviceId(e.target.value)}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              borderRadius: 10, padding: '10px 12px',
-              border: '1px solid #EDE4D4', fontSize: 14,
-              color: '#2A1E0C', background: '#FFFDF9', outline: 'none',
-            }}
-          />
+          <div style={{
+            width: '100%', boxSizing: 'border-box' as const,
+            borderRadius: 10, padding: '10px 12px',
+            border: '1px solid #EDE4D4', fontSize: 14,
+            color: '#8B7355', background: '#F7F3EC',
+            fontFamily: 'monospace', letterSpacing: '0.05em',
+            userSelect: 'all' as const,
+          }}>
+            {deviceId}
+          </div>
         </div>
 
         {/* PIN dots */}

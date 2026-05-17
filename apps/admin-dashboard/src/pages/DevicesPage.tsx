@@ -33,6 +33,11 @@ export default function DevicesPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [copyToast, setCopyToast] = useState('');
 
+  // Approve modal state
+  const [approveTarget, setApproveTarget] = useState<Device | null>(null);
+  const [approveName, setApproveName] = useState('');
+  const [approving, setApproving] = useState(false);
+
   const load = async () => {
     setLoading(true); setError('');
     try {
@@ -75,11 +80,20 @@ export default function DevicesPage() {
     finally { setActionLoading(null); }
   };
 
-  const handleApprove = async (device: Device) => {
-    setActionLoading(device.id);
-    try { await approveDevice(device.id); void load(); }
-    catch (e) { setError((e as Error).message); }
-    finally { setActionLoading(null); }
+  const openApproveModal = (device: Device) => {
+    setApproveTarget(device);
+    setApproveName(device.name ?? '');
+  };
+
+  const confirmApprove = async () => {
+    if (!approveTarget) return;
+    setApproving(true);
+    try {
+      await approveDevice(approveTarget.id, approveName.trim() || undefined);
+      setApproveTarget(null);
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setApproving(false); }
   };
 
   const handleReject = async (device: Device) => {
@@ -125,7 +139,7 @@ export default function DevicesPage() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Btn small onClick={() => handleApprove(d)} disabled={actionLoading === d.id}>
+                  <Btn small onClick={() => openApproveModal(d)} disabled={actionLoading === d.id}>
                     {actionLoading === d.id ? '…' : '✓ Approve'}
                   </Btn>
                   <Btn small variant="secondary" onClick={() => handleReject(d)} disabled={actionLoading === d.id}>
@@ -220,6 +234,37 @@ export default function DevicesPage() {
               </ModalActions>
             </>
           )}
+        </Modal>
+      )}
+
+      {/* ── Approve Modal ── */}
+      {approveTarget && (
+        <Modal title="Approve Device" onClose={() => setApproveTarget(null)} maxWidth={400}>
+          <p style={{ margin: '0 0 16px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.5 }}>
+            Give this device a friendly name so you can identify it later.
+          </p>
+          <div style={{ background: '#FEF3E8', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+            <p style={{ margin: 0, fontSize: 11, color: '#8B7355', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Device ID</p>
+            <p style={{ margin: '3px 0 0', fontSize: 13, fontFamily: 'monospace', color: '#D4813A', fontWeight: 700 }}>{approveTarget.identifier ?? '—'}</p>
+          </div>
+          <label>
+            <span style={S.label}>Device Name *</span>
+            <input
+              type="text"
+              placeholder="e.g. Front Counter, Kitchen Screen, Drive Thru…"
+              value={approveName}
+              onChange={e => setApproveName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && confirmApprove()}
+              autoFocus
+              style={S.input}
+            />
+          </label>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setApproveTarget(null)}>Cancel</Btn>
+            <Btn onClick={confirmApprove} disabled={approving || !approveName.trim()}>
+              {approving ? 'Approving…' : '✓ Approve Device'}
+            </Btn>
+          </ModalActions>
         </Modal>
       )}
     </div>
