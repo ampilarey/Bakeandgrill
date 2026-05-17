@@ -172,11 +172,11 @@ export async function registerDevice(data: { name: string; type: string }): Prom
 }
 
 export async function disableDevice(id: number): Promise<{ device: Device }> {
-  return req(`/devices/${id}/disable`, { method: 'PATCH' });
+  return req(`/devices/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active: false }) });
 }
 
 export async function enableDevice(id: number): Promise<{ device: Device }> {
-  return req(`/devices/${id}/enable`, { method: 'PATCH' });
+  return req(`/devices/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active: true }) });
 }
 
 export async function approveDevice(id: number, name?: string): Promise<{ device: Device }> {

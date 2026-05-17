@@ -162,10 +162,11 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
             ->middleware('throttle:10,1');
         Route::get('/', [DeviceController::class, 'index']);
         Route::get('/pending', [DeviceController::class, 'pending']);
-        Route::patch('/{id}/disable', [DeviceController::class, 'disable']);
-        Route::patch('/{id}/enable', [DeviceController::class, 'enable']);
+        Route::patch('/{id}', [DeviceController::class, 'update']);
         Route::patch('/{id}/approve', [DeviceController::class, 'approve']);
         Route::patch('/{id}/reject', [DeviceController::class, 'reject']);
+        Route::patch('/{id}/disable', [DeviceController::class, 'disable']);
+        Route::patch('/{id}/enable', [DeviceController::class, 'enable']);
     });
 
     // Device self-registration (any authenticated staff, no device.active check)

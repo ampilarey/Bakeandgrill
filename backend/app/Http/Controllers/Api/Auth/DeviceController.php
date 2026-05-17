@@ -145,6 +145,20 @@ class DeviceController extends Controller
     }
 
     /**
+     * Update device fields (is_active, name, etc.)
+     */
+    public function update(int $id, Request $request)
+    {
+        $data = $request->validate([
+            'is_active' => 'sometimes|boolean',
+            'name'      => 'sometimes|string|max:100',
+        ]);
+        $device = Device::findOrFail($id);
+        $device->update($data);
+        return response()->json(['device' => $device->fresh()]);
+    }
+
+    /**
      * Disable device.
      */
     public function disable(int $id)

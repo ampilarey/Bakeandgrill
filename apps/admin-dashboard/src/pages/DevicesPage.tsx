@@ -78,17 +78,15 @@ export default function DevicesPage() {
     setActionLoading(device.id);
     setError('');
     try {
-      if (device.is_active) {
-        await disableDevice(device.id);
-      } else {
-        await enableDevice(device.id);
-      }
-      await load();
+      const res = device.is_active
+        ? await disableDevice(device.id)
+        : await enableDevice(device.id);
+      // Update device in local state directly — no reload needed
+      setDevices(prev => prev.map(d => d.id === device.id ? res.device : d));
     } catch (e) {
       const msg = (e as Error).message;
       setError(msg);
-      // eslint-disable-next-line no-alert
-      window.alert('Device action failed: ' + msg);
+      window.alert('Failed: ' + msg);
     } finally {
       setActionLoading(null);
     }
