@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\DB;
 class OrderCreationService
 {
     public function __construct(
-        private OrderTotalsCalculator $calculator = new OrderTotalsCalculator,
-        private KitchenMenuResolver $kitchenMenuResolver = new KitchenMenuResolver,
+        private OrderTotalsCalculator $calculator,
+        private KitchenMenuResolver $kitchenMenuResolver,
     ) {}
 
     public function createFromPayload(array $payload, ?object $user): Order
