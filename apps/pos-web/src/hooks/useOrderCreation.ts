@@ -108,9 +108,22 @@ export function useOrderCreation(params: Params) {
           setTimeout(() => setStatusMessage(""), 5000);
         })
         .catch(async (err: unknown) => {
+          const message = (err as Error)?.message ?? '';
+          // Device-level blocks (disabled, pending, rejected) — never queue, show clearly
+          if (
+            message.includes('Device disabled') ||
+            message.includes('Device pending') ||
+            message.includes('Device rejected') ||
+            message.includes('unauthorized') ||
+            message.includes('Unauthorized')
+          ) {
+            setStatusMessage(`⛔ ${message}`);
+            return;
+          }
+          // Other explicit API errors (validation, business logic)
           const status = (err as { status?: number })?.status;
           if (status && status >= 400 && status < 500) {
-            setStatusMessage(`Order failed: ${(err as Error).message}`);
+            setStatusMessage(`Order failed: ${message}`);
             return;
           }
           // Only queue for offline sync if the order was never successfully created
