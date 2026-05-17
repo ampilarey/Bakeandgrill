@@ -81,12 +81,9 @@ export default function DevicesPage() {
       const res = device.is_active
         ? await disableDevice(device.id)
         : await enableDevice(device.id);
-      window.alert('API response: ' + JSON.stringify(res));
       setDevices(prev => prev.map(d => d.id === device.id ? res.device : d));
     } catch (e) {
-      const msg = (e as Error).message;
-      setError(msg);
-      window.alert('Failed: ' + msg);
+      setError((e as Error).message);
     } finally {
       setActionLoading(null);
     }

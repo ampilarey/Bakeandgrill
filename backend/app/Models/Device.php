@@ -23,6 +23,11 @@ class Device extends Model
         'last_seen_at',
     ];
 
+    protected $casts = [
+        'is_active'    => 'boolean',
+        'last_seen_at' => 'datetime',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
