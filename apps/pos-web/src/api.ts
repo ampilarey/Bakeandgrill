@@ -45,10 +45,28 @@ export function setAuthToken(t: string | null): void {
   _token = t;
 }
 
-const { request } = createApiClient({
+const { request: _coreRequest } = createApiClient({
   baseUrl: API_BASE_URL,
   getToken: () => _token,
 });
+
+// Wraps every API call: if the server blocks the device (disabled/pending/rejected),
+// dispatch a custom event so App.tsx can immediately show the right screen.
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  try {
+    return await _coreRequest<T>(path, options ?? {});
+  } catch (e) {
+    const msg = (e as Error).message ?? '';
+    if (
+      msg.includes('Device disabled') ||
+      msg.includes('Device pending') ||
+      msg.includes('Device rejected')
+    ) {
+      window.dispatchEvent(new CustomEvent('pos_device_blocked', { detail: msg }));
+    }
+    throw e;
+  }
+}
 
 export async function fetchCategories(): Promise<Category[]> {
   const data = await request<{ categories?: Category[]; data?: Category[] }>(

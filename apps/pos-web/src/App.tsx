@@ -98,6 +98,18 @@ function App() {
     setOfflineQueueCount,
   });
 
+  // ── Detect device being disabled/rejected mid-session ──────────────────────
+  useEffect(() => {
+    const onBlocked = (e: Event) => {
+      const msg = (e as CustomEvent<string>).detail ?? '';
+      if (msg.includes('pending'))  setDeviceStatus('pending');
+      else if (msg.includes('rejected')) setDeviceStatus('rejected');
+      else setDeviceStatus('rejected'); // disabled = treated as rejected for UX
+    };
+    window.addEventListener('pos_device_blocked', onBlocked);
+    return () => window.removeEventListener('pos_device_blocked', onBlocked);
+  }, []);
+
   // ── Device registration & approval polling ─────────────────────────────────
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -211,8 +223,8 @@ function App() {
       <div style={{ minHeight: '100vh', background: '#1C1408', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px', width: '100%', maxWidth: 380, textAlign: 'center' }}>
           <p style={{ fontSize: 40, margin: '0 0 16px' }}>🚫</p>
-          <p style={{ fontWeight: 700, fontSize: 18, color: '#2A1E0C', margin: '0 0 10px' }}>Device rejected</p>
-          <p style={{ color: '#8B7355', fontSize: 14, margin: '0 0 20px' }}>This device was not approved. Contact the owner.</p>
+          <p style={{ fontWeight: 700, fontSize: 18, color: '#2A1E0C', margin: '0 0 10px' }}>Device disabled</p>
+          <p style={{ color: '#8B7355', fontSize: 14, margin: '0 0 20px' }}>This device has been disabled by the owner. Contact the owner to re-enable it.</p>
           <button onClick={handleLogout} style={{ padding: '10px 24px', background: '#D4813A', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
             Log out
           </button>
