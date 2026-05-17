@@ -541,6 +541,7 @@ export function StaffPage() {
     try {
       await resetStaffPin(changingPin.id, pin);
       setChangingPin(null);
+      await load();
     } catch (e) { setError((e as Error).message); }
   };
 
