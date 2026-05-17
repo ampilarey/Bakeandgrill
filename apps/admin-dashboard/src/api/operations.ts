@@ -187,6 +187,10 @@ export async function rejectDevice(id: number): Promise<{ device: Device }> {
   return req(`/devices/${id}/reject`, { method: 'PATCH' });
 }
 
+export async function deleteDevice(id: number): Promise<void> {
+  return req(`/devices/${id}`, { method: 'DELETE' });
+}
+
 // ── Waste Logs ────────────────────────────────────────────────────────────────
 
 export interface WasteLog {

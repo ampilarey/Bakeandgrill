@@ -159,6 +159,16 @@ class DeviceController extends Controller
     }
 
     /**
+     * Delete a device.
+     */
+    public function destroy(int $id)
+    {
+        $device = Device::findOrFail($id);
+        $device->delete();
+        return response()->json(['message' => 'Device deleted.']);
+    }
+
+    /**
      * Disable device.
      */
     public function disable(int $id)

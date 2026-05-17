@@ -103,8 +103,8 @@ export async function selfRegisterDevice(identifier: string, name: string): Prom
   });
 }
 
-export async function selfDeviceStatus(identifier: string): Promise<{ status: string }> {
-  return request<{ status: string }>(`/devices/self-status?identifier=${encodeURIComponent(identifier)}`);
+export async function selfDeviceStatus(identifier: string): Promise<{ status: string; is_active?: boolean }> {
+  return request<{ status: string; is_active?: boolean }>(`/devices/self-status?identifier=${encodeURIComponent(identifier)}`);
 }
 
 export async function createOrder(payload: {

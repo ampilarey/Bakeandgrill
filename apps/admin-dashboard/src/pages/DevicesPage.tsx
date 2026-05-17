@@ -4,7 +4,7 @@ import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
 import {
-  fetchDevices, fetchPendingDevices, registerDevice, enableDevice, disableDevice, approveDevice, rejectDevice,
+  fetchDevices, fetchPendingDevices, registerDevice, enableDevice, disableDevice, approveDevice, rejectDevice, deleteDevice,
   type Device,
 } from '../api';
 
@@ -112,6 +112,18 @@ export default function DevicesPage() {
     finally { setActionLoading(null); }
   };
 
+  const handleDelete = async (device: Device) => {
+    if (!window.confirm(`Delete "${device.name}"? This cannot be undone.`)) return;
+    setActionLoading(device.id);
+    try {
+      await deleteDevice(device.id);
+      setDevices(prev => prev.filter(d => d.id !== device.id));
+      setPending(prev => prev.filter(d => d.id !== device.id));
+    }
+    catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(null); }
+  };
+
   // Exclude pending/rejected from the main table — show approved + legacy null-status (including disabled)
   const approved = devices.filter(d => d.status !== 'pending' && d.status !== 'rejected');
   const active   = devices.filter(d => d.is_active).length;
@@ -155,6 +167,9 @@ export default function DevicesPage() {
                   <Btn small variant="secondary" onClick={() => handleReject(d)} disabled={actionLoading === d.id}>
                     {actionLoading === d.id ? '…' : '✕ Reject'}
                   </Btn>
+                  <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
+                    🗑
+                  </Btn>
                 </div>
               </div>
             ))}
@@ -186,14 +201,19 @@ export default function DevicesPage() {
                   {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}
                 </td>
                 <td style={TD}>
-                  <Btn
-                    small
-                    variant={d.is_active ? 'secondary' : 'primary'}
-                    onClick={() => handleToggle(d)}
-                    disabled={actionLoading === d.id}
-                  >
-                    {actionLoading === d.id ? '…' : d.is_active ? 'Disable' : 'Enable'}
-                  </Btn>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Btn
+                      small
+                      variant={d.is_active ? 'secondary' : 'primary'}
+                      onClick={() => handleToggle(d)}
+                      disabled={actionLoading === d.id}
+                    >
+                      {actionLoading === d.id ? '…' : d.is_active ? 'Disable' : 'Enable'}
+                    </Btn>
+                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
+                      🗑
+                    </Btn>
+                  </div>
                 </td>
               </tr>
             ))}

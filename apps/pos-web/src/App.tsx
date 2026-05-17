@@ -103,12 +103,31 @@ function App() {
     const onBlocked = (e: Event) => {
       const msg = (e as CustomEvent<string>).detail ?? '';
       if (msg.includes('pending'))  setDeviceStatus('pending');
-      else if (msg.includes('rejected')) setDeviceStatus('rejected');
-      else setDeviceStatus('rejected'); // disabled = treated as rejected for UX
+      else setDeviceStatus('rejected');
     };
     window.addEventListener('pos_device_blocked', onBlocked);
     return () => window.removeEventListener('pos_device_blocked', onBlocked);
   }, []);
+
+  // Poll device status every 20 s while approved so the POS reacts instantly
+  // when an owner disables it — even if the staff isn't doing anything.
+  useEffect(() => {
+    if (deviceStatus !== 'approved') return;
+    const t = setInterval(async () => {
+      try {
+        const s = await selfDeviceStatus(deviceId);
+        if (s.status === 'pending')  { setDeviceStatus('pending');  clearInterval(t); }
+        if (s.status === 'rejected') { setDeviceStatus('rejected'); clearInterval(t); }
+        if (s.status === 'unregistered') { setDeviceStatus('rejected'); clearInterval(t); }
+        // approved → nothing to do
+        // disabled is signalled by is_active=false + status=approved
+        if (s.status === 'approved' && s.is_active === false) {
+          setDeviceStatus('rejected'); clearInterval(t);
+        }
+      } catch { /* network blip — keep polling */ }
+    }, 20000);
+    return () => clearInterval(t);
+  }, [deviceStatus, deviceId]);
 
   // ── Device registration & approval polling ─────────────────────────────────
   useEffect(() => {

@@ -167,6 +167,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::patch('/{id}/reject', [DeviceController::class, 'reject']);
         Route::patch('/{id}/disable', [DeviceController::class, 'disable']);
         Route::patch('/{id}/enable', [DeviceController::class, 'enable']);
+        Route::delete('/{id}', [DeviceController::class, 'destroy']);
     });
 
     // Device self-registration (any authenticated staff, no device.active check)
