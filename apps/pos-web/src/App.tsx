@@ -8,6 +8,7 @@ import { useCart }          from "./hooks/useCart";
 import { useOrderCreation } from "./hooks/useOrderCreation";
 import { useOps }           from "./hooks/useOps";
 import { useShift }         from "./hooks/useShift";
+import { useIdleLock, getIdleLockMinutes } from "./hooks/useIdleLock";
 
 import { LoginPage }         from "./pages/LoginPage";
 import { MenuGrid }          from "./components/MenuGrid";
@@ -38,7 +39,12 @@ type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | 
 function App() {
   // ── Auth ────────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn]   = useState(() => !!localStorage.getItem('pos_token'));
-  const [username, setUsername]       = useState("");
+  // Username is the LOGIN IDENTIFIER (email/mobile) — kept in state for
+  // the LoginPage form AND persisted to localStorage so PIN-unlock
+  // continues to work after a page refresh (without it, `username`
+  // would be empty on reload and the unlock flow couldn't call
+  // staffLogin properly).
+  const [username, setUsername]       = useState<string>(() => localStorage.getItem("pos_username") ?? "");
   const [pin, setPin]                 = useState("");
   const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
   const [deviceId]                    = useState(() => {
@@ -231,6 +237,10 @@ function App() {
     try {
       const response = await staffLogin(username.trim(), pin.trim(), deviceId.trim());
       localStorage.setItem("pos_token", response.token);
+      // Persist the login identifier so lock/unlock survives reloads.
+      // We deliberately do NOT persist the PIN — unlock asks for it
+      // every time.
+      localStorage.setItem("pos_username", username.trim());
       const name = response.user?.name ?? username.trim();
       localStorage.setItem("pos_cashier_name", name);
       setCashierName(name);
@@ -245,10 +255,12 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("pos_token");
     localStorage.removeItem("pos_cashier_name");
+    localStorage.removeItem("pos_username");
     setAuthToken(null);
     setIsLoggedIn(false);
     setDeviceStatus('unknown');
     setCashierName("");
+    setUsername("");
     setIsLocked(false);
   };
 
@@ -268,17 +280,75 @@ function App() {
     void refreshOpenTickets();
   };
 
-  // Unlock = verify PIN against the saved token's user — keeps the shift.
+  /**
+   * Unlock = re-verify PIN against the same cashier who locked the
+   * screen. We use the persisted login identifier (`pos_username`),
+   * NOT the display name (`cashierName`), because the staff PIN-login
+   * endpoint expects the email/mobile, not the human name.
+   *
+   * Side-effects on success:
+   *   - Token is re-bound (server may rotate it on each login).
+   *   - localStorage `pos_token` is updated so a refresh stays logged in.
+   *   - `isLocked` flips false → main UI re-renders (cart + shift
+   *     preserved because the App component never unmounted).
+   */
   const handleUnlock = async (testPin: string): Promise<boolean> => {
+    const identifier = (
+      localStorage.getItem("pos_username") || username || ""
+    ).trim();
+    if (!identifier) {
+      // Can't reconstruct who's logged in — drop to login screen
+      // instead of silently failing forever.
+      handleLogout();
+      return false;
+    }
     try {
-      const res = await staffLogin(username || cashierName || "", testPin, deviceId);
-      // Re-bind the token in case it was rotated server-side.
+      const res = await staffLogin(identifier, testPin, deviceId);
       localStorage.setItem("pos_token", res.token);
       setAuthToken(res.token);
       setIsLocked(false);
       return true;
     } catch { return false; }
   };
+
+  /**
+   * Lock the screen without ending the session. Idempotent — safe to
+   * call from the Lock button, the drawer "Lock screen" entry, the
+   * Cmd/Ctrl+L shortcut, or the idle timeout.
+   */
+  const lockScreen = useCallback(() => {
+    if (!isLoggedIn) return;
+    setIsLocked(true);
+  }, [isLoggedIn]);
+
+  // ── Auto-lock on inactivity ─────────────────────────────────────
+  // Default 5 minutes; cashier-configurable via localStorage
+  // `pos_idle_lock_minutes` (0 disables). Disabled while already on
+  // the lock screen, while not logged in, or while the cashier is on
+  // the dedicated TimeClock punch screen.
+  useIdleLock({
+    enabled: isLoggedIn && !isLocked && !showTimeClock,
+    timeoutMs: getIdleLockMinutes() * 60_000,
+    onIdle: lockScreen,
+  });
+
+  // ── Cmd/Ctrl+L keyboard shortcut ────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn || isLocked) return;
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore when typing into an input/textarea/contenteditable
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName?.toLowerCase();
+      const inField = tag === "input" || tag === "textarea" || t?.isContentEditable === true;
+      if (inField) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        lockScreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isLoggedIn, isLocked, lockScreen]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   if (showTimeClock) {
@@ -365,7 +435,7 @@ function App() {
         <ShiftClosedGate
           onOpenShift={() => setShowOpenShift(true)}
           onLogout={handleLogout}
-          onSwitchUser={() => setIsLocked(true)}
+          onSwitchUser={lockScreen}
         />
         {showOpenShift && (
           <OpenShiftModal
@@ -386,7 +456,7 @@ function App() {
     { id: "shift",          label: "Current Shift",  icon: "💰", group: "main" as const },
     { id: "shift_history",  label: "Shift History",  icon: "📚", group: "main" as const },
     { id: "ops",            label: "Operations",     icon: "🛠", group: "main" as const },
-    { id: "lock",           label: "Switch user",    icon: "🔄", group: "user" as const },
+    { id: "lock",           label: "Lock screen",    icon: "🔒", group: "user" as const },
     { id: "logout",         label: "Log out",        icon: "↩",  group: "user" as const },
   ];
 
@@ -443,6 +513,20 @@ function App() {
             {isOnline ? 'Online' : 'Offline'}
           </span>
 
+          {/* Visible Lock button. Keeps shift + cart, requires PIN to
+              re-open. Cmd/Ctrl+L also triggers this. */}
+          <button
+            onClick={lockScreen}
+            aria-label="Lock screen"
+            title="Lock screen (Ctrl/Cmd+L)"
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: '#F1F5F9', border: '1px solid #E2E8F0',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: 15,
+            }}
+          >🔒</button>
+
           {offlineQueueCount > 0 && (
             <button
               onClick={order.handleSyncQueue}
@@ -498,6 +582,8 @@ function App() {
               attachedCustomer={cart.attachedCustomer}
               onAttachCustomer={cart.setAttachedCustomer}
               onDetachCustomer={() => cart.setAttachedCustomer(null)}
+              resumedOrderId={order.resumedOrderId}
+              onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
               onClearCart={cart.clearCart}
               onSaveTicket={() => setShowSaveTicket(true)}
               onOpenTickets={() => setPane("open_tickets")}
@@ -521,6 +607,7 @@ function App() {
               barcode={order.barcode}
               setBarcode={order.setBarcode}
               onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
+              readOnly={order.resumedOrderId !== null}
             />
           </>
         )}
@@ -572,7 +659,7 @@ function App() {
         onSelect={(id) => {
           setDrawerOpen(false);
           if (id === "logout") return handleLogout();
-          if (id === "lock") return setIsLocked(true);
+          if (id === "lock") return lockScreen();
           setPane(id as Pane);
         }}
       />

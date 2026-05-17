@@ -32,6 +32,12 @@ type Props = {
   onAttachCustomer: (c: PosCustomer) => void;
   onDetachCustomer: () => void;
 
+  /** When non-null, the cart was restored from an existing held order
+   *  and is in read-only mode (no qty +/-, no clear, no save-ticket).
+   *  The cashier must Cancel Resume to drop back into a fresh cart. */
+  resumedOrderId: number | null;
+  onCancelResume: () => void;
+
   onClearCart: () => void;
   onSaveTicket: () => void;
   onOpenTickets: () => void;
@@ -59,6 +65,7 @@ const C = {
 export function OrderCart(p: Props) {
   const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting;
   const dineIn = p.orderType === "Dine-in";
+  const isResumed = p.resumedOrderId !== null;
 
   return (
     <aside style={{
@@ -72,17 +79,49 @@ export function OrderCart(p: Props) {
       overflow: 'hidden',
       boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
     }}>
+      {/* ── Resumed-ticket banner (read-only mode) ────────────────── */}
+      {isResumed && (
+        <div style={{
+          padding: '10px 14px',
+          background: '#FFFBEB',
+          borderBottom: `1px solid #FDE68A`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        }}>
+          <div style={{ fontSize: 12, color: '#92400E', lineHeight: 1.4 }}>
+            <div style={{ fontWeight: 800 }}>🎫 Resumed: Order #{p.resumedOrderId}</div>
+            <div style={{ marginTop: 2 }}>Charge to settle. To edit, cancel resume.</div>
+          </div>
+          <button
+            onClick={p.onCancelResume}
+            disabled={p.isSubmitting}
+            style={{
+              padding: '6px 10px', borderRadius: 6,
+              background: '#fff', border: '1px solid #FBBF24',
+              fontSize: 11, fontWeight: 700, color: '#92400E',
+              cursor: p.isSubmitting ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Cancel resume
+          </button>
+        </div>
+      )}
+
       {/* ── Top: ticket header + order type pills ─────────────────── */}
       <div style={{ padding: 14, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>New Order</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>
+            {isResumed ? `Order #${p.resumedOrderId}` : 'New Order'}
+          </div>
           <button
             onClick={p.onClearCart}
-            disabled={p.cartItems.length === 0}
+            disabled={p.cartItems.length === 0 || isResumed}
+            title={isResumed ? 'Cancel resume to edit items' : undefined}
             style={{
               fontSize: 12, fontWeight: 600, color: C.muted,
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              opacity: p.cartItems.length === 0 ? 0.4 : 1,
+              background: 'transparent', border: 'none',
+              cursor: (p.cartItems.length === 0 || isResumed) ? 'not-allowed' : 'pointer',
+              opacity: (p.cartItems.length === 0 || isResumed) ? 0.4 : 1,
             }}
           >
             Clear
@@ -183,6 +222,8 @@ export function OrderCart(p: Props) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button
                       aria-label="Decrease quantity"
+                      disabled={isResumed}
+                      title={isResumed ? 'Cancel resume to edit items' : undefined}
                       onClick={() =>
                         p.setCartItems(
                           p.cartItems
@@ -197,7 +238,9 @@ export function OrderCart(p: Props) {
                       style={{
                         width: 32, height: 32, borderRadius: 8,
                         background: C.bg, border: `1px solid ${C.border}`,
-                        fontSize: 18, lineHeight: 1, color: C.text, cursor: 'pointer',
+                        fontSize: 18, lineHeight: 1, color: C.text,
+                        cursor: isResumed ? 'not-allowed' : 'pointer',
+                        opacity: isResumed ? 0.4 : 1,
                       }}
                     >−</button>
                     <span style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: 700, color: C.text }}>
@@ -205,6 +248,8 @@ export function OrderCart(p: Props) {
                     </span>
                     <button
                       aria-label="Increase quantity"
+                      disabled={isResumed}
+                      title={isResumed ? 'Cancel resume to edit items' : undefined}
                       onClick={() =>
                         p.setCartItems(
                           p.cartItems.map((ci) =>
@@ -217,7 +262,9 @@ export function OrderCart(p: Props) {
                       style={{
                         width: 32, height: 32, borderRadius: 8,
                         background: C.bg, border: `1px solid ${C.border}`,
-                        fontSize: 18, lineHeight: 1, color: C.text, cursor: 'pointer',
+                        fontSize: 18, lineHeight: 1, color: C.text,
+                        cursor: isResumed ? 'not-allowed' : 'pointer',
+                        opacity: isResumed ? 0.4 : 1,
                       }}
                     >+</button>
                   </div>
@@ -260,12 +307,15 @@ export function OrderCart(p: Props) {
           />
         </div>
 
-        {/* Save ticket / Open tickets */}
+        {/* Save ticket / Open tickets — Save is disabled in resumed
+            mode because it would create a brand new held order; the
+            cashier already has Cancel Resume + edit + Save flow. */}
         <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
           <button
             onClick={p.onSaveTicket}
-            disabled={p.cartItems.length === 0 || p.isSubmitting}
-            style={smallBtn(p.cartItems.length === 0 || p.isSubmitting)}
+            disabled={p.cartItems.length === 0 || p.isSubmitting || isResumed}
+            title={isResumed ? 'Already a resumed ticket' : undefined}
+            style={smallBtn(p.cartItems.length === 0 || p.isSubmitting || isResumed)}
           >
             🎫 Save ticket
           </button>

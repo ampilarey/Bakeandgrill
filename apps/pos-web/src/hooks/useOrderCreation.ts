@@ -71,6 +71,19 @@ export function useOrderCreation(params: Params) {
   // cashier can retry collecting payment for the SAME order instead of
   // unwittingly creating a duplicate.
   const [pendingPaymentForOrderId, setPendingPaymentForOrderId] = useState<number | null>(null);
+  /**
+   * Held ticket that was just resumed and is now sitting in the cart.
+   * The cart UI is read-only while this is set, and `handleCharge`
+   * settles THIS order id (no fresh `createOrder`) — without that
+   * branch we were silently creating a duplicate order on every
+   * resume → charge, which corrupted Sales Reports, left Open Tickets
+   * showing forever-parked rows, and made the new bill SMS feature
+   * reference a different order than the one actually charged.
+   *
+   * The cashier can exit this mode via `handleCancelResume`, which
+   * re-holds the order and puts it back in Open Tickets.
+   */
+  const [resumedOrderId, setResumedOrderId] = useState<number | null>(null);
 
   const buildPayload = (overrides: Partial<{ ticket_name: string; ticket_note: string }> = {}) => {
     const discount = Math.max(0, Number.parseFloat(params.discountAmount) || 0);
@@ -147,12 +160,44 @@ export function useOrderCreation(params: Params) {
       return false;
     }
 
-    const payload = buildPayload();
     const paymentSnapshot: PaymentRow[] = rows.map((r) => ({
       id: crypto.randomUUID(),
       method: r.method as PaymentRow["method"],
       amount: r.amount.toFixed(2),
     }));
+
+    // ─── Resumed-ticket path ──────────────────────────────────────
+    // The cart was rebuilt from an existing server-side order. Skip
+    // createOrder entirely and settle the original. Offline isn't
+    // supported here (the order id only exists because we're online),
+    // so the queue path below is a non-issue for this branch.
+    if (resumedOrderId !== null) {
+      setIsSubmitting(true);
+      try {
+        const totalDue = params.cartTotal;
+        const settled = await settleOrder(resumedOrderId, totalDue, paymentSnapshot);
+        if (settled) {
+          const cid = params.customerId;
+          const cphone = params.customerPhone;
+          const settledOrderId = resumedOrderId;
+          setResumedOrderId(null);
+          params.clearCart();
+          params.setSelectedItem(null);
+          setStatusMessage(
+            cid
+              ? "Order paid. Receipt SMS sent to customer."
+              : "Order paid and sent to kitchen.",
+          );
+          setTimeout(() => setStatusMessage(""), 5000);
+          params.onOrderSettled?.(settledOrderId, cid, cphone);
+        }
+        return settled;
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+
+    const payload = buildPayload();
 
     if (!params.isOnline) {
       try {
@@ -287,7 +332,15 @@ export function useOrderCreation(params: Params) {
     setTimeout(() => setStatusMessage(""), 4000);
   };
 
-  /** Resume a specific held ticket by id (replaces single-hold flow). */
+  /**
+   * Resume a specific held ticket by id.
+   *
+   * Sets `resumedOrderId` so the next `handleCharge` settles THIS
+   * order instead of creating a new one (the duplicate-order bug
+   * fix). The cart UI flips to read-only — cashier must
+   * `handleCancelResume` to put it back into Open Tickets and re-ring
+   * if they need to edit items.
+   */
   const handleResumeTicket = async (orderId: number): Promise<void> => {
     await resumeOrder(orderId);
     const response = await getOrder(orderId);
@@ -305,9 +358,36 @@ export function useOrderCreation(params: Params) {
       })) ?? [],
     }));
     params.setCartItems(restoredItems);
+    setResumedOrderId(orderId);
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
-    setStatusMessage("Ticket resumed.");
+    setStatusMessage(`Ticket #${orderId} resumed — ready to charge.`);
+    setTimeout(() => setStatusMessage(""), 3000);
+  };
+
+  /**
+   * Exit "resumed" mode without charging: re-hold the order (it goes
+   * back into Open Tickets) and clear the cart. Used when the cashier
+   * needs to edit a parked ticket — they cancel resume, the ticket
+   * sits in Open Tickets again, then they ring up a fresh ticket
+   * (which is the safest way to avoid item drift between local cart
+   * and server-side order).
+   */
+  const handleCancelResume = async (): Promise<void> => {
+    if (resumedOrderId === null) return;
+    const id = resumedOrderId;
+    try {
+      await holdOrder(id);
+    } catch {
+      // If the re-hold fails (rare), still clear local state so the
+      // cashier isn't stuck in a broken resumed mode. The order will
+      // remain in "pending" status on the server and the cashier can
+      // resume it again from Open Tickets.
+    }
+    setResumedOrderId(null);
+    params.clearCart();
+    params.setSelectedItem(null);
+    setStatusMessage(`Ticket #${id} returned to Open Tickets.`);
     setTimeout(() => setStatusMessage(""), 3000);
   };
 
@@ -417,6 +497,7 @@ export function useOrderCreation(params: Params) {
     lastHeldOrderId,
     lastCreatedOrderId,
     pendingPaymentForOrderId,
+    resumedOrderId,
     barcode,
     setBarcode,
     handleCheckout,
@@ -425,6 +506,7 @@ export function useOrderCreation(params: Params) {
     handleSaveTicket,
     handleResumeTicket,
     handleResumeLastHold,
+    handleCancelResume,
     handleBarcodeSubmit,
     handleSyncQueue,
     handleRetryPayment,

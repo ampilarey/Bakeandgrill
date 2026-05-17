@@ -20,6 +20,9 @@ type Props = {
   barcode: string;
   setBarcode: (v: string) => void;
   onBarcodeSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  /** When true the grid is dimmed and item taps are blocked — set
+   *  while a held ticket is in "resumed" mode (cart is read-only). */
+  readOnly?: boolean;
 };
 
 // Loyverse uses bright per-category colors. We pick from a fixed palette and
@@ -60,7 +63,7 @@ export function MenuGrid({
   categories, selectedCategoryId, setSelectedCategoryId, filteredItems,
   isLoading, dataError, selectedItem, selectedModifiers,
   handleSelectItem, toggleModifier, addToCart, clearSelectedItem,
-  barcode, setBarcode, onBarcodeSubmit,
+  barcode, setBarcode, onBarcodeSubmit, readOnly = false,
 }: Props) {
   const [search, setSearch] = useState("");
 
@@ -218,6 +221,7 @@ export function MenuGrid({
               // For items without modifiers OR variants, tap = direct add to cart.
               // Otherwise tap opens the configure panel for modifier selection.
               const onClick = () => {
+                if (readOnly) return;
                 if (hasMods || hasVariants) handleSelectItem(item);
                 else addToCart(item);
               };
@@ -225,11 +229,15 @@ export function MenuGrid({
                 <button
                   key={item.id}
                   onClick={onClick}
+                  disabled={readOnly}
+                  title={readOnly ? 'Resumed ticket is view-only. Cancel resume to edit.' : undefined}
                   style={{
                     aspectRatio: '1 / 1',
                     background: c.bg, color: c.fg,
                     border: 'none', borderRadius: 10, padding: 10,
-                    cursor: 'pointer', textAlign: 'left',
+                    cursor: readOnly ? 'not-allowed' : 'pointer',
+                    opacity: readOnly ? 0.45 : 1,
+                    textAlign: 'left',
                     display: 'flex', flexDirection: 'column',
                     justifyContent: 'space-between',
                     boxShadow: '0 1px 3px rgba(15,23,42,0.10)',
