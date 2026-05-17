@@ -28,7 +28,13 @@ class EnsureActiveDevice
         }
 
         if (!$device->is_active) {
-            return response()->json(['message' => 'Device disabled.'], 403);
+            $status = $device->status ?? 'disabled';
+            $message = match ($status) {
+                'pending'  => 'Device pending approval.',
+                'rejected' => 'Device rejected.',
+                default    => 'Device disabled.',
+            };
+            return response()->json(['message' => $message, 'status' => $status], 403);
         }
 
         $device->update([

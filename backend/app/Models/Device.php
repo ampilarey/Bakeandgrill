@@ -19,6 +19,7 @@ class Device extends Model
         'user_id',
         'ip_address',
         'is_active',
+        'status',
         'last_seen_at',
     ];
 

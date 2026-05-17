@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin } from "./api";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -33,6 +33,8 @@ function App() {
     },
   );
   const [authError, setAuthError]     = useState("");
+  const [deviceStatus, setDeviceStatus] = useState<'unknown' | 'checking' | 'pending' | 'approved' | 'rejected'>('unknown');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── View + connectivity ─────────────────────────────────────────────────────
   const [viewMode, setViewMode]               = useState<"pos" | "ops">("pos");
@@ -96,6 +98,44 @@ function App() {
     setOfflineQueueCount,
   });
 
+  // ── Device registration & approval polling ─────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const checkAndRegister = async () => {
+      setDeviceStatus('checking');
+      try {
+        const res = await selfRegisterDevice(deviceId, `POS ${deviceId}`);
+        if (res.status === 'approved') {
+          setDeviceStatus('approved');
+        } else if (res.status === 'rejected') {
+          setDeviceStatus('rejected');
+        } else {
+          setDeviceStatus('pending');
+          // Start polling every 4 seconds
+          pollRef.current = setInterval(async () => {
+            try {
+              const s = await selfDeviceStatus(deviceId);
+              if (s.status === 'approved') {
+                setDeviceStatus('approved');
+                if (pollRef.current) clearInterval(pollRef.current);
+              } else if (s.status === 'rejected') {
+                setDeviceStatus('rejected');
+                if (pollRef.current) clearInterval(pollRef.current);
+              }
+            } catch { /* network error — keep polling */ }
+          }, 4000);
+        }
+      } catch {
+        // If self-register fails, assume approved (backward compat for existing devices)
+        setDeviceStatus('approved');
+      }
+    };
+
+    void checkAndRegister();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [isLoggedIn, deviceId]);
+
   // ── Login handler ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
     setAuthError("");
@@ -128,6 +168,56 @@ function App() {
         deviceId={deviceId} setDeviceId={setDeviceId}
         authError={authError} onLogin={handleLogin}
       />
+    );
+  }
+
+  if (deviceStatus === 'checking' || deviceStatus === 'unknown') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#1C1408', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px', width: '100%', maxWidth: 380, textAlign: 'center' }}>
+          <p style={{ fontSize: 24, margin: '0 0 12px' }}>⏳</p>
+          <p style={{ fontWeight: 700, fontSize: 16, color: '#2A1E0C', margin: '0 0 8px' }}>Checking device…</p>
+          <p style={{ color: '#8B7355', fontSize: 13, margin: 0 }}>Please wait</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (deviceStatus === 'pending') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#1C1408', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px', width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <p style={{ fontSize: 40, margin: '0 0 16px' }}>🔒</p>
+          <p style={{ fontWeight: 700, fontSize: 18, color: '#2A1E0C', margin: '0 0 10px' }}>Waiting for approval</p>
+          <p style={{ color: '#8B7355', fontSize: 14, margin: '0 0 20px', lineHeight: 1.5 }}>
+            This device hasn't been approved yet.<br />
+            Ask the owner to approve it in the admin panel.
+          </p>
+          <div style={{ background: '#FEF3E8', borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#8B7355', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Device ID</p>
+            <p style={{ margin: '4px 0 0', fontSize: 16, fontWeight: 700, color: '#D4813A', fontFamily: 'monospace' }}>{deviceId}</p>
+          </div>
+          <p style={{ color: '#9C8E7E', fontSize: 12, margin: 0 }}>Checking automatically every few seconds…</p>
+          <button onClick={handleLogout} style={{ marginTop: 20, background: 'none', border: 'none', color: '#9C8E7E', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
+            Log out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (deviceStatus === 'rejected') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#1C1408', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px', width: '100%', maxWidth: 380, textAlign: 'center' }}>
+          <p style={{ fontSize: 40, margin: '0 0 16px' }}>🚫</p>
+          <p style={{ fontWeight: 700, fontSize: 18, color: '#2A1E0C', margin: '0 0 10px' }}>Device rejected</p>
+          <p style={{ color: '#8B7355', fontSize: 14, margin: '0 0 20px' }}>This device was not approved. Contact the owner.</p>
+          <button onClick={handleLogout} style={{ padding: '10px 24px', background: '#D4813A', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            Log out
+          </button>
+        </div>
+      </div>
     );
   }
 

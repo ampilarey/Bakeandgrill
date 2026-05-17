@@ -149,9 +149,11 @@ export async function addCashMovement(
 export interface Device {
   id: number;
   name: string;
+  identifier?: string;
   type: 'pos' | 'kds' | 'display' | string;
   token: string | null;
   is_active: boolean;
+  status: 'pending' | 'approved' | 'rejected';
   last_seen_at: string | null;
   registered_by: string | null;
   created_at: string;
@@ -159,6 +161,10 @@ export interface Device {
 
 export async function fetchDevices(): Promise<{ data: Device[] }> {
   return req('/devices');
+}
+
+export async function fetchPendingDevices(): Promise<{ devices: Device[] }> {
+  return req('/devices/pending');
 }
 
 export async function registerDevice(data: { name: string; type: string }): Promise<{ device: Device; token: string }> {
@@ -171,6 +177,14 @@ export async function disableDevice(id: number): Promise<{ device: Device }> {
 
 export async function enableDevice(id: number): Promise<{ device: Device }> {
   return req(`/devices/${id}/enable`, { method: 'PATCH' });
+}
+
+export async function approveDevice(id: number): Promise<{ device: Device }> {
+  return req(`/devices/${id}/approve`, { method: 'PATCH' });
+}
+
+export async function rejectDevice(id: number): Promise<{ device: Device }> {
+  return req(`/devices/${id}/reject`, { method: 'PATCH' });
 }
 
 // ── Waste Logs ────────────────────────────────────────────────────────────────

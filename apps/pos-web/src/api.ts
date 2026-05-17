@@ -78,6 +78,17 @@ export async function staffLogin(
   });
 }
 
+export async function selfRegisterDevice(identifier: string, name: string): Promise<{ status: string }> {
+  return request<{ status: string }>("/devices/self-register", {
+    method: "POST",
+    body: JSON.stringify({ identifier, name, type: "pos" }),
+  });
+}
+
+export async function selfDeviceStatus(identifier: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/devices/self-status?identifier=${encodeURIComponent(identifier)}`);
+}
+
 export async function createOrder(payload: {
   type: string;
   print?: boolean;

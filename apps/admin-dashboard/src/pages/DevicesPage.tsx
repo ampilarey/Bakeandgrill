@@ -4,7 +4,7 @@ import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
 import {
-  fetchDevices, registerDevice, enableDevice, disableDevice,
+  fetchDevices, fetchPendingDevices, registerDevice, enableDevice, disableDevice, approveDevice, rejectDevice,
   type Device,
 } from '../api';
 
@@ -20,6 +20,7 @@ export default function DevicesPage() {
   usePageTitle('Device Management');
 
   const [devices, setDevices] = useState<Device[]>([]);
+  const [pending, setPending] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -35,13 +36,22 @@ export default function DevicesPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchDevices();
-      setDevices(res.data ?? []);
+      const [devRes, pendRes] = await Promise.all([fetchDevices(), fetchPendingDevices()]);
+      setDevices(devRes.data ?? []);
+      setPending(pendRes.devices ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { void load(); }, []);
+
+  // Auto-refresh pending every 8 seconds
+  useEffect(() => {
+    const t = setInterval(async () => {
+      try { const r = await fetchPendingDevices(); setPending(r.devices ?? []); } catch { /* ignore */ }
+    }, 8000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleRegister = async () => {
     if (!form.name.trim()) { setFormError('Device name is required.'); return; }
@@ -65,8 +75,23 @@ export default function DevicesPage() {
     finally { setActionLoading(null); }
   };
 
-  const active  = devices.filter(d => d.is_active).length;
-  const offline = devices.filter(d => !d.is_active).length;
+  const handleApprove = async (device: Device) => {
+    setActionLoading(device.id);
+    try { await approveDevice(device.id); void load(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleReject = async (device: Device) => {
+    setActionLoading(device.id);
+    try { await rejectDevice(device.id); void load(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(null); }
+  };
+
+  const approved = devices.filter(d => d.status === 'approved' || (!d.status && d.is_active));
+  const active   = devices.filter(d => d.is_active).length;
+  const disabled = devices.filter(d => !d.is_active && d.status !== 'pending').length;
 
   return (
     <div>
@@ -77,32 +102,65 @@ export default function DevicesPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Devices" value={String(devices.length)} accent="#D4813A" />
         <StatCard label="Active" value={String(active)} accent="#16a34a" />
-        <StatCard label="Disabled" value={String(offline)} accent="#9C8E7E" />
+        <StatCard label="Disabled" value={String(disabled)} accent="#9C8E7E" />
+        <StatCard label="Pending Approval" value={String(pending.length)} accent="#f59e0b" />
       </div>
 
+      {/* ── Pending Approval Section ── */}
+      {pending.length > 0 && (
+        <div style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 20 }}>🔔</span>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: '#92400e' }}>
+              {pending.length} device{pending.length > 1 ? 's' : ''} waiting for approval
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {pending.map(d => (
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 10, padding: '12px 16px', border: '1px solid #fde68a', flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{d.name}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+                    {d.type?.toUpperCase()} · {d.identifier ?? '—'} · {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Just now'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn small onClick={() => handleApprove(d)} disabled={actionLoading === d.id}>
+                    {actionLoading === d.id ? '…' : '✓ Approve'}
+                  </Btn>
+                  <Btn small variant="secondary" onClick={() => handleReject(d)} disabled={actionLoading === d.id}>
+                    {actionLoading === d.id ? '…' : '✕ Reject'}
+                  </Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Registered Devices Table ── */}
       <TableCard>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Name', 'Type', 'Status', 'Last Seen', 'Registered By', 'Actions'].map(h => (
+              {['Name', 'Type', 'Status', 'Last Seen', 'Actions'].map(h => (
                 <th key={h} style={TH}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
-            ) : devices.length === 0 ? (
-              <tr><td colSpan={6}><EmptyState message="No devices registered yet." /></td></tr>
-            ) : devices.map(d => (
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+            ) : approved.length === 0 ? (
+              <tr><td colSpan={5}><EmptyState message="No approved devices yet." /></td></tr>
+            ) : approved.map(d => (
               <tr key={d.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>{d.name}</td>
-                <td style={TD}><Badge color="blue">{d.type.toUpperCase()}</Badge></td>
+                <td style={TD}><Badge color="blue">{d.type?.toUpperCase()}</Badge></td>
                 <td style={TD}><Badge color={d.is_active ? 'green' : 'gray'}>{d.is_active ? 'Active' : 'Disabled'}</Badge></td>
                 <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>
                   {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}
                 </td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{d.registered_by ?? '—'}</td>
                 <td style={TD}>
                   <Btn
                     small
