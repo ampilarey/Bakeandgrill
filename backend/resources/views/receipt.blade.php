@@ -178,7 +178,9 @@
 
             <div class="totals">
                 <p><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></p>
-                <p><span>Tax</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></p>
+                @if ((float) $order->tax_amount > 0.0001)
+                    <p><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></p>
+                @endif
                 @if ($discount > 0.0001)
                     <p><span>Discount</span><span>− MVR {{ number_format($discount, 2) }}</span></p>
                 @endif

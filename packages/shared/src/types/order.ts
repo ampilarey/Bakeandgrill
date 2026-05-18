@@ -48,6 +48,11 @@ export type OrderItem = {
   quantity: number;
   unit_price: number;
   total_price: number;
+  /** Snapshot of the item's tax_rate (%) at the time the order line was
+   *  created. The backend uses this for per-item tax calculation; the POS
+   *  uses it to keep the cart display in sync when a held ticket is
+   *  resumed (so the GST stays visible on the breakdown). */
+  tax_rate?: number | null;
   notes?: string | null;
   status?: string;
   modifiers?: OrderItemModifier[];

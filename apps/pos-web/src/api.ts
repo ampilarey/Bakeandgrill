@@ -233,6 +233,10 @@ export async function getOrder(orderId: number): Promise<{
       variant_name?: string | null;
       unit_price: number;
       quantity: number;
+      /** Per-item tax_rate snapshot stored at order-create time. The POS
+       *  reuses this when resuming a held ticket so the cart still shows
+       *  the correct GST line. */
+      tax_rate?: number | string | null;
       modifiers?: Array<{
         modifier_id: number | null;
         modifier_name: string;

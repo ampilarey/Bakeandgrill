@@ -5,6 +5,15 @@ export type ChargeMethod = "cash" | "card" | "digital_wallet";
 
 type Props = {
   total: number;
+  /** Optional breakdown — when supplied, the Charge screen shows the
+   *  Subtotal / Discount / GST stack above the big "Amount due" number
+   *  so the cashier (and customer) can see exactly how the total was
+   *  built. Backed by `useCart`'s `cartSubtotal`, `discountValue`, and
+   *  `cartTax`. Older callers can omit them; the overlay degrades to
+   *  just the headline number. */
+  subtotal?: number;
+  discount?: number;
+  tax?: number;
   onClose: () => void;
   onConfirm: (rows: Array<{ method: ChargeMethod; amount: number }>) => Promise<void>;
   submitting: boolean;
@@ -23,7 +32,17 @@ const METHOD_LABEL: Record<ChargeMethod, string> = {
  * change-due readout. The previous flow buried payment inputs in the
  * tiny cart sidebar — too cramped for a real counter.
  */
-export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) {
+export function ChargeOverlay({
+  total,
+  subtotal,
+  discount,
+  tax,
+  onClose,
+  onConfirm,
+  submitting,
+}: Props) {
+  const showBreakdown =
+    (typeof subtotal === "number" && (subtotal !== total || (tax ?? 0) > 0 || (discount ?? 0) > 0));
   const [method, setMethod] = useState<ChargeMethod>("cash");
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
   /**
@@ -179,6 +198,23 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
             justifyContent: "center", alignItems: "stretch", background: "#0F172A",
             color: "#fff",
           }}>
+            {showBreakdown && (
+              <div style={{
+                marginBottom: 18, padding: "10px 14px", borderRadius: 10,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                fontSize: 13, color: "#CBD5E1",
+                display: "grid", rowGap: 4,
+              }}>
+                <Line label="Subtotal" value={subtotal ?? 0} />
+                {(discount ?? 0) > 0 && (
+                  <Line label="Discount" value={-(discount ?? 0)} accent="#FCD34D" />
+                )}
+                {(tax ?? 0) > 0 && (
+                  <Line label="GST" value={tax ?? 0} />
+                )}
+              </div>
+            )}
             <p style={{ margin: 0, fontSize: 12, fontWeight: 600,
               textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
               Amount due
@@ -353,3 +389,15 @@ const tinyLabel: React.CSSProperties = {
   margin: "0 0 6px", fontSize: 11, fontWeight: 700,
   color: "#64748B", textTransform: "uppercase", letterSpacing: "0.08em",
 };
+
+function Line({ label, value, accent }: { label: string; value: number; accent?: string }) {
+  const sign = value < 0 ? "− " : "";
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+      <span style={{ color: "#94A3B8", fontWeight: 600 }}>{label}</span>
+      <span style={{ color: accent ?? "#F8FAFC", fontVariantNumeric: "tabular-nums" }}>
+        {sign}MVR {Math.abs(value).toFixed(2)}
+      </span>
+    </div>
+  );
+}

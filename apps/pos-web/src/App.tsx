@@ -606,6 +606,7 @@ function App() {
               cartItems={cart.cartItems}
               setCartItems={cart.setCartItems}
               cartSubtotal={cart.cartSubtotal}
+              cartTax={cart.cartTax}
               cartTotal={cart.cartTotal}
               discountValue={cart.discountValue}
               payments={cart.payments}
@@ -710,6 +711,9 @@ function App() {
 
       {showCharge && (
         <ChargeOverlay
+          subtotal={cart.cartSubtotal}
+          discount={cart.discountValue}
+          tax={cart.cartTax}
           total={cart.cartTotal}
           submitting={order.isSubmitting}
           onClose={() => setShowCharge(false)}

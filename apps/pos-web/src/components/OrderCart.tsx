@@ -17,6 +17,7 @@ type Props = {
   cartItems: CartItem[];
   setCartItems: (items: CartItem[]) => void;
   cartSubtotal: number;
+  cartTax: number;
   cartTotal: number;
   discountValue: number;
   payments: PaymentRow[];
@@ -280,14 +281,19 @@ export function OrderCart(p: Props) {
 
       {/* ── Totals + payments + actions ──────────────────────────── */}
       <div style={{ borderTop: `1px solid ${C.border}`, padding: 14, background: C.bg }}>
-        {/* Subtotal / discount / total */}
-        {p.cartItems.length > 0 && (
+        {/* Subtotal / discount / tax breakdown.
+            We render this whenever there's a discount OR tax (the most
+            common case is GST/TGST on every item, so 99% of tickets land
+            here). Without it the Charge button shows only the subtotal
+            and the cashier under-collects from the customer. */}
+        {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0) && (
           <>
+            <Row label="Subtotal" value={`MVR ${p.cartSubtotal.toFixed(2)}`} />
             {p.discountValue > 0 && (
-              <>
-                <Row label="Subtotal" value={`MVR ${p.cartSubtotal.toFixed(2)}`} />
-                <Row label="Discount" value={`− MVR ${p.discountValue.toFixed(2)}`} accent={C.primaryDark} />
-              </>
+              <Row label="Discount" value={`− MVR ${p.discountValue.toFixed(2)}`} accent={C.primaryDark} />
+            )}
+            {p.cartTax > 0 && (
+              <Row label="GST" value={`MVR ${p.cartTax.toFixed(2)}`} />
             )}
           </>
         )}

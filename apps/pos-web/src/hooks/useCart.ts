@@ -56,16 +56,13 @@ export function useCart() {
    */
   const [attachedCustomer, setAttachedCustomer] = useState<PosCustomer | null>(null);
 
+  /** Per-line gross (price + modifiers, ignoring quantity). */
+  const lineUnitPrice = (item: CartItem): number =>
+    item.price + item.modifiers.reduce((ms, m) => ms + m.price, 0);
+
   const cartSubtotal = useMemo(
     () =>
-      cartItems.reduce(
-        (sum, item) =>
-          sum +
-          (item.price +
-            item.modifiers.reduce((ms, m) => ms + m.price, 0)) *
-            item.quantity,
-        0,
-      ),
+      cartItems.reduce((sum, item) => sum + lineUnitPrice(item) * item.quantity, 0),
     [cartItems],
   );
 
@@ -76,10 +73,52 @@ export function useCart() {
     return Math.min(n, cartSubtotal);
   }, [discountAmount, cartSubtotal]);
 
-  /** Amount the customer actually owes after discount. */
-  const cartTotal = useMemo(
+  /**
+   * Subtotal after discount — the taxable amount.
+   * The backend's OrderTotalsCalculator applies discounts proportionally
+   * across items BEFORE computing per-item tax. We mirror that here so
+   * the POS total matches what the server will charge.
+   */
+  const discountedSubtotal = useMemo(
     () => Math.max(0, cartSubtotal - discountValue),
     [cartSubtotal, discountValue],
+  );
+
+  /**
+   * Tax-EXCLUSIVE per-item GST/TGST.
+   *
+   * Each item carries a snapshotted `tax_rate` (% — e.g. 8 for TGST). When a
+   * manual discount is applied, the backend reduces every item's taxable
+   * amount proportionally (so a 10% discount on the order also shaves 10%
+   * off the taxable base of each line). We replicate the exact same math
+   * here so the cashier sees the same Tax / Total the server will store
+   * and the customer will see on the receipt.
+   *
+   * Assumes tax-EXCLUSIVE pricing (the default — see `config/app.php`
+   * `tax_inclusive`). The receipt template already shows Subtotal + Tax,
+   * which only makes sense in exclusive mode. If the business ever flips
+   * to inclusive pricing the receipt template would already need an
+   * update — this hook would follow suit.
+   */
+  const cartTax = useMemo(() => {
+    if (cartSubtotal <= 0) return 0;
+    const discountRatio = discountedSubtotal / cartSubtotal;
+    let tax = 0;
+    for (const item of cartItems) {
+      const rate = Number(item.tax_rate ?? 0);
+      if (!Number.isFinite(rate) || rate <= 0) continue;
+      const lineGross = lineUnitPrice(item) * item.quantity;
+      tax += (lineGross * discountRatio * rate) / 100;
+    }
+    // Round to 2dp the same way the server's Money helpers do, so the
+    // cashier never sees a hidden .005 drift between Charge and receipt.
+    return Math.round(tax * 100) / 100;
+  }, [cartItems, cartSubtotal, discountedSubtotal]);
+
+  /** Grand total the customer actually owes (matches server `order.total`). */
+  const cartTotal = useMemo(
+    () => Math.round((discountedSubtotal + cartTax) * 100) / 100,
+    [discountedSubtotal, cartTax],
   );
 
   const handleSelectItem = useCallback((item: Item) => {
@@ -107,6 +146,7 @@ export function useCart() {
       }
       const parsedPrice = defVar ? defVar.price : parseFloat(String(item.base_price ?? 0));
       const parsedModifiers = modifiers.map((m) => ({ ...m, price: parseFloat(String(m.price ?? 0)) }));
+      const parsedTaxRate = item.tax_rate != null ? parseFloat(String(item.tax_rate)) : 0;
       return [
         ...curr,
         {
@@ -117,6 +157,7 @@ export function useCart() {
           modifiers: parsedModifiers,
           variant_id: defVar?.id ?? null,
           variant_name: defVar?.name ?? null,
+          tax_rate: Number.isFinite(parsedTaxRate) ? parsedTaxRate : 0,
         },
       ];
     });
@@ -164,6 +205,7 @@ export function useCart() {
     payments,
     setPayments,
     cartSubtotal,
+    cartTax,
     cartTotal,
     handleSelectItem,
     toggleModifier,

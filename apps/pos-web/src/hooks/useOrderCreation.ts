@@ -401,6 +401,13 @@ export function useOrderCreation(params: Params) {
         name: m.modifier_name,
         price: m.modifier_price,
       })) ?? [],
+      // Restore the per-line tax snapshot so the cart breakdown still
+      // shows GST when the cashier resumes a held ticket. Without this
+      // the cart would render Subtotal only and the Charge button would
+      // visually disagree with the server total (settle still uses the
+      // authoritative `resumedOrderTotal`, but the cashier shouldn't
+      // see a misleading number).
+      tax_rate: item.tax_rate != null ? Number(item.tax_rate) : 0,
     }));
     params.setCartItems(restoredItems);
     setResumedOrderId(orderId);

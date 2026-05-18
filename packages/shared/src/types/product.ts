@@ -79,6 +79,12 @@ export type CartItem = {
   image_url?: string | null;
   variant_id?: number | null;
   variant_name?: string | null;
+  // Snapshot of the item's tax_rate (percentage) at the time it was added
+  // to the cart. The backend taxes per-item using this same field, so the
+  // POS uses it to compute and DISPLAY tax client-side before the order
+  // hits the server — without it, the Charge button shows the subtotal
+  // and the cashier ends up under-collecting from the customer.
+  tax_rate?: number | null;
 };
 
 export type RestaurantTable = {
