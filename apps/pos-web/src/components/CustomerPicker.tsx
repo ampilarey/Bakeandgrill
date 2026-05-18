@@ -494,10 +494,13 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
 }
 
 // ── Phone field ────────────────────────────────────────────────────────────
-// `type="tel"` + `inputMode="tel"` triggers the device's native numeric
-// keypad on iPad/Android. We still render an on-screen numpad below so
-// dedicated POS terminals (no virtual keyboard) work too — the two are
-// fully compatible because the input is a normal <input>.
+// iPad note: we DO NOT want the OS soft keyboard to appear — iPad has no
+// numeric-only keyboard variant, so `inputMode="tel"` pops the full
+// alphanumeric layout on top of our numpad. Setting `inputMode="none"`
+// instructs Safari/Chrome to suppress the virtual keyboard entirely
+// while keeping the input fully focusable, accessible, and editable via
+// a hardware keyboard. The on-screen numpad below is the sole touch
+// input path on POS hardware.
 function PhoneField({
   inputRef, value, onChange, valid,
 }: {
@@ -507,30 +510,66 @@ function PhoneField({
   valid: boolean;
 }) {
   const display = useMemo(() => value, [value]);
+  // Track focus so we can render our own caret hint without depending
+  // on the browser's native caret (which iOS still renders even when
+  // the keyboard is suppressed, but inconsistently).
+  const [focused, setFocused] = useState(false);
+
   return (
-    <div style={{ position: "relative" }}>
+    <div
+      style={{ position: "relative" }}
+      onClick={() => inputRef.current?.focus()}
+    >
       <input
         ref={inputRef}
         value={display}
         onChange={(e) => onChange(e.target.value.replace(/[^\d+\s-]/g, ""))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         type="tel"
-        inputMode="tel"
-        autoComplete="tel"
+        // inputMode="none" → tell mobile browsers NOT to show a soft
+        // keyboard. Hardware keyboards still work.
+        inputMode="none"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
         pattern="[0-9+\s\-]*"
         placeholder="7123456"
-        aria-label="Customer phone number"
+        aria-label="Customer phone number — use the numpad below"
         style={{
           width: "100%", padding: "14px 16px",
           borderRadius: 8,
-          border: `2px solid ${valid ? C.ok : C.primary}`,
+          border: `2px solid ${valid ? C.ok : focused ? C.primary : C.border2}`,
           fontSize: 22, fontWeight: 700,
           letterSpacing: "0.06em",
           color: C.text, background: "#FFFFFF",
           outline: "none", boxSizing: "border-box",
           textAlign: "center",
           fontVariantNumeric: "tabular-nums",
+          caretColor: "transparent",
+          cursor: "pointer",
+          userSelect: "none",
+          WebkitUserSelect: "none",
         }}
       />
+      {/* Blinking pseudo-caret so cashier sees the field is active. */}
+      {focused && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: "50%",
+            transform: "translateY(-50%)",
+            left: `calc(50% + ${Math.max(0, display.length) * 0.45}ch + 4px)`,
+            width: 2,
+            height: 24,
+            background: C.primary,
+            animation: "bg-blink 1s steps(2, start) infinite",
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {valid && (
         <span
           aria-hidden="true"
@@ -542,6 +581,9 @@ function PhoneField({
           ✓
         </span>
       )}
+      {/* Inject the blink keyframes once — defined locally so we don't
+          pollute the global stylesheet for a tiny POS-only animation. */}
+      <style>{`@keyframes bg-blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }`}</style>
     </div>
   );
 }

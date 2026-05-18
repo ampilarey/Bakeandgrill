@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
+import { CashInput } from "./CashInput";
 import type { ShiftRow, ShiftSummary } from "../hooks/useShift";
 
 type Props = {
@@ -122,24 +123,35 @@ function CashMovementForm({ onSubmit }: { onSubmit: Props["onCashMovement"] }) {
           >{t === "cash_in" ? "Paid in" : "Paid out"}</button>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Amount"
-          inputMode="decimal"
-          style={{ width: 110, padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
-        />
-        <input
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason (e.g. supplier pay)"
-          style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
-        />
-        <button onClick={submit} disabled={busy} style={{
-          padding: "8px 12px", borderRadius: 8, border: "none",
-          background: "#10B981", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer",
-        }}>{busy ? "…" : "Save"}</button>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Amount
+          </div>
+          <CashInput value={amount} onChange={setAmount} />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Reason
+          </div>
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. supplier pay"
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: "14px 16px", borderRadius: 10,
+              border: "2px solid #CBD5E1", fontSize: 14, background: "#fff",
+              outline: "none",
+            }}
+          />
+          <button onClick={submit} disabled={busy} style={{
+            marginTop: 10, width: "100%",
+            padding: "12px 16px", borderRadius: 10, border: "none",
+            background: "#10B981", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer",
+            minHeight: 48,
+          }}>{busy ? "Saving…" : "Record cash movement"}</button>
+        </div>
       </div>
       {info && <div style={{ fontSize: 12, color: "#475569" }}>{info}</div>}
     </div>

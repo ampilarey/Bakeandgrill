@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, Field, Overlay } from "./OpenShiftModal";
+import { CashInput } from "./CashInput";
 import type { ShiftSummary } from "../hooks/useShift";
 
 type Props = {
@@ -53,23 +54,14 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
         {(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={summary!.cash_drawer.cash_refunds} negative />}
         <Summary label="Expected in drawer" value={expected} bold />
 
-        <Field label="Counted cash (MVR)">
-          <input
+        <Field label="Counted cash">
+          <CashInput
             autoFocus
             value={closingCash}
-            inputMode="decimal"
-            onChange={(e) => { setClosingCash(e.target.value); setErr(""); }}
-            onFocus={(e) => e.currentTarget.select()}
-            placeholder="0.00"
-            style={{
-              width: "100%", boxSizing: "border-box",
-              padding: "14px 16px", borderRadius: 10,
-              border: "1px solid #CBD5E1", fontSize: 22, fontWeight: 700,
-              textAlign: "right", background: "#fff", color: "#0F172A",
-            }}
+            onChange={(v) => { setClosingCash(v); setErr(""); }}
           />
           <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>
-            Pre-filled with expected. Tap to overwrite if the count differs.
+            Pre-filled with expected. Tap the numpad to adjust if the count differs.
           </div>
         </Field>
 

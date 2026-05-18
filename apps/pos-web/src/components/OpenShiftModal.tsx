@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getShiftHistory } from "../api";
+import { CashInput } from "./CashInput";
 
 type Props = {
   onConfirm: (openingCash: number, notes?: string) => Promise<void>;
@@ -69,14 +70,11 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
     <Overlay>
       <Card title="Open shift" subtitle="Count the cash in the drawer before you start ringing up sales.">
         <Field label="Starting cash (MVR)">
-          <input
-            autoFocus
+          <CashInput
             value={openingCash}
-            inputMode="decimal"
-            onChange={(e) => { setOpeningCash(e.target.value); setErr(""); }}
-            onFocus={(e) => e.currentTarget.select()}
+            onChange={(v) => { setOpeningCash(v); setErr(""); }}
+            autoFocus
             placeholder="0.00"
-            style={inputStyle}
           />
           {hint && (
             <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>{hint}</div>
