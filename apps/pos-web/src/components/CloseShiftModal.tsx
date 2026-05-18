@@ -24,10 +24,13 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
   const variance = Number.isFinite(closing) ? closing - expected : null;
 
   // Pre-fill with the expected drawer so the cashier just confirms when
-  // the count matches — the common case in a tight shop.
+  // the count matches — the common case in a tight shop. The previous
+  // guard `if (expected && …)` was falsy for an expected of 0, which
+  // forced cashiers to manually type "0" on slow shifts.
   useEffect(() => {
-    if (expected && !closingCash) setClosingCash(expected.toFixed(2));
-  }, [expected, closingCash]);
+    if (closingCash !== "" || summary == null) return;
+    setClosingCash(expected.toFixed(2));
+  }, [expected, closingCash, summary]);
 
   const submit = async () => {
     if (closing == null || !Number.isFinite(closing) || closing < 0) {
@@ -56,6 +59,7 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
             value={closingCash}
             inputMode="decimal"
             onChange={(e) => { setClosingCash(e.target.value); setErr(""); }}
+            onFocus={(e) => e.currentTarget.select()}
             placeholder="0.00"
             style={{
               width: "100%", boxSizing: "border-box",
@@ -64,6 +68,9 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
               textAlign: "right", background: "#fff", color: "#0F172A",
             }}
           />
+          <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>
+            Pre-filled with expected. Tap to overwrite if the count differs.
+          </div>
         </Field>
 
         {variance != null && (

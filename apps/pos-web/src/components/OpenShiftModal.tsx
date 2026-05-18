@@ -1,20 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getShiftHistory } from "../api";
 
 type Props = {
   onConfirm: (openingCash: number, notes?: string) => Promise<void>;
   onCancel?: () => void;
   busy?: boolean;
+  /**
+   * Suggested starting cash. If omitted, the modal will look up the
+   * most recent closed shift's `closing_cash` (the float typically
+   * left in the drawer) and pre-fill that. Falls back to "0.00".
+   */
+  suggestedOpeningCash?: number;
 };
 
 /**
  * Replaces the silent "no shift open" state with an explicit cashier
  * action. Mirrors Loyverse: the very first thing you do is count the
  * cash already in the drawer.
+ *
+ * UX note (May 2026): we pre-fill the starting-cash field with the
+ * previous shift's closing total so a cashier who's just continuing
+ * from the last close can hit "Open shift" without re-typing the
+ * same number. They can still tap-and-overwrite to adjust.
  */
-export function OpenShiftModal({ onConfirm, onCancel, busy }: Props) {
-  const [openingCash, setOpeningCash] = useState("");
+export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash }: Props) {
+  const [openingCash, setOpeningCash] = useState<string>(
+    suggestedOpeningCash != null ? suggestedOpeningCash.toFixed(2) : "0.00",
+  );
   const [notes, setNotes] = useState("");
   const [err, setErr] = useState("");
+  const [hint, setHint] = useState<string>("");
+
+  // If the caller didn't supply a suggestion, pull the last closed
+  // shift's closing_cash. We only do this once on mount and only if
+  // the cashier hasn't typed anything yet.
+  useEffect(() => {
+    if (suggestedOpeningCash != null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await getShiftHistory();
+        const last = res.shifts?.find((s) => s.closed_at != null);
+        if (cancelled || !last) return;
+        const cash = Number(last.closing_cash) || 0;
+        setOpeningCash((curr) => (curr === "0.00" || curr === "" ? cash.toFixed(2) : curr));
+        if (cash > 0) {
+          setHint(`Pre-filled from previous shift's closing cash. Tap to overwrite.`);
+        }
+      } catch { /* ignore — fall back to 0.00 */ }
+    })();
+    return () => { cancelled = true; };
+  }, [suggestedOpeningCash]);
 
   const submit = async () => {
     const n = Number.parseFloat(openingCash);
@@ -38,9 +74,13 @@ export function OpenShiftModal({ onConfirm, onCancel, busy }: Props) {
             value={openingCash}
             inputMode="decimal"
             onChange={(e) => { setOpeningCash(e.target.value); setErr(""); }}
+            onFocus={(e) => e.currentTarget.select()}
             placeholder="0.00"
             style={inputStyle}
           />
+          {hint && (
+            <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>{hint}</div>
+          )}
         </Field>
         <Field label="Notes (optional)">
           <input
