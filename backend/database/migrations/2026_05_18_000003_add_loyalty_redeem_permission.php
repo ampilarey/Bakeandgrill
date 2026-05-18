@@ -36,6 +36,11 @@ return new class extends Migration
             return;
         }
 
+        // role_permission and user_permission are timestamp-LESS pivots
+        // (see 2026_03_15_002629_create_role_permission_table). Using
+        // updateOrInsert with created_at/updated_at blew up production
+        // with "Unknown column 'created_at'" — keep it to the two real
+        // columns and rely on the composite primary key for idempotency.
         $roleIds = DB::table('roles')
             ->whereIn('slug', ['owner', 'manager', 'staff'])
             ->pluck('id', 'slug');
@@ -43,7 +48,7 @@ return new class extends Migration
         foreach ($roleIds as $roleId) {
             DB::table('role_permission')->updateOrInsert(
                 ['role_id' => $roleId, 'permission_id' => $permissionId],
-                ['created_at' => $now, 'updated_at' => $now],
+                [],
             );
         }
     }
