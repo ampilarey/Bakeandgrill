@@ -98,16 +98,34 @@ export function InvoicesPage() {
     });
   };
 
+  // Pre-fix this fetched page 1 only with the API's default page size
+  // and silently capped the list at ~15 invoices; a busy day's history
+  // disappeared off the bottom of the UI with no "more" affordance.
+  // Now we expose page state, render real pagination, and lift the
+  // visible default to 50 per page.
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number } | null>(null);
+
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await getInvoices({ type: typeFilter || undefined, status: statusFilter || undefined });
+      const res = await getInvoices({
+        type: typeFilter || undefined,
+        status: statusFilter || undefined,
+        page,
+        per_page: 50,
+      });
       setInvoices(res.data ?? []);
+      const resMeta = (res as { meta?: typeof meta }).meta;
+      setMeta(resMeta ?? null);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [typeFilter, statusFilter]);
+  // Reset to page 1 whenever filters change so we never land on a
+  // page that no longer exists for the new filter combo.
+  useEffect(() => { setPage(1); }, [typeFilter, statusFilter]);
+  useEffect(() => { void load(); }, [typeFilter, statusFilter, page]);
 
   const handleSent = async (id: number) => {
     try { await markInvoiceSent(id); void load(); }
@@ -392,6 +410,23 @@ export function InvoicesPage() {
             </tbody>
           </table>
         </TableCard>
+      )}
+
+      {/* Pagination — only when there's more than one page worth */}
+      {meta && meta.last_page > 1 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginTop: 16, padding: '8px 4px', fontSize: 13, color: '#6B5D4F',
+        }}>
+          <div>
+            Showing page <strong>{meta.current_page}</strong> of <strong>{meta.last_page}</strong>
+            {' · '}<strong>{meta.total}</strong> invoices total
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn small variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} {...({ disabled: page <= 1 } as object)}>← Prev</Btn>
+            <Btn small variant="secondary" onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))} {...({ disabled: page >= meta.last_page } as object)}>Next →</Btn>
+          </div>
+        </div>
       )}
 
       {/* Mark Paid Modal */}

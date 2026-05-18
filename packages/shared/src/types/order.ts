@@ -1,13 +1,33 @@
 // ── Order types ───────────────────────────────────────────────────────────────
 
+// SHR-003: keep this in sync with backend OrderStatusMachine.
+// `Order.status` falls back to `string` below so the app keeps
+// compiling if the backend adds a new state, but the union here is
+// the source of truth for exhaustive `switch` checks across apps.
 export type OrderStatus =
   | 'pending'
+  | 'payment_pending'
   | 'held'
   | 'in_progress'
+  | 'preparing'
+  | 'ready'
   | 'partial'
   | 'paid'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'refunded'
+  | 'partially_refunded';
+
+// Order-level payment rollup (distinct from the per-Payment row
+// status in payment.ts, which describes a single gateway txn).
+export type OrderPaymentStatus =
+  | 'unpaid'
+  | 'pending'
+  | 'partial'
+  | 'paid'
+  | 'refunded'
+  | 'partially_refunded'
+  | 'failed';
 
 export type OrderItemModifier = {
   id?: number;
@@ -51,6 +71,7 @@ export type Order = {
   referral_discount_laar?: number;
   notes?: string | null;
   customer_notes?: string | null;
+  payment_status?: OrderPaymentStatus | string;
   paid_at?: string | null;
   completed_at?: string | null;
   created_at: string;

@@ -17,6 +17,7 @@ class PermissionSeeder extends Seeder
         // Orders
         ['group' => 'Orders',       'slug' => 'orders.create',          'name' => 'Create Orders'],
         ['group' => 'Orders',       'slug' => 'orders.view',            'name' => 'View Orders'],
+        ['group' => 'Orders',       'slug' => 'orders.manage',          'name' => 'Manage Orders & Drivers'],
         ['group' => 'Orders',       'slug' => 'orders.void',            'name' => 'Void Orders'],
         ['group' => 'Orders',       'slug' => 'orders.refund',          'name' => 'Process Refunds'],
 

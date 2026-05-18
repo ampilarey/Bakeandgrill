@@ -72,6 +72,18 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ) {
       window.dispatchEvent(new CustomEvent('pos_device_blocked', { detail: msg }));
     }
+    // Auth expiry: bubble a single global event the App listens for.
+    // Without this, individual call sites silently log a 401 and the
+    // cashier wonders why nothing works. ApiRequestError carries the
+    // HTTP status from the shared client.
+    const status = (e as { status?: number })?.status;
+    if (status === 401) {
+      // Clear the cached token so reauth flow doesn't loop with a
+      // stale value still attached to outgoing requests.
+      _token = null;
+      localStorage.removeItem('pos_token');
+      window.dispatchEvent(new Event('auth_expired'));
+    }
     throw e;
   }
 }
@@ -206,6 +218,14 @@ export async function createOrderPayments(
 export async function getOrder(orderId: number): Promise<{
   order: {
     id: number;
+    // Server-authoritative totals — see POS-004. We surface `total`
+    // here so handleResumeTicket can snapshot the figure the kitchen
+    // and accounting already agreed on, instead of re-deriving it
+    // from local cart math.
+    total?: number;
+    subtotal?: number;
+    tax_amount?: number;
+    status?: string;
     items: Array<{
       item_id: number | null;
       item_name: string;

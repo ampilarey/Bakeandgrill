@@ -14,6 +14,57 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge label="failed" color="red" />;
 }
 
+/**
+ * Masked-secret modal. Renders bullets by default, reveals only when
+ * the operator explicitly taps "Reveal". Replaces the older "show
+ * secret in plain text the moment the modal opens" pattern that was
+ * called out in the audit as a screen-recording / shoulder-surf risk.
+ */
+function RevealSecretModal({
+  name,
+  secret,
+  copied,
+  onCopy,
+  onClose,
+}: {
+  name: string;
+  secret: string;
+  copied: boolean;
+  onCopy: () => void;
+  onClose: () => void;
+}) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <Modal title={`New Secret — ${name}`} onClose={onClose} maxWidth={480}>
+      <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4, margin: '0 0 4px' }}>
+          Save this secret now — it will NOT be shown again.
+        </p>
+        <p style={{ fontSize: 12, color: '#6B5D4F', margin: 0 }}>
+          Use it to verify incoming webhook signatures on your server.
+        </p>
+      </div>
+      <div style={{
+        background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 10,
+        padding: '12px 14px', fontFamily: 'monospace', fontSize: 13,
+        wordBreak: 'break-all', color: '#1C1408', marginBottom: 10,
+        position: 'relative',
+      }}>
+        {revealed ? secret : '•'.repeat(Math.min(secret.length, 48))}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <Btn small variant="ghost" onClick={() => setRevealed((v) => !v)}>
+          {revealed ? 'Hide' : 'Reveal'}
+        </Btn>
+      </div>
+      <ModalActions>
+        <Btn variant="secondary" onClick={onClose}>Close</Btn>
+        <Btn onClick={onCopy}>{copied ? '✓ Copied!' : 'Copy to Clipboard'}</Btn>
+      </ModalActions>
+    </Modal>
+  );
+}
+
 function WebhookForm({
   initial,
   allEvents,
@@ -325,31 +376,20 @@ export function WebhooksPage() {
         <LogsDrawer subscription={logsFor} onClose={() => setLogsFor(null)} />
       )}
 
-      {/* New secret modal — shown once, copy before closing */}
+      {/* New secret modal — masked by default, revealed on demand.
+          Pre-fix the secret was rendered in plain text the moment the
+          modal opened. Anyone walking past the screen (or recording it
+          for support) would see it. Now it's a row of bullets until
+          the operator explicitly taps "Reveal", and toggles back when
+          the modal is closed. */}
       {newSecret && (
-        <Modal title={`New Secret — ${newSecret.name}`} onClose={() => setNewSecret(null)} maxWidth={480}>
-          <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4, margin: '0 0 4px' }}>
-              ⚠️ Save this secret now — it will NOT be shown again.
-            </p>
-            <p style={{ fontSize: 12, color: '#6B5D4F', margin: 0 }}>
-              Use it to verify incoming webhook signatures on your server.
-            </p>
-          </div>
-          <div style={{
-            background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 10,
-            padding: '12px 14px', fontFamily: 'monospace', fontSize: 13,
-            wordBreak: 'break-all', color: '#1C1408', marginBottom: 16,
-          }}>
-            {newSecret.secret}
-          </div>
-          <ModalActions>
-            <Btn variant="secondary" onClick={() => setNewSecret(null)}>Close</Btn>
-            <Btn onClick={handleCopySecret}>
-              {copied ? '✓ Copied!' : 'Copy to Clipboard'}
-            </Btn>
-          </ModalActions>
-        </Modal>
+        <RevealSecretModal
+          name={newSecret.name}
+          secret={newSecret.secret}
+          copied={copied}
+          onCopy={handleCopySecret}
+          onClose={() => setNewSecret(null)}
+        />
       )}
     </div>
   );

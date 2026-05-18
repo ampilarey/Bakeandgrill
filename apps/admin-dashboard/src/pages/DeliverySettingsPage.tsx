@@ -453,6 +453,7 @@ export default function DeliverySettingsPage() {
                             {day.windows.length > 1 && (
                               <button
                                 onClick={() => removeWindow(key, idx)}
+                                aria-label={`Remove window ${idx + 1} from ${label}`}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C0392B', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
                                 title="Remove this window"
                               >×</button>

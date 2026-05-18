@@ -303,6 +303,24 @@ export function WebsiteSettings() {
   }, []);
 
   const handleSave = async () => {
+    // Validate JSON-typed settings BEFORE shipping them to the server.
+    // Pre-fix the JSON editors silently fell back to `{}` on bad input
+    // and the form would happily POST the broken value, wiping the
+    // hero/category data and only producing an obscure 422 if the
+    // server schema rejected it.
+    const jsonInvalid: string[] = [];
+    for (const item of Object.values(settings ?? {}).flat()) {
+      if (item.type !== 'json') continue;
+      const raw = form[item.key];
+      if (raw === undefined || raw === '' || raw === null) continue;
+      try { JSON.parse(raw); }
+      catch { jsonInvalid.push(item.label ?? item.key); }
+    }
+    if (jsonInvalid.length) {
+      error(`Invalid JSON in: ${jsonInvalid.join(', ')}. Fix before saving.`);
+      return;
+    }
+
     setSaving(true);
     try { await updateSiteSettings(form); success('Settings saved successfully'); }
     catch { error('Failed to save settings'); }

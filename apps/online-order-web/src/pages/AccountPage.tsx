@@ -111,6 +111,8 @@ export function AccountPage() {
   const [reviews, setReviews] = useState<CustomerReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState('');
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [reviewsTotalPages, setReviewsTotalPages] = useState(1);
 
   // Write review state
   const [reviewableOrders, setReviewableOrders] = useState<Order[]>([]);
@@ -186,13 +188,13 @@ export function AccountPage() {
     if (!authReady || !token || activeTab !== 'reviews') return;
     setReviewsLoading(true);
     Promise.all([
-      getMyReviews(token),
+      getMyReviews(token, { page: reviewsPage, per_page: 20 }),
       fetchCustomerOrders(token),
     ])
       .then(([reviewRes, orderRes]) => {
         const myReviews = reviewRes.data ?? [];
         setReviews(myReviews);
-        // Completed orders that haven't been reviewed yet
+        setReviewsTotalPages(reviewRes.meta?.last_page ?? 1);
         const reviewedOrderIds = new Set(myReviews.map((r) => r.order?.id).filter(Boolean));
         const completed = (Array.isArray(orderRes) ? orderRes : (orderRes as { data: Order[] }).data ?? [])
           .filter((o: Order) => o.status === 'completed' && !reviewedOrderIds.has(o.id));
@@ -200,7 +202,7 @@ export function AccountPage() {
       })
       .catch((e: Error) => setReviewsError(e.message || 'Failed to load reviews.'))
       .finally(() => setReviewsLoading(false));
-  }, [token, authReady, activeTab]);
+  }, [token, authReady, activeTab, reviewsPage]);
 
   useEffect(() => {
     if (!authReady || !token || activeTab !== 'referrals' || referralCode !== null) return;
@@ -724,7 +726,11 @@ export function AccountPage() {
                       // Force refresh reviews list
                       setReviews([]);
                       setReviewsLoading(true);
-                      getMyReviews(token).then((res) => setReviews(res.data)).finally(() => setReviewsLoading(false));
+                      getMyReviews(token, { page: 1, per_page: 20 }).then((res) => {
+                        setReviews(res.data);
+                        setReviewsTotalPages(res.meta?.last_page ?? 1);
+                        setReviewsPage(1);
+                      }).finally(() => setReviewsLoading(false));
                     } catch (e: unknown) { setReviewSubmitError((e as Error).message || 'Failed to submit review.'); }
                     finally { setSubmittingReview(false); }
                   }}
@@ -768,6 +774,23 @@ export function AccountPage() {
                     {rv.is_anonymous && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>Posted anonymously</p>}
                   </div>
                 ))}
+                {reviewsTotalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                    <button
+                      onClick={() => setReviewsPage((p) => Math.max(1, p - 1))}
+                      disabled={reviewsPage <= 1}
+                      style={{ ...btnStyle, padding: '6px 14px', fontSize: 12, opacity: reviewsPage <= 1 ? 0.5 : 1, background: '#E5E7EB', color: '#1F2937' }}
+                    >‹ Prev</button>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Page {reviewsPage} of {reviewsTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setReviewsPage((p) => Math.min(reviewsTotalPages, p + 1))}
+                      disabled={reviewsPage >= reviewsTotalPages}
+                      style={{ ...btnStyle, padding: '6px 14px', fontSize: 12, opacity: reviewsPage >= reviewsTotalPages ? 0.5 : 1, background: '#E5E7EB', color: '#1F2937' }}
+                    >Next ›</button>
+                  </div>
+                )}
               </div>
             )}
           </SectionCard>
@@ -947,12 +970,12 @@ export function AccountPage() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     readOnly
-                    value={`${window.location.origin}/?ref=${referralCode}`}
+                    value={`${window.location.origin}/order/?ref=${referralCode}`}
                     style={{ ...inputStyle, flex: 1, fontSize: 12, color: 'var(--color-text-muted)' }}
                   />
                   <button
                     onClick={() => {
-                      void navigator.clipboard.writeText(`${window.location.origin}/?ref=${referralCode}`);
+                      void navigator.clipboard.writeText(`${window.location.origin}/order/?ref=${referralCode}`);
                       setReferralCopied(true);
                       setTimeout(() => setReferralCopied(false), 2000);
                     }}

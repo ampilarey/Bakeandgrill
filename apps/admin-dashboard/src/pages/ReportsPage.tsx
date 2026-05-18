@@ -11,8 +11,15 @@ import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '.
 import { usePageTitle } from '../hooks/usePageTitle';
 import { downloadCSV } from '../utils/csvExport';
 
-function today()        { return new Date().toISOString().slice(0, 10); }
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+// Local-timezone date helpers — `toISOString()` is always UTC and was
+// shifting Maldives (UTC+5) reports by a day during the late-evening
+// hours. See ADM-012.
+function localISO(d: Date): string {
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
+function today()        { return localISO(new Date()); }
+function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return localISO(d); }
 function mvr(n: number) { return `MVR ${(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 function pct(n: number, total: number) { return total > 0 ? `${((n / total) * 100).toFixed(1)}%` : '0%'; }
 
@@ -83,15 +90,19 @@ export function ReportsPage() {
       if (tab === 'Inventory')           setInventory(await getInventoryValuation());
       if (tab === 'Accounts Payable')    setAp((await getAccountsPayable()).data);
       if (tab === 'Accounts Receivable') setAr((await getAccountsReceivable()).data);
-      if (tab === 'Promotions')          setPromoReport((await getPromotionReport()).report);
-      if (tab === 'Loyalty')             setLoyaltyReport((await getLoyaltyReport()).report);
+      // Promotions + Loyalty now honour the date filter — pre-fix they
+      // ignored from/to entirely, so toggling the date range did nothing
+      // and the numbers shown disagreed with every other date-sensitive
+      // tab. The backend was already date-aware via optional from/to.
+      if (tab === 'Promotions')          setPromoReport((await getPromotionReport({ from, to })).report);
+      if (tab === 'Loyalty')             setLoyaltyReport((await getLoyaltyReport({ from, to })).report);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { void load(); }, [tab, from, to]);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Tax';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {

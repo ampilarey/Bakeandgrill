@@ -332,8 +332,17 @@ export function useCheckout() {
     if (!giftCardCode.trim()) return;
 
     if (!pendingOrderId) {
-      // Store as pending — will be applied after order creation
-      setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: giftCardBalance ? Math.round(giftCardBalance * 100) : 0, pending: true });
+      // ONL-005: cap the pending preview discount at the current order
+      // total so the running total can't go negative. The real server
+      // call after order creation will reapply the same cap, but the
+      // preview here was previously the FULL gift-card balance (e.g.
+      // a 500 MVR card on a 120 MVR order showed "−500" in the
+      // summary which freaked customers out).
+      const balanceLaar = giftCardBalance ? Math.round(giftCardBalance * 100) : 0;
+      // subtract whatever discounts are already in effect, then cap
+      const orderBeforeGift = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - referralDelta);
+      const capped = Math.min(balanceLaar, orderBeforeGift);
+      setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: capped, pending: true });
       setGiftCardError("");
       return;
     }

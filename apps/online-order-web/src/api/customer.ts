@@ -152,6 +152,20 @@ export async function submitReview(
   });
 }
 
-export async function getMyReviews(token: string): Promise<{ data: CustomerReview[] }> {
-  return request('/customer/reviews', { headers: { Authorization: `Bearer ${token}` } });
+export async function getMyReviews(
+  token: string,
+  params: { page?: number; per_page?: number } = {},
+): Promise<{
+  data: CustomerReview[];
+  meta?: { current_page: number; last_page: number; per_page: number; total: number };
+}> {
+  // ONL-004: explicit per_page cap. The backend will paginate either
+  // way; without us asking for a page we got the first ~15 reviews
+  // forever and customers thought the rest were gone.
+  const q = new URLSearchParams();
+  if (params.page) q.set('page', String(params.page));
+  q.set('per_page', String(params.per_page ?? 20));
+  return request(`/customer/reviews?${q.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }

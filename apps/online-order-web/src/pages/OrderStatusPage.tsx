@@ -292,18 +292,24 @@ export function OrderStatusPage() {
       : 'Order Status — Bake & Grill';
   }, [order?.order_number]);
 
+  // ONL-002: only trust the SERVER for "is this order paid?". The
+  // ?payment=CONFIRMED query param can be forged by anyone pasting a
+  // URL — previously the cart was wiped and a success banner shown
+  // purely on the strength of that string, even if the user never
+  // completed checkout.
+  // Now we additionally require the server-reported payment_status,
+  // and we only clear the cart once we've seen a paid order on this
+  // visit (cartClearedRef guard).
+  const serverPaymentConfirmed =
+    !!order && (order.payment_status === 'paid' || order.payment_status === 'partial');
+
   useEffect(() => {
-    if (paymentState === "CONFIRMED" && !cartClearedRef.current) {
+    if (serverPaymentConfirmed && !cartClearedRef.current) {
       cartClearedRef.current = true;
       clearCart();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentState]);
-
-  // Clear cart only when this page is the direct result of a payment redirect
-  // (i.e. ?payment=CONFIRMED is in the URL). Clearing on any active-status order
-  // would wipe a new cart if the user follows an old SMS tracking link.
-  // The ?payment=CONFIRMED effect above already handles the normal checkout flow.
+  }, [serverPaymentConfirmed]);
 
   useEffect(() => { void loadOrder(); }, [loadOrder]);
 
@@ -396,7 +402,7 @@ export function OrderStatusPage() {
         {/* ── Payment result banners ─────────────────────── */}
         {/* Only show while status is still payment_pending — once status card shows
             "Order confirmed!" or better, this banner would be redundant. */}
-        {paymentState === "CONFIRMED" && showPaymentBanner && order?.status === "payment_pending" && (
+        {paymentState === "CONFIRMED" && serverPaymentConfirmed && showPaymentBanner && order?.status === "payment_pending" && (
           <div className="banner banner-success animate-fade-in">
             <span className="banner-icon">🎉</span>
             <div style={{ flex: 1 }}>

@@ -79,7 +79,16 @@ class OrderController extends Controller
             $openShiftId = \App\Models\Shift::where('user_id', $request->user()->id)
                 ->whereNull('closed_at')
                 ->value('id');
-            $query->where('shift_id', $openShiftId ?? 0);
+
+            // If the cashier has no open shift, return an empty result set
+            // rather than collapsing on `shift_id = 0` (which would silently
+            // match a legitimate Shift row with id 0 or — more commonly —
+            // match orders that have shift_id NULL from the early-pos era).
+            if ($openShiftId === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where('shift_id', $openShiftId);
+            }
         }
 
         // Open-tickets feed for the POS — only orders the cashier has parked.
@@ -226,6 +235,12 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
+        // Optional flag — POS sets this true when the resumed ticket
+        // changed (new items added since hold) so the kitchen prints the
+        // updated chit. Default false because resuming a ticket immediately
+        // back to charge shouldn't trigger a duplicate kitchen print.
+        $reprintKitchen = (bool) $request->boolean('reprint_kitchen', false);
+
         $order = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
             app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'pending');
@@ -235,6 +250,21 @@ class OrderController extends Controller
 
             return $order;
         });
+
+        // Kitchen reprint on resume — fires only when the caller asked for
+        // it (e.g. POS detected line-item changes). Print job dispatch is
+        // best-effort and idempotent at the queue level.
+        if ($reprintKitchen) {
+            try {
+                app(\App\Services\PrintJobService::class)
+                    ->enqueueKitchen($order->fresh(), reason: 'resume_reprint');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Kitchen reprint on resume failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return response()->json(['order' => $order]);
     }

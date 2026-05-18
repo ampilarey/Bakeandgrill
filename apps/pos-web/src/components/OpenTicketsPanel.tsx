@@ -7,6 +7,10 @@ type Props = {
   deviceId: string;
   onResume: (ticket: OpenTicket) => void;
   onClose: () => void;
+  /** Phone of the currently-attached cart customer, if any — used to
+   *  prefill the "Send Bill" prompt so cashiers don't retype the same
+   *  number they already entered in the cart. */
+  cartCustomerPhone?: string | null;
 };
 
 /**
@@ -14,7 +18,7 @@ type Props = {
  * "Resume #123" button — that pattern silently overwrote previous holds
  * and made multi-tab service impossible.
  */
-export function OpenTicketsPanel({ deviceId, onResume, onClose }: Props) {
+export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhone }: Props) {
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -53,7 +57,14 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose }: Props) {
     const linkedPhone = t.customer?.phone ?? null;
     let phone = linkedPhone;
     if (!phone) {
-      const raw = window.prompt(`Enter customer phone for ticket "${t.ticket_name || t.order_number}":`)?.trim();
+      // Prefill the prompt with the cart customer's phone, if any.
+      // (window.prompt accepts a default value as the second arg —
+      // pre-fix this was empty so staff had to retype the same number
+      // they already entered in the cart customer picker.)
+      const raw = window.prompt(
+        `Enter customer phone for ticket "${t.ticket_name || t.order_number}":`,
+        cartCustomerPhone ?? "",
+      )?.trim();
       if (!raw) return;
       phone = raw;
     }

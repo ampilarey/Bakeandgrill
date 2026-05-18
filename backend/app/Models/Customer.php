@@ -42,8 +42,18 @@ class Customer extends Model implements AuthenticatableContract
         'delivery_notes',
     ];
 
+    /**
+     * Hide staff-only / sensitive fields from any `toArray()` / `toJson()`
+     * serialization. Customer-facing endpoints should be receiving DTOs
+     * anyway, but this is a belt-and-braces defense — accidentally
+     * returning a Customer model from a customer-scoped controller should
+     * never leak `internal_notes` (staff-written) or `sms_opt_out_at`
+     * (audit metadata).
+     */
     protected $hidden = [
         'password',
+        'internal_notes',
+        'sms_opt_out_at',
     ];
 
     protected $casts = [

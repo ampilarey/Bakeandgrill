@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   checkPhone,
   requestOtp,
@@ -58,7 +58,33 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const [newPwd, setNewPwd]         = useState("");
   const [newPwdConfirm, setNewPwdConfirm] = useState("");
 
-  const go = (s: Step) => { setError(""); setStep(s); };
+  // ONL-006: Resend OTP with 30s lockout. Without a cooldown,
+  // customers tapped Resend repeatedly thinking the SMS was lost,
+  // and ended up with multiple codes (only the latest valid one)
+  // arriving out of order — plus we burned through the SMS quota.
+  const [resendIn, setResendIn] = useState(0);
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const handleResendOtp = async (purpose: 'register' | 'reset_password' = 'register') => {
+    if (resendIn > 0) return;
+    setError(''); setHint(null);
+    try {
+      const r = await requestOtp(phone, purpose);
+      if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
+      else setHint('New code sent.');
+      setResendIn(30);
+    } catch (e) { setError((e as Error).message); }
+  };
+
+  const go = (s: Step) => {
+    setError("");
+    setStep(s);
+    if (s === 'otp' || s === 'forgot_otp') setResendIn(30);
+  };
 
   // ── Step 1: phone submitted ───────────────────────────────────────────────
 
@@ -255,6 +281,13 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             onClick={handleVerifyOtp} disabled={loading || otp.length < 6}>
             {loading ? "Verifying…" : "Confirm →"}
           </button>
+          <button
+            style={{ ...S.ghostBtn, opacity: resendIn > 0 ? 0.55 : 1 }}
+            onClick={() => void handleResendOtp('register')}
+            disabled={resendIn > 0}
+          >
+            {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+          </button>
           <button style={S.ghostBtn} onClick={() => { go("phone"); setOtp(""); setHint(null); }}>
             ← Use a different number
           </button>
@@ -333,6 +366,13 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
           <button style={{ ...S.primaryBtn, opacity: loading || resetOtp.length < 6 ? 0.55 : 1 }}
             onClick={() => go("reset_password")} disabled={loading || resetOtp.length < 6}>
             Continue →
+          </button>
+          <button
+            style={{ ...S.ghostBtn, opacity: resendIn > 0 ? 0.55 : 1 }}
+            onClick={() => void handleResendOtp('reset_password')}
+            disabled={resendIn > 0}
+          >
+            {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
           </button>
           <button style={S.ghostBtn} onClick={() => { go("forgot_phone"); setResetOtp(""); setHint(null); }}>
             ← Use a different number

@@ -3,9 +3,17 @@ import { getProfitAndLoss, getCashFlow, getDailySummary, type PnLReport } from '
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-function today() { return new Date().toISOString().slice(0, 10); }
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
-function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); }
+// ── Date helpers — LOCAL timezone, not UTC ─────────────────────────────────
+// Pre-fix these used `.toISOString().slice(0,10)` which formats in UTC.
+// Maldives is UTC+5; at 9pm local "today" was already tomorrow in UTC,
+// so reports defaulted to a wrong date for a 5-hour window every night.
+function localISO(d: Date): string {
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
+function today() { return localISO(new Date()); }
+function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return localISO(d); }
+function monthStart() { const d = new Date(); d.setDate(1); return localISO(d); }
 
 function ProgressBar({ pct, color = '#D4813A' }: { pct: number; color?: string }) {
   return (
@@ -28,6 +36,10 @@ export function ProfitLossPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
+      // Use the END of the selected range for the "snapshot" panel —
+      // previously this hard-coded `today()` which made the snapshot
+      // disagree with the rest of the page whenever the user picked
+      // a historical date range (audit BE-006 ADM-006).
       const [pnlRes, cfRes, dailyRes] = await Promise.all([
         getProfitAndLoss(from, to),
         getCashFlow(from, to),

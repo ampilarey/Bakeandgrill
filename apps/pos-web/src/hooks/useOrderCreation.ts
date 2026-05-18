@@ -84,6 +84,26 @@ export function useOrderCreation(params: Params) {
    * re-holds the order and puts it back in Open Tickets.
    */
   const [resumedOrderId, setResumedOrderId] = useState<number | null>(null);
+  /**
+   * Server-side total of the resumed order, captured when we fetched it
+   * via getOrder(). This is the source of truth for what to charge — the
+   * local cartTotal can drift if modifier prices or item prices change
+   * between hold time and resume time, and we don't want to overcharge
+   * (or undercharge) the customer based on a stale local total.
+   */
+  const [resumedOrderTotal, setResumedOrderTotal] = useState<number | null>(null);
+  /**
+   * Snapshot of the totalDue captured when an order was created but
+   * payment failed. Used by handleRetryPayment so we charge the same
+   * amount on retry that the server already validated, regardless of
+   * any subsequent cart edits.
+   */
+  const [pendingPaymentSnapshot, setPendingPaymentSnapshot] = useState<{
+    orderId: number;
+    totalDue: number;
+  } | null>(null);
+  /** Guard so handleSyncQueue can't be entered twice concurrently. */
+  const [isSyncingQueue, setIsSyncingQueue] = useState(false);
 
   const buildPayload = (overrides: Partial<{ ticket_name: string; ticket_note: string }> = {}) => {
     const discount = Math.max(0, Number.parseFloat(params.discountAmount) || 0);
@@ -131,15 +151,28 @@ export function useOrderCreation(params: Params) {
     try {
       await createOrderPayments(orderId, { payments: finalPayments, print_receipt: true });
       setPendingPaymentForOrderId(null);
+      setPendingPaymentSnapshot(null);
       return true;
     } catch (err) {
       const msg = (err as Error).message ?? "";
       if (err instanceof ApiRequestError) {
+        // Auth expiry: surface to the rest of the app so the global
+        // 401 handler redirects to PIN re-login. Don't pin a "retry
+        // payment" UI in the cart for an auth failure — there's
+        // nothing useful to retry until the cashier re-authenticates.
+        if (err.status === 401) {
+          window.dispatchEvent(new Event("auth_expired"));
+          setStatusMessage("Session expired — please log back in.");
+          return false;
+        }
         setStatusMessage(`Payment failed: ${msg}`);
       } else {
         setStatusMessage("Network issue — payment not recorded. Retry once back online.");
       }
       setPendingPaymentForOrderId(orderId);
+      // Snapshot the totalDue from THIS attempt so retry charges the
+      // server-validated total, not the (possibly drifted) cartTotal.
+      setPendingPaymentSnapshot({ orderId, totalDue });
       return false;
     }
   };
@@ -174,13 +207,19 @@ export function useOrderCreation(params: Params) {
     if (resumedOrderId !== null) {
       setIsSubmitting(true);
       try {
-        const totalDue = params.cartTotal;
+        // Use the server-captured total — not params.cartTotal — so a
+        // resume→charge always settles the exact ticket the server
+        // already has, even if the cashier somehow modified the local
+        // cart (shouldn't happen because the cart is read-only on
+        // resume, but defense in depth).
+        const totalDue = resumedOrderTotal ?? params.cartTotal;
         const settled = await settleOrder(resumedOrderId, totalDue, paymentSnapshot);
         if (settled) {
           const cid = params.customerId;
           const cphone = params.customerPhone;
           const settledOrderId = resumedOrderId;
           setResumedOrderId(null);
+          setResumedOrderTotal(null);
           params.clearCart();
           params.setSelectedItem(null);
           setStatusMessage(
@@ -290,7 +329,13 @@ export function useOrderCreation(params: Params) {
     setIsSubmitting(true);
     void (async () => {
       try {
-        const totalDue = params.cartTotal;
+        // Use the totalDue captured when the original payment attempt
+        // happened — the cart may have been cleared/edited since, and
+        // we must charge the same amount the server already validated.
+        const snapshot = pendingPaymentSnapshot;
+        const totalDue = snapshot && snapshot.orderId === pendingPaymentForOrderId
+          ? snapshot.totalDue
+          : params.cartTotal;
         const settled = await settleOrder(
           pendingPaymentForOrderId,
           totalDue > 0 ? totalDue : 0,
@@ -359,6 +404,9 @@ export function useOrderCreation(params: Params) {
     }));
     params.setCartItems(restoredItems);
     setResumedOrderId(orderId);
+    // Snapshot the authoritative server total so charge time uses it
+    // even if the local cart calculation produces a different number.
+    setResumedOrderTotal(response.order.total ?? null);
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
     setStatusMessage(`Ticket #${orderId} resumed — ready to charge.`);
@@ -385,6 +433,7 @@ export function useOrderCreation(params: Params) {
       // resume it again from Open Tickets.
     }
     setResumedOrderId(null);
+    setResumedOrderTotal(null);
     params.clearCart();
     params.setSelectedItem(null);
     setStatusMessage(`Ticket #${id} returned to Open Tickets.`);
@@ -396,11 +445,6 @@ export function useOrderCreation(params: Params) {
   const handleHoldOrder = () => {
     void handleSaveTicket(`Ticket ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`)
       .catch((e) => setStatusMessage((e as Error).message));
-  };
-
-  const handleResumeLastHold = () => {
-    if (!params.isOnline || !lastHeldOrderId) return;
-    void handleResumeTicket(lastHeldOrderId).catch(() => setStatusMessage("Unable to resume held order."));
   };
 
   const handleBarcodeSubmit = (
@@ -417,12 +461,24 @@ export function useOrderCreation(params: Params) {
     );
 
     if (params.isOnline) {
+      // Race fix: capture the barcode we just scanned. The async
+      // lookupBarcode resolves later, by which time the user may have
+      // typed another barcode or scanned a different code. We compare
+      // against the captured value before adding to cart, so an
+      // out-of-order resolve from a previous scan can never add the
+      // wrong item.
+      const scannedFor = trimmed;
       lookupBarcode(trimmed)
         .then((item) => {
+          // Only act on this resolve if the input still shows the same
+          // barcode (i.e. the user didn't scan something else in the
+          // meantime).
+          if (barcode.trim() !== scannedFor) return;
           if (item) { addToCart(item); setBarcode(""); return; }
           if (fallbackMatch) { addToCart(fallbackMatch); setBarcode(""); }
         })
         .catch(() => {
+          if (barcode.trim() !== scannedFor) return;
           if (fallbackMatch) { addToCart(fallbackMatch); setBarcode(""); }
         });
       return;
@@ -440,10 +496,18 @@ export function useOrderCreation(params: Params) {
    */
   const handleSyncQueue = () => {
     if (!params.isOnline) { setStatusMessage("You are offline. Sync paused."); return; }
+    // Re-entrancy guard. Without this, a fast double-tap on "Sync" or a
+    // back-to-back online event + visibility event will start two
+    // concurrent syncs that both pop from the queue and each try to
+    // create the same orders — server-side idempotency would handle it,
+    // but client-side counter math gets confused and status messages
+    // race each other.
+    if (isSyncingQueue) { setStatusMessage("Sync already in progress…"); return; }
 
     const queue = getQueue();
     if (queue.length === 0) { setStatusMessage("No queued orders to sync."); return; }
 
+    setIsSyncingQueue(true);
     void (async () => {
       const remaining: typeof queue = [];
       let processed = 0;
@@ -487,6 +551,7 @@ export function useOrderCreation(params: Params) {
           `Synced ${processed}, ${remaining.length} failed (kept in queue)${paymentMisses ? `, ${paymentMisses} need payment in admin` : ''}.`,
         );
       }
+      setIsSyncingQueue(false);
     })();
   };
 
@@ -505,7 +570,6 @@ export function useOrderCreation(params: Params) {
     handleHoldOrder,
     handleSaveTicket,
     handleResumeTicket,
-    handleResumeLastHold,
     handleCancelResume,
     handleBarcodeSubmit,
     handleSyncQueue,

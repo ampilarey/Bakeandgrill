@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Purchase;
+use App\Models\Refund;
 use App\Models\WasteLog;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -26,11 +27,18 @@ class FinanceReportController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
-        // Revenue: completed orders
+        // Revenue: completed orders (gross — before refunds)
         $revenue = Order::whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
+            ->whereIn('status', ['completed', 'paid', 'refunded', 'partially_refunded'])
             ->selectRaw('SUM(total) as total, SUM(tax_amount) as tax, SUM(discount_amount) as discount, COUNT(*) as orders')
             ->first();
+
+        // Refunds in the period — must subtract from gross or P&L overstates
+        // by the entire refund amount. Excludes refunds marked rejected/pending
+        // because those money is still with the merchant.
+        $refundsTotal = (float) Refund::whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ['approved', 'processed', 'completed'])
+            ->sum('amount');
 
         // COGS: purchase costs in the period
         $cogs = Purchase::whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
@@ -50,7 +58,8 @@ class FinanceReportController extends Controller
         $wasteCost = WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
         $grossRevenue = (float) ($revenue->total ?? 0);
-        $grossProfit = round($grossRevenue - (float) $cogs, 2);
+        $netRevenue = round($grossRevenue - $refundsTotal, 2);
+        $grossProfit = round($netRevenue - (float) $cogs, 2);
         $operatingProfit = round($grossProfit - $opexTotal - $wasteCost, 2);
 
         return response()->json([
@@ -58,14 +67,15 @@ class FinanceReportController extends Controller
             'to' => $to->toDateString(),
             'revenue' => [
                 'gross' => $grossRevenue,
+                'refunds' => $refundsTotal,
                 'tax' => (float) ($revenue->tax ?? 0),
                 'discounts' => (float) ($revenue->discount ?? 0),
-                'net' => round($grossRevenue - (float) ($revenue->tax ?? 0), 2),
+                'net' => $netRevenue,
                 'orders' => (int) ($revenue->orders ?? 0),
             ],
             'cogs' => (float) $cogs,
             'gross_profit' => $grossProfit,
-            'gross_margin_pct' => $grossRevenue > 0 ? round($grossProfit / $grossRevenue * 100, 2) : 0,
+            'gross_margin_pct' => $netRevenue > 0 ? round($grossProfit / $netRevenue * 100, 2) : 0,
             'expenses' => [
                 'total' => (float) $opexTotal,
                 'by_category' => $opex->map(fn ($e) => [
@@ -76,7 +86,7 @@ class FinanceReportController extends Controller
             ],
             'waste_cost' => (float) $wasteCost,
             'operating_profit' => $operatingProfit,
-            'net_profit_margin_pct' => $grossRevenue > 0 ? round($operatingProfit / $grossRevenue * 100, 2) : 0,
+            'net_profit_margin_pct' => $netRevenue > 0 ? round($operatingProfit / $netRevenue * 100, 2) : 0,
         ]);
     }
 

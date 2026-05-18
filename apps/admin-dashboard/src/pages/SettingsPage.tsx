@@ -1,107 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Shield, Smartphone, Link2, Bell, Truck, ShoppingBag } from 'lucide-react';
+import { Globe, Shield, Link2, Bell, Truck, ShoppingBag } from 'lucide-react';
 import { Button, Card } from '../components/ui';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import {
-  fetchDevices, enableDevice, disableDevice, getSiteSettings, updateSiteSettings,
+  getSiteSettings, updateSiteSettings,
   getDeliveryStatus, toggleDelivery, updateDeliverySchedule,
   getOnlineOrderingStatus, toggleOnlineOrdering, setOnlineOrderingOverride, updateOnlineOrderingSchedule,
 } from '../api';
-import type { Device, DeliveryGateStatus, OnlineOrderingGateStatus } from '../api';
+import type { DeliveryGateStatus, OnlineOrderingGateStatus } from '../api';
 
 // ─── Sub-page cards ───────────────────────────────────────────────────────────
 const HUB_CARDS = [
   { id: 'website',       icon: Globe,        label: 'Website Settings',      desc: 'Hero slides, homepage content, contact info, branding & SEO' },
   { id: 'permissions',   icon: Shield,       label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
-  { id: 'devices',       icon: Smartphone,   label: 'Devices',               desc: 'Register and manage POS/KDS devices' },
+  // Devices intentionally NOT a Settings sub-page: the top-level
+  // /devices route owns the full device management UX (pre-provision,
+  // enable/disable, rename). Having both routes was the source of
+  // ADM-016: cashiers ended up on a stub list that lacked the actions
+  // they expected.
   { id: 'notifications', icon: Bell,         label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
   { id: 'integrations',  icon: Link2,        label: 'Integrations',          desc: 'Xero, Webhooks, SMS provider' },
   { id: 'ordering',      icon: ShoppingBag,  label: 'Online Ordering',       desc: 'Toggle online ordering on/off and set per-day ordering hours schedule' },
   { id: 'delivery',      icon: Truck,        label: 'Delivery Availability', desc: 'Toggle delivery on/off and set delivery hours separately from ordering hours' },
 ];
-
-// ─── Devices sub-page ────────────────────────────────────────────────────────
-function DevicesSettings() {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [toggling, setToggling] = useState<number | null>(null);
-
-  const load = () => {
-    setLoading(true);
-    fetchDevices()
-      .then((res) => setDevices(res.data ?? []))
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(load, []);
-
-  const handleToggle = async (device: Device) => {
-    setToggling(device.id);
-    try {
-      const res = device.is_active ? await disableDevice(device.id) : await enableDevice(device.id);
-      setDevices((ds) => ds.map((d) => d.id === device.id ? res.device : d));
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setToggling(null);
-    }
-  };
-
-  const typeIcon: Record<string, string> = { pos: '🖥️', kds: '📺', display: '📟' };
-
-  return (
-    <div style={{ maxWidth: 600 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>
-          Devices register automatically on first login. Disable to block a device from accessing the system.
-        </p>
-        <Button variant="secondary" onClick={load}>↻ Refresh</Button>
-      </div>
-      {error && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{error}</p>}
-      {loading ? (
-        <p style={{ fontSize: 13, color: '#9C8E7E' }}>Loading devices…</p>
-      ) : devices.length === 0 ? (
-        <Card><p style={{ margin: 0, fontSize: 13, color: '#9C8E7E', textAlign: 'center', padding: '16px 0' }}>No devices registered yet.</p></Card>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {devices.map((d) => (
-            <Card key={d.id}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 22 }}>{typeIcon[d.type] ?? '📱'}</span>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#3D2B1F' }}>{d.name}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9C8E7E' }}>
-                      {d.type.toUpperCase()}
-                      {d.last_seen_at && ` · Last seen ${new Date(d.last_seen_at).toLocaleDateString()}`}
-                      {d.registered_by && ` · Registered by ${d.registered_by}`}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: d.is_active ? '#DCFCE7' : '#FEE2E2', color: d.is_active ? '#166534' : '#991B1B' }}>
-                    {d.is_active ? 'Active' : 'Disabled'}
-                  </span>
-                  <Button
-                    variant="secondary"
-                    onClick={() => void handleToggle(d)}
-                    disabled={toggling === d.id}
-                  >
-                    {toggling === d.id ? '…' : d.is_active ? 'Disable' : 'Enable'}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Integrations sub-page ────────────────────────────────────────────────────
 function IntegrationsSettings() {
@@ -646,7 +569,6 @@ export function SettingsPage() {
 
         {active === 'website'        && <WebsiteSettings />}
         {active === 'permissions'    && <PermissionsSettings />}
-        {active === 'devices'        && <DevicesSettings />}
         {active === 'notifications'  && <NotificationsSettings />}
         {active === 'integrations'   && <IntegrationsSettings />}
         {active === 'ordering'       && <OnlineOrderingSettings />}

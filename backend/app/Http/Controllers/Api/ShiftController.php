@@ -42,6 +42,44 @@ class ShiftController extends Controller
     }
 
     /**
+     * Single source of truth for "what should be in the cash drawer right now".
+     * Used by both summary() and close() so the cashier never sees one number
+     * on screen and a different one when they tap Close.
+     *
+     * @return array{opening:float,cash_in:float,cash_out:float,cash_sales:float,cash_refunds:float,expected:float}
+     */
+    private function expectedCashFor(Shift $shift): array
+    {
+        $cashIn = (float) CashMovement::where('shift_id', $shift->id)
+            ->whereIn('type', ['cash_in', 'paid_in'])->sum('amount');
+        $cashOut = (float) CashMovement::where('shift_id', $shift->id)
+            ->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
+
+        $cashSales = (float) Payment::where('method', 'cash')
+            ->where('amount', '>', 0)
+            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->sum('amount');
+
+        // Cash refunds (negative-amount cash payments). Kept separate for
+        // reporting clarity in the UI; both arms feed the same expected total.
+        $cashRefundsRaw = (float) Payment::where('method', 'cash')
+            ->where('amount', '<', 0)
+            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->sum('amount');
+
+        $opening = (float) ($shift->opening_cash ?? 0);
+
+        return [
+            'opening' => $opening,
+            'cash_in' => $cashIn,
+            'cash_out' => $cashOut,
+            'cash_sales' => $cashSales,
+            'cash_refunds' => abs($cashRefundsRaw),
+            'expected' => $opening + $cashIn - $cashOut + $cashSales + $cashRefundsRaw,
+        ];
+    }
+
+    /**
      * Live shift summary — cash drawer breakdown + sales summary the cashier
      * can glance at any time without having to close the shift. Returns the
      * same numbers `close()` will use, so closing should never be a surprise.
@@ -50,23 +88,13 @@ class ShiftController extends Controller
     {
         $shift = Shift::where('user_id', $request->user()?->id)->findOrFail($id);
 
-        $cashIn = (float) CashMovement::where('shift_id', $shift->id)
-            ->whereIn('type', ['cash_in', 'paid_in'])->sum('amount');
-        $cashOut = (float) CashMovement::where('shift_id', $shift->id)
-            ->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
-
-        // Cash sales/refunds based on Payment rows linked to orders in this shift.
-        $cashSales = (float) Payment::where('method', 'cash')
-            ->where('amount', '>', 0)
-            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
-            ->sum('amount');
-        $cashRefunds = (float) Payment::where('method', 'cash')
-            ->where('amount', '<', 0)
-            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
-            ->sum('amount');
-
-        $openingCash = (float) ($shift->opening_cash ?? 0);
-        $expectedCash = $openingCash + $cashIn - $cashOut + $cashSales + $cashRefunds;
+        $cash = $this->expectedCashFor($shift);
+        $openingCash = $cash['opening'];
+        $cashIn = $cash['cash_in'];
+        $cashOut = $cash['cash_out'];
+        $cashSales = $cash['cash_sales'];
+        $cashRefunds = -$cash['cash_refunds'];
+        $expectedCash = $cash['expected'];
 
         // Sales summary across every order in the shift (any tender, any status
         // except cancelled). Matches what Loyverse calls "Gross sales".
@@ -191,19 +219,15 @@ class ShiftController extends Controller
             return response()->json(['message' => 'Shift already closed.'], 422);
         }
 
-        $cashIn = CashMovement::where('shift_id', $shift->id)
-            ->whereIn('type', ['cash_in', 'paid_in'])
-            ->sum('amount');
-        $cashOut = CashMovement::where('shift_id', $shift->id)
-            ->whereIn('type', ['cash_out', 'paid_out'])
-            ->sum('amount');
-
-        $cashSales = Payment::where('method', 'cash')
-            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
-            ->whereBetween('processed_at', [$shift->opened_at, now()])
-            ->sum('amount');
-
-        $expectedCash = ($shift->opening_cash ?? 0) + $cashIn - $cashOut + $cashSales;
+        // Use the same helper as summary() so the close-time expected cash
+        // matches what the cashier was just looking at on the summary panel.
+        $cash = $this->expectedCashFor($shift);
+        $cashIn = $cash['cash_in'];
+        $cashOut = $cash['cash_out'];
+        // Net cash sales (positive sales minus refunds) — the closing math
+        // wants a single signed number per the original column semantics.
+        $cashSales = $cash['cash_sales'] - $cash['cash_refunds'];
+        $expectedCash = $cash['expected'];
         $closingCash = (float) $request->input('closing_cash');
         $variance = $closingCash - $expectedCash;
 

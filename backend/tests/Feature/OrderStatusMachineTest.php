@@ -130,12 +130,27 @@ class OrderStatusMachineTest extends TestCase
         // Cannot jump backwards
         $this->assertFalse($machine->isAllowed('completed', 'pending'));
         $this->assertFalse($machine->isAllowed('in_progress', 'pending'));
-        $this->assertFalse($machine->isAllowed('ready', 'in_progress'));
         $this->assertFalse($machine->isAllowed('refunded', 'paid'));
 
         // Cannot skip states arbitrarily
         $this->assertFalse($machine->isAllowed('pending', 'completed'));
         $this->assertFalse($machine->isAllowed('pending', 'refunded'));
+    }
+
+    /**
+     * BE-201: `ready → in_progress` and `completed → in_progress`
+     * ARE legal — they represent a KDS recall (cashier marked a
+     * ticket done too early, kitchen pulls it back). Previously the
+     * test list above asserted these were invalid; they are now
+     * explicitly allowed via the state machine instead of forcing
+     * controllers to mutate `status` directly.
+     */
+    public function test_kds_recall_transitions_are_allowed(): void
+    {
+        $machine = $this->machine();
+
+        $this->assertTrue($machine->isAllowed('ready', 'in_progress'));
+        $this->assertTrue($machine->isAllowed('completed', 'in_progress'));
     }
 
     public function test_terminal_statuses_have_no_outgoing_transitions(): void
@@ -160,13 +175,19 @@ class OrderStatusMachineTest extends TestCase
             ->assertJsonPath('order.status', 'in_progress');
     }
 
-    public function test_kds_start_on_completed_order_returns_422(): void
+    public function test_kds_start_on_completed_order_recalls_to_in_progress(): void
     {
+        // BE-201: starting a "completed" ticket from KDS is a recall —
+        // the cashier hit done too early. The OrderStatusMachine now
+        // allows this transition, so the endpoint must succeed and
+        // flip the order back to in_progress instead of bouncing the
+        // request with 422.
         $order = $this->createOrderWithStatus('completed');
         Sanctum::actingAs($this->staffUser, ['staff']);
 
         $this->postJson("/api/kds/orders/{$order->id}/start")
-            ->assertStatus(422);
+            ->assertOk()
+            ->assertJsonPath('order.status', 'in_progress');
     }
 
     public function test_kds_bump_pending_to_ready_then_completed(): void

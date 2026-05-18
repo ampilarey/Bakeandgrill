@@ -46,9 +46,19 @@ class PreOrderController extends Controller
             'customer_notes' => 'nullable|string|max:1000',
         ]);
 
-        // Calculate totals
+        // Calculate totals using the same integer-laari math the main Order
+        // path uses (via OrderTotalsCalculator) so a pre-order that becomes
+        // a real order doesn't change price on the customer because tax
+        // suddenly gets added. We don't instantiate the full calculator
+        // here (it operates on Order rows + DiscountsInput), but we mirror
+        // its rounding: floor for discount components, round-half-up for
+        // tax, integer laari throughout, and per-item tax_rate snapshotting.
         $itemsData = [];
-        $subtotal = 0;
+        $subtotalLaar = 0;
+        $taxLaar = 0;
+
+        $globalTaxBp = (int) config('app.tax_rate_bp', 0); // 0 = no fallback tax
+        $taxInclusive = (bool) config('app.tax_inclusive', false);
 
         foreach ($request->items as $itemData) {
             $item = Item::find($itemData['item_id']);
@@ -56,19 +66,39 @@ class PreOrderController extends Controller
                 continue;
             }
 
-            $lineTotal = $item->base_price * $itemData['quantity'];
-            $subtotal += $lineTotal;
+            $qty = (int) $itemData['quantity'];
+            $unitPriceLaar = (int) round((float) $item->base_price * 100);
+            $lineLaar = $unitPriceLaar * $qty;
+            $itemTaxBp = (int) ($item->tax_rate_bp ?? $globalTaxBp);
+
+            // Per-item tax: inclusive prices have tax extracted from
+            // base_price; exclusive prices have tax added on top.
+            if ($itemTaxBp > 0) {
+                if ($taxInclusive) {
+                    $itemTaxLaar = (int) round($lineLaar * $itemTaxBp / (10000 + $itemTaxBp));
+                } else {
+                    $itemTaxLaar = (int) round($lineLaar * $itemTaxBp / 10000);
+                }
+            } else {
+                $itemTaxLaar = 0;
+            }
+
+            $subtotalLaar += $lineLaar;
+            $taxLaar += $itemTaxLaar;
 
             $itemsData[] = [
                 'item_id' => $item->id,
                 'name' => $item->name,
-                'quantity' => $itemData['quantity'],
+                'quantity' => $qty,
                 'price' => $item->base_price,
-                'total' => $lineTotal,
+                'total' => $lineLaar / 100,
+                'tax_rate_bp' => $itemTaxBp,
+                'tax' => $itemTaxLaar / 100,
             ];
         }
 
-        // Create pre-order
+        $totalLaar = $taxInclusive ? $subtotalLaar : $subtotalLaar + $taxLaar;
+
         $preOrder = PreOrder::create([
             'order_number' => 'PRE-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
             'customer_id' => session('customer_id'),
@@ -77,8 +107,9 @@ class PreOrderController extends Controller
             'customer_email' => $request->customer_email,
             'fulfillment_date' => $request->fulfillment_date,
             'items' => $itemsData,
-            'subtotal' => $subtotal,
-            'total' => $subtotal,
+            'subtotal' => $subtotalLaar / 100,
+            'tax_amount' => $taxLaar / 100,
+            'total' => $totalLaar / 100,
             'status' => 'pending',
             'customer_notes' => $request->customer_notes,
         ]);

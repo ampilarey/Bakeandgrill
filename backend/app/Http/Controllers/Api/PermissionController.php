@@ -56,11 +56,19 @@ class PermissionController extends Controller
         // Prevent modifying own permissions
         abort_if($actorId === $user->id, 403, 'You cannot modify your own permissions.');
 
-        // Non-owners can only grant permissions they themselves hold
+        // Authorization rule: you can only touch (grant/revoke/reset) a
+        // permission you yourself hold. Owners are exempt because owner
+        // short-circuits hasPermission() and is the source of all grants.
+        //
+        // Pre-fix only the grant arm checked this — revoke and reset slipped
+        // through, so a non-owner could strip permissions they didn't hold
+        // (e.g. a manager revoking integrations.xero from an owner-delegated
+        // power user). Same gate now applies uniformly.
         $isOwner = $actor?->role?->slug === 'owner';
         foreach ($validated['permissions'] as $slug => $value) {
-            if ($value === true && !$isOwner && !$actor->hasPermission($slug)) {
-                abort(403, "You cannot grant the '{$slug}' permission you do not hold.");
+            if (!$isOwner && !$actor->hasPermission($slug)) {
+                $verb = $value === null ? 'reset' : ($value === true ? 'grant' : 'revoke');
+                abort(403, "You cannot {$verb} the '{$slug}' permission you do not hold.");
             }
 
             if ($value === null) {

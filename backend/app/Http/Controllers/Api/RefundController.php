@@ -69,9 +69,13 @@ class RefundController extends Controller
                 ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
                 ->value('total_laar') ?? 0);
 
-            $alreadyRefundedLaar = (int) round(
-                (float) $order->refunds()->where('status', '!=', 'rejected')->sum('amount') * 100,
-            );
+            // Aggregate prior refunds in integer laari to avoid float-precision
+            // off-by-cent rejections on long refund histories. ROUND on the
+            // way in pins each row to a whole cent before SUMming.
+            $alreadyRefundedLaar = (int) $order->refunds()
+                ->where('status', '!=', 'rejected')
+                ->selectRaw('COALESCE(SUM(ROUND(amount * 100)), 0) as total_laar')
+                ->value('total_laar');
 
             // Defense in depth: keep the historical order-total cap as a second
             // bound so an over-collected payment (unusual) still can't refund
@@ -100,9 +104,19 @@ class RefundController extends Controller
             // never paid for would be wrong.
             $isFullRefund = ($amountLaar + $alreadyRefundedLaar >= $refundableLaar) && $refundableLaar > 0;
 
+            // Partial refunds now flip the order to `partially_refunded` instead
+            // of leaving it as `paid`. Reports + receipt summaries downstream
+            // can short-circuit on this status to render the right thing.
             if ($isFullRefund) {
                 $order->update(['status' => 'refunded']);
+            } elseif ($amountLaar > 0) {
+                // Don't override a more terminal state (cancelled / refunded).
+                if (!in_array($order->status, ['cancelled', 'refunded'], true)) {
+                    $order->update(['status' => 'partially_refunded']);
+                }
+            }
 
+            if ($isFullRefund) {
                 // Restore stock for each line item. Idempotent: StockMovement
                 // unique key blocks any double-restore.
                 $stockService = app(StockManagementService::class);

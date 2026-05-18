@@ -34,6 +34,19 @@
         $logoUrl = \App\Models\SiteSetting::get('logo', '');
         $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
         $discount = (float) ($order->discount_amount ?? 0);
+
+        // BLD-002: partial / full refunds were silently absent from
+        // the customer receipt. The grand total still showed the
+        // pre-refund amount, which contradicted the SMS and led to
+        // chargeback disputes. Pull refund totals from the relation
+        // (Order hasMany Refund) and render a dedicated section.
+        $refunds = $order->refunds ?? collect();
+        $refundedTotal = (float) $refunds->sum('amount');
+        $isPartiallyRefunded = $refundedTotal > 0.0001
+            && in_array($order->status ?? '', ['partially_refunded', 'partial_refund'], true);
+        $isFullyRefunded = $refundedTotal > 0.0001
+            && in_array($order->status ?? '', ['refunded'], true);
+        $netTotal = max(0, (float) $order->total - $refundedTotal);
     @endphp
     <title>{{ $siteName }} — {{ $docTitle }} {{ $order->order_number ?? '' }}</title>
     <style>
@@ -75,6 +88,26 @@
         .alert { padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; font-size: 0.9rem; }
         .alert-success { background: var(--ok-bg); color: #166534; border: 1px solid var(--ok-border); }
         .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .refund-row { color: #b91c1c; font-weight: 700; }
+        .refund-row span:first-child { color: #b91c1c; }
+
+        /* BLD-001: Print stylesheet.
+           Pre-fix `window.print()` and "Download PDF" both rendered
+           page chrome (background, action buttons, the feedback form,
+           the colored banner) which wasted ink and produced a
+           ridiculous-looking customer receipt. Strip everything
+           non-receipt and force black ink on white paper. */
+        @media print {
+            body { background: #fff; padding: 0; }
+            .wrap { max-width: 100%; }
+            .card { box-shadow: none; border: none; border-radius: 0; padding: 8px; }
+            .actions,
+            .feedback,
+            .alert,
+            .banner { display: none !important; }
+            .totals .grand { color: var(--ink); }
+            * { color: var(--ink) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
@@ -150,6 +183,10 @@
                     <p><span>Discount</span><span>− MVR {{ number_format($discount, 2) }}</span></p>
                 @endif
                 <p class="grand"><span>Total</span><span>MVR {{ number_format((float) $order->total, 2) }}</span></p>
+                @if ($refundedTotal > 0.0001)
+                    <p class="refund-row"><span>Refunded</span><span>− MVR {{ number_format($refundedTotal, 2) }}</span></p>
+                    <p class="grand"><span>{{ $isFullyRefunded ? 'Refunded total' : 'Amount you paid' }}</span><span>MVR {{ number_format($netTotal, 2) }}</span></p>
+                @endif
             </div>
 
             @if ($isPaid && $order->payments->count() > 0)

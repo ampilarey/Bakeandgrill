@@ -138,8 +138,13 @@ function App() {
   const refreshOpenTickets = useCallback(async () => {
     if (!isLoggedIn || deviceStatus !== "approved") return;
     try {
-      const res = await fetchReceipts({ held_only: true, device_identifier: deviceId, per_page: 50 });
-      setOpenTicketsCount(res.data.length);
+      // Use pagination metadata for the actual total — the badge was
+      // showing `res.data.length` (capped to per_page=50) so a busy
+      // station with 60+ parked tickets was permanently stuck at
+      // "50" even after settling some. Pagination total is the truth.
+      const res = await fetchReceipts({ held_only: true, device_identifier: deviceId, per_page: 1 });
+      const total = (res as { meta?: { total?: number } }).meta?.total ?? res.data.length;
+      setOpenTicketsCount(total);
     } catch { /* best-effort */ }
   }, [isLoggedIn, deviceStatus, deviceId]);
 
@@ -217,16 +222,34 @@ function App() {
   useEffect(() => {
     if (!isLoggedIn) return;
     if (deviceStatus !== 'pending' && deviceStatus !== 'approved') return;
-    const cadence = deviceStatus === 'approved' ? 20000 : 4000;
-    const interval = setInterval(() => {
+    const baseCadence = deviceStatus === 'approved' ? 20000 : 4000;
+    let cadence = baseCadence;
+    let consecutiveFailures = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = () => {
       void (async () => {
         try {
           const s = await selfDeviceStatus(deviceId);
           applyDeviceStatus(s.status, s.is_active);
-        } catch { /* network blip — retry next tick */ }
+          // Success — reset cadence to the steady-state value.
+          consecutiveFailures = 0;
+          cadence = baseCadence;
+        } catch {
+          // Exponential backoff capped at 5 minutes so a long offline
+          // window doesn't hammer the network every 4 seconds. The
+          // foreground UI is already grey on a network blip; an
+          // occasional retry is enough.
+          consecutiveFailures += 1;
+          cadence = Math.min(baseCadence * 2 ** consecutiveFailures, 300000);
+        } finally {
+          timer = setTimeout(tick, cadence);
+        }
       })();
-    }, cadence);
-    return () => clearInterval(interval);
+    };
+
+    timer = setTimeout(tick, cadence);
+    return () => { if (timer) clearTimeout(timer); };
   }, [isLoggedIn, deviceId, deviceStatus]);
 
   // ── Login handler ───────────────────────────────────────────────────────────
@@ -635,6 +658,7 @@ function App() {
         {pane === 'open_tickets' && (
           <OpenTicketsPanel
             deviceId={deviceId}
+            cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             onClose={() => setPane("sales")}
             onResume={(t) => {
               void order.handleResumeTicket(t.id).then(() => {

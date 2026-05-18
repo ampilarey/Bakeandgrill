@@ -22,12 +22,47 @@ export class OfflineQueueFullError extends Error {
   }
 }
 
+const CORRUPT_BACKUP_KEY = "pos_offline_queue.corrupt";
+
+/**
+ * Read + validate the queue. Anything malformed (bad JSON, not an array,
+ * entries missing id/createdAt/payload) is treated as corruption: the
+ * raw value is moved to a sibling key for forensic review so we don't
+ * silently destroy queued orders, and an empty queue is returned so
+ * the POS can continue operating.
+ *
+ * Pre-fix this was `JSON.parse → return []` with no validation — a
+ * single corrupt entry would cause the entire queue to silently
+ * disappear with no audit trail.
+ */
 function readQueue(): QueueEntry[] {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as QueueEntry[];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error("not an array");
+    }
+    const valid: QueueEntry[] = [];
+    for (const entry of parsed) {
+      if (
+        entry
+        && typeof entry === "object"
+        && typeof (entry as QueueEntry).id === "string"
+        && typeof (entry as QueueEntry).createdAt === "string"
+        && (entry as QueueEntry).payload
+      ) {
+        valid.push(entry as QueueEntry);
+      }
+    }
+    // If we dropped entries during validation, preserve the original
+    // raw value so an operator can recover orders manually.
+    if (valid.length !== parsed.length) {
+      try { localStorage.setItem(CORRUPT_BACKUP_KEY, raw); } catch { /* quota */ }
+    }
+    return valid;
   } catch {
+    try { localStorage.setItem(CORRUPT_BACKUP_KEY, raw); } catch { /* quota */ }
     return [];
   }
 }

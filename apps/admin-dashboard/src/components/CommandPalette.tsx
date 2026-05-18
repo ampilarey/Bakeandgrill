@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { fetchOrders, fetchStaff } from '../api';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
 type Result = {
   id: string;
@@ -11,33 +12,40 @@ type Result = {
   action: () => void;
 };
 
-const STATIC_LINKS: Result[] = [
-  { id: 's-dashboard',   label: 'Dashboard',           icon: '🏠', sub: 'Overview', action: () => {} },
-  { id: 's-orders',      label: 'Orders',              icon: '📋', sub: 'Manage orders', action: () => {} },
-  { id: 's-kds',         label: 'Kitchen Display',     icon: '👨‍🍳', sub: 'KDS screen', action: () => {} },
-  { id: 's-menu',        label: 'Menu',                icon: '🍽️', sub: 'Manage menu items', action: () => {} },
-  { id: 's-staff',       label: 'Staff',               icon: '👥', sub: 'Manage team', action: () => {} },
-  { id: 's-inventory',   label: 'Inventory',           icon: '📦', sub: 'Stock levels', action: () => {} },
-  { id: 's-reports',     label: 'Reports',             icon: '📊', sub: 'Sales & analytics', action: () => {} },
-  { id: 's-invoices',    label: 'Invoices',            icon: '🧾', sub: 'Billing', action: () => {} },
-  { id: 's-expenses',    label: 'Expenses',            icon: '💸', sub: 'Operating costs', action: () => {} },
-  { id: 's-customers',   label: 'Customers',           icon: '🙋', sub: 'Customer database', action: () => {} },
-  { id: 's-loyalty',     label: 'Loyalty',             icon: '⭐', sub: 'Points & rewards', action: () => {} },
-  { id: 's-promotions',  label: 'Promotions',          icon: '🏷️', sub: 'Discounts & offers', action: () => {} },
-  { id: 's-giftcards',   label: 'Gift Cards',          icon: '🎁', sub: 'Issue & manage cards', action: () => {} },
-  { id: 's-settings',    label: 'Settings',            icon: '⚙️', sub: 'System configuration', action: () => {} },
-  { id: 's-shifts',      label: 'Shifts & Cash',       icon: '💰', sub: 'Cash drawer', action: () => {} },
-  { id: 's-delivery',    label: 'Delivery',            icon: '🛵', sub: 'Delivery orders', action: () => {} },
-  { id: 's-waste',       label: 'Waste Tracking',      icon: '🗑️', sub: 'Log waste', action: () => {} },
-  { id: 's-pnl',         label: 'Profit & Loss',       icon: '📈', sub: 'Financial summary', action: () => {} },
-  { id: 's-purchases',   label: 'Purchase Orders',     icon: '🛒', sub: 'Supplier orders', action: () => {} },
-  { id: 's-tables',      label: 'Tables',              icon: '🪑', sub: 'Table management', action: () => {} },
-  { id: 's-reservations',label: 'Reservations',        icon: '📅', sub: 'Bookings', action: () => {} },
-  { id: 's-specials',    label: 'Daily Specials',      icon: '✨', sub: 'Today\'s specials', action: () => {} },
-  { id: 's-refunds',     label: 'Refunds',             icon: '↩️', sub: 'Process refunds', action: () => {} },
-  { id: 's-reviews',     label: 'Reviews',             icon: '⭐', sub: 'Customer reviews', action: () => {} },
-  { id: 's-analytics',   label: 'Analytics',           icon: '📉', sub: 'Advanced analytics', action: () => {} },
-  { id: 's-sms',         label: 'SMS Campaigns',       icon: '📱', sub: 'Messaging', action: () => {} },
+type StaticLink = Omit<Result, 'action'> & {
+  /** Permission required to see this link in the palette. Same gate
+   *  as the sidebar nav — if the user can't navigate there from the
+   *  sidebar, they shouldn't be able to jump there from Cmd-K either. */
+  permission?: string;
+};
+
+const STATIC_LINKS: StaticLink[] = [
+  { id: 's-dashboard',   label: 'Dashboard',           icon: '🏠', sub: 'Overview',              permission: 'dashboard.view' },
+  { id: 's-orders',      label: 'Orders',              icon: '📋', sub: 'Manage orders',         permission: 'orders.view' },
+  { id: 's-kds',         label: 'Kitchen Display',     icon: '👨‍🍳', sub: 'KDS screen',           permission: 'orders.view' },
+  { id: 's-menu',        label: 'Menu',                icon: '🍽️', sub: 'Manage menu items',     permission: 'menu.view' },
+  { id: 's-staff',       label: 'Staff',               icon: '👥', sub: 'Manage team',           permission: 'staff.view' },
+  { id: 's-inventory',   label: 'Inventory',           icon: '📦', sub: 'Stock levels',          permission: 'inventory.manage' },
+  { id: 's-reports',     label: 'Reports',             icon: '📊', sub: 'Sales & analytics',     permission: 'reports.view' },
+  { id: 's-invoices',    label: 'Invoices',            icon: '🧾', sub: 'Billing',               permission: 'finance.invoices' },
+  { id: 's-expenses',    label: 'Expenses',            icon: '💸', sub: 'Operating costs',       permission: 'finance.expenses' },
+  { id: 's-customers',   label: 'Customers',           icon: '🙋', sub: 'Customer database',     permission: 'customers.manage' },
+  { id: 's-loyalty',     label: 'Loyalty',             icon: '⭐', sub: 'Points & rewards',      permission: 'loyalty.manage' },
+  { id: 's-promotions',  label: 'Promotions',          icon: '🏷️', sub: 'Discounts & offers',   permission: 'promotions.manage' },
+  { id: 's-giftcards',   label: 'Gift Cards',          icon: '🎁', sub: 'Issue & manage cards',  permission: 'promotions.manage' },
+  { id: 's-settings',    label: 'Settings',            icon: '⚙️', sub: 'System configuration', permission: 'website.manage' },
+  { id: 's-shifts',      label: 'Shifts & Cash',       icon: '💰', sub: 'Cash drawer',           permission: 'orders.view' },
+  { id: 's-delivery',    label: 'Delivery',            icon: '🛵', sub: 'Delivery orders',       permission: 'delivery.view' },
+  { id: 's-waste',       label: 'Waste Tracking',      icon: '🗑️', sub: 'Log waste',            permission: 'menu.manage' },
+  { id: 's-pnl',         label: 'Profit & Loss',       icon: '📈', sub: 'Financial summary',     permission: 'finance.profit_loss' },
+  { id: 's-purchases',   label: 'Purchase Orders',     icon: '🛒', sub: 'Supplier orders',       permission: 'suppliers.purchases' },
+  { id: 's-tables',      label: 'Tables',              icon: '🪑', sub: 'Table management',      permission: 'orders.view' },
+  { id: 's-reservations',label: 'Reservations',        icon: '📅', sub: 'Bookings',              permission: 'reservations.view' },
+  { id: 's-specials',    label: 'Daily Specials',      icon: '✨', sub: "Today's specials",      permission: 'menu.manage' },
+  { id: 's-refunds',     label: 'Refunds',             icon: '↩️', sub: 'Process refunds',       permission: 'orders.refund' },
+  { id: 's-reviews',     label: 'Reviews',             icon: '⭐', sub: 'Customer reviews',      permission: 'customers.manage' },
+  { id: 's-analytics',   label: 'Analytics',           icon: '📉', sub: 'Advanced analytics',    permission: 'customers.analytics' },
+  { id: 's-sms',         label: 'SMS Campaigns',       icon: '📱', sub: 'Messaging',             permission: 'integrations.sms' },
 ];
 
 const PAGE_ROUTES: Record<string, string> = {
@@ -59,6 +67,7 @@ interface Props {
 
 export function CommandPalette({ open, onClose }: Props) {
   const navigate = useNavigate();
+  const { can } = useCurrentUserPermissions();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,10 +96,15 @@ export function CommandPalette({ open, onClose }: Props) {
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  // Build static results with navigation actions
+  // Build static results with navigation actions, filtered by what
+  // the user can actually access. Without this filter the palette
+  // happily lets a staff cashier jump to /finance/profit-loss, only
+  // for the route guard to reject them mid-navigation — confusing
+  // and exposes feature names they shouldn't be aware of.
   const buildStatic = (q: string): Result[] => {
     const lower = q.toLowerCase();
     return STATIC_LINKS
+      .filter((l) => can(l.permission))
       .filter((l) => !q || l.label.toLowerCase().includes(lower) || (l.sub ?? '').toLowerCase().includes(lower))
       .slice(0, q ? 6 : 8)
       .map((l) => ({

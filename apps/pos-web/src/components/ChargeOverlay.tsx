@@ -25,6 +25,15 @@ const METHOD_LABEL: Record<ChargeMethod, string> = {
 export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) {
   const [method, setMethod] = useState<ChargeMethod>("cash");
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
+  /**
+   * Split-tender mode. When on, the cashier enters how much is being
+   * collected on the selected non-cash method; the remainder is
+   * automatically billed to cash. Two rows total — POS-019 audit
+   * called out that the pre-fix overlay accepted an array but only
+   * ever sent one row, dropping all split-payment intent on the floor.
+   */
+  const [split, setSplit] = useState(false);
+  const [splitAmount, setSplitAmount] = useState<string>("");
 
   // Reset the received-amount input whenever the total or method changes —
   // otherwise a stale value from a prior order can linger.
@@ -59,12 +68,33 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
     return Array.from(set).filter((v) => v >= total).sort((a, b) => a - b).slice(0, 6);
   }, [total]);
 
+  const splitNum = Number.parseFloat(splitAmount);
+  const splitValid =
+    split
+    && method !== "cash"
+    && Number.isFinite(splitNum)
+    && splitNum > 0
+    && splitNum < total;
+
   const confirm = async () => {
+    // Split tender: send TWO rows — the requested non-cash portion +
+    // the remainder as cash. settleOrder() already top-ups any
+    // shortfall with cash, but being explicit here means the server
+    // sees the actual split the cashier chose, which is what shows up
+    // in the day's tender breakdown report.
+    if (splitValid) {
+      const rest = +(total - splitNum).toFixed(2);
+      await onConfirm([
+        { method, amount: splitNum },
+        { method: "cash", amount: rest },
+      ]);
+      return;
+    }
     if (!enough) return;
     const amount = method === "cash"
       ? Math.max(total, receivedNum) // record what the cashier collected
       : total;
-    // We only send `total` to the payments endpoint though; over-tender
+    // We only send `total` to the payments endpoint; over-tender
     // is "change given" which the server doesn't store as a separate row.
     await onConfirm([{ method, amount: total }]);
     void amount;
@@ -152,6 +182,48 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
               </div>
             </div>
 
+            {method !== "cash" && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 12px", borderRadius: 10, background: "#fff",
+                border: "1px solid #E2E8F0",
+              }}>
+                <input
+                  type="checkbox" id="split-tender" checked={split}
+                  onChange={(e) => setSplit(e.target.checked)}
+                  style={{ width: 18, height: 18, cursor: "pointer" }}
+                />
+                <label htmlFor="split-tender" style={{
+                  fontSize: 13, color: "#0F172A", fontWeight: 600, cursor: "pointer",
+                }}>
+                  Split with cash
+                </label>
+              </div>
+            )}
+
+            {split && method !== "cash" && (
+              <div>
+                <p style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
+                <input
+                  value={splitAmount}
+                  onChange={(e) => setSplitAmount(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "14px 16px", borderRadius: 10,
+                    border: "1px solid #CBD5E1", fontSize: 28, fontWeight: 700,
+                    textAlign: "right", background: "#fff",
+                  }}
+                />
+                {splitValid && (
+                  <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748B" }}>
+                    + MVR {(total - splitNum).toFixed(2)} cash
+                  </p>
+                )}
+              </div>
+            )}
+
             {method === "cash" && (
               <>
                 <div>
@@ -192,7 +264,7 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
               </>
             )}
 
-            {method !== "cash" && (
+            {method !== "cash" && !split && (
               <div style={{
                 padding: 14, borderRadius: 10, background: "#fff",
                 border: "1px solid #E2E8F0", fontSize: 13, color: "#475569",
@@ -215,9 +287,9 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
             background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
             fontWeight: 600, fontSize: 15, cursor: "pointer",
           }}>Cancel</button>
-          <button onClick={confirm} disabled={!enough || submitting} style={{
+          <button onClick={confirm} disabled={(!enough && !splitValid) || submitting} style={{
             flex: 2, padding: "14px 18px", borderRadius: 12,
-            background: !enough || submitting ? "#A7F3D0" : "#10B981",
+            background: (!enough && !splitValid) || submitting ? "#A7F3D0" : "#10B981",
             color: "#fff", border: "none",
             fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
             cursor: !enough || submitting ? "not-allowed" : "pointer",

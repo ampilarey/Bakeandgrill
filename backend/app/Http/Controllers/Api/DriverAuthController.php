@@ -9,6 +9,7 @@ use App\Models\DeliveryDriver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class DriverAuthController extends Controller
 {
@@ -25,13 +26,30 @@ class DriverAuthController extends Controller
             'pin' => ['required', 'string', 'min:4', 'max:6'],
         ]);
 
+        // Brute-force shield: 5 attempts per (phone + IP) per 5 minutes.
+        // Driver PINs are 4-6 digits — without this gate, a single IP can
+        // exhaust a 4-digit keyspace (10k) in seconds at modern throughput.
+        // Key on phone+IP (not just IP) so one attacker enumerating multiple
+        // numbers from the same IP is still capped per-number, and one user
+        // on a NATed mobile network isn't punished for unrelated traffic.
+        $key = 'driver-pin:' . sha1(strtolower($validated['phone']) . '|' . $request->ip());
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $retryAfter = RateLimiter::availableIn($key);
+            return response()->json([
+                'message' => "Too many attempts. Try again in {$retryAfter} seconds.",
+            ], 429);
+        }
+
         $driver = DeliveryDriver::where('phone', $validated['phone'])
             ->where('is_active', true)
             ->first();
 
         if (!$driver || !$driver->pin || !Hash::check($validated['pin'], $driver->pin)) {
+            RateLimiter::hit($key, 300); // 5-minute window
             return response()->json(['message' => 'Invalid phone number or PIN.'], 401);
         }
+
+        RateLimiter::clear($key);
 
         // Revoke old driver tokens to prevent accumulation
         $driver->tokens()->delete();

@@ -22,12 +22,41 @@ const TYPE_COLORS: Record<string, string> = {
   custom: 'gray',
 };
 
+// Mirrors backend SmsService::detectEncoding / calculateSegments so the
+// admin's character counter agrees with what the carrier will actually
+// bill. The pre-fix heuristic was a Latin-1 + Greek range regex which
+// approves chars (like Ø, Å, ñ) that ARE in GSM-7 but rejects extension
+// chars (^{}[~]|€) that cost two septets each. Both errors made the
+// segment estimate wrong by 1-2 on common messages.
+
+// Base GSM 03.38 alphabet — one septet each.
+const GSM7_BASE = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1BÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+// GSM 03.38 extension table — two septets each.
+const GSM7_EXT = "^{}\\[~]|€";
+
+function isAllGsm7(body: string): boolean {
+  for (const ch of body) {
+    if (!GSM7_BASE.includes(ch) && !GSM7_EXT.includes(ch)) return false;
+  }
+  return true;
+}
+function gsm7Septets(body: string): number {
+  let n = 0;
+  for (const ch of body) n += GSM7_EXT.includes(ch) ? 2 : 1;
+  return n;
+}
+
 function charCount(body: string): { chars: number; segments: number; encoding: string } {
-  const isUnicode = /[^\u0000-\u007F\u00A0-\u00FF\u20AC\u0391-\u03C9]/.test(body);
-  const chars = body.length;
-  const limit = isUnicode ? 70 : 160;
-  const segments = chars === 0 ? 0 : Math.ceil(chars / limit);
-  return { chars, segments, encoding: isUnicode ? 'Unicode' : 'GSM-7' };
+  const gsm = isAllGsm7(body);
+  const chars = [...body].length; // code-point count, not UTF-16 length
+  if (chars === 0) return { chars: 0, segments: 0, encoding: gsm ? 'GSM-7' : 'Unicode' };
+  if (gsm) {
+    const septets = gsm7Septets(body);
+    const segments = septets <= 160 ? 1 : Math.ceil(septets / 153);
+    return { chars: septets, segments, encoding: 'GSM-7' };
+  }
+  const segments = chars <= 70 ? 1 : Math.ceil(chars / 67);
+  return { chars, segments, encoding: 'Unicode' };
 }
 
 export function TemplatesTab() {

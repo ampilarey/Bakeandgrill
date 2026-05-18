@@ -65,8 +65,15 @@ export function TimeClockPanel({ deviceId, onBack }: Props) {
   // as soon as the punch is recorded so the next staffer must re-enter
   // their PIN. Crucially we never write the token to localStorage so the
   // POS-login flow is unaffected.
+  //
+  // Pre-fix bug: cleanup() set _token to null, which silently logged out
+  // any cashier who was already signed in on this device — the user
+  // would tap "Time Clock", a coworker would punch in, and on return
+  // the POS would 401 on the next request. Now we restore the prior
+  // pos_token from localStorage so the original session keeps working.
   const cleanup = () => {
-    setAuthToken(null);
+    const prior = localStorage.getItem("pos_token");
+    setAuthToken(prior);
     setPin("");
   };
 

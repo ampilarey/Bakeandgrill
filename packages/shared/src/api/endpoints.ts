@@ -127,4 +127,32 @@ export const ENDPOINTS = {
   ADMIN_ANALYTICS_PROFITABILITY: '/admin/analytics/profitability',
   ADMIN_ANALYTICS_FORECAST:     '/admin/analytics/forecast',
   ADMIN_ANALYTICS_CUSTOMER_LTV: '/admin/analytics/customer-ltv',
+
+  // SHR-002: keep these in sync as the API surface evolves. If you
+  // hard-code a URL anywhere in apps/*, add the entry here first so
+  // we have one place to look when the backend renames a route.
+
+  // Gift cards (customer-side)
+  GIFT_CARD_BALANCE:        (code: string) => `/gift-cards/${encodeURIComponent(code)}/balance`,
+  ORDER_APPLY_GIFT_CARD:    (orderId: number) => `/orders/${orderId}/apply-gift-card`,
+  ORDER_REMOVE_GIFT_CARD:   (orderId: number) => `/orders/${orderId}/gift-card`,
+
+  // Referrals (customer)
+  CUSTOMER_REFERRAL_CODE:   '/customer/referral-code',
+
+  // Refunds (admin-side)
+  REFUNDS:                  '/refunds',
+  REFUND_BY_ID:             (id: number) => `/refunds/${id}`,
+  ORDER_REFUNDS:            (orderId: number) => `/orders/${orderId}/refunds`,
+
+  // Order ops
+  ORDER_HOLD:               (id: number) => `/orders/${id}/hold`,
+  ORDER_RESUME:             (id: number) => `/orders/${id}/resume`,
+  ORDER_PAYMENTS:           (id: number) => `/orders/${id}/payments`,
+
+  // Devices
+  DEVICES:                  '/devices',
+  DEVICE_REGISTER:          '/devices/register',
+  DEVICE_DISABLE:           (id: number) => `/devices/${id}/disable`,
+  DEVICE_ENABLE:            (id: number) => `/devices/${id}/enable`,
 } as const;

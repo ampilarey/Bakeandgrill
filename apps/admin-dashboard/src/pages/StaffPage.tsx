@@ -9,6 +9,7 @@ import { SchedulesTab } from './StaffPage/SchedulesTab';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { Toggle, useToast } from '../components/ui';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -494,6 +495,12 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
 
 export function StaffPage() {
     usePageTitle('Staff');
+  const { can } = useCurrentUserPermissions();
+  // Schedules tab calls /admin/schedules which is gated on staff.manage
+  // server-side. Surfacing the tab to viewers who only have staff.view
+  // led to a confusing UI where every action returned a 403; now the
+  // tab is hidden entirely from users who can't actually use it.
+  const canManageStaff = can('staff.manage');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [activeTab, setActiveTab] = useState<'staff' | 'schedules'>('staff');
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -578,16 +585,18 @@ export function StaffPage() {
       <PageHeader
         title="Staff Management"
         subtitle="Manage staff accounts and PINs"
-        action={activeTab === 'staff' ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
+        action={activeTab === 'staff' && canManageStaff ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
       />
 
-      {/* Tab switcher */}
+      {/* Tab switcher — schedules tab hidden when user can't manage staff */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         <button style={tabStyle(activeTab === 'staff')} onClick={() => setActiveTab('staff')}>Staff</button>
-        <button style={tabStyle(activeTab === 'schedules')} onClick={() => setActiveTab('schedules')}>Schedules</button>
+        {canManageStaff && (
+          <button style={tabStyle(activeTab === 'schedules')} onClick={() => setActiveTab('schedules')}>Schedules</button>
+        )}
       </div>
 
-      {activeTab === 'schedules' && <SchedulesTab staff={staff} />}
+      {activeTab === 'schedules' && canManageStaff && <SchedulesTab staff={staff} />}
 
       {activeTab === 'staff' && (
         <>
@@ -630,17 +639,30 @@ export function StaffPage() {
                     {timeAgo(m.last_login_at)}
                   </td>
                   <td style={TD}>
+                    {/* Row-action permissions: every mutation button only renders
+                        for users who can actually perform it. Viewers see a
+                        read-only row instead of a wall of buttons that all 403. */}
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <Btn small variant="secondary" onClick={() => setEditing(m)}>Edit</Btn>
-                      <Btn small variant="ghost" onClick={() => setChangingPin(m)}>PIN</Btn>
-                      <Btn small variant="ghost" onClick={() => handleToggleActive(m)}>
-                        {m.is_active ? 'Disable' : 'Enable'}
-                      </Btn>
-                      {m.role !== 'owner' && (
+                      {canManageStaff && (
+                        <Btn small variant="secondary" onClick={() => setEditing(m)}>Edit</Btn>
+                      )}
+                      {canManageStaff && (
+                        <Btn small variant="ghost" onClick={() => setChangingPin(m)}>PIN</Btn>
+                      )}
+                      {canManageStaff && (
+                        <Btn small variant="ghost" onClick={() => handleToggleActive(m)}>
+                          {m.is_active ? 'Disable' : 'Enable'}
+                        </Btn>
+                      )}
+                      {m.role !== 'owner' && can('permissions.manage') && (
                         <Btn small variant="ghost" onClick={() => setPermissionsUser(m)}>Permissions</Btn>
                       )}
-                      <Btn small variant="ghost" onClick={() => setNotifPrefsUser(m)}>SMS Prefs</Btn>
-                      <Btn small variant="danger" onClick={() => handleDelete(m)}>Remove</Btn>
+                      {canManageStaff && (
+                        <Btn small variant="ghost" onClick={() => setNotifPrefsUser(m)}>SMS Prefs</Btn>
+                      )}
+                      {canManageStaff && (
+                        <Btn small variant="danger" onClick={() => handleDelete(m)}>Remove</Btn>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -165,7 +165,15 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
       showToast(`${label} done.`);
       reload();
       onOrderUpdated();
-    } catch (e) { setActionErr((e as Error).message); }
+    } catch (e) {
+      // Surface failures as a toast in addition to the inline error
+      // banner — the inline banner sits below the buttons and is easy
+      // to miss when the drawer is scrolled, so cashiers were
+      // re-clicking actions thinking nothing happened.
+      const msg = (e as Error).message;
+      setActionErr(msg);
+      showToast(`${label} failed: ${msg}`);
+    }
     finally { setActing(''); }
   };
 
@@ -184,7 +192,11 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
       setPayRows([{ method: 'cash', amount: '' }]);
       reload();
       onOrderUpdated();
-    } catch (e) { setActionErr((e as Error).message); }
+    } catch (e) {
+      const msg = (e as Error).message;
+      setActionErr(msg);
+      showToast(`Payment failed: ${msg}`);
+    }
     finally { setPaymentSaving(false); }
   };
 
@@ -506,7 +518,11 @@ export function OrdersPage() {
       setOrders(res.data ?? []);
       setTotalPages(res.meta?.last_page ?? 1);
     } catch (e) {
-      setError((e as Error).message);
+      // Don't silently leave an empty list — the inline error banner
+      // tells the user what went wrong (network, 401, 500) instead of
+      // a deceptive "No orders match your filters." empty state.
+      setError(`Failed to load orders: ${(e as Error).message}`);
+      setOrders([]);
     } finally {
       setLoading(false);
     }

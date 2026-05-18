@@ -12,7 +12,7 @@ class PreOrder extends Model
     protected $fillable = [
         'order_number', 'customer_id', 'customer_name', 'customer_phone',
         'customer_email', 'fulfillment_date', 'preparation_start',
-        'items', 'subtotal', 'total', 'status',
+        'items', 'subtotal', 'tax_amount', 'total', 'status',
         'approved_by', 'approved_at',
         'customer_notes', 'staff_notes', 'cancellation_reason',
     ];
@@ -20,6 +20,7 @@ class PreOrder extends Model
     protected $casts = [
         'items' => 'array',
         'subtotal' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
         'fulfillment_date' => 'datetime',
         'preparation_start' => 'datetime',

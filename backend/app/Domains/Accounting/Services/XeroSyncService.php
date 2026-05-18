@@ -36,9 +36,26 @@ class XeroSyncService
 
     /**
      * Push a local Invoice to Xero as an Invoice record.
+     *
+     * Idempotent: if a prior successful push already produced a Xero ID for
+     * this invoice, the call is a no-op. This protects against retries
+     * (queue jobs, manual button mashes, listener replays) creating
+     * duplicate AR documents in Xero — there's no native dedupe key on the
+     * Xero side once it's accepted.
      */
     public function pushInvoice(Invoice $invoice): void
     {
+        $existing = XeroSyncLog::where('resource_type', 'invoice')
+            ->where('resource_id', $invoice->id)
+            ->where('direction', 'push')
+            ->where('status', 'success')
+            ->whereNotNull('xero_id')
+            ->first();
+
+        if ($existing) {
+            return; // already pushed — do not double-create in Xero
+        }
+
         $tenantId = $this->tenantId();
         $headers = $this->headers($tenantId);
 
@@ -88,9 +105,23 @@ class XeroSyncService
 
     /**
      * Push a local Expense to Xero as a BankTransaction or SpendMoney record.
+     *
+     * Idempotent: see pushInvoice() for rationale. Once a Xero bank
+     * transaction ID has been recorded, subsequent pushes are no-ops.
      */
     public function pushExpense(Expense $expense): void
     {
+        $existing = XeroSyncLog::where('resource_type', 'expense')
+            ->where('resource_id', $expense->id)
+            ->where('direction', 'push')
+            ->where('status', 'success')
+            ->whereNotNull('xero_id')
+            ->first();
+
+        if ($existing) {
+            return;
+        }
+
         $tenantId = $this->tenantId();
         $headers = $this->headers($tenantId);
 

@@ -57,7 +57,21 @@
     <meta property="og:description" content="@yield('description', e($metaDesc))">
     <meta property="og:image" content="{{ $ogImage }}">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta name="twitter:card" content="summary">
+
+    {{-- BLD-003: Twitter card upgrade. `summary` shows a tiny thumb;
+         `summary_large_image` actually shows the OG image when shared
+         on X / iMessage / WhatsApp link previews and boosts CTR for
+         the menu/specials pages. --}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@yield('title', e($metaTitle))">
+    <meta name="twitter:description" content="@yield('description', e($metaDesc))">
+    <meta name="twitter:image" content="{{ $ogImage }}">
+
+    {{-- BLD-004: Canonical URL. Without it, the same page reachable
+         via /home, /index.php?lang=en, or /?utm_source=fb was getting
+         indexed multiple times by Google, splitting page-rank. Use
+         the current URL stripped of query string. --}}
+    <link rel="canonical" href="{{ url()->current() }}">
 
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">

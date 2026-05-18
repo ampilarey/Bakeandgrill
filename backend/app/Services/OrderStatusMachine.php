@@ -37,21 +37,27 @@ use App\Models\Order;
  *  paid     ─→ ready                 (KDS: bump, when skipping in_progress)
  *  paid     ─→ completed             (KDS: bump from ready when previously skipped to ready directly)
  *  paid     ─→ refunded              (Refund: full)
+ *  paid     ─→ partially_refunded    (Refund: partial — money already gone but not the whole ticket)
  *  paid     ─→ cancelled             (Admin cancel after payment — unusual)
  *
  *  partial  ─→ paid                  (remaining payment collected)
+ *  partial  ─→ partially_refunded    (Refund: partial against partial collection)
  *  partial  ─→ cancelled
+ *
+ *  partially_refunded ─→ refunded    (Further refund brings total to amount-paid cap)
  *
  *  in_progress ─→ ready              (KDS: bump)
  *  in_progress ─→ held               (POS: hold)
  *  in_progress ─→ cancelled
  *
  *  ready    ─→ completed             (KDS: bump from ready)
+ *  ready    ─→ in_progress           (KDS: recall — "I bumped that too early")
  *  ready    ─→ cancelled
  *
  *  held     ─→ pending               (POS: resume)
  *  held     ─→ cancelled
  *
+ *  completed ─→ in_progress          (KDS: recall — "the customer came back, redo it")
  *  completed ─→ refunded             (Refund: partial or full post-completion)
  *
  *  cancelled ─→ (terminal — no transitions out)
@@ -69,12 +75,13 @@ class OrderStatusMachine
         // orders back into the kitchen queue before KDS picks them up.
         'payment_pending' => ['paid', 'pending', 'cancelled'],
         'pending' => ['in_progress', 'ready', 'held', 'paid', 'partial', 'cancelled'],
-        'paid' => ['in_progress', 'ready', 'completed', 'refunded', 'cancelled'],
-        'partial' => ['paid', 'in_progress', 'cancelled'],
+        'paid' => ['in_progress', 'ready', 'completed', 'refunded', 'partially_refunded', 'cancelled'],
+        'partial' => ['paid', 'in_progress', 'partially_refunded', 'cancelled'],
         'in_progress' => ['ready', 'held', 'cancelled'],
-        'ready' => ['completed', 'cancelled'],
+        'ready' => ['completed', 'in_progress', 'cancelled'],
         'held' => ['pending', 'cancelled'],
-        'completed' => ['refunded'],
+        'completed' => ['in_progress', 'refunded', 'partially_refunded'],
+        'partially_refunded' => ['refunded'],
         'cancelled' => [],
         'refunded' => [],
     ];
@@ -82,7 +89,8 @@ class OrderStatusMachine
     /** All recognised statuses. */
     public const ALL_STATUSES = [
         'payment_pending', 'pending', 'paid', 'partial',
-        'in_progress', 'ready', 'held', 'completed', 'cancelled', 'refunded',
+        'in_progress', 'ready', 'held', 'completed',
+        'partially_refunded', 'cancelled', 'refunded',
     ];
 
     /**

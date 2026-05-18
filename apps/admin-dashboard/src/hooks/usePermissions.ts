@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getUserPermissions, type PermissionItem } from '../api';
+import { getMe, getUserPermissions, type PermissionItem, type StaffUser } from '../api';
 
 interface UsePermissionsResult {
   permissions: PermissionItem[];
@@ -44,4 +44,68 @@ export function usePermissions(userId: number | null, role?: string | null): Use
   }, [permissions, role]);
 
   return { permissions, loading, error, can, refresh: fetch };
+}
+
+// ── Current-user permissions helper ──────────────────────────────────────────
+// Single-flight cache for the active staff user so every consumer doesn't
+// trigger its own /auth/me request. Mirrored into module scope (not React
+// state) because the same data is needed across components that don't
+// share a context.
+
+let _meCache: StaffUser | null = null;
+let _mePromise: Promise<StaffUser> | null = null;
+const _meListeners = new Set<(u: StaffUser | null) => void>();
+
+function ensureMe(): Promise<StaffUser> {
+  if (_meCache) return Promise.resolve(_meCache);
+  if (_mePromise) return _mePromise;
+  _mePromise = getMe()
+    .then((res) => {
+      _meCache = res.user;
+      _mePromise = null;
+      _meListeners.forEach((l) => l(_meCache));
+      return _meCache;
+    })
+    .catch((err) => {
+      _mePromise = null;
+      throw err;
+    });
+  return _mePromise;
+}
+
+/**
+ * No-arg variant: returns helpers for the CURRENTLY logged-in staff user.
+ * Used by inline UI gates (sidebar nav, row actions, command palette)
+ * where we just need "can the active user do X?".
+ *
+ * Returns `can('permission.slug')` which is true for owners or for any
+ * user that has the explicit grant.
+ */
+export function useCurrentUserPermissions(): {
+  user: StaffUser | null;
+  loading: boolean;
+  can: (slug?: string) => boolean;
+} {
+  const [user, setUser] = useState<StaffUser | null>(_meCache);
+  const [loading, setLoading] = useState(_meCache === null);
+
+  useEffect(() => {
+    const sub = (u: StaffUser | null) => { setUser(u); setLoading(false); };
+    _meListeners.add(sub);
+    if (_meCache === null) {
+      ensureMe().then((u) => sub(u)).catch(() => setLoading(false));
+    } else {
+      sub(_meCache);
+    }
+    return () => { _meListeners.delete(sub); };
+  }, []);
+
+  const can = useCallback((slug?: string): boolean => {
+    if (!slug) return true;
+    if (!user) return false;
+    if (user.role === 'owner') return true;
+    return user.permissions?.includes(slug) ?? false;
+  }, [user]);
+
+  return { user, loading, can };
 }

@@ -126,12 +126,16 @@ class KdsController extends Controller
     {
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
-            if (!in_array($order->status, ['ready', 'completed'], true)) {
+
+            // Route recall through the state machine so the transition is
+            // whitelisted in one place. The machine permits
+            // ready→in_progress and completed→in_progress.
+            $machine = app(OrderStatusMachine::class);
+            if (!$machine->isAllowed($order->status, 'in_progress')) {
                 return ['error' => 'Only ready or completed orders can be recalled.'];
             }
 
             $oldStatus = $order->status;
-            // Recall from ready → back to in_progress; recall from completed → in_progress
             $order->update(['status' => 'in_progress', 'completed_at' => null]);
             app(AuditLogService::class)->log('order.recalled', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'in_progress'], ['source' => 'kds'], $request);
 

@@ -48,7 +48,7 @@ export interface CreditNote {
   created_at: string;
 }
 
-export async function getInvoices(params: { type?: string; status?: string; from?: string; to?: string; page?: number } = {}): Promise<{ data: Invoice[]; meta: { total: number; current_page: number; last_page: number } }> {
+export async function getInvoices(params: { type?: string; status?: string; from?: string; to?: string; page?: number; per_page?: number } = {}): Promise<{ data: Invoice[]; meta: { total: number; current_page: number; last_page: number } }> {
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
   return req(`/invoices?${q}`);
@@ -590,8 +590,11 @@ export interface PromotionReportItem {
   total_discount_laar: number;
 }
 
-export async function getPromotionReport(): Promise<{ report: PromotionReportItem[] }> {
-  return req('/reports/promotions');
+export async function getPromotionReport(params: { from?: string; to?: string } = {}): Promise<{ report: PromotionReportItem[] }> {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
+  const qs = q.toString();
+  return req(`/reports/promotions${qs ? `?${qs}` : ''}`);
 }
 
 // ── Loyalty Analytics ─────────────────────────────────────────────────────────
@@ -606,8 +609,11 @@ export interface LoyaltyReport {
   platinum_count: number;
 }
 
-export async function getLoyaltyReport(): Promise<{ report: LoyaltyReport }> {
-  return req('/reports/loyalty');
+export async function getLoyaltyReport(params: { from?: string; to?: string } = {}): Promise<{ report: LoyaltyReport }> {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
+  const qs = q.toString();
+  return req(`/reports/loyalty${qs ? `?${qs}` : ''}`);
 }
 
 // ── System Health ─────────────────────────────────────────────────────────────

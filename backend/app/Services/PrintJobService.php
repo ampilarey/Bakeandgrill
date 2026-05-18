@@ -12,6 +12,44 @@ use Illuminate\Support\Str;
 
 class PrintJobService
 {
+    /** Hard cap on automatic retries — manual operator action required beyond this. */
+    private const MAX_ATTEMPTS = 5;
+
+    /**
+     * Enqueue a kitchen reprint with an explicit reason suffix on the
+     * idempotency key so re-prints (e.g. POS resume with item changes)
+     * don't collapse into the original print job's idempotency window.
+     */
+    public function enqueueKitchen(Order $order, string $reason = 'initial'): void
+    {
+        $order->loadMissing('items.modifiers');
+
+        $printers = Printer::where('is_active', true)
+            ->whereIn('type', ['kitchen', 'bar'])
+            ->get();
+
+        foreach ($printers as $printer) {
+            $idempotencyKey = 'kitchen:' . $order->id . ':' . $printer->id . ':' . $reason;
+
+            $job = PrintJob::firstOrCreate(
+                ['idempotency_key' => $idempotencyKey],
+                [
+                    'order_id' => $order->id,
+                    'printer_id' => $printer->id,
+                    'type' => $printer->type,
+                    'status' => 'queued',
+                    'payload' => $this->buildKitchenPayload($order, $printer),
+                    'attempts' => 0,
+                    'last_error' => null,
+                ],
+            );
+
+            if ($job->status === 'queued') {
+                $this->sendJob($job);
+            }
+        }
+    }
+
     /**
      * Alias used by DispatchKitchenPrintListener.
      */
@@ -98,6 +136,22 @@ class PrintJobService
 
     public function retry(PrintJob $job): void
     {
+        // Hard cap so a stuck job (bad printer config, dead device) doesn't
+        // get retried forever every time someone hits Retry in the admin UI
+        // or the queue worker loops it. Manual operator action is needed
+        // to clear the failed state past this — they can edit the printer,
+        // null out the failure manually, or re-issue the print explicitly.
+        if ($job->attempts >= self::MAX_ATTEMPTS) {
+            $job->update([
+                'status' => 'failed_permanent',
+                'last_error' => sprintf(
+                    'Max retry attempts (%d) reached. Last error: %s',
+                    self::MAX_ATTEMPTS,
+                    $job->last_error ?? 'unknown',
+                ),
+            ]);
+            return;
+        }
         $job->update(['status' => 'queued', 'last_error' => null]);
         $this->sendJob($job);
     }

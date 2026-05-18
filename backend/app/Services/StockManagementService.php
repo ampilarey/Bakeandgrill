@@ -81,11 +81,15 @@ class StockManagementService
         // Floor at 0 — stock cannot go negative in the DB.
         // CASE WHEN is portable across SQLite, MySQL, and PostgreSQL.
         // We still log a warning so overselling can be investigated and corrected.
-        DB::table('items')
-            ->where('id', $item->id)
-            ->update([
-                'stock_quantity' => DB::raw("CASE WHEN stock_quantity >= {$quantity} THEN stock_quantity - {$quantity} ELSE 0 END"),
-            ]);
+        //
+        // Use parameter bindings even though $quantity is type-hinted int —
+        // defense in depth keeps us safe against future callers, type juggling
+        // bugs, or refactors that introduce a string path. The audit flagged
+        // string interpolation into DB::raw as a long-tail SQL-injection vector.
+        DB::update(
+            'UPDATE items SET stock_quantity = CASE WHEN stock_quantity >= ? THEN stock_quantity - ? ELSE 0 END WHERE id = ?',
+            [$quantity, $quantity, $item->id],
+        );
         $item->refresh();
 
         if ($item->stock_quantity === 0 && $quantity > 0) {
@@ -181,9 +185,12 @@ class StockManagementService
             return; // Don't spam alerts
         }
 
-        // Get managers and owners
+        // Seeded role slugs are owner / manager / staff — 'admin' is not a
+        // role in this codebase. Listing it here was harmless (it just never
+        // matched) but is misleading and breaks when a future migration
+        // renames anything. Use the seeded slugs only.
         $recipients = User::whereHas('role', function ($q) {
-            $q->whereIn('slug', ['owner', 'admin', 'manager']);
+            $q->whereIn('slug', ['owner', 'manager']);
         })->where('is_active', true)->get();
 
         $message = "LOW STOCK ALERT: {$item->name} is running low. Current stock: {$item->stock_quantity}. Threshold: {$item->low_stock_threshold}.";
@@ -248,11 +255,11 @@ class StockManagementService
             return;
         }
 
-        DB::table('variants')
-            ->where('id', $variant->id)
-            ->update([
-                'stock_qty' => DB::raw("CASE WHEN stock_qty >= {$quantity} THEN stock_qty - {$quantity} ELSE 0 END"),
-            ]);
+        // See deductPreparedStock() for rationale on the bound-parameter form.
+        DB::update(
+            'UPDATE variants SET stock_qty = CASE WHEN stock_qty >= ? THEN stock_qty - ? ELSE 0 END WHERE id = ?',
+            [$quantity, $quantity, $variant->id],
+        );
         $variant->refresh();
 
         if ($variant->stock_qty === 0 && $quantity > 0) {
