@@ -1,11 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchCategories, fetchItems } from "../api";
+import type { PosSalesChannel } from "../api";
 import type { Category, Item } from "../types";
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1500;
 
-export function useMenu(isLoggedIn: boolean) {
+/**
+ * Mirror of the admin's order-type → sales-channel mapping in
+ * `KitchenMenuResolver::channelForOrderType`. Keeps the POS aligned
+ * with the same channel constants the backend filters on, so an item
+ * the admin marked "Takeaway only" actually disappears when the
+ * cashier switches to Dine-in.
+ */
+function channelForOrderType(orderType: "Dine-in" | "Takeaway" | "Online Pickup"): PosSalesChannel {
+  if (orderType === "Dine-in") return "dine_in";
+  if (orderType === "Online Pickup") return "online_pickup";
+  return "takeaway";
+}
+
+export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" | "Online Pickup") {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
@@ -13,6 +27,8 @@ export function useMenu(isLoggedIn: boolean) {
   const [dataError, setDataError] = useState("");
   const attemptRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const channel = channelForOrderType(orderType);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -22,7 +38,10 @@ export function useMenu(isLoggedIn: boolean) {
     setDataError("");
 
     const load = () => {
-      Promise.all([fetchCategories(), fetchItems()])
+      // Categories are channel-agnostic (the API returns the whole tree)
+      // — only the items list is filtered. Refetching both keeps the
+      // selected category stable when the cashier flips order types.
+      Promise.all([fetchCategories(), fetchItems(channel)])
         .then(([cats, its]) => {
           setCategories(cats);
           setItems(its);
@@ -50,7 +69,7 @@ export function useMenu(isLoggedIn: boolean) {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, channel]);
 
   return {
     categories,

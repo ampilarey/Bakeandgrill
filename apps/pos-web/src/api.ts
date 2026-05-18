@@ -95,8 +95,29 @@ export async function fetchCategories(): Promise<Category[]> {
   return data.categories ?? data.data ?? [];
 }
 
-export async function fetchItems(): Promise<Item[]> {
-  const data = await request<{ data: Item[] }>("/items");
+/**
+ * POS sales-channel codes — match the values stored in
+ * `item_channel_availability.channel` on the backend. The cashier's
+ * selected order type maps to one of these so the menu only shows items
+ * the admin has flagged as orderable for that channel:
+ *
+ *   - dine_in       : in-restaurant ticket
+ *   - takeaway      : POS register counter takeaway
+ *   - online_pickup : item is also orderable online (POS sees it too)
+ *   - delivery      : delivery channel (rarely used at POS)
+ *
+ * Admins control this per-item in MenuPage → "Available on" toggles, so
+ * an item marked "Dine-in only" disappears from the POS menu when the
+ * cashier flips the order type to Takeaway. The whole machinery already
+ * existed in KitchenMenuResolver — the POS was just defaulting to
+ * `online_pickup` regardless of what the cashier was actually ringing,
+ * which is why the toggles felt invisible at the register.
+ */
+export type PosSalesChannel = "dine_in" | "takeaway" | "online_pickup" | "delivery";
+
+export async function fetchItems(channel?: PosSalesChannel): Promise<Item[]> {
+  const qs = channel ? `?channel=${encodeURIComponent(channel)}` : "";
+  const data = await request<{ data: Item[] }>(`/items${qs}`);
   return data.data ?? [];
 }
 
@@ -311,6 +332,49 @@ export async function applyGiftCardToOrder(
 
 export async function removeGiftCardFromOrder(orderId: number): Promise<{ message: string }> {
   return request(`/pos/orders/${orderId}/gift-card`, { method: "DELETE" });
+}
+
+/** Minimal "incoming online order" record used by the new-order toast.
+ *  Only the fields the cashier actually needs in the corner toast — full
+ *  order detail is fetched on demand when they click through. */
+export type IncomingOnlineOrder = {
+  id: number;
+  order_number: string;
+  status: string;
+  total: number;
+  customer_name: string | null;
+  customer_phone: string | null;
+  created_at: string;
+};
+
+/**
+ * Fetch the most recent online-pickup orders for the toast watcher. We
+ * poll this every ~30s, compare the highest id we've seen, and toast
+ * anything newer. Status filter excludes already-delivered orders so a
+ * stale handed-over order doesn't re-toast every refresh.
+ */
+export async function fetchRecentOnlineOrders(limit = 10): Promise<IncomingOnlineOrder[]> {
+  const res = await request<{
+    data: Array<{
+      id: number;
+      order_number: string;
+      status: string;
+      total: number | string;
+      created_at: string;
+      customer?: { name?: string | null; phone?: string | null } | null;
+    }>;
+  }>(
+    `/orders?type=online_pickup&status=paid,confirmed,preparing,ready&per_page=${limit}`,
+  );
+  return (res.data ?? []).map((o) => ({
+    id: o.id,
+    order_number: o.order_number,
+    status: o.status,
+    total: Number(o.total),
+    customer_name: o.customer?.name ?? null,
+    customer_phone: o.customer?.phone ?? null,
+    created_at: o.created_at,
+  }));
 }
 
 export async function fetchTables(): Promise<{ tables: RestaurantTable[] }> {

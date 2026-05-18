@@ -178,7 +178,8 @@ class ItemController extends Controller
     {
         $data = $request->validated();
         $variantsData = $data['variants'] ?? null;
-        unset($data['variants'], $data['modifier_ids']);
+        $channelRows = $data['channel_availability'] ?? null;
+        unset($data['variants'], $data['modifier_ids'], $data['channel_availability']);
 
         $item = Item::create($data);
 
@@ -190,9 +191,45 @@ class ItemController extends Controller
             $variantSync->sync($item, $variantsData);
         }
 
+        // Seed channel availability so the item actually appears on the
+        // public menus that ask for it. The backfill migration only
+        // covered items that existed at that point in time — without
+        // this, every new admin-created item silently fails the
+        // `whereExists(item_channel_availability)` check in
+        // KitchenMenuResolver::scopeItemsForChannel and never shows up
+        // on the POS or the website.
+        //
+        // Honour an explicit `channel_availability` array if the admin
+        // form sent one (mirrors `update()`), otherwise default to
+        // enabled on every channel so the new item is immediately
+        // sellable everywhere. Admin can dial it back from the toggle
+        // grid.
+        if (is_array($channelRows) && $channelRows !== []) {
+            foreach ($channelRows as $row) {
+                if (empty($row['channel'])) {
+                    continue;
+                }
+                ItemChannelAvailability::query()->updateOrCreate(
+                    ['item_id' => $item->id, 'channel' => $row['channel']],
+                    [
+                        'is_enabled' => (bool) ($row['is_enabled'] ?? true),
+                        'valid_from' => $row['valid_from'] ?? null,
+                        'valid_until' => $row['valid_until'] ?? null,
+                    ],
+                );
+            }
+        } else {
+            foreach (KitchenMenuResolver::CHANNELS as $channel) {
+                ItemChannelAvailability::query()->firstOrCreate(
+                    ['item_id' => $item->id, 'channel' => $channel],
+                    ['is_enabled' => true],
+                );
+            }
+        }
+
         return response()->json([
             'message' => 'Item created successfully',
-            'item' => $item->load(['category', 'variants', 'modifiers']),
+            'item' => $item->load(['category', 'variants', 'modifiers', 'channelAvailabilities']),
         ], 201);
     }
 

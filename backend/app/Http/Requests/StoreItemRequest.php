@@ -48,6 +48,14 @@ class StoreItemRequest extends FormRequest
             'modifier_ids' => 'sometimes|array',
             'modifier_ids.*' => 'integer|exists:modifiers,id',
             'menu_group_id' => 'nullable|integer|exists:menu_groups,id',
+            // Channel availability — same shape as update(), optional. When
+            // omitted, ItemController::store seeds every channel as
+            // enabled so the new item is sellable everywhere by default.
+            'channel_availability' => 'sometimes|array',
+            'channel_availability.*.channel' => ['required_with:channel_availability', 'in:dine_in,takeaway,online_pickup,delivery'],
+            'channel_availability.*.is_enabled' => 'sometimes|boolean',
+            'channel_availability.*.valid_from' => 'sometimes|nullable|date',
+            'channel_availability.*.valid_until' => 'sometimes|nullable|date',
             // Variants
             'variants' => 'sometimes|array',
             'variants.*.id' => 'sometimes|nullable|integer|exists:variants,id',

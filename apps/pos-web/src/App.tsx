@@ -9,6 +9,8 @@ import { useOrderCreation } from "./hooks/useOrderCreation";
 import { useOps }           from "./hooks/useOps";
 import { useShift }         from "./hooks/useShift";
 import { useIdleLock, getIdleLockMinutes } from "./hooks/useIdleLock";
+import { useOnlineOrderWatcher } from "./hooks/useOnlineOrderWatcher";
+import { OnlineOrderToasts }     from "./components/OnlineOrderToasts";
 
 import { LoginPage }         from "./pages/LoginPage";
 import { MenuGrid }          from "./components/MenuGrid";
@@ -125,10 +127,21 @@ function App() {
   useEffect(() => { setOfflineQueueCount(getQueueCount()); }, [isOnline]);
 
   // ── Hooks ───────────────────────────────────────────────────────────────────
-  const menu = useMenu(isLoggedIn);
+  // Passing orderType lets the menu refilter when the cashier flips
+  // between Dine-in / Takeaway / Online Pickup — items the admin has
+  // restricted via item_channel_availability disappear or reappear
+  // automatically, so the cashier can't accidentally ring something
+  // that doesn't belong on that channel.
+  const menu = useMenu(isLoggedIn, orderType);
   const cart = useCart();
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
   const shift = useShift(isLoggedIn, deviceStatus === "approved");
+  // Background watcher for incoming online_pickup orders. Polls every
+  // 30s when logged in + approved, shows a corner toast for any order
+  // newer than the cashier's last-seen high-water mark. Enabled-flag
+  // also pauses polling when the device is rejected/pending so we don't
+  // hammer an endpoint we can't read from anyway.
+  const onlineOrderWatch = useOnlineOrderWatcher(isLoggedIn && deviceStatus === "approved");
 
   /**
    * Items visible in the menu grid for the current category selection.
@@ -739,6 +752,19 @@ function App() {
           if (id === "logout") return handleLogout();
           if (id === "lock") return lockScreen();
           setPane(id as Pane);
+        }}
+      />
+
+      <OnlineOrderToasts
+        toasts={onlineOrderWatch.toasts}
+        onDismiss={onlineOrderWatch.dismiss}
+        onOpen={(id) => {
+          // Tapping the toast jumps the cashier to the Receipts pane
+          // (which already lists online orders) and dismisses the toast
+          // so it doesn't keep nagging. We don't navigate deeper than
+          // the pane switch — keeps any mid-ring cart untouched.
+          onlineOrderWatch.dismiss(id);
+          setPane("receipts");
         }}
       />
 
