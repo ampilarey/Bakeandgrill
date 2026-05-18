@@ -426,8 +426,18 @@ Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->prefix('adm
 });
 
 // ─── Loyalty ─────────────────────────────────────────────────────────────────
+//
+// Customer-facing endpoints — the online ordering app calls these with a
+// Sanctum customer token. The controller methods historically defended
+// themselves with `$user instanceof Customer` checks at the top of each
+// method (and they still do), but we pin `customer.token` at the route
+// level too so a new sibling route in this group can't accidentally
+// inherit weaker auth. Defense in depth: the middleware short-circuits
+// before the controller even loads. Staff redemptions on behalf of a
+// customer at the POS register go through the separate /api/pos/loyalty/*
+// routes which are gated by staff.token + the loyalty.redeem permission.
 
-Route::middleware('auth:sanctum')->prefix('loyalty')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->prefix('loyalty')->group(function () {
     Route::get('/me', [App\Http\Controllers\Api\LoyaltyController::class, 'me']);
     Route::post('/hold-preview', [App\Http\Controllers\Api\LoyaltyController::class, 'holdPreview']);
     Route::post('/hold', [App\Http\Controllers\Api\LoyaltyController::class, 'hold']);
