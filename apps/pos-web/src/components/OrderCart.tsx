@@ -3,6 +3,11 @@ import type { PaymentRow } from "../hooks/useCart";
 import { makeCartKey } from "../hooks/useCart";
 import type { PosCustomer } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
+import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
+
+type AppliedPromo = { code: string; promotionId: number | null; discount: number };
+type AppliedLoyalty = { points: number; discount: number };
+type AppliedGiftCard = { code: string; discount: number; cardBalance: number };
 
 type OrderType = "Dine-in" | "Takeaway" | "Online Pickup";
 const ORDER_TYPES: OrderType[] = ["Dine-in", "Takeaway", "Online Pickup"];
@@ -20,9 +25,19 @@ type Props = {
   cartTax: number;
   cartTotal: number;
   discountValue: number;
+  /** Sum of every staged customer-reward discount (promo + loyalty +
+   *  gift card). Shown as one "Rewards" line in the cart breakdown. */
+  rewardsDiscount: number;
   payments: PaymentRow[];
   discountAmount: string;
   setDiscountAmount: (v: string) => void;
+
+  appliedPromo: AppliedPromo | null;
+  setAppliedPromo: (v: AppliedPromo | null) => void;
+  appliedLoyalty: AppliedLoyalty | null;
+  setAppliedLoyalty: (v: AppliedLoyalty | null) => void;
+  appliedGiftCard: AppliedGiftCard | null;
+  setAppliedGiftCard: (v: AppliedGiftCard | null) => void;
 
   isSubmitting: boolean;
   pendingPaymentForOrderId: number | null;
@@ -172,6 +187,28 @@ export function OrderCart(p: Props) {
             onDetach={p.onDetachCustomer}
           />
         </div>
+
+        {/* Customer rewards drawer — only renders when a customer is
+            attached AND the cart has items. Loads the customer's loyalty
+            balance + lifetime stats from the new pos-summary endpoint
+            and lets the cashier stage promo / loyalty / gift card
+            against the ticket. Actual server-side apply happens during
+            charge, between createOrder and settleOrder. */}
+        {p.attachedCustomer && p.cartItems.length > 0 && (
+          <CustomerRewardsPanel
+            customer={p.attachedCustomer}
+            taxableSubtotal={p.cartSubtotal}
+            applied={{
+              promo: p.appliedPromo,
+              loyalty: p.appliedLoyalty,
+              giftCard: p.appliedGiftCard,
+            }}
+            setAppliedPromo={p.setAppliedPromo}
+            setAppliedLoyalty={p.setAppliedLoyalty}
+            setAppliedGiftCard={p.setAppliedGiftCard}
+            readOnly={isResumed}
+          />
+        )}
       </div>
 
       {/* ── Cart lines ───────────────────────────────────────────── */}
@@ -286,11 +323,32 @@ export function OrderCart(p: Props) {
             common case is GST/TGST on every item, so 99% of tickets land
             here). Without it the Charge button shows only the subtotal
             and the cashier under-collects from the customer. */}
-        {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0) && (
+        {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0 || p.rewardsDiscount > 0) && (
           <>
             <Row label="Subtotal" value={`MVR ${p.cartSubtotal.toFixed(2)}`} />
             {p.discountValue > 0 && (
               <Row label="Discount" value={`− MVR ${p.discountValue.toFixed(2)}`} accent={C.primaryDark} />
+            )}
+            {p.appliedPromo && (
+              <Row
+                label={`Promo (${p.appliedPromo.code})`}
+                value={`− MVR ${p.appliedPromo.discount.toFixed(2)}`}
+                accent={C.primaryDark}
+              />
+            )}
+            {p.appliedLoyalty && (
+              <Row
+                label={`Points (${p.appliedLoyalty.points.toLocaleString()})`}
+                value={`− MVR ${p.appliedLoyalty.discount.toFixed(2)}`}
+                accent={C.primaryDark}
+              />
+            )}
+            {p.appliedGiftCard && (
+              <Row
+                label={`Gift card (${p.appliedGiftCard.code.slice(-6)})`}
+                value={`− MVR ${p.appliedGiftCard.discount.toFixed(2)}`}
+                accent={C.primaryDark}
+              />
             )}
             {p.cartTax > 0 && (
               <Row label="GST" value={`MVR ${p.cartTax.toFixed(2)}`} />

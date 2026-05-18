@@ -65,6 +65,7 @@ class PermissionSeeder extends Seeder
         // Loyalty
         ['group' => 'Loyalty',      'slug' => 'loyalty.view',           'name' => 'View Loyalty Program'],
         ['group' => 'Loyalty',      'slug' => 'loyalty.manage',         'name' => 'Manage Loyalty Program'],
+        ['group' => 'Loyalty',      'slug' => 'loyalty.redeem',         'name' => 'Redeem Loyalty Points at POS'],
 
         // Reservations
         ['group' => 'Reservations', 'slug' => 'reservations.view',      'name' => 'View Reservations'],
@@ -111,7 +112,7 @@ class PermissionSeeder extends Seeder
         'suppliers.view',
         'delivery.view',
         'reservations.view',
-        'loyalty.view',
+        'loyalty.view', 'loyalty.redeem', // Cashiers must be able to redeem points at POS
         'promotions.view', 'promotions.discounts', // Cashiers must be able to apply promos at POS
     ];
 

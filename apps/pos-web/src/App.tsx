@@ -191,6 +191,9 @@ function App() {
     discountAmount: cart.discountAmount,
     customerId:    cart.attachedCustomer?.id ?? null,
     customerPhone: cart.attachedCustomer?.phone ?? null,
+    appliedPromoCode:     cart.appliedPromo?.code ?? null,
+    appliedLoyaltyPoints: cart.appliedLoyalty?.points ?? null,
+    appliedGiftCardCode:  cart.appliedGiftCard?.code ?? null,
     clearCart:        cart.clearCart,
     setCartItems:     cart.setCartItems,
     setSelectedItem:  cart.setSelectedItem,
@@ -639,6 +642,13 @@ function App() {
               cartTax={cart.cartTax}
               cartTotal={cart.cartTotal}
               discountValue={cart.discountValue}
+              rewardsDiscount={cart.rewardsDiscount}
+              appliedPromo={cart.appliedPromo}
+              setAppliedPromo={cart.setAppliedPromo}
+              appliedLoyalty={cart.appliedLoyalty}
+              setAppliedLoyalty={cart.setAppliedLoyalty}
+              appliedGiftCard={cart.appliedGiftCard}
+              setAppliedGiftCard={cart.setAppliedGiftCard}
               payments={cart.payments}
               discountAmount={cart.discountAmount}
               setDiscountAmount={cart.setDiscountAmount}
@@ -648,7 +658,7 @@ function App() {
               openTicketsCount={openTicketsCount}
               attachedCustomer={cart.attachedCustomer}
               onAttachCustomer={cart.setAttachedCustomer}
-              onDetachCustomer={() => cart.setAttachedCustomer(null)}
+              onDetachCustomer={cart.detachCustomer}
               resumedOrderId={order.resumedOrderId}
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
               onClearCart={cart.clearCart}
@@ -742,7 +752,11 @@ function App() {
       {showCharge && (
         <ChargeOverlay
           subtotal={cart.cartSubtotal}
-          discount={cart.discountValue}
+          // Roll the manual cashier discount and every staged customer-
+          // reward into one figure for the Charge screen. The cart sidebar
+          // still itemises them so the cashier always knows where the
+          // money went.
+          discount={cart.discountValue + cart.rewardsDiscount}
           tax={cart.cartTax}
           total={cart.cartTotal}
           submitting={order.isSubmitting}

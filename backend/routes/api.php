@@ -239,6 +239,26 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         ->middleware('throttle:60,1');
     Route::post('/customers/quick', [App\Http\Controllers\Api\CustomerController::class, 'quickCreate'])
         ->middleware('throttle:30,1');
+    // Compact customer "dashboard" for the POS Customer chip (profile +
+    // loyalty + lifetime stats + last 5 paid orders). One round-trip
+    // when the cashier attaches a customer to a ticket.
+    Route::get('/customers/{id}/pos-summary', [App\Http\Controllers\Api\CustomerController::class, 'posSummary'])
+        ->middleware('throttle:60,1');
+
+    // ── POS rewards on an in-progress ticket ─────────────────────────────────
+    // Staff-only twins of the customer-facing loyalty + gift-card endpoints.
+    // The original /loyalty/* and /orders/{id}/gift-card routes are pinned
+    // to a customer token (so the online ordering app keeps working
+    // unchanged); these /pos/* twins let a cashier redeem on behalf of
+    // the customer attached to the ticket.
+    Route::prefix('pos')->group(function (): void {
+        Route::post('/loyalty/preview', [App\Http\Controllers\Api\LoyaltyController::class, 'posHoldPreview']);
+        Route::post('/loyalty/hold', [App\Http\Controllers\Api\LoyaltyController::class, 'posHold']);
+        Route::delete('/loyalty/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'posReleaseHold']);
+
+        Route::post('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'staffApplyToOrder']);
+        Route::delete('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'staffRemoveFromOrder']);
+    });
 
     // Shifts + cash drawer
     Route::get('/shifts/current', [ShiftController::class, 'current']);

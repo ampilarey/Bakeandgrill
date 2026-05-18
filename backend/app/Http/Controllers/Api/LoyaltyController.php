@@ -156,6 +156,138 @@ class LoyaltyController extends Controller
         return response()->json(['message' => 'Hold released.']);
     }
 
+    // ─── Staff POS Endpoints ──────────────────────────────────────────────────
+    //
+    // The customer-facing `hold` / `releaseHold` / `holdPreview` above are
+    // hard-locked to a Customer auth token because they trust the actor IS
+    // the customer. Cashiers on the POS register need to redeem points on
+    // behalf of a customer they've attached to the ticket — different auth
+    // path, same underlying ledger service. We keep the customer routes
+    // untouched (zero risk to the online ordering app) and add explicit
+    // POS-only twins that:
+    //   1. require a staff Sanctum token with the `loyalty.redeem`
+    //      permission so a cashier can't quietly drain a customer's points
+    //   2. resolve the customer FROM `orders.customer_id`, not from the
+    //      authenticated user (the cashier is the actor, the customer is
+    //      the subject)
+    //   3. share the same LoyaltyLedgerService underneath so accrual,
+    //      caps, ledger entries, and tier logic stay consistent across
+    //      the two flows
+
+    public function posHoldPreview(Request $request): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+        if (!$request->user()->hasPermission('loyalty.redeem')) {
+            return response()->json(['message' => 'You do not have permission to redeem loyalty points.'], 403);
+        }
+
+        $request->validate([
+            'points' => 'required|integer|min:1',
+            'order_id' => 'required|integer|exists:orders,id',
+        ]);
+
+        $order = Order::find($request->integer('order_id'));
+        if (!$order) {
+            return response()->json(['message' => 'Order not found.'], 404);
+        }
+        if (!$order->customer_id) {
+            return response()->json(['message' => 'Attach a customer to the ticket before redeeming points.'], 422);
+        }
+
+        /** @var Customer $customer */
+        $customer = Customer::findOrFail($order->customer_id);
+        $account = $this->service->accountFor($customer);
+        $points = min($request->integer('points'), $account->availablePoints());
+        $discountLaar = $this->calculator->discountLaarForPoints($points);
+
+        return response()->json([
+            'points' => $points,
+            'discount_laar' => $discountLaar,
+            'discount_mvr' => number_format($discountLaar / 100, 2),
+            'available_points' => $account->availablePoints(),
+        ]);
+    }
+
+    public function posHold(Request $request): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+        if (!$request->user()->hasPermission('loyalty.redeem')) {
+            return response()->json(['message' => 'You do not have permission to redeem loyalty points.'], 403);
+        }
+
+        $request->validate([
+            'order_id' => 'required|integer|exists:orders,id',
+            'points' => 'required|integer|min:1',
+        ]);
+
+        $order = Order::findOrFail($request->integer('order_id'));
+        if (!$order->customer_id) {
+            return response()->json(['message' => 'Attach a customer to the ticket before redeeming points.'], 422);
+        }
+
+        /** @var Customer $customer */
+        $customer = Customer::findOrFail($order->customer_id);
+
+        $hold = $this->service->createOrRefreshHold(
+            $customer,
+            $order,
+            $request->integer('points'),
+        );
+
+        $order->update(['loyalty_discount_laar' => $hold->discount_laar]);
+        $order = app(OrderTotalsCalculator::class)->recalculateAndPersist($order->fresh());
+
+        return response()->json([
+            'hold' => [
+                'points_held' => $hold->points_held,
+                'discount_laar' => $hold->discount_laar,
+                'discount_mvr' => number_format($hold->discount_laar / 100, 2),
+                'expires_at' => $hold->expires_at->toIso8601String(),
+            ],
+            'order' => [
+                'id' => (int) $order->id,
+                'total' => (float) $order->total,
+                'subtotal' => (float) $order->subtotal,
+                'tax_amount' => (float) $order->tax_amount,
+                'loyalty_discount_laar' => (int) $order->loyalty_discount_laar,
+            ],
+        ], 201);
+    }
+
+    public function posReleaseHold(Request $request, int $orderId): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+        if (!$request->user()->hasPermission('loyalty.redeem')) {
+            return response()->json(['message' => 'You do not have permission to redeem loyalty points.'], 403);
+        }
+
+        $order = Order::find($orderId);
+        if (!$order || !$order->customer_id) {
+            return response()->json(['message' => 'No customer attached or order not found.'], 404);
+        }
+
+        $hold = LoyaltyHold::where('order_id', $orderId)
+            ->where('customer_id', $order->customer_id)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$hold) {
+            return response()->json(['message' => 'No active hold found.'], 404);
+        }
+
+        $this->service->releaseHold($hold);
+        $order->update(['loyalty_discount_laar' => 0]);
+        app(OrderTotalsCalculator::class)->recalculateAndPersist($order->fresh());
+
+        return response()->json(['message' => 'Hold released.']);
+    }
+
     // ─── Admin Endpoints ──────────────────────────────────────────────────────
 
     public function adminAccountIndex(Request $request): JsonResponse

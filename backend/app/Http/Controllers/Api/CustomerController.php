@@ -7,9 +7,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerSmsOptOutRequest;
 use App\Models\Customer;
+use App\Models\LoyaltyAccount;
+use App\Models\Order;
 use App\Services\AuditLogService;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
@@ -120,6 +123,105 @@ class CustomerController extends Controller
             'customer' => $customer->fresh()->loadCount('orders'),
             'created' => $wasCreated,
         ], $wasCreated ? 201 : 200);
+    }
+
+    /**
+     * Compact customer "dashboard" for the POS Customer chip.
+     *
+     * Staff-only — uses the same `staff.token` ability as `search` /
+     * `quickCreate`. Designed to be called ONCE when the cashier attaches
+     * a customer to a ticket. Returns:
+     *   - profile basics (name, phone, tier, sms_opt_out, internal_notes)
+     *   - true loyalty balance from `loyalty_accounts` (NOT the stale
+     *     `customers.loyalty_points` column — that one isn't updated by
+     *     LoyaltyLedgerService and drifts over time)
+     *   - lifetime stats (orders count, total spent in MVR, first/last
+     *     order timestamps) — derived from paid orders only so a
+     *     cancelled cart doesn't inflate "lifetime value"
+     *   - last 5 paid orders (id, number, type, total, paid_at) so the
+     *     cashier can recognise a regular and reorder their usual
+     *
+     * Designed for fast round-trips: 1 customer row + 1 loyalty row + 1
+     * stats query + 1 recent-orders query. Lifetime computed from
+     * `paid_at` rather than `created_at` so abandoned orders don't pad
+     * the numbers.
+     */
+    public function posSummary(Request $request, int $id)
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        /** @var Customer $customer */
+        $customer = Customer::findOrFail($id);
+
+        // Loyalty: prefer the ledger-backed account (source of truth).
+        // Falls back to `customers.loyalty_points` for very old rows
+        // that pre-date the ledger system.
+        $loyalty = LoyaltyAccount::where('customer_id', $customer->id)->first();
+        $loyaltyPayload = $loyalty
+            ? [
+                'points_balance' => (int) $loyalty->points_balance,
+                'points_held' => (int) $loyalty->points_held,
+                'available_points' => (int) max(0, $loyalty->points_balance - $loyalty->points_held),
+                'lifetime_points' => (int) $loyalty->lifetime_points,
+                'tier' => $loyalty->tier ?? $customer->tier,
+            ]
+            : [
+                'points_balance' => (int) ($customer->loyalty_points ?? 0),
+                'points_held' => 0,
+                'available_points' => (int) ($customer->loyalty_points ?? 0),
+                'lifetime_points' => (int) ($customer->loyalty_points ?? 0),
+                'tier' => $customer->tier ?? 'bronze',
+            ];
+
+        // Lifetime stats — only count orders that actually got paid so
+        // a cashier doesn't see "10 orders" when 7 were cancelled.
+        $stats = Order::query()
+            ->where('customer_id', $customer->id)
+            ->whereNotNull('paid_at')
+            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(total), 0) as total_spent, MIN(paid_at) as first_paid_at, MAX(paid_at) as last_paid_at')
+            ->first();
+
+        $recent = Order::query()
+            ->where('customer_id', $customer->id)
+            ->whereNotNull('paid_at')
+            ->orderByDesc('paid_at')
+            ->limit(5)
+            ->get(['id', 'order_number', 'type', 'status', 'total', 'paid_at'])
+            ->map(fn ($o) => [
+                'id' => (int) $o->id,
+                'order_number' => $o->order_number,
+                'type' => $o->type,
+                'status' => $o->status,
+                'total' => (float) $o->total,
+                'paid_at' => $o->paid_at?->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'customer' => [
+                'id' => (int) $customer->id,
+                'name' => $customer->name,
+                'phone' => $customer->phone,
+                'email' => $customer->email,
+                'tier' => $customer->tier ?? 'bronze',
+                'sms_opt_out' => (bool) $customer->sms_opt_out,
+                'internal_notes' => $customer->internal_notes,
+                'created_at' => $customer->created_at?->toIso8601String(),
+            ],
+            'loyalty' => $loyaltyPayload,
+            'lifetime' => [
+                'orders_count' => (int) ($stats?->orders_count ?? 0),
+                'total_spent' => (float) ($stats?->total_spent ?? 0),
+                'first_paid_at' => $stats?->first_paid_at instanceof \DateTimeInterface
+                    ? $stats->first_paid_at->format(\DateTime::ATOM)
+                    : ($stats?->first_paid_at ?? null),
+                'last_paid_at' => $stats?->last_paid_at instanceof \DateTimeInterface
+                    ? $stats->last_paid_at->format(\DateTime::ATOM)
+                    : ($stats?->last_paid_at ?? null),
+            ],
+            'recent_orders' => $recent,
+        ]);
     }
 
     /**

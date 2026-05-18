@@ -56,6 +56,35 @@ export function useCart() {
    */
   const [attachedCustomer, setAttachedCustomer] = useState<PosCustomer | null>(null);
 
+  /**
+   * Customer-facing rewards the cashier has STAGED on this ticket. Each one
+   * holds the code/amount + the expected discount in MVR. They're applied
+   * server-side AFTER the order is created (between createOrder and
+   * settleOrder in useOrderCreation) — the cart math here uses the
+   * estimated discount so the cashier sees the same number on the Charge
+   * button that the server will eventually return.
+   *
+   * Backend treats all four (manual, promo, loyalty, gift card) as
+   * pre-tax discounts that are summed before per-item TGST is applied —
+   * see `OrderTotalsCalculator::calculate`. The estimation here mirrors
+   * that math exactly to avoid a "you owe MVR 50" → "server says 53"
+   * surprise at settle time.
+   */
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    promotionId: number | null;
+    discount: number;
+  } | null>(null);
+  const [appliedLoyalty, setAppliedLoyalty] = useState<{
+    points: number;
+    discount: number;
+  } | null>(null);
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{
+    code: string;
+    discount: number;
+    cardBalance: number;
+  } | null>(null);
+
   /** Per-line gross (price + modifiers, ignoring quantity). */
   const lineUnitPrice = (item: CartItem): number =>
     item.price + item.modifiers.reduce((ms, m) => ms + m.price, 0);
@@ -74,23 +103,41 @@ export function useCart() {
   }, [discountAmount, cartSubtotal]);
 
   /**
+   * Sum of all customer-rewards discounts. Capped so the running total
+   * can never go negative — matches `OrderTotalsCalculator` which does
+   * `max(0, subtotal − Σdiscounts)`.
+   */
+  const rewardsDiscount = useMemo(() => {
+    const promo = appliedPromo?.discount ?? 0;
+    const loyalty = appliedLoyalty?.discount ?? 0;
+    const giftCard = appliedGiftCard?.discount ?? 0;
+    return Math.max(0, promo + loyalty + giftCard);
+  }, [appliedPromo, appliedLoyalty, appliedGiftCard]);
+
+  /** Grand total of every pre-tax discount applied to this ticket. */
+  const totalDiscount = useMemo(
+    () => Math.min(cartSubtotal, discountValue + rewardsDiscount),
+    [cartSubtotal, discountValue, rewardsDiscount],
+  );
+
+  /**
    * Subtotal after discount — the taxable amount.
    * The backend's OrderTotalsCalculator applies discounts proportionally
    * across items BEFORE computing per-item tax. We mirror that here so
    * the POS total matches what the server will charge.
    */
   const discountedSubtotal = useMemo(
-    () => Math.max(0, cartSubtotal - discountValue),
-    [cartSubtotal, discountValue],
+    () => Math.max(0, cartSubtotal - totalDiscount),
+    [cartSubtotal, totalDiscount],
   );
 
   /**
    * Tax-EXCLUSIVE per-item GST/TGST.
    *
    * Each item carries a snapshotted `tax_rate` (% — e.g. 8 for TGST). When a
-   * manual discount is applied, the backend reduces every item's taxable
-   * amount proportionally (so a 10% discount on the order also shaves 10%
-   * off the taxable base of each line). We replicate the exact same math
+   * discount is applied, the backend reduces every item's taxable amount
+   * proportionally (so a 10% discount on the order also shaves 10% off
+   * the taxable base of each line). We replicate the exact same math
    * here so the cashier sees the same Tax / Total the server will store
    * and the customer will see on the receipt.
    *
@@ -220,6 +267,13 @@ export function useCart() {
     setDiscountAmount("");
     setPayments([{ id: crypto.randomUUID(), method: "cash", amount: "" }]);
     setAttachedCustomer(null);
+    // Reset every staged reward so the next ticket starts clean. Without
+    // this a previously-redeemed loyalty hold would carry into a fresh
+    // sale and the cashier would see a phantom discount on the Charge
+    // button until they manually cleared it.
+    setAppliedPromo(null);
+    setAppliedLoyalty(null);
+    setAppliedGiftCard(null);
   }, []);
 
   const addPaymentRow = useCallback(() =>
@@ -230,6 +284,20 @@ export function useCart() {
 
   const removePaymentRow = useCallback((id: string) =>
     setPayments((curr) => curr.filter((p) => p.id !== id)), []);
+
+  /**
+   * Detach the current customer AND drop every reward staged against
+   * them. A loyalty hold or promo code that was earned by a specific
+   * customer must not bleed onto an anonymous walk-in ticket.
+   */
+  const detachCustomer = useCallback(() => {
+    setAttachedCustomer(null);
+    setAppliedLoyalty(null);
+    setAppliedPromo(null);
+    // Gift cards are bearer instruments — a different customer (or no
+    // customer) could legitimately still present the card. Keep it
+    // staged unless the cashier explicitly removes it.
+  }, []);
 
   return {
     cartItems,
@@ -245,6 +313,8 @@ export function useCart() {
     cartSubtotal,
     cartTax,
     cartTotal,
+    totalDiscount,
+    rewardsDiscount,
     handleSelectItem,
     toggleModifier,
     addToCart,
@@ -255,5 +325,13 @@ export function useCart() {
     removePaymentRow,
     attachedCustomer,
     setAttachedCustomer,
+    detachCustomer,
+    // ── Customer rewards staged on the ticket ──────────────────
+    appliedPromo,
+    setAppliedPromo,
+    appliedLoyalty,
+    setAppliedLoyalty,
+    appliedGiftCard,
+    setAppliedGiftCard,
   };
 }

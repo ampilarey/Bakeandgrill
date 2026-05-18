@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import {
+  applyGiftCardToOrder,
+  applyPromoToOrder,
   createOrder,
   createOrderPayments,
   getOrder,
+  holdLoyaltyForOrder,
   holdOrder,
   lookupBarcode,
   resumeOrder,
@@ -51,6 +54,14 @@ type Params = {
    *  "SMS sent to {phone}" / Resend without re-fetching the customer
    *  (the cart's attachedCustomer gets cleared right after settle). */
   customerPhone: string | null;
+  /** Customer-rewards staged on the ticket. Each one is applied
+   *  server-side AFTER createOrder but BEFORE settleOrder so the
+   *  order's stored `total` matches the Charge button. Cashier picks
+   *  these from the Rewards panel in OrderCart. Optional — when null
+   *  the order is created and settled exactly as before. */
+  appliedPromoCode: string | null;
+  appliedLoyaltyPoints: number | null;
+  appliedGiftCardCode: string | null;
   clearCart: () => void;
   setCartItems: (items: CartItem[]) => void;
   setSelectedItem: (item: Item | null) => void;
@@ -128,6 +139,60 @@ export function useOrderCreation(params: Params) {
         modifiers: item.modifiers.map((m) => ({ modifier_id: m.id, name: m.name, price: m.price })),
       })),
     };
+  };
+
+  /**
+   * Walk through every staged customer-reward (promo code, loyalty
+   * points, gift card) and tell the server to apply it to the freshly-
+   * created order. Returns the most recent authoritative total so the
+   * subsequent `settleOrder` call charges the actual final number.
+   *
+   * Failures here are non-fatal: if a promo code is unexpectedly
+   * rejected at apply-time (e.g. usage cap hit between validate and
+   * apply) we log it to the cashier as a status message and continue
+   * with the remaining rewards. The cart staging is best-effort; the
+   * order is already created and must be settled one way or another.
+   */
+  const applyStagedRewards = async (orderId: number, currentTotal: number): Promise<number> => {
+    let total = currentTotal;
+
+    if (params.appliedPromoCode) {
+      try {
+        await applyPromoToOrder(orderId, params.appliedPromoCode);
+      } catch (err) {
+        setStatusMessage(`Promo "${params.appliedPromoCode}" could not be applied: ${(err as Error).message}`);
+      }
+    }
+
+    if (params.appliedLoyaltyPoints && params.appliedLoyaltyPoints > 0) {
+      try {
+        const res = await holdLoyaltyForOrder(orderId, params.appliedLoyaltyPoints);
+        total = res.order.total;
+      } catch (err) {
+        setStatusMessage(`Loyalty redemption failed: ${(err as Error).message}`);
+      }
+    }
+
+    if (params.appliedGiftCardCode) {
+      try {
+        const res = await applyGiftCardToOrder(orderId, params.appliedGiftCardCode);
+        total = res.order.total;
+      } catch (err) {
+        setStatusMessage(`Gift card "${params.appliedGiftCardCode}" failed: ${(err as Error).message}`);
+      }
+    }
+
+    // Final read — handles the promo case where we don't get the order
+    // back inline (apply-promo returns a discount, not a fresh totals
+    // payload). Cheap GET; only fires when we actually applied something.
+    if (params.appliedPromoCode || params.appliedLoyaltyPoints || params.appliedGiftCardCode) {
+      try {
+        const fresh = await getOrder(orderId);
+        if (typeof fresh.order.total === "number") total = fresh.order.total;
+      } catch { /* keep last-known total */ }
+    }
+
+    return total;
   };
 
   /**
@@ -263,7 +328,15 @@ export function useOrderCreation(params: Params) {
       const response = await createOrder(payload);
       orderCreated = true;
       setLastCreatedOrderId(response.order.id);
-      const totalDue = response.order.total ?? params.cartTotal;
+      // Apply any customer-rewards the cashier staged in the cart. Each
+      // hop reduces the order total server-side (promo → loyalty → gift
+      // card, in the same order the cart breakdown shows them) and we
+      // read back the freshest authoritative total so `settleOrder`
+      // charges the exact right amount. We swallow individual failures
+      // and keep going — a bad promo code shouldn't make the cashier
+      // re-ring an already-created order; they can manually adjust.
+      let totalDue = response.order.total ?? params.cartTotal;
+      totalDue = await applyStagedRewards(response.order.id, totalDue);
       const settled = await settleOrder(response.order.id, totalDue, paymentSnapshot);
       if (settled) {
         // Snapshot the customer BEFORE clearCart wipes attachedCustomer.

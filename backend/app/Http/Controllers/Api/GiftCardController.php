@@ -106,6 +106,99 @@ class GiftCardController extends Controller
         return response()->json(['message' => 'Gift card removed.']);
     }
 
+    // ── Staff POS: apply / remove gift card on a staff-rung order ─────────────
+    //
+    // Mirror of `applyToOrder` / `removeFromOrder` for the cashier flow.
+    // The customer-facing methods above are gated by `customer.token` and
+    // resolve the customer from the auth context — wrong for a POS register
+    // where the cashier is the actor and the order's `customer_id` (set when
+    // the cashier attached the customer to the ticket) identifies the
+    // subject. We keep the customer-facing methods untouched and add
+    // staff twins that:
+    //   - Require staff Sanctum token with `promotions.discounts` permission
+    //     (same one already required to apply a manual promo at POS).
+    //   - Use the SAME PaymentService::redeemGiftCardForOrder() debit logic
+    //     so balances and transaction records match across channels.
+    //   - Accept POS-rung orders (created via OrderController@store, which
+    //     starts in `pending`) as well as the `payment_pending` state used
+    //     by online orders, so a cashier can also redeem a card on a held
+    //     ticket they're about to charge.
+
+    public function staffApplyToOrder(Request $request, int $orderId, OrderTotalsCalculator $calc): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+        if (!$request->user()->hasPermission('promotions.discounts')) {
+            return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
+        }
+
+        $validated = $request->validate(['code' => ['required', 'string', 'max:20']]);
+
+        $order = Order::query()
+            ->whereIn('status', ['payment_pending', 'pending'])
+            ->findOrFail($orderId);
+
+        return DB::transaction(function () use ($validated, $order, $calc): JsonResponse {
+            $card = GiftCard::where('code', strtoupper($validated['code']))
+                ->where('status', 'active')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$card) {
+                return response()->json(['message' => 'Invalid or unavailable gift card.'], 422);
+            }
+            if ($card->expires_at && $card->expires_at->isPast()) {
+                $card->update(['status' => 'expired']);
+
+                return response()->json(['message' => 'This gift card has expired.'], 422);
+            }
+
+            $maxDiscount = (int) round((float) $card->current_balance * 100);
+            $currentDueLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+            $discountLaar = min($maxDiscount, max(0, $currentDueLaar));
+
+            $order->update([
+                'gift_card_code' => $card->code,
+                'gift_card_discount_laar' => $discountLaar,
+            ]);
+
+            $order = $calc->recalculateAndPersist($order->fresh());
+
+            return response()->json([
+                'discount_laar' => $discountLaar,
+                'discount_mvr' => number_format($discountLaar / 100, 2),
+                'card_balance' => (float) $card->current_balance,
+                'order' => [
+                    'id' => (int) $order->id,
+                    'total' => (float) $order->total,
+                    'subtotal' => (float) $order->subtotal,
+                    'tax_amount' => (float) $order->tax_amount,
+                    'gift_card_discount_laar' => (int) $order->gift_card_discount_laar,
+                ],
+            ]);
+        });
+    }
+
+    public function staffRemoveFromOrder(Request $request, int $orderId, OrderTotalsCalculator $calc): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+        if (!$request->user()->hasPermission('promotions.discounts')) {
+            return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
+        }
+
+        $order = Order::query()
+            ->whereIn('status', ['payment_pending', 'pending'])
+            ->findOrFail($orderId);
+
+        $order->update(['gift_card_code' => null, 'gift_card_discount_laar' => 0]);
+        $calc->recalculateAndPersist($order->fresh());
+
+        return response()->json(['message' => 'Gift card removed.']);
+    }
+
     // ── Admin: issue a gift card ──────────────────────────────────────────────
 
     public function issue(Request $request): JsonResponse
