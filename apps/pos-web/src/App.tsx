@@ -130,10 +130,40 @@ function App() {
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
   const shift = useShift(isLoggedIn, deviceStatus === "approved");
 
-  const filteredItems = useMemo(
-    () => menu.items.filter((item) => item.category_id === menu.selectedCategoryId),
-    [menu.items, menu.selectedCategoryId],
-  );
+  /**
+   * Items visible in the menu grid for the current category selection.
+   *
+   *   • `selectedCategoryId == null` → "All items" tab — return everything.
+   *   • Selected id matches a TOP-LEVEL category that has sub-categories
+   *     → show items in that parent AND in every descendant. (Previously
+   *     selecting a parent like "Drinks" returned an empty grid because
+   *     every drink was actually under "Drinks → Coffee" etc.)
+   *   • Selected id is a leaf (no children, or a sub-category itself)
+   *     → exact match only.
+   *
+   * Builds a `descendants` set once per render rather than recomputing
+   * per item.
+   */
+  const filteredItems = useMemo(() => {
+    if (menu.selectedCategoryId == null) return menu.items;
+    const matchIds = new Set<number>([menu.selectedCategoryId]);
+    // Recursively collect descendants — supports any nesting depth even
+    // though admin currently only exposes one level.
+    let frontier: number[] = [menu.selectedCategoryId];
+    for (let depth = 0; depth < 16 && frontier.length; depth++) {
+      const next: number[] = [];
+      for (const c of menu.categories) {
+        if (c.parent_id != null && frontier.includes(c.parent_id) && !matchIds.has(c.id)) {
+          matchIds.add(c.id);
+          next.push(c.id);
+        }
+      }
+      frontier = next;
+    }
+    return menu.items.filter(
+      (item) => item.category_id != null && matchIds.has(item.category_id),
+    );
+  }, [menu.items, menu.categories, menu.selectedCategoryId]);
 
   const refreshOpenTickets = useCallback(async () => {
     if (!isLoggedIn || deviceStatus !== "approved") return;

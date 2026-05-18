@@ -26,7 +26,11 @@ export function useMenu(isLoggedIn: boolean) {
         .then(([cats, its]) => {
           setCategories(cats);
           setItems(its);
-          setSelectedCategoryId(cats[0]?.id ?? null);
+          // Start on "All items" instead of the first category so the
+          // cashier sees the whole menu by default. The pill row makes
+          // it obvious how to narrow down once they know what they're
+          // ringing up.
+          setSelectedCategoryId(null);
           setIsLoading(false);
         })
         .catch(() => {

@@ -2,6 +2,7 @@
 export type {
   Modifier,
   MenuItem as Item,
+  Variant,
   Category,
   CartItem,
   RestaurantTable,

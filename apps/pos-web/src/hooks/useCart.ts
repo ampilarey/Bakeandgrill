@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { CartItem, Item, Modifier } from "../types";
+import type { CartItem, Item, Modifier, Variant } from "../types";
 import type { PosCustomer } from "../api";
 
 export type PaymentRow = {
@@ -133,35 +133,73 @@ export function useCart() {
     });
   }, []);
 
-  const addToCart = useCallback((item: Item) => {
-    const modifiers = selectedItem?.id === item.id ? selectedModifiers : [];
-    const defVar = defaultVariantForItem(item);
-    const key = makeCartKey(item.id, modifiers, defVar?.id);
-    setCartItems((curr) => {
-      const existing = curr.find((ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id) === key);
-      if (existing) {
-        return curr.map((ci) =>
-          ci === existing ? { ...ci, quantity: ci.quantity + 1 } : ci,
+  /**
+   * Add an item to the cart, optionally overriding the variant and
+   * modifier set. The Configure modal passes its picked `variant` here
+   * so cashiers can actually choose Small / Medium / Large — the old
+   * implementation silently used `defaultVariantForItem` and dropped
+   * the cashier's selection on the floor, which was the main complaint
+   * about the variant flow.
+   */
+  const addToCart = useCallback(
+    (
+      item: Item,
+      opts?: { variant?: Variant | null; modifiers?: Modifier[] },
+    ) => {
+      // Variant precedence: explicit override > what the cashier picked
+      // in the Configure modal > the item's default.
+      const chosenVariant: { id: number; name: string; price: number } | null =
+        opts?.variant
+          ? {
+              id: opts.variant.id,
+              name: opts.variant.name,
+              price: parseFloat(String(opts.variant.price ?? 0)),
+            }
+          : defaultVariantForItem(item);
+
+      // Modifiers precedence: explicit override > Configure modal state >
+      // empty. Keeps direct add-to-cart from modifier-less tiles working
+      // (no modal opens, no selectedModifiers state to pull from).
+      const modifiers =
+        opts?.modifiers ??
+        (selectedItem?.id === item.id ? selectedModifiers : []);
+
+      const key = makeCartKey(item.id, modifiers, chosenVariant?.id);
+      setCartItems((curr) => {
+        const existing = curr.find(
+          (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id) === key,
         );
-      }
-      const parsedPrice = defVar ? defVar.price : parseFloat(String(item.base_price ?? 0));
-      const parsedModifiers = modifiers.map((m) => ({ ...m, price: parseFloat(String(m.price ?? 0)) }));
-      const parsedTaxRate = item.tax_rate != null ? parseFloat(String(item.tax_rate)) : 0;
-      return [
-        ...curr,
-        {
-          id: item.id,
-          name: item.name,
-          price: parsedPrice,
-          quantity: 1,
-          modifiers: parsedModifiers,
-          variant_id: defVar?.id ?? null,
-          variant_name: defVar?.name ?? null,
-          tax_rate: Number.isFinite(parsedTaxRate) ? parsedTaxRate : 0,
-        },
-      ];
-    });
-  }, [selectedItem, selectedModifiers]);
+        if (existing) {
+          return curr.map((ci) =>
+            ci === existing ? { ...ci, quantity: ci.quantity + 1 } : ci,
+          );
+        }
+        const parsedPrice = chosenVariant
+          ? chosenVariant.price
+          : parseFloat(String(item.base_price ?? 0));
+        const parsedModifiers = modifiers.map((m) => ({
+          ...m,
+          price: parseFloat(String(m.price ?? 0)),
+        }));
+        const parsedTaxRate =
+          item.tax_rate != null ? parseFloat(String(item.tax_rate)) : 0;
+        return [
+          ...curr,
+          {
+            id: item.id,
+            name: item.name,
+            price: parsedPrice,
+            quantity: 1,
+            modifiers: parsedModifiers,
+            variant_id: chosenVariant?.id ?? null,
+            variant_name: chosenVariant?.name ?? null,
+            tax_rate: Number.isFinite(parsedTaxRate) ? parsedTaxRate : 0,
+          },
+        ];
+      });
+    },
+    [selectedItem, selectedModifiers],
+  );
 
   const updateQuantity = useCallback((itemKey: string, delta: number) => {
     setCartItems((curr) =>
