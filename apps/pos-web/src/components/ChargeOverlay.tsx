@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { CashInput } from "./CashInput";
 
 export type ChargeMethod = "cash" | "card" | "digital_wallet";
 
@@ -204,17 +205,10 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
             {split && method !== "cash" && (
               <div>
                 <p style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
-                <input
+                <CashInput
                   value={splitAmount}
-                  onChange={(e) => setSplitAmount(e.target.value)}
-                  inputMode="decimal"
+                  onChange={setSplitAmount}
                   placeholder="0.00"
-                  style={{
-                    width: "100%", boxSizing: "border-box",
-                    padding: "14px 16px", borderRadius: 10,
-                    border: "1px solid #CBD5E1", fontSize: 28, fontWeight: 700,
-                    textAlign: "right", background: "#fff",
-                  }}
                 />
                 {splitValid && (
                   <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748B" }}>
@@ -228,18 +222,11 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
               <>
                 <div>
                   <p style={tinyLabel}>Received from customer</p>
-                  <input
+                  <CashInput
                     autoFocus
                     value={received}
-                    onChange={(e) => setReceived(e.target.value)}
-                    inputMode="decimal"
+                    onChange={setReceived}
                     placeholder="0.00"
-                    style={{
-                      width: "100%", boxSizing: "border-box",
-                      padding: "14px 16px", borderRadius: 10,
-                      border: "1px solid #CBD5E1", fontSize: 28, fontWeight: 700,
-                      textAlign: "right", background: "#fff",
-                    }}
                   />
                 </div>
 
@@ -253,9 +240,10 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
                         key={q}
                         onClick={() => setReceived(q.toFixed(2))}
                         style={{
-                          padding: "12px 6px", borderRadius: 8, fontWeight: 600,
+                          padding: "14px 6px", borderRadius: 8, fontWeight: 700,
                           background: "#fff", color: "#0F172A",
                           border: "1px solid #CBD5E1", cursor: "pointer", fontSize: 13,
+                          minHeight: 48,
                         }}
                       >MVR {q.toFixed(0)}</button>
                     ))}

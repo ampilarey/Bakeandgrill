@@ -283,7 +283,7 @@ function InventoryActionForm({
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           placeholder="Quantity (+/-)"
-          inputMode="decimal"
+          inputMode="none"
           style={fieldStyle}
         />
       </div>
@@ -336,14 +336,14 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
           value={ops.purchaseQuantity}
           onChange={(e) => ops.setPurchaseQuantity(e.target.value)}
           placeholder="Qty received"
-          inputMode="decimal"
+          inputMode="none"
           style={fieldStyle}
         />
         <input
           value={ops.purchaseUnitCost}
           onChange={(e) => ops.setPurchaseUnitCost(e.target.value)}
           placeholder="Unit cost MVR"
-          inputMode="decimal"
+          inputMode="none"
           style={fieldStyle}
         />
       </div>
@@ -549,7 +549,7 @@ function MarketingTab({ ops }: { ops: OpsState }) {
             value={ops.promoLastOrderDays}
             onChange={(e) => ops.setPromoLastOrderDays(e.target.value)}
             placeholder="Active in last X days (optional)"
-            inputMode="numeric"
+            inputMode="none"
             style={fieldStyle}
           />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

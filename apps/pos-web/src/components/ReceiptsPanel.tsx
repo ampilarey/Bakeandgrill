@@ -251,9 +251,15 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
             <input
               value={refundAmount}
               onChange={(e) => setRefundAmount(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
               placeholder="Amount"
-              inputMode="decimal"
-              style={{ width: 110, padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
+              inputMode="none"
+              autoComplete="off"
+              style={{
+                width: 110, padding: "8px 10px", borderRadius: 8,
+                border: "1px solid #CBD5E1", fontSize: 13,
+                caretColor: "transparent",
+              }}
             />
             <input
               value={refundReason}

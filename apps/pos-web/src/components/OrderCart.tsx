@@ -292,17 +292,24 @@ export function OrderCart(p: Props) {
           </>
         )}
 
-        {/* Discount — single line */}
+        {/* Discount — single line. inputMode="none" so iPad doesn't
+            pop the soft keyboard mid-cart-edit; cashier opens a
+            dedicated discount sheet via the Charge flow when they
+            need a numpad. For a one-off tweak a hardware keyboard
+            or paste from clipboard still works. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
           <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Discount</label>
           <input
             value={p.discountAmount}
             onChange={(e) => p.setDiscountAmount(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
             placeholder="0.00"
-            inputMode="decimal"
+            inputMode="none"
+            autoComplete="off"
             style={{
               flex: 1, padding: '6px 10px', borderRadius: 6,
               border: `1px solid ${C.border2}`, fontSize: 13, textAlign: 'right',
+              caretColor: 'transparent',
             }}
           />
         </div>
