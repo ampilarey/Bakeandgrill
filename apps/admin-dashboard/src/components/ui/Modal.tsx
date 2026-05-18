@@ -42,14 +42,19 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: P
         onClick={onClose}
         aria-hidden="true"
       />
-      {/* Panel */}
-      <div className={['relative w-full bg-white rounded-[14px] shadow-[0_8px_24px_rgba(28,20,8,0.15)] animate-fade-in', sizeStyles[size]].join(' ')}>
+      {/*
+        Panel — `modal-container` is the hook our global mobile @media
+        rule targets so the dialog snaps to a full-width bottom sheet
+        on phones instead of staying centered with leftover margin
+        that pushed the content offscreen.
+      */}
+      <div className={['modal-container relative w-full bg-white rounded-[14px] shadow-[0_8px_24px_rgba(28,20,8,0.15)] animate-fade-in', sizeStyles[size]].join(' ')}>
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8E0D8]">
             <h2 id="ui-modal-title" className="text-base font-bold text-[#1C1408]">{title}</h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#9C8E7E] hover:bg-[#F8F6F3] hover:text-[#1C1408] transition-colors"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-[#9C8E7E] hover:bg-[#F8F6F3] hover:text-[#1C1408] transition-colors"
               aria-label="Close"
             >
               <X size={16} />
@@ -58,7 +63,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: P
         )}
         <div className="p-6">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#E8E0D8] bg-[#F8F6F3] rounded-b-[14px]">
+          <div className="flex flex-wrap items-center justify-end gap-2 px-6 py-4 border-t border-[#E8E0D8] bg-[#F8F6F3] rounded-b-[14px]">
             {footer}
           </div>
         )}

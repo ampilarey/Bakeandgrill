@@ -11,6 +11,7 @@ use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class PublicApiSecurityTest extends TestCase
@@ -60,7 +61,7 @@ class PublicApiSecurityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function public_item_endpoint_does_not_expose_recipe()
     {
         $response = $this->getJson("/api/items/{$this->item->id}");
@@ -77,7 +78,7 @@ class PublicApiSecurityTest extends TestCase
         $this->assertArrayNotHasKey('cost', $item); // Internal cost hidden
     }
 
-    /** @test */
+    #[Test]
     public function public_item_endpoint_does_not_expose_cost()
     {
         $response = $this->getJson("/api/items/{$this->item->id}");
@@ -90,7 +91,7 @@ class PublicApiSecurityTest extends TestCase
         $this->assertStringNotContainsString('25.00', json_encode($responseData)); // The cost value
     }
 
-    /** @test */
+    #[Test]
     public function public_items_list_does_not_expose_recipe()
     {
         $response = $this->getJson('/api/items?available_only=1');
@@ -107,7 +108,7 @@ class PublicApiSecurityTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function staff_can_access_recipe_via_dedicated_endpoint()
     {
         // Owner role bypasses all permission gates, so this creates a valid staff user

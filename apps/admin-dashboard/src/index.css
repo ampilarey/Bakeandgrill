@@ -156,6 +156,16 @@ a { text-decoration: none; color: inherit; }
   [data-touch-target] {
     min-height: 44px;
   }
+  /* …but keep close-icon buttons compact (e.g. modal "×") */
+  button[aria-label="Close"],
+  button.icon-button {
+    min-height: 40px;
+  }
+
+  /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 
   /* Table horizontal scroll on mobile (explicit wrapper class) */
   .table-scroll {
@@ -210,6 +220,20 @@ a { text-decoration: none; color: inherit; }
   .page-stat-row {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
   }
+
+  /*
+   * Inline-styled grids: many pages use inline `gridTemplateColumns`
+   * like `repeat(N, 1fr)` with N=2..4. On phones these become 80–100px
+   * columns and break the layout. Without forcing every page to add a
+   * helper class, collapse anything tagged `data-responsive-grid` to a
+   * sensible auto-fit layout.
+   */
+  [data-responsive-grid] {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  }
+
+  /* Sticky page headers can swallow the viewport — cap their height */
+  .page-header { padding: 8px 0 !important; }
 }
 
 /* Small mobile: < 480px */

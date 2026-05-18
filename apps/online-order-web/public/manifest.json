@@ -5,18 +5,45 @@
   "start_url": "/order/",
   "scope": "/order/",
   "display": "standalone",
-  "background_color": "#1C1917",
-  "theme_color": "#D97706",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "background_color": "#FFFDF9",
+  "theme_color": "#D4813A",
   "orientation": "portrait-primary",
   "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
-      "src": "/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "screenshots": [],
-  "categories": ["food", "lifestyle"]
+  "shortcuts": [
+    {
+      "name": "Order Now",
+      "short_name": "Order",
+      "url": "/order/menu",
+      "description": "Browse the menu and start a new order"
+    },
+    {
+      "name": "My Orders",
+      "short_name": "Orders",
+      "url": "/order/account",
+      "description": "View past orders and receipts"
+    }
+  ],
+  "categories": ["food", "lifestyle", "shopping"]
 }

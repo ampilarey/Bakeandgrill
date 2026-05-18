@@ -7,6 +7,7 @@ namespace Tests\Feature\Auth;
 use App\Rules\MaldivesPhone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -19,7 +20,7 @@ class PhoneNormalizationTest extends TestCase
 
     // ── Valid formats ─────────────────────────────────────────────────────────
 
-    /** @dataProvider validPhoneProvider */
+    #[DataProvider('validPhoneProvider')]
     public function test_valid_phone_formats_are_accepted(string $phone, string $expected): void
     {
         $validator = Validator::make(['phone' => $phone], ['phone' => [new MaldivesPhone]]);
@@ -47,7 +48,7 @@ class PhoneNormalizationTest extends TestCase
 
     // ── Invalid formats ───────────────────────────────────────────────────────
 
-    /** @dataProvider invalidPhoneProvider */
+    #[DataProvider('invalidPhoneProvider')]
     public function test_invalid_phone_formats_are_rejected(string $phone): void
     {
         $validator = Validator::make(['phone' => $phone], ['phone' => [new MaldivesPhone]]);

@@ -82,10 +82,33 @@
   <body>
     <div id="root"></div>
     <script>
-      // Register service worker for push notifications
+      // Register service worker for offline support + push notifications.
+      // We tell the SW to skip waiting whenever a new version finishes
+      // installing, so the customer always gets fresh JS on next reload
+      // without having to close every tab manually.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/order/sw.js').catch(console.error);
+        window.addEventListener('load', async () => {
+          try {
+            const reg = await navigator.serviceWorker.register('/order/sw.js', { scope: '/order/' });
+            if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+            reg.addEventListener('updatefound', () => {
+              const sw = reg.installing;
+              if (!sw) return;
+              sw.addEventListener('statechange', () => {
+                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                  sw.postMessage('SKIP_WAITING');
+                }
+              });
+            });
+            // Reload exactly once when the new SW takes control so the
+            // fresh asset URLs are picked up immediately.
+            let reloaded = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              if (reloaded) return;
+              reloaded = true;
+              location.reload();
+            });
+          } catch (e) { console.error('SW registration failed', e); }
         });
       }
     </script>

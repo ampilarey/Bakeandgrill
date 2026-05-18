@@ -172,6 +172,11 @@ class OnlineOrderingGateTest extends TestCase
 
     public function test_schedule_open_window_allows_order(): void
     {
+        // Pin the clock to mid-day so open/close never straddles midnight.
+        // Without this the test was flaky between 00:00 and 01:00 local
+        // time — open=23:00 wrapped to the previous day and the gate
+        // refused the order.
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
         $now = Carbon::now(config('app.timezone', 'UTC'));
         $dayKey = strtolower($now->format('D'));
 
@@ -182,12 +187,17 @@ class OnlineOrderingGateTest extends TestCase
             ],
         ]));
 
-        $response = $this->postCustomerOrder();
-        $response->assertCreated();
+        try {
+            $response = $this->postCustomerOrder();
+            $response->assertCreated();
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_schedule_closed_window_blocks_order(): void
     {
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
         $now = Carbon::now(config('app.timezone', 'UTC'));
         // Set a schedule with a window that is entirely in the past
         $dayKey = strtolower($now->format('D'));
@@ -199,12 +209,17 @@ class OnlineOrderingGateTest extends TestCase
             ],
         ]));
 
-        $response = $this->postCustomerOrder();
-        $response->assertStatus(422);
+        try {
+            $response = $this->postCustomerOrder();
+            $response->assertStatus(422);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_override_bypasses_closed_schedule(): void
     {
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
         $now = Carbon::now(config('app.timezone', 'UTC'));
         $dayKey = strtolower($now->format('D'));
 
@@ -219,12 +234,17 @@ class OnlineOrderingGateTest extends TestCase
             $now->clone()->addHour()->toIso8601String(),
         );
 
-        $response = $this->postCustomerOrder();
-        $response->assertCreated();
+        try {
+            $response = $this->postCustomerOrder();
+            $response->assertCreated();
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_expired_override_does_not_open(): void
     {
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
         $now = Carbon::now(config('app.timezone', 'UTC'));
         $dayKey = strtolower($now->format('D'));
 
@@ -239,8 +259,12 @@ class OnlineOrderingGateTest extends TestCase
             $now->clone()->subHour()->toIso8601String(),
         );
 
-        $response = $this->postCustomerOrder();
-        $response->assertStatus(422);
+        try {
+            $response = $this->postCustomerOrder();
+            $response->assertStatus(422);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_status_endpoint_returns_correct_shape(): void

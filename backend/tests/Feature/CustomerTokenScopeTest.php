@@ -11,6 +11,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -96,31 +97,31 @@ class CustomerTokenScopeTest extends TestCase
     // A. Unauthenticated → 401
     // =========================================================================
 
-    /** @test */
+    #[Test]
     public function unauthenticated_request_is_rejected_on_customer_me(): void
     {
         $this->getJson('/api/customer/me')->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_request_is_rejected_on_customer_orders(): void
     {
         $this->getJson('/api/customer/orders')->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_request_is_rejected_on_customer_favorites(): void
     {
         $this->getJson('/api/customer/favorites')->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_request_is_rejected_on_customer_pre_orders(): void
     {
         $this->getJson('/api/customer/pre-orders')->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_request_is_rejected_on_customer_reviews(): void
     {
         $this->getJson('/api/customer/reviews')->assertStatus(401);
@@ -135,50 +136,50 @@ class CustomerTokenScopeTest extends TestCase
         return ['Authorization' => "Bearer {$this->staffToken}"];
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_me(): void
     {
         $this->getJson('/api/customer/me', $this->staffHeader())->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_orders_list(): void
     {
         $this->getJson('/api/customer/orders', $this->staffHeader())->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_order_detail(): void
     {
         $this->getJson('/api/customer/orders/1', $this->staffHeader())->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_profile_update(): void
     {
         $this->patchJson('/api/customer/profile', ['name' => 'Hacker'], $this->staffHeader())
             ->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_favorites(): void
     {
         $this->getJson('/api/customer/favorites', $this->staffHeader())->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_pre_orders(): void
     {
         $this->getJson('/api/customer/pre-orders', $this->staffHeader())->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_reviews(): void
     {
         $this->getJson('/api/customer/reviews', $this->staffHeader())->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_is_rejected_on_customer_referral_code(): void
     {
         $this->getJson('/api/customer/referral-code', $this->staffHeader())->assertStatus(403);
@@ -193,14 +194,14 @@ class CustomerTokenScopeTest extends TestCase
         return ['Authorization' => "Bearer {$this->customerToken}"];
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_is_rejected_on_staff_inventory_route(): void
     {
         // InventoryController::index requires tokenCan('staff')
         $this->getJson('/api/inventory', $this->customerHeader())->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_is_rejected_on_admin_reports(): void
     {
         // Admin analytics — protected by role:manager,admin,owner
@@ -208,7 +209,7 @@ class CustomerTokenScopeTest extends TestCase
             ->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_is_rejected_on_staff_orders_list(): void
     {
         // OrderController::index requires tokenCan('staff')
@@ -219,7 +220,7 @@ class CustomerTokenScopeTest extends TestCase
     // D. Valid customer token → passes EnsureCustomerToken
     // =========================================================================
 
-    /** @test */
+    #[Test]
     public function customer_token_reaches_customer_me(): void
     {
         $this->getJson('/api/customer/me', $this->customerHeader())
@@ -227,7 +228,7 @@ class CustomerTokenScopeTest extends TestCase
             ->assertJsonPath('customer.phone', $this->customer->phone);
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_reaches_customer_orders_list(): void
     {
         // Returns paginated empty list — 200 is the important assertion
@@ -235,7 +236,7 @@ class CustomerTokenScopeTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_reaches_customer_favorites(): void
     {
         $this->getJson('/api/customer/favorites', $this->customerHeader())
@@ -243,7 +244,7 @@ class CustomerTokenScopeTest extends TestCase
             ->assertJsonStructure(['favorites']);
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_reaches_customer_pre_orders(): void
     {
         $this->getJson('/api/customer/pre-orders', $this->customerHeader())
@@ -251,7 +252,7 @@ class CustomerTokenScopeTest extends TestCase
             ->assertJsonStructure(['data']);
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_reaches_customer_reviews(): void
     {
         $this->getJson('/api/customer/reviews', $this->customerHeader())
@@ -259,7 +260,7 @@ class CustomerTokenScopeTest extends TestCase
             ->assertJsonStructure(['reviews']);
     }
 
-    /** @test */
+    #[Test]
     public function customer_can_update_own_profile(): void
     {
         $this->patchJson('/api/customer/profile', ['name' => 'Updated Name'], $this->customerHeader())
@@ -273,7 +274,7 @@ class CustomerTokenScopeTest extends TestCase
     // E. Token ability edge cases
     // =========================================================================
 
-    /** @test */
+    #[Test]
     public function token_with_no_abilities_is_rejected_on_customer_routes(): void
     {
         // A token created with no explicit abilities defaults to ['*'] in older
@@ -287,7 +288,7 @@ class CustomerTokenScopeTest extends TestCase
             ->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_with_wrong_ability_is_rejected(): void
     {
         // Simulate a hypothetically issued 'staff'-scoped token on a Customer model.

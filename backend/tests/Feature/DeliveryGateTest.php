@@ -104,6 +104,9 @@ class DeliveryGateTest extends TestCase
 
     public function test_schedule_closed_window_blocks_delivery(): void
     {
+        // Same midnight-wraparound concern as the open-window test —
+        // pin the clock so the choice of dayKey is deterministic.
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
         $now = Carbon::now(config('app.timezone', 'UTC'));
         $dayKey = strtolower($now->format('D'));
 
@@ -111,12 +114,23 @@ class DeliveryGateTest extends TestCase
             $dayKey => ['open' => '00:00', 'close' => '00:01'],
         ]));
 
-        $response = $this->postDeliveryOrder();
-        $response->assertStatus(422);
+        try {
+            $response = $this->postDeliveryOrder();
+            $response->assertStatus(422);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_schedule_open_window_allows_delivery(): void
     {
+        // Pin "now" to mid-day so the open/close window never wraps
+        // around midnight. The previous test computed
+        // open=now-1h / close=now+2h dynamically, which failed
+        // whenever the suite happened to run between 00:00 and 01:00
+        // local time — the open time wrapped to 23:00 yesterday and
+        // the gate's string-compare logic refused the order.
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
         $now = Carbon::now(config('app.timezone', 'UTC'));
         $dayKey = strtolower($now->format('D'));
 
@@ -127,8 +141,12 @@ class DeliveryGateTest extends TestCase
             ],
         ]));
 
-        $response = $this->postDeliveryOrder();
-        $response->assertCreated();
+        try {
+            $response = $this->postDeliveryOrder();
+            $response->assertCreated();
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_zone_enforcement_blocks_wrong_zone(): void

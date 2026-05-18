@@ -5,7 +5,18 @@ alwaysApply: true
 
 # Deploy Commands
 
-## When the user asks "pull?" or "pull command" or "deploy"
+## TWO ENVIRONMENTS — DEFAULT TO TEST
+
+There are **two installs** of the app on `sg-s2`. **Always deploy to TEST first.** Only deploy to PRODUCTION when the user explicitly says "pull to main site", "deploy to prod", "push live", or similar. Never deploy to production proactively.
+
+| Env | Path | Domain | Branch | Deploy when |
+|---|---|---|---|---|
+| **TEST** *(default)* | `/home/bakeandgrill/test.bakeandgrill.mv` | `test.bakeandgrill.mv` | `main` | Every "pull?" by default |
+| **PRODUCTION** *(live site)* | `/home/bakeandgrill/public_html` | `bakeandgrill.mv` (main domain) | `main` | Only when user explicitly asks for production / live / main-site |
+
+If the user just says "pull?" with no environment qualifier → **TEST only**. Confirm before touching production.
+
+## TEST deploy
 
 **Full deploy** (new migrations or PHP deps):
 ```bash
@@ -17,16 +28,41 @@ cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend
 cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart
 ```
 
+## PRODUCTION deploy (only when user explicitly asks)
+
+Before running, check what's about to ship:
+```bash
+cd /home/bakeandgrill/public_html && git fetch origin main && git log --oneline HEAD..origin/main
+```
+
+**Full deploy** (new migrations or PHP deps):
+```bash
+cd /home/bakeandgrill/public_html && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart
+```
+
+**Quick pull** (frontend/small fixes only — no new migrations):
+```bash
+cd /home/bakeandgrill/public_html && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart
+```
+
+After a prod deploy, always remind the user to smoke-test the live URL (`https://bakeandgrill.mv`) and check the queue worker on prod (it has its OWN worker process, separate from test):
+```bash
+ps aux | grep "queue:work redis"
+```
+
 ## Server Details
 
 | Field | Value |
 |---|---|
 | Server | `sg-s2` |
 | User | `bakeandgrill` |
-| Project root | `/home/bakeandgrill/test.bakeandgrill.mv` |
-| Backend | `/home/bakeandgrill/test.bakeandgrill.mv/backend` |
+| Test root | `/home/bakeandgrill/test.bakeandgrill.mv` |
+| Test backend | `/home/bakeandgrill/test.bakeandgrill.mv/backend` |
+| Production root | `/home/bakeandgrill/public_html` |
+| Production backend | `/home/bakeandgrill/public_html/backend` |
 | GitHub | `https://github.com/ampilarey/Bakeandgrill` |
-| Branch | `main` |
+| Branch | `main` (both envs track the same branch) |
+| Other domains on box (NOT the app) | `pamera.bakeandgrill.mv`, `salath.bakeandgrill.mv` |
 
 Always use the **quick pull** for UI-only changes, **full deploy** when PHP files or migrations changed.
 
@@ -34,20 +70,41 @@ Always use the **quick pull** for UI-only changes, **full deploy** when PHP file
 
 ## Queue Worker — Keep Alive
 
-The queue worker must be running for queued jobs (loyalty, inventory, webhooks) to process.
-Payment confirmation SMS now sends **synchronously** (no worker needed), but the worker is still required for other listeners.
+Each environment needs its OWN queue worker. They use the same Redis instance but the workers are launched from each install's own `backend/` so they pick up that env's code.
 
-**Check if running:**
+Payment confirmation SMS now sends **synchronously** (no worker needed), but the worker is still required for other listeners (loyalty, inventory, webhooks, async SMS).
+
+**Check both workers:**
 ```bash
-ps aux | grep queue:work
+ps aux | grep "queue:work redis" | grep -v grep
 ```
 
-**Start manually (survives disconnect via nohup):**
+You should see one PHP process per env (look at the `cwd` column or the command path).
+
+### TEST worker
+
+Start manually:
 ```bash
 cd /home/bakeandgrill/test.bakeandgrill.mv/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &
 ```
 
-**Crontab keepalive** (add once via `crontab -e` on the server — auto-restarts if worker dies):
+### PRODUCTION worker
+
+Start manually:
+```bash
+cd /home/bakeandgrill/public_html/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &
 ```
-* * * * * pgrep -f "queue:work redis" || cd /home/bakeandgrill/test.bakeandgrill.mv/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &
+
+### Crontab keepalive
+
+Install both lines once via `crontab -e` so each env's worker self-heals. Use the non-interactive installer to avoid vi pain:
+
+```bash
+cat <<'EOF' | crontab -
+* * * * * pgrep -f "queue:work.*test.bakeandgrill" || cd /home/bakeandgrill/test.bakeandgrill.mv/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &
+* * * * * pgrep -f "queue:work.*public_html" || cd /home/bakeandgrill/public_html/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &
+* * * * * cd /home/bakeandgrill/public_html/backend && php artisan schedule:run >> /dev/null 2>&1
+EOF
 ```
+
+Note: the keepalive uses the install path (`test.bakeandgrill` / `public_html`) in the `pgrep` filter so each cron entry only restarts ITS env's worker, not the other one.

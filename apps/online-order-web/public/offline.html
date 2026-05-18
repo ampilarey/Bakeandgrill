@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>You're offline — Bake &amp; Grill</title>
+    <link rel="manifest" href="/order/manifest.json" />
+    <link rel="icon" href="/logo.png" />
+    <meta name="theme-color" content="#D4813A" />
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #FFFDF9;
+            --surface: #FFFFFF;
+            --text: #2A1E0C;
+            --muted: #8B7355;
+            --primary: #D4813A;
+            --primary-hover: #B86820;
+            --border: #EDE4D4;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; min-height: 100vh; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            line-height: 1.5;
+        }
+        .card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 12px 32px rgba(28, 20, 8, 0.08);
+            text-align: center;
+        }
+        .logo {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            object-fit: cover;
+            margin-bottom: 16px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 800;
+            margin: 0 0 8px;
+            color: var(--text);
+        }
+        p {
+            font-size: 14px;
+            color: var(--muted);
+            margin: 0 0 24px;
+        }
+        button {
+            font: inherit;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 24px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            min-height: 48px;
+            transition: background .15s;
+        }
+        button:hover { background: var(--primary-hover); }
+        .small {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img class="logo" src="/logo.png" alt="Bake &amp; Grill" />
+        <h1>You're offline</h1>
+        <p>
+            We couldn't reach the kitchen. Check your connection and we'll
+            get you back to your order.
+        </p>
+        <button onclick="location.reload()">Try again</button>
+        <p class="small">
+            Cached menus may still be available — tap "Try again" once
+            you're back online.
+        </p>
+    </div>
+    <script>
+        // Auto-retry when the browser detects connectivity returning.
+        window.addEventListener('online', () => location.reload());
+    </script>
+</body>
+</html>

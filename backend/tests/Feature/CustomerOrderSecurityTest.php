@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Modifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class CustomerOrderSecurityTest extends TestCase
@@ -50,7 +51,7 @@ class CustomerOrderSecurityTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function customer_order_requires_item_id()
     {
         $token = $this->customer->createToken('test', ['customer'])->plainTextToken;
@@ -70,7 +71,7 @@ class CustomerOrderSecurityTest extends TestCase
         $response->assertJsonValidationErrors(['items.0.item_id']);
     }
 
-    /** @test */
+    #[Test]
     public function customer_order_ignores_client_provided_prices()
     {
         $token = $this->customer->createToken('test', ['customer'])->plainTextToken;
@@ -102,7 +103,7 @@ class CustomerOrderSecurityTest extends TestCase
         $this->assertEquals(120.00, $order['subtotal']);
     }
 
-    /** @test */
+    #[Test]
     public function customer_order_rejects_invalid_item_id()
     {
         $token = $this->customer->createToken('test', ['customer'])->plainTextToken;
@@ -121,7 +122,7 @@ class CustomerOrderSecurityTest extends TestCase
         $response->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function customer_order_rejects_modifier_not_belonging_to_item()
     {
         $token = $this->customer->createToken('test', ['customer'])->plainTextToken;
@@ -156,7 +157,7 @@ class CustomerOrderSecurityTest extends TestCase
         $this->assertStringContainsString('not valid for item', $response->json('message') ?? '');
     }
 
-    /** @test */
+    #[Test]
     public function staff_token_cannot_access_customer_routes()
     {
         $staff = \App\Models\User::factory()->create();
@@ -169,7 +170,7 @@ class CustomerOrderSecurityTest extends TestCase
         $response->assertStatus(403); // Forbidden - missing 'customer' ability
     }
 
-    /** @test */
+    #[Test]
     public function customer_token_cannot_access_staff_routes()
     {
         $customerToken = $this->customer->createToken('test', ['customer'])->plainTextToken;
