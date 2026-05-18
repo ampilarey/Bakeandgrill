@@ -58,16 +58,60 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
     ? Number.isFinite(receivedNum) && receivedNum >= total
     : true;
 
-  // Quick-amount buttons: exact total + a few sensible bills around it.
-  // Loyverse uses (exact, +5, +10, +20, round up to nearest 10/50/100).
-  const quick = useMemo(() => {
-    const set = new Set<number>();
-    set.add(total);
-    [5, 10, 20, 50, 100].forEach((bump) => set.add(Math.ceil(total / 1) + bump));
-    // Round-up suggestions
-    [10, 50, 100, 500].forEach((step) => set.add(Math.ceil(total / step) * step));
-    return Array.from(set).filter((v) => v >= total).sort((a, b) => a - b).slice(0, 6);
+  // Quick-amount buttons.
+  //
+  // Old logic produced nonsense like `ceil(total) + 5` (e.g. for a
+  // 37.50 total it suggested 43, 48, 58, 88 …). Cashiers don't see
+  // payments like that — customers hand them actual MVR denominations.
+  //
+  // New algorithm, tuned for Maldivian cash:
+  //   - Notes:  5, 10, 20, 50, 100, 500, 1000
+  //   - Coins:  0.25, 0.50, 1, 2  (rarely "quick", usually exact)
+  //
+  // We surface, in this order, capped at 6 chips:
+  //   1. The exact total (cashier confirms when the customer hands
+  //      the precise amount in coins).
+  //   2. Each single-note denomination that's >= total — for
+  //      "customer hands one bill" which is the dominant case.
+  //   3. A few round-up combinations (the next multiple of 50 / 100
+  //      / 500 etc.) so things like a 235 total surface 250 and 300,
+  //      not 240 (which nobody actually hands in MVR notes). Steps
+  //      are tiered by magnitude so the small/large total cases both
+  //      stay sensible.
+  const quick = useMemo<number[]>(() => {
+    if (total <= 0) return [];
+
+    const exact = Math.round(total * 100) / 100;
+    const set = new Set<number>([exact]);
+
+    const NOTES = [5, 10, 20, 50, 100, 500, 1000];
+    for (const note of NOTES) {
+      if (note >= total) set.add(note);
+    }
+
+    // Step sizes scale with the total so we don't suggest MVR 240 for
+    // a MVR 235 order (no Maldivian customer combines notes like that).
+    const steps =
+      total < 20  ? [5, 10, 20, 50, 100] :
+      total < 100 ? [10, 20, 50, 100, 500] :
+      total < 500 ? [50, 100, 500, 1000] :
+                    [100, 500, 1000];
+    for (const step of steps) {
+      const r = Math.ceil(total / step) * step;
+      if (r > total) set.add(r);
+    }
+
+    return Array.from(set)
+      .filter((v) => v >= total)
+      .sort((a, b) => a - b)
+      .slice(0, 6);
   }, [total]);
+
+  // Pretty-print: whole MVR → no decimals, fractional → 2 dp.
+  // The previous overlay used `.toFixed(0)` everywhere, which silently
+  // turned a 37.50 "exact" chip into "MVR 38" — visibly wrong.
+  const fmtChip = (n: number) =>
+    Number.isInteger(n) ? `MVR ${n}` : `MVR ${n.toFixed(2)}`;
 
   const splitNum = Number.parseFloat(splitAmount);
   const splitValid =
@@ -235,18 +279,33 @@ export function ChargeOverlay({ total, onClose, onConfirm, submitting }: Props) 
                   <div style={{
                     display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
                   }}>
-                    {quick.map((q) => (
-                      <button
-                        key={q}
-                        onClick={() => setReceived(q.toFixed(2))}
-                        style={{
-                          padding: "14px 6px", borderRadius: 8, fontWeight: 700,
-                          background: "#fff", color: "#0F172A",
-                          border: "1px solid #CBD5E1", cursor: "pointer", fontSize: 13,
-                          minHeight: 48,
-                        }}
-                      >MVR {q.toFixed(0)}</button>
-                    ))}
+                    {quick.map((q) => {
+                      const isExact = Math.abs(q - total) < 0.005;
+                      return (
+                        <button
+                          key={q}
+                          onClick={() => setReceived(q.toFixed(2))}
+                          style={{
+                            padding: "14px 6px", borderRadius: 8, fontWeight: 700,
+                            background: isExact ? "#0F172A" : "#fff",
+                            color: isExact ? "#fff" : "#0F172A",
+                            border: `1px solid ${isExact ? "#0F172A" : "#CBD5E1"}`,
+                            cursor: "pointer", fontSize: 13,
+                            minHeight: 48,
+                            display: "flex", flexDirection: "column",
+                            alignItems: "center", justifyContent: "center", gap: 2,
+                          }}
+                        >
+                          <span>{fmtChip(q)}</span>
+                          {isExact && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 600,
+                              opacity: 0.8, letterSpacing: "0.06em",
+                            }}>EXACT</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </>
