@@ -170,7 +170,7 @@ export function ChargeOverlay({
       background: "rgba(15,23,42,0.65)",
       display: "flex", alignItems: "stretch", justifyContent: "stretch",
     }}>
-      <div style={{
+      <div className="pos-charge" style={{
         margin: "auto", background: "#fff", width: "100%", maxWidth: 760, maxHeight: "100%",
         borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column",
       }}>
@@ -188,7 +188,7 @@ export function ChargeOverlay({
         </div>
 
         {/* Body */}
-        <div style={{
+        <div className="pos-charge-grid" style={{
           flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: 0,
           gap: 0,
         }}>

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { sendBill } from "../api";
+import {
+  palette, radius, shadow, space, type, z,
+  btnPrimary, btnSecondary, inputField,
+} from "../theme";
 
 const RECENT_KEY = "pos_recent_phones";
 const MAX_RECENT = 5;
@@ -21,6 +25,16 @@ type Props = {
   onClose: () => void;
 };
 
+/**
+ * Modal for SMS-ing the pre-payment bill to a customer. The cashier
+ * either types a phone or picks one of the last 5 numbers they
+ * texted from this device — those are stored locally so they don't
+ * leak across devices.
+ *
+ * Number normalisation accepts a bare 7-digit Maldivian mobile and
+ * promotes it to E.164 (+960…) before hitting the API; users can
+ * also type the full international form.
+ */
 export function SendBillPanel({ orderId, onClose }: Props) {
   const [phone, setPhone] = useState("");
   const [sending, setSending] = useState(false);
@@ -68,88 +82,194 @@ export function SendBillPanel({ orderId, onClose }: Props) {
     <div
       onClick={(e) => { if (e.target === e.currentTarget && !sending) onClose(); }}
       style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 60,
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.45)",
+        zIndex: z.modalBackdrop,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: space.l,
+        animation: "pos-fade-in 120ms ease",
       }}
       role="dialog"
       aria-modal="true"
+      aria-label="Send bill via SMS"
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 340,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+          background: palette.panel,
+          borderRadius: radius.xl,
+          width: "100%",
+          maxWidth: 400,
+          boxShadow: shadow.xl,
+          overflow: "hidden",
+          animation: "pos-scale-in 140ms ease",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <span style={{ fontWeight: 700, fontSize: 16, color: "#1C1408" }}>Send Bill via SMS</span>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#8B7355" }}>×</button>
-        </div>
-
-        {result ? (
+        {/* Header */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: `${space.l}px ${space.xl}px`,
+          borderBottom: `1px solid ${palette.border}`,
+        }}>
           <div>
-            <p style={{ color: "#047857", fontWeight: 600, marginBottom: 8 }}>✓ Bill sent successfully!</p>
-            <p style={{ fontSize: 13, color: "#475569", wordBreak: "break-all", marginBottom: 16 }}>{result.link}</p>
-            <button
-              onClick={() => { void navigator.clipboard.writeText(result.link); }}
-              style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "1px solid #EDE4D4", background: "#f9f5f0", fontSize: 14, cursor: "pointer", marginBottom: 8 }}
-            >
-              Copy Link
-            </button>
-            <button
-              onClick={onClose}
-              style={{ width: "100%", padding: "10px 0", borderRadius: 8, background: "#1C1408", color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-            >
-              Done
-            </button>
-          </div>
-        ) : (
-          <div>
-            <label style={{ fontSize: 13, color: "#8B7355", display: "block", marginBottom: 4 }}>Customer phone number</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void handleSend()}
-              placeholder="7654321"
-              maxLength={15}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #EDE4D4", fontSize: 15, boxSizing: "border-box", marginBottom: 8 }}
-              autoFocus
-            />
-
-            {recentPhones.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 12, color: "#8B7355", marginBottom: 4 }}>Recent:</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {recentPhones.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPhone(p.replace("+960", ""))}
-                      style={{ padding: "4px 10px", borderRadius: 20, border: "1px solid #EDE4D4", background: "#f9f5f0", fontSize: 12, cursor: "pointer" }}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
+            <div style={{ ...type.subtitle, color: palette.panelInk }}>Send bill via SMS</div>
+            {orderId && (
+              <div style={{ ...type.caption, color: palette.panelMuted, marginTop: 2 }}>
+                Order #{orderId}
               </div>
             )}
-
-            {error && <p style={{ color: "#b91c1c", fontSize: 13, marginBottom: 8 }}>{error}</p>}
-
-            <button
-              onClick={() => void handleSend()}
-              disabled={sending || !phone.trim()}
-              style={{
-                width: "100%", padding: "11px 0", borderRadius: 8,
-                background: sending || !phone.trim() ? "#8B7355" : "#1C1408",
-                color: "#fff", border: "none", fontSize: 14, fontWeight: 600,
-                cursor: sending || !phone.trim() ? "not-allowed" : "pointer",
-              }}
-            >
-              {sending ? "Sending…" : "Send Bill"}
-            </button>
           </div>
-        )}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 22,
+              cursor: "pointer",
+              color: palette.panelMuted,
+              padding: space.xxs,
+              lineHeight: 1,
+              minHeight: 32,
+              minWidth: 32,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{ padding: space.xl }}>
+          {result ? (
+            <div>
+              <div style={{
+                background: palette.successBg,
+                border: `1px solid ${palette.successBorder}`,
+                color: palette.successDark,
+                borderRadius: radius.m,
+                padding: `${space.s + 2}px ${space.m}px`,
+                marginBottom: space.m,
+                ...type.body,
+                fontWeight: 600,
+              }}>
+                ✓ Bill sent. Customer received the link.
+              </div>
+              <div style={{
+                ...type.caption,
+                color: palette.panelMuted,
+                marginBottom: space.xs,
+                fontWeight: 600,
+              }}>
+                Payment link
+              </div>
+              <div style={{
+                ...type.bodySm,
+                color: palette.panelInk,
+                wordBreak: "break-all",
+                background: palette.bgAlt,
+                padding: space.m,
+                borderRadius: radius.s,
+                border: `1px solid ${palette.border}`,
+                marginBottom: space.m,
+                fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+              }}>
+                {result.link}
+              </div>
+              <div style={{ display: "flex", gap: space.s }}>
+                <button
+                  onClick={() => { void navigator.clipboard.writeText(result.link); }}
+                  style={{ ...btnSecondary(), flex: 1 }}
+                >
+                  Copy link
+                </button>
+                <button
+                  onClick={onClose}
+                  style={{ ...btnPrimary(), flex: 1 }}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label style={{ ...type.label, color: palette.panelMuted, display: "block", marginBottom: space.xxs }}>
+                Customer mobile
+              </label>
+              <input
+                type="tel"
+                inputMode="tel"
+                pattern="[0-9+\- ]*"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void handleSend()}
+                placeholder="7XXXXXX"
+                maxLength={15}
+                autoFocus
+                onFocus={(e) => e.currentTarget.select()}
+                style={{ ...inputField, width: "100%", fontSize: type.subtitle.fontSize, marginBottom: space.s }}
+              />
+
+              {recentPhones.length > 0 && (
+                <div style={{ marginBottom: space.m }}>
+                  <div style={{ ...type.label, color: palette.panelSubtle, marginBottom: space.xs }}>
+                    Recent
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: space.xs }}>
+                    {recentPhones.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPhone(p.replace("+960", ""))}
+                        style={{
+                          padding: `${space.xxs + 2}px ${space.m}px`,
+                          borderRadius: radius.pill,
+                          border: `1px solid ${palette.border}`,
+                          background: palette.bgAlt,
+                          ...type.caption,
+                          color: palette.panelInk,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div style={{
+                  background: palette.dangerBg,
+                  color: palette.dangerDark,
+                  border: `1px solid ${palette.dangerBorder}`,
+                  borderRadius: radius.s,
+                  padding: `${space.xs + 2}px ${space.m}px`,
+                  ...type.bodySm,
+                  marginBottom: space.m,
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: space.s }}>
+                <button onClick={onClose} style={{ ...btnSecondary(), flex: 1 }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={() => void handleSend()}
+                  disabled={sending || !phone.trim()}
+                  style={{ ...btnPrimary(sending || !phone.trim()), flex: 2 }}
+                >
+                  {sending ? "Sending…" : "Send bill"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

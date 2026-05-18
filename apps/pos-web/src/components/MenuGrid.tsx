@@ -29,21 +29,25 @@ type Props = {
   readOnly?: boolean;
 };
 
-// Loyverse uses bright per-category colors. We pick from a fixed palette and
-// hash by category id so the colors stay stable across renders.
+// Per-category colour swatches. Loyverse-style highly-saturated chips
+// felt loud against the slate POS chrome (per audit). Instead we use
+// muted modern tones — still distinct enough for fast scanning while
+// reading as "one product" with the rest of the UI. `fg` is the
+// readable accent text colour for that swatch; tiles render the
+// category name in slate ink so contrast stays comfortable on white.
 const TILE_PALETTE = [
-  { bg: '#EF4444', fg: '#FFFFFF' }, // red
-  { bg: '#F97316', fg: '#FFFFFF' }, // orange
-  { bg: '#F59E0B', fg: '#FFFFFF' }, // amber
-  { bg: '#84CC16', fg: '#FFFFFF' }, // lime
-  { bg: '#22C55E', fg: '#FFFFFF' }, // green
-  { bg: '#14B8A6', fg: '#FFFFFF' }, // teal
-  { bg: '#06B6D4', fg: '#FFFFFF' }, // cyan
-  { bg: '#3B82F6', fg: '#FFFFFF' }, // blue
-  { bg: '#6366F1', fg: '#FFFFFF' }, // indigo
-  { bg: '#8B5CF6', fg: '#FFFFFF' }, // violet
-  { bg: '#EC4899', fg: '#FFFFFF' }, // pink
-  { bg: '#78716C', fg: '#FFFFFF' }, // warm grey
+  { bg: '#FEE2E2', fg: '#B91C1C' }, // soft red
+  { bg: '#FFEDD5', fg: '#C2410C' }, // soft orange
+  { bg: '#FEF3C7', fg: '#A16207' }, // soft amber
+  { bg: '#ECFCCB', fg: '#3F6212' }, // soft lime
+  { bg: '#D1FAE5', fg: '#047857' }, // soft green
+  { bg: '#CCFBF1', fg: '#0F766E' }, // soft teal
+  { bg: '#CFFAFE', fg: '#0E7490' }, // soft cyan
+  { bg: '#DBEAFE', fg: '#1D4ED8' }, // soft blue
+  { bg: '#E0E7FF', fg: '#4338CA' }, // soft indigo
+  { bg: '#EDE9FE', fg: '#6D28D9' }, // soft violet
+  { bg: '#FCE7F3', fg: '#BE185D' }, // soft pink
+  { bg: '#E2E8F0', fg: '#334155' }, // soft slate
 ];
 
 function tileColor(categoryId: number | null | undefined) {
@@ -79,17 +83,22 @@ function CategoryPill({
       style={{
         padding: subtle ? '6px 12px' : '8px 16px',
         borderRadius: 999,
-        border: `1px solid ${active ? '#0F172A' : '#E2E8F0'}`,
-        background: active ? '#0F172A' : subtle ? '#F1F5F9' : '#FFFFFF',
+        // Active pill uses the brand orange — same accent the cart's
+        // primary CTA and login hero use, so the "current selection"
+        // language is consistent across the whole POS.
+        border: `1px solid ${active ? '#B86820' : '#E2E8F0'}`,
+        background: active ? '#D4813A' : subtle ? '#F1F5F9' : '#FFFFFF',
         color: active ? '#FFFFFF' : '#0F172A',
-        fontSize: subtle ? 11 : 12,
+        fontSize: subtle ? 11 : 13,
         fontWeight: 700,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
-        transition: 'background 0.1s',
+        minHeight: subtle ? 30 : 36,
+        boxShadow: active ? '0 1px 3px rgba(212,129,58,0.35)' : 'none',
+        transition: 'background 0.12s, box-shadow 0.12s',
       }}
     >
       <span>{label}</span>
@@ -377,32 +386,50 @@ export function MenuGrid({
                   title={readOnly ? 'Resumed ticket is view-only. Cancel resume to edit.' : undefined}
                   style={{
                     aspectRatio: '1 / 1',
-                    background: c.bg, color: c.fg,
-                    border: 'none', borderRadius: 10, padding: 10,
+                    position: 'relative',
+                    background: c.bg,
+                    color: c.fg,
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '12px 12px 10px 14px',
                     cursor: readOnly ? 'not-allowed' : 'pointer',
                     opacity: readOnly ? 0.45 : 1,
                     textAlign: 'left',
-                    display: 'flex', flexDirection: 'column',
+                    display: 'flex',
+                    flexDirection: 'column',
                     justifyContent: 'space-between',
-                    boxShadow: '0 1px 3px rgba(15,23,42,0.10)',
-                    transition: 'transform 0.05s, box-shadow 0.1s',
+                    boxShadow: '0 1px 2px rgba(15,23,42,0.06)',
+                    transition: 'transform 0.05s, box-shadow 0.12s',
+                    overflow: 'hidden',
                   }}
                   onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.97)')}
                   onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                   onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.10)')}
+                  onMouseOut={(e) => (e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.06)')}
                 >
+                  {/* Category accent strip — keeps category visible
+                      even though the tile body is muted. */}
+                  <div style={{
+                    position: 'absolute',
+                    left: 0, top: 0, bottom: 0, width: 4,
+                    background: c.fg,
+                    opacity: 0.85,
+                  }} />
                   <span style={{
-                    fontSize: 13, fontWeight: 700, lineHeight: 1.2,
+                    fontSize: 14, fontWeight: 700, lineHeight: 1.2,
+                    color: '#0F172A',
                     display: '-webkit-box', WebkitLineClamp: 3,
                     WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>
                     {item.name}
                   </span>
                   <span style={{
-                    fontSize: 13, fontWeight: 700, opacity: 0.95,
+                    fontSize: 13, fontWeight: 800,
+                    color: c.fg,
                     display: 'flex', alignItems: 'baseline', gap: 4,
                   }}>
-                    {hasVariants && <span style={{ fontSize: 9, opacity: 0.85 }}>from</span>}
+                    {hasVariants && <span style={{ fontSize: 10, opacity: 0.75, fontWeight: 600 }}>from</span>}
                     MVR {price.toFixed(2)}
                   </span>
                 </button>
@@ -514,9 +541,11 @@ function ConfigurePanel({
             onClick={onClose}
             aria-label="Close"
             style={{
-              background: 'rgba(255,255,255,0.18)', color: '#FFFFFF',
+              background: 'rgba(255,255,255,0.55)',
+              color: c.fg,
               border: 'none', width: 36, height: 36, borderRadius: 999,
               fontSize: 22, lineHeight: 1, cursor: 'pointer',
+              fontWeight: 700,
             }}
           >×</button>
         </div>

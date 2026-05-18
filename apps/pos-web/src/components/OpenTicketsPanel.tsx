@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchReceipts, sendBill } from "../api";
+import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, type, z } from "../theme";
 
 export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
 
@@ -26,6 +27,11 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   // per-row action that matters — Print just opens a tab).
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowMsg, setRowMsg] = useState<{ id: number; text: string; kind: "ok" | "err" } | null>(null);
+  // Modal state for asking the cashier for a phone number when sending
+  // a bill SMS for a ticket that has no linked customer. Replaces the
+  // native window.prompt which was fragile, off-brand, and unusable
+  // on iPad in PWA fullscreen mode.
+  const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,25 +55,20 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   /**
    * Send Bill (SMS) for a parked ticket. Two paths:
    *   - ticket already has a linked customer with a phone → use that phone
-   *     (server-side firstOrCreate keeps the same customer row).
-   *   - no linked customer → prompt the cashier for a phone once. The
-   *     backend will create-or-find that customer and link it.
+   *     immediately (server-side firstOrCreate keeps the same customer row).
+   *   - no linked customer → open the inline phone prompt modal so the
+   *     cashier types a number without leaving the panel.
    */
-  const handleSendBill = async (t: OpenTicket) => {
+  const handleSendBill = (t: OpenTicket) => {
     const linkedPhone = t.customer?.phone ?? null;
-    let phone = linkedPhone;
-    if (!phone) {
-      // Prefill the prompt with the cart customer's phone, if any.
-      // (window.prompt accepts a default value as the second arg —
-      // pre-fix this was empty so staff had to retype the same number
-      // they already entered in the cart customer picker.)
-      const raw = window.prompt(
-        `Enter customer phone for ticket "${t.ticket_name || t.order_number}":`,
-        cartCustomerPhone ?? "",
-      )?.trim();
-      if (!raw) return;
-      phone = raw;
+    if (linkedPhone) {
+      void doSendBill(t, linkedPhone);
+      return;
     }
+    setPhonePrompt({ ticket: t, phone: cartCustomerPhone ?? "" });
+  };
+
+  const doSendBill = async (t: OpenTicket, phone: string) => {
     setBusyId(t.id);
     setRowMsg(null);
     try {
@@ -87,6 +88,15 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     } finally {
       setBusyId(null);
     }
+  };
+
+  const submitPhonePrompt = async () => {
+    if (!phonePrompt) return;
+    const phone = phonePrompt.phone.trim();
+    if (!phone) return;
+    const ticket = phonePrompt.ticket;
+    setPhonePrompt(null);
+    await doSendBill(ticket, phone);
   };
 
   /**
@@ -111,8 +121,8 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
 
   return (
     <PanelShell title="Open tickets" subtitle="Parked orders on this device" onClose={onClose}>
-      {loading && <p style={{ color: "#64748B", fontSize: 13 }}>Loading…</p>}
-      {err && <p style={{ color: "#B91C1C", fontSize: 13 }}>{err}</p>}
+      {loading && <p style={{ color: palette.panelMuted, fontSize: type.bodySm.fontSize }}>Loading…</p>}
+      {err && <p style={{ color: palette.dangerDark, fontSize: type.bodySm.fontSize }}>{err}</p>}
       {!loading && tickets.length === 0 && (
         <EmptyState
           emoji="🎫"
@@ -120,7 +130,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           body="Use Save Ticket from the cart to park an order here."
         />
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
         {tickets.map((t) => {
           const busy = busyId === t.id;
           const msg = rowMsg?.id === t.id ? rowMsg : null;
@@ -128,44 +138,49 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
             <div
               key={t.id}
               style={{
-                padding: 12, borderRadius: 10,
-                background: "#fff", border: "1px solid #E2E8F0",
-                display: "flex", flexDirection: "column", gap: 10,
+                padding: space.m,
+                borderRadius: radius.l,
+                background: palette.panel,
+                border: `1px solid ${palette.border}`,
+                display: "flex",
+                flexDirection: "column",
+                gap: space.s,
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#0F172A" }}>
+                  <div style={{ fontWeight: 700, fontSize: type.body.fontSize, color: palette.panelInk }}>
                     {t.ticket_name || `Order ${t.order_number}`}
                   </div>
-                  <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                  <div style={{ fontSize: type.caption.fontSize, color: palette.panelMuted, marginTop: 2 }}>
                     {(t.items?.length ?? 0)} items
                     {t.ticket_note ? ` · ${t.ticket_note}` : ""}
                     {t.customer?.name ? ` · ${t.customer.name}` : ""}
                     {t.customer?.phone ? ` · ${t.customer.phone}` : ""}
                   </div>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#0F172A", whiteSpace: "nowrap" }}>
+                <div style={{ fontWeight: 800, fontSize: type.subtitle.fontSize, color: palette.panelInk, whiteSpace: "nowrap" }}>
                   MVR {Number(t.total).toFixed(2)}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button onClick={() => onResume(t)} disabled={busy} style={primaryBtn(busy)}>
+              <div style={{ display: "flex", gap: space.xs, flexWrap: "wrap" }}>
+                <button onClick={() => onResume(t)} disabled={busy} style={{ ...btnPrimary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
                   ▶ Resume
                 </button>
-                <button onClick={() => handleSendBill(t)} disabled={busy} style={secondaryBtn(busy)}>
+                <button onClick={() => handleSendBill(t)} disabled={busy} style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
                   📱 {busy ? "…" : "Send Bill SMS"}
                 </button>
-                <button onClick={() => handlePrintBill(t)} disabled={busy} style={secondaryBtn(busy)}>
+                <button onClick={() => handlePrintBill(t)} disabled={busy} style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
                   🖨 Print Bill
                 </button>
               </div>
 
               {msg && (
                 <div style={{
-                  fontSize: 12,
-                  color: msg.kind === "ok" ? "#047857" : "#B91C1C",
+                  fontSize: type.caption.fontSize,
+                  color: msg.kind === "ok" ? palette.successDark : palette.dangerDark,
+                  fontWeight: 600,
                 }}>
                   {msg.text}
                 </div>
@@ -174,34 +189,99 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           );
         })}
       </div>
+
+      {phonePrompt && (
+        <PhonePromptModal
+          ticketLabel={phonePrompt.ticket.ticket_name || `Order ${phonePrompt.ticket.order_number}`}
+          phone={phonePrompt.phone}
+          onPhoneChange={(phone) => setPhonePrompt((p) => p ? { ...p, phone } : p)}
+          onCancel={() => setPhonePrompt(null)}
+          onSubmit={submitPhonePrompt}
+        />
+      )}
     </PanelShell>
   );
 }
 
-function primaryBtn(disabled: boolean): React.CSSProperties {
-  return {
-    padding: "8px 12px",
-    borderRadius: 8,
-    background: disabled ? "#A7F3D0" : "#10B981",
-    color: "#fff",
-    border: "none",
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-  };
-}
-function secondaryBtn(disabled: boolean): React.CSSProperties {
-  return {
-    padding: "8px 12px",
-    borderRadius: 8,
-    background: "#fff",
-    color: "#0F172A",
-    border: "1px solid #CBD5E1",
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.6 : 1,
-  };
+function PhonePromptModal({
+  ticketLabel,
+  phone,
+  onPhoneChange,
+  onCancel,
+  onSubmit,
+}: {
+  ticketLabel: string;
+  phone: string;
+  onPhoneChange: (v: string) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Send bill — phone number"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.4)",
+        zIndex: z.modalBackdrop,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: space.l,
+        animation: "pos-fade-in 120ms ease",
+      }}
+      onClick={onCancel}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(420px, 100%)",
+          background: palette.panel,
+          borderRadius: radius.xl,
+          boxShadow: shadow.xl,
+          padding: space.xl,
+          display: "flex",
+          flexDirection: "column",
+          gap: space.m,
+          animation: "pos-scale-in 140ms ease",
+        }}
+      >
+        <div>
+          <div style={{ ...type.subtitle, color: palette.panelInk }}>Send bill SMS</div>
+          <div style={{ ...type.bodySm, color: palette.panelMuted, marginTop: 4 }}>
+            Ticket: <strong style={{ color: palette.panelInk }}>{ticketLabel}</strong>
+          </div>
+        </div>
+        <div>
+          <label style={{ ...type.label, color: palette.panelMuted, display: "block", marginBottom: space.xxs }}>
+            Customer mobile
+          </label>
+          <input
+            autoFocus
+            type="tel"
+            inputMode="tel"
+            pattern="[0-9+\- ]*"
+            value={phone}
+            onChange={(e) => onPhoneChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSubmit();
+              if (e.key === "Escape") onCancel();
+            }}
+            placeholder="7XXXXXX"
+            style={{ ...inputField, width: "100%", fontSize: type.subtitle.fontSize }}
+          />
+        </div>
+        <div style={{ display: "flex", gap: space.s, justifyContent: "flex-end", marginTop: space.xs }}>
+          <button type="button" onClick={onCancel} style={btnSecondary()}>Cancel</button>
+          <button type="button" onClick={onSubmit} disabled={!phone.trim()} style={btnPrimary(!phone.trim())}>
+            Send SMS
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function PanelShell({ title, subtitle, onClose, children }: {
@@ -209,24 +289,41 @@ export function PanelShell({ title, subtitle, onClose, children }: {
 }) {
   return (
     <div style={{
-      flex: 1, minHeight: 0,
-      background: "#fff", borderRadius: 12, border: "1px solid #E2E8F0",
-      display: "flex", flexDirection: "column", overflow: "hidden",
+      flex: 1,
+      minHeight: 0,
+      background: palette.panel,
+      borderRadius: radius.xl,
+      border: `1px solid ${palette.border}`,
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      boxShadow: shadow.xs,
     }}>
       <div style={{
-        padding: 14, borderBottom: "1px solid #E2E8F0",
-        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+        padding: space.l,
+        borderBottom: `1px solid ${palette.border}`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: space.m,
       }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A" }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{subtitle}</div>}
+          <div style={{ ...type.subtitle, color: palette.panelInk }}>{title}</div>
+          {subtitle && <div style={{ ...type.caption, color: palette.panelMuted, marginTop: 2 }}>{subtitle}</div>}
         </div>
         <button onClick={onClose} style={{
-          background: "none", border: "none", color: "#64748B",
-          fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 4,
+          background: "none",
+          border: "none",
+          color: palette.panelMuted,
+          fontSize: 22,
+          cursor: "pointer",
+          lineHeight: 1,
+          padding: space.xxs,
+          minHeight: 32,
+          minWidth: 32,
         }} aria-label="Close panel">×</button>
       </div>
-      <div style={{ flex: 1, overflow: "auto", padding: 14 }}>
+      <div style={{ flex: 1, overflow: "auto", padding: space.l }}>
         {children}
       </div>
     </div>
@@ -236,12 +333,16 @@ export function PanelShell({ title, subtitle, onClose, children }: {
 export function EmptyState({ emoji, title, body }: { emoji: string; title: string; body: string }) {
   return (
     <div style={{
-      display: "flex", flexDirection: "column", alignItems: "center",
-      padding: 40, color: "#94A3B8", textAlign: "center",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      padding: space.huge,
+      color: palette.panelSubtle,
+      textAlign: "center",
     }}>
-      <div style={{ fontSize: 44, marginBottom: 12 }}>{emoji}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#64748B" }}>{title}</div>
-      <div style={{ fontSize: 12, marginTop: 4, maxWidth: 280 }}>{body}</div>
+      <div style={{ fontSize: 44, marginBottom: space.m }}>{emoji}</div>
+      <div style={{ ...type.body, fontWeight: 700, color: palette.panelMuted }}>{title}</div>
+      <div style={{ ...type.caption, marginTop: 4, maxWidth: 280 }}>{body}</div>
     </div>
   );
 }

@@ -3,9 +3,9 @@ import type { IncomingOnlineOrder } from "../api";
 type Props = {
   toasts: IncomingOnlineOrder[];
   /** Called when the cashier dismisses a toast (X button or after the
-   *  auto-dismiss timer expires). The toast itself doesn't navigate —
-   *  the cashier still has to tap the Online Pickup nav item to act
-   *  on the order, which keeps mid-ring focus from being hijacked. */
+   *  auto-dismiss timer expires). Tapping the toast body instead fires
+   *  `onOpen` which navigates to the Receipts pane filtered to the
+   *  new order — see `App.tsx` for how it's wired up. */
   onDismiss: (id: number) => void;
   /** Called when the cashier taps the toast itself — usually wired
    *  to swap the active pane to the online-orders view. Optional. */

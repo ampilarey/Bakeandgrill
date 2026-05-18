@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { palette, radius, shadow, space, type, btnPrimary, btnSecondary, inputField } from '../theme';
 
 type Props = {
   username: string;
@@ -10,6 +11,16 @@ type Props = {
   onLogin: () => void;
 };
 
+/**
+ * POS sign-in screen. Designed around a tap-first workflow: cashier
+ * usually has the mobile number already typed by the previous shift,
+ * so we autofocus PIN-first and route on-screen numpad taps to the
+ * email field only when it has focus.
+ *
+ * Layout is a centered card on tablet/desktop and stacks on small
+ * screens. The dark band on the left is a deliberate brand moment so
+ * the POS doesn't look like a generic admin form.
+ */
 export function LoginPage({ username, setUsername, pin, setPin, deviceId, authError, onLogin }: Props) {
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -68,148 +79,192 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const canSubmit = !!username.trim() && pin.length >= 4;
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#1C1408',
+      background: `linear-gradient(135deg, ${palette.ink} 0%, ${palette.inkSoft} 100%)`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 24,
+      padding: space.xxl,
+      fontFamily: 'inherit',
     }}>
       <div style={{
-        background: '#fff',
-        borderRadius: 20,
-        padding: '40px 36px',
+        background: palette.panel,
+        borderRadius: radius.xxl,
         width: '100%',
-        maxWidth: 380,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
+        maxWidth: 420,
+        boxShadow: shadow.xl,
+        overflow: 'hidden',
+        animation: 'pos-scale-in 200ms ease',
       }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
-          <p style={{ color: '#8B7355', fontSize: 14, margin: 0 }}>POS — Sign in with mobile or email + PIN</p>
-        </div>
-
-        {/* Mobile / Email */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Mobile or Email
-          </label>
-          <input
-            ref={emailRef}
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onLogin()}
-            placeholder="Mobile number or email"
-            autoComplete="username"
+        {/* Hero band — keeps the brand orange visible without making
+            the whole screen warm. */}
+        <div style={{
+          background: `linear-gradient(120deg, ${palette.primaryDark} 0%, ${palette.primary} 100%)`,
+          padding: `${space.xxl}px ${space.xxl}px ${space.xl}px`,
+          color: '#FFFFFF',
+          textAlign: 'center',
+        }}>
+          <img
+            src="/logo.png"
+            alt="Bake & Grill"
             style={{
-              width: '100%', boxSizing: 'border-box',
-              borderRadius: 10, padding: '10px 12px',
-              border: '1px solid #EDE4D4', fontSize: 14,
-              color: '#2A1E0C', background: '#FFFDF9', outline: 'none',
+              width: 56,
+              height: 56,
+              borderRadius: radius.l,
+              marginBottom: space.s,
+              boxShadow: shadow.m,
+              background: 'rgba(255,255,255,0.16)',
+              padding: 4,
             }}
           />
-        </div>
-
-        {/* Device ID — read-only display */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Device ID
-          </label>
-          <div style={{
-            width: '100%', boxSizing: 'border-box' as const,
-            borderRadius: 10, padding: '10px 12px',
-            border: '1px solid #EDE4D4', fontSize: 14,
-            color: '#8B7355', background: '#F7F3EC',
-            fontFamily: 'monospace', letterSpacing: '0.05em',
-            userSelect: 'all' as const,
-          }}>
-            {deviceId}
+          <div style={{ ...type.title, color: '#FFFFFF' }}>Bake &amp; Grill POS</div>
+          <div style={{ ...type.bodySm, color: 'rgba(255,255,255,0.85)', marginTop: space.xxs }}>
+            Sign in to start a shift
           </div>
         </div>
 
-        {/* PIN dots */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', gap: 10,
-          marginBottom: 20, minHeight: 48, alignItems: 'center',
-        }}>
-          {pin.length === 0 ? (
-            <span style={{ color: '#C4A882', fontSize: 14 }}>Enter your PIN below</span>
-          ) : (
-            Array.from({ length: pin.length }).map((_, i) => (
-              <div key={i} style={{
-                width: 16, height: 16, borderRadius: '50%',
-                background: '#D4813A', transition: 'all 0.1s',
-              }} />
-            ))
+        <div style={{ padding: space.xxl }}>
+          {/* Mobile / Email */}
+          <div style={{ marginBottom: space.l }}>
+            <label style={{ ...type.label, color: palette.panelMuted, display: 'block', marginBottom: space.xxs }}>
+              Mobile or email
+            </label>
+            <input
+              ref={emailRef}
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onLogin()}
+              placeholder="7XXXXXX or you@example.com"
+              autoComplete="username"
+              style={{ ...inputField, width: '100%' }}
+            />
+          </div>
+
+          {/* Device ID — read-only display */}
+          <div style={{ marginBottom: space.l }}>
+            <label style={{ ...type.label, color: palette.panelMuted, display: 'block', marginBottom: space.xxs }}>
+              Device ID
+            </label>
+            <div style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              borderRadius: radius.s,
+              padding: `${space.s}px ${space.m}px`,
+              border: `1px dashed ${palette.borderStrong}`,
+              ...type.caption,
+              color: palette.panelMuted,
+              background: palette.bgAlt,
+              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+              letterSpacing: '0.05em',
+              userSelect: 'all',
+            }}>
+              {deviceId}
+            </div>
+          </div>
+
+          {/* PIN dots */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: space.s,
+            marginBottom: space.l,
+            minHeight: 36,
+            alignItems: 'center',
+          }}>
+            {pin.length === 0 ? (
+              <span style={{ ...type.bodySm, color: palette.panelSubtle }}>Enter your 4–8 digit PIN</span>
+            ) : (
+              Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    background: i < pin.length ? palette.primary : palette.border,
+                    transition: 'background 0.1s',
+                  }}
+                />
+              ))
+            )}
+          </div>
+
+          {authError && (
+            <div style={{
+              background: palette.dangerBg,
+              color: palette.dangerDark,
+              border: `1px solid ${palette.dangerBorder}`,
+              borderRadius: radius.s,
+              padding: `${space.s}px ${space.m}px`,
+              ...type.bodySm,
+              marginBottom: space.m,
+              textAlign: 'center',
+            }}>
+              {authError}
+            </div>
+          )}
+
+          {/* Numpad */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: space.s }}>
+            {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d) => (
+              <button
+                key={d}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleNumpad(d);
+                }}
+                disabled={d === ''}
+                aria-label={d === '⌫' ? 'Backspace' : d === '' ? undefined : `Digit ${d}`}
+                style={{
+                  height: 56,
+                  borderRadius: radius.m,
+                  border: `1px solid ${palette.border}`,
+                  background: d === '⌫' ? palette.bgAlt : d === '' ? 'transparent' : palette.panel,
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: d === '⌫' ? palette.panelMuted : palette.panelInk,
+                  cursor: d === '' ? 'default' : 'pointer',
+                  transition: 'background 0.1s, transform 60ms ease',
+                }}
+                onMouseUp={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
+                onTouchStart={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)'; }}
+                onTouchEnd={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: space.s, marginTop: space.l }}>
+            <button onClick={clear} style={{ ...btnSecondary(), flex: 1, height: 52 }}>
+              Clear
+            </button>
+            <button
+              onClick={onLogin}
+              disabled={!canSubmit}
+              style={{ ...btnPrimary(!canSubmit), flex: 2, height: 52 }}
+            >
+              Sign In →
+            </button>
+          </div>
+
+          <div style={{ marginTop: space.l, textAlign: 'center' }}>
+            <a href="/" style={{ ...type.caption, color: palette.panelSubtle, textDecoration: 'none' }}>
+              ← Main website
+            </a>
+          </div>
+
+          {import.meta.env.DEV && (
+            <p style={{ ...type.caption, color: palette.panelSubtle, marginTop: space.m, textAlign: 'center', lineHeight: 1.6 }}>
+              Dev mode — check your local DB for staff PINs.
+            </p>
           )}
         </div>
-
-        {authError && (
-          <div style={{
-            background: '#fee2e2', color: '#991b1b', borderRadius: 10,
-            padding: '10px 14px', fontSize: 13, marginBottom: 14, textAlign: 'center',
-          }}>
-            {authError}
-          </div>
-        )}
-
-        {/* Numpad */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d) => (
-            <button
-              key={d}
-              onMouseDown={(e) => {
-                // Prevent blur on the active input when tapping a numpad key
-                e.preventDefault();
-                handleNumpad(d);
-              }}
-              disabled={d === ''}
-              aria-label={d === '⌫' ? 'Backspace' : d === '' ? undefined : `Digit ${d}`}
-              style={{
-                height: 56, borderRadius: 12, border: '1px solid #EDE4D4',
-                background: d === '⌫' ? '#FFF3E8' : d === '' ? 'transparent' : '#FFFDF9',
-                fontSize: 18, fontWeight: 700,
-                color: d === '⌫' ? '#D4813A' : '#2A1E0C',
-                cursor: d === '' ? 'default' : 'pointer',
-                transition: 'background 0.1s',
-              }}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={clear} style={{
-            flex: 1, height: 48, borderRadius: 12,
-            border: '1px solid #EDE4D4', background: '#FFFDF9',
-            fontSize: 14, fontWeight: 600, color: '#8B7355', cursor: 'pointer',
-          }}>
-            Clear
-          </button>
-          <button onClick={onLogin} disabled={!username.trim() || pin.length < 4} style={{
-            flex: 2, height: 48, borderRadius: 12, border: 'none',
-            background: (!username.trim() || pin.length < 4) ? '#F5C99A' : '#D4813A',
-            fontSize: 14, fontWeight: 700, color: '#fff',
-            cursor: (!username.trim() || pin.length < 4) ? 'default' : 'pointer',
-            transition: 'background 0.15s',
-          }}>
-            Sign In →
-          </button>
-        </div>
-
-        <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <a href="/" style={{ fontSize: 12, color: '#C4A882', textDecoration: 'none' }}>← Main Website</a>
-        </div>
-
-        {import.meta.env.DEV && (
-          <p style={{ fontSize: 11, color: '#C4A882', marginTop: 12, textAlign: 'center', lineHeight: 1.6 }}>
-            Dev mode — check your local DB for staff PINs.
-          </p>
-        )}
       </div>
     </div>
   );

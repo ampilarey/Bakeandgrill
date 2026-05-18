@@ -344,6 +344,12 @@ export function useOrderCreation(params: Params) {
         const cphone = params.customerPhone;
         params.clearCart();
         params.setSelectedItem(null);
+        // Drop the just-paid order id so the OrderCart stops offering
+        // "Send bill" against a now-paid ticket — the audit caught the
+        // Send Bill block silently shadowing the next ticket because
+        // we never cleared this flag on success. The ReceiptActions
+        // banner takes over the "what now?" duty for paid orders.
+        setLastCreatedOrderId(null);
         setStatusMessage(
           cid
             ? "Order paid. Receipt SMS sent to customer."
@@ -409,16 +415,25 @@ export function useOrderCreation(params: Params) {
         const totalDue = snapshot && snapshot.orderId === pendingPaymentForOrderId
           ? snapshot.totalDue
           : params.cartTotal;
+        const orderId = pendingPaymentForOrderId;
         const settled = await settleOrder(
-          pendingPaymentForOrderId,
+          orderId,
           totalDue > 0 ? totalDue : 0,
           params.payments,
         );
         if (settled) {
+          // Snapshot customer BEFORE clearCart so we can hand it to
+          // onOrderSettled (was missing — recovered payments showed
+          // no Receipt Actions banner, leaving the cashier stranded
+          // after a successful retry).
+          const cid = params.customerId;
+          const cphone = params.customerPhone;
           params.clearCart();
           params.setSelectedItem(null);
+          setLastCreatedOrderId(null);
           setStatusMessage("Payment recorded.");
           setTimeout(() => setStatusMessage(""), 4000);
+          params.onOrderSettled?.(orderId, cid, cphone);
         }
       } finally {
         setIsSubmitting(false);

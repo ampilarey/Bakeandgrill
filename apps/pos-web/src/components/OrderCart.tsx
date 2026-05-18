@@ -84,17 +84,20 @@ export function OrderCart(p: Props) {
   const isResumed = p.resumedOrderId !== null;
 
   return (
-    <aside style={{
-      width: 380,
-      flexShrink: 0,
-      background: C.panel,
-      borderRadius: 12,
-      border: `1px solid ${C.border}`,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
-    }}>
+    <aside
+      className="pos-cart"
+      style={{
+        width: 380,
+        flexShrink: 0,
+        background: C.panel,
+        borderRadius: 14,
+        border: `1px solid ${C.border}`,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(15,23,42,0.06)',
+      }}
+    >
       {/* ── Resumed-ticket banner (read-only mode) ────────────────── */}
       {isResumed && (
         <div style={{
@@ -324,28 +327,28 @@ export function OrderCart(p: Props) {
             here). Without it the Charge button shows only the subtotal
             and the cashier under-collects from the customer. */}
         {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0 || p.rewardsDiscount > 0) && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
             <Row label="Subtotal" value={`MVR ${p.cartSubtotal.toFixed(2)}`} />
             {p.discountValue > 0 && (
               <Row label="Discount" value={`− MVR ${p.discountValue.toFixed(2)}`} accent={C.primaryDark} />
             )}
             {p.appliedPromo && (
               <Row
-                label={`Promo (${p.appliedPromo.code})`}
+                label={`Promo · ${p.appliedPromo.code}`}
                 value={`− MVR ${p.appliedPromo.discount.toFixed(2)}`}
                 accent={C.primaryDark}
               />
             )}
             {p.appliedLoyalty && (
               <Row
-                label={`Points (${p.appliedLoyalty.points.toLocaleString()})`}
+                label={`Points · ${p.appliedLoyalty.points.toLocaleString()}`}
                 value={`− MVR ${p.appliedLoyalty.discount.toFixed(2)}`}
                 accent={C.primaryDark}
               />
             )}
             {p.appliedGiftCard && (
               <Row
-                label={`Gift card (${p.appliedGiftCard.code.slice(-6)})`}
+                label={`Gift card · ${p.appliedGiftCard.code.slice(-6)}`}
                 value={`− MVR ${p.appliedGiftCard.discount.toFixed(2)}`}
                 accent={C.primaryDark}
               />
@@ -353,7 +356,7 @@ export function OrderCart(p: Props) {
             {p.cartTax > 0 && (
               <Row label="GST" value={`MVR ${p.cartTax.toFixed(2)}`} />
             )}
-          </>
+          </div>
         )}
 
         {/* Discount — single line. inputMode="none" so iPad doesn't
@@ -426,7 +429,10 @@ export function OrderCart(p: Props) {
           </div>
         )}
 
-        {/* Send-bill after a successful order */}
+        {/* Send-bill for an open order whose payment hasn't been
+            attempted yet — once a charge is recorded the bug fix in
+            useOrderCreation clears lastCreatedOrderId so this button
+            stops appearing for already-paid tickets. */}
         {p.lastCreatedOrderId && p.pendingPaymentForOrderId === null && (
           <button
             onClick={p.onOpenSendBill}
@@ -440,18 +446,22 @@ export function OrderCart(p: Props) {
           </button>
         )}
 
-        {/* BIG CHARGE button */}
+        {/* BIG CHARGE button — green keeps the "money" affordance
+            (Loyverse / Toast / Square all use a colored CTA distinct
+            from the brand colour for this specific action). */}
         <button
           onClick={p.onCheckout}
           disabled={checkoutDisabled}
           style={{
             marginTop: 12, width: '100%',
-            padding: '16px 18px', borderRadius: 10,
+            padding: '18px 18px', borderRadius: 12,
             background: checkoutDisabled ? C.successDisabled : C.success,
             color: '#FFFFFF', border: 'none',
             cursor: checkoutDisabled ? 'not-allowed' : 'pointer',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            transition: 'background 0.1s',
+            transition: 'background 0.12s, transform 60ms ease',
+            boxShadow: checkoutDisabled ? 'none' : '0 4px 12px rgba(16,185,129,0.30)',
+            minHeight: 56,
           }}
           onMouseEnter={(e) => {
             if (!checkoutDisabled) (e.currentTarget as HTMLButtonElement).style.background = C.successDark;
@@ -459,11 +469,23 @@ export function OrderCart(p: Props) {
           onMouseLeave={(e) => {
             if (!checkoutDisabled) (e.currentTarget as HTMLButtonElement).style.background = C.success;
           }}
+          onMouseDown={(e) => {
+            if (!checkoutDisabled) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.99)';
+          }}
+          onMouseUp={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform = '';
+          }}
         >
-          <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.04em' }}>
-            {p.isSubmitting ? 'PROCESSING…' : 'CHARGE'}
+          <span style={{
+            fontSize: 14, fontWeight: 800,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>
+            {p.isSubmitting ? 'Processing…' : 'Charge'}
           </span>
-          <span style={{ fontSize: 18, fontWeight: 800 }}>
+          <span style={{
+            fontSize: 20, fontWeight: 800,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
             MVR {p.cartTotal.toFixed(2)}
           </span>
         </button>
@@ -476,10 +498,11 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      fontSize: 12, color: accent ?? C.muted, marginTop: 2,
+      fontSize: 12, color: accent ?? C.muted,
+      letterSpacing: '0.01em',
     }}>
-      <span>{label}</span>
-      <span style={{ fontWeight: 600 }}>{value}</span>
+      <span style={{ fontWeight: 500 }}>{label}</span>
+      <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     </div>
   );
 }

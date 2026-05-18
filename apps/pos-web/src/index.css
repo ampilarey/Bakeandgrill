@@ -2,7 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────────────────────────────────
+ * POS global styles — see src/theme.ts for the design tokens that
+ * drive the React components. These rules are for things that have to
+ * live in the cascade (focus rings, media queries, html/body defaults,
+ * keyframes) and can't be expressed as inline style objects.
+ * ───────────────────────────────────────────────────────────────────── */
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
+               Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Buttons / inputs get a brand focus ring instead of the default ugly
+ * blue outline. Cashiers on touch don't see this, but admin users
+ * tabbing through the form do — and it makes accessibility audits
+ * pass. */
+:focus-visible {
+  outline: 2px solid #D4813A;
+  outline-offset: 2px;
+}
+
+/* The cart sidebar on POS is 380px fixed-width by default. On tablet
+ * portrait (iPad held vertically) that's almost half the screen, so
+ * we narrow it down and let the menu grid take the rest. Below 700px
+ * (phone) the cart stacks under the menu instead — POS isn't really
+ * a phone tool but at least it doesn't break. */
+@media (max-width: 1100px) {
+  .pos-cart { width: 340px !important; }
+}
+@media (max-width: 820px) {
+  .pos-cart { width: 300px !important; }
+  .pos-main { padding: 8px !important; gap: 8px !important; }
+}
+@media (max-width: 700px) {
+  .pos-main { flex-direction: column !important; }
+  .pos-cart { width: 100% !important; max-height: 50vh; }
+}
+
+/* Charge overlay caps at 760px on big screens; on small ones we let
+ * it fill the viewport so the cashier isn't squeezed. */
+@media (max-width: 820px) {
+  .pos-charge { padding: 12px !important; }
+  .pos-charge-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Touch targets minimum 44px — already baked into the theme helpers
+ * but also applied as a safety net to any button inside POS shell. */
+.pos-shell button {
+  min-height: 40px;
+}
+
 @keyframes pos-toast-in {
   from { transform: translateY(8px); opacity: 0; }
   to   { transform: translateY(0);   opacity: 1; }
+}
+
+@keyframes pos-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pos-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }

@@ -11,8 +11,10 @@ describe("POS App", () => {
   it("renders the login screen when not signed in", () => {
     render(<App />);
     // Copy that only appears on LoginPage, not the post-login header.
+    // The page renders a brand title plus a "Sign in to start a shift"
+    // subtitle inside its hero band.
     expect(
-      screen.getByText(/POS — Sign in with mobile or email \+ PIN/i),
+      screen.getByText(/Sign in to start a shift/i),
     ).toBeInTheDocument();
   });
 });

@@ -31,6 +31,31 @@ import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
 import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
 
+import { palette, radius, shadow, space, type as typeRamp, btnPrimary } from "./theme";
+
+// Theme shortcut object so deeply-nested style blocks in this file
+// don't get pulled apart with 6 import lines. `TH` is just a renamed
+// re-export of the imports above.
+const TH = {
+  bg: palette.bg,
+  bgAlt: palette.bgAlt,
+  panel: palette.panel,
+  panelInk: palette.panelInk,
+  panelMuted: palette.panelMuted,
+  panelSubtle: palette.panelSubtle,
+  border: palette.border,
+  ink: palette.ink,
+  inkSoft: palette.inkSoft,
+  primary: palette.primary,
+  primaryDark: palette.primaryDark,
+  primaryLight: palette.primaryLight,
+  primaryBg: palette.primaryBg,
+  radius,
+  shadow,
+  space,
+  type: typeRamp,
+};
+
 const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
 
@@ -333,6 +358,26 @@ function App() {
     setIsLocked(false);
   };
 
+  // api.ts and useOrderCreation both dispatch a window `auth_expired`
+  // event when a request comes back 401 / the Sanctum token is gone.
+  // Without this listener the token was getting cleared from
+  // localStorage but the UI stayed "logged in" — cashier kept ringing
+  // tickets that all silently 401'd. Catch the event, drop session
+  // state, and force the LoginPage to render so the cashier knows.
+  useEffect(() => {
+    const onExpired = () => {
+      // Don't blow away the cashier name / username — we re-show them
+      // pre-filled on the login screen so the cashier just types the
+      // PIN. Less friction than a totally blank form mid-shift.
+      localStorage.removeItem("pos_token");
+      setIsLoggedIn(false);
+      setIsLocked(false);
+      setAuthError("Your session expired. Please log back in.");
+    };
+    window.addEventListener("auth_expired", onExpired);
+    return () => window.removeEventListener("auth_expired", onExpired);
+  }, []);
+
   const handleOpenShift = async (openingCash: number, notes?: string) => {
     setOpenShiftBusy(true);
     try { await shift.open(openingCash, notes); setShowOpenShift(false); }
@@ -543,9 +588,10 @@ function App() {
   ];
 
   return (
-    <div style={{
+    <div className="pos-shell" style={{
       minHeight: '100vh',
-      background: '#F5F6F8', color: '#1E293B',
+      background: palette.bg,
+      color: palette.panelInk,
       display: 'flex', flexDirection: 'column',
     }}>
       {/* ── Top bar ────────────────────────────────────────────────── */}
@@ -640,7 +686,7 @@ function App() {
       )}
 
       {/* Main body */}
-      <main style={{ flex: 1, display: 'flex', minHeight: 0, padding: 12, gap: 12 }}>
+      <main className="pos-main" style={{ flex: 1, display: 'flex', minHeight: 0, padding: 12, gap: 12 }}>
         {pane === 'sales' && (
           <>
             <OrderCart
@@ -832,6 +878,14 @@ function Banner({ text }: { text: string }) {
   );
 }
 
+/**
+ * Generic gate card — used by device-pending / device-disabled /
+ * shift-closed style screens. Rendered in front of the whole POS
+ * when the cashier can't proceed.
+ *
+ * Slate background matches the rest of the POS chrome so transitions
+ * in/out of these gates don't feel like switching apps.
+ */
 function FullScreenCard({
   emoji, title, body, deviceId, primaryAction, secondaryAction, footer,
 }: {
@@ -842,37 +896,83 @@ function FullScreenCard({
   footer?: string;
 }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#1C1408', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px', width: '100%', maxWidth: 420, textAlign: 'center' }}>
-        <p style={{ fontSize: 40, margin: '0 0 16px' }}>{emoji}</p>
-        <p style={{ fontWeight: 700, fontSize: 18, color: '#2A1E0C', margin: '0 0 10px' }}>{title}</p>
-        <p style={{ color: '#8B7355', fontSize: 14, margin: '0 0 20px', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{body}</p>
+    <div style={{
+      minHeight: '100vh',
+      background: `linear-gradient(135deg, ${TH.ink} 0%, ${TH.inkSoft} 100%)`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: TH.space.xl,
+    }}>
+      <div style={{
+        background: TH.panel,
+        borderRadius: TH.radius.xxl,
+        padding: `${TH.space.xxl}px ${TH.space.xxl}px ${TH.space.xl}px`,
+        width: '100%',
+        maxWidth: 440,
+        textAlign: 'center',
+        boxShadow: TH.shadow.xl,
+        animation: 'pos-scale-in 200ms ease',
+      }}>
+        <p style={{ fontSize: 44, margin: `0 0 ${TH.space.m}px` }}>{emoji}</p>
+        <p style={{ ...TH.type.title, color: TH.panelInk, margin: `0 0 ${TH.space.s}px` }}>{title}</p>
+        <p style={{ ...TH.type.body, color: TH.panelMuted, margin: `0 0 ${TH.space.xl}px`, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+          {body}
+        </p>
 
         {deviceId && (
-          <div style={{ background: '#FEF3E8', borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
-            <p style={{ margin: 0, fontSize: 12, color: '#8B7355', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Device ID</p>
-            <p style={{ margin: '4px 0 0', fontSize: 16, fontWeight: 700, color: '#D4813A', fontFamily: 'monospace' }}>{deviceId}</p>
+          <div style={{
+            background: TH.primaryBg,
+            border: `1px solid ${TH.primaryLight}`,
+            borderRadius: TH.radius.l,
+            padding: `${TH.space.m}px ${TH.space.l}px`,
+            marginBottom: TH.space.xl,
+          }}>
+            <p style={{ ...TH.type.label, margin: 0, color: TH.primaryDark }}>Device ID</p>
+            <p style={{
+              margin: `${TH.space.xxs}px 0 0`,
+              fontSize: 16,
+              fontWeight: 800,
+              color: TH.primaryDark,
+              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+              letterSpacing: '0.04em',
+            }}>{deviceId}</p>
           </div>
         )}
 
-        {footer && <p style={{ color: '#9C8E7E', fontSize: 12, margin: '0 0 12px' }}>{footer}</p>}
+        {footer && (
+          <p style={{ ...TH.type.caption, color: TH.panelSubtle, margin: `0 0 ${TH.space.m}px` }}>{footer}</p>
+        )}
 
-        {primaryAction && (
-          <button
-            onClick={primaryAction.onClick}
-            style={{ padding: '10px 24px', background: '#D4813A', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', marginRight: secondaryAction ? 10 : 0 }}
-          >
-            {primaryAction.label}
-          </button>
-        )}
-        {secondaryAction && (
-          <button
-            onClick={secondaryAction.onClick}
-            style={{ background: 'none', border: 'none', color: '#9C8E7E', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            {secondaryAction.label}
-          </button>
-        )}
+        <div style={{
+          display: 'flex',
+          gap: TH.space.s,
+          justifyContent: 'center',
+          flexDirection: secondaryAction ? 'column' : 'row',
+        }}>
+          {primaryAction && (
+            <button onClick={primaryAction.onClick} style={btnPrimary()}>
+              {primaryAction.label}
+            </button>
+          )}
+          {secondaryAction && (
+            <button
+              onClick={secondaryAction.onClick}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: TH.panelMuted,
+                fontSize: TH.type.bodySm.fontSize,
+                fontWeight: 600,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: TH.space.s,
+              }}
+            >
+              {secondaryAction.label}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
