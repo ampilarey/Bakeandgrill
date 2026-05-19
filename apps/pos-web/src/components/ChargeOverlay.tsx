@@ -425,8 +425,31 @@ export function ChargeOverlay({
               color: "#fff", border: "none",
               fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
               cursor: !enough || submitting ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             }}>
-              {submitting ? "PROCESSING…" : `CONFIRM PAYMENT — MVR ${total.toFixed(2)}`}
+              {submitting ? (
+                <>
+                  {/* Bug-018: an actual spinning indicator alongside
+                      the text. Without it cashiers couldn't tell if
+                      the tap registered (some hit the button again
+                      and silently double-fired the charge on flaky
+                      networks before the disabled state landed). */}
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      border: "2px solid rgba(255,255,255,0.4)",
+                      borderTopColor: "#fff",
+                      animation: "pos-spin 0.7s linear infinite",
+                      display: "inline-block",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span>PROCESSING…</span>
+                </>
+              ) : `CONFIRM PAYMENT — MVR ${total.toFixed(2)}`}
             </button>
           </div>
         </div>
