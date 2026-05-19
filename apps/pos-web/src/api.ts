@@ -150,15 +150,31 @@ export type PosSalesChannel = "dine_in" | "takeaway" | "online_pickup" | "delive
 
 export async function fetchItems(channel?: PosSalesChannel): Promise<Item[]> {
   // ItemController caps staff requests at `min(100, per_page)` and
-  // defaults `per_page` to 25 when the staff token is present — so
-  // without an explicit `per_page`, any kitchen with 26+ active items
-  // saw the menu silently truncated at the register. We ask for the
-  // maximum 100 to match the public/customer-app behaviour.
-  const params = new URLSearchParams();
-  if (channel) params.set("channel", channel);
-  params.set("per_page", "100");
-  const data = await request<{ data: Item[] }>(`/items?${params.toString()}`);
-  return data.data ?? [];
+  // defaults `per_page` to 25 when the staff token is present. We
+  // used to request `per_page=100` and stop — which silently
+  // truncated menus larger than 100 items (Bug-026). Now we PAGE
+  // through every available page so a 250-item menu is fully
+  // loaded. Hard cap at 10 pages (1000 items) as a sanity guard so
+  // a runaway server response can't lock the iPad.
+  const out: Item[] = [];
+  const MAX_PAGES = 10;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const params = new URLSearchParams();
+    if (channel) params.set("channel", channel);
+    params.set("per_page", "100");
+    params.set("page", String(page));
+    const res = await request<{
+      data: Item[];
+      meta?: { current_page?: number; last_page?: number };
+      last_page?: number;
+      current_page?: number;
+    }>(`/items?${params.toString()}`);
+    const batch = res.data ?? [];
+    out.push(...batch);
+    const lastPage = res.meta?.last_page ?? res.last_page ?? page;
+    if (batch.length === 0 || page >= lastPage) break;
+  }
+  return out;
 }
 
 export async function lookupBarcode(barcode: string): Promise<Item | null> {

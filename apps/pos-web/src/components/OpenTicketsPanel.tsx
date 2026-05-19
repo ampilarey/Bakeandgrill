@@ -476,39 +476,64 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     });
   }, [tickets, activeFilter, search]);
 
+  // Bug-028: chip badges must respect the SEARCH box (but NOT the
+  // currently-active chip — switching chips is the whole point, so
+  // we still want to see how many tickets sit in the *other*
+  // buckets). Pre-filter on search-only and tally the buckets from
+  // there. When search is empty this collapses back to the previous
+  // "show total per bucket" behaviour, matching Loyverse.
+  const searchScopedTickets = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tickets;
+    return tickets.filter((t) => {
+      const tableHay = t.table
+        ? `${t.table.name ?? ""} ${t.table.location ?? ""}`
+        : "";
+      const haystack = [
+        t.order_number,
+        t.ticket_name ?? "",
+        t.ticket_note ?? "",
+        t.customer?.name ?? "",
+        t.customer?.phone ?? "",
+        tableHay,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [tickets, search]);
+
+  const allCount = searchScopedTickets.length;
+
   const paymentCounts = useMemo(() => {
     let paid = 0;
     let unpaid = 0;
-    tickets.forEach((t) => {
+    searchScopedTickets.forEach((t) => {
       if (t.payment_status === "paid") paid++;
       else unpaid++;
     });
     return { paid, unpaid };
-  }, [tickets]);
+  }, [searchScopedTickets]);
 
-  // Counts for the chip badges — recomputed on the unfiltered set so
-  // the chip count always shows the TOTAL of each bucket, not the
-  // intersection with whatever filter is active. Counter-intuitive
-  // otherwise (cashier sees "Pickup 0" when filtering by Dine-in).
   const typeCounts = useMemo(() => {
-    const counts = { all: tickets.length, dine_in: 0, takeaway: 0, online_pickup: 0 };
-    tickets.forEach((t) => {
+    const counts = { dine_in: 0, takeaway: 0, online_pickup: 0 };
+    searchScopedTickets.forEach((t) => {
       if (t.type === "dine_in") counts.dine_in++;
       else if (t.type === "takeaway") counts.takeaway++;
       else if (t.type === "online_pickup") counts.online_pickup++;
     });
     return counts;
-  }, [tickets]);
+  }, [searchScopedTickets]);
 
   const stageCounts = useMemo(() => {
-    const counts = { all: tickets.length, parked: 0, cooking: 0, ready: 0 };
-    tickets.forEach((t) => {
+    const counts = { parked: 0, cooking: 0, ready: 0 };
+    searchScopedTickets.forEach((t) => {
       if (t.status === "held") counts.parked++;
       else if (t.status === "ready") counts.ready++;
       else counts.cooking++;
     });
     return counts;
-  }, [tickets]);
+  }, [searchScopedTickets]);
 
   return (
     <PanelShell
@@ -584,7 +609,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       >
         <FilterGroup
           activeColor="#0F172A"
-          options={[{ key: "all", label: "All", count: tickets.length }]}
+          options={[{ key: "all", label: "All", count: allCount }]}
           selected={activeFilter}
           onSelect={() => setActiveFilter("all")}
         />

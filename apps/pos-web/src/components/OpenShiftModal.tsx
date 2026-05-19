@@ -23,7 +23,26 @@ type Props = {
  * previous shift's closing total so a cashier who's just continuing
  * from the last close can hit "Open shift" without re-typing the
  * same number. They can still tap-and-overwrite to adjust.
+ *
+ * Bug-032 (May 2026): only pre-fill when the previous close is
+ * RECENT (≤8h ago — i.e. you closed at 11pm last night and you're
+ * opening at 7am today, the float in the drawer is genuinely the
+ * same). When the last close was a day or more ago, somebody has
+ * almost certainly touched the drawer (manager drop, bank deposit,
+ * weekend skim) so we deliberately leave the field at "0.00" and
+ * warn the cashier that they MUST count physical cash. We also
+ * show the timestamp of the last close so the suggestion is never
+ * a black-box number.
  */
+function formatStaleness(closedAt: string): { label: string; hoursAgo: number } {
+  const closedMs = new Date(closedAt).getTime();
+  const hoursAgo = Math.max(0, (Date.now() - closedMs) / 36e5);
+  if (hoursAgo < 1) return { label: "less than an hour ago", hoursAgo };
+  if (hoursAgo < 24) return { label: `${Math.round(hoursAgo)}h ago`, hoursAgo };
+  const days = Math.round(hoursAgo / 24);
+  return { label: `${days} day${days === 1 ? "" : "s"} ago`, hoursAgo };
+}
+
 export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash }: Props) {
   const [openingCash, setOpeningCash] = useState<string>(
     suggestedOpeningCash != null ? suggestedOpeningCash.toFixed(2) : "0.00",
@@ -31,10 +50,8 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
   const [notes, setNotes] = useState("");
   const [err, setErr] = useState("");
   const [hint, setHint] = useState<string>("");
+  const [warning, setWarning] = useState<string>("");
 
-  // If the caller didn't supply a suggestion, pull the last closed
-  // shift's closing_cash. We only do this once on mount and only if
-  // the cashier hasn't typed anything yet.
   useEffect(() => {
     if (suggestedOpeningCash != null) return;
     let cancelled = false;
@@ -42,11 +59,21 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
       try {
         const res = await getShiftHistory();
         const last = res.shifts?.find((s) => s.closed_at != null);
-        if (cancelled || !last) return;
+        if (cancelled || !last || !last.closed_at) return;
         const cash = Number(last.closing_cash) || 0;
-        setOpeningCash((curr) => (curr === "0.00" || curr === "" ? cash.toFixed(2) : curr));
-        if (cash > 0) {
-          setHint(`Pre-filled from previous shift's closing cash. Tap to overwrite.`);
+        const { label, hoursAgo } = formatStaleness(last.closed_at);
+        const FRESH_WINDOW_HOURS = 8;
+        if (hoursAgo <= FRESH_WINDOW_HOURS) {
+          setOpeningCash((curr) => (curr === "0.00" || curr === "" ? cash.toFixed(2) : curr));
+          if (cash > 0) {
+            setHint(`Pre-filled from previous shift's closing cash (${label}). Tap to overwrite.`);
+          }
+        } else {
+          // Stale — keep the field blank, just inform.
+          setWarning(
+            `Last shift closed ${label} with MVR ${cash.toFixed(2)} in the drawer. ` +
+            `Please physically count the cash in the drawer right now and enter that — the old close is too old to trust.`,
+          );
         }
       } catch { /* ignore — fall back to 0.00 */ }
     })();
@@ -78,6 +105,16 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
           />
           {hint && (
             <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>{hint}</div>
+          )}
+          {warning && (
+            <div style={{
+              marginTop: 8, padding: "8px 10px", borderRadius: 8,
+              background: "#FEF3C7", color: "#92400E",
+              fontSize: 12, lineHeight: 1.45,
+              border: "1px solid #FCD34D",
+            }}>
+              ⚠️ {warning}
+            </div>
           )}
         </Field>
         <Field label="Notes (optional)">

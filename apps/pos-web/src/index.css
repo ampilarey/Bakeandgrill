@@ -29,16 +29,27 @@ html, body, #root {
   outline-offset: 2px;
 }
 
-/* The cart sidebar on POS is 380px fixed-width by default. On tablet
- * portrait (iPad held vertically) that's almost half the screen, so
- * we narrow it down and let the menu grid take the rest. Below 700px
- * (phone) the cart stacks under the menu instead — POS isn't really
- * a phone tool but at least it doesn't break. */
+/* Bug-020: cart sidebar widths.
+ *
+ * The cart shows order lines (item name + modifiers + qty controls
+ * + line total) and used to be 380px which cramped on iPad Mini
+ * landscape — long names wrapped, modifiers stacked oddly. Cart is
+ * now 420px by default with stepped breakpoints down for narrower
+ * tablets / phones. On phone (<700px) it stacks vertically.
+ *
+ * Reference viewports:
+ *   - iPad Pro 12.9" landscape : 1366px → cart 420px (default)
+ *   - iPad Air landscape       : 1180px → cart 420px (default)
+ *   - iPad Mini landscape      : 1133px → cart 420px (default)
+ *   - iPad Pro 11" portrait    :  834px → cart 360px (820–1100 bracket)
+ *   - iPad Mini portrait       :  744px → cart 320px (700–820 bracket)
+ *   - Phone                    :  <700  → stacked, full width
+ */
 @media (max-width: 1100px) {
-  .pos-cart { width: 340px !important; }
+  .pos-cart { width: 360px !important; }
 }
 @media (max-width: 820px) {
-  .pos-cart { width: 300px !important; }
+  .pos-cart { width: 320px !important; }
   .pos-main { padding: 8px !important; gap: 8px !important; }
 }
 @media (max-width: 700px) {

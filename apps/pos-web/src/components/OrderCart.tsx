@@ -228,7 +228,11 @@ export function OrderCart(p: Props) {
     <aside
       className="pos-cart"
       style={{
-        width: 380,
+        // Bug-020: bumped from 380 → 420 so 16-char item names
+        // and modifier rows stop wrapping awkwardly on iPad Mini
+        // landscape (1133px viewport). Index.css narrows this
+        // down on portrait & smaller phones.
+        width: 420,
         flexShrink: 0,
         background: C.panel,
         borderRadius: 14,

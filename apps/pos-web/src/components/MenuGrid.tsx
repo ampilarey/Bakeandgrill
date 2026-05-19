@@ -156,6 +156,25 @@ function formatAgo(ts: number | null | undefined): string {
   return `${hours}h ago`;
 }
 
+/**
+ * Bug-024: the freshness label used to live inside MenuGrid with a
+ * 20s `setTick` interval at the top of the component — which meant
+ * the ENTIRE menu grid (categories, items, modifier sheet, search
+ * memos) was re-rendered every 20s just so a six-character string
+ * ("2m ago") could advance. On a 200+ item menu that's a noticeable
+ * jank on iPad. Now the tick lives inside this tiny component, so
+ * only this <span> re-renders.
+ */
+function FreshnessLabel({ ts, busy }: { ts: number | null; busy: boolean }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!ts) return;
+    const id = window.setInterval(() => setTick((n) => n + 1), 20_000);
+    return () => window.clearInterval(id);
+  }, [ts]);
+  return <>{busy ? 'Refreshing…' : ts ? `Updated ${formatAgo(ts)}` : 'Refresh'}</>;
+}
+
 export function MenuGrid({
   categories, selectedCategoryId, setSelectedCategoryId, filteredItems,
   isLoading, dataError, selectedItem, selectedModifiers,
@@ -163,15 +182,11 @@ export function MenuGrid({
   barcode, setBarcode, onBarcodeSubmit, readOnly = false,
   onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
 }: Props) {
-  // Tick every 20s so the "Updated 2m ago" hint actually advances
-  // without re-running the whole load effect. Cheap enough at one
-  // setState/20s — only the MenuGrid is re-rendered.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!lastRefreshedAt) return;
-    const id = window.setInterval(() => setTick((n) => n + 1), 20_000);
-    return () => window.clearInterval(id);
-  }, [lastRefreshedAt]);
+  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
+  // now, NOT here at the top of MenuGrid. Re-rendering the entire
+  // menu (300+ items, modifier sheets, search memos) every 20s just
+  // to advance a "2m ago" string was visible jank on iPad. The label
+  // self-rotates without involving the rest of the grid.
   const [search, setSearch] = useState("");
 
   // ── Category hierarchy ─────────────────────────────────────────────────────
@@ -323,7 +338,7 @@ export function MenuGrid({
             type="button"
             onClick={() => onRefreshMenu()}
             disabled={isRefreshingMenu}
-            title={lastRefreshedAt ? `Menu updated ${formatAgo(lastRefreshedAt)} — tap to refresh now` : 'Refresh menu now'}
+            title={lastRefreshedAt ? `Tap to refresh the menu` : 'Refresh menu now'}
             aria-label="Refresh menu"
             style={{
               display: 'inline-flex',
@@ -367,7 +382,7 @@ export function MenuGrid({
                 display: 'none',
               }}
             >
-              {isRefreshingMenu ? 'Refreshing…' : lastRefreshedAt ? `Updated ${formatAgo(lastRefreshedAt)}` : 'Refresh'}
+              <FreshnessLabel ts={lastRefreshedAt} busy={isRefreshingMenu} />
             </span>
           </button>
         )}
