@@ -970,6 +970,12 @@ function App() {
 
       {showSaveTicket && (
         <SaveTicketModal
+          attachedCustomer={cart.attachedCustomer}
+          tables={tables}
+          selectedTableId={selectedTableId}
+          setSelectedTableId={setSelectedTableId}
+          orderType={orderType}
+          setOrderType={setOrderType}
           onConfirm={handleSaveTicketSubmit}
           onCancel={() => setShowSaveTicket(false)}
         />
