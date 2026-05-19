@@ -44,6 +44,35 @@ function normalizePayments(rows: PaymentRow[]): { method: string; amount: number
 }
 
 /**
+ * Stable fingerprint of a cart for "did anything kitchen-relevant
+ * actually change?" comparisons. Encodes everything the line cooks
+ * would see on the chit: item id, variant, quantity, modifier set,
+ * and per-line notes. Deliberately ignores prices and per-line
+ * totals (price changes that don't alter what the cook sees don't
+ * warrant a reprint).
+ *
+ * Item order within the array is normalised by sorting the per-
+ * line strings before joining, so reshuffling lines in the cart
+ * (e.g. removing then re-adding the same item) doesn't trigger a
+ * spurious reprint.
+ */
+function cartFingerprint(items: CartItem[]): string {
+  return items
+    .map((it) => {
+      const mods = (it.modifiers ?? [])
+        .map((m) => `${m.id ?? 0}:${m.name ?? ""}`)
+        .sort()
+        .join(",");
+      const notes = Array.isArray(it.notes)
+        ? [...it.notes].sort().join("|")
+        : (it.notes as unknown as string | undefined) ?? "";
+      return `${it.id || 0}|${it.variant_id ?? 0}|q${it.quantity}|m${mods}|n${notes}`;
+    })
+    .sort()
+    .join(";");
+}
+
+/**
  * Post-charge banner text. For Pickup orders we nudge the cashier
  * toward Active orders so they don't forget the ticket is still
  * cooking — paid pickup orders now stay visible in that panel until
@@ -134,6 +163,13 @@ export function useOrderCreation(params: Params) {
    * (or undercharge) the customer based on a stale local total.
    */
   const [resumedOrderTotal, setResumedOrderTotal] = useState<number | null>(null);
+  // Fingerprint of the cart contents at the moment a ticket was
+  // resumed for editing. Used in handleSaveActiveChanges to decide
+  // whether the kitchen actually needs a reprint, vs the cashier
+  // having tapped Save without changing anything (or only renaming
+  // the ticket / changing the customer, which the kitchen doesn't
+  // care about).
+  const [resumedItemsFingerprint, setResumedItemsFingerprint] = useState<string | null>(null);
   /**
    * Snapshot of the order's status at the moment the cashier tapped
    * Resume / Charge. Cancel-resume needs it to know what to do:
@@ -370,6 +406,7 @@ export function useOrderCreation(params: Params) {
           const settledOrderId = resumedOrderId;
           setResumedOrderId(null);
           setResumedOrderTotal(null);
+          setResumedItemsFingerprint(null);
           setResumedFromStatus(null);
           setIsEditingActive(false);
           params.clearCart();
@@ -696,6 +733,9 @@ export function useOrderCreation(params: Params) {
     // Snapshot the authoritative server total so charge time uses it
     // even if the local cart calculation produces a different number.
     setResumedOrderTotal(response.order.total ?? null);
+    // Take a fingerprint of the resumed items so handleSaveActiveChanges
+    // can later decide if the kitchen actually needs a reprint.
+    setResumedItemsFingerprint(cartFingerprint(restoredItems));
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
     setStatusMessage(`Ticket #${orderId} resumed — ready to charge.`);
@@ -728,6 +768,7 @@ export function useOrderCreation(params: Params) {
     }
     setResumedOrderId(null);
     setResumedOrderTotal(null);
+    setResumedItemsFingerprint(null);
     setResumedFromStatus(null);
     setIsEditingActive(false);
     params.clearCart();
@@ -783,12 +824,24 @@ export function useOrderCreation(params: Params) {
           price: m.price,
         })),
       }));
-      const res = await updateOrderItems(resumedOrderId, { items, reprint_kitchen: true });
-      // Refresh the authoritative total so the Charge button shows
-      // the post-edit amount, not the pre-edit one.
+      // Bug-016: only reprint the kitchen chit if the items / qty /
+      // mods / notes actually changed. Tapping Save with no real
+      // edits used to print a duplicate chit and cause double-prep
+      // in a busy service.
+      const currentFp = cartFingerprint(params.cartItems);
+      const itemsChanged = resumedItemsFingerprint !== currentFp;
+      const res = await updateOrderItems(resumedOrderId, {
+        items,
+        reprint_kitchen: itemsChanged,
+      });
       setResumedOrderTotal(res.order.total ?? null);
+      setResumedItemsFingerprint(currentFp);
       setIsEditingActive(false);
-      setStatusMessage(`Ticket #${resumedOrderId} updated — kitchen chit reprinted.`);
+      setStatusMessage(
+        itemsChanged
+          ? `Ticket #${resumedOrderId} updated — kitchen chit reprinted.`
+          : `Ticket #${resumedOrderId} saved — no item changes, kitchen not notified.`,
+      );
       setTimeout(() => setStatusMessage(""), 4000);
       return true;
     } catch (err) {
