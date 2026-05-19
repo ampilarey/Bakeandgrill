@@ -52,6 +52,18 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   // per-row action that matters — Print just opens a tab).
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowMsg, setRowMsg] = useState<{ id: number; text: string; kind: "ok" | "err" } | null>(null);
+  // Bug-029: auto-clear the per-row success/error message after a
+  // sensible delay so the green/red strip doesn't sit on the row
+  // forever. Errors get the longer 10s fuse to match the global
+  // status banner (Bug-015) — cashier needs time to read + retry.
+  // Successes get 6s. Timer is reset on every new rowMsg, so a
+  // rapid sequence of taps doesn't accumulate stale timers.
+  useEffect(() => {
+    if (!rowMsg) return;
+    const ms = rowMsg.kind === "err" ? 10000 : 6000;
+    const handle = window.setTimeout(() => setRowMsg(null), ms);
+    return () => window.clearTimeout(handle);
+  }, [rowMsg]);
   // Modal state for asking the cashier for a phone number when sending
   // a bill SMS for a ticket that has no linked customer. Replaces the
   // native window.prompt which was fragile, off-brand, and unusable
