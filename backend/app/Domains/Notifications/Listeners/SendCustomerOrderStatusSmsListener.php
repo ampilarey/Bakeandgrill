@@ -36,6 +36,17 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
 
     public function __construct(private readonly SmsService $sms) {}
 
+    /**
+     * Lifecycle SMSes (preparing / ready / on-the-way) only make sense
+     * for customers who aren't physically at the counter. For POS
+     * dine-in / takeaway the customer is in the room — pinging their
+     * phone every KDS bump is just noise (and caused the cashier
+     * complaint that "POS sends 2 SMS per ticket"). Restrict to the
+     * two online types so the lifecycle SMS only fires where it's
+     * actually useful.
+     */
+    private const NOTIFIABLE_TYPES = ['online_pickup', 'delivery'];
+
     public function handle(OrderStatusChanged $event): void
     {
         $status = $event->data->status;
@@ -58,6 +69,11 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
 
         $order = Order::with('customer')->find($event->data->orderId);
         if ($order === null) {
+            return;
+        }
+
+        // Skip POS dine-in / takeaway — see NOTIFIABLE_TYPES doc above.
+        if (!in_array($order->type, self::NOTIFIABLE_TYPES, true)) {
             return;
         }
 

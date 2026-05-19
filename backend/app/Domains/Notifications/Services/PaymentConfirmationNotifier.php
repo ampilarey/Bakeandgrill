@@ -35,7 +35,7 @@ class PaymentConfirmationNotifier
 
     public function notify(Order $order): void
     {
-        $order->loadMissing('customer');
+        $order->loadMissing(['customer', 'payments']);
 
         $phone = $order->customer?->phone;
         $email = $order->customer?->email;
@@ -65,11 +65,29 @@ class PaymentConfirmationNotifier
         $receipt->save();
 
         if ($isOnline) {
+            // Online pickup / delivery: customer isn't in the room, so
+            // surface (a) HOW the payment cleared (BML / cash on
+            // pickup / etc) so they have something to reference if
+            // anything goes wrong, and (b) a friendly "we'll text you
+            // when it's ready" so the cashier doesn't get phone calls
+            // asking for updates. The lifecycle SMS will follow at
+            // 'ready' (handled by SendCustomerOrderStatusSmsListener).
             $url = rtrim(config('frontend.order_status_url', config('app.url') . '/order/orders'), '/') . '/' . $order->id . '?tok=' . $order->tracking_token;
-            $message = 'Bake & Grill: Payment received! Order #' . $order->order_number . ' is confirmed. Track: ' . $url;
+            $method = $this->paymentMethodLabel($order);
+            $readyHint = $order->type === OrderType::Delivery->value
+                ? "We'll text you when our rider is on the way."
+                : "We'll text you when it's ready for pickup.";
+            $message = 'Bake & Grill: Payment received'
+                . ($method ? ' via ' . $method : '')
+                . '. Order #' . $order->order_number . ' is confirmed. '
+                . $readyHint . ' Track: ' . $url;
         } else {
+            // POS dine-in / takeaway: customer is at the counter. The
+            // receipt link is the only useful SMS — no order-confirmed
+            // / preparing / ready noise (those listeners now skip
+            // POS types).
             $url = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
-            $message = 'Bake & Grill: Thanks for dining with us! Your receipt for order #' . $order->order_number . ': ' . $url;
+            $message = 'Bake & Grill: Thanks for visiting! Receipt for order #' . $order->order_number . ': ' . $url;
         }
 
         try {
@@ -99,5 +117,37 @@ class PaymentConfirmationNotifier
                 ]);
             }
         }
+    }
+
+    /**
+     * Human-readable label for the payment method(s) used on this
+     * order — used in the online payment-received SMS so the
+     * customer has a reference if anything goes wrong. Returns
+     * null if the order has no confirmed payments yet (caller
+     * leaves the "via X" clause out entirely).
+     */
+    private function paymentMethodLabel(Order $order): ?string
+    {
+        $methods = $order->payments
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->pluck('method')
+            ->filter()
+            ->map(fn ($m) => match ((string) $m) {
+                'bml_pay', 'bml', 'online' => 'BML Pay',
+                'cash'                     => 'cash',
+                'card'                     => 'card',
+                'gift_card'                => 'gift card',
+                'loyalty'                  => 'loyalty points',
+                default                    => str_replace('_', ' ', (string) $m),
+            })
+            ->unique()
+            ->values();
+
+        if ($methods->isEmpty()) {
+            return null;
+        }
+
+        // "BML Pay" or "cash + card" (rare split-tender case)
+        return $methods->implode(' + ');
     }
 }

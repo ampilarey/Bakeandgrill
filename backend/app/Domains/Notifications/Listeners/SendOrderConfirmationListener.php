@@ -27,21 +27,31 @@ class SendOrderConfirmationListener implements ShouldQueue
     public function __construct(private SmsService $sms) {}
 
     /**
-     * Online orders require BML payment before confirmation — handled by SendPaymentConfirmationListener.
-     * These map to the real OrderType enum values written to the DB.
+     * Types that should NOT receive an "Order confirmed!" SMS at
+     * OrderCreated time:
+     *  - Online pickup/delivery: payment hasn't happened yet —
+     *    PaymentConfirmationNotifier handles those once OrderPaid fires.
+     *  - POS dine-in / takeaway: the customer is standing at the
+     *    counter. They get the receipt SMS after payment; an extra
+     *    "Order confirmed!" SMS is redundant noise and is the source
+     *    of the "2 SMS for one ticket" complaint from cashiers.
      */
-    private const DEFERRED_TYPES = [
+    private const SKIP_TYPES = [
         OrderType::OnlinePickup->value,  // 'online_pickup'
         OrderType::Delivery->value,      // 'delivery'
+        OrderType::DineIn->value,        // 'dine_in'
+        OrderType::Takeaway->value,      // 'takeaway'
     ];
 
     public function handle(OrderCreated $event): void
     {
         $data = $event->data;
 
-        // Skip online orders — payment has not happened yet at order creation time.
-        // SendPaymentConfirmationListener will send confirmation once OrderPaid fires.
-        if (in_array($data->orderType, self::DEFERRED_TYPES, true)) {
+        // Skip every type we've explicitly excluded above. In practice
+        // this means the listener is a no-op today — kept as a safety
+        // net in case a new order type is introduced that genuinely
+        // needs an at-creation confirmation.
+        if (in_array($data->orderType, self::SKIP_TYPES, true)) {
             return;
         }
 
