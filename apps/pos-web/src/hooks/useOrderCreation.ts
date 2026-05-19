@@ -341,13 +341,27 @@ export function useOrderCreation(params: Params) {
     // supported here (the order id only exists because we're online),
     // so the queue path below is a non-issue for this branch.
     if (resumedOrderId !== null) {
+      // Edit-mode safety: if the cashier opened the ticket for editing
+      // and made changes (add/remove items, qty tweaks), settling now
+      // would charge `resumedOrderTotal` — the SERVER's pre-edit total
+      // — not what the cart actually contains. Customer would over-
+      // or under-pay. Force them to commit the edits via "Save
+      // changes" first; that call refreshes `resumedOrderTotal` and
+      // flips `isEditingActive` back off, after which Charge is safe
+      // to use the (now-authoritative) server total.
+      if (isEditingActive) {
+        setStatusMessage(
+          "Tap \u201cSave changes\u201d on the resume banner first \u2014 the new total has to be sent to the server before you can charge.",
+        );
+        setTimeout(() => setStatusMessage(""), 6000);
+        return false;
+      }
       setIsSubmitting(true);
       try {
         // Use the server-captured total — not params.cartTotal — so a
         // resume→charge always settles the exact ticket the server
-        // already has, even if the cashier somehow modified the local
-        // cart (shouldn't happen because the cart is read-only on
-        // resume, but defense in depth).
+        // already has. Safe by construction now that the edit-mode
+        // guard above forces a Save before we get here.
         const totalDue = resumedOrderTotal ?? params.cartTotal;
         const settled = await settleOrder(resumedOrderId, totalDue, paymentSnapshot);
         if (settled) {
