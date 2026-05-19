@@ -81,11 +81,23 @@ export function ChargeOverlay({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, submitting]);
 
+  // ── Money math is done in integer laari (1 MVR = 100 laari) ──
+  // Float arithmetic on MVR amounts looks innocent but combining
+  // many split-tender + change calcs across a busy day produces
+  // 1-laari drift between what the screen shows and what the
+  // `payments` table records. Doing the math in integers and
+  // converting back at the display boundary eliminates the
+  // mismatch entirely (this is the same approach Stripe, Square
+  // and Loyverse use internally).
+  const toLaari = (n: number): number => Math.round(n * 100);
+  const fromLaari = (laari: number): number => laari / 100;
+
   const receivedNum = Number.parseFloat(received);
   const change = useMemo(() => {
     if (method !== "cash") return 0;
     if (!Number.isFinite(receivedNum)) return 0;
-    return Math.max(0, receivedNum - total);
+    const diff = toLaari(receivedNum) - toLaari(total);
+    return diff > 0 ? fromLaari(diff) : 0;
   }, [method, receivedNum, total]);
 
   const enough = method === "cash"
@@ -162,9 +174,15 @@ export function ChargeOverlay({
     // sees the actual split the cashier chose, which is what shows up
     // in the day's tender breakdown report.
     if (splitValid) {
-      const rest = +(total - splitNum).toFixed(2);
+      // Compute the cash remainder in integer laari so the two
+      // amounts we send the server sum exactly to `total` — no
+      // 1-laari rounding gap between (split + rest) and the
+      // order's recorded total.
+      const restLaari = toLaari(total) - toLaari(splitNum);
+      const rest = fromLaari(restLaari);
+      const splitAmount = fromLaari(toLaari(splitNum));
       await onConfirm([
-        { method, amount: splitNum },
+        { method, amount: splitAmount },
         { method: "cash", amount: rest },
       ]);
       return;
@@ -307,7 +325,7 @@ export function ChargeOverlay({
                 />
                 {splitValid && (
                   <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748B" }}>
-                    + MVR {(total - splitNum).toFixed(2)} cash
+                    + MVR {fromLaari(toLaari(total) - toLaari(splitNum)).toFixed(2)} cash
                   </p>
                 )}
               </div>
