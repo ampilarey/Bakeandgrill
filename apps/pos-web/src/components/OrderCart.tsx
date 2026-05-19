@@ -603,27 +603,42 @@ function CartLine({
           {/* Name · variant · @ unit price — all inline with ellipsis,
               so long names truncate cleanly instead of pushing the
               line total off the screen on narrow tablet portrait.
-              The @ price is shown only for qty > 1 (where the unit
-              vs line total distinction matters); single-qty rows
-              skip it since "total" and "unit" are the same number. */}
-          <div style={{
-            flex: 1, minWidth: 0, fontSize: 13, color: C.text,
-            lineHeight: 1.2,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            <span style={{ fontWeight: 600 }}>{item.name}</span>
-            {item.variant_name && (
-              <span style={{ color: C.muted, fontWeight: 500 }}> · {item.variant_name}</span>
-            )}
-            {item.quantity > 1 && (
-              <span style={{
-                color: C.subtle, fontWeight: 500,
-                fontVariantNumeric: 'tabular-nums',
+              Variant + @ unit are rendered in a smaller, muted font
+              so the cashier's eye lands on the name first; the unit
+              price still reads as "metadata" the way the variant does.
+              We show @ unit whenever the item carries a variant or
+              modifiers (price isn't obvious from the name alone) OR
+              the qty is > 1 (where unit ≠ total). Plain single-qty
+              items skip it since "total" and "unit" are the same. */}
+          {(() => {
+            const showUnit =
+              item.quantity > 1 ||
+              !!item.variant_name ||
+              item.modifiers.length > 0;
+            return (
+              <div style={{
+                flex: 1, minWidth: 0, color: C.text, lineHeight: 1.2,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                {' '}· @ {unitPrice.toFixed(2)}
-              </span>
-            )}
-          </div>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</span>
+                {item.variant_name && (
+                  <span style={{
+                    fontSize: 11, color: C.muted, fontWeight: 500,
+                  }}>
+                    {' '}· {item.variant_name}
+                  </span>
+                )}
+                {showUnit && (
+                  <span style={{
+                    fontSize: 11, color: C.subtle, fontWeight: 500,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {' '}· @ {unitPrice.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Line total — right-aligned, tabular figures so columns
               line up vertically even at different quantities. */}
