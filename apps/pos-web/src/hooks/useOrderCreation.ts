@@ -422,10 +422,24 @@ export function useOrderCreation(params: Params) {
     }
 
     const payload = buildPayload();
+    // Bug-013: snapshot the staged customer rewards into the offline
+    // payload so handleSyncQueue can re-apply them when the orders
+    // hit the wire later. Without this, an order rung up offline
+    // with a loyalty redemption / promo / gift card would create
+    // server-side with the FULL pre-reward total, the cashier's
+    // collected payment would under-pay, and the order would be
+    // stuck UNPAID in admin until someone manually applied the
+    // reward. customer_id and discount_amount are already in
+    // payload via buildPayload — this only adds the rewards.
+    const stagedRewards = {
+      promo_code: params.appliedPromoCode ?? null,
+      loyalty_points: params.appliedLoyaltyPoints ?? 0,
+      gift_card_code: params.appliedGiftCardCode ?? null,
+    };
 
     if (!params.isOnline) {
       try {
-        await enqueue({ order: payload, payments: paymentSnapshot });
+        await enqueue({ order: payload, payments: paymentSnapshot, rewards: stagedRewards });
         params.setOfflineQueueCount(getQueueCount());
         params.clearCart();
         params.setSelectedItem(null);
@@ -505,7 +519,7 @@ export function useOrderCreation(params: Params) {
       }
 
       try {
-        await enqueue({ order: payload, payments: paymentSnapshot });
+        await enqueue({ order: payload, payments: paymentSnapshot, rewards: stagedRewards });
         params.setOfflineQueueCount(getQueueCount());
         setStatusMessage("Network error. Order queued for sync (payments included).");
       } catch (e) {
@@ -935,17 +949,55 @@ export function useOrderCreation(params: Params) {
         const payload = entry.payload as {
           order?: Record<string, unknown>;
           payments?: PaymentRow[];
+          rewards?: {
+            promo_code?: string | null;
+            loyalty_points?: number;
+            gift_card_code?: string | null;
+          };
         };
         // Legacy entries (pre-payment-fix) had the order at the top level.
         const orderPayload = (payload.order ?? entry.payload) as Parameters<typeof createOrder>[0];
         const paymentRows = payload.payments ?? [];
+        const rewards = payload.rewards ?? {};
 
         try {
           const res = await createOrder(orderPayload);
           processed += 1;
+          let totalDue = res.order.total ?? 0;
+
+          // Bug-013: re-apply staged rewards in the same order
+          // applyStagedRewards uses (promo → loyalty → gift card)
+          // so the final total matches what the cashier saw on the
+          // POS at offline-ring time. Failures are swallowed —
+          // the order still lands and settle below will at least
+          // book the customer's collected payment, with any
+          // shortfall surfacing as a paymentMiss.
+          if (rewards.promo_code) {
+            try { await applyPromoToOrder(res.order.id, rewards.promo_code); } catch { /* skip */ }
+          }
+          if (rewards.loyalty_points && rewards.loyalty_points > 0) {
+            try {
+              const r = await holdLoyaltyForOrder(res.order.id, rewards.loyalty_points);
+              totalDue = r.order.total;
+            } catch { /* skip */ }
+          }
+          if (rewards.gift_card_code) {
+            try {
+              const r = await applyGiftCardToOrder(res.order.id, rewards.gift_card_code);
+              totalDue = r.order.total;
+            } catch { /* skip */ }
+          }
+          // Final read so settle uses the authoritative total when
+          // any reward was attempted (matches applyStagedRewards).
+          if (rewards.promo_code || (rewards.loyalty_points ?? 0) > 0 || rewards.gift_card_code) {
+            try {
+              const fresh = await getOrder(res.order.id);
+              if (typeof fresh.order.total === "number") totalDue = fresh.order.total;
+            } catch { /* keep last-known */ }
+          }
+
           // Best-effort payment settlement; if it fails the order still exists
           // and the cashier sees a count of unpaid orders to handle in admin.
-          const totalDue = res.order.total ?? 0;
           const ok = await settleOrder(res.order.id, totalDue, paymentRows);
           if (!ok) {
             paymentMisses += 1;
