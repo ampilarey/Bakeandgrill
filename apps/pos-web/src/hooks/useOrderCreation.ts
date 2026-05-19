@@ -22,11 +22,11 @@ import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
 
-type OrderType = "Dine-in" | "Takeaway" | "Online Pickup";
+type OrderType = "Dine-in" | "Takeaway" | "Pickup";
 
 const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup" => {
   if (type === "Dine-in")       return "dine_in";
-  if (type === "Online Pickup") return "online_pickup";
+  if (type === "Pickup") return "online_pickup";
   return "takeaway";
 };
 
@@ -532,7 +532,7 @@ export function useOrderCreation(params: Params) {
       const typeMap: Record<string, OrderType> = {
         dine_in: "Dine-in",
         takeaway: "Takeaway",
-        online_pickup: "Online Pickup",
+        online_pickup: "Pickup",
       };
       const mapped = typeMap[response.order.type];
       if (mapped) params.setOrderType(mapped);

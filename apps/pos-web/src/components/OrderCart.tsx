@@ -10,8 +10,8 @@ type AppliedPromo = { code: string; promotionId: number | null; discount: number
 type AppliedLoyalty = { points: number; discount: number };
 type AppliedGiftCard = { code: string; discount: number; cardBalance: number };
 
-type OrderType = "Dine-in" | "Takeaway" | "Online Pickup";
-const ORDER_TYPES: OrderType[] = ["Dine-in", "Takeaway", "Online Pickup"];
+type OrderType = "Dine-in" | "Takeaway" | "Pickup";
+const ORDER_TYPES: OrderType[] = ["Dine-in", "Takeaway", "Pickup"];
 
 type Props = {
   orderType: OrderType;
@@ -171,7 +171,7 @@ export function OrderCart(p: Props) {
                 transition: 'background 0.1s',
               }}
             >
-              {t === "Online Pickup" ? "Pickup" : t}
+              {t}
             </button>
           ))}
         </div>

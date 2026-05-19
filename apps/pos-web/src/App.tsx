@@ -58,7 +58,7 @@ const TH = {
   type: typeRamp,
 };
 
-const orderTypes = ["Dine-in", "Takeaway", "Online Pickup"] as const;
+const orderTypes = ["Dine-in", "Takeaway", "Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
 
 type DeviceStatus = 'unknown' | 'checking' | 'pending' | 'approved' | 'rejected' | 'registration_failed';
@@ -167,7 +167,7 @@ function App() {
 
   // ── Hooks ───────────────────────────────────────────────────────────────────
   // Passing orderType lets the menu refilter when the cashier flips
-  // between Dine-in / Takeaway / Online Pickup — items the admin has
+  // between Dine-in / Takeaway / Pickup — items the admin has
   // restricted via item_channel_availability disappear or reappear
   // automatically, so the cashier can't accidentally ring something
   // that doesn't belong on that channel.

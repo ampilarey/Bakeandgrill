@@ -3,7 +3,7 @@ import { Card, Field, Overlay } from "./OpenShiftModal";
 import type { PosCustomer } from "../api";
 import type { RestaurantTable } from "../types";
 
-type OrderType = "Dine-in" | "Takeaway" | "Online Pickup";
+type OrderType = "Dine-in" | "Takeaway" | "Pickup";
 
 type Props = {
   /** Customer currently attached to the cart (via CustomerPicker). Used

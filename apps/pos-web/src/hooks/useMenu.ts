@@ -20,13 +20,13 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000;
  * the admin marked "Takeaway only" actually disappears when the
  * cashier switches to Dine-in.
  */
-function channelForOrderType(orderType: "Dine-in" | "Takeaway" | "Online Pickup"): PosSalesChannel {
+function channelForOrderType(orderType: "Dine-in" | "Takeaway" | "Pickup"): PosSalesChannel {
   if (orderType === "Dine-in") return "dine_in";
-  if (orderType === "Online Pickup") return "online_pickup";
+  if (orderType === "Pickup") return "online_pickup";
   return "takeaway";
 }
 
-export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" | "Online Pickup") {
+export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" | "Pickup") {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
