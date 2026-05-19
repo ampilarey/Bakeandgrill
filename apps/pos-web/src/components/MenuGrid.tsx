@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Category, Item, Modifier, Variant } from "../types";
 import { effectiveItemPrice } from "../hooks/useCart";
 
@@ -27,6 +27,17 @@ type Props = {
   /** When true the grid is dimmed and item taps are blocked — set
    *  while a held ticket is in "resumed" mode (cart is read-only). */
   readOnly?: boolean;
+
+  /** Manual menu refresh — cashier tap pulls fresh categories + items
+   *  from the server (useful when the owner adds a menu item mid-shift
+   *  and the cashier can't wait for the 5-min auto-poll). */
+  onRefreshMenu?: () => void;
+  /** True while the manual refresh is in flight, so the button can
+   *  spin and we can avoid stacking concurrent requests. */
+  isRefreshingMenu?: boolean;
+  /** Unix-ms timestamp of the last successful menu fetch, used for the
+   *  "Updated 2m ago" status text next to the refresh button. */
+  lastRefreshedAt?: number | null;
 };
 
 // Per-category colour swatches. Loyverse-style highly-saturated chips
@@ -130,12 +141,37 @@ const C = {
   primaryDark: '#B86820',
 };
 
+/**
+ * Human-readable "Updated X ago" string for the menu refresh hint.
+ * Kept short so it doesn't overflow the topbar on narrow tablets.
+ */
+function formatAgo(ts: number | null | undefined): string {
+  if (!ts) return '';
+  const seconds = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
 export function MenuGrid({
   categories, selectedCategoryId, setSelectedCategoryId, filteredItems,
   isLoading, dataError, selectedItem, selectedModifiers,
   handleSelectItem, toggleModifier, addToCart, clearSelectedItem,
   barcode, setBarcode, onBarcodeSubmit, readOnly = false,
+  onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
 }: Props) {
+  // Tick every 20s so the "Updated 2m ago" hint actually advances
+  // without re-running the whole load effect. Cheap enough at one
+  // setState/20s — only the MenuGrid is re-rendered.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!lastRefreshedAt) return;
+    const id = window.setInterval(() => setTick((n) => n + 1), 20_000);
+    return () => window.clearInterval(id);
+  }, [lastRefreshedAt]);
   const [search, setSearch] = useState("");
 
   // ── Category hierarchy ─────────────────────────────────────────────────────
@@ -276,6 +312,65 @@ export function MenuGrid({
             </button>
           )}
         </form>
+
+        {/* Manual menu refresh — for when the owner adds an item mid-
+            shift and the cashier wants it now rather than waiting for
+            the 5-min auto-poll. The button is intentionally subtle:
+            most cashiers will never need it because of the silent
+            background poll + tab-focus refetch already running. */}
+        {onRefreshMenu && (
+          <button
+            type="button"
+            onClick={() => onRefreshMenu()}
+            disabled={isRefreshingMenu}
+            title={lastRefreshedAt ? `Menu updated ${formatAgo(lastRefreshedAt)} — tap to refresh now` : 'Refresh menu now'}
+            aria-label="Refresh menu"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '0 12px',
+              height: 40,
+              borderRadius: 8,
+              border: `1px solid ${C.border2}`,
+              background: '#FFFFFF',
+              color: C.muted,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: isRefreshingMenu ? 'wait' : 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              transition: 'background 0.12s',
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                display: 'inline-block',
+                fontSize: 14,
+                lineHeight: 1,
+                // Spin while a refresh is in flight so the cashier sees
+                // something is happening even on a slow connection.
+                animation: isRefreshingMenu ? 'pos-spin 0.8s linear infinite' : undefined,
+              }}
+            >
+              ↻
+            </span>
+            <span
+              className="pos-refresh-label"
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.subtle,
+                // Hidden on narrow viewports via index.css media query;
+                // visible on tablets/desktop where there's room.
+                display: 'none',
+              }}
+            >
+              {isRefreshingMenu ? 'Refreshing…' : lastRefreshedAt ? `Updated ${formatAgo(lastRefreshedAt)}` : 'Refresh'}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Primary pill row: "All" + every top-level category. Horizontally

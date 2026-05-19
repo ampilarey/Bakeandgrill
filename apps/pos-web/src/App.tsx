@@ -270,10 +270,18 @@ function App() {
   // Best-effort: fetchPosQuickNotes already swallows errors, so failure
   // here just means the cashier doesn't see the Note button. We
   // re-fetch on isLoggedIn so a fresh sign-in picks up any chips the
-  // owner added since the last session.
+  // owner added since the last session, and again whenever the tab
+  // regains focus so an owner edit propagates without a relog.
   useEffect(() => {
     if (!isLoggedIn) return;
     fetchPosQuickNotes().then(setQuickNotes);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchPosQuickNotes().then(setQuickNotes);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [isLoggedIn]);
 
   // ── Device-blocked event (dispatched by api.ts when middleware rejects) ────
@@ -466,6 +474,51 @@ function App() {
     setIsLocked(true);
   }, [isLoggedIn]);
 
+  /**
+   * Force the PWA shell (HTML + JS bundle) to reload from the server.
+   *
+   * Background: when the POS is installed as a PWA on iOS / Android
+   * and a new deploy ships, the device keeps serving the cached
+   * bundle until the user manually hard-refreshes — which is hard to
+   * do from a home-screen app with no browser chrome. This action
+   * gives the cashier a one-tap "get me the latest version" button.
+   *
+   * It clears every Cache Storage entry (in case a service worker
+   * landed in a future deploy), unregisters any service workers,
+   * then reloads the page. Cart/shift state is in-memory so closing
+   * the tab loses it — we don't reload mid-ticket without warning.
+   */
+  const forceAppReload = useCallback(async () => {
+    const hasCart = cart.cartItems.length > 0;
+    if (hasCart) {
+      const ok = window.confirm(
+        'Reloading discards the current cart. Continue?',
+      );
+      if (!ok) return;
+    }
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch {
+      // Best-effort cleanup — never block the reload on a cache API
+      // hiccup. The reload below will still pick up new HTML thanks
+      // to the no-cache meta tags in index.html.
+    }
+    // Cache-busting query so iOS Safari (which can be aggressive with
+    // its memory cache even with no-cache headers) is forced to
+    // re-fetch index.html. The browser strips the query for asset
+    // resolution; only HTML sees it.
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', Date.now().toString(36));
+    window.location.replace(url.toString());
+  }, [cart.cartItems.length]);
+
   // ── Auto-lock on inactivity ─────────────────────────────────────
   // Default 5 minutes; cashier-configurable via localStorage
   // `pos_idle_lock_minutes` (0 disables). Auto-lock is also paused
@@ -603,6 +656,8 @@ function App() {
     { id: "shift",          label: "Current Shift",  icon: "💰", group: "main" as const },
     { id: "shift_history",  label: "Shift History",  icon: "📚", group: "main" as const },
     { id: "ops",            label: "Operations",     icon: "🛠", group: "main" as const },
+    { id: "refresh_menu",   label: "Refresh menu",   icon: "↻",  group: "user" as const },
+    { id: "check_update",   label: "Check for app update", icon: "⬇", group: "user" as const },
     { id: "lock",           label: "Lock screen",    icon: "🔒", group: "user" as const },
     { id: "logout",         label: "Log out",        icon: "↩",  group: "user" as const },
   ];
@@ -766,6 +821,9 @@ function App() {
               setBarcode={order.setBarcode}
               onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
               readOnly={order.resumedOrderId !== null}
+              onRefreshMenu={menu.refresh}
+              isRefreshingMenu={menu.isRefreshing}
+              lastRefreshedAt={menu.lastRefreshedAt}
             />
           </>
         )}
@@ -819,6 +877,18 @@ function App() {
           setDrawerOpen(false);
           if (id === "logout") return handleLogout();
           if (id === "lock") return lockScreen();
+          if (id === "refresh_menu") {
+            // Two-for-one: pull a fresh menu AND a fresh quick-note
+            // chip list, so the cashier can see everything the owner
+            // changed without logging out.
+            menu.refresh();
+            void fetchPosQuickNotes().then(setQuickNotes);
+            return;
+          }
+          if (id === "check_update") {
+            void forceAppReload();
+            return;
+          }
           setPane(id as Pane);
         }}
       />

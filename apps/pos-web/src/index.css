@@ -73,3 +73,17 @@ html, body, #root {
   from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
 }
+
+/* Used by the menu refresh button to indicate work in progress. */
+@keyframes pos-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* The "Updated 2m ago" hint next to the menu refresh ↻ is hidden by
+ * default (icon-only) and shown on roomier tablet/desktop layouts so
+ * cashiers have an at-a-glance staleness indicator without the icon
+ * shoving the search bar off-screen on a phone. */
+@media (min-width: 900px) {
+  .pos-refresh-label { display: inline !important; }
+}
