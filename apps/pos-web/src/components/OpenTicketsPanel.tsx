@@ -82,10 +82,16 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // ── Merge / split state ────────────────────────────────────────
-  // When the cashier taps "Merge" on a row, that ticket becomes the
-  // target and the panel switches to "select source" mode. A second
-  // tap on another row completes the merge.
+  // Two-tap-plus-confirm merge flow:
+  //   1. tap 🔀 Merge on a row  → mergeTargetId set, picker mode
+  //   2. tap any other row      → mergeConfirm set, confirmation modal
+  //   3. tap "Confirm merge"    → backend merge + reload
+  // Step 2 used to fire the merge immediately. Cashiers hit it by
+  // accident (any tap on any row consolidated two tickets — easy to
+  // undo only by re-splitting). Confirmation modal prevents the slip.
   const [mergeTargetId, setMergeTargetId] = useState<number | null>(null);
+  const [mergeConfirm, setMergeConfirm] = useState<{ target: OpenTicket; source: OpenTicket } | null>(null);
+  const [mergeBusy, setMergeBusy] = useState(false);
   // Split picker is a modal — choose which items from a single
   // ticket to peel off into a sibling.
   const [splitFor, setSplitFor] = useState<OpenTicket | null>(null);
@@ -317,28 +323,68 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     setRowMsg(null);
   };
 
-  const handleCancelMerge = () => setMergeTargetId(null);
+  const handleCancelMerge = () => {
+    setMergeTargetId(null);
+    setMergeConfirm(null);
+  };
 
-  const handleCompleteMerge = async (source: OpenTicket) => {
+  /**
+   * Step 2 — cashier picked the source. Open the confirm modal
+   * showing both tickets side-by-side so they can sanity-check
+   * (matches the table-merge UX in admin which also confirms
+   * before consolidating an active table's bill).
+   */
+  const handlePickMergeSource = (source: OpenTicket) => {
     if (mergeTargetId === null || source.id === mergeTargetId) {
       setMergeTargetId(null);
       return;
     }
     const target = tickets.find((t) => t.id === mergeTargetId);
-    const targetLabel = target ? `#${target.order_number}` : `#${mergeTargetId}`;
-    setBusyId(source.id);
+    if (!target) {
+      setMergeTargetId(null);
+      return;
+    }
+    setMergeConfirm({ target, source });
+  };
+
+  /**
+   * Step 3 — confirmation accepted. Runs the backend merge then
+   * reloads the full ticket list so the TARGET row reflects its new
+   * total/item-count (items moved over, totals recalculated by
+   * OrderTotalsCalculator). Local optimistic patching is too
+   * error-prone here: we'd need to recompute taxes/discounts/etc.
+   * client-side and that drifts from the server source of truth.
+   */
+  const handleConfirmMerge = async () => {
+    if (!mergeConfirm) return;
+    const { target, source } = mergeConfirm;
+    setMergeBusy(true);
     setRowMsg(null);
     try {
-      await mergeOpenTickets(mergeTargetId, { source_id: source.id });
-      // Drop the source from local state immediately; target's total
-      // refreshes on the next poll (15s) or visibility-change.
-      setTickets((curr) => curr.filter((row) => row.id !== source.id));
+      await mergeOpenTickets(target.id, { source_id: source.id });
+      // Full reload — pulls the updated target (new total + items)
+      // and reflects the cancelled source falling out of the
+      // active feed in one round-trip.
+      const fresh = await fetchReceipts({
+        active_only: true,
+        device_identifier: deviceId,
+        per_page: 50,
+      });
+      setTickets(fresh.data);
       setMergeTargetId(null);
-      setRowMsg({ id: mergeTargetId, kind: "ok", text: `Merged ${source.order_number} into ${targetLabel}` });
+      setMergeConfirm(null);
+      setRowMsg({
+        id: target.id,
+        kind: "ok",
+        text: `Merged ${source.order_number} into ${target.order_number}.`,
+      });
     } catch (e) {
       setRowMsg({ id: source.id, kind: "err", text: (e as Error).message || "Couldn't merge" });
+      // Leave the confirm modal open so the cashier can retry or
+      // cancel cleanly — auto-dismissing it would lose context on
+      // what just failed.
     } finally {
-      setBusyId(null);
+      setMergeBusy(false);
     }
   };
 
@@ -428,7 +474,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       title={mergeTargetId !== null ? "Merge tickets — pick source" : "Active orders"}
       subtitle={
         mergeTargetId !== null
-          ? `Tap any ticket to merge it into #${mergeTargetId} (or Cancel)`
+          ? `Tap any other ticket to preview the merge (you'll confirm before anything changes)`
           : "Parked, cooking, and ready-for-pickup tickets"
       }
       onClose={onClose}
@@ -450,7 +496,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
             gap: space.s,
           }}
         >
-          <span style={{ fontWeight: 600 }}>🔀 Pick the source ticket to merge into #{mergeTargetId}</span>
+          <span style={{ fontWeight: 600 }}>🔀 Pick source for #{mergeTargetId} — you'll confirm before items move</span>
           <button
             onClick={handleCancelMerge}
             style={{
@@ -603,7 +649,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                 gap: space.s,
                 cursor: isMergeCandidate ? "pointer" : "default",
               }}
-              onClick={isMergeCandidate ? () => void handleCompleteMerge(t) : undefined}
+              onClick={isMergeCandidate ? () => handlePickMergeSource(t) : undefined}
             >
               <div
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m, cursor: mergeTargetId === null ? "pointer" : undefined }}
@@ -831,6 +877,20 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           ticket={splitFor}
           onCancel={() => setSplitFor(null)}
           onConfirm={(itemIds) => void handleSplitConfirm(splitFor.id, itemIds)}
+        />
+      )}
+      {mergeConfirm && (
+        <MergeConfirmModal
+          target={mergeConfirm.target}
+          source={mergeConfirm.source}
+          busy={mergeBusy}
+          onCancel={() => {
+            if (mergeBusy) return;
+            setMergeConfirm(null);
+            // Leave mergeTargetId set so the cashier can pick a
+            // different source without restarting the whole flow.
+          }}
+          onConfirm={() => void handleConfirmMerge()}
         />
       )}
     </PanelShell>
@@ -1073,6 +1133,134 @@ function SplitItemPicker({
             style={btnPrimary(noneSelected || allSelected)}
           >
             Split into new ticket
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Confirmation dialog for merging two tickets. Shows both tickets
+ * side-by-side with item counts + totals so the cashier can verify
+ * the right two rows were picked before items become irreversible
+ * (server cancels the source). Combined total is shown so the
+ * cashier knows what the post-merge target will be charged.
+ */
+function MergeConfirmModal({
+  target,
+  source,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  target: OpenTicket;
+  source: OpenTicket;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const combinedTotal = Number(target.total) + Number(source.total);
+  const renderTicket = (t: OpenTicket, label: "Target — keeps" | "Source — cancelled") => (
+    <div
+      style={{
+        flex: 1,
+        padding: space.m,
+        background: "#F8FAFC",
+        borderRadius: radius.m,
+        border: `1px solid ${palette.border}`,
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        minWidth: 0,
+      }}
+    >
+      <div style={{ fontSize: 10, fontWeight: 800, color: palette.panelMuted, letterSpacing: 0.5, textTransform: "uppercase" }}>
+        {label}
+      </div>
+      <div style={{ fontWeight: 700, color: palette.panelInk, fontSize: type.body.fontSize }}>
+        {t.ticket_name || t.order_number}
+      </div>
+      <div style={{ fontSize: type.caption.fontSize, color: palette.panelMuted }}>
+        {(t.items?.length ?? 0)} items
+        {t.customer?.name ? ` · ${t.customer.name}` : ""}
+      </div>
+      <div style={{ fontWeight: 800, color: palette.panelInk, fontSize: type.subtitle.fontSize, marginTop: 4 }}>
+        MVR {Number(t.total).toFixed(2)}
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm merge"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.4)",
+        zIndex: z.modalBackdrop,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: space.l,
+      }}
+      onClick={() => {
+        if (!busy) onCancel();
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(540px, 100%)",
+          background: palette.panel,
+          borderRadius: radius.xl,
+          boxShadow: shadow.xl,
+          padding: space.xl,
+          display: "flex",
+          flexDirection: "column",
+          gap: space.m,
+        }}
+      >
+        <div>
+          <div style={{ ...type.subtitle, color: palette.panelInk }}>🔀 Merge tickets?</div>
+          <div style={{ ...type.bodySm, color: palette.panelMuted, marginTop: 4 }}>
+            Items from the source ticket will move into the target. The source ticket will be
+            <strong style={{ color: palette.dangerDark }}> cancelled</strong>.
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: space.s, alignItems: "stretch" }}>
+          {renderTicket(target, "Target — keeps")}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, color: palette.panelMuted, flexShrink: 0 }}>
+            ←
+          </div>
+          {renderTicket(source, "Source — cancelled")}
+        </div>
+        <div
+          style={{
+            padding: space.s + 2,
+            background: "#EFF6FF",
+            border: "1px solid #BFDBFE",
+            borderRadius: radius.m,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ ...type.bodySm, color: "#1E40AF", fontWeight: 700 }}>
+            Combined total
+          </span>
+          <span style={{ ...type.subtitle, color: "#1E40AF", fontWeight: 800 }}>
+            MVR {combinedTotal.toFixed(2)}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: space.s, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} disabled={busy} style={btnSecondary(busy)}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={busy} style={btnPrimary(busy)}>
+            {busy ? "Merging…" : "Confirm merge"}
           </button>
         </div>
       </div>
