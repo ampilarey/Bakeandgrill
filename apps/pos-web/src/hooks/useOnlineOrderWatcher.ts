@@ -5,6 +5,42 @@ import type { IncomingOnlineOrder } from "../api";
 const POLL_INTERVAL_MS = 30_000;
 const STORAGE_KEY = "pos_online_orders_last_seen_id";
 
+// Bug-023: lazy module-level AudioContext for the new-order chime.
+// We used to `new AudioContext()` on every chime, which hit iOS
+// Safari's per-page AudioContext limit (around 6) after a busy
+// lunch — chimes then silently failed for the rest of the
+// session. Now we keep ONE instance and create the oscillator
+// per beep; the context is initialised lazily on the first
+// successful playback (browsers block before any user gesture
+// anyway, so the try/catch absorbs the pre-gesture rejection).
+type WindowWithAudio = Window & {
+  AudioContext?: typeof AudioContext;
+  webkitAudioContext?: typeof AudioContext;
+};
+
+let sharedAudioCtx: AudioContext | null = null;
+function playNewOrderChime(): void {
+  try {
+    const wa = window as WindowWithAudio;
+    const AC = wa.AudioContext ?? wa.webkitAudioContext;
+    if (!AC) return;
+    if (!sharedAudioCtx) sharedAudioCtx = new AC();
+    const ctx = sharedAudioCtx;
+    // iOS may suspend the context when the tab backgrounds; resume
+    // here so the next beep after coming back to the tab is audible.
+    if (ctx.state === "suspended") void ctx.resume();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.frequency.value = 880;
+    g.gain.value = 0.08;
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.18);
+    // Don't close the shared context on `ended` — we want to reuse it.
+  } catch { /* no sound — toast stands on its own */ }
+}
+
 function readLastSeenId(): number {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -86,28 +122,10 @@ export function useOnlineOrderWatcher(enabled: boolean) {
 
         // Best-effort chime via WebAudio (cheap sine beep, no asset
         // file, no decode). Browsers block playback before any user
-        // gesture so the catch keeps things silent until the cashier
-        // has actually interacted with the page. The visual toast is
-        // the source of truth either way.
-        try {
-          type WindowWithAudio = Window & {
-            AudioContext?: typeof AudioContext;
-            webkitAudioContext?: typeof AudioContext;
-          };
-          const wa = window as WindowWithAudio;
-          const AC = wa.AudioContext ?? wa.webkitAudioContext;
-          if (AC) {
-            const ctx = new AC();
-            const o = ctx.createOscillator();
-            const g = ctx.createGain();
-            o.frequency.value = 880;
-            g.gain.value = 0.08;
-            o.connect(g); g.connect(ctx.destination);
-            o.start();
-            o.stop(ctx.currentTime + 0.18);
-            o.onended = () => { void ctx.close(); };
-          }
-        } catch { /* no sound — toast stands on its own */ }
+        // gesture so the helper keeps things silent until the
+        // cashier has interacted with the page. The visual toast
+        // is the source of truth either way.
+        playNewOrderChime();
       } catch { /* network blip — try again next tick */ }
     };
 
