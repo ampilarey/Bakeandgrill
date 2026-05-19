@@ -11,6 +11,7 @@ import {
   holdOrder,
   lookupBarcode,
   resumeOrder,
+  updateOrderItems,
 } from "../api";
 import {
   enqueue,
@@ -133,6 +134,23 @@ export function useOrderCreation(params: Params) {
    * (or undercharge) the customer based on a stale local total.
    */
   const [resumedOrderTotal, setResumedOrderTotal] = useState<number | null>(null);
+  /**
+   * Snapshot of the order's status at the moment the cashier tapped
+   * Resume / Charge. Cancel-resume needs it to know what to do:
+   *   - "held" → re-hold the order (put it back in Open Tickets parked)
+   *   - anything else → just drop the local resumed state; the order is
+   *     already in flight and should not be rolled back to held (that
+   *     would yank a cooking ticket off the kitchen's screen).
+   */
+  const [resumedFromStatus, setResumedFromStatus] = useState<string | null>(null);
+  /**
+   * Edit-on-tap mode flag — set when the cashier opens an active order
+   * for editing (not just for charging). Allows cart edits while
+   * resumed AND unlocks the "💾 Save changes" button that pushes the
+   * cart's items back to the server. Cleared on cancel-resume,
+   * save-changes, or successful charge.
+   */
+  const [isEditingActive, setIsEditingActive] = useState(false);
   /**
    * Snapshot of the totalDue AND tender rows captured when an order
    * was created but payment failed. Used by handleRetryPayment so we
@@ -337,6 +355,8 @@ export function useOrderCreation(params: Params) {
           const settledOrderId = resumedOrderId;
           setResumedOrderId(null);
           setResumedOrderTotal(null);
+          setResumedFromStatus(null);
+          setIsEditingActive(false);
           params.clearCart();
           params.setSelectedItem(null);
           setStatusMessage(pickupAwareSuccess(params.orderType, cid != null));
@@ -577,7 +597,18 @@ export function useOrderCreation(params: Params) {
       throw new Error("Already paid — see Receipts.");
     }
 
-    await resumeOrder(orderId);
+    // The backend `resume` endpoint walks held → pending via the state
+    // machine. For any other status (pending/in_progress/ready) the
+    // ticket is already "live" and calling resume would 422 because
+    // pending → pending is not a valid transition. Before Active
+    // orders existed this never came up (the panel only showed held
+    // tickets); now the same Charge button can be tapped on a cooking
+    // ticket, so we skip the transition for non-held orders and just
+    // load them into the cart for settlement.
+    if (preflight.order.status === "held") {
+      await resumeOrder(orderId);
+    }
+    setResumedFromStatus(preflight.order.status ?? null);
     const response = await getOrder(orderId);
 
     // Restore the ticket-level context the cashier had when they held
@@ -655,20 +686,91 @@ export function useOrderCreation(params: Params) {
   const handleCancelResume = async (): Promise<void> => {
     if (resumedOrderId === null) return;
     const id = resumedOrderId;
-    try {
-      await holdOrder(id);
-    } catch {
-      // If the re-hold fails (rare), still clear local state so the
-      // cashier isn't stuck in a broken resumed mode. The order will
-      // remain in "pending" status on the server and the cashier can
-      // resume it again from Open Tickets.
+    const wasHeld = resumedFromStatus === "held";
+    // Only re-hold tickets that came from `held`. In-flight tickets
+    // (cooking / ready) are already mid-lifecycle — re-holding would
+    // pull them off the KDS and confuse the kitchen. Cancel just
+    // drops the local cart and leaves the server-side state alone.
+    if (wasHeld) {
+      try {
+        await holdOrder(id);
+      } catch {
+        // If the re-hold fails (rare), still clear local state so the
+        // cashier isn't stuck in a broken resumed mode.
+      }
     }
     setResumedOrderId(null);
     setResumedOrderTotal(null);
+    setResumedFromStatus(null);
+    setIsEditingActive(false);
     params.clearCart();
     params.setSelectedItem(null);
-    setStatusMessage(`Ticket #${id} returned to Open Tickets.`);
+    setStatusMessage(
+      wasHeld
+        ? `Ticket #${id} returned to Open Tickets.`
+        : `Cancelled — ticket #${id} is still in Active orders.`,
+    );
     setTimeout(() => setStatusMessage(""), 3000);
+  };
+
+  /**
+   * "Tap to edit" pathway — same as handleResumeTicket but flips the
+   * cart into edit-mode so the cashier can add/remove items before
+   * either saving (handleSaveActiveChanges) or charging (handleCharge).
+   * Used by the OpenTicketsPanel when the cashier taps the row itself
+   * (vs. tapping a specific action button).
+   */
+  const handleEditActiveTicket = async (orderId: number): Promise<void> => {
+    await handleResumeTicket(orderId);
+    setIsEditingActive(true);
+  };
+
+  /**
+   * Push the cart's current line items back to the active order. The
+   * server replaces all items, recalculates totals, and optionally
+   * reprints the kitchen chit (we set reprint=true when items differ).
+   * Used by the "💾 Save changes" button in the cart.
+   *
+   * Leaves the cashier in resumed mode so they can still tap Charge
+   * after saving — saves a back-and-forth between Active orders and
+   * cart for "add a side, then take payment" workflows.
+   */
+  const handleSaveActiveChanges = async (): Promise<boolean> => {
+    if (resumedOrderId === null) return false;
+    if (params.cartItems.length === 0) {
+      setStatusMessage("Add at least one item before saving changes.");
+      setTimeout(() => setStatusMessage(""), 4000);
+      return false;
+    }
+    setIsSubmitting(true);
+    try {
+      const items = params.cartItems.map((it) => ({
+        item_id: it.id || null,
+        name: it.name,
+        quantity: it.quantity,
+        variant_id: it.variant_id ?? null,
+        notes: Array.isArray(it.notes) && it.notes.length > 0 ? it.notes.join(" · ") : undefined,
+        modifiers: (it.modifiers ?? []).map((m) => ({
+          modifier_id: m.id || null,
+          name: m.name,
+          price: m.price,
+        })),
+      }));
+      const res = await updateOrderItems(resumedOrderId, { items, reprint_kitchen: true });
+      // Refresh the authoritative total so the Charge button shows
+      // the post-edit amount, not the pre-edit one.
+      setResumedOrderTotal(res.order.total ?? null);
+      setIsEditingActive(false);
+      setStatusMessage(`Ticket #${resumedOrderId} updated — kitchen chit reprinted.`);
+      setTimeout(() => setStatusMessage(""), 4000);
+      return true;
+    } catch (err) {
+      setStatusMessage(`Couldn't save changes: ${(err as Error).message}`);
+      setTimeout(() => setStatusMessage(""), 5000);
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   /** Legacy single-button hold — used when the user just taps Save Ticket
@@ -794,6 +896,9 @@ export function useOrderCreation(params: Params) {
     lastCreatedOrderId,
     pendingPaymentForOrderId,
     resumedOrderId,
+    resumedFromStatus,
+    isEditingActive,
+    setIsEditingActive,
     barcode,
     setBarcode,
     handleCheckout,
@@ -801,6 +906,8 @@ export function useOrderCreation(params: Params) {
     handleHoldOrder,
     handleSaveTicket,
     handleResumeTicket,
+    handleEditActiveTicket,
+    handleSaveActiveChanges,
     handleCancelResume,
     handleBarcodeSubmit,
     handleSyncQueue,

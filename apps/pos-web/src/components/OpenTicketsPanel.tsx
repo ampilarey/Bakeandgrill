@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   fetchReceipts,
   fireOrderToKitchen,
   markOrderPickedUp,
   markOrderReady,
+  mergeOpenTickets,
   sendBill,
   sendPayLink,
+  splitOpenTicket,
 } from "../api";
 import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, type, z } from "../theme";
 
@@ -55,6 +57,38 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   // native window.prompt which was fragile, off-brand, and unusable
   // on iPad in PWA fullscreen mode.
   const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
+
+  // ── Filter state ──────────────────────────────────────────────
+  // Order type filter — cashier flips between Pickup-only mode (most
+  // common during a busy phone-call rush), Takeaway/Dine-in for
+  // counter service, or All when triaging end-of-shift. Maps to the
+  // backend enum: dine_in / takeaway / online_pickup.
+  type TypeFilter = "all" | "dine_in" | "takeaway" | "online_pickup";
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  // Stage filter — parked / cooking / ready. Lets the cashier focus
+  // on whatever's most urgent ("READY" near closing time so nothing
+  // sits cold on the pass; "COOKING" in a rush to check for stragglers).
+  type StageFilter = "all" | "parked" | "cooking" | "ready";
+  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
+  // Payment filter (advanced) — defaults to "all" so it's invisible
+  // until the cashier deliberately filters. Useful for end-of-day
+  // unpaid sweep ("which phone-call tickets still owe money?").
+  type PaymentFilter = "all" | "paid" | "unpaid";
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
+  // Free-text search across order_number, ticket_name, customer name
+  // and phone. Plain client-side .includes() — the active list is at
+  // most ~50 rows so server-side search would be overkill.
+  const [search, setSearch] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // ── Merge / split state ────────────────────────────────────────
+  // When the cashier taps "Merge" on a row, that ticket becomes the
+  // target and the panel switches to "select source" mode. A second
+  // tap on another row completes the merge.
+  const [mergeTargetId, setMergeTargetId] = useState<number | null>(null);
+  // Split picker is a modal — choose which items from a single
+  // ticket to peel off into a sibling.
+  const [splitFor, setSplitFor] = useState<OpenTicket | null>(null);
 
   /**
    * Auto-refresh interval (ms) for the Open Tickets list. 15s is the
@@ -271,12 +305,236 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     }
   };
 
+  /**
+   * Merge flow — two-tap interaction. First tap picks the TARGET
+   * (cashier explicitly chooses the survivor); panel header switches
+   * to "select source to merge in". Second tap on any other row
+   * runs the backend merge — items move, source is cancelled, both
+   * rows reflect new state.
+   */
+  const handleStartMerge = (target: OpenTicket) => {
+    setMergeTargetId(target.id);
+    setRowMsg(null);
+  };
+
+  const handleCancelMerge = () => setMergeTargetId(null);
+
+  const handleCompleteMerge = async (source: OpenTicket) => {
+    if (mergeTargetId === null || source.id === mergeTargetId) {
+      setMergeTargetId(null);
+      return;
+    }
+    const target = tickets.find((t) => t.id === mergeTargetId);
+    const targetLabel = target ? `#${target.order_number}` : `#${mergeTargetId}`;
+    setBusyId(source.id);
+    setRowMsg(null);
+    try {
+      await mergeOpenTickets(mergeTargetId, { source_id: source.id });
+      // Drop the source from local state immediately; target's total
+      // refreshes on the next poll (15s) or visibility-change.
+      setTickets((curr) => curr.filter((row) => row.id !== source.id));
+      setMergeTargetId(null);
+      setRowMsg({ id: mergeTargetId, kind: "ok", text: `Merged ${source.order_number} into ${targetLabel}` });
+    } catch (e) {
+      setRowMsg({ id: source.id, kind: "err", text: (e as Error).message || "Couldn't merge" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleSplitConfirm = async (sourceId: number, itemIds: number[]) => {
+    setBusyId(sourceId);
+    setRowMsg(null);
+    try {
+      const res = await splitOpenTicket(sourceId, { item_ids: itemIds });
+      setSplitFor(null);
+      setRowMsg({
+        id: sourceId,
+        kind: "ok",
+        text: `Split into order #${res.split.id} (MVR ${res.split.total.toFixed(2)})`,
+      });
+      // Force reload to pull both the slimmed source AND the new
+      // sibling ticket. Optimistic patch is awkward here (we don't
+      // have the full row shape for the brand-new order locally).
+      const fresh = await fetchReceipts({
+        active_only: true,
+        device_identifier: deviceId,
+        per_page: 50,
+      });
+      setTickets(fresh.data);
+    } catch (e) {
+      setRowMsg({ id: sourceId, kind: "err", text: (e as Error).message || "Couldn't split" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // ── Derived: filtered ticket list ─────────────────────────────
+  // Stage derivation lives in the row map too (for the badge), but
+  // we need it here for stage-filter matching. Keep both in sync.
+  const filteredTickets = useMemo(() => {
+    const stageOf = (status: string | null | undefined): "parked" | "cooking" | "ready" => {
+      if (status === "held") return "parked";
+      if (status === "ready") return "ready";
+      return "cooking";
+    };
+    const q = search.trim().toLowerCase();
+    return tickets.filter((t) => {
+      if (typeFilter !== "all" && t.type !== typeFilter) return false;
+      if (stageFilter !== "all" && stageOf(t.status) !== stageFilter) return false;
+      if (paymentFilter === "paid" && t.payment_status !== "paid") return false;
+      if (paymentFilter === "unpaid" && t.payment_status === "paid") return false;
+      if (q.length > 0) {
+        const haystack = [
+          t.order_number,
+          t.ticket_name ?? "",
+          t.customer?.name ?? "",
+          t.customer?.phone ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [tickets, typeFilter, stageFilter, paymentFilter, search]);
+
+  // Counts for the chip badges — recomputed on the unfiltered set so
+  // the chip count always shows the TOTAL of each bucket, not the
+  // intersection with whatever filter is active. Counter-intuitive
+  // otherwise (cashier sees "Pickup 0" when filtering by Dine-in).
+  const typeCounts = useMemo(() => {
+    const counts = { all: tickets.length, dine_in: 0, takeaway: 0, online_pickup: 0 };
+    tickets.forEach((t) => {
+      if (t.type === "dine_in") counts.dine_in++;
+      else if (t.type === "takeaway") counts.takeaway++;
+      else if (t.type === "online_pickup") counts.online_pickup++;
+    });
+    return counts;
+  }, [tickets]);
+
+  const stageCounts = useMemo(() => {
+    const counts = { all: tickets.length, parked: 0, cooking: 0, ready: 0 };
+    tickets.forEach((t) => {
+      if (t.status === "held") counts.parked++;
+      else if (t.status === "ready") counts.ready++;
+      else counts.cooking++;
+    });
+    return counts;
+  }, [tickets]);
+
   return (
     <PanelShell
-      title="Active orders"
-      subtitle="Parked, cooking, and ready-for-pickup tickets"
+      title={mergeTargetId !== null ? "Merge tickets — pick source" : "Active orders"}
+      subtitle={
+        mergeTargetId !== null
+          ? `Tap any ticket to merge it into #${mergeTargetId} (or Cancel)`
+          : "Parked, cooking, and ready-for-pickup tickets"
+      }
       onClose={onClose}
     >
+      {/* ── Merge mode banner ───────────────────────────────────── */}
+      {mergeTargetId !== null && (
+        <div
+          style={{
+            padding: space.s + 2,
+            marginBottom: space.s,
+            borderRadius: radius.m,
+            background: "#EFF6FF",
+            border: "1px solid #BFDBFE",
+            color: "#1E3A8A",
+            fontSize: type.bodySm.fontSize,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: space.s,
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>🔀 Pick the source ticket to merge into #{mergeTargetId}</span>
+          <button
+            onClick={handleCancelMerge}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              background: "#fff",
+              border: "1px solid #93C5FD",
+              color: "#1E40AF",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* ── Filter bar ─────────────────────────────────────────── */}
+      <div style={{ marginBottom: space.m, display: "flex", flexDirection: "column", gap: space.xs }}>
+        <FilterChipRow
+          label="Type"
+          options={[
+            { key: "all", label: `All ${typeCounts.all}` },
+            { key: "dine_in", label: `🍽 Dine-in ${typeCounts.dine_in}` },
+            { key: "takeaway", label: `🥡 Takeaway ${typeCounts.takeaway}` },
+            { key: "online_pickup", label: `📦 Pickup ${typeCounts.online_pickup}` },
+          ]}
+          value={typeFilter}
+          onChange={(v) => setTypeFilter(v as TypeFilter)}
+        />
+        <FilterChipRow
+          label="Stage"
+          options={[
+            { key: "all", label: `All ${stageCounts.all}` },
+            { key: "parked", label: `📋 Parked ${stageCounts.parked}` },
+            { key: "cooking", label: `🍳 Cooking ${stageCounts.cooking}` },
+            { key: "ready", label: `✅ Ready ${stageCounts.ready}` },
+          ]}
+          value={stageFilter}
+          onChange={(v) => setStageFilter(v as StageFilter)}
+        />
+        {/* Advanced toggle — keeps the row clean on small screens. */}
+        <button
+          onClick={() => setAdvancedOpen((v) => !v)}
+          style={{
+            alignSelf: "flex-start",
+            background: "transparent",
+            border: "none",
+            color: palette.panelMuted,
+            fontSize: type.caption.fontSize,
+            fontWeight: 700,
+            cursor: "pointer",
+            padding: "2px 0",
+          }}
+        >
+          {advancedOpen ? "▾ Hide advanced filters" : "▸ Advanced filters"}
+        </button>
+        {advancedOpen && (
+          <>
+            <FilterChipRow
+              label="Payment"
+              options={[
+                { key: "all", label: "All" },
+                { key: "paid", label: "💳 Paid" },
+                { key: "unpaid", label: "UNPAID" },
+              ]}
+              value={paymentFilter}
+              onChange={(v) => setPaymentFilter(v as PaymentFilter)}
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search order #, customer, phone…"
+              style={{
+                ...inputField,
+                width: "100%",
+                fontSize: type.bodySm.fontSize,
+              }}
+            />
+          </>
+        )}
+      </div>
+
       {loading && <p style={{ color: palette.panelMuted, fontSize: type.bodySm.fontSize }}>Loading…</p>}
       {err && <p style={{ color: palette.dangerDark, fontSize: type.bodySm.fontSize }}>{err}</p>}
       {!loading && tickets.length === 0 && (
@@ -286,8 +544,15 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           body="Parked, cooking, and ready-for-pickup tickets will show up here."
         />
       )}
+      {!loading && tickets.length > 0 && filteredTickets.length === 0 && (
+        <EmptyState
+          emoji="🔍"
+          title="No matches"
+          body="Try widening the filters above."
+        />
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
-        {tickets.map((t) => {
+        {filteredTickets.map((t) => {
           const busy = busyId === t.id;
           const msg = rowMsg?.id === t.id ? rowMsg : null;
 
@@ -319,20 +584,40 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
             ready: { label: "✅ READY", color: "#047857", bg: "#ECFDF5", border: "#A7F3D0", title: "Ready for the customer to collect" },
           }[stage];
 
+          // In merge mode every row that isn't the target is a
+          // candidate source. The target highlights blue and shows
+          // a hint instead of buttons.
+          const isMergeTarget = mergeTargetId === t.id;
+          const isMergeCandidate = mergeTargetId !== null && !isMergeTarget;
+
           return (
             <div
               key={t.id}
               style={{
                 padding: space.m,
                 borderRadius: radius.l,
-                background: palette.panel,
-                border: `1px solid ${palette.border}`,
+                background: isMergeTarget ? "#EFF6FF" : palette.panel,
+                border: `1px solid ${isMergeTarget ? "#93C5FD" : palette.border}`,
                 display: "flex",
                 flexDirection: "column",
                 gap: space.s,
+                cursor: isMergeCandidate ? "pointer" : "default",
               }}
+              onClick={isMergeCandidate ? () => void handleCompleteMerge(t) : undefined}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m }}>
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m, cursor: mergeTargetId === null ? "pointer" : undefined }}
+                role={mergeTargetId === null ? "button" : undefined}
+                tabIndex={mergeTargetId === null ? 0 : undefined}
+                onClick={mergeTargetId === null ? () => onResume(t) : undefined}
+                onKeyDown={mergeTargetId === null ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onResume(t);
+                  }
+                } : undefined}
+                title={mergeTargetId === null ? "Open ticket in main POS to add/remove items, charge, etc." : undefined}
+              >
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                     <div style={{ fontWeight: 700, fontSize: type.body.fontSize, color: palette.panelInk }}>
@@ -400,101 +685,122 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                   ready + paid      → 📦 Picked up
                   ready + unpaid    → 💳 Charge (must pay before pickup)
                 */}
-                {stage === "parked" && (
-                  <button
-                    onClick={() => handleFireToKitchen(t)}
-                    disabled={busy}
-                    style={{
-                      padding: `${space.s}px ${space.m}px`,
-                      minHeight: 36, fontSize: type.bodySm.fontSize,
-                      borderRadius: radius.m, fontWeight: 700,
-                      background: "#A16207", color: "#fff",
-                      border: "none", cursor: busy ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    🍳 {busy ? "…" : "Fire to kitchen"}
-                  </button>
+                {/* In merge mode all per-row actions are hidden so the
+                    row-tap = "pick this as source" is the only thing
+                    the cashier can do. Avoids a chip-tap accidentally
+                    charging a ticket mid-merge. */}
+                {mergeTargetId === null && (
+                  <>
+                    {stage === "parked" && (
+                      <ActionButton onClick={() => handleFireToKitchen(t)} busy={busy} bg="#A16207">
+                        🍳 Fire to kitchen
+                      </ActionButton>
+                    )}
+                    {stage === "cooking" && (
+                      <ActionButton onClick={() => handleMarkReady(t)} busy={busy} bg="#047857">
+                        ✅ Mark ready
+                      </ActionButton>
+                    )}
+                    {stage === "ready" && isPaid && (
+                      <ActionButton onClick={() => handleMarkPickedUp(t)} busy={busy} bg="#0F766E">
+                        📦 Picked up
+                      </ActionButton>
+                    )}
+                    {/* Charge only when there's actual money to take.
+                        Other states already have a primary action,
+                        and the row click handles editing. */}
+                    {isUnpaid && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onResume(t);
+                        }}
+                        disabled={busy}
+                        style={{
+                          ...btnPrimary(busy),
+                          padding: `${space.s}px ${space.m}px`,
+                          minHeight: 36, fontSize: type.bodySm.fontSize,
+                        }}
+                      >
+                        💳 Charge
+                      </button>
+                    )}
+                    {isUnpaid && hasPhone && (
+                      <ActionButton onClick={() => handleSendPayLink(t)} busy={busy} bg="#1D4ED8">
+                        💳 Send pay link
+                      </ActionButton>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendBill(t);
+                      }}
+                      disabled={busy}
+                      style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}
+                    >
+                      📱 {busy ? "…" : "Send Bill SMS"}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePrintBill(t);
+                      }}
+                      disabled={busy}
+                      style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}
+                    >
+                      🖨 Print Bill
+                    </button>
+                    {/* Merge / Split — keep them at the end since
+                        they're rare actions. Hidden when paid since
+                        the backend refuses to merge/split paid
+                        orders anyway. */}
+                    {!isPaid && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartMerge(t);
+                        }}
+                        disabled={busy}
+                        title="Merge another open ticket into this one"
+                        style={{
+                          padding: `${space.s}px ${space.m}px`,
+                          minHeight: 36, fontSize: type.bodySm.fontSize,
+                          borderRadius: radius.m, fontWeight: 700,
+                          background: "#fff", color: "#475569",
+                          border: "1px solid #CBD5E1",
+                          cursor: busy ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        🔀 Merge
+                      </button>
+                    )}
+                    {!isPaid && (t.items?.length ?? 0) > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSplitFor(t);
+                        }}
+                        disabled={busy}
+                        title="Split items off into a new ticket"
+                        style={{
+                          padding: `${space.s}px ${space.m}px`,
+                          minHeight: 36, fontSize: type.bodySm.fontSize,
+                          borderRadius: radius.m, fontWeight: 700,
+                          background: "#fff", color: "#475569",
+                          border: "1px solid #CBD5E1",
+                          cursor: busy ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        ✂️ Split
+                      </button>
+                    )}
+                  </>
                 )}
-
-                {stage === "cooking" && (
-                  <button
-                    onClick={() => handleMarkReady(t)}
-                    disabled={busy}
-                    style={{
-                      padding: `${space.s}px ${space.m}px`,
-                      minHeight: 36, fontSize: type.bodySm.fontSize,
-                      borderRadius: radius.m, fontWeight: 700,
-                      background: "#047857", color: "#fff",
-                      border: "none", cursor: busy ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    ✅ {busy ? "…" : "Mark ready"}
-                  </button>
+                {isMergeTarget && (
+                  <span style={{ fontSize: type.bodySm.fontSize, color: "#1E40AF", fontWeight: 700 }}>
+                    Target — pick a source ticket to merge in.
+                  </span>
                 )}
-
-                {stage === "ready" && isPaid && (
-                  <button
-                    onClick={() => handleMarkPickedUp(t)}
-                    disabled={busy}
-                    style={{
-                      padding: `${space.s}px ${space.m}px`,
-                      minHeight: 36, fontSize: type.bodySm.fontSize,
-                      borderRadius: radius.m, fontWeight: 700,
-                      background: "#0F766E", color: "#fff",
-                      border: "none", cursor: busy ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    📦 {busy ? "…" : "Picked up"}
-                  </button>
-                )}
-
-                {/*
-                  ── Resume / Charge ──────────────────────────────
-                  Always available except for paid-already ready
-                  tickets (where the primary action is Picked up).
-                  Label depends on whether there's something to
-                  charge: unpaid → "Charge", parked → "Edit",
-                  paid → "View".
-                */}
-                {!(stage === "ready" && isPaid) && (
-                  <button
-                    onClick={() => onResume(t)}
-                    disabled={busy}
-                    style={{
-                      ...btnPrimary(busy),
-                      padding: `${space.s}px ${space.m}px`,
-                      minHeight: 36, fontSize: type.bodySm.fontSize,
-                    }}
-                  >
-                    {isUnpaid ? "💳 Charge" : stage === "parked" ? "▶ Edit" : "👁 View"}
-                  </button>
-                )}
-
-                {/* Send pay link — only useful for unpaid tickets
-                    with a customer phone (BML link gets SMS'd to
-                    them). Hidden when paid or no phone attached. */}
-                {isUnpaid && hasPhone && (
-                  <button
-                    onClick={() => handleSendPayLink(t)}
-                    disabled={busy}
-                    style={{
-                      padding: `${space.s}px ${space.m}px`,
-                      minHeight: 36, fontSize: type.bodySm.fontSize,
-                      borderRadius: radius.m, fontWeight: 700,
-                      background: "#1D4ED8", color: "#fff",
-                      border: "none", cursor: busy ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    💳 {busy ? "…" : "Send pay link"}
-                  </button>
-                )}
-
-                <button onClick={() => handleSendBill(t)} disabled={busy} style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
-                  📱 {busy ? "…" : "Send Bill SMS"}
-                </button>
-                <button onClick={() => handlePrintBill(t)} disabled={busy} style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
-                  🖨 Print Bill
-                </button>
               </div>
 
               {msg && (
@@ -520,7 +826,257 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           onSubmit={submitPhonePrompt}
         />
       )}
+      {splitFor && (
+        <SplitItemPicker
+          ticket={splitFor}
+          onCancel={() => setSplitFor(null)}
+          onConfirm={(itemIds) => void handleSplitConfirm(splitFor.id, itemIds)}
+        />
+      )}
     </PanelShell>
+  );
+}
+
+/**
+ * Stage-action button used inside each ticket row. Centralises the
+ * stopPropagation + busy/disabled styling so the row's own
+ * click-to-edit handler doesn't fire when the cashier taps a chip.
+ */
+function ActionButton({
+  onClick,
+  busy,
+  bg,
+  children,
+}: {
+  onClick: () => void;
+  busy: boolean;
+  bg: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      disabled={busy}
+      style={{
+        padding: `${space.s}px ${space.m}px`,
+        minHeight: 36,
+        fontSize: type.bodySm.fontSize,
+        borderRadius: radius.m,
+        fontWeight: 700,
+        background: bg,
+        color: "#fff",
+        border: "none",
+        cursor: busy ? "not-allowed" : "pointer",
+      }}
+    >
+      {busy ? "…" : children}
+    </button>
+  );
+}
+
+/**
+ * Single horizontal row of filter chips with a small leading label.
+ * `value` is the active key; all chips are visible at once (no
+ * dropdown) so the cashier can switch with one tap on iPad.
+ */
+function FilterChipRow({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: Array<{ key: string; label: string }>;
+  value: string;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: space.xs, flexWrap: "wrap" }}>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: palette.panelMuted,
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+          minWidth: 50,
+        }}
+      >
+        {label}
+      </span>
+      {options.map((opt) => {
+        const active = opt.key === value;
+        return (
+          <button
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: `1px solid ${active ? "#0F172A" : palette.border}`,
+              background: active ? "#0F172A" : "#fff",
+              color: active ? "#fff" : palette.panelInk,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Modal for selecting which items to peel off a ticket into a new
+ * sibling. Used by the "Split" button. Backend rejects the operation
+ * if all items are selected (would leave the source empty) or none,
+ * so we mirror those guards client-side as disabled-button feedback.
+ */
+function SplitItemPicker({
+  ticket,
+  onCancel,
+  onConfirm,
+}: {
+  ticket: OpenTicket;
+  onCancel: () => void;
+  onConfirm: (itemIds: number[]) => void;
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const items = ticket.items ?? [];
+  const totalCount = items.length;
+  const allSelected = selected.size === totalCount;
+  const noneSelected = selected.size === 0;
+  const splitTotal = items
+    .filter((it) => selected.has(it.id))
+    .reduce((acc, it) => acc + Number(it.total_price ?? 0), 0);
+
+  const toggle = (id: number) => {
+    setSelected((curr) => {
+      const next = new Set(curr);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Split ticket"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.4)",
+        zIndex: z.modalBackdrop,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: space.l,
+      }}
+      onClick={onCancel}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(520px, 100%)",
+          background: palette.panel,
+          borderRadius: radius.xl,
+          boxShadow: shadow.xl,
+          padding: space.xl,
+          display: "flex",
+          flexDirection: "column",
+          gap: space.m,
+          maxHeight: "85vh",
+          overflow: "hidden",
+        }}
+      >
+        <div>
+          <div style={{ ...type.subtitle, color: palette.panelInk }}>
+            ✂️ Split items off ticket
+          </div>
+          <div style={{ ...type.bodySm, color: palette.panelMuted, marginTop: 4 }}>
+            Order <strong style={{ color: palette.panelInk }}>{ticket.order_number}</strong> · pick the
+            items to move into a brand-new ticket.
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            border: `1px solid ${palette.border}`,
+            borderRadius: radius.m,
+            padding: space.s,
+            background: "#F8FAFC",
+            display: "flex",
+            flexDirection: "column",
+            gap: space.xs,
+          }}
+        >
+          {items.map((it) => {
+            const checked = selected.has(it.id);
+            return (
+              <label
+                key={it.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: space.s,
+                  padding: space.s,
+                  background: checked ? "#EFF6FF" : "#fff",
+                  border: `1px solid ${checked ? "#93C5FD" : palette.border}`,
+                  borderRadius: radius.s,
+                  cursor: "pointer",
+                  fontSize: type.bodySm.fontSize,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(it.id)}
+                  style={{ width: 18, height: 18, accentColor: "#1D4ED8" }}
+                />
+                <span style={{ flex: 1, color: palette.panelInk }}>
+                  {it.quantity}× {it.item_name}
+                </span>
+                <span style={{ color: palette.panelMuted, fontWeight: 700, whiteSpace: "nowrap" }}>
+                  MVR {Number(it.total_price ?? 0).toFixed(2)}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ ...type.bodySm, color: palette.panelMuted }}>
+            {selected.size} of {totalCount} items · split MVR {splitTotal.toFixed(2)}
+          </div>
+          {allSelected && (
+            <span style={{ ...type.caption, color: palette.dangerDark, fontWeight: 700 }}>
+              Pick fewer — can't split every item.
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: space.s, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={btnSecondary()}>
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(Array.from(selected))}
+            disabled={noneSelected || allSelected}
+            style={btnPrimary(noneSelected || allSelected)}
+          >
+            Split into new ticket
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

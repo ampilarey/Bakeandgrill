@@ -53,6 +53,19 @@ type Props = {
    *  and is in read-only mode (no qty +/-, no clear, no save-ticket).
    *  The cashier must Cancel Resume to drop back into a fresh cart. */
   resumedOrderId: number | null;
+  /** Original status of the resumed order ("held" / "pending" /
+   *  "in_progress" / "ready"). Drives banner copy + decides whether
+   *  Cancel Resume should re-hold the ticket. */
+  resumedFromStatus?: string | null;
+  /** True when the cashier opened the resumed ticket via "Edit" (vs.
+   *  via a direct Charge action). Unlocks cart mutations and surfaces
+   *  the "💾 Save changes" button. */
+  isEditingActive?: boolean;
+  /** Cashier flipped from read-only resumed mode into edit mode (e.g.
+   *  tapped "Edit items" on the resume banner). */
+  onUnlockEdit?: () => void;
+  /** Push the edited cart back to the server (PATCH /orders/{id}/items). */
+  onSaveActiveChanges?: () => void;
   onCancelResume: () => void;
 
   onClearCart: () => void;
@@ -92,6 +105,16 @@ export function OrderCart(p: Props) {
   const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting;
   const dineIn = p.orderType === "Dine-in";
   const isResumed = p.resumedOrderId !== null;
+  // When the cashier opened a ticket via "Edit" we relax the resumed
+  // read-only restrictions so qty +/-, kitchen notes, and Clear all
+  // become usable again. The Save Changes button at the bottom
+  // pushes the edits back to the server.
+  const editing = isResumed && !!p.isEditingActive;
+  // "Lock cart for read-only" — only applies to charge-only resumes.
+  // (Save Ticket is still disabled while resumed because re-holding
+  // an in-flight ticket is what Cancel Resume does.)
+  const lockedReadOnly = isResumed && !editing;
+  const wasHeld = p.resumedFromStatus === "held";
 
   return (
     <aside
@@ -108,31 +131,79 @@ export function OrderCart(p: Props) {
         boxShadow: '0 2px 8px rgba(15,23,42,0.06)',
       }}
     >
-      {/* ── Resumed-ticket banner (read-only mode) ────────────────── */}
+      {/* ── Resumed-ticket banner ─────────────────────────────────
+            Two modes:
+              editing=true  → cart unlocked, "💾 Save changes" + "Cancel"
+              editing=false → read-only banner, "✏️ Edit items" + "Cancel"
+            Copy adapts to whether the ticket came from `held` (parked)
+            or a live status (cooking/ready), since Cancel behaves
+            differently for each (re-hold vs. drop-local). */}
       {isResumed && (
         <div style={{
           padding: '10px 14px',
-          background: '#FFFBEB',
-          borderBottom: `1px solid #FDE68A`,
+          background: editing ? '#EFF6FF' : '#FFFBEB',
+          borderBottom: `1px solid ${editing ? '#BFDBFE' : '#FDE68A'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          flexWrap: 'wrap',
         }}>
-          <div style={{ fontSize: 12, color: '#92400E', lineHeight: 1.4 }}>
-            <div style={{ fontWeight: 800 }}>🎫 Resumed: Order #{p.resumedOrderId}</div>
-            <div style={{ marginTop: 2 }}>Charge to settle. To edit, cancel resume.</div>
+          <div style={{ fontSize: 12, color: editing ? '#1E3A8A' : '#92400E', lineHeight: 1.4, minWidth: 0, flex: 1 }}>
+            <div style={{ fontWeight: 800 }}>
+              {editing ? '✏️ Editing' : '🎫 Resumed'}: Order #{p.resumedOrderId}
+            </div>
+            <div style={{ marginTop: 2 }}>
+              {editing
+                ? 'Add or remove items, then Save changes. Kitchen chit will reprint.'
+                : wasHeld
+                  ? 'Charge to settle, or Edit to add/remove items.'
+                  : 'Charge to take payment, or Edit to modify the ticket.'}
+            </div>
           </div>
-          <button
-            onClick={p.onCancelResume}
-            disabled={p.isSubmitting}
-            style={{
-              padding: '6px 10px', borderRadius: 6,
-              background: '#fff', border: '1px solid #FBBF24',
-              fontSize: 11, fontWeight: 700, color: '#92400E',
-              cursor: p.isSubmitting ? 'not-allowed' : 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Cancel resume
-          </button>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            {!editing && p.onUnlockEdit && (
+              <button
+                onClick={p.onUnlockEdit}
+                disabled={p.isSubmitting}
+                style={{
+                  padding: '6px 10px', borderRadius: 6,
+                  background: '#fff', border: '1px solid #FBBF24',
+                  fontSize: 11, fontWeight: 700, color: '#92400E',
+                  cursor: p.isSubmitting ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ✏️ Edit items
+              </button>
+            )}
+            {editing && p.onSaveActiveChanges && (
+              <button
+                onClick={p.onSaveActiveChanges}
+                disabled={p.isSubmitting || p.cartItems.length === 0}
+                style={{
+                  padding: '6px 10px', borderRadius: 6,
+                  background: '#1D4ED8', border: 'none',
+                  fontSize: 11, fontWeight: 700, color: '#fff',
+                  cursor: (p.isSubmitting || p.cartItems.length === 0) ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap',
+                  opacity: (p.isSubmitting || p.cartItems.length === 0) ? 0.6 : 1,
+                }}
+              >
+                💾 Save changes
+              </button>
+            )}
+            <button
+              onClick={p.onCancelResume}
+              disabled={p.isSubmitting}
+              style={{
+                padding: '6px 10px', borderRadius: 6,
+                background: '#fff', border: `1px solid ${editing ? '#93C5FD' : '#FBBF24'}`,
+                fontSize: 11, fontWeight: 700, color: editing ? '#1E40AF' : '#92400E',
+                cursor: p.isSubmitting ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -144,13 +215,13 @@ export function OrderCart(p: Props) {
           </div>
           <button
             onClick={p.onClearCart}
-            disabled={p.cartItems.length === 0 || isResumed}
-            title={isResumed ? 'Cancel resume to edit items' : undefined}
+            disabled={p.cartItems.length === 0 || lockedReadOnly}
+            title={lockedReadOnly ? 'Tap "Edit items" on the resume banner to make changes' : undefined}
             style={{
               fontSize: 12, fontWeight: 600, color: C.muted,
               background: 'transparent', border: 'none',
-              cursor: (p.cartItems.length === 0 || isResumed) ? 'not-allowed' : 'pointer',
-              opacity: (p.cartItems.length === 0 || isResumed) ? 0.4 : 1,
+              cursor: (p.cartItems.length === 0 || lockedReadOnly) ? 'not-allowed' : 'pointer',
+              opacity: (p.cartItems.length === 0 || lockedReadOnly) ? 0.4 : 1,
             }}
           >
             Clear
@@ -219,7 +290,7 @@ export function OrderCart(p: Props) {
             setAppliedPromo={p.setAppliedPromo}
             setAppliedLoyalty={p.setAppliedLoyalty}
             setAppliedGiftCard={p.setAppliedGiftCard}
-            readOnly={isResumed}
+            readOnly={lockedReadOnly}
           />
         )}
       </div>
@@ -245,7 +316,7 @@ export function OrderCart(p: Props) {
               setCartItems={p.setCartItems}
               quickNotes={p.quickNotes}
               onOpenNotePicker={p.onOpenNotePicker}
-              isResumed={isResumed}
+              isResumed={lockedReadOnly}
             />
           ))
         )}

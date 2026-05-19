@@ -195,6 +195,15 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // hardware.
     Route::post('/orders/{id}/mark-ready', [OrderController::class, 'markReady'])->middleware('throttle:30,1');
     Route::post('/orders/{id}/mark-picked-up', [OrderController::class, 'markPickedUp'])->middleware('throttle:30,1');
+    // Active-ticket editing — POS "Save changes" lets a cashier swap
+    // out the line items on a parked / cooking / ready ticket and
+    // reprint the kitchen chit in one round-trip.
+    Route::patch('/orders/{id}/items', [OrderController::class, 'updateItems'])->middleware('throttle:30,1');
+    // Open-ticket consolidation — merge two tickets into one or split
+    // selected items off into a sibling ticket. Same editable-state
+    // guards as updateItems.
+    Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])->middleware('throttle:10,1');
+    Route::post('/orders/{id}/split', [OrderController::class, 'split'])->middleware('throttle:10,1');
     Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])->middleware('throttle:20,1');
     Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])->middleware('throttle:10,1');
 

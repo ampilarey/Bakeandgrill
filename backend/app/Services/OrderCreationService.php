@@ -187,6 +187,64 @@ class OrderCreationService
         return $this->calculator->recalculateAndPersist($order);
     }
 
+    /**
+     * Replace ALL line items on an existing order with the supplied
+     * payload, recalculate totals, and optionally reprint the kitchen
+     * chit. Used by the POS "Save changes" button when a cashier edits
+     * a resumed active ticket — the only mutation path that wipes
+     * existing OrderItems wholesale instead of appending.
+     *
+     * Soft-deletes the prior items (OrderItem uses SoftDeletes via the
+     * standard observer pattern) so the audit trail still shows what
+     * the kitchen was originally asked to make. The new lines are
+     * created with the same KitchenMenuResolver / price-snapshot logic
+     * as createFromPayload so taxes / variants / modifiers stay in
+     * sync with the menu-as-it-stands-now.
+     *
+     * Caller MUST hold a row lock on the order before invoking this
+     * (we don't lock inside because the controller already does, and
+     * we want a single source of truth for the lock window).
+     */
+    public function replaceOrderItems(Order $order, array $items, bool $reprintKitchen = true): Order
+    {
+        $updated = DB::transaction(function () use ($order, $items): Order {
+            // Soft-delete current modifiers + items. We don't hard-delete
+            // because finance reports and refund flows still want to be
+            // able to surface the original ticket if asked.
+            $existingItemIds = $order->items()->pluck('id');
+            if ($existingItemIds->isNotEmpty()) {
+                OrderItemModifier::whereIn('order_item_id', $existingItemIds)->delete();
+                OrderItem::whereIn('id', $existingItemIds)->delete();
+            }
+
+            // Detach the previous fresh() relations so addOrderItems
+            // sees a clean slate when it re-runs.
+            $order->setRelation('items', collect());
+
+            $this->addOrderItems($order, $items);
+
+            return $this->calculator->recalculateAndPersist($order);
+        });
+
+        if ($reprintKitchen && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
+            // Reprint outside the transaction so a queue/printer hiccup
+            // doesn't roll back the cashier's edit.
+            DB::afterCommit(function () use ($updated): void {
+                try {
+                    app(\App\Services\PrintJobService::class)
+                        ->enqueueKitchen($updated->fresh(['items.modifiers']), 'replaceItems');
+                } catch (\Throwable $e) {
+                    logger()->warning('replaceOrderItems: kitchen reprint enqueue failed', [
+                        'order_id' => $updated->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            });
+        }
+
+        return $updated;
+    }
+
     private function addOrderItems(Order $order, array $items, ?object $user = null): float
     {
         $subtotal = 0;

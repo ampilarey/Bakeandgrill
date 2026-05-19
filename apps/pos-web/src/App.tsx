@@ -863,6 +863,10 @@ function App() {
               onAttachCustomer={cart.setAttachedCustomer}
               onDetachCustomer={cart.detachCustomer}
               resumedOrderId={order.resumedOrderId}
+              resumedFromStatus={order.resumedFromStatus}
+              isEditingActive={order.isEditingActive}
+              onUnlockEdit={() => order.setIsEditingActive(true)}
+              onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
               onClearCart={cart.clearCart}
               onSaveTicket={() => setShowSaveTicket(true)}
@@ -931,10 +935,30 @@ function App() {
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             onClose={() => setPane("sales")}
             onResume={(t) => {
-              void order.handleResumeTicket(t.id).then(() => {
-                setPane("sales");
-                void refreshOpenTickets();
-              });
+              // Tap-to-open active ticket: load the order into the main
+              // POS cart in edit mode (cart unlocked, "Save changes"
+              // button appears) so the cashier can add/remove items
+              // before charging. For PARKED tickets edit mode is the
+              // natural fit; for COOKING/READY it lets the cashier
+              // patch a missed line without re-ringing the whole
+              // ticket. Surfaces resume errors instead of swallowing
+              // them so the cashier sees what went wrong.
+              order.handleEditActiveTicket(t.id)
+                .then(() => {
+                  setPane("sales");
+                  void refreshOpenTickets();
+                })
+                .catch((err) => {
+                  // handleResumeTicket already setStatusMessage for the
+                  // known cases (already-paid). For unexpected failures
+                  // surface the raw message so the cashier isn't left
+                  // wondering why the tap didn't go anywhere.
+                  const msg = (err as Error)?.message ?? "Couldn't open ticket";
+                  if (!msg.includes("Already paid")) {
+                    order.setStatusMessage(`Couldn't open ticket: ${msg}`);
+                    setTimeout(() => order.setStatusMessage(""), 5000);
+                  }
+                });
             }}
           />
         )}

@@ -625,6 +625,75 @@ export async function markOrderPickedUp(
 }
 
 /**
+ * Replace the line items on an existing (non-completed) order. Used by
+ * the POS "Save changes" button when the cashier edited a resumed
+ * active ticket. Backend wipes existing items, re-adds the payload,
+ * recalculates totals via OrderTotalsCalculator, and optionally
+ * reprints the kitchen chit.
+ *
+ * Refuses paid / completed / cancelled / refunded orders server-side.
+ */
+export async function updateOrderItems(
+  orderId: number,
+  payload: {
+    items: Array<{
+      item_id?: number | null;
+      name: string;
+      quantity: number;
+      variant_id?: number | null;
+      notes?: string;
+      modifiers?: Array<{
+        modifier_id?: number | null;
+        name: string;
+        price: number;
+      }>;
+    }>;
+    reprint_kitchen?: boolean;
+  },
+): Promise<{ order: { id: number; total: number; subtotal: number; tax_amount: number } }> {
+  return request(`/orders/${orderId}/items`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Merge a source ticket into a target ticket. Items from `source_id`
+ * are reparented onto `targetOrderId`; source is cancelled. Use when
+ * the cashier consolidates two phone-call tickets or joins two table
+ * parties. Server refuses if either order is paid/completed.
+ */
+export async function mergeOpenTickets(
+  targetOrderId: number,
+  payload: { source_id: number },
+): Promise<{ order: { id: number; total: number } }> {
+  return request(`/orders/${targetOrderId}/merge`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Split selected item ids off the source ticket into a brand-new
+ * ticket. Useful when a customer wants to pay for only part of an
+ * order (split bill on a phone-call pickup, or a dine-in party
+ * splitting). Server returns both the slimmed-down source and the
+ * brand-new split.
+ */
+export async function splitOpenTicket(
+  sourceOrderId: number,
+  payload: { item_ids: number[] },
+): Promise<{
+  source: { id: number; total: number };
+  split: { id: number; total: number };
+}> {
+  return request(`/orders/${sourceOrderId}/split`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
  * Receipts/orders list shaped for the POS — same backing endpoint as admin,
  * but with cashier-friendly filters (current shift, today, search).
  */
