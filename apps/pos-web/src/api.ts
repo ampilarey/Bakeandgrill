@@ -219,6 +219,17 @@ export async function searchCustomers(q: string): Promise<{ data: PosCustomer[] 
   return request<{ data: PosCustomer[] }>(`/customers/search?q=${encodeURIComponent(q)}`);
 }
 
+/**
+ * Pull the 10 most recently active customers (ordered by last_order_at).
+ * Used by the POS Customer Picker as a "tap a regular" shortcut when
+ * the cashier opens the picker without typing anything yet — saves a
+ * round of search input per ticket for repeat customers. Backed by the
+ * same /customers/search endpoint with an empty q.
+ */
+export async function fetchRecentCustomers(): Promise<{ data: PosCustomer[] }> {
+  return request<{ data: PosCustomer[] }>(`/customers/search?q=`);
+}
+
 export async function quickCreateCustomer(
   payload: { phone: string; name?: string },
 ): Promise<{ customer: PosCustomer; created: boolean }> {

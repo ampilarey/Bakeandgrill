@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { quickCreateCustomer, searchCustomers, type PosCustomer } from "../api";
+import { fetchRecentCustomers, quickCreateCustomer, searchCustomers, type PosCustomer } from "../api";
 
 /**
  * Customer Picker — sits at the top of the OrderCart.
@@ -73,6 +73,8 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
   const [nameQuery, setNameQuery] = useState("");
 
   const [results, setResults] = useState<PosCustomer[]>([]);
+  const [recents, setRecents] = useState<PosCustomer[]>([]);
+  const [loadingRecents, setLoadingRecents] = useState(false);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
@@ -83,6 +85,28 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
 
   const query = mode === "phone" ? phone.trim() : nameQuery.trim();
   const phoneValid = isValidPhone(phone);
+
+  // ── Recent customers — fetched once when the picker opens ─────────
+  // Backed by /customers/search?q= (empty query → recent list). Gives
+  // the cashier a tap-shortcut for regulars without making them type
+  // a phone number. Refetched on every open so a newly-added customer
+  // shows up immediately on the next ticket.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoadingRecents(true);
+    void (async () => {
+      try {
+        const res = await fetchRecentCustomers();
+        if (!cancelled) setRecents(res.data ?? []);
+      } catch {
+        if (!cancelled) setRecents([]);
+      } finally {
+        if (!cancelled) setLoadingRecents(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   // ── Debounced search (works for both phone and name) ───────────────
   useEffect(() => {
@@ -381,69 +405,45 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
         )}
       </div>
 
-      {/* Results / Create CTA */}
-      {(loading || results.length > 0 || showCreate || (query.length >= 2 && !loading)) && (
+      {/* Results / Recent customers / Create CTA
+          Three modes share one scroll panel:
+            • Query typed (≥2 chars) → live search results
+            • No query yet → "Recent customers" list (cashier taps a
+              regular without typing)
+            • Phone looks valid but no match → "Save as new" CTA
+       */}
+      {(loading || loadingRecents || results.length > 0 || recents.length > 0 || showCreate || (query.length >= 2 && !loading)) && (
         <div style={{
           borderTop: `1px solid ${C.border}`,
           background: C.bg,
-          maxHeight: 220,
+          maxHeight: 260,
           overflow: "auto",
         }}>
-          {loading && (
+          {(loading || (loadingRecents && results.length === 0 && query.length < 2)) && (
             <div style={{ padding: 12, fontSize: 12, color: C.muted, textAlign: "center" }}>
-              Searching…
+              {loading ? "Searching…" : "Loading recent customers…"}
             </div>
           )}
 
           {!loading && results.length > 0 && (
-            <div style={{
-              padding: "6px 12px", fontSize: 10, fontWeight: 700,
-              color: C.muted, letterSpacing: "0.06em", textTransform: "uppercase",
-            }}>
-              Matches
-            </div>
+            <SectionHeader label="Matches" />
           )}
-
           {!loading && results.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => handleAttach(c)}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                width: "100%", padding: "10px 12px",
-                background: "transparent", border: "none",
-                borderBottom: `1px solid ${C.border}`,
-                cursor: "pointer", textAlign: "left",
-                minHeight: 48,
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.bgAlt; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-            >
-              <div style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: C.primarySoft, color: C.primaryDark,
-                border: `1px solid ${C.primary}33`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 800, fontSize: 13, flexShrink: 0,
-              }}>
-                {(c.name ?? c.phone ?? "?").slice(0, 1).toUpperCase()}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 14, fontWeight: 700, color: C.text,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>
-                  {c.name || "(no name)"}
-                </div>
-                <div style={{ fontSize: 12, color: C.muted }}>
-                  {c.phone}
-                  {typeof c.orders_count === "number" && c.orders_count > 0 && (
-                    <span> · {c.orders_count} order{c.orders_count === 1 ? "" : "s"}</span>
-                  )}
-                </div>
-              </div>
-            </button>
+            <CustomerRow key={c.id} customer={c} onAttach={handleAttach} />
           ))}
+
+          {/* Recent customers — only when nothing is being searched,
+              so we don't double-render rows that already appear in
+              the live results. Cashier can scroll-tap a regular and
+              skip typing entirely. */}
+          {!loading && query.length < 2 && recents.length > 0 && (
+            <>
+              <SectionHeader label="Recent customers" hint="Tap to attach" />
+              {recents.map((c) => (
+                <CustomerRow key={c.id} customer={c} onAttach={handleAttach} />
+              ))}
+            </>
+          )}
 
           {showCreate && (
             <div style={{
@@ -481,6 +481,12 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
                 : `No matches for "${query}". Switch to phone entry to save a new customer.`}
             </div>
           )}
+
+          {!loading && !loadingRecents && query.length < 2 && recents.length === 0 && (
+            <div style={{ padding: 12, fontSize: 12, color: C.muted, textAlign: "center" }}>
+              No recent customers yet. Type a phone above to add one.
+            </div>
+          )}
         </div>
       )}
 
@@ -490,6 +496,79 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
         </div>
       )}
     </div>
+  );
+}
+
+// ── Row + section helpers ──────────────────────────────────────────────────
+// Both the live search results and the recent-customers list render
+// the same card layout, so we share one component to keep the visual
+// language consistent and the parent JSX readable.
+
+function SectionHeader({ label, hint }: { label: string; hint?: string }) {
+  return (
+    <div style={{
+      padding: "8px 12px 4px", fontSize: 10, fontWeight: 700,
+      color: C.muted, letterSpacing: "0.06em", textTransform: "uppercase",
+      display: "flex", alignItems: "baseline", justifyContent: "space-between",
+      gap: 8, background: C.bg, position: "sticky", top: 0, zIndex: 1,
+    }}>
+      <span>{label}</span>
+      {hint && (
+        <span style={{
+          fontSize: 10, fontWeight: 500, color: C.subtle,
+          letterSpacing: 0, textTransform: "none",
+        }}>
+          {hint}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CustomerRow({
+  customer, onAttach,
+}: {
+  customer: PosCustomer;
+  onAttach: (c: PosCustomer) => void;
+}) {
+  return (
+    <button
+      onClick={() => onAttach(customer)}
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        width: "100%", padding: "10px 12px",
+        background: "transparent", border: "none",
+        borderBottom: `1px solid ${C.border}`,
+        cursor: "pointer", textAlign: "left",
+        minHeight: 48,
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.bgAlt; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+    >
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%",
+        background: C.primarySoft, color: C.primaryDark,
+        border: `1px solid ${C.primary}33`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontWeight: 800, fontSize: 13, flexShrink: 0,
+      }}>
+        {(customer.name ?? customer.phone ?? "?").slice(0, 1).toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 14, fontWeight: 700, color: C.text,
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>
+          {customer.name || "(no name)"}
+        </div>
+        <div style={{ fontSize: 12, color: C.muted }}>
+          {customer.phone}
+          {typeof customer.orders_count === "number" && customer.orders_count > 0 && (
+            <span> · {customer.orders_count} order{customer.orders_count === 1 ? "" : "s"}</span>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }
 

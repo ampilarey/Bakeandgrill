@@ -33,8 +33,24 @@ class CustomerController extends Controller
         }
 
         $q = trim((string) $request->query('q', ''));
+
+        // No-query mode: the POS Customer Picker calls this with an
+        // empty `q` when it opens, so we return the 10 most-recently-
+        // active customers as a "recent customers" suggestion list.
+        // This means cashiers can tap a regular instead of typing
+        // their phone every single ticket. Staff-only endpoint, same
+        // shape as the search response so the frontend doesn't need
+        // two code paths.
         if (mb_strlen($q) < 2) {
-            return response()->json(['data' => []]);
+            $recent = Customer::query()
+                ->select(['id', 'name', 'phone', 'email', 'loyalty_points', 'tier', 'sms_opt_out', 'last_order_at'])
+                ->withCount('orders')
+                ->whereNotNull('last_order_at')
+                ->orderByDesc('last_order_at')
+                ->limit(10)
+                ->get();
+
+            return response()->json(['data' => $recent]);
         }
 
         // If it looks like a phone number, normalise so "+960 712-3456",
