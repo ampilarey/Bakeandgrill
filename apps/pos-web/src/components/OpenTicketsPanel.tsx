@@ -1374,6 +1374,31 @@ function MergeConfirmModal({
   onConfirm: () => void;
 }) {
   const combinedTotal = Number(target.total) + Number(source.total);
+  // Bug-010: cross-stage merges leave kitchen state inconsistent.
+  // - source has been fired but target is still parked → the
+  //   kitchen chit for the source items survives, but the merged
+  //   ticket is now in "parked" state and won't appear on KDS
+  //   until the cashier explicitly fires the target. Cooks may
+  //   already be prepping, customer waits.
+  // - target has been fired but source is parked → opposite
+  //   problem: merging adds NEW items into a ticket whose chit
+  //   the cooks have already pulled. They'll miss the new lines
+  //   unless the cashier remembers to reprint via the Edit flow.
+  // In both cases we surface a yellow callout in the confirm modal
+  // explaining what will happen so the cashier consciously makes
+  // the trade-off (or backs out).
+  const stageOf = (status: string | null | undefined, firedAt: string | null | undefined): "parked" | "cooking" => {
+    if (status === "held" && !firedAt) return "parked";
+    return "cooking";
+  };
+  const targetStage = stageOf(target.status, target.fired_at ?? null);
+  const sourceStage = stageOf(source.status, source.fired_at ?? null);
+  const crossStageWarning =
+    targetStage !== sourceStage
+      ? targetStage === "parked"
+        ? "Source has already been fired to the kitchen — those items are being prepared. The merged ticket will be PARKED, so it won't appear on the KDS until you fire it. The cooks may finish the source items before you charge."
+        : "Target is already cooking — its kitchen chit has been printed. The newly merged items WILL NOT auto-reprint. Open the merged ticket and tap 'Edit items' to reprint if the cooks need to see them."
+      : null;
   const renderTicket = (t: OpenTicket, label: "Target — keeps" | "Source — cancelled") => (
     <div
       style={{
@@ -1468,6 +1493,25 @@ function MergeConfirmModal({
             MVR {combinedTotal.toFixed(2)}
           </span>
         </div>
+        {crossStageWarning && (
+          <div
+            role="alert"
+            style={{
+              padding: space.m,
+              background: "#FEF3C7",
+              border: "1px solid #FBBF24",
+              borderRadius: radius.m,
+              display: "flex",
+              gap: space.s,
+              alignItems: "flex-start",
+            }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>⚠️</span>
+            <span style={{ ...type.bodySm, color: "#78350F", fontWeight: 600, lineHeight: 1.4 }}>
+              {crossStageWarning}
+            </span>
+          </div>
+        )}
         <div style={{ display: "flex", gap: space.s, justifyContent: "flex-end" }}>
           <button onClick={onCancel} disabled={busy} style={btnSecondary(busy)}>
             Cancel
