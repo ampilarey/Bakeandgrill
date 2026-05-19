@@ -76,19 +76,9 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Reset to default — used by the ✕ Clear button. Tied to a single
-  // helper so we never miss a filter when we add more later.
-  const clearFilters = () => {
-    setStageFilter("all");
-    setTypeFilter("all");
-    setPaymentFilter("all");
-    setSearch("");
-  };
-  const hasActiveFilters =
-    stageFilter !== "all" ||
-    typeFilter !== "all" ||
-    paymentFilter !== "all" ||
-    search.trim().length > 0;
+  // No standalone clear: each chip group has its own [All] chip
+  // that resets that group. Search has its own toggle. This keeps
+  // every reset action discoverable next to what it resets.
 
   // ── Merge / split state ────────────────────────────────────────
   // Two-tap-plus-confirm merge flow:
@@ -545,13 +535,14 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       )}
 
       {/* ── Filter bar ────────────────────────────────────────
-            Three chip groups (stage, type, payment) + 🔍 search
-            toggle + ✕ Clear. Groups are flex-wrapped so they sit
-            on one row on landscape iPads and wrap to a second row
-            on portrait / phone widths. Divider pipes between
-            groups keep the eye anchored even when wrapping.
-            Counts always reflect the unfiltered ticket set so the
-            cashier knows what's hidden by the current filter. */}
+            Three chip groups (stage / type / payment), each a
+            radio-style single-select with its own [All] reset
+            chip. Cross-group composition is intentional — Stage,
+            Type and Payment are independent dimensions (cashier
+            can ask "show me UNPAID Dine-in tickets that are
+            still Cooking"). Within each group only one chip can
+            be highlighted at a time. No standalone Clear button
+            — each [All] resets its own group. */}
       <div
         style={{
           marginBottom: space.m,
@@ -565,171 +556,54 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           flexWrap: "wrap",
         }}
       >
-        {/* ── Stage chips ─────────────────────────────────────
-              The primary workflow filter — "what state is the
-              order in?" Dark fill when active so the cashier's
-              eye snaps to whatever's currently selected. */}
-        {([
-          { key: "all", label: "All", count: stageCounts.all },
-          { key: "cooking", label: "🍳 Cooking", count: stageCounts.cooking },
-          { key: "ready", label: "✅ Ready", count: stageCounts.ready },
-          { key: "parked", label: "📋 Parked", count: stageCounts.parked },
-        ] as const).map((opt) => {
-          const active = opt.key === stageFilter;
-          return (
-            <button
-              key={opt.key}
-              onClick={() => setStageFilter(opt.key)}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 999,
-                border: `1px solid ${active ? "#0F172A" : palette.border}`,
-                background: active ? "#0F172A" : "#fff",
-                color: active ? "#fff" : palette.panelInk,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span>{opt.label}</span>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  background: active ? "rgba(255,255,255,0.18)" : "#E2E8F0",
-                  color: active ? "#fff" : palette.panelMuted,
-                  padding: "1px 6px",
-                  borderRadius: 999,
-                  minWidth: 16,
-                  textAlign: "center",
-                }}
-              >
-                {opt.count}
-              </span>
-            </button>
-          );
-        })}
-
-        {/* Subtle divider — kept as a thin grey pipe so the eye
-            still groups the chips even when they wrap. */}
-        <span
-          aria-hidden
-          style={{ width: 1, height: 18, background: palette.border, margin: "0 2px" }}
+        {/* Stage — primary workflow filter. Dark fill when active. */}
+        <FilterGroup
+          activeColor="#0F172A"
+          options={[
+            { key: "all", label: "All", count: stageCounts.all },
+            { key: "cooking", label: "🍳 Cooking", count: stageCounts.cooking },
+            { key: "ready", label: "✅ Ready", count: stageCounts.ready },
+            { key: "parked", label: "📋 Parked", count: stageCounts.parked },
+          ]}
+          selected={stageFilter}
+          onSelect={(k) => setStageFilter(k as StageFilter)}
         />
 
-        {/* ── Type chips ──────────────────────────────────────
-              Blue tint when active to distinguish from stage. */}
-        {([
-          { key: "dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
-          { key: "takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
-          { key: "online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
-        ] as const).map((opt) => {
-          const active = opt.key === typeFilter;
-          return (
-            <button
-              key={opt.key}
-              onClick={() => setTypeFilter(active ? "all" : opt.key)}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 999,
-                border: `1px solid ${active ? "#1D4ED8" : palette.border}`,
-                background: active ? "#1D4ED8" : "#fff",
-                color: active ? "#fff" : palette.panelInk,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span>{opt.label}</span>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  background: active ? "rgba(255,255,255,0.18)" : "#E2E8F0",
-                  color: active ? "#fff" : palette.panelMuted,
-                  padding: "1px 6px",
-                  borderRadius: 999,
-                  minWidth: 16,
-                  textAlign: "center",
-                }}
-              >
-                {opt.count}
-              </span>
-            </button>
-          );
-        })}
+        <Divider />
 
-        <span
-          aria-hidden
-          style={{ width: 1, height: 18, background: palette.border, margin: "0 2px" }}
+        {/* Type — order channel. Blue when active. */}
+        <FilterGroup
+          activeColor="#1D4ED8"
+          options={[
+            { key: "all", label: "All", count: typeCounts.all },
+            { key: "dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
+            { key: "takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
+            { key: "online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
+          ]}
+          selected={typeFilter}
+          onSelect={(k) => setTypeFilter(k as TypeFilter)}
         />
 
-        {/* ── Payment chips ───────────────────────────────────
-              Green = paid, red = unpaid. Quick way for a cashier
-              to triage "what still owes me money?" without going
-              into the manager view. */}
-        {([
-          { key: "paid", label: "💳 Paid", count: paymentCounts.paid, accent: "#15803D" },
-          { key: "unpaid", label: "UNPAID", count: paymentCounts.unpaid, accent: "#B91C1C" },
-        ] as const).map((opt) => {
-          const active = opt.key === paymentFilter;
-          return (
-            <button
-              key={opt.key}
-              onClick={() => setPaymentFilter(active ? "all" : opt.key)}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 999,
-                border: `1px solid ${active ? opt.accent : palette.border}`,
-                background: active ? opt.accent : "#fff",
-                color: active ? "#fff" : palette.panelInk,
-                fontSize: 12,
-                fontWeight: 800,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                letterSpacing: opt.key === "unpaid" ? 0.6 : undefined,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span>{opt.label}</span>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  background: active ? "rgba(255,255,255,0.18)" : "#E2E8F0",
-                  color: active ? "#fff" : palette.panelMuted,
-                  padding: "1px 6px",
-                  borderRadius: 999,
-                  minWidth: 16,
-                  textAlign: "center",
-                }}
-              >
-                {opt.count}
-              </span>
-            </button>
-          );
-        })}
+        <Divider />
 
-        {/* Spacer — pushes the search + clear buttons to the
-            right edge when there's horizontal room. Collapses to
-            zero when wrapping so the right-side controls just
-            flow naturally on phones. */}
+        {/* Payment — green for paid, red for unpaid, dark for All. */}
+        <FilterGroup
+          options={[
+            { key: "all", label: "All", count: paymentCounts.all, activeColor: "#0F172A" },
+            { key: "paid", label: "💳 Paid", count: paymentCounts.paid, activeColor: "#15803D" },
+            { key: "unpaid", label: "UNPAID", count: paymentCounts.unpaid, activeColor: "#B91C1C" },
+          ]}
+          selected={paymentFilter}
+          onSelect={(k) => setPaymentFilter(k as PaymentFilter)}
+        />
+
+        {/* Spacer — pushes the search toggle to the right edge on
+            wide rows. Collapses gracefully when chips wrap. */}
         <div style={{ flex: 1, minWidth: 8 }} />
 
-        {/* ── Search toggle ───────────────────────────────────
-              Tapping reveals a slim search input on the second
-              line of the filter bar. We keep it collapsed by
-              default so the chip row is the at-rest UI. */}
+        {/* Search toggle — reveals a slim search input on the
+            second line. Closing also clears the search text so
+            it can't quietly keep filtering. */}
         <button
           onClick={() => {
             setSearchOpen((v) => {
@@ -756,31 +630,6 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
         >
           🔍 Search
         </button>
-
-        {hasActiveFilters && (
-          <button
-            onClick={() => {
-              clearFilters();
-              setSearchOpen(false);
-            }}
-            title="Reset all filters"
-            style={{
-              padding: "6px 10px",
-              borderRadius: 999,
-              background: "transparent",
-              border: "none",
-              color: palette.panelMuted,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            ✕ Clear
-          </button>
-        )}
 
         {/* ── Search input (collapsible) ──────────────────────
               Sits on its own line below the chips when expanded.
@@ -1124,6 +973,87 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
         />
       )}
     </PanelShell>
+  );
+}
+
+/**
+ * Generic radio-style chip group used by the Active orders filter
+ * bar. Single-select within the group — the per-group [All] chip is
+ * just another option with key === "all". Counts on every chip
+ * always reflect the unfiltered ticket set so cashiers can see at
+ * a glance how many rows each chip would surface.
+ *
+ * `activeColor` can be set globally for the group, or per-option
+ * (used by the Payment group where Paid/Unpaid have different
+ * traffic-light colours).
+ */
+function FilterGroup({
+  options,
+  selected,
+  onSelect,
+  activeColor: groupActiveColor,
+}: {
+  options: ReadonlyArray<{ key: string; label: string; count: number; activeColor?: string }>;
+  selected: string;
+  onSelect: (key: string) => void;
+  activeColor?: string;
+}) {
+  return (
+    <>
+      {options.map((opt) => {
+        const active = opt.key === selected;
+        const accent = opt.activeColor ?? groupActiveColor ?? "#0F172A";
+        return (
+          <button
+            key={opt.key}
+            onClick={() => onSelect(opt.key)}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 999,
+              border: `1px solid ${active ? accent : palette.border}`,
+              background: active ? accent : "#fff",
+              color: active ? "#fff" : palette.panelInk,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>{opt.label}</span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                background: active ? "rgba(255,255,255,0.18)" : "#E2E8F0",
+                color: active ? "#fff" : palette.panelMuted,
+                padding: "1px 6px",
+                borderRadius: 999,
+                minWidth: 16,
+                textAlign: "center",
+              }}
+            >
+              {opt.count}
+            </span>
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Thin vertical pipe between filter groups. Cosmetic only; keeps the
+ * visual grouping clear when chips wrap to multiple lines.
+ */
+function Divider() {
+  return (
+    <span
+      aria-hidden
+      style={{ width: 1, height: 18, background: palette.border, margin: "0 2px" }}
+    />
   );
 }
 
