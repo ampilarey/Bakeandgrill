@@ -17,6 +17,13 @@ export type Order = {
   total: number;
   subtotal?: number;
   table_number?: string | null;
+  /** Independent of `status` — 'unpaid' | 'partial' | 'paid'. Lets the
+   *  manager spot phone-call pickup orders that are cooking but still
+   *  owe money, without recomputing payments per row. */
+  payment_status?: 'unpaid' | 'partial' | 'paid' | null;
+  /** Timestamp the kitchen first saw the chit. NULL = ticket still
+   *  parked in Open Tickets (Save without Fire). */
+  fired_at?: string | null;
   // Nested customer object returned by the staff list endpoint
   customer?: { id: number; name: string; phone: string } | null;
   // Flat fields (may be present in other endpoints)
@@ -47,14 +54,19 @@ export async function fetchOrders(params?: {
   per_page?: number;
   date?: string;
   search?: string;
+  /** Surface cooking-but-unpaid orders (phone-call pickup tickets
+   *  the customer hasn't paid for yet). Manager view for chasing
+   *  outstanding balances at end of day. */
+  unpaid_only?: boolean;
 }): Promise<OrdersResponse> {
   const qs = new URLSearchParams();
-  if (params?.status)   qs.set('status', params.status);
-  if (params?.type)     qs.set('type', params.type);
-  if (params?.page)     qs.set('page', String(params.page));
-  if (params?.per_page) qs.set('per_page', String(params.per_page));
-  if (params?.date)     qs.set('date', params.date);
-  if (params?.search)   qs.set('search', params.search);
+  if (params?.status)      qs.set('status', params.status);
+  if (params?.type)        qs.set('type', params.type);
+  if (params?.page)        qs.set('page', String(params.page));
+  if (params?.per_page)    qs.set('per_page', String(params.per_page));
+  if (params?.date)        qs.set('date', params.date);
+  if (params?.search)      qs.set('search', params.search);
+  if (params?.unpaid_only) qs.set('unpaid_only', '1');
   return req(`/orders?${qs}`);
 }
 

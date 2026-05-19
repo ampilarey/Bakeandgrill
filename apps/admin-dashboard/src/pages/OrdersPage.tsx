@@ -439,6 +439,11 @@ export function OrdersPage() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  // Manager's "show me cooking-but-unpaid only" view — useful at end
+  // of service for chasing phone-call pickup customers who collected
+  // their food without paying. Persisted via URL query param? Out of
+  // scope for v1 — defaults to off, manager flips it on as needed.
+  const [unpaidOnly, setUnpaidOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -514,7 +519,14 @@ export function OrdersPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchOrders({ status: statusFilter || undefined, type: typeFilter || undefined, page, per_page: perPage, search: debouncedSearch || undefined });
+      const res = await fetchOrders({
+        status: statusFilter || undefined,
+        type: typeFilter || undefined,
+        page,
+        per_page: perPage,
+        search: debouncedSearch || undefined,
+        unpaid_only: unpaidOnly || undefined,
+      });
       setOrders(res.data ?? []);
       setTotalPages(res.meta?.last_page ?? 1);
     } catch (e) {
@@ -526,7 +538,7 @@ export function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, typeFilter, page, perPage, debouncedSearch]);
+  }, [statusFilter, typeFilter, page, perPage, debouncedSearch, unpaidOnly]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -569,6 +581,26 @@ export function OrdersPage() {
         />
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
+        {/* Toggle-chip for the phone-call pickup chase view. Styled
+            as a button so it visually reads as a state, not a filter
+            dropdown — chip flips red when active so a manager doing
+            end-of-day reconciliation can't miss that the list is
+            filtered. */}
+        <button
+          type="button"
+          onClick={() => { setUnpaidOnly((v) => !v); setPage(1); }}
+          aria-pressed={unpaidOnly}
+          title="Show only cooking-but-unpaid orders"
+          style={{
+            padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+            border: unpaidOnly ? '1.5px solid #B91C1C' : '1.5px solid #E8E0D8',
+            background: unpaidOnly ? '#FEF2F2' : '#fff',
+            color: unpaidOnly ? '#B91C1C' : '#6B5D4F',
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          {unpaidOnly ? '● ' : '○ '}Unpaid only
+        </button>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B5D4F' }}>
           Per page:
           <select
@@ -622,7 +654,45 @@ export function OrdersPage() {
                     <Badge label={typeLabel(o.type)} color="blue" />
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <Badge label={o.status} color={statColor(o.status)} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                      <Badge label={o.status} color={statColor(o.status)} />
+                      {/* Pickup phone-call workflow surface:
+                          🍳 COOKING — kitchen has the chit (fired_at set)
+                                       AND status is still active. Hidden
+                                       once paid or completed (no chasing
+                                       needed) and on held tickets (kitchen
+                                       hasn't seen it).
+                          UNPAID    — payment_status != paid AND order is
+                                       still active. The most chase-worthy
+                                       signal for the manager. */}
+                      {o.fired_at && ['pending', 'in_progress', 'preparing', 'ready'].includes(o.status) && (
+                        <span
+                          title="Kitchen is cooking this"
+                          style={{
+                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+                            color: '#047857', background: '#ECFDF5',
+                            padding: '2px 5px', borderRadius: 4,
+                            border: '1px solid #A7F3D0',
+                          }}
+                        >
+                          🍳 COOKING
+                        </span>
+                      )}
+                      {(o.payment_status === 'unpaid' || o.payment_status === 'partial') &&
+                        !['cancelled', 'refunded', 'completed', 'paid'].includes(o.status) && (
+                        <span
+                          title={o.payment_status === 'partial' ? 'Partially paid' : 'Not paid yet'}
+                          style={{
+                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+                            color: '#B91C1C', background: '#FEF2F2',
+                            padding: '2px 5px', borderRadius: 4,
+                            border: '1px solid #FECACA',
+                          }}
+                        >
+                          {o.payment_status === 'partial' ? 'PARTIAL' : 'UNPAID'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: '12px 16px', color: '#6B5D4F' }}>
                     {o.customer?.name ?? o.customer_name ?? o.table_number ?? '—'}

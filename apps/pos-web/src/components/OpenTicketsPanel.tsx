@@ -33,26 +33,62 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   // on iPad in PWA fullscreen mode.
   const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
 
+  /**
+   * Auto-refresh interval (ms) for the Open Tickets list. 15s is the
+   * sweet spot between "cashier sees state changes promptly" (kitchen
+   * marks ready, BML pay-link redeemed, etc.) and "we don't hammer
+   * the backend during a quiet hour". Pauses while the tab is hidden
+   * — no point polling a backgrounded PWA — and refreshes immediately
+   * on tab focus so a cashier who switches away and back gets a
+   * fresh list before they tap anything.
+   */
+  const POLL_MS = 15_000;
+
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+
+    const reload = async (showSpinner: boolean) => {
+      if (cancelled) return;
       try {
-        // Unified Open Tickets view: classic held tickets PLUS the
-        // new fired-but-unpaid tickets (phone-call pickup workflow).
-        // Both kinds need cashier attention before the day closes.
+        if (showSpinner) setLoading(true);
         const res = await fetchReceipts({
           open_only: true,
           device_identifier: deviceId,
           per_page: 50,
         });
-        if (!cancelled) setTickets(res.data);
+        if (!cancelled) {
+          setTickets(res.data);
+          setErr("");
+        }
       } catch (e) {
-        if (!cancelled) setErr((e as Error).message);
+        // Soft-fail subsequent polls — we don't want a momentary
+        // network blip to wipe the list the cashier is looking at.
+        // Only the initial load surfaces the error.
+        if (!cancelled && showSpinner) setErr((e as Error).message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && showSpinner) setLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+
+    void reload(true);
+
+    const interval = window.setInterval(() => {
+      // Skip polls while the tab is hidden — saves battery and
+      // avoids piling up requests that would all execute when the
+      // tab returns to foreground.
+      if (document.visibilityState === "visible") void reload(false);
+    }, POLL_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reload(false);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [deviceId]);
 
   // Update the local row after a side action so the cashier sees the
