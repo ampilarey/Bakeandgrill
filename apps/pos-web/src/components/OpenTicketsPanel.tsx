@@ -316,7 +316,22 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       const res = await sendBill(t.id);
       const link = res.link;
       const url = link.includes("?") ? `${link}&print=1` : `${link}?print=1`;
-      window.open(url, "_blank", "noopener,noreferrer");
+      // Bug-047: when the cashier has popups blocked for the POS
+      // (default on iPad Safari for any not-yet-trusted host),
+      // `window.open` silently returns null and the cashier
+      // assumes the print succeeded. Detect the null and surface
+      // a clear "allow popups" message — and copy the link to the
+      // clipboard as a fallback so they can paste it into a new
+      // tab to print.
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      if (!win) {
+        try { await navigator.clipboard.writeText(url); } catch { /* permissions */ }
+        setRowMsg({
+          id: t.id,
+          kind: "err",
+          text: "Print blocked by browser popup-blocker. Allow popups for the POS, or paste the copied link into a new tab.",
+        });
+      }
     } catch (e) {
       setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Failed to open invoice" });
     } finally {

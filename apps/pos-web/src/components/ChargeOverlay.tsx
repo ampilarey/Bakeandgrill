@@ -463,7 +463,15 @@ export function ChargeOverlay({
                   />
                   <span>PROCESSING…</span>
                 </>
-              ) : `CONFIRM PAYMENT — MVR ${total.toFixed(2)}`}
+              ) : total <= 0
+                /* Bug-051: when promo / loyalty / gift card cover
+                   the bill entirely the total is 0.00. The old
+                   label read "CONFIRM PAYMENT — MVR 0.00" which
+                   confused cashiers ("collect zero rufiyaa from
+                   them?"). Spell it out so the action matches
+                   the actual settlement (just close the bill). */
+                ? "FINALISE — FULLY COVERED"
+                : `CONFIRM PAYMENT — MVR ${total.toFixed(2)}`}
             </button>
           </div>
         </div>

@@ -732,6 +732,12 @@ export async function fetchReceipts(params: {
   device_identifier?: string;
   per_page?: number;
   status?: string;
+  /** Restrict receipts to a specific shift. Used by ReceiptsPanel's
+   *  "current shift" scope so the cashier sees only their own
+   *  shift's sales, not the previous staffer's. Bug-046: this was
+   *  previously cast through `unknown` to bypass the missing prop
+   *  on this type — now properly declared. */
+  shift_id?: number | string;
 } = {}): Promise<{
   data: Array<{
     id: number;

@@ -69,10 +69,29 @@ function readQueue(): QueueEntry[] {
 
 function writeQueue(queue: QueueEntry[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+  cachedCount = queue.length;
+}
+
+/**
+ * Bug-045: `getQueueCount` is called on every render of the cart
+ * status banner / sync button, which used to re-parse the entire
+ * localStorage JSON each time. On a queue with 50+ stored orders
+ * that meant ~50 KiB of JSON parsing per frame — measurable
+ * jank on iPad Mini. Now we cache the count and invalidate it
+ * on every write (enqueue, dequeue, clearQueue, setQueue) plus
+ * on cross-tab `storage` events from another POS window.
+ */
+let cachedCount: number | null = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === STORAGE_KEY) cachedCount = null;
+  });
 }
 
 export function getQueueCount(): number {
-  return readQueue().length;
+  if (cachedCount === null) cachedCount = readQueue().length;
+  return cachedCount;
 }
 
 export function getQueue(): QueueEntry[] {

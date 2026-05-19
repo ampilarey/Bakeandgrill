@@ -5,6 +5,7 @@ import { makeCartKey } from "../hooks/useCart";
 import type { PosCustomer } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
+import { palette } from "../theme";
 
 type AppliedPromo = { code: string; promotionId: number | null; discount: number };
 type AppliedLoyalty = { points: number; discount: number };
@@ -85,20 +86,28 @@ type Props = {
   onOpenNotePicker?: (cartKey: string) => void;
 };
 
+// Bug-039: keep the local `C` shorthand for readability, but
+// every value is now sourced from the shared `palette` in
+// theme.ts so a future brand tweak ripples through automatically
+// instead of leaving the cart visually drifting from the rest of
+// the POS.
 const C = {
-  panel: '#FFFFFF',
-  border: '#E2E8F0',
-  border2: '#CBD5E1',
-  text: '#0F172A',
-  muted: '#64748B',
-  subtle: '#94A3B8',
-  bg: '#F8FAFC',
-  primary: '#D4813A',
-  primaryDark: '#B86820',
-  success: '#10B981',
-  successDark: '#059669',
-  successDisabled: '#A7F3D0',
-  warn: '#F59E0B',
+  panel: palette.panel,
+  border: palette.border,
+  border2: palette.borderStrong,
+  text: palette.panelInk,
+  muted: palette.panelMuted,
+  subtle: palette.panelSubtle,
+  bg: palette.bg,
+  primary: palette.primary,
+  primaryDark: palette.primaryDark,
+  success: palette.success,
+  // theme.ts already supplies success / successDark / successBorder
+  // — `successDisabled` is the soft "tap to confirm" pill background
+  // and lines up with successBorder in the design system.
+  successDark: '#059669', // intermediate green not in palette yet
+  successDisabled: palette.successBorder,
+  warn: palette.warn,
 };
 
 export function OrderCart(p: Props) {

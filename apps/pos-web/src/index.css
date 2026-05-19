@@ -94,6 +94,19 @@ html, body, #root {
   .pos-charge-grid { grid-template-columns: 1fr !important; }
 }
 
+/* Bug-040: ReceiptsPanel master/detail. On iPad Mini portrait
+ * (~744px) and below the side-by-side layout cramps the detail
+ * pane to <460px — refund inputs and item rows wrap badly. Stack
+ * the panes vertically so each pane gets the full width. The
+ * receipt list is given a max-height so it doesn't push the
+ * detail pane off-screen. */
+@media (max-width: 760px) {
+  .pos-receipts {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(160px, 40vh) 1fr !important;
+  }
+}
+
 /* Touch targets minimum 40px — applied as a safety net to any
  * button inside POS shell. The cart line opts out via .pos-cart-line
  * because compact rows trump WCAG here: the cashier needs to see 8+

@@ -40,7 +40,7 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today" }: Prop
       try {
         const res = await fetchReceipts({
           ...(scope === "today" ? { date: today } : {}),
-          ...(scope === "shift" && shiftId ? { shift_id: String(shiftId) as unknown as undefined } : {}),
+          ...(scope === "shift" && shiftId ? { shift_id: shiftId } : {}),
           ...(debouncedQ ? { q: debouncedQ } : {}),
           per_page: 50,
         });
@@ -62,7 +62,15 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today" }: Prop
 
   return (
     <PanelShell title="Receipts" subtitle="Recent sales from this POS" onClose={onClose}>
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 12, minHeight: 0, height: "100%" }}>
+      {/* Bug-040: master/detail used to be a hardcoded 260px+1fr grid,
+          which on iPad Mini portrait (~744px) gave the detail pane
+          ~450px — too narrow for the refund form rows. Now we use
+          the `.pos-receipts` class so a media query in index.css
+          stacks the panes vertically below 760px effective width. */}
+      <div className="pos-receipts" style={{
+        display: "grid", gridTemplateColumns: "260px 1fr",
+        gap: 12, minHeight: 0, height: "100%",
+      }}>
         {/* List */}
         <div style={{ display: "flex", flexDirection: "column", minHeight: 0, gap: 8 }}>
           <div style={{ display: "flex", background: "#F1F5F9", borderRadius: 8, padding: 3 }}>

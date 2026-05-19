@@ -262,12 +262,23 @@ export function useOrderCreation(params: Params) {
    */
   const applyStagedRewards = async (orderId: number, currentTotal: number): Promise<number> => {
     let total = currentTotal;
+    // Bug-050: collect every reward failure into one combined
+    // message instead of overwriting each other (and silently
+    // disappearing). Previously a failed promo, then a failed
+    // gift card, would each call setStatusMessage and the
+    // second wiped the first — the cashier saw "Gift card
+    // failed" and settled the order assuming the promo had
+    // applied. Combined here so the cashier sees a single
+    // sticky banner listing every reward that didn't take and
+    // can decide whether to renegotiate with the customer
+    // before tendering.
+    const failures: string[] = [];
 
     if (params.appliedPromoCode) {
       try {
         await applyPromoToOrder(orderId, params.appliedPromoCode);
       } catch (err) {
-        setStatusMessage(`Promo "${params.appliedPromoCode}" could not be applied: ${(err as Error).message}`);
+        failures.push(`promo "${params.appliedPromoCode}" (${(err as Error).message})`);
       }
     }
 
@@ -276,7 +287,7 @@ export function useOrderCreation(params: Params) {
         const res = await holdLoyaltyForOrder(orderId, params.appliedLoyaltyPoints);
         total = res.order.total;
       } catch (err) {
-        setStatusMessage(`Loyalty redemption failed: ${(err as Error).message}`);
+        failures.push(`loyalty redemption (${(err as Error).message})`);
       }
     }
 
@@ -285,7 +296,7 @@ export function useOrderCreation(params: Params) {
         const res = await applyGiftCardToOrder(orderId, params.appliedGiftCardCode);
         total = res.order.total;
       } catch (err) {
-        setStatusMessage(`Gift card "${params.appliedGiftCardCode}" failed: ${(err as Error).message}`);
+        failures.push(`gift card "${params.appliedGiftCardCode}" (${(err as Error).message})`);
       }
     }
 
@@ -297,6 +308,15 @@ export function useOrderCreation(params: Params) {
         const fresh = await getOrder(orderId);
         if (typeof fresh.order.total === "number") total = fresh.order.total;
       } catch { /* keep last-known total */ }
+    }
+
+    if (failures.length > 0) {
+      setStatusMessage(
+        `⚠️ ${failures.length === 1 ? "Reward failed:" : "Rewards failed:"} ${failures.join("; ")}. ` +
+        `The new total is MVR ${total.toFixed(2)}. Confirm before tendering.`,
+      );
+      // Sticky for 12s — long enough to read and decide what to do.
+      setTimeout(() => setStatusMessage(""), 12000);
     }
 
     return total;
