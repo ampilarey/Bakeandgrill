@@ -163,6 +163,67 @@ export function OrderCart(p: Props) {
     }
   };
 
+  // ── Undo toast for cart line removals (Bug-009) ──────────────
+  // Even with the higher swipe-commit threshold, a deletion is
+  // still destructive enough that the user should have a quick
+  // way to take it back. We surface a small toast at the bottom
+  // of the cart for 5s with an "Undo" button that re-inserts the
+  // removed line in its original position.
+  const [recentlyRemoved, setRecentlyRemoved] = useState<{
+    item: CartItem;
+    indexAtRemoval: number;
+    cartLengthAfter: number;
+  } | null>(null);
+  const undoTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (undoTimerRef.current !== null) {
+        window.clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleLineRemoved = (removed: CartItem) => {
+    // Capture the index from the SNAPSHOT before the removal —
+    // we read p.cartItems which still has the item because React
+    // hasn't re-rendered yet at the moment the child fires this.
+    const indexAtRemoval = p.cartItems.findIndex(
+      (ci) =>
+        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) ===
+        makeCartKey(removed.id, removed.modifiers, removed.variant_id, removed.notes),
+    );
+    setRecentlyRemoved({
+      item: removed,
+      indexAtRemoval: indexAtRemoval >= 0 ? indexAtRemoval : 0,
+      cartLengthAfter: p.cartItems.length - 1,
+    });
+    if (undoTimerRef.current !== null) {
+      window.clearTimeout(undoTimerRef.current);
+    }
+    undoTimerRef.current = window.setTimeout(() => {
+      setRecentlyRemoved(null);
+      undoTimerRef.current = null;
+    }, 5000);
+  };
+
+  const handleUndoRemove = () => {
+    if (!recentlyRemoved) return;
+    // Re-insert at the original index, capped at the current cart
+    // length so a cart that's been mutated since (e.g. cleared)
+    // still gets the line back without throwing.
+    const insertAt = Math.min(recentlyRemoved.indexAtRemoval, p.cartItems.length);
+    const next = [...p.cartItems];
+    next.splice(insertAt, 0, recentlyRemoved.item);
+    p.setCartItems(next);
+    setRecentlyRemoved(null);
+    if (undoTimerRef.current !== null) {
+      window.clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+  };
+
   return (
     <aside
       className="pos-cart"
@@ -368,10 +429,50 @@ export function OrderCart(p: Props) {
               quickNotes={p.quickNotes}
               onOpenNotePicker={p.onOpenNotePicker}
               isResumed={lockedReadOnly}
+              onLineRemoved={handleLineRemoved}
             />
           ))
         )}
       </div>
+
+      {recentlyRemoved && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            margin: '0 12px 8px',
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: '#0F172A',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            fontSize: 13,
+          }}
+        >
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            Removed <strong>{recentlyRemoved.item.name}</strong>
+          </span>
+          <button
+            onClick={handleUndoRemove}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              background: '#FBBF24',
+              color: '#0F172A',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: 12,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            UNDO
+          </button>
+        </div>
+      )}
 
       {/* ── Totals + payments + actions ──────────────────────────── */}
       <div style={{ borderTop: `1px solid ${C.border}`, padding: 14, background: C.bg }}>
@@ -567,6 +668,7 @@ function CartLine({
   quickNotes,
   onOpenNotePicker,
   isResumed,
+  onLineRemoved,
 }: {
   item: CartItem;
   cartItems: CartItem[];
@@ -574,6 +676,7 @@ function CartLine({
   quickNotes: string[];
   onOpenNotePicker?: (cartKey: string) => void;
   isResumed: boolean;
+  onLineRemoved?: (removed: CartItem) => void;
 }) {
   const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes);
   const unitPrice = Number(item.price ?? 0) +
@@ -596,7 +699,12 @@ function CartLine({
   const dragRef = useRef(0);
   const startXRef = useRef<number | null>(null);
   const SWIPE_REVEAL = 80;       // px to reveal the delete affordance
-  const SWIPE_COMMIT = 140;      // px to auto-commit on release
+  // Bug-009: auto-commit threshold raised so a casual swipe-left
+  // can't yeet a line item off the cart. The cashier now has to
+  // commit to a strong, deliberate, almost-full-width swipe — or
+  // (the more discoverable path) tap the red "Delete" strip once
+  // the reveal threshold is reached.
+  const SWIPE_COMMIT = 220;
   const isDragging = drag > 0;
 
   const setDragTo = (next: number) => {
@@ -610,6 +718,10 @@ function CartLine({
         (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) !== itemKey,
       ),
     );
+    // Surface the removed line to the parent so it can show the
+    // undo toast. Snapshot is the original item, not a copy of
+    // the cart — we only need the line that vanished.
+    onLineRemoved?.(item);
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
