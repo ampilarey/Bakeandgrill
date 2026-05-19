@@ -385,16 +385,46 @@ class OrderController extends Controller
                 $orderNum = $order->order_number ?? "#{$order->id}";
                 $total = number_format((float) $order->total, 2);
                 // First-name only — keeps GSM-7 segment count low and
-                // avoids accidentally shouting an awkward formal title
-                // in casual SMS copy. Falls through cleanly to the
-                // unnamed greeting when no name is on file.
+                // avoids shouting a formal title in casual SMS copy.
                 $rawName = trim((string) ($order->customer?->name ?? ''));
                 $firstName = $rawName !== '' ? trim(strtok($rawName, ' ')) : '';
                 $greeting = $firstName !== '' ? "Hi {$firstName}, order" : 'Order';
+
+                // Mint (or fetch) the public invoice — idempotent, so
+                // multiple Fire-to-Kitchen taps don't create duplicates.
+                // We use the existing /invoices/{token} public Blade
+                // page so the customer can scroll line-items + price
+                // before they pay. The "Send pay link" button (future
+                // BML wiring) sends a separate, payment-focused SMS.
+                $link = null;
+                try {
+                    $invoice = app(InvoiceController::class)
+                        ->createFromOrderInternal($order, $request->user());
+                    $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('fireToKitchen: invoice mint failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                // Multi-line SMS layout requested by the cashier so each
+                // datum (number, total, link, expectation) reads on its
+                // own line on a phone screen. Pushes the message into a
+                // second GSM-7 segment (~180 chars with link) — fine,
+                // 2 segments costs basically nothing.
+                $lines = [
+                    "Bake & Grill: {$greeting} {$orderNum} received.",
+                    "Order total: MVR {$total}",
+                ];
+                if ($link !== null) {
+                    $lines[] = "View invoice: {$link}";
+                }
+                $lines[] = "We'll text you when it's ready.";
+
                 app(SmsService::class)->send(new SmsMessage(
                     to: $phone,
-                    message: "Bake & Grill: {$greeting} {$orderNum} received (MVR {$total}). "
-                        . "We'll text you when it's ready.",
+                    message: implode("\n", $lines),
                     type: 'transactional',
                     customerId: $order->customer_id,
                     referenceType: 'order',
