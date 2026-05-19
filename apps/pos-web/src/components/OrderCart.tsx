@@ -462,11 +462,25 @@ function CartLine({
   // Swipe-to-delete state. Tracks the horizontal drag offset; positive
   // = swiped left (Mail.app pattern). We only act on big swipes so
   // accidental brushes during a +/− tap don't accidentally delete.
+  //
+  // CRITICAL: we mirror the drag offset in a ref. `touchend` often
+  // fires before React has flushed the last `touchmove` setState — so
+  // reading `drag` directly inside `onTouchEnd` returns the stale
+  // pre-final-move value, and a hard left swipe that obviously
+  // crossed SWIPE_COMMIT would silently snap back instead of
+  // deleting. The ref is updated synchronously in `touchmove` and is
+  // the source of truth for the release decision.
   const [drag, setDrag] = useState(0);
+  const dragRef = useRef(0);
   const startXRef = useRef<number | null>(null);
   const SWIPE_REVEAL = 80;       // px to reveal the delete affordance
   const SWIPE_COMMIT = 140;      // px to auto-commit on release
   const isDragging = drag > 0;
+
+  const setDragTo = (next: number) => {
+    dragRef.current = next;
+    setDrag(next);
+  };
 
   const removeLine = () => {
     setCartItems(
@@ -485,20 +499,22 @@ function CartLine({
     const dx = startXRef.current - e.touches[0].clientX;
     // Only follow leftward swipes — rightward gestures are reserved
     // for the iOS back-swipe at the screen edge.
-    setDrag(Math.max(0, Math.min(dx, 200)));
+    setDragTo(Math.max(0, Math.min(dx, 200)));
   };
   const onTouchEnd = () => {
     if (isResumed) return;
-    if (drag >= SWIPE_COMMIT) {
+    // Read the synchronous ref, not `drag` — see comment above.
+    const committed = dragRef.current;
+    if (committed >= SWIPE_COMMIT) {
       removeLine();
-    } else if (drag >= SWIPE_REVEAL) {
+    } else if (committed >= SWIPE_REVEAL) {
       // Snap to the revealed position so the cashier sees the delete
       // hint and can tap to confirm rather than committing on a
       // half-swipe. A second swipe-left or tapping the red strip
       // commits.
-      setDrag(SWIPE_REVEAL);
+      setDragTo(SWIPE_REVEAL);
     } else {
-      setDrag(0);
+      setDragTo(0);
     }
     startXRef.current = null;
   };

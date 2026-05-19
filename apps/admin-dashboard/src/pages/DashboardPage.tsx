@@ -148,7 +148,10 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
       <span style={{ color: '#92400e', fontWeight: 600 }}>No shift open — cash drawer is untracked.</span>
     </div>
   );
-  if (shift.status === 'closed') return (
+  // Shift model exposes open/closed via `closed_at` (no `status`
+  // column). Using `status` here always evaluated false so a closed
+  // shift never showed the "Last shift closed" banner.
+  if (shift.closed_at) return (
     <div style={{
       background: '#F8F6F3', border: '1.5px solid #E8E0D8', borderRadius: 12,
       padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,

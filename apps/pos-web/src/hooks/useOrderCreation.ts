@@ -20,6 +20,7 @@ import {
 } from "../offlineQueue";
 import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
+import type { PosCustomer } from "../api";
 
 type OrderType = "Dine-in" | "Takeaway" | "Online Pickup";
 
@@ -66,6 +67,16 @@ type Params = {
   setCartItems: (items: CartItem[]) => void;
   setSelectedItem: (item: Item | null) => void;
   setOfflineQueueCount: (n: number) => void;
+  /** Resume-time setters. handleResumeTicket calls these so the
+   *  restored ticket lands back in the cashier UI with the same
+   *  customer/order-type/table the ticket was held with — otherwise
+   *  the resumed bill SMS goes nowhere and the Charge step silently
+   *  re-routes a Dine-in ticket to the default (currently Dine-in).
+   *  Optional so callers that haven't wired the setters yet still
+   *  type-check; resume just won't restore those fields. */
+  setAttachedCustomer?: (c: PosCustomer | null) => void;
+  setOrderType?: (t: OrderType) => void;
+  setSelectedTableId?: (id: number | null) => void;
   onOrderSettled?: (orderId: number, customerId: number | null, customerPhone: string | null) => void;
 };
 
@@ -104,14 +115,17 @@ export function useOrderCreation(params: Params) {
    */
   const [resumedOrderTotal, setResumedOrderTotal] = useState<number | null>(null);
   /**
-   * Snapshot of the totalDue captured when an order was created but
-   * payment failed. Used by handleRetryPayment so we charge the same
-   * amount on retry that the server already validated, regardless of
-   * any subsequent cart edits.
+   * Snapshot of the totalDue AND tender rows captured when an order
+   * was created but payment failed. Used by handleRetryPayment so we
+   * charge the same amount and the same split-tender breakdown on
+   * retry that the server already validated, regardless of any
+   * subsequent cart edits or the (legacy, usually empty) cart
+   * payment-row state.
    */
   const [pendingPaymentSnapshot, setPendingPaymentSnapshot] = useState<{
     orderId: number;
     totalDue: number;
+    rows: PaymentRow[];
   } | null>(null);
   /** Guard so handleSyncQueue can't be entered twice concurrently. */
   const [isSyncingQueue, setIsSyncingQueue] = useState(false);
@@ -215,7 +229,17 @@ export function useOrderCreation(params: Params) {
     const normalized = normalizePayments(paymentRows);
     const paidTotal = normalized.reduce((s, p) => s + p.amount, 0);
     const finalPayments = [...normalized];
-    if (finalPayments.length === 0) {
+    // Zero-balance order (100% promo/loyalty/gift-card discount, or
+    // an entirely complimentary ring). The server's payment endpoint
+    // accepts a single zero-amount cash row in this case and marks
+    // the order paid via the existing paid_total >= total check. We
+    // can't simply send an empty array — the StoreOrderPaymentsRequest
+    // validator requires `payments|required|array|min:1`.
+    if (totalDue <= 0) {
+      if (finalPayments.length === 0) {
+        finalPayments.push({ method: "cash", amount: 0 });
+      }
+    } else if (finalPayments.length === 0) {
       finalPayments.push({ method: "cash", amount: totalDue });
     } else if (paidTotal < totalDue) {
       finalPayments.push({ method: "cash", amount: totalDue - paidTotal });
@@ -243,9 +267,10 @@ export function useOrderCreation(params: Params) {
         setStatusMessage("Network issue — payment not recorded. Retry once back online.");
       }
       setPendingPaymentForOrderId(orderId);
-      // Snapshot the totalDue from THIS attempt so retry charges the
-      // server-validated total, not the (possibly drifted) cartTotal.
-      setPendingPaymentSnapshot({ orderId, totalDue });
+      // Snapshot the totalDue AND the rows from THIS attempt so retry
+      // charges the server-validated total with the same tender split,
+      // not the (possibly drifted) cartTotal or empty params.payments.
+      setPendingPaymentSnapshot({ orderId, totalDue, rows: paymentRows });
       return false;
     }
   };
@@ -416,18 +441,23 @@ export function useOrderCreation(params: Params) {
     setIsSubmitting(true);
     void (async () => {
       try {
-        // Use the totalDue captured when the original payment attempt
-        // happened — the cart may have been cleared/edited since, and
-        // we must charge the same amount the server already validated.
+        // Use the totalDue AND the rows captured when the original
+        // payment attempt happened — the cart may have been cleared/
+        // edited since (and `params.payments` is almost always empty
+        // because the cashier paid via the Charge overlay, not the
+        // legacy sidebar). Without the snapshot rows, retry would
+        // silently send `[{ method: "cash", amount: totalDue }]` and
+        // record the whole bill as cash even if the original was
+        // split tender.
         const snapshot = pendingPaymentSnapshot;
-        const totalDue = snapshot && snapshot.orderId === pendingPaymentForOrderId
-          ? snapshot.totalDue
-          : params.cartTotal;
+        const matched = snapshot && snapshot.orderId === pendingPaymentForOrderId;
+        const totalDue = matched ? snapshot.totalDue : params.cartTotal;
+        const retryRows = matched ? snapshot.rows : params.payments;
         const orderId = pendingPaymentForOrderId;
         const settled = await settleOrder(
           orderId,
           totalDue > 0 ? totalDue : 0,
-          params.payments,
+          retryRows,
         );
         if (settled) {
           // Snapshot customer BEFORE clearCart so we can hand it to
@@ -485,6 +515,32 @@ export function useOrderCreation(params: Params) {
   const handleResumeTicket = async (orderId: number): Promise<void> => {
     await resumeOrder(orderId);
     const response = await getOrder(orderId);
+
+    // Restore the ticket-level context the cashier had when they held
+    // the order. Without this, resuming a held Dine-in / Table 4 /
+    // Aisha ticket dropped you into a Takeaway-default cart with no
+    // customer attached — and the post-charge bill SMS went nowhere
+    // because params.customerPhone was null. Each setter is optional
+    // (gated on whether the caller wired them up).
+    if (response.order.customer && params.setAttachedCustomer) {
+      params.setAttachedCustomer(response.order.customer);
+    }
+    if (response.order.type && params.setOrderType) {
+      // Backend uses snake_case enum values, the cashier UI uses
+      // friendly labels. Anything we don't recognise falls through
+      // without resetting (defensive: keeps the current type as-is).
+      const typeMap: Record<string, OrderType> = {
+        dine_in: "Dine-in",
+        takeaway: "Takeaway",
+        online_pickup: "Online Pickup",
+      };
+      const mapped = typeMap[response.order.type];
+      if (mapped) params.setOrderType(mapped);
+    }
+    if (params.setSelectedTableId) {
+      params.setSelectedTableId(response.order.restaurant_table_id ?? null);
+    }
+
     const restoredItems: CartItem[] = response.order.items.map((item) => ({
       id: item.item_id ?? 0,
       name: item.item_name,

@@ -111,7 +111,12 @@ export default function ShiftsPage() {
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       {/* ── No Open Shift ── */}
-      {!shift || shift.status === 'closed' ? (
+      {/* The backend Shift model has no `status` column — open vs
+          closed is derived from `closed_at`. The previous check on
+          `status === 'closed'` was always false against raw API data,
+          so a freshly-closed shift looked permanently open and the
+          "Open Shift" form never reappeared. */}
+      {!shift || shift.closed_at ? (
         <div style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 14, padding: 32, maxWidth: 480 }}>
           <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#1C1408' }}>No Active Shift</h3>
           <p style={{ margin: '0 0 24px', color: '#6B5D4F', fontSize: 14 }}>Open a new shift to start tracking cash and sales.</p>

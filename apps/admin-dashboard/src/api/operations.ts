@@ -2,6 +2,19 @@ import { req } from './client';
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
 
+/**
+ * Admin-facing inventory row. The backend `InventoryItem` model uses
+ * `current_stock`, `reorder_point`, `unit_cost`, and `inventory_category_id`,
+ * but the admin page (and a handful of legacy callers) refer to
+ * `quantity_on_hand`, `reorder_level`, and `cost_per_unit`. Rather
+ * than rename every reference in the UI, the fetch helpers below
+ * normalise the response into this shape — the admin pages keep their
+ * existing field names and the backend stays untouched.
+ *
+ * Also: `fetchInventoryItems` previously read `res.data` but the
+ * controller returns `{ items: paginator }`, so the table was always
+ * empty regardless of the field-name mismatch. We unwrap both.
+ */
 export interface InventoryItem {
   id: number;
   name: string;
@@ -23,6 +36,37 @@ export interface InventoryCategory {
   created_at: string;
 }
 
+type BackendInventoryRow = {
+  id: number;
+  name: string;
+  sku: string | null;
+  unit: string;
+  current_stock: number | string | null;
+  reorder_point: number | string | null;
+  unit_cost: number | string | null;
+  category?: { id: number; name: string } | null;
+  inventory_category_id?: number | null;
+  is_active: boolean;
+  last_counted_at?: string | null;
+  created_at: string;
+};
+
+function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
+  return {
+    id: row.id,
+    name: row.name,
+    sku: row.sku ?? null,
+    unit: row.unit,
+    quantity_on_hand: Number(row.current_stock ?? 0),
+    reorder_level: row.reorder_point != null ? Number(row.reorder_point) : null,
+    cost_per_unit: row.unit_cost != null ? Number(row.unit_cost) : null,
+    category: row.category ?? null,
+    is_active: row.is_active,
+    last_counted_at: row.last_counted_at ?? null,
+    created_at: row.created_at,
+  };
+}
+
 export async function fetchInventoryItems(params?: {
   search?: string; category_id?: number; low_stock?: boolean; page?: number;
 }): Promise<{ data: InventoryItem[]; meta: { current_page: number; last_page: number; total: number } }> {
@@ -31,18 +75,56 @@ export async function fetchInventoryItems(params?: {
   if (params?.category_id) qs.set('category_id', String(params.category_id));
   if (params?.low_stock)   qs.set('low_stock',   '1');
   if (params?.page)        qs.set('page',        String(params.page));
-  return req(`/inventory?${qs}`);
+  const res = await req<{
+    items: {
+      data: BackendInventoryRow[];
+      current_page: number;
+      last_page: number;
+      total: number;
+    };
+  }>(`/inventory?${qs}`);
+  return {
+    data: (res.items?.data ?? []).map(mapInventoryRow),
+    meta: {
+      current_page: res.items?.current_page ?? 1,
+      last_page:    res.items?.last_page ?? 1,
+      total:        res.items?.total ?? 0,
+    },
+  };
 }
 
 export async function fetchLowStockItems(): Promise<{ data: InventoryItem[] }> {
-  return req('/inventory/low-stock');
+  const res = await req<{ items: BackendInventoryRow[] }>('/inventory/low-stock');
+  return { data: (res.items ?? []).map(mapInventoryRow) };
 }
 
+/**
+ * Adjust stock by a signed delta. The backend `AdjustInventoryRequest`
+ * expects `{ type: 'adjustment'|'waste'|'correction', quantity: <signed>,
+ * notes? }` and does `current_stock + quantity`. The legacy UI shape
+ * (`add`/`remove`/`set` with positive quantity + `reason`) is mapped
+ * here so the page can keep its existing modal semantics.
+ *
+ * For `'set'` mode the caller supplies the target and the current stock
+ * so we can compute the delta — without that the backend has no way to
+ * "set to N" because all moves are delta-based.
+ */
 export async function adjustInventoryStock(
   id: number,
-  data: { type: 'add' | 'remove' | 'set'; quantity: number; reason?: string },
-): Promise<{ item: InventoryItem }> {
-  return req(`/inventory/${id}/adjust`, { method: 'POST', body: JSON.stringify(data) });
+  data: { delta: number; notes?: string; type?: 'adjustment' | 'waste' | 'correction' },
+): Promise<{ item: InventoryItem; movement: unknown }> {
+  const res = await req<{ item: BackendInventoryRow; movement: unknown }>(
+    `/inventory/${id}/adjust`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        type: data.type ?? 'adjustment',
+        quantity: data.delta,
+        notes: data.notes,
+      }),
+    },
+  );
+  return { item: mapInventoryRow(res.item), movement: res.movement };
 }
 
 export async function fetchInventoryCategories(): Promise<{ categories: InventoryCategory[] }> {
@@ -119,9 +201,18 @@ export interface CashMovement {
   user?: { name: string };
 }
 
+/**
+ * The backend Shift model has NO `status` column — open vs closed is
+ * derived from `closed_at` being null. The UI used to do
+ * `shift.status === 'closed'` which always evaluated false against the
+ * raw API response, so a freshly-closed shift looked permanently
+ * open and the cashier could not start a new one. `status` is kept
+ * here as an optional/derived convenience but the UI should rely on
+ * `closed_at` for state checks.
+ */
 export interface Shift {
   id: number;
-  status: 'open' | 'closed';
+  status?: 'open' | 'closed';
   opening_cash: number;
   closing_cash: number | null;
   total_cash_in: number;
@@ -234,10 +325,18 @@ export async function createWasteLog(data: { item_id?: number; inventory_item_id
 
 // ── Print Jobs ────────────────────────────────────────────────────────────────
 
+/**
+ * UI-facing print job shape. Backend `PrintJob` model uses
+ * `last_error` and `attempts`; we expose them as `error_message` and
+ * `retry_count` (the UI's vocabulary) via the mapper below. The
+ * controller also wraps the paginator as `{ jobs: {...} }` not
+ * `{ data: [...] }`, which is why the Print Queue page used to render
+ * permanently empty even when jobs existed.
+ */
 export interface PrintJob {
   id: number;
   type: string;
-  status: 'pending' | 'printed' | 'failed';
+  status: 'queued' | 'pending' | 'printed' | 'failed' | string;
   printer_name: string | null;
   copies: number;
   payload: Record<string, unknown>;
@@ -247,6 +346,35 @@ export interface PrintJob {
   retry_count: number;
 }
 
+type BackendPrintJobRow = {
+  id: number;
+  type: string;
+  status: string;
+  printer?: { name?: string | null } | null;
+  printer_name?: string | null;
+  attempts?: number | null;
+  last_error?: string | null;
+  payload?: Record<string, unknown> | null;
+  created_at: string;
+  printed_at?: string | null;
+  copies?: number | null;
+};
+
+function mapPrintJob(row: BackendPrintJobRow): PrintJob {
+  return {
+    id: row.id,
+    type: row.type,
+    status: row.status as PrintJob['status'],
+    printer_name: row.printer?.name ?? row.printer_name ?? null,
+    copies: row.copies ?? 1,
+    payload: row.payload ?? {},
+    error_message: row.last_error ?? null,
+    created_at: row.created_at,
+    printed_at: row.printed_at ?? null,
+    retry_count: row.attempts ?? 0,
+  };
+}
+
 export async function fetchPrintJobs(params?: {
   status?: string;
   page?: number;
@@ -254,11 +382,29 @@ export async function fetchPrintJobs(params?: {
   const qs = new URLSearchParams();
   if (params?.status) qs.set('status', params.status);
   if (params?.page)   qs.set('page', String(params.page));
-  return req(`/print-jobs?${qs}`);
+  const res = await req<{
+    jobs: {
+      data: BackendPrintJobRow[];
+      current_page: number;
+      last_page: number;
+      total: number;
+    };
+  }>(`/print-jobs?${qs}`);
+  return {
+    data: (res.jobs?.data ?? []).map(mapPrintJob),
+    meta: {
+      current_page: res.jobs?.current_page ?? 1,
+      last_page:    res.jobs?.last_page ?? 1,
+      total:        res.jobs?.total ?? 0,
+    },
+  };
 }
 
 export async function retryPrintJob(id: number): Promise<{ print_job: PrintJob }> {
-  return req(`/print-jobs/${id}/retry`, { method: 'POST' });
+  // Controller returns `{ job: <PrintJob model> }` — wrap and rename
+  // to the {print_job} shape the callers were already using.
+  const res = await req<{ job: BackendPrintJobRow }>(`/print-jobs/${id}/retry`, { method: 'POST' });
+  return { print_job: mapPrintJob(res.job) };
 }
 
 export interface UnitConversion {

@@ -12,12 +12,12 @@ type Props = {
  * can validate against the existing token's user OR allow any owner/
  * manager to take over).
  *
- * Auto-submits after ~500ms of typing inactivity once the PIN has at
- * least 4 digits. Staff PINs run 4–8 digits in this codebase, so we
- * can't fire on the 4th tap (would lock 5–8 digit users out); the
- * debounce gives fast typists plenty of room to finish a longer PIN
- * before the unlock fires. The "Unlock" button remains as an explicit
- * commit for cashiers who don't want to wait the half-second.
+ * Auto-submits after 1s of typing inactivity once the PIN has at least
+ * 4 digits. Staff PINs run 4–8 digits in this codebase, so we can't
+ * fire on the 4th tap (would lock 5–8 digit users out); a longer
+ * debounce gives slow typists with 6+ digit PINs comfortable headroom
+ * to finish before the unlock fires. The "Unlock" button remains as
+ * an explicit commit for cashiers who don't want to wait the second.
  */
 export function LockScreen({ cashierName, onUnlock, onSwitchUser }: Props) {
   const [pin, setPin] = useState("");
@@ -44,14 +44,21 @@ export function LockScreen({ cashierName, onUnlock, onSwitchUser }: Props) {
   // for a 5–8 digit PIN without prematurely firing. We bail when the
   // pin is too short, when there's a current error (user just got
   // "Wrong PIN" — let them deliberately retype), or when a submission
-  // is already in flight.
+  // is already in flight. The 1000ms window is calibrated for slow
+  // typists with longer PINs — a 6-digit PIN entered at one-key-per-
+  // 800ms wouldn't fire prematurely; an 8-digit PIN takes ≤2s longer
+  // than a 4-digit. Tap "Unlock" to skip the wait when in a hurry.
+  // The 8-digit PIN auto-fires immediately since no more digits are
+  // possible (the keypad caps input at 8), so the longer debounce
+  // only slows down the 4–7 digit edge.
   useEffect(() => {
     if (pin.length < 4) return;
     if (err) return;
     if (busy || submittingRef.current) return;
+    const delay = pin.length === 8 ? 0 : 1000;
     const id = window.setTimeout(() => {
       void submit();
-    }, 500);
+    }, delay);
     return () => window.clearTimeout(id);
   }, [pin, err, busy, submit]);
 

@@ -59,11 +59,13 @@ export default function InventoryPage() {
       delete pendingAdj.current[item.id];
       if (total === 0) { setQuickAdjusting((s) => ({ ...s, [item.id]: false })); return; }
       try {
-        await adjustInventoryStock(item.id, {
-          type: total > 0 ? 'add' : 'remove',
-          quantity: Math.abs(total),
-          reason: 'Quick adjust',
-        });
+        // Backend expects a signed delta — total is already signed
+        // (+ for the ± up button, − for the down button) so we pass
+        // it straight through. Previously we sent {type:'add'|'remove',
+        // quantity: |total|} which the validator rejected outright,
+        // so every quick ± round-tripped a 422 and the stock never
+        // actually moved server-side.
+        await adjustInventoryStock(item.id, { delta: total, notes: 'Quick adjust' });
         void loadItems();
       } catch { void loadItems(); }
       finally { setQuickAdjusting((s) => ({ ...s, [item.id]: false })); }
@@ -96,7 +98,22 @@ export default function InventoryPage() {
     if (isNaN(qty) || qty < 0) { setAdjError('Enter a valid quantity.'); return; }
     setAdjSaving(true); setAdjError('');
     try {
-      await adjustInventoryStock(adjustItem!.id, { type: adjForm.type, quantity: qty, reason: adjForm.reason || undefined });
+      // Translate the UI's add/remove/set semantics into a signed
+      // delta the backend understands. For 'set' we need the current
+      // on-hand to compute the move; we have it from the row that
+      // opened this modal.
+      let delta: number;
+      if (adjForm.type === 'add') {
+        delta = qty;
+      } else if (adjForm.type === 'remove') {
+        delta = -qty;
+      } else {
+        delta = qty - (adjustItem!.quantity_on_hand ?? 0);
+      }
+      await adjustInventoryStock(adjustItem!.id, {
+        delta,
+        notes: adjForm.reason || undefined,
+      });
       setAdjustItem(null);
       setAdjForm({ type: 'add', quantity: '', reason: '' });
       void loadItems();

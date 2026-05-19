@@ -250,6 +250,14 @@ function App() {
     setCartItems:     cart.setCartItems,
     setSelectedItem:  cart.setSelectedItem,
     setOfflineQueueCount,
+    // Resume-time setters so handleResumeTicket can rehydrate the
+    // ticket's original context (customer / order type / table). Without
+    // these, parking a Dine-in/Table 4/Aisha ticket and resuming it
+    // landed you on a Takeaway cart with no customer attached — and
+    // the receipt SMS at charge time went nowhere.
+    setAttachedCustomer: cart.setAttachedCustomer,
+    setOrderType,
+    setSelectedTableId,
     onOrderSettled: (orderId, customerId, customerPhone) => {
       void refreshOpenTickets();
       void shift.refreshSummary();
@@ -260,14 +268,19 @@ function App() {
   });
 
   // ── Load tables after login ─────────────────────────────────────────────────
+  // We load the list so the table picker has data, but we do NOT auto-
+  // select the first active table. Auto-selecting silently routed
+  // every Dine-in ticket to whatever table sorts first (usually #1)
+  // unless the cashier remembered to flip the picker — and with the
+  // default order type now being Dine-in, that was a near-100% way to
+  // mis-tag a takeaway-at-counter ring. The pre-flight validation in
+  // onCheckout already forces the cashier to pick a table before the
+  // Charge overlay opens, so leaving this null is the safer default.
   useEffect(() => {
     if (!isLoggedIn) return;
     fetchTables()
-      .then((r) => {
-        setTables(r.tables);
-        setSelectedTableId(r.tables.find((t) => t.is_active)?.id ?? null);
-      })
-      .catch(() => { setTables([]); setSelectedTableId(null); });
+      .then((r) => { setTables(r.tables); })
+      .catch(() => { setTables([]); });
   }, [isLoggedIn]);
 
   // ── Load quick-note chip library after login ───────────────────────────────
@@ -846,6 +859,14 @@ function App() {
                   setTimeout(() => order.setStatusMessage(""), 4000);
                   return;
                 }
+                // Clear any stale error from a previous attempt so the
+                // overlay doesn't open with a red banner from a closed-
+                // but-not-resolved earlier flow (e.g. cashier hit
+                // Charge, got a network error, dismissed the overlay,
+                // then opened it again — the banner would still show
+                // the old message). ChargeOverlay's onConfirm clears
+                // again for the in-flight attempt itself.
+                order.setStatusMessage("");
                 setShowCharge(true);
               }}
               onRetryPayment={order.handleRetryPayment}

@@ -149,8 +149,15 @@ export async function fetchPosQuickNotes(): Promise<string[]> {
 export type PosSalesChannel = "dine_in" | "takeaway" | "online_pickup" | "delivery";
 
 export async function fetchItems(channel?: PosSalesChannel): Promise<Item[]> {
-  const qs = channel ? `?channel=${encodeURIComponent(channel)}` : "";
-  const data = await request<{ data: Item[] }>(`/items${qs}`);
+  // ItemController caps staff requests at `min(100, per_page)` and
+  // defaults `per_page` to 25 when the staff token is present — so
+  // without an explicit `per_page`, any kitchen with 26+ active items
+  // saw the menu silently truncated at the register. We ask for the
+  // maximum 100 to match the public/customer-app behaviour.
+  const params = new URLSearchParams();
+  if (channel) params.set("channel", channel);
+  params.set("per_page", "100");
+  const data = await request<{ data: Item[] }>(`/items?${params.toString()}`);
   return data.data ?? [];
 }
 
@@ -476,6 +483,18 @@ export async function getOrder(orderId: number): Promise<{
     subtotal?: number;
     tax_amount?: number;
     status?: string;
+    /** Ringing channel ("dine_in" | "takeaway" | "online_pickup" | ...).
+     *  Surfaced here so handleResumeTicket can restore the cashier's
+     *  pill selection on resume — otherwise a held Dine-in ticket
+     *  came back as the default Takeaway/Dine-in and the Charge step
+     *  silently re-routed it. */
+    type?: string;
+    /** Same story for the table the ticket was rung against. */
+    restaurant_table_id?: number | null;
+    /** Customer linked to the ticket when it was held, so the picker
+     *  re-attaches them on resume and the bill SMS still goes to the
+     *  right phone. Null/undefined for walk-in tickets. */
+    customer?: PosCustomer | null;
     items: Array<{
       item_id: number | null;
       item_name: string;
