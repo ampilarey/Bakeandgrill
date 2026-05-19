@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchReceipts,
   fireOrderToKitchen,
@@ -837,17 +837,35 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                 {mergeTargetId === null && (
                   <>
                     {stage === "parked" && (
-                      <ActionButton onClick={() => handleFireToKitchen(t)} busy={busy} bg="#A16207">
+                      <ActionButton
+                        onClick={() => handleFireToKitchen(t)}
+                        busy={busy}
+                        bg="#A16207"
+                        confirm
+                        confirmLabel="Fire now? Tap to confirm"
+                      >
                         🍳 Fire to kitchen
                       </ActionButton>
                     )}
                     {stage === "cooking" && (
-                      <ActionButton onClick={() => handleMarkReady(t)} busy={busy} bg="#047857">
+                      <ActionButton
+                        onClick={() => handleMarkReady(t)}
+                        busy={busy}
+                        bg="#047857"
+                        confirm
+                        confirmLabel="Send 'ready' SMS?"
+                      >
                         ✅ Mark ready
                       </ActionButton>
                     )}
                     {stage === "ready" && isPaid && (
-                      <ActionButton onClick={() => handleMarkPickedUp(t)} busy={busy} bg="#0F766E">
+                      <ActionButton
+                        onClick={() => handleMarkPickedUp(t)}
+                        busy={busy}
+                        bg="#0F766E"
+                        confirm
+                        confirmLabel="Confirm collected?"
+                      >
                         📦 Picked up
                       </ActionButton>
                     )}
@@ -871,7 +889,13 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                       </button>
                     )}
                     {isUnpaid && hasPhone && (
-                      <ActionButton onClick={() => handleSendPayLink(t)} busy={busy} bg="#1D4ED8">
+                      <ActionButton
+                        onClick={() => handleSendPayLink(t)}
+                        busy={busy}
+                        bg="#1D4ED8"
+                        confirm
+                        confirmLabel={`Send MVR ${(t.total ?? 0).toFixed(2)} link?`}
+                      >
                         💳 Send pay link
                       </ActionButton>
                     )}
@@ -1081,24 +1105,86 @@ function Divider() {
  * Stage-action button used inside each ticket row. Centralises the
  * stopPropagation + busy/disabled styling so the row's own
  * click-to-edit handler doesn't fire when the cashier taps a chip.
+ *
+ * Pass `confirm` to require a TWO-TAP interaction before firing
+ * `onClick`. First tap arms the button — it changes colour and swaps
+ * its label to `confirmLabel`. Second tap inside the arm window
+ * (2.5s) actually fires the action. Tapping anywhere else, or just
+ * waiting, silently disarms. Used for every destructive POS action
+ * (Fire to kitchen, Mark ready, Picked up, Send pay link) so a
+ * mis-tap during a busy service doesn't print a chit, fire an SMS,
+ * or complete an order by accident.
  */
 function ActionButton({
   onClick,
   busy,
   bg,
   children,
+  confirm = false,
+  confirmLabel = "Tap again to confirm",
 }: {
   onClick: () => void;
   busy: boolean;
   bg: string;
   children: React.ReactNode;
+  confirm?: boolean;
+  confirmLabel?: React.ReactNode;
 }) {
+  const [pending, setPending] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  // Clean up the arm-timer on unmount so a ticket disappearing
+  // mid-confirm (e.g. a poll cycle that drops the row) doesn't leak
+  // a setState call into a torn-down tree.
+  useEffect(
+    () => () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    },
+    [],
+  );
+
+  // Disarm whenever the parent flips `busy` (action in flight) — the
+  // pending highlight would otherwise outlive the original tap that
+  // triggered it and lie about the action state.
+  useEffect(() => {
+    if (busy && pending) {
+      setPending(false);
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  }, [busy, pending]);
+
+  const handleTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (busy) return;
+    if (!confirm) {
+      onClick();
+      return;
+    }
+    if (pending) {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setPending(false);
+      onClick();
+    } else {
+      setPending(true);
+      timerRef.current = window.setTimeout(() => {
+        setPending(false);
+        timerRef.current = null;
+      }, 2500);
+    }
+  };
+
   return (
     <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
+      onClick={handleTap}
       disabled={busy}
       style={{
         padding: `${space.s}px ${space.m}px`,
@@ -1106,13 +1192,16 @@ function ActionButton({
         fontSize: type.bodySm.fontSize,
         borderRadius: radius.m,
         fontWeight: 700,
-        background: bg,
+        // Pending state borrows the warning palette so it's
+        // unmistakable that a second tap is destructive.
+        background: pending ? "#B45309" : bg,
         color: "#fff",
-        border: "none",
+        border: pending ? "2px solid #FBBF24" : "none",
+        boxSizing: "border-box",
         cursor: busy ? "not-allowed" : "pointer",
       }}
     >
-      {busy ? "…" : children}
+      {busy ? "…" : pending ? confirmLabel : children}
     </button>
   );
 }

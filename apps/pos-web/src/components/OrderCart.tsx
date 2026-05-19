@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CartItem, RestaurantTable } from "../types";
 import type { PaymentRow } from "../hooks/useCart";
 import { makeCartKey } from "../hooks/useCart";
@@ -116,6 +116,53 @@ export function OrderCart(p: Props) {
   const lockedReadOnly = isResumed && !editing;
   const wasHeld = p.resumedFromStatus === "held";
 
+  // ── Two-tap confirm for the "Clear" button ────────────────────
+  // One tap on Clear used to wipe the entire cart instantly — 10+
+  // items, attached customer, rewards, discount, the lot. The
+  // button sits in the top-right corner exactly where thumbs rest
+  // on an iPad in portrait so accidental taps were common during
+  // a busy ring-up. Now first tap arms ("Tap again to clear"),
+  // second tap inside 2s actually clears.
+  const [clearArmed, setClearArmed] = useState(false);
+  const clearTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (clearTimerRef.current !== null) {
+        window.clearTimeout(clearTimerRef.current);
+        clearTimerRef.current = null;
+      }
+    },
+    [],
+  );
+  // Reset the arm whenever the cart becomes empty — there's
+  // nothing to clear anyway, and stale arming would confuse the
+  // cashier on their next pass through this card.
+  useEffect(() => {
+    if (p.cartItems.length === 0 && clearArmed) {
+      setClearArmed(false);
+      if (clearTimerRef.current !== null) {
+        window.clearTimeout(clearTimerRef.current);
+        clearTimerRef.current = null;
+      }
+    }
+  }, [p.cartItems.length, clearArmed]);
+  const handleClearTap = () => {
+    if (clearArmed) {
+      if (clearTimerRef.current !== null) {
+        window.clearTimeout(clearTimerRef.current);
+        clearTimerRef.current = null;
+      }
+      setClearArmed(false);
+      p.onClearCart();
+    } else {
+      setClearArmed(true);
+      clearTimerRef.current = window.setTimeout(() => {
+        setClearArmed(false);
+        clearTimerRef.current = null;
+      }, 2000);
+    }
+  };
+
   return (
     <aside
       className="pos-cart"
@@ -214,17 +261,21 @@ export function OrderCart(p: Props) {
             {isResumed ? `Order #${p.resumedOrderId}` : 'New Order'}
           </div>
           <button
-            onClick={p.onClearCart}
+            onClick={handleClearTap}
             disabled={p.cartItems.length === 0 || lockedReadOnly}
             title={lockedReadOnly ? 'Tap "Edit items" on the resume banner to make changes' : undefined}
             style={{
-              fontSize: 12, fontWeight: 600, color: C.muted,
-              background: 'transparent', border: 'none',
+              fontSize: 12, fontWeight: clearArmed ? 800 : 600,
+              color: clearArmed ? '#fff' : C.muted,
+              background: clearArmed ? '#B91C1C' : 'transparent',
+              border: 'none',
+              padding: clearArmed ? '4px 10px' : 0,
+              borderRadius: clearArmed ? 999 : 0,
               cursor: (p.cartItems.length === 0 || lockedReadOnly) ? 'not-allowed' : 'pointer',
               opacity: (p.cartItems.length === 0 || lockedReadOnly) ? 0.4 : 1,
             }}
           >
-            Clear
+            {clearArmed ? 'Tap again to clear' : 'Clear'}
           </button>
         </div>
 

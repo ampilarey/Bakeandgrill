@@ -68,11 +68,18 @@ export function ChargeOverlay({
   useEffect(() => { setReceived(total > 0 ? total.toFixed(2) : ""); }, [total, method]);
 
   // Esc closes; useful for keyboard-driven counters.
+  // Guarded by `submitting` so a stray Escape mid-payment can't
+  // tear down the overlay while handleCharge is still in flight —
+  // otherwise the resolve would land on whatever cart the cashier
+  // has built next and clear / advance the wrong order. The Cancel
+  // button is disabled in the same state for the same reason.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !submitting) onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, submitting]);
 
   const receivedNum = Number.parseFloat(received);
   const change = useMemo(() => {
