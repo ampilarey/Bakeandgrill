@@ -59,31 +59,28 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
 
   // ── Filter state ──────────────────────────────────────────────
-  // Three chip groups (stage / type / payment) plus a search button
-  // that toggles a slim search input. All chips are one-tap; the
-  // groups wrap to a second line on narrow tablet widths. Clear
-  // surfaces only when at least one filter is non-default.
-  type TypeFilter = "all" | "dine_in" | "takeaway" | "online_pickup";
-  type StageFilter = "all" | "parked" | "cooking" | "ready";
-  type PaymentFilter = "all" | "paid" | "unpaid";
-  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
-  // Search bar visibility + value. Hidden until 🔍 is tapped so the
-  // chip row stays the at-rest UI. Auto-shows when typing on a
-  // physical keyboard (keypress listener) — not yet wired but easy
-  // to add if needed.
+  // Single-select chip filter — at any moment exactly ONE chip is
+  // highlighted (or [All] when nothing is filtered). Stacking
+  // filters AND'd together (Ready AND Pickup AND Paid) produced
+  // empty results in the wild because no single ticket matches
+  // every dimension at once, which looked broken. One filter at a
+  // time matches how Loyverse / Square / Toast handle these top-
+  // level chip bars and is impossible to misinterpret.
+  //
+  // Filter is namespaced: "stage:ready", "type:dine_in",
+  // "payment:paid", or "all". Keeping it as one string makes the
+  // toggle logic trivial and prevents the old multi-state bug.
+  type FilterKey =
+    | "all"
+    | "stage:cooking" | "stage:ready" | "stage:parked"
+    | "type:dine_in" | "type:takeaway" | "type:online_pickup"
+    | "payment:paid" | "payment:unpaid";
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  // Search bar is a separate dimension — it narrows whatever chip
+  // bucket is currently active, so a cashier can do
+  // "show Pickup tickets matching 'aisha'". Hidden by default.
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
-
-  // The global [All] chip lights up when every filter is at its
-  // default AND the search bar isn't filtering. Tapping [All]
-  // resets all of them in one go.
-  const allActive =
-    stageFilter === "all" &&
-    typeFilter === "all" &&
-    paymentFilter === "all" &&
-    search.trim() === "";
 
   // ── Merge / split state ────────────────────────────────────────
   // Two-tap-plus-confirm merge flow:
@@ -420,12 +417,12 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   };
 
   // ── Derived: filtered ticket list ─────────────────────────────
-  // Stage derivation lives in the row map too (for the badge), but
-  // we need it here for stage-filter matching. Keep both in sync.
+  // ONE chip-filter at a time + an optional search. Stage of each
+  // ticket maps to: held → parked, ready → ready, else → cooking.
   // Search is plain client-side .includes() across the obvious POS
   // identifiers — orders are <50 rows so server-side search would
-  // be overkill. Restaurant table number is included so cashier can
-  // type "12" and land on table 12's open ticket.
+  // be overkill. Table name + location are searched so the cashier
+  // can type "T4" or "Patio".
   const filteredTickets = useMemo(() => {
     const stageOf = (status: string | null | undefined): "parked" | "cooking" | "ready" => {
       if (status === "held") return "parked";
@@ -434,13 +431,20 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     };
     const q = search.trim().toLowerCase();
     return tickets.filter((t) => {
-      if (typeFilter !== "all" && t.type !== typeFilter) return false;
-      if (stageFilter !== "all" && stageOf(t.status) !== stageFilter) return false;
-      if (paymentFilter === "paid" && t.payment_status !== "paid") return false;
-      if (paymentFilter === "unpaid" && t.payment_status === "paid") return false;
+      if (activeFilter === "all") {
+        // no chip-level filter
+      } else if (activeFilter.startsWith("stage:")) {
+        const want = activeFilter.slice(6) as "cooking" | "ready" | "parked";
+        if (stageOf(t.status) !== want) return false;
+      } else if (activeFilter.startsWith("type:")) {
+        const want = activeFilter.slice(5);
+        if (t.type !== want) return false;
+      } else if (activeFilter === "payment:paid") {
+        if (t.payment_status !== "paid") return false;
+      } else if (activeFilter === "payment:unpaid") {
+        if (t.payment_status === "paid") return false;
+      }
       if (q.length > 0) {
-        // Tables carry a name like "T4" plus an optional free-form
-        // location ("Patio", "Window"), so we just stringify both.
         const tableHay = t.table
           ? `${t.table.name ?? ""} ${t.table.location ?? ""}`
           : "";
@@ -458,15 +462,16 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       }
       return true;
     });
-  }, [tickets, typeFilter, stageFilter, paymentFilter, search]);
+  }, [tickets, activeFilter, search]);
 
   const paymentCounts = useMemo(() => {
-    const counts = { all: tickets.length, paid: 0, unpaid: 0 };
+    let paid = 0;
+    let unpaid = 0;
     tickets.forEach((t) => {
-      if (t.payment_status === "paid") counts.paid++;
-      else counts.unpaid++;
+      if (t.payment_status === "paid") paid++;
+      else unpaid++;
     });
-    return counts;
+    return { paid, unpaid };
   }, [tickets]);
 
   // Counts for the chip badges — recomputed on the unfiltered set so
@@ -540,14 +545,18 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       )}
 
       {/* ── Filter bar ────────────────────────────────────────
-            One global [All] chip up front + grouped action chips
-            for Stage / Type / Payment. Tap [All] to reset every
-            filter at once. Tap any other chip to filter on that
-            dimension; tap the same chip again to drop just that
-            filter. Multiple chips across groups can be active at
-            once (e.g. UNPAID + Dine-in + Cooking) — that's how
-            multi-dimension filters work and matches how every
-            POS app behaves. */}
+            SINGLE-SELECT chip filter. At any moment exactly one
+            chip is lit (or [All] when no filter is on). Tap any
+            chip to switch the view to just that bucket. This is
+            how Loyverse / Square / Toast handle their top-level
+            order list filters — it prevents the "Ready + Pickup
+            + Paid = No matches" problem you get with AND-stacked
+            chips. Search narrows whatever bucket is currently
+            selected.
+
+            Dividers separate the four chip families visually
+            (stage / type / payment) without implying that you
+            can combine chips across them. */}
       <div
         style={{
           marginBottom: space.m,
@@ -561,60 +570,51 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           flexWrap: "wrap",
         }}
       >
-        {/* Global All — single source of "show me everything". */}
         <FilterGroup
           activeColor="#0F172A"
-          options={[
-            { key: "all", label: "All", count: stageCounts.all },
-          ]}
-          selected={allActive ? "all" : ""}
-          onSelect={() => {
-            setStageFilter("all");
-            setTypeFilter("all");
-            setPaymentFilter("all");
-            setSearch("");
-            setSearchOpen(false);
-          }}
+          options={[{ key: "all", label: "All", count: tickets.length }]}
+          selected={activeFilter}
+          onSelect={() => setActiveFilter("all")}
         />
 
         <Divider />
 
-        {/* Stage chips (no [All] — the global All resets it). */}
+        {/* Stage — dark fill when active. */}
         <FilterGroup
           activeColor="#0F172A"
           options={[
-            { key: "cooking", label: "🍳 Cooking", count: stageCounts.cooking },
-            { key: "ready", label: "✅ Ready", count: stageCounts.ready },
-            { key: "parked", label: "📋 Parked", count: stageCounts.parked },
+            { key: "stage:cooking", label: "🍳 Cooking", count: stageCounts.cooking },
+            { key: "stage:ready", label: "✅ Ready", count: stageCounts.ready },
+            { key: "stage:parked", label: "📋 Parked", count: stageCounts.parked },
           ]}
-          selected={stageFilter}
-          onSelect={(k) => setStageFilter(stageFilter === k ? "all" : (k as StageFilter))}
+          selected={activeFilter}
+          onSelect={(k) => setActiveFilter(k as FilterKey)}
         />
 
         <Divider />
 
-        {/* Type chips. Blue when active. */}
+        {/* Type — blue when active. */}
         <FilterGroup
           activeColor="#1D4ED8"
           options={[
-            { key: "dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
-            { key: "takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
-            { key: "online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
+            { key: "type:dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
+            { key: "type:takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
+            { key: "type:online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
           ]}
-          selected={typeFilter}
-          onSelect={(k) => setTypeFilter(typeFilter === k ? "all" : (k as TypeFilter))}
+          selected={activeFilter}
+          onSelect={(k) => setActiveFilter(k as FilterKey)}
         />
 
         <Divider />
 
-        {/* Payment chips. Green for paid, red for unpaid. */}
+        {/* Payment — green for paid, red for unpaid. */}
         <FilterGroup
           options={[
-            { key: "paid", label: "💳 Paid", count: paymentCounts.paid, activeColor: "#15803D" },
-            { key: "unpaid", label: "UNPAID", count: paymentCounts.unpaid, activeColor: "#B91C1C" },
+            { key: "payment:paid", label: "💳 Paid", count: paymentCounts.paid, activeColor: "#15803D" },
+            { key: "payment:unpaid", label: "UNPAID", count: paymentCounts.unpaid, activeColor: "#B91C1C" },
           ]}
-          selected={paymentFilter}
-          onSelect={(k) => setPaymentFilter(paymentFilter === k ? "all" : (k as PaymentFilter))}
+          selected={activeFilter}
+          onSelect={(k) => setActiveFilter(k as FilterKey)}
         />
 
         {/* Spacer — pushes the search toggle to the right edge on
@@ -693,7 +693,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
         <EmptyState
           emoji="🔍"
           title="No matches"
-          body="Try widening the filters above."
+          body="Tap [All] to see every active ticket, or change your search."
         />
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
