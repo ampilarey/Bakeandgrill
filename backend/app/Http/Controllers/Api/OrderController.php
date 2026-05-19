@@ -384,10 +384,17 @@ class OrderController extends Controller
             try {
                 $orderNum = $order->order_number ?? "#{$order->id}";
                 $total = number_format((float) $order->total, 2);
+                // First-name only — keeps GSM-7 segment count low and
+                // avoids accidentally shouting an awkward formal title
+                // in casual SMS copy. Falls through cleanly to the
+                // unnamed greeting when no name is on file.
+                $rawName = trim((string) ($order->customer?->name ?? ''));
+                $firstName = $rawName !== '' ? trim(strtok($rawName, ' ')) : '';
+                $greeting = $firstName !== '' ? "Hi {$firstName}, order" : 'Order';
                 app(SmsService::class)->send(new SmsMessage(
                     to: $phone,
-                    message: "Bake & Grill: Order {$orderNum} received (MVR {$total}). "
-                        . "We'll text you when it's ready for pickup.",
+                    message: "Bake & Grill: {$greeting} {$orderNum} received (MVR {$total}). "
+                        . "We'll text you when it's ready.",
                     type: 'transactional',
                     customerId: $order->customer_id,
                     referenceType: 'order',
