@@ -59,25 +59,36 @@ export async function updateInventoryCategory(id: number, data: { name: string }
 
 // ── Tables ────────────────────────────────────────────────────────────────────
 
+/**
+ * Schema mirror of `restaurant_tables` (see StoreTableRequest +
+ * RestaurantTable model on the backend). Field names match the DB:
+ *   - `name` is the human-facing label (e.g. "1", "A1", "VIP-3");
+ *     the backend treats it as unique-per-restaurant.
+ *   - `location` is the zone/area (e.g. "Indoor", "Terrace").
+ * Earlier this file aliased these to `number` / `zone`, which made
+ * every Add/Edit Table request fail validation ("name field is
+ * required") and made the list look empty because the response key
+ * is `tables`, not `data`.
+ */
 export interface RestaurantTable {
   id: number;
-  number: string;
-  capacity: number;
-  zone: string | null;
+  name: string;
+  capacity: number | null;
+  location: string | null;
   status: 'available' | 'occupied' | 'reserved' | 'closed';
   current_order_id: number | null;
   is_active: boolean;
 }
 
-export async function fetchTables(): Promise<{ data: RestaurantTable[] }> {
+export async function fetchTables(): Promise<{ tables: RestaurantTable[] }> {
   return req('/tables');
 }
 
-export async function createTable(data: { number: string; capacity: number; zone?: string }): Promise<{ table: RestaurantTable }> {
+export async function createTable(data: { name: string; capacity?: number; location?: string }): Promise<{ table: RestaurantTable }> {
   return req('/tables', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updateTable(id: number, data: Partial<{ number: string; capacity: number; zone: string; is_active: boolean }>): Promise<{ table: RestaurantTable }> {
+export async function updateTable(id: number, data: Partial<{ name: string; capacity: number; location: string; is_active: boolean }>): Promise<{ table: RestaurantTable }> {
   return req(`/tables/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 

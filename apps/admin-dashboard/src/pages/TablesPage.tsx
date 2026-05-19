@@ -31,7 +31,14 @@ const STATUS_COLOR: Record<string, string> = {
   closed: 'gray',
 };
 
-const defaultForm = { number: '', capacity: '2', zone: '' };
+// Form mirrors the StoreTableRequest schema: `name` is the unique
+// table label (e.g. "1", "A1", "VIP-3"), `location` is the zone /
+// area. Earlier this file used `number`/`zone`, which the backend
+// silently dropped → "Add Table" appeared to do nothing because the
+// validator rejected the request with "name field is required" and
+// the list always came back empty because we read the wrong response
+// key.
+const defaultForm = { name: '', capacity: '2', location: '' };
 
 type ViewMode = 'cards' | 'floorplan';
 
@@ -81,7 +88,7 @@ export default function TablesPage() {
     setLoading(true); setError('');
     try {
       const res = await fetchTables();
-      setTables(res.data ?? []);
+      setTables(res.tables ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -90,18 +97,20 @@ export default function TablesPage() {
 
   const openModal = (t?: RestaurantTable) => {
     setEditTable(t ?? null);
-    setForm(t ? { number: t.number, capacity: String(t.capacity), zone: t.zone ?? '' } : defaultForm);
+    setForm(t
+      ? { name: t.name, capacity: String(t.capacity ?? ''), location: t.location ?? '' }
+      : defaultForm);
     setFormError('');
     setModal(true);
   };
 
   const handleSave = async () => {
-    if (!form.number.trim()) { setFormError('Table number is required.'); return; }
+    if (!form.name.trim()) { setFormError('Table name is required.'); return; }
     const cap = parseInt(form.capacity, 10);
     if (isNaN(cap) || cap < 1) { setFormError('Enter a valid capacity.'); return; }
     setSaving(true); setFormError('');
     try {
-      const data = { number: form.number.trim(), capacity: cap, zone: form.zone.trim() || undefined };
+      const data = { name: form.name.trim(), capacity: cap, location: form.location.trim() || undefined };
       if (editTable) {
         await updateTable(editTable.id, data);
       } else {
@@ -157,11 +166,11 @@ export default function TablesPage() {
   const available = tables.filter(t => t.status === 'available').length;
   const occupied  = tables.filter(t => t.status === 'occupied').length;
 
-  // Group tables by zone for floor plan view
+  // Group tables by location (zone) for floor plan view.
   const zones = useMemo(() => {
     const map: Record<string, RestaurantTable[]> = {};
     for (const t of tables) {
-      const z = t.zone?.trim() || 'General';
+      const z = t.location?.trim() || 'General';
       if (!map[z]) map[z] = [];
       map[z].push(t);
     }
@@ -243,8 +252,8 @@ export default function TablesPage() {
             <div key={t.id} style={S.card(selected.includes(t.id))} onClick={() => toggleSelect(t.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                 <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#1C1408' }}>T{t.number}</div>
-                  <div style={{ fontSize: 12, color: '#9C8E7E' }}>Cap: {t.capacity}{t.zone ? ` · ${t.zone}` : ''}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#1C1408' }}>T{t.name}</div>
+                  <div style={{ fontSize: 12, color: '#9C8E7E' }}>Cap: {t.capacity ?? '—'}{t.location ? ` · ${t.location}` : ''}</div>
                 </div>
                 <Badge color={STATUS_COLOR[t.status] ?? 'gray'}>{t.status}</Badge>
               </div>
@@ -334,10 +343,10 @@ export default function TablesPage() {
                         </div>
                       )}
                       <div style={{ fontSize: 20, fontWeight: 800, color: '#1C1408', lineHeight: 1 }}>
-                        {t.number}
+                        {t.name}
                       </div>
                       <div style={{ fontSize: 11, color: '#9C8E7E' }}>
-                        {t.capacity} seats
+                        {t.capacity ?? '—'} seats
                       </div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: textColor, textTransform: 'capitalize' }}>
                         {t.status}
@@ -406,20 +415,20 @@ export default function TablesPage() {
       )}
 
       {modal && (
-        <Modal title={editTable ? `Edit Table T${editTable.number}` : 'Add Table'} onClose={() => setModal(false)} maxWidth={400}>
+        <Modal title={editTable ? `Edit Table T${editTable.name}` : 'Add Table'} onClose={() => setModal(false)} maxWidth={400}>
           {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
-              <span style={S.label}>Table Number *</span>
-              <input type="text" placeholder="e.g. 1, A1, VIP1" value={form.number} onChange={e => setForm(f => ({ ...f, number: e.target.value }))} style={S.input} />
+              <span style={S.label}>Table Name *</span>
+              <input type="text" placeholder="e.g. 1, A1, VIP1" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={S.input} />
             </label>
             <label>
               <span style={S.label}>Capacity *</span>
               <input type="number" min="1" value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} style={S.input} />
             </label>
             <label>
-              <span style={S.label}>Zone / Area</span>
-              <input type="text" placeholder="e.g. Indoor, Terrace, VIP…" value={form.zone} onChange={e => setForm(f => ({ ...f, zone: e.target.value }))} style={S.input} />
+              <span style={S.label}>Location / Zone</span>
+              <input type="text" placeholder="e.g. Indoor, Terrace, VIP…" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} style={S.input} />
             </label>
           </div>
           <ModalActions>
