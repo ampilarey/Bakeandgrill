@@ -1075,12 +1075,17 @@ function FilterGroup({
             key={opt.key}
             onClick={() => onSelect(opt.key)}
             style={{
-              padding: "6px 10px",
+              // Bug-021: bumped to a WCAG-friendly 44px touch
+              // target. Filter chips on the cashier's iPad are
+              // hit with a thumb mid-service; the previous 6/10
+              // padding made them ~28px tall and easy to miss.
+              padding: "10px 14px",
+              minHeight: 44,
               borderRadius: 999,
               border: `1px solid ${active ? accent : palette.border}`,
               background: active ? accent : "#fff",
               color: active ? "#fff" : palette.panelInk,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -1660,12 +1665,21 @@ export function PanelShell({ title, subtitle, onClose, children }: {
           background: "none",
           border: "none",
           color: palette.panelMuted,
-          fontSize: 22,
+          fontSize: 26,
           cursor: "pointer",
           lineHeight: 1,
-          padding: space.xxs,
-          minHeight: 32,
-          minWidth: 32,
+          // Bug-022: bumped from 32×32 to 44×44 to clear WCAG and
+          // give cashiers a fat-finger-tolerant hit target. The
+          // close × used to sit right next to the panel title so
+          // a thumb aiming for "Active orders" could close the
+          // pane by mistake.
+          padding: 6,
+          minHeight: 44,
+          minWidth: 44,
+          borderRadius: 8,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }} aria-label="Close panel">×</button>
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: space.l }}>
