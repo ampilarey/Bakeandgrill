@@ -165,8 +165,18 @@
                         <tr>
                             <td>
                                 <strong>{{ $item->item_name }}</strong>
+                                @if ($item->variant_name)
+                                    <div class="mods">{{ $item->variant_name }}</div>
+                                @endif
                                 @if ($item->modifiers->count() > 0)
                                     <div class="mods">{{ $item->modifiers->map(fn ($mod) => $mod->modifier_name)->join(', ') }}</div>
+                                @endif
+                                {{-- Free-form note (cashier-attached "No salt"
+                                     etc.) printed in italics so it visually
+                                     reads as an instruction rather than a
+                                     product detail. --}}
+                                @if (!empty($item->notes))
+                                    <div class="mods" style="font-style: italic;">↳ {{ $item->notes }}</div>
                                 @endif
                             </td>
                             <td class="qty">{{ $item->quantity }}</td>

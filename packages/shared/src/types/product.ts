@@ -85,6 +85,12 @@ export type CartItem = {
   // hits the server — without it, the Charge button shows the subtotal
   // and the cashier ends up under-collecting from the customer.
   tax_rate?: number | null;
+  // Per-line kitchen notes the cashier attached from the POS chip
+  // picker (e.g. ["No salt", "Extra spicy"]). Two cart lines with
+  // the same item but different notes are kept separate (see
+  // `makeCartKey` in `useCart`). Joined with " · " before being sent
+  // to the backend's `notes` field.
+  notes?: string[];
 };
 
 export type RestaurantTable = {

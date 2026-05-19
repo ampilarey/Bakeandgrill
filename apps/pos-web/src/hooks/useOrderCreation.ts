@@ -137,6 +137,14 @@ export function useOrderCreation(params: Params) {
         quantity: item.quantity,
         ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
         modifiers: item.modifiers.map((m) => ({ modifier_id: m.id, name: m.name, price: m.price })),
+        // Free-form kitchen note string. We join the cashier's chip
+        // selections with " · " (middle dot + spaces) so the receipt
+        // and kitchen ticket render multiple notes legibly without
+        // looking like a sentence. Empty notes are omitted so the
+        // backend stores NULL (existing behaviour) instead of "".
+        ...(item.notes && item.notes.length > 0
+          ? { notes: item.notes.join(" · ") }
+          : {}),
       })),
     };
   };
@@ -496,6 +504,14 @@ export function useOrderCreation(params: Params) {
       // authoritative `resumedOrderTotal`, but the cashier shouldn't
       // see a misleading number).
       tax_rate: item.tax_rate != null ? Number(item.tax_rate) : 0,
+      // Restore notes. Backend stores them as a single string (we
+      // joined chips with " · " before sending), so we split back so
+      // the chip picker correctly pre-selects what the cashier
+      // originally chose. Trim each part defensively in case the
+      // string was hand-edited elsewhere.
+      notes: typeof item.notes === "string" && item.notes.trim().length > 0
+        ? item.notes.split(" · ").map((s) => s.trim()).filter(Boolean)
+        : [],
     }));
     params.setCartItems(restoredItems);
     setResumedOrderId(orderId);

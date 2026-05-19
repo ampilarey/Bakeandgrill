@@ -178,7 +178,12 @@ class PrintJobService
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
                     'item_name' => $item->item_name,
+                    'variant_name' => $item->variant_name,
                     'quantity' => $item->quantity,
+                    // Per-line kitchen note ("No salt", "Extra spicy",
+                    // etc.). The print proxy must render this bold /
+                    // larger so a busy kitchen can't miss it.
+                    'notes' => $item->notes,
                     'modifiers' => $item->modifiers->map(fn ($m) => [
                         'id' => $m->id,
                         'modifier_name' => $m->modifier_name,
@@ -232,8 +237,10 @@ class PrintJobService
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
                     'item_name' => $item->item_name,
+                    'variant_name' => $item->variant_name,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
+                    'notes' => $item->notes,
                     'modifiers' => $item->modifiers->map(fn ($m) => [
                         'id' => $m->id,
                         'modifier_name' => $m->modifier_name,

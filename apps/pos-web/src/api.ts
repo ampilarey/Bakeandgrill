@@ -96,6 +96,39 @@ export async function fetchCategories(): Promise<Category[]> {
 }
 
 /**
+ * Fetch the public POS quick-notes chip library — owner-curated list
+ * of one-tap kitchen instructions like "No salt" / "Extra spicy".
+ * Returns an empty array if the setting is missing, malformed, or
+ * the request fails so the rest of the POS still boots cleanly.
+ *
+ * The chip list lives on the `pos_quick_notes` site setting (see
+ * 2026_05_19_000001 migration). Owner edits the JSON in
+ * Admin → Settings → Website Settings.
+ */
+export async function fetchPosQuickNotes(): Promise<string[]> {
+  try {
+    const data = await request<{ settings: Record<string, string | null> }>(
+      "/site-settings/public",
+    );
+    const raw = data.settings?.pos_quick_notes;
+    if (!raw) return [];
+    // The site_settings table stores everything as a string; JSON
+    // settings are decoded on read here so the rest of the POS can
+    // treat the result as a normal array of strings.
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((n): n is string => typeof n === "string")
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+  } catch {
+    // Setting hasn't been seeded yet, server unreachable, or JSON is
+    // bad. Don't surface — the cashier just doesn't see the picker.
+    return [];
+  }
+}
+
+/**
  * POS sales-channel codes — match the values stored in
  * `item_channel_availability.channel` on the backend. The cashier's
  * selected order type maps to one of these so the menu only shows items
@@ -443,6 +476,11 @@ export async function getOrder(orderId: number): Promise<{
        *  reuses this when resuming a held ticket so the cart still shows
        *  the correct GST line. */
       tax_rate?: number | string | null;
+      /** Free-form kitchen note (e.g. "No salt · Extra spicy"). The
+       *  POS joins selected quick-note chips with " · " before saving;
+       *  on resume we split back on " · " so the chip picker shows
+       *  the same selections the cashier originally made. */
+      notes?: string | null;
       modifiers?: Array<{
         modifier_id: number | null;
         modifier_name: string;

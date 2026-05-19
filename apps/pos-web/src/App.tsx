@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts, fetchPosQuickNotes } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -17,6 +17,8 @@ import { MenuGrid }          from "./components/MenuGrid";
 import { OrderCart }         from "./components/OrderCart";
 import { OpsPanel }          from "./components/OpsPanel";
 import { SendBillPanel }     from "./components/SendBillPanel";
+import { NotePickerModal }   from "./components/NotePickerModal";
+import { makeCartKey }       from "./hooks/useCart";
 import { OpenShiftModal }    from "./components/OpenShiftModal";
 import { CloseShiftModal }   from "./components/CloseShiftModal";
 import { ShiftClosedGate }   from "./components/ShiftClosedGate";
@@ -136,6 +138,14 @@ function App() {
   const [orderType, setOrderType] = useState<OrderType>("Takeaway");
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+  // Owner-curated quick-note chip library (e.g. "No salt", "Extra
+  // spicy"). Loaded once after login from the public site-settings
+  // endpoint. Empty array hides the per-line Note button.
+  const [quickNotes, setQuickNotes] = useState<string[]>([]);
+  // When non-null, the NotePickerModal is open for this cart line key.
+  // Stored at the app level (vs in OrderCart) so the modal sits above
+  // the cart's overflow:auto clip and survives cart state churn.
+  const [notePickerKey, setNotePickerKey] = useState<string | null>(null);
 
   // ── Online / offline events ─────────────────────────────────────────────────
   useEffect(() => {
@@ -254,6 +264,16 @@ function App() {
         setSelectedTableId(r.tables.find((t) => t.is_active)?.id ?? null);
       })
       .catch(() => { setTables([]); setSelectedTableId(null); });
+  }, [isLoggedIn]);
+
+  // ── Load quick-note chip library after login ───────────────────────────────
+  // Best-effort: fetchPosQuickNotes already swallows errors, so failure
+  // here just means the cashier doesn't see the Note button. We
+  // re-fetch on isLoggedIn so a fresh sign-in picks up any chips the
+  // owner added since the last session.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchPosQuickNotes().then(setQuickNotes);
   }, [isLoggedIn]);
 
   // ── Device-blocked event (dispatched by api.ts when middleware rejects) ────
@@ -726,6 +746,8 @@ function App() {
               onCheckout={() => setShowCharge(true)}
               onRetryPayment={order.handleRetryPayment}
               onOpenSendBill={() => setShowSendBill(true)}
+              quickNotes={quickNotes}
+              onOpenNotePicker={setNotePickerKey}
             />
             <MenuGrid
               categories={menu.categories}
@@ -854,6 +876,58 @@ function App() {
           onCancel={() => setShowCloseShift(false)}
         />
       )}
+
+      {/* Per-line kitchen note picker. We look up the active cart line
+          by key so the picker stays correct even if other lines are
+          added/removed underneath while the modal is open. If the line
+          was removed entirely (rare race), we just dismiss. */}
+      {notePickerKey !== null && (() => {
+        const line = cart.cartItems.find(
+          (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === notePickerKey,
+        );
+        if (!line) {
+          setNotePickerKey(null);
+          return null;
+        }
+        const label = line.variant_name
+          ? `${line.name} — ${line.variant_name}`
+          : line.name;
+        return (
+          <NotePickerModal
+            options={quickNotes}
+            initialSelected={line.notes ?? []}
+            itemLabel={label}
+            onCancel={() => setNotePickerKey(null)}
+            onSave={(selected) => {
+              // Replacing notes on a line changes its cart key (notes
+              // are part of makeCartKey), so we must also reconcile
+              // duplicates: if there's already another line with the
+              // exact same item/variant/modifiers/notes combo, merge
+              // quantities into it and drop the original.
+              const newKey = makeCartKey(line.id, line.modifiers, line.variant_id, selected);
+              cart.setCartItems(
+                cart.cartItems
+                  .map((ci) => (ci === line ? { ...ci, notes: selected } : ci))
+                  .reduce<typeof cart.cartItems>((acc, ci) => {
+                    const k = makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes);
+                    if (k === newKey) {
+                      const existing = acc.find(
+                        (a) => makeCartKey(a.id, a.modifiers, a.variant_id, a.notes) === newKey,
+                      );
+                      if (existing) {
+                        existing.quantity += ci.quantity;
+                        return acc;
+                      }
+                    }
+                    acc.push(ci);
+                    return acc;
+                  }, []),
+              );
+              setNotePickerKey(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

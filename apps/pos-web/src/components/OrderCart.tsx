@@ -60,6 +60,15 @@ type Props = {
   onCheckout: () => void;
   onRetryPayment: () => void;
   onOpenSendBill: () => void;
+
+  /** Owner-curated chip list of kitchen notes (e.g. "No salt"). The
+   *  cashier taps one or more per cart line. Fetched from the public
+   *  site-settings endpoint. Empty array = picker not shown. */
+  quickNotes: string[];
+  /** Open the chip-picker modal for the given cart line key. The
+   *  parent owns the modal so it can sit above the resume banner
+   *  and survive cart state churn. */
+  onOpenNotePicker?: (cartKey: string) => void;
 };
 
 const C = {
@@ -228,11 +237,12 @@ export function OrderCart(p: Props) {
           </div>
         ) : (
           p.cartItems.map((item) => {
-            const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id);
+            const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes);
             const lineTotal =
               (Number(item.price ?? 0) +
                 item.modifiers.reduce((s, m) => s + Number(m.price ?? 0), 0)) *
               item.quantity;
+            const notes = item.notes ?? [];
             return (
               <div
                 key={itemKey}
@@ -253,6 +263,28 @@ export function OrderCart(p: Props) {
                         + {item.modifiers.map((m) => m.name).join(", ")}
                       </div>
                     )}
+                    {notes.length > 0 && (
+                      <div style={{
+                        fontSize: 11, color: C.primaryDark, marginTop: 4,
+                        display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center',
+                      }}>
+                        <span aria-hidden style={{ fontSize: 10 }}>📝</span>
+                        {notes.map((n) => (
+                          <span
+                            key={n}
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              background: '#FEF3E8',
+                              border: '1px solid #FBD9B8',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.text, whiteSpace: 'nowrap' }}>
                     MVR {lineTotal.toFixed(2)}
@@ -269,7 +301,7 @@ export function OrderCart(p: Props) {
                         p.setCartItems(
                           p.cartItems
                             .map((ci) =>
-                              makeCartKey(ci.id, ci.modifiers, ci.variant_id) === itemKey
+                              makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
                                 ? { ...ci, quantity: ci.quantity - 1 }
                                 : ci,
                             )
@@ -294,7 +326,7 @@ export function OrderCart(p: Props) {
                       onClick={() =>
                         p.setCartItems(
                           p.cartItems.map((ci) =>
-                            makeCartKey(ci.id, ci.modifiers, ci.variant_id) === itemKey
+                            makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
                               ? { ...ci, quantity: ci.quantity + 1 }
                               : ci,
                           ),
@@ -309,8 +341,37 @@ export function OrderCart(p: Props) {
                       }}
                     >+</button>
                   </div>
-                  <div style={{ fontSize: 11, color: C.subtle }}>
-                    @ MVR {Number(item.price ?? 0).toFixed(2)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* Note button — opens a chip-only picker so the
+                        cashier can attach kitchen instructions ("No
+                        salt", etc.) without typing. Disabled in
+                        resumed mode for the same reason qty +/− is. */}
+                    {p.quickNotes.length > 0 && (
+                      <button
+                        type="button"
+                        aria-label={notes.length > 0 ? `Edit notes (${notes.length})` : 'Add a note'}
+                        disabled={isResumed}
+                        title={isResumed ? 'Cancel resume to edit items' : 'Add kitchen note'}
+                        onClick={() => p.onOpenNotePicker?.(itemKey)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '4px 10px',
+                          borderRadius: 999,
+                          border: `1px solid ${notes.length > 0 ? '#FBD9B8' : C.border2}`,
+                          background: notes.length > 0 ? '#FEF3E8' : '#FFFFFF',
+                          color: notes.length > 0 ? C.primaryDark : C.muted,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: isResumed ? 'not-allowed' : 'pointer',
+                          opacity: isResumed ? 0.4 : 1,
+                        }}
+                      >
+                        📝 {notes.length > 0 ? `${notes.length} note${notes.length > 1 ? 's' : ''}` : 'Note'}
+                      </button>
+                    )}
+                    <div style={{ fontSize: 11, color: C.subtle }}>
+                      @ MVR {Number(item.price ?? 0).toFixed(2)}
+                    </div>
                   </div>
                 </div>
               </div>

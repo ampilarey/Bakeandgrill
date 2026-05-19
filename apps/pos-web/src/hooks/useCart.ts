@@ -30,8 +30,23 @@ export function effectiveItemPrice(item: Item): number {
   return parseFloat(String(item.base_price ?? 0));
 }
 
-export const makeCartKey = (itemId: number, modifiers: Modifier[], variantId?: number | null) =>
-  `${itemId}-v${variantId ?? 0}-${modifiers.map((m) => m.id).sort().join(",")}`;
+/**
+ * Identity key used to merge identical lines in the cart (cashier
+ * tapping the same item twice = qty 2, not two separate rows).
+ *
+ * Notes (kitchen comments like "No salt") are part of the key — two
+ * burgers with different notes must stay separate lines because they
+ * print differently on the kitchen ticket and a single qty:2 would
+ * lose the per-portion instruction.
+ */
+export const makeCartKey = (
+  itemId: number,
+  modifiers: Modifier[],
+  variantId?: number | null,
+  notes?: string[],
+) =>
+  `${itemId}-v${variantId ?? 0}-${modifiers.map((m) => m.id).sort().join(",")}` +
+  `-n${(notes ?? []).slice().sort().join("|")}`;
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -211,10 +226,14 @@ export function useCart() {
         opts?.modifiers ??
         (selectedItem?.id === item.id ? selectedModifiers : []);
 
-      const key = makeCartKey(item.id, modifiers, chosenVariant?.id);
+      // New line is always added with empty `notes`, so the comparison
+      // key intentionally uses [] — that way tapping the same item
+      // twice still merges to qty 2, but a line that previously had
+      // a note attached stays separate (different key suffix).
+      const key = makeCartKey(item.id, modifiers, chosenVariant?.id, []);
       setCartItems((curr) => {
         const existing = curr.find(
-          (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id) === key,
+          (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === key,
         );
         if (existing) {
           return curr.map((ci) =>
@@ -241,6 +260,12 @@ export function useCart() {
             variant_id: chosenVariant?.id ?? null,
             variant_name: chosenVariant?.name ?? null,
             tax_rate: Number.isFinite(parsedTaxRate) ? parsedTaxRate : 0,
+            // Notes default to empty — cashier attaches them per line
+            // via the in-cart Note picker. They DO factor into the
+            // cart key (see makeCartKey) so changing notes on an
+            // existing line means "split into a new line", not
+            // "rewrite history on a paid-up line".
+            notes: [],
           },
         ];
       });
@@ -252,7 +277,7 @@ export function useCart() {
     setCartItems((curr) =>
       curr
         .map((item) =>
-          makeCartKey(item.id, item.modifiers, item.variant_id) === itemKey
+          makeCartKey(item.id, item.modifiers, item.variant_id, item.notes) === itemKey
             ? { ...item, quantity: item.quantity + delta }
             : item,
         )

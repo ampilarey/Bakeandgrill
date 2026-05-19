@@ -224,6 +224,19 @@ class OrderCreationService
 
             $modifierTotal = 0;
 
+            // `notes` is a free-form per-line string the POS uses for
+            // kitchen instructions ("No salt", "Extra spicy", etc.).
+            // We trim and cap defensively even though StoreOrderRequest
+            // already enforces the 255-char limit, because this method
+            // is also called from internal flows that may bypass the
+            // FormRequest validation.
+            $notes = isset($itemPayload['notes']) && is_string($itemPayload['notes'])
+                ? mb_substr(trim($itemPayload['notes']), 0, 255)
+                : null;
+            if ($notes === '') {
+                $notes = null;
+            }
+
             $orderItem = OrderItem::create([
                 'order_id' => $order->id,
                 'item_id' => $itemModel->id,
@@ -234,7 +247,7 @@ class OrderCreationService
                 'unit_price' => $basePrice,
                 'total_price' => 0,
                 'tax_rate' => (float) $itemModel->tax_rate,
-                'notes' => null,
+                'notes' => $notes,
                 'status' => 'pending',
             ]);
 

@@ -33,6 +33,13 @@ class StoreOrderRequest extends FormRequest
             'items.*.modifiers' => 'nullable|array',
             'items.*.modifiers.*.modifier_id' => 'required|integer|exists:modifiers,id',
             'items.*.modifiers.*.quantity' => 'nullable|integer|min:1',
+            // Free-form kitchen note per line — currently populated by
+            // the POS from the tap-chip `pos_quick_notes` library
+            // (cashier picks one or more chips, the POS joins them
+            // with " · " before sending). The schema accepts any
+            // string up to 255 chars so it's also future-proof for
+            // typed notes from other channels (e.g. online order).
+            'items.*.notes' => 'nullable|string|max:255',
         ];
     }
 }
