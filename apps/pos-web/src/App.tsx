@@ -778,35 +778,12 @@ function App() {
             {isOnline ? 'Online' : 'Offline'}
           </span>
 
-          {/* Always-visible "refresh everything" — accessible from any
-              pane (Receipts, Shift, etc) without going back to Sales.
-              Reloads menu items + categories, tables, kitchen-note
-              chips, held-tickets badge, and the shift summary in one
-              shot, so the cashier doesn't have to wonder which slice
-              is stale. Spins while any refresh is in flight. */}
-          <button
-            onClick={() => { void refreshAll(); }}
-            disabled={isRefreshingAll || menu.isRefreshing}
-            aria-label="Refresh everything"
-            title={menu.lastRefreshedAt
-              ? `Last refreshed ${Math.max(0, Math.floor((Date.now() - menu.lastRefreshedAt) / 1000))}s ago — tap to refresh menu, tables, chips, tickets & shift`
-              : 'Refresh menu, tables, chips, tickets & shift'}
-            style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: '#F1F5F9', border: '1px solid #E2E8F0',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: (isRefreshingAll || menu.isRefreshing) ? 'wait' : 'pointer',
-              fontSize: 16, color: '#334155',
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                display: 'inline-block',
-                animation: (isRefreshingAll || menu.isRefreshing) ? 'pos-spin 0.8s linear infinite' : undefined,
-              }}
-            >↻</span>
-          </button>
+          {/* Top-banner refresh button removed — the ↻ next to the
+              menu search bar (also rewired to refreshAll) is the only
+              one needed. Per-cashier feedback the duplicate buttons
+              were just visual noise. The More-drawer "Refresh data"
+              item still works for cashiers parked on a non-Sales
+              pane. */}
 
           {/* Visible Lock button. Keeps shift + cart, requires PIN to
               re-open. Cmd/Ctrl+L also triggers this. */}
