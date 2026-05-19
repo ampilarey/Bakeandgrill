@@ -922,8 +922,19 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                     {/* Merge / Split — keep them at the end since
                         they're rare actions. Hidden when paid since
                         the backend refuses to merge/split paid
-                        orders anyway. */}
-                    {!isPaid && (
+                        orders anyway.
+                        Bug-011: also hidden when payment_status is
+                        "partial". Merging or splitting a ticket that
+                        already has payments collected would strand
+                        those payments against fewer / different
+                        items: customer paid MVR 50 of MVR 100, we
+                        split the ticket — the original keeps the
+                        MVR 50 against (say) MVR 30 of items, the
+                        sibling has MVR 70 owed with no payments.
+                        Reconciliation nightmare. Cashier must void
+                        existing payments first if they really need
+                        to restructure a partially-paid ticket. */}
+                    {t.payment_status === "unpaid" && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -943,7 +954,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                         🔀 Merge
                       </button>
                     )}
-                    {!isPaid && (t.items?.length ?? 0) > 1 && (
+                    {t.payment_status === "unpaid" && (t.items?.length ?? 0) > 1 && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
