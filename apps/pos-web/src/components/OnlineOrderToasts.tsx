@@ -120,7 +120,7 @@ function ToastCard({
             marginTop: 6,
             fontVariantNumeric: "tabular-nums",
           }}>
-            MVR {order.total.toFixed(2)}
+            MVR {Number(order.total).toFixed(2)}
           </div>
         </button>
         <button

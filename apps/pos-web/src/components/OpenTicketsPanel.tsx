@@ -199,7 +199,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     setRowMsg(null);
     try {
       const res = await sendPayLink(t.id);
-      setRowMsg({ id: t.id, kind: "ok", text: `Pay link sent (MVR ${res.amount.toFixed(2)}) to ${res.sent_to}` });
+      setRowMsg({ id: t.id, kind: "ok", text: `Pay link sent (MVR ${Number(res.amount).toFixed(2)}) to ${res.sent_to}` });
     } catch (e) {
       setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't send pay link" });
     } finally {
@@ -425,7 +425,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       setRowMsg({
         id: sourceId,
         kind: "ok",
-        text: `Split into order #${res.split.id} (MVR ${res.split.total.toFixed(2)})`,
+        text: `Split into order #${res.split.id} (MVR ${Number(res.split.total).toFixed(2)})`,
       });
       // Force reload to pull both the slimmed source AND the new
       // sibling ticket. Optimistic patch is awkward here (we don't
@@ -946,7 +946,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                         busy={busy}
                         bg="#1D4ED8"
                         confirm
-                        confirmLabel={`Send MVR ${(t.total ?? 0).toFixed(2)} link?`}
+                        confirmLabel={`Send MVR ${Number(t.total ?? 0).toFixed(2)} link?`}
                       >
                         💳 Send pay link
                       </ActionButton>

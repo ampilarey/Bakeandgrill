@@ -20,7 +20,11 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const expected = summary?.cash_drawer.expected_cash ?? 0;
+  // Bug-053: every cash-drawer field comes back from Laravel as a
+  // decimal-cast STRING ("125.00"), not a number — the `?? 0`
+  // fallback only catches null/undefined and lets strings through,
+  // which then crash later in toFixed/arithmetic. Coerce on read.
+  const expected = Number(summary?.cash_drawer.expected_cash ?? 0);
   const closing = Number.parseFloat(closingCash);
   const variance = Number.isFinite(closing) ? closing - expected : null;
 
@@ -47,11 +51,11 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
   return (
     <Overlay>
       <Card title="Close shift" subtitle="Count the cash in the drawer and enter the total below.">
-        <Summary label="Opening cash" value={summary?.cash_drawer.opening_cash ?? 0} />
-        <Summary label="+ Cash sales" value={summary?.cash_drawer.cash_sales ?? 0} />
-        {(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={summary!.cash_drawer.paid_in} />}
-        {(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={summary!.cash_drawer.paid_out} negative />}
-        {(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={summary!.cash_drawer.cash_refunds} negative />}
+        <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
+        <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
+        {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
+        {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
+        {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
         <Summary label="Expected in drawer" value={expected} bold />
 
         <Field label="Counted cash">

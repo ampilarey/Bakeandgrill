@@ -109,7 +109,11 @@ export function CustomerRewardsPanel({
   if (!customer) return null;
 
   const lifetimeOrders = summary?.lifetime.orders_count ?? 0;
-  const lifetimeSpent = summary?.lifetime.total_spent ?? 0;
+  // Bug-053: backend returns total_spent as a Laravel decimal-cast
+  // string ("123.45"), not a number. The `?? 0` only catches null/
+  // undefined — without Number() the toFixed call below would crash
+  // the panel for any customer with a payment history.
+  const lifetimeSpent = Number(summary?.lifetime.total_spent ?? 0);
   const availablePoints = summary?.loyalty.available_points ?? 0;
   const tier = summary?.loyalty.tier ?? summary?.customer.tier ?? customer.tier ?? "bronze";
   const lastPaidAt = summary?.lifetime.last_paid_at;
@@ -394,7 +398,7 @@ export function CustomerRewardsPanel({
                       {o.type.replace("_", " ")}
                     </span>
                     <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-                      MVR {o.total.toFixed(2)}
+                      MVR {Number(o.total).toFixed(2)}
                     </span>
                   </div>
                 ))}

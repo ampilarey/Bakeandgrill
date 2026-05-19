@@ -148,7 +148,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Row({ label, value, bold, count }: { label: string; value: number; bold?: boolean; count?: boolean }) {
-  const fmt = count ? String(Math.round(value)) : `${value < 0 ? "−" : ""}MVR ${Math.abs(value).toFixed(2)}`;
+  // Bug-053: see ShiftPanel — Laravel returns strings for decimal casts.
+  const n = Number(value ?? 0);
+  const fmt = count ? String(Math.round(n)) : `${n < 0 ? "−" : ""}MVR ${Math.abs(n).toFixed(2)}`;
   return (
     <div style={{
       display: "flex", justifyContent: "space-between", padding: "4px 0",

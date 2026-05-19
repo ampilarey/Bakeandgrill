@@ -173,7 +173,10 @@ function Card({ title, children, full }: { title: string; children: React.ReactN
 }
 
 function Row({ label, value, bold, count }: { label: string; value: number; bold?: boolean; count?: boolean }) {
-  const fmt = count ? String(Math.round(value)) : `${value < 0 ? "−" : ""}MVR ${Math.abs(value).toFixed(2)}`;
+  // Bug-053: Laravel decimal-cast returns strings; coerce defensively so
+  // Math.round / Math.abs / toFixed don't crash on `"125.00"`.
+  const n = Number(value ?? 0);
+  const fmt = count ? String(Math.round(n)) : `${n < 0 ? "−" : ""}MVR ${Math.abs(n).toFixed(2)}`;
   return (
     <div style={{
       display: "flex", justifyContent: "space-between", padding: "4px 0",

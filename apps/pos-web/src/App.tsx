@@ -794,7 +794,7 @@ function App() {
               padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
               background: '#0F172A', color: '#fff',
             }}>
-              {shift.summary.sales_summary.order_count} orders · MVR {shift.summary.sales_summary.net_sales.toFixed(0)}
+              {shift.summary.sales_summary.order_count} orders · MVR {Number(shift.summary.sales_summary.net_sales ?? 0).toFixed(0)}
             </span>
           )}
 
@@ -1017,7 +1017,7 @@ function App() {
         items={drawerItems}
         active={pane}
         cashierName={cashierName}
-        shiftLabel={shift.current ? `Shift #${shift.current.id} · MVR ${(shift.summary?.cash_drawer.expected_cash ?? 0).toFixed(2)} in drawer` : 'No open shift'}
+        shiftLabel={shift.current ? `Shift #${shift.current.id} · MVR ${Number(shift.summary?.cash_drawer.expected_cash ?? 0).toFixed(2)} in drawer` : 'No open shift'}
         onSelect={(id) => {
           setDrawerOpen(false);
           if (id === "logout") return handleLogout();
