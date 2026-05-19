@@ -478,8 +478,8 @@ function App() {
     setShowCloseShift(false);
     setPane("sales");
   };
-  const handleSaveTicketSubmit = async (name: string, note?: string) => {
-    await order.handleSaveTicket(name, note);
+  const handleSaveTicketSubmit = async (name: string, note: string | undefined, fireToKitchen: boolean) => {
+    await order.handleSaveTicket(name, note, fireToKitchen);
     setShowSaveTicket(false);
     void refreshOpenTickets();
   };

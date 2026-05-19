@@ -426,8 +426,14 @@ class PaymentService
             if ($paidLaar >= $orderLaar && !in_array($order->status, ['paid', 'completed'], true)) {
                 // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
                 // POS orders already in the kitchen queue go straight to paid.
+                // Either way the financial state is fully paid — mirror it into
+                // `payment_status` so the POS "Send pay link" / UNPAID badge
+                // logic flips off the moment BML confirms.
                 $newStatus = $order->status === 'payment_pending' ? 'pending' : 'paid';
-                $this->orders->updateStatus($order->id, $newStatus, ['paid_at' => now()]);
+                $this->orders->updateStatus($order->id, $newStatus, [
+                    'paid_at' => now(),
+                    'payment_status' => 'paid',
+                ]);
 
                 DB::afterCommit(function () use ($order): void {
                     try {
@@ -564,7 +570,13 @@ class PaymentService
                 ? 'pending'
                 : ($locked->status === 'payment_pending' ? 'pending' : 'paid');
 
-            $this->orders->updateStatus($locked->id, $newStatus, ['paid_at' => now()]);
+            // Zero-balance order (covered by discounts / gift card / loyalty);
+            // mark fully paid in payment_status too so it stops showing UNPAID
+            // in Open Tickets the moment the cashier confirms.
+            $this->orders->updateStatus($locked->id, $newStatus, [
+                'paid_at' => now(),
+                'payment_status' => 'paid',
+            ]);
 
             $dispatchId = $locked->id;
             DB::afterCommit(function () use ($dispatchId): void {

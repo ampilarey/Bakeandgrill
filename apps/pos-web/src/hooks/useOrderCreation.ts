@@ -5,6 +5,7 @@ import {
   applyPromoToOrder,
   createOrder,
   createOrderPayments,
+  fireOrderToKitchen,
   getOrder,
   holdLoyaltyForOrder,
   holdOrder,
@@ -483,14 +484,52 @@ export function useOrderCreation(params: Params) {
    * Park the current cart as a named ticket. Supports multiple
    * simultaneous tickets (one per cashier device) so it's safe to
    * juggle dine-in + walk-in customers without overwriting holds.
+   *
+   * Two save modes (chosen by the cashier in SaveTicketModal):
+   *
+   *   fireToKitchen=false (default for Dine-in/Takeaway)
+   *     Order is created with print=false then immediately held.
+   *     Kitchen has no idea it exists. Used when the cashier is
+   *     parking the cart to add more items later or wait on the
+   *     customer to decide.
+   *
+   *   fireToKitchen=true (default for Pickup)
+   *     Order is created normally (print=true so kitchen chit fires)
+   *     and stays in `pending` — NOT held. Customer with a phone
+   *     number gets an "Order received" SMS. The ticket appears in
+   *     Open Tickets with an UNPAID badge until paid via either
+   *     the "Send pay link" button or the existing Charge flow.
    */
-  const handleSaveTicket = async (name: string, note?: string): Promise<void> => {
+  const handleSaveTicket = async (name: string, note?: string, fireToKitchen = false): Promise<void> => {
     if (!params.isOnline) throw new Error("Go online to save tickets.");
     if (params.cartItems.length === 0) throw new Error("Add items first.");
     if (params.orderType === "Dine-in" && !params.selectedTableId) {
       throw new Error("Select a table for dine-in orders.");
     }
 
+    if (fireToKitchen) {
+      // Pickup phone-call workflow uses a two-step path so all
+      // "fire" side effects (kitchen print + customer SMS + audit
+      // log) live in ONE backend endpoint instead of being split
+      // between OrderCreated listeners and the explicit fire
+      // endpoint:
+      //   1. Create order with print=false so OrderCreated fires
+      //      WITHOUT kitchen print or "Order received" SMS.
+      //   2. POST /orders/{id}/fire-to-kitchen — sets fired_at,
+      //      enqueues kitchen print, SMSes the customer.
+      // The status starts at pending (not held) because we want it
+      // visible to KDS once fired. Two HTTP calls but cleaner code.
+      const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
+      const response = await createOrder(payload);
+      await fireOrderToKitchen(response.order.id);
+      params.clearCart();
+      params.setSelectedItem(null);
+      setStatusMessage(`Ticket "${name}" fired to kitchen — unpaid.`);
+      setTimeout(() => setStatusMessage(""), 4000);
+      return;
+    }
+
+    // Classic save-for-later: create then hold so KDS never sees it.
     const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
     const response = await createOrder(payload);
     await holdOrder(response.order.id, { ticket_name: name, ticket_note: note });
@@ -513,6 +552,21 @@ export function useOrderCreation(params: Params) {
    * if they need to edit items.
    */
   const handleResumeTicket = async (orderId: number): Promise<void> => {
+    // Pre-flight: a phone-call pickup ticket can be paid online by
+    // the customer via BML pay link between when the cashier opened
+    // Open Tickets and when they tapped Resume. Detect that here and
+    // tell the cashier to print the receipt instead of trying to
+    // resume (which would fail with "paid orders can't be resumed").
+    // This is cheap (one extra GET) and prevents a confusing error.
+    const preflight = await getOrder(orderId);
+    if (preflight.order.payment_status === "paid" || preflight.order.status === "paid") {
+      setStatusMessage(
+        `Ticket #${orderId} was paid online — open it from Receipts to print.`,
+      );
+      setTimeout(() => setStatusMessage(""), 6000);
+      throw new Error("Already paid — see Receipts.");
+    }
+
     await resumeOrder(orderId);
     const response = await getOrder(orderId);
 

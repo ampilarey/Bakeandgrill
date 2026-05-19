@@ -183,6 +183,11 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::post('/orders/{id}/hold', [OrderController::class, 'hold'])->middleware('throttle:20,1');
     Route::post('/orders/{id}/resume', [OrderController::class, 'resume'])->middleware('throttle:20,1');
+    // Phone-call pickup workflow: send a held ticket to the kitchen
+    // without taking payment yet (POS "Save & Fire"), then later SMS
+    // the customer a BML Connect pay link for the remaining balance.
+    Route::post('/orders/{id}/fire-to-kitchen', [OrderController::class, 'fireToKitchen'])->middleware('throttle:20,1');
+    Route::post('/orders/{id}/send-pay-link', [OrderController::class, 'sendPayLink'])->middleware('throttle:10,1');
     Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])->middleware('throttle:20,1');
     Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])->middleware('throttle:10,1');
 

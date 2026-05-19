@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchReceipts, sendBill } from "../api";
+import { fetchReceipts, fireOrderToKitchen, sendBill, sendPayLink } from "../api";
 import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, type, z } from "../theme";
 
 export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
@@ -37,8 +37,11 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     let cancelled = false;
     void (async () => {
       try {
+        // Unified Open Tickets view: classic held tickets PLUS the
+        // new fired-but-unpaid tickets (phone-call pickup workflow).
+        // Both kinds need cashier attention before the day closes.
         const res = await fetchReceipts({
-          held_only: true,
+          open_only: true,
           device_identifier: deviceId,
           per_page: 50,
         });
@@ -51,6 +54,42 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
     })();
     return () => { cancelled = true; };
   }, [deviceId]);
+
+  // Update the local row after a side action so the cashier sees the
+  // new state (e.g. "fired" badge appearing, payment_status flipping)
+  // without a manual refresh.
+  const patchTicket = (id: number, patch: Partial<OpenTicket>) => {
+    setTickets((curr) =>
+      curr.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+    );
+  };
+
+  const handleFireToKitchen = async (t: OpenTicket) => {
+    setBusyId(t.id);
+    setRowMsg(null);
+    try {
+      await fireOrderToKitchen(t.id);
+      patchTicket(t.id, { status: "pending", fired_at: new Date().toISOString() });
+      setRowMsg({ id: t.id, kind: "ok", text: "Sent to kitchen." });
+    } catch (e) {
+      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't fire to kitchen" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleSendPayLink = async (t: OpenTicket) => {
+    setBusyId(t.id);
+    setRowMsg(null);
+    try {
+      const res = await sendPayLink(t.id);
+      setRowMsg({ id: t.id, kind: "ok", text: `Pay link sent (MVR ${res.amount.toFixed(2)}) to ${res.sent_to}` });
+    } catch (e) {
+      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't send pay link" });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   /**
    * Send Bill (SMS) for a parked ticket. Two paths:
@@ -120,20 +159,34 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   };
 
   return (
-    <PanelShell title="Open tickets" subtitle="Parked orders on this device" onClose={onClose}>
+    <PanelShell
+      title="Open tickets"
+      subtitle="Parked orders and unpaid phone-call tickets"
+      onClose={onClose}
+    >
       {loading && <p style={{ color: palette.panelMuted, fontSize: type.bodySm.fontSize }}>Loading…</p>}
       {err && <p style={{ color: palette.dangerDark, fontSize: type.bodySm.fontSize }}>{err}</p>}
       {!loading && tickets.length === 0 && (
         <EmptyState
           emoji="🎫"
           title="No open tickets"
-          body="Use Save Ticket from the cart to park an order here."
+          body="Parked tickets and unpaid phone-call orders will show up here."
         />
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
         {tickets.map((t) => {
           const busy = busyId === t.id;
           const msg = rowMsg?.id === t.id ? rowMsg : null;
+          // Two new ticket states beyond classic held:
+          //   isFired      — kitchen is cooking (fired_at is set). Shows
+          //                  the 🍳 badge so cashier doesn't double-fire.
+          //   isUnpaid     — payment_status is unpaid/partial. Combined
+          //                  with isFired this is the "phone-call pickup
+          //                  waiting for the customer to pay" state.
+          const isFired = !!t.fired_at;
+          const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
+          const isHeld = t.status === "held";
+          const hasPhone = !!t.customer?.phone;
           return (
             <div
               key={t.id}
@@ -149,8 +202,49 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: type.body.fontSize, color: palette.panelInk }}>
-                    {t.ticket_name || `Order ${t.order_number}`}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 700, fontSize: type.body.fontSize, color: palette.panelInk }}>
+                      {t.ticket_name || `Order ${t.order_number}`}
+                    </div>
+                    {isFired && (
+                      <span
+                        title="Sent to kitchen"
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: "#047857", background: "#ECFDF5",
+                          padding: "2px 6px", borderRadius: 4,
+                          border: "1px solid #A7F3D0",
+                        }}
+                      >
+                        🍳 COOKING
+                      </span>
+                    )}
+                    {isUnpaid && isFired && (
+                      <span
+                        title="Not paid yet"
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: "#B91C1C", background: "#FEF2F2",
+                          padding: "2px 6px", borderRadius: 4,
+                          border: "1px solid #FECACA",
+                        }}
+                      >
+                        UNPAID
+                      </span>
+                    )}
+                    {isHeld && (
+                      <span
+                        title="Parked — kitchen has not seen this yet"
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: "#475569", background: "#F1F5F9",
+                          padding: "2px 6px", borderRadius: 4,
+                          border: "1px solid #CBD5E1",
+                        }}
+                      >
+                        📋 PARKED
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: type.caption.fontSize, color: palette.panelMuted, marginTop: 2 }}>
                     {(t.items?.length ?? 0)} items
@@ -165,9 +259,51 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
               </div>
 
               <div style={{ display: "flex", gap: space.xs, flexWrap: "wrap" }}>
+                {/* Resume always present — cashier uses it to charge
+                    at the counter when the customer arrives, or to
+                    edit a parked ticket. */}
                 <button onClick={() => onResume(t)} disabled={busy} style={{ ...btnPrimary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
-                  ▶ Resume
+                  ▶ {isUnpaid && isFired ? "Charge" : "Resume"}
                 </button>
+
+                {/* Fire to kitchen — only meaningful for held tickets
+                    that haven't been sent yet. Hidden once cooking
+                    so cashier doesn't double-print the chit. */}
+                {isHeld && (
+                  <button
+                    onClick={() => handleFireToKitchen(t)}
+                    disabled={busy}
+                    style={{
+                      padding: `${space.s}px ${space.m}px`,
+                      minHeight: 36, fontSize: type.bodySm.fontSize,
+                      borderRadius: radius.m, fontWeight: 700,
+                      background: "#047857", color: "#fff",
+                      border: "none", cursor: busy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    🍳 {busy ? "…" : "Fire to kitchen"}
+                  </button>
+                )}
+
+                {/* Send pay link — only useful for unpaid tickets
+                    with a customer phone (BML link gets SMS'd to
+                    them). Hidden when paid or no phone attached. */}
+                {isUnpaid && hasPhone && (
+                  <button
+                    onClick={() => handleSendPayLink(t)}
+                    disabled={busy}
+                    style={{
+                      padding: `${space.s}px ${space.m}px`,
+                      minHeight: 36, fontSize: type.bodySm.fontSize,
+                      borderRadius: radius.m, fontWeight: 700,
+                      background: "#1D4ED8", color: "#fff",
+                      border: "none", cursor: busy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    💳 {busy ? "…" : "Send pay link"}
+                  </button>
+                )}
+
                 <button onClick={() => handleSendBill(t)} disabled={busy} style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
                   📱 {busy ? "…" : "Send Bill SMS"}
                 </button>

@@ -24,7 +24,19 @@ type Props = {
   /** Saved-name override — preserved from the existing single-arg
    *  callsite so we don't break the timestamp-fallback path. */
   defaultName?: string;
-  onConfirm: (name: string, note?: string) => Promise<void>;
+  /**
+   * Phone-call pickup workflow: when the cashier rings up a Pickup
+   * ticket and saves, ask whether to fire it to the kitchen NOW
+   * (most common — customer expects food cooking) or LATER (park,
+   * cashier will fire it manually from Open Tickets when ready).
+   *
+   * Defaults to "fire now" for Pickup tickets, "later" for Dine-in
+   * (cashier usually saves a Dine-in to come back to it with more
+   * items — firing immediately would print a half-complete chit).
+   *
+   * The cashier can override either default with the toggle.
+   */
+  onConfirm: (name: string, note: string | undefined, fireToKitchen: boolean) => Promise<void>;
   onCancel: () => void;
 };
 
@@ -84,11 +96,17 @@ export function SaveTicketModal({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
+  // Pickup tickets default to "Fire now" — the customer called and
+  // expects food cooking. Dine-in / Takeaway tickets default to
+  // "Later" — those are usually parked because the cashier is
+  // adding more items or waiting on something.
+  const [fireToKitchen, setFireToKitchen] = useState(orderType === "Pickup");
+
   const submit = async () => {
     const n = name.trim();
     if (!n) { setErr("Give the ticket a name so you can find it later."); return; }
     setBusy(true);
-    try { await onConfirm(n, note.trim() || undefined); }
+    try { await onConfirm(n, note.trim() || undefined, fireToKitchen); }
     catch (e) { setErr((e as Error).message || "Could not save ticket."); }
     finally { setBusy(false); }
   };
@@ -201,6 +219,60 @@ export function SaveTicketModal({
             }}
           />
         </Field>
+        {/* Fire-to-kitchen toggle — chip-style so the cashier can
+            see and tap the choice in one motion. Pickup tickets
+            default to "Fire now" (phone call → cooking ASAP); other
+            types default to "Later" (cashier is parking the cart
+            for editing). Cashier can override either way. */}
+        <Field label="Send to kitchen?">
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setFireToKitchen(true)}
+              aria-pressed={fireToKitchen}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: fireToKitchen ? "2px solid #047857" : "1px solid #CBD5E1",
+                background: fireToKitchen ? "#ECFDF5" : "#fff",
+                color: fireToKitchen ? "#047857" : "#475569",
+                fontWeight: fireToKitchen ? 700 : 600,
+                fontSize: 13,
+                cursor: "pointer",
+                lineHeight: 1.25,
+              }}
+            >
+              <div>🍳 Fire now</div>
+              <div style={{ fontSize: 11, fontWeight: 500, opacity: 0.85, marginTop: 2 }}>
+                Kitchen starts cooking
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFireToKitchen(false)}
+              aria-pressed={!fireToKitchen}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: !fireToKitchen ? "2px solid #475569" : "1px solid #CBD5E1",
+                background: !fireToKitchen ? "#F1F5F9" : "#fff",
+                color: !fireToKitchen ? "#1E293B" : "#475569",
+                fontWeight: !fireToKitchen ? 700 : 600,
+                fontSize: 13,
+                cursor: "pointer",
+                lineHeight: 1.25,
+              }}
+            >
+              <div>📋 Save for later</div>
+              <div style={{ fontSize: 11, fontWeight: 500, opacity: 0.85, marginTop: 2 }}>
+                Park in Open Tickets
+              </div>
+            </button>
+          </div>
+        </Field>
+
         {err && <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: "#FEE2E2", color: "#B91C1C", fontSize: 13 }}>{err}</div>}
         <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
           <button onClick={onCancel} disabled={busy} style={{
@@ -210,9 +282,9 @@ export function SaveTicketModal({
           }}>Cancel</button>
           <button onClick={submit} disabled={busy} style={{
             flex: 1, padding: "12px 18px", borderRadius: 10,
-            border: "none", background: "#D4813A", color: "#fff",
+            border: "none", background: fireToKitchen ? "#047857" : "#D4813A", color: "#fff",
             fontWeight: 700, fontSize: 14, cursor: "pointer",
-          }}>{busy ? "Saving…" : "Save ticket"}</button>
+          }}>{busy ? "Saving…" : fireToKitchen ? "Save & Fire" : "Save ticket"}</button>
         </div>
       </Card>
     </Overlay>

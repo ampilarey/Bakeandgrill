@@ -96,6 +96,35 @@ class OrderController extends Controller
             $query->where('status', 'held');
         }
 
+        // Phone-call pickup workflow: surface orders that are cooking
+        // but haven't been paid yet, so a manager can chase them. Returns
+        // any non-terminal order with payment_status != paid.
+        if ($request->filled('unpaid_only') && $request->boolean('unpaid_only')) {
+            $query->whereIn('payment_status', ['unpaid', 'partial'])
+                ->whereNotIn('status', ['cancelled', 'refunded', 'completed']);
+        }
+
+        // Unified Open Tickets feed for the POS — anything the cashier
+        // still has work to do on. Two buckets:
+        //   1. Classic held tickets (parked, kitchen never saw them).
+        //   2. Any non-terminal unpaid ticket (fired or not). Covers
+        //      fired-but-unpaid (phone-call pickup waiting on pay) AND
+        //      the edge case where the cashier hit Save & Fire but the
+        //      backend /fire-to-kitchen call failed half-way, leaving
+        //      a pending+unpaid orphan we'd otherwise hide.
+        // Excludes terminal states so refunded/cancelled tickets don't
+        // reappear forever, and excludes paid orders (those belong in
+        // Receipts, not Open Tickets).
+        if ($request->filled('open_only') && $request->boolean('open_only')) {
+            $query->where(function ($w) {
+                $w->where('status', 'held')
+                    ->orWhere(function ($w2) {
+                        $w2->whereIn('payment_status', ['unpaid', 'partial'])
+                            ->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'paid', 'payment_pending']);
+                    });
+            });
+        }
+
         // Receipt search: order number, ticket name, customer phone, customer name.
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
@@ -269,6 +298,223 @@ class OrderController extends Controller
         return response()->json(['order' => $order]);
     }
 
+    /**
+     * POST /api/orders/{id}/fire-to-kitchen
+     *
+     * Sends a held / pending ticket to the kitchen without taking
+     * payment. Powers the "Save & Fire" branch of the new POS Save
+     * modal: cashier rings up a phone-call pickup, picks "Fire to
+     * kitchen now", and the line cook starts cooking immediately while
+     * the customer pays via SMS pay link OR at pickup.
+     *
+     * Held → pending (state machine transition), sets `fired_at`,
+     * enqueues a kitchen print job, and — for Pickup orders with an
+     * attached customer phone — sends a friendly "Order received"
+     * SMS so the customer knows the kitchen has it.
+     *
+     * Idempotent: calling on an already-fired order is a no-op except
+     * the kitchen reprint, which is intentional (cashier can re-fire
+     * if the original chit was lost).
+     */
+    public function fireToKitchen(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $order = DB::transaction(function () use ($id, $request) {
+            $order = Order::with('customer')->lockForUpdate()->findOrFail($id);
+
+            // Held tickets walk the state machine back to pending so KDS
+            // can see them. Already-pending orders just get fired_at
+            // refreshed (cashier asked for a reprint).
+            $oldStatus = $order->status;
+            if ($order->status === 'held') {
+                app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'pending');
+                $order->update([
+                    'status' => 'pending',
+                    'held_at' => null,
+                    'fired_at' => $order->fired_at ?? now(),
+                ]);
+            } elseif (in_array($order->status, ['pending', 'in_progress'], true)) {
+                if (!$order->fired_at) {
+                    $order->update(['fired_at' => now()]);
+                }
+            } else {
+                abort(422, "Order is {$order->status} and cannot be fired to kitchen.");
+            }
+
+            app(AuditLogService::class)->log(
+                'order.fired_to_kitchen',
+                'Order',
+                $order->id,
+                ['status' => $oldStatus],
+                ['status' => $order->status, 'fired_at' => $order->fired_at],
+                [],
+                $request,
+            );
+
+            return $order->fresh(['customer', 'items.modifiers']);
+        });
+
+        // Kitchen print + customer "Order received" SMS run post-commit
+        // so a failed enqueue / SMS doesn't roll back the state change.
+        DB::afterCommit(function () use ($order, $request): void {
+            try {
+                app(\App\Services\PrintJobService::class)
+                    ->enqueueKitchen($order, reason: 'fire_to_kitchen');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('fireToKitchen: kitchen print enqueue failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // SMS the customer if this is a Pickup ticket with a phone.
+            // Dine-in / Takeaway customers are at the counter — no SMS.
+            // Pay link is intentionally NOT auto-included (cashier
+            // chooses via the separate "Send pay link" button).
+            if ($order->type !== 'online_pickup') {
+                return;
+            }
+            $phone = $order->customer?->phone;
+            if (!$phone) {
+                return;
+            }
+            try {
+                $orderNum = $order->order_number ?? "#{$order->id}";
+                $total = number_format((float) $order->total, 2);
+                app(SmsService::class)->send(new SmsMessage(
+                    to: $phone,
+                    message: "Bake & Grill: Order {$orderNum} received (MVR {$total}). "
+                        . "We'll text you when it's ready for pickup.",
+                    type: 'transactional',
+                    customerId: $order->customer_id,
+                    referenceType: 'order',
+                    referenceId: (string) $order->id,
+                    idempotencyKey: 'order:fired:received:' . $order->id,
+                ));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('fireToKitchen: SMS failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        });
+
+        return response()->json(['order' => $order]);
+    }
+
+    /**
+     * POST /api/orders/{id}/send-pay-link
+     *
+     * Mints a fresh BML Connect payment URL for the order's remaining
+     * balance and SMSes it to the customer. Powers the "Send pay link"
+     * button on the POS Open Tickets row.
+     *
+     * Always uses the live remaining balance so a partial cash payment
+     * at the counter shortens the link total — customer pays only the
+     * outstanding amount online.
+     *
+     * No-ops cleanly if:
+     *   - order is already paid (returns 422 — cashier sees "already paid")
+     *   - customer has no phone
+     *   - BML credentials missing (returns 503 — cashier falls back to
+     *     "pay at pickup")
+     */
+    public function sendPayLink(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $order = Order::with(['customer', 'payments'])->findOrFail($id);
+
+        if ($order->payment_status === 'paid' || $order->status === 'paid') {
+            return response()->json(['message' => 'Order is already fully paid.'], 422);
+        }
+
+        $phone = $order->customer?->phone;
+        if (!$phone) {
+            return response()->json(['message' => 'Attach a customer phone before sending a pay link.'], 422);
+        }
+
+        // Compute remaining balance — sum confirmed payments (cash/card
+        // taken at the counter already, BML half-payments, etc.) and
+        // subtract from order total. Use integer laari throughout to
+        // avoid float drift on the final BML amount.
+        $paidLaar = (int) $order->payments
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->reduce(
+                fn ($carry, $p) => $carry + ($p->amount_laar ?? (int) round((float) $p->amount * 100)),
+                0,
+            );
+        $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        $remainingLaar = max(0, $orderLaar - $paidLaar);
+
+        if ($remainingLaar === 0) {
+            return response()->json(['message' => 'Nothing left to charge.'], 422);
+        }
+
+        // Local id uniqueness — BML keys off this. Suffix with timestamp
+        // so re-sending a link after a previous expiry doesn't collide.
+        $localId = 'BG-PAYLINK-' . $order->id . '-' . now()->format('YmdHis');
+
+        try {
+            $session = app(\App\Domains\Payments\Gateway\BmlConnectService::class)
+                ->createPayment($remainingLaar, $localId);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('sendPayLink: BML createPayment failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => "Couldn't generate a pay link right now. Tell the customer to pay at pickup.",
+            ], 503);
+        }
+
+        try {
+            $orderNum = $order->order_number ?? "#{$order->id}";
+            $amount = number_format($remainingLaar / 100, 2);
+            app(SmsService::class)->send(new SmsMessage(
+                to: $phone,
+                message: "Bake & Grill: Pay MVR {$amount} for order {$orderNum} here: {$session['payment_url']}",
+                type: 'transactional',
+                customerId: $order->customer_id,
+                referenceType: 'order',
+                referenceId: (string) $order->id,
+                // Suffix with the local id so re-sending a link generates a
+                // new SMS each time (the customer needs the latest URL).
+                idempotencyKey: 'order:paylink:' . $order->id . ':' . $localId,
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('sendPayLink: SMS failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Pay link created but SMS failed. Read it to the customer manually.',
+                'payment_url' => $session['payment_url'],
+            ], 502);
+        }
+
+        app(AuditLogService::class)->log(
+            'order.paylink_sent',
+            'Order',
+            $order->id,
+            [],
+            ['payment_url' => $session['payment_url'], 'amount_laar' => $remainingLaar, 'sms_to' => $phone],
+            [],
+            $request,
+        );
+
+        return response()->json([
+            'message' => 'Pay link sent.',
+            'amount' => $remainingLaar / 100,
+            'sent_to' => $phone,
+        ]);
+    }
+
     public function addPayments(StoreOrderPaymentsRequest $request, int $id): JsonResponse
     {
         if (!$request->user()?->tokenCan('staff')) {
@@ -336,7 +582,17 @@ class OrderController extends Controller
             $paidTotal = round($paidTotalLaar / 100, 2);
 
             if ($paidTotalLaar >= $orderTotalLaar) {
-                $order->update(['status' => 'paid', 'paid_at' => now()]);
+                // Mirror the financial state into the dedicated `payment_status`
+                // column so Open Tickets can show an UNPAID badge without
+                // recomputing payments on every list render. The order's
+                // lifecycle `status` (pending → paid → completed) and
+                // financial state are now tracked independently — fully
+                // paid here regardless of whether the kitchen has started.
+                $order->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'payment_status' => 'paid',
+                ]);
 
                 app(AuditLogService::class)->log('order.paid', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'paid'], ['paid_total' => $paidTotal], $request);
 
@@ -344,7 +600,10 @@ class OrderController extends Controller
                     OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
                 });
             } else {
-                $order->update(['status' => 'partial']);
+                $order->update([
+                    'status' => 'partial',
+                    'payment_status' => 'partial',
+                ]);
 
                 app(AuditLogService::class)->log('order.partial', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'partial'], ['paid_total' => $paidTotal], $request);
             }

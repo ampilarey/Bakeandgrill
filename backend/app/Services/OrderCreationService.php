@@ -64,11 +64,28 @@ class OrderCreationService
             ? false
             : (!array_key_exists('print', $payload) || $payload['print'] === true);
 
-        return DB::transaction(function () use ($payload, $user, $device, $shiftId, $printKitchen, $initialStatus): Order {
+        // `fired_at` records when the kitchen actually saw the ticket.
+        // It is set whenever we're going to print to the kitchen at
+        // create time. Held tickets (created with print=false then
+        // immediately POST /orders/{id}/hold) leave it NULL — they
+        // get a `fired_at` only when a later /fire-to-kitchen call
+        // moves them out of held. This lets Open Tickets distinguish
+        // "parked, kitchen has no idea" from "cooking, awaiting payment".
+        $firedAt = $printKitchen ? now() : null;
+
+        return DB::transaction(function () use ($payload, $user, $device, $shiftId, $printKitchen, $initialStatus, $firedAt): Order {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'type' => $payload['type'],
                 'status' => $initialStatus,
+                // `payment_status` is computed by OrderController::addPayments
+                // whenever payments are applied. At create time everything
+                // starts as unpaid (the migration default also handles
+                // backfill); the only exception is a zero-total order
+                // (fully discount-covered or comp) which we leave as
+                // unpaid until addPayments runs — keeps one source of truth.
+                'payment_status' => 'unpaid',
+                'fired_at' => $firedAt,
                 'restaurant_table_id' => $payload['restaurant_table_id'] ?? null,
                 'customer_id' => $payload['customer_id'] ?? null,
                 'user_id' => $user?->id,

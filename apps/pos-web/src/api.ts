@@ -514,6 +514,12 @@ export async function getOrder(orderId: number): Promise<{
     type?: string;
     /** Same story for the table the ticket was rung against. */
     restaurant_table_id?: number | null;
+    /** Financial state — independent of `status`. Set to 'paid' the
+     *  moment payments cover the total (either via /payments or
+     *  via the BML webhook for an online pay-link redemption). The
+     *  resume flow checks this to detect "customer paid online
+     *  while ticket was open" and short-circuits Charge → Receipt. */
+    payment_status?: "unpaid" | "partial" | "paid" | null;
     /** Customer linked to the ticket when it was held, so the picker
      *  re-attaches them on resume and the bill SMS still goes to the
      *  right phone. Null/undefined for walk-in tickets. */
@@ -560,6 +566,37 @@ export async function resumeOrder(orderId: number): Promise<void> {
 }
 
 /**
+ * Phone-call pickup workflow: cashier picks "Save & Fire" in the
+ * Save modal → POS creates the order normally (kitchen prints
+ * because print:true is the default), but for held tickets the
+ * cashier later wants to fire we hit this endpoint instead of
+ * resume + charge. Transitions held → pending, fires kitchen
+ * print, sends "Order received" SMS to the customer.
+ *
+ * Idempotent — calling on an already-fired order just refreshes
+ * the kitchen print (cashier asked for a reprint).
+ */
+export async function fireOrderToKitchen(orderId: number): Promise<void> {
+  await request(`/orders/${orderId}/fire-to-kitchen`, { method: "POST" });
+}
+
+/**
+ * Send the customer a BML Connect pay link by SMS for the remaining
+ * balance on this order. Powers the "Send pay link" button on the
+ * Open Tickets row. The backend computes the outstanding amount
+ * (order total minus any cash/card already taken) so it works for
+ * split-tender scenarios too.
+ *
+ * Returns the amount that was charged on the link so the toast
+ * can confirm "Pay link sent for MVR X.XX to +9607...".
+ */
+export async function sendPayLink(
+  orderId: number,
+): Promise<{ message: string; amount: number; sent_to: string }> {
+  return request(`/orders/${orderId}/send-pay-link`, { method: "POST" });
+}
+
+/**
  * Receipts/orders list shaped for the POS — same backing endpoint as admin,
  * but with cashier-friendly filters (current shift, today, search).
  */
@@ -568,6 +605,10 @@ export async function fetchReceipts(params: {
   date?: string;
   current_shift?: boolean;
   held_only?: boolean;
+  /** New: unified Open Tickets feed — held OR fired-but-unpaid. */
+  open_only?: boolean;
+  /** New: surface anything cooking with a balance, manager view. */
+  unpaid_only?: boolean;
   device_identifier?: string;
   per_page?: number;
   status?: string;
@@ -577,6 +618,13 @@ export async function fetchReceipts(params: {
     order_number: string;
     type: string;
     status: string;
+    /** New: 'unpaid' | 'partial' | 'paid'. Independent of `status`,
+     *  set by addPayments / BML webhook. Lets Open Tickets show an
+     *  UNPAID badge without recomputing payments per row. */
+    payment_status?: "unpaid" | "partial" | "paid" | null;
+    /** New: timestamp the kitchen first saw the chit. NULL means
+     *  the ticket is still parked (Save Ticket without Fire). */
+    fired_at?: string | null;
     total: number;
     subtotal: number;
     discount_amount: number;

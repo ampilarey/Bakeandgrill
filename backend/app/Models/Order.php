@@ -22,6 +22,8 @@ class Order extends Model
         'offline_id',
         'type',
         'status',
+        'payment_status',
+        'fired_at',
         'restaurant_table_id',
         'customer_id',
         'user_id',
@@ -82,6 +84,7 @@ class Order extends Model
         'user_id' => 'integer',
         // Datetimes
         'held_at' => 'datetime',
+        'fired_at' => 'datetime',
         'paid_at' => 'datetime',
         'completed_at' => 'datetime',
         'delivery_eta_at' => 'datetime',
