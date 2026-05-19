@@ -76,9 +76,14 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  // No standalone clear: each chip group has its own [All] chip
-  // that resets that group. Search has its own toggle. This keeps
-  // every reset action discoverable next to what it resets.
+  // The global [All] chip lights up when every filter is at its
+  // default AND the search bar isn't filtering. Tapping [All]
+  // resets all of them in one go.
+  const allActive =
+    stageFilter === "all" &&
+    typeFilter === "all" &&
+    paymentFilter === "all" &&
+    search.trim() === "";
 
   // ── Merge / split state ────────────────────────────────────────
   // Two-tap-plus-confirm merge flow:
@@ -535,14 +540,14 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       )}
 
       {/* ── Filter bar ────────────────────────────────────────
-            Three chip groups (stage / type / payment), each a
-            radio-style single-select with its own [All] reset
-            chip. Cross-group composition is intentional — Stage,
-            Type and Payment are independent dimensions (cashier
-            can ask "show me UNPAID Dine-in tickets that are
-            still Cooking"). Within each group only one chip can
-            be highlighted at a time. No standalone Clear button
-            — each [All] resets its own group. */}
+            One global [All] chip up front + grouped action chips
+            for Stage / Type / Payment. Tap [All] to reset every
+            filter at once. Tap any other chip to filter on that
+            dimension; tap the same chip again to drop just that
+            filter. Multiple chips across groups can be active at
+            once (e.g. UNPAID + Dine-in + Cooking) — that's how
+            multi-dimension filters work and matches how every
+            POS app behaves. */}
       <div
         style={{
           marginBottom: space.m,
@@ -556,45 +561,60 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           flexWrap: "wrap",
         }}
       >
-        {/* Stage — primary workflow filter. Dark fill when active. */}
+        {/* Global All — single source of "show me everything". */}
         <FilterGroup
           activeColor="#0F172A"
           options={[
             { key: "all", label: "All", count: stageCounts.all },
+          ]}
+          selected={allActive ? "all" : ""}
+          onSelect={() => {
+            setStageFilter("all");
+            setTypeFilter("all");
+            setPaymentFilter("all");
+            setSearch("");
+            setSearchOpen(false);
+          }}
+        />
+
+        <Divider />
+
+        {/* Stage chips (no [All] — the global All resets it). */}
+        <FilterGroup
+          activeColor="#0F172A"
+          options={[
             { key: "cooking", label: "🍳 Cooking", count: stageCounts.cooking },
             { key: "ready", label: "✅ Ready", count: stageCounts.ready },
             { key: "parked", label: "📋 Parked", count: stageCounts.parked },
           ]}
           selected={stageFilter}
-          onSelect={(k) => setStageFilter(k as StageFilter)}
+          onSelect={(k) => setStageFilter(stageFilter === k ? "all" : (k as StageFilter))}
         />
 
         <Divider />
 
-        {/* Type — order channel. Blue when active. */}
+        {/* Type chips. Blue when active. */}
         <FilterGroup
           activeColor="#1D4ED8"
           options={[
-            { key: "all", label: "All", count: typeCounts.all },
             { key: "dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
             { key: "takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
             { key: "online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
           ]}
           selected={typeFilter}
-          onSelect={(k) => setTypeFilter(k as TypeFilter)}
+          onSelect={(k) => setTypeFilter(typeFilter === k ? "all" : (k as TypeFilter))}
         />
 
         <Divider />
 
-        {/* Payment — green for paid, red for unpaid, dark for All. */}
+        {/* Payment chips. Green for paid, red for unpaid. */}
         <FilterGroup
           options={[
-            { key: "all", label: "All", count: paymentCounts.all, activeColor: "#0F172A" },
             { key: "paid", label: "💳 Paid", count: paymentCounts.paid, activeColor: "#15803D" },
             { key: "unpaid", label: "UNPAID", count: paymentCounts.unpaid, activeColor: "#B91C1C" },
           ]}
           selected={paymentFilter}
-          onSelect={(k) => setPaymentFilter(k as PaymentFilter)}
+          onSelect={(k) => setPaymentFilter(paymentFilter === k ? "all" : (k as PaymentFilter))}
         />
 
         {/* Spacer — pushes the search toggle to the right edge on
