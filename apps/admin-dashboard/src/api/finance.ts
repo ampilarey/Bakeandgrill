@@ -321,11 +321,24 @@ export async function getZReport(): Promise<ZReport> {
 
 export interface InventoryValuation {
   total_value: number;
+  total_quantity: number;
   items: { id: number; name: string; unit: string; quantity: number; cost_per_unit: number; total_value: number }[];
 }
 
+// Backend (`ReportsService::inventoryValuation`) returns only the aggregate
+// totals (`value`, `quantity`) — it is intentionally cheap and runs the
+// aggregation in SQL. The admin UI previously assumed a per-item breakdown
+// existed and crashed on `.items.map(...)`. Normalize here so the page just
+// renders totals + an empty list until a future per-item breakdown ships.
 export async function getInventoryValuation(): Promise<InventoryValuation> {
-  return req('/reports/inventory-valuation');
+  const res = await req<{ value: number | string; quantity: number | string }>(
+    '/reports/inventory-valuation',
+  );
+  return {
+    total_value: Number(res.value ?? 0),
+    total_quantity: Number(res.quantity ?? 0),
+    items: [],
+  };
 }
 
 export interface TaxReport {
@@ -340,6 +353,32 @@ export async function getTaxReport(params: { from: string; to: string }): Promis
   return req(`/reports/finance/tax?${qs}`);
 }
 
+// ── AP/AR — backend returns a flat invoice list with a per-row supplier/
+// customer object. The admin UI was written against an older grouped
+// shape (`{ supplier_id, outstanding_amount, invoices: [...] }` per row).
+// Group client-side so the page renders without a backend rewrite.
+
+interface BackendAPItem {
+  id: number;
+  invoice_number: string;
+  total: number | string;
+  due_date: string | null;
+  days_overdue: number;
+  status: string;
+  supplier: { id: number; name: string; phone: string | null } | null;
+  purchase: { id: number; number: string } | null;
+}
+
+interface BackendARItem {
+  id: number;
+  invoice_number: string;
+  total: number | string;
+  due_date: string | null;
+  days_overdue: number;
+  status: string;
+  customer: { id: number; name: string; phone: string | null } | null;
+}
+
 export interface AccountsPayable {
   supplier_id: number;
   supplier_name: string;
@@ -347,8 +386,31 @@ export interface AccountsPayable {
   invoices: { id: number; invoice_number: string; amount: number; due_date: string | null }[];
 }
 
-export async function getAccountsPayable(): Promise<{ data: AccountsPayable[] }> {
-  return req('/reports/finance/accounts-payable');
+export async function getAccountsPayable(): Promise<{ data: AccountsPayable[]; total: number; overdue_count: number }> {
+  const res = await req<{
+    total_outstanding: number | string;
+    overdue_count: number;
+    items: BackendAPItem[];
+  }>('/reports/finance/accounts-payable');
+
+  const groups = new Map<string, AccountsPayable>();
+  for (const inv of res.items ?? []) {
+    const sid = inv.supplier?.id ?? 0;
+    const sname = inv.supplier?.name ?? 'Unknown supplier';
+    const key = `${sid}:${sname}`;
+    const amount = Number(inv.total ?? 0);
+    if (!groups.has(key)) {
+      groups.set(key, { supplier_id: sid, supplier_name: sname, outstanding_amount: 0, invoices: [] });
+    }
+    const g = groups.get(key)!;
+    g.outstanding_amount += amount;
+    g.invoices.push({ id: inv.id, invoice_number: inv.invoice_number, amount, due_date: inv.due_date });
+  }
+  return {
+    data: Array.from(groups.values()).sort((a, b) => b.outstanding_amount - a.outstanding_amount),
+    total: Number(res.total_outstanding ?? 0),
+    overdue_count: res.overdue_count ?? 0,
+  };
 }
 
 export interface AccountsReceivable {
@@ -358,8 +420,31 @@ export interface AccountsReceivable {
   invoices: { id: number; invoice_number: string; amount: number; due_date: string | null }[];
 }
 
-export async function getAccountsReceivable(): Promise<{ data: AccountsReceivable[] }> {
-  return req('/reports/finance/accounts-receivable');
+export async function getAccountsReceivable(): Promise<{ data: AccountsReceivable[]; total: number; overdue_count: number }> {
+  const res = await req<{
+    total_outstanding: number | string;
+    overdue_count: number;
+    items: BackendARItem[];
+  }>('/reports/finance/accounts-receivable');
+
+  const groups = new Map<string, AccountsReceivable>();
+  for (const inv of res.items ?? []) {
+    const cid = inv.customer?.id ?? null;
+    const cname = inv.customer?.name ?? null;
+    const key = `${cid ?? 'walkin'}:${cname ?? 'Walk-in / Unassigned'}`;
+    const amount = Number(inv.total ?? 0);
+    if (!groups.has(key)) {
+      groups.set(key, { customer_id: cid, customer_name: cname, outstanding_amount: 0, invoices: [] });
+    }
+    const g = groups.get(key)!;
+    g.outstanding_amount += amount;
+    g.invoices.push({ id: inv.id, invoice_number: inv.invoice_number, amount, due_date: inv.due_date });
+  }
+  return {
+    data: Array.from(groups.values()).sort((a, b) => b.outstanding_amount - a.outstanding_amount),
+    total: Number(res.total_outstanding ?? 0),
+    overdue_count: res.overdue_count ?? 0,
+  };
 }
 
 // ── Purchase Orders ───────────────────────────────────────────────────────────

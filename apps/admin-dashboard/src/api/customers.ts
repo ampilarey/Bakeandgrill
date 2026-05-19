@@ -142,30 +142,37 @@ export async function moderateReview(id: number, status: 'approved' | 'rejected'
 }
 
 // ── Referrals ─────────────────────────────────────────────────────────────────
+//
+// Backend (`ReferralController::adminIndex`) returns one row per
+// **referral code**, not per redemption event:
+//   { id, code, customer, uses_count, max_uses,
+//     referrer_reward_mvr, referee_discount_mvr, is_active }
+// The old admin page was modelled on "referral events" (a redemption per row)
+// which never matched reality. The type below now mirrors the backend shape
+// exactly and the page renders accordingly.
 
-export interface Referral {
+export interface ReferralCode {
   id: number;
-  referrer_id: number;
-  referred_id: number | null;
   code: string;
-  status: string;
-  reward_amount: number | null;
-  reward_issued_at: string | null;
-  created_at: string;
-  referrer?: { id: number; name: string; phone: string };
-  referred?: { id: number; name: string; phone: string } | null;
+  customer: { id: number; name: string } | null;
+  uses_count: number;
+  max_uses: number | null;
+  referrer_reward_mvr: number;
+  referee_discount_mvr: number;
+  is_active: boolean;
 }
 
 export async function fetchAdminReferrals(params?: {
-  page?: number; status?: string;
-}): Promise<{ data: Referral[]; meta: { current_page: number; last_page: number; total: number } }> {
+  page?: number;
+}): Promise<{ data: ReferralCode[]; meta: { current_page: number; last_page: number; total: number } }> {
   const qs = new URLSearchParams();
-  if (params?.page)   qs.set('page', String(params.page));
-  if (params?.status) qs.set('status', params.status);
+  if (params?.page) qs.set('page', String(params.page));
   return req(`/admin/referrals${qs.toString() ? '?' + qs : ''}`);
 }
 
-export async function validateReferralCode(code: string): Promise<{ valid: boolean; referrer?: { name: string; phone: string }; message?: string }> {
+export async function validateReferralCode(
+  code: string,
+): Promise<{ valid: boolean; referee_discount_mvr?: number; message?: string }> {
   return req('/referrals/validate', { method: 'POST', body: JSON.stringify({ code }) });
 }
 

@@ -112,7 +112,7 @@ export function ReportsPage() {
     } else if (tab === 'Tax' && taxReport) {
       downloadCSV('tax-report', (taxReport.by_rate ?? []).map(r => ({ 'Rate %': r.rate_pct, 'Net Sales': mvr(r.net_sales), 'Tax Amount': mvr(r.tax_amount) })));
     } else if (tab === 'Inventory' && inventory) {
-      downloadCSV('inventory-valuation', inventory.items.map(i => ({ Item: i.name, Unit: i.unit, Qty: i.quantity, 'Cost/Unit': mvr(i.cost_per_unit), 'Total Value': mvr(i.total_value) })));
+      downloadCSV('inventory-valuation', [{ 'Total Value (MVR)': inventory.total_value, 'Total Quantity': inventory.total_quantity }]);
     } else if (tab === 'Accounts Payable' && ap) {
       downloadCSV('accounts-payable', ap.map(s => ({ Supplier: s.supplier_name, 'Outstanding (MVR)': mvr(s.outstanding_amount), 'Open Invoices': s.invoices.length })));
     } else if (tab === 'Accounts Receivable' && ar) {
@@ -378,31 +378,16 @@ export function ReportsPage() {
       {/* ── Inventory Valuation ── */}
       {!loading && tab === 'Inventory' && inventory && (
         <>
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Inventory Value" value={mvr(inventory.total_value)} accent="#22c55e" />
+            <StatCard label="Total Units On Hand" value={inventory.total_quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} accent="#6B5D4F" />
           </div>
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Stock Valuation</p>
-            <table style={S.table}>
-              <thead><tr>
-                <th style={S.th}>Item</th>
-                <th style={S.th}>Unit</th>
-                <th style={S.th}>Qty</th>
-                <th style={S.th}>Cost/Unit</th>
-                <th style={S.th}>Total Value</th>
-              </tr></thead>
-              <tbody>
-                {inventory.items.map(item => (
-                  <tr key={item.id}>
-                    <td style={{ ...S.td, fontWeight: 500 }}>{item.name}</td>
-                    <td style={{ ...S.td, color: '#9C8E7E' }}>{item.unit}</td>
-                    <td style={S.td}>{item.quantity}</td>
-                    <td style={S.td}>{mvr(item.cost_per_unit)}</td>
-                    <td style={{ ...S.td, fontWeight: 600 }}>{mvr(item.total_value)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 8px' }}>How this is calculated</p>
+            <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>
+              Value is <code>SUM(current_stock × unit_cost)</code> across every inventory item.
+              For a per-item breakdown use <a href="/inventory" style={{ color: '#D4813A', fontWeight: 600 }}>Inventory</a>.
+            </p>
           </Card>
         </>
       )}

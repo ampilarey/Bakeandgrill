@@ -23,6 +23,10 @@ class StoreOrderRequest extends FormRequest
             'customer_id' => 'nullable|integer|exists:customers,id',
             'ticket_name' => 'nullable|string|max:80',
             'ticket_note' => 'nullable|string|max:255',
+            // Offline sync idempotency key (POS PWA generates a UUID per
+            // queued order). Persisted by OrderCreationService so a retry
+            // hits the duplicate check in OfflineSyncController.
+            'offline_id' => 'nullable|string|max:64',
             'notes' => 'nullable|string|max:1000',
             'customer_notes' => 'nullable|string|max:1000',
             'discount_amount' => 'nullable|numeric|min:0',

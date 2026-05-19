@@ -290,6 +290,20 @@ class OrderController extends Controller
                 abort(422, "Cannot add payments to a {$order->status} order.");
             }
 
+            // Held tickets must transition back to 'pending' before any
+            // payment is applied. Previously addPayments silently flipped a
+            // held order straight to 'paid', which bypassed the
+            // OrderStatusMachine and left `held_at` populated forever —
+            // KDS / Open Tickets filters then disagreed with Sales Reports
+            // about whether the ticket was still "parked". This walks the
+            // state machine first so the transition is auditable and
+            // `held_at` is cleared properly.
+            if ($order->status === 'held') {
+                $machine->assertTransitionAllowed($order, 'pending');
+                $order->update(['status' => 'pending', 'held_at' => null]);
+                $order->refresh();
+            }
+
             $oldStatus = $order->status;
 
             foreach ($validated['payments'] as $paymentPayload) {

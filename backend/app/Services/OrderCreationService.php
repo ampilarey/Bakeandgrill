@@ -76,6 +76,11 @@ class OrderCreationService
                 'shift_id' => $shiftId,
                 'ticket_name' => $payload['ticket_name'] ?? null,
                 'ticket_note' => $payload['ticket_note'] ?? null,
+                // Persist offline sync idempotency key (if supplied). Without
+                // this, OfflineSyncController's `where('offline_id', $id)`
+                // check never matched a previously-synced order so retries
+                // created duplicates.
+                'offline_id' => $payload['offline_id'] ?? null,
                 'subtotal' => 0,
                 'tax_amount' => 0,
                 'discount_amount' => 0,
@@ -129,11 +134,35 @@ class OrderCreationService
 
     public function addItemsToOrder(Order $order, array $items, bool $print = true): Order
     {
-        return DB::transaction(function () use ($order, $items): Order {
+        $updated = DB::transaction(function () use ($order, $items): Order {
             $this->addOrderItems($order, $items);
 
             return $this->calculator->recalculateAndPersist($order);
         });
+
+        // Online orders never print at the kitchen from this path (kitchen
+        // ticket fires from OrderPaid for online/delivery channels). For
+        // dine-in/takeaway, when the caller asked for kitchen printing
+        // (admin "Add Items to Table" defaults to true), enqueue a fresh
+        // kitchen ticket so the line cook sees the new lines. Without
+        // this hop, $print was accepted on every call but silently
+        // ignored — the new items appeared on the bill but never on the
+        // kitchen station.
+        if ($print && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
+            DB::afterCommit(function () use ($updated): void {
+                try {
+                    app(\App\Services\PrintJobService::class)
+                        ->enqueueKitchen($updated->fresh(['items.modifiers']), 'addItems');
+                } catch (\Throwable $e) {
+                    logger()->warning('addItemsToOrder: kitchen print enqueue failed', [
+                        'order_id' => $updated->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            });
+        }
+
+        return $updated;
     }
 
     public function recalculateTotals(Order $order): Order

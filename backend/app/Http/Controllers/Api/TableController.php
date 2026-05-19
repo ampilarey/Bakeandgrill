@@ -34,9 +34,41 @@ class TableController extends Controller
             $query->where('status', $request->query('status'));
         }
 
-        return response()->json([
-            'tables' => $query->orderBy('name')->get(),
-        ]);
+        $tables = $query->orderBy('name')->get();
+
+        // The admin "Merge" and "Split" flows both need to know which order
+        // is currently open on each table. Without this, admins were
+        // dropping into the split modal with no way to identify the
+        // target order and the merge UI couldn't surface "no active
+        // ticket" errors before sending the request. We resolve the
+        // active order id per-table in one cheap query so the response
+        // stays a single round-trip.
+        $tableIds = $tables->pluck('id')->all();
+        $activeOrderMap = [];
+        if (!empty($tableIds)) {
+            $activeOrderMap = Order::select('id', 'restaurant_table_id', 'order_number', 'total', 'status')
+                ->whereIn('restaurant_table_id', $tableIds)
+                ->whereIn('status', [
+                    'pending', 'in_progress', 'held', 'partial',
+                    'confirmed', 'preparing', 'ready',
+                ])
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('restaurant_table_id')
+                ->map(fn ($group) => $group->first());
+        }
+
+        $payload = $tables->map(function ($t) use ($activeOrderMap) {
+            $active = $activeOrderMap[$t->id] ?? null;
+
+            return array_merge($t->toArray(), [
+                'current_order_id' => $active?->id,
+                'current_order_number' => $active?->order_number,
+                'current_order_total' => $active ? (float) $active->total : null,
+            ]);
+        });
+
+        return response()->json(['tables' => $payload]);
     }
 
     public function store(StoreTableRequest $request)

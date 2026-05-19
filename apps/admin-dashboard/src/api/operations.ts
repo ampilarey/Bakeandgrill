@@ -159,6 +159,8 @@ export interface RestaurantTable {
   location: string | null;
   status: 'available' | 'occupied' | 'reserved' | 'closed';
   current_order_id: number | null;
+  current_order_number: string | null;
+  current_order_total: number | null;
   is_active: boolean;
 }
 
@@ -182,12 +184,51 @@ export async function closeTable(id: number): Promise<{ table: RestaurantTable }
   return req(`/tables/${id}/close`, { method: 'POST' });
 }
 
-export async function mergeTables(tableIds: number[]): Promise<{ table: RestaurantTable }> {
-  return req('/tables/merge', { method: 'POST', body: JSON.stringify({ table_ids: tableIds }) });
+/**
+ * Merge two tables. The backend (`MergeTablesRequest`) requires explicit
+ * `source_table_id` and `target_table_id` — the source's active ticket is
+ * moved onto the target. The earlier `table_ids` payload didn't match
+ * any validation rule and merge silently 422'd.
+ */
+export async function mergeTables(
+  sourceTableId: number,
+  targetTableId: number,
+): Promise<{ target_order: unknown; source_table: RestaurantTable; target_table: RestaurantTable }> {
+  return req('/tables/merge', {
+    method: 'POST',
+    body: JSON.stringify({ source_table_id: sourceTableId, target_table_id: targetTableId }),
+  });
 }
 
-export async function splitTable(id: number, into: number): Promise<{ tables: RestaurantTable[] }> {
-  return req(`/tables/${id}/split`, { method: 'POST', body: JSON.stringify({ into }) });
+/**
+ * Split a table's open ticket. Backend supports two modes via
+ * `SplitTableBillRequest`:
+ *   - by amount  → `{ order_id, amount }`
+ *   - by item    → `{ order_id, item_ids: [...] }`
+ * Both produce a sibling order on the same table that the cashier can
+ * settle independently. The "split into N tables" UI of the old client
+ * never existed on the backend.
+ */
+export async function splitTableByAmount(
+  tableId: number,
+  orderId: number,
+  amount: number,
+): Promise<{ order: unknown; split_order: { id: number; total: number } }> {
+  return req(`/tables/${tableId}/split`, {
+    method: 'POST',
+    body: JSON.stringify({ order_id: orderId, amount }),
+  });
+}
+
+export async function splitTableByItems(
+  tableId: number,
+  orderId: number,
+  itemIds: number[],
+): Promise<{ order: unknown; split_order: { id: number; total: number } }> {
+  return req(`/tables/${tableId}/split`, {
+    method: 'POST',
+    body: JSON.stringify({ order_id: orderId, item_ids: itemIds }),
+  });
 }
 
 // ── Shifts & Cash Drawer ──────────────────────────────────────────────────────

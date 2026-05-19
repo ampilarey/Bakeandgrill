@@ -4,7 +4,8 @@ import {
   PageHeader, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
 import {
-  fetchTables, createTable, updateTable, openTable, closeTable, mergeTables, splitTable,
+  fetchTables, createTable, updateTable, openTable, closeTable,
+  mergeTables, splitTableByAmount,
   type RestaurantTable,
 } from '../api';
 import { LayoutGrid, Map } from 'lucide-react';
@@ -78,7 +79,7 @@ export default function TablesPage() {
 
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [splitTableId, setSplitTableId]   = useState<number | null>(null);
-  const [splitInto, setSplitInto]         = useState('2');
+  const [splitAmount, setSplitAmount]     = useState('');
   const [splitting, setSplitting]         = useState(false);
   const [toast, setToast]                 = useState('');
   const [confirmMerge, setConfirmMerge]   = useState(false);
@@ -136,24 +137,53 @@ export default function TablesPage() {
     finally { setActionLoading(null); }
   };
 
+  // Merge is strictly Source → Target (the backend's MergeTablesRequest
+  // requires exactly those two ids). Selection order in the UI now
+  // matters: first selected = source (its open ticket moves), second =
+  // target. The merge banner shows that explicitly so cashiers don't
+  // accidentally swap them. The old "select N tables" flow sent
+  // `{ table_ids: [...] }` which the backend silently 422'd.
   const handleMerge = async () => {
-    if (selected.length < 2) { setError('Select at least 2 tables to merge.'); return; }
+    if (selected.length !== 2) { setError('Merge requires exactly two tables: source then target.'); return; }
+    const [sourceId, targetId] = selected;
+    const sourceTable = tables.find(t => t.id === sourceId);
+    if (!sourceTable?.current_order_id) {
+      setError('Source table has no open ticket to merge into the target.');
+      return;
+    }
     setConfirmMerge(false);
     setActionLoading(-1);
-    try { await mergeTables(selected); setSelected([]); showToast('Tables merged.'); void load(); }
-    catch (e) { setError((e as Error).message); }
+    try {
+      await mergeTables(sourceId, targetId);
+      setSelected([]);
+      showToast('Tables merged.');
+      void load();
+    } catch (e) { setError((e as Error).message); }
     finally { setActionLoading(null); }
   };
 
+  const splittingTable = tables.find(t => t.id === splitTableId) ?? null;
+
+  // Split is "carve off a sub-bill of MVR X" — the most common cashier
+  // flow ("table of 4 wants to pay 200 separately"). Backend supports
+  // splitting by line-items too (`item_ids`); that needs its own modal
+  // with the order's line list and is intentionally deferred.
   const handleSplit = async () => {
-    if (!splitTableId) return;
-    const into = parseInt(splitInto, 10);
-    if (isNaN(into) || into < 2) { setError('Must split into at least 2 tables.'); return; }
+    if (!splittingTable || !splittingTable.current_order_id) {
+      setError('No active ticket on this table to split.');
+      return;
+    }
+    const amount = parseFloat(splitAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setError('Enter the amount to split off (must be greater than 0).');
+      return;
+    }
     setSplitting(true);
     try {
-      await splitTable(splitTableId, into);
+      await splitTableByAmount(splittingTable.id, splittingTable.current_order_id, amount);
       setSplitTableId(null);
-      showToast(`Table split into ${into}.`);
+      setSplitAmount('');
+      showToast(`Split MVR ${amount.toFixed(2)} into a new ticket.`);
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setSplitting(false); }
@@ -218,26 +248,52 @@ export default function TablesPage() {
         <StatCard label="Occupied" value={String(occupied)} accent="#f59e0b" />
       </div>
 
-      {selected.length >= 2 && (
+      {selected.length > 0 && (
         <div style={{ background: '#FEF3E8', border: '1px solid #D4813A', borderRadius: 10, padding: '10px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 13, color: '#D4813A', fontWeight: 600 }}>{selected.length} tables selected</span>
-            <Btn small onClick={() => setConfirmMerge(true)} disabled={actionLoading === -1}>
-              {actionLoading === -1 ? 'Merging…' : 'Merge Selected'}
-            </Btn>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {selected.length === 1 && (
+              <span style={{ fontSize: 13, color: '#D4813A', fontWeight: 600 }}>
+                Source: <strong>T{tables.find(t => t.id === selected[0])?.name}</strong>
+                {' '}— select a target table to merge into
+              </span>
+            )}
+            {selected.length === 2 && (() => {
+              const src = tables.find(t => t.id === selected[0]);
+              const tgt = tables.find(t => t.id === selected[1]);
+              return (
+                <span style={{ fontSize: 13, color: '#D4813A', fontWeight: 600 }}>
+                  Move ticket from <strong>T{src?.name}</strong> → <strong>T{tgt?.name}</strong>
+                </span>
+              );
+            })()}
+            {selected.length > 2 && (
+              <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>
+                Merge supports exactly 2 tables — deselect {selected.length - 2}.
+              </span>
+            )}
+            {selected.length === 2 && (
+              <Btn small onClick={() => setConfirmMerge(true)} disabled={actionLoading === -1}>
+                {actionLoading === -1 ? 'Merging…' : 'Merge → Target'}
+              </Btn>
+            )}
             <Btn small variant="secondary" onClick={() => { setSelected([]); setConfirmMerge(false); }}>Clear</Btn>
           </div>
-          {confirmMerge && (
-            <div style={{ marginTop: 10, background: '#fff', border: '1.5px solid #ef4444', borderRadius: 8, padding: '10px 14px' }}>
-              <p style={{ fontSize: 13, color: '#dc2626', fontWeight: 600, marginBottom: 8 }}>
-                Merge {selected.length} tables? This cannot be undone mid-service.
-              </p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Btn small variant="danger" onClick={() => void handleMerge()}>Yes, Merge</Btn>
-                <Btn small variant="secondary" onClick={() => setConfirmMerge(false)}>Cancel</Btn>
+          {confirmMerge && selected.length === 2 && (() => {
+            const src = tables.find(t => t.id === selected[0]);
+            const tgt = tables.find(t => t.id === selected[1]);
+            return (
+              <div style={{ marginTop: 10, background: '#fff', border: '1.5px solid #ef4444', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontSize: 13, color: '#dc2626', fontWeight: 600, marginBottom: 8 }}>
+                  Move the open ticket from <strong>T{src?.name}</strong> to <strong>T{tgt?.name}</strong>?
+                  {tgt?.current_order_id ? ' Both tickets will be combined onto the target.' : ' The source table will be marked available.'}
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn small variant="danger" onClick={() => void handleMerge()}>Yes, Merge</Btn>
+                  <Btn small variant="secondary" onClick={() => setConfirmMerge(false)}>Cancel</Btn>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -264,8 +320,8 @@ export default function TablesPage() {
                 {t.status === 'occupied' && (
                   <Btn small variant="secondary" onClick={() => handleClose(t.id)} disabled={actionLoading === t.id}>Close</Btn>
                 )}
-                {t.status === 'occupied' && (
-                  <Btn small variant="secondary" onClick={() => { setSplitTableId(t.id); setSplitInto('2'); }}>Split</Btn>
+                {t.status === 'occupied' && t.current_order_id && (
+                  <Btn small variant="secondary" onClick={() => { setSplitTableId(t.id); setSplitAmount(''); }}>Split Bill</Btn>
                 )}
                 <Btn small variant="secondary" onClick={() => openModal(t)}>Edit</Btn>
               </div>
@@ -284,7 +340,7 @@ export default function TablesPage() {
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', textTransform: 'capitalize' }}>{status}</span>
               </div>
             ))}
-            <span style={{ fontSize: 12, color: '#9C8E7E', marginLeft: 'auto' }}>Click a table to select · Select 2+ to merge</span>
+            <span style={{ fontSize: 12, color: '#9C8E7E', marginLeft: 'auto' }}>Click source then target to merge</span>
           </div>
 
           {zones.map(([zone, zoneTables]) => (
@@ -391,26 +447,49 @@ export default function TablesPage() {
         </div>
       )}
 
-      {splitTableId && (
-        <Modal title="Split Table" onClose={() => setSplitTableId(null)} maxWidth={360}>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
-            Split this table into multiple smaller tables. The original table will be closed.
-          </p>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 6 }}>
-            Number of tables to split into *
-          </label>
-          <input
-            type="number" min="2" max="10"
-            value={splitInto}
-            onChange={(e) => setSplitInto(e.target.value)}
-            style={{ ...S.input, marginBottom: 4 }}
-          />
-          <ModalActions>
-            <Btn variant="secondary" onClick={() => setSplitTableId(null)}>Cancel</Btn>
-            <Btn onClick={() => void handleSplit()} disabled={splitting}>
-              {splitting ? 'Splitting…' : 'Split Table'}
-            </Btn>
-          </ModalActions>
+      {splitTableId && splittingTable && (
+        <Modal title={`Split Bill — T${splittingTable.name}`} onClose={() => { setSplitTableId(null); setSplitAmount(''); }} maxWidth={400}>
+          {!splittingTable.current_order_id ? (
+            <>
+              <p style={{ fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+                This table has no active ticket. Open the table from the POS first, then come back here to split the bill.
+              </p>
+              <ModalActions>
+                <Btn variant="secondary" onClick={() => setSplitTableId(null)}>Close</Btn>
+              </ModalActions>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 8 }}>
+                Carve off part of <strong>Order #{splittingTable.current_order_number}</strong> into a new ticket.
+              </p>
+              {splittingTable.current_order_total != null && (
+                <p style={{ fontSize: 12, color: '#9C8E7E', marginBottom: 16 }}>
+                  Current bill total: <strong>MVR {splittingTable.current_order_total.toFixed(2)}</strong>
+                </p>
+              )}
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 6 }}>
+                Amount to split off (MVR) *
+              </label>
+              <input
+                type="number" min="0.01" step="0.01"
+                placeholder="e.g. 250.00"
+                value={splitAmount}
+                onChange={(e) => setSplitAmount(e.target.value)}
+                style={{ ...S.input, marginBottom: 4 }}
+                autoFocus
+              />
+              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '6px 0 0' }}>
+                A new ticket is created on the same table with this amount. The cashier can settle the two tickets independently.
+              </p>
+              <ModalActions>
+                <Btn variant="secondary" onClick={() => { setSplitTableId(null); setSplitAmount(''); }}>Cancel</Btn>
+                <Btn onClick={() => void handleSplit()} disabled={splitting || !splitAmount}>
+                  {splitting ? 'Splitting…' : 'Split Bill'}
+                </Btn>
+              </ModalActions>
+            </>
+          )}
         </Modal>
       )}
 

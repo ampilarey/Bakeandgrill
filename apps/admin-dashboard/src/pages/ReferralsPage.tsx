@@ -4,39 +4,43 @@ import {
   PageHeader, TableCard, Badge, Btn, Modal, ModalActions,
   Pagination, EmptyState, Spinner, ErrorMsg,
 } from '../components/SharedUI';
-import { fetchAdminReferrals, validateReferralCode, type Referral } from '../api';
+import { fetchAdminReferrals, validateReferralCode, type ReferralCode } from '../api';
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'orange', completed: 'green', expired: 'gray', cancelled: 'red',
-};
+// Page now matches what the backend actually returns:
+// rows are referral *codes* (one per customer), not redemption events.
+// Each row shows owner, total uses, cap, referrer reward + referee discount,
+// and the active toggle. Validate-Code modal calls the public endpoint
+// which now returns `referee_discount_mvr` (not a referrer profile).
+
+const mvr = (n: number | null | undefined) =>
+  n == null ? '—' : `MVR ${Number(n).toFixed(2)}`;
 
 export default function ReferralsPage() {
   usePageTitle('Referrals');
-  const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState('');
-  const [page, setPage]           = useState(1);
-  const [lastPage, setLastPage]   = useState(1);
-  const [total, setTotal]         = useState(0);
-  const [statusFilter, setStatus] = useState('');
+  const [codes, setCodes]       = useState<ReferralCode[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const [page, setPage]         = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal]       = useState(0);
 
   const [checkCode, setCheckCode]     = useState('');
   const [checking, setChecking]       = useState(false);
-  const [checkResult, setCheckResult] = useState<{ valid: boolean; referrer?: { name: string; phone: string }; message?: string } | null>(null);
+  const [checkResult, setCheckResult] = useState<{ valid: boolean; referee_discount_mvr?: number; message?: string } | null>(null);
   const [showCheck, setShowCheck]     = useState(false);
 
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchAdminReferrals({ page, status: statusFilter || undefined });
-      setReferrals(res.data ?? []);
+      const res = await fetchAdminReferrals({ page });
+      setCodes(res.data ?? []);
       setLastPage(res.meta?.last_page ?? 1);
       setTotal(res.meta?.total ?? 0);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [page, statusFilter]);
+  useEffect(() => { void load(); }, [page]);
 
   const handleCheck = async () => {
     if (!checkCode.trim()) return;
@@ -49,71 +53,50 @@ export default function ReferralsPage() {
     } finally { setChecking(false); }
   };
 
-  const selectStyle = {
-    height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10,
-    fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', cursor: 'pointer',
-  };
+  const totalUses = codes.reduce((s, c) => s + c.uses_count, 0);
 
   return (
     <>
       <PageHeader
-        title="Referral Program"
-        subtitle={`${total} referral${total !== 1 ? 's' : ''} total`}
+        title="Referral Codes"
+        subtitle={`${total} code${total !== 1 ? 's' : ''} · ${totalUses} total use${totalUses !== 1 ? 's' : ''} on this page`}
         action={<Btn onClick={() => setShowCheck(true)}>Validate Code</Btn>}
       />
       {error && <ErrorMsg message={error} />}
-
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        <select value={statusFilter} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={selectStyle}>
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="completed">Completed</option>
-          <option value="expired">Expired</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
 
       {loading ? <Spinner /> : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Code', 'Referrer', 'Referred', 'Status', 'Reward', 'Date'].map((h) => (
+                {['Code', 'Owner', 'Uses', 'Referrer Reward', 'Referee Discount', 'Status'].map((h) => (
                   <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #E8E0D8', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {referrals.length === 0 ? (
-                <tr><td colSpan={6}><EmptyState>No referrals yet</EmptyState></td></tr>
-              ) : referrals.map((r) => (
-                <tr key={r.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+              {codes.length === 0 ? (
+                <tr><td colSpan={6}><EmptyState>No referral codes generated yet</EmptyState></td></tr>
+              ) : codes.map((c) => (
+                <tr key={c.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
                   <td style={{ padding: '12px 16px' }}>
                     <code style={{ fontSize: 12, background: '#F8F6F3', padding: '2px 8px', borderRadius: 6, fontWeight: 700, letterSpacing: '0.05em' }}>
-                      {r.code}
+                      {c.code}
                     </code>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1C1408' }}>{r.referrer?.name ?? '—'}</div>
-                    {r.referrer?.phone && <div style={{ fontSize: 11, color: '#9C8E7E' }}>{r.referrer.phone}</div>}
+                    {c.customer ? (
+                      <div style={{ fontWeight: 600, fontSize: 13, color: '#1C1408' }}>{c.customer.name}</div>
+                    ) : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>}
                   </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#1C1408' }}>
+                    <strong>{c.uses_count}</strong>
+                    {c.max_uses ? <span style={{ color: '#9C8E7E' }}> / {c.max_uses}</span> : null}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>{mvr(c.referrer_reward_mvr)}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#16a34a' }}>{mvr(c.referee_discount_mvr)}</td>
                   <td style={{ padding: '12px 16px' }}>
-                    {r.referred ? (
-                      <>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#1C1408' }}>{r.referred.name}</div>
-                        <div style={{ fontSize: 11, color: '#9C8E7E' }}>{r.referred.phone}</div>
-                      </>
-                    ) : <span style={{ color: '#9C8E7E', fontSize: 12 }}>Not yet used</span>}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}><Badge color={STATUS_COLOR[r.status] ?? 'gray'}>{r.status}</Badge></td>
-                  <td style={{ padding: '12px 16px' }}>
-                    {r.reward_amount != null
-                      ? <span style={{ fontWeight: 600, color: '#D4813A' }}>MVR {parseFloat(String(r.reward_amount)).toFixed(2)}</span>
-                      : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#9C8E7E' }}>
-                    {new Date(r.created_at).toLocaleDateString()}
+                    <Badge color={c.is_active ? 'green' : 'gray'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
                   </td>
                 </tr>
               ))}
@@ -150,9 +133,9 @@ export default function ReferralsPage() {
               <p style={{ fontWeight: 700, color: checkResult.valid ? '#15803d' : '#dc2626', margin: '0 0 4px', fontSize: 14 }}>
                 {checkResult.valid ? '✓ Valid Code' : '✗ Invalid Code'}
               </p>
-              {checkResult.valid && checkResult.referrer && (
+              {checkResult.valid && checkResult.referee_discount_mvr != null && (
                 <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>
-                  Referrer: <strong>{checkResult.referrer.name}</strong> ({checkResult.referrer.phone})
+                  Friend gets <strong>{mvr(checkResult.referee_discount_mvr)}</strong> off their first order.
                 </p>
               )}
               {checkResult.message && (
