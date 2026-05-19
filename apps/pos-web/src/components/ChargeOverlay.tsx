@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CashInput } from "./CashInput";
+import { z } from "../theme";
 
 export type ChargeMethod = "cash" | "card" | "digital_wallet";
 
@@ -199,7 +200,7 @@ export function ChargeOverlay({
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 900,
+      position: "fixed", inset: 0, zIndex: z.overlay,
       background: "rgba(15,23,42,0.65)",
       display: "flex", alignItems: "stretch", justifyContent: "stretch",
     }}>

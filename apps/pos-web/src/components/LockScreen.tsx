@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { z as zScale } from "../theme";
+
+const Z_LOCK = zScale.lock;
 
 type Props = {
   cashierName?: string;
@@ -70,6 +73,14 @@ export function LockScreen({ cashierName, onUnlock, onSwitchUser }: Props) {
 
   return (
     <div style={{
+      // Bug-031: when isLocked the App.tsx early-return is what
+      // really covers the UI. But pin LockScreen to position:
+      // fixed at z.lock (highest in the system) so even if it
+      // ever lands as a sibling instead of replacing the tree,
+      // it still wins over ChargeOverlay, modals, drawers,
+      // toasts, etc. Defence in depth against a future refactor
+      // that breaks the early-return.
+      position: "fixed", inset: 0, zIndex: Z_LOCK,
       minHeight: "100vh", background: "#0F172A",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: 16,

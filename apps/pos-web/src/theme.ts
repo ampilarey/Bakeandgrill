@@ -134,7 +134,17 @@ export const z = {
   modalBackdrop: 50,
   modal: 51,
   toast: 80,
-  lock: 90,
+  // Charge / payment overlays sit above normal modals so a payment
+  // in flight is never visually overlapped by a side drawer or
+  // toast. Keep ChargeOverlay and the Refund-confirm modal here.
+  overlay: 900,
+  // Inactivity / manual lock-screen — must sit above EVERYTHING
+  // else. We render it via an early-return in App.tsx today so
+  // the z-index is belt-and-suspenders, but the spec is "if it
+  // ever gets rendered as a sibling, the cashier's UI is fully
+  // covered". 10000 leaves head-room for browser devtools and
+  // any vendor SDK overlays.
+  lock: 10000,
 } as const;
 
 // ── Breakpoints ────────────────────────────────────────────────────────
