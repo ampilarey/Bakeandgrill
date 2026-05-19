@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import type { CartItem, RestaurantTable } from "../types";
 import type { PaymentRow } from "../hooks/useCart";
 import { makeCartKey } from "../hooks/useCart";
@@ -236,147 +237,17 @@ export function OrderCart(p: Props) {
             <div style={{ fontSize: 12, marginTop: 4 }}>Tap items on the right to add</div>
           </div>
         ) : (
-          p.cartItems.map((item) => {
-            const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes);
-            const lineTotal =
-              (Number(item.price ?? 0) +
-                item.modifiers.reduce((s, m) => s + Number(m.price ?? 0), 0)) *
-              item.quantity;
-            const notes = item.notes ?? [];
-            return (
-              <div
-                key={itemKey}
-                style={{
-                  padding: '10px 14px',
-                  borderBottom: `1px solid ${C.border}`,
-                  display: 'flex', flexDirection: 'column', gap: 6,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{item.name}</div>
-                    {item.variant_name && (
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{item.variant_name}</div>
-                    )}
-                    {item.modifiers.length > 0 && (
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                        + {item.modifiers.map((m) => m.name).join(", ")}
-                      </div>
-                    )}
-                    {notes.length > 0 && (
-                      <div style={{
-                        fontSize: 11, color: C.primaryDark, marginTop: 4,
-                        display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center',
-                      }}>
-                        <span aria-hidden style={{ fontSize: 10 }}>📝</span>
-                        {notes.map((n) => (
-                          <span
-                            key={n}
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: 999,
-                              background: '#FEF3E8',
-                              border: '1px solid #FBD9B8',
-                              fontWeight: 700,
-                            }}
-                          >
-                            {n}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: C.text, whiteSpace: 'nowrap' }}>
-                    MVR {lineTotal.toFixed(2)}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <button
-                      aria-label="Decrease quantity"
-                      disabled={isResumed}
-                      title={isResumed ? 'Cancel resume to edit items' : undefined}
-                      onClick={() =>
-                        p.setCartItems(
-                          p.cartItems
-                            .map((ci) =>
-                              makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
-                                ? { ...ci, quantity: ci.quantity - 1 }
-                                : ci,
-                            )
-                            .filter((ci) => ci.quantity > 0),
-                        )
-                      }
-                      style={{
-                        width: 32, height: 32, borderRadius: 8,
-                        background: C.bg, border: `1px solid ${C.border}`,
-                        fontSize: 18, lineHeight: 1, color: C.text,
-                        cursor: isResumed ? 'not-allowed' : 'pointer',
-                        opacity: isResumed ? 0.4 : 1,
-                      }}
-                    >−</button>
-                    <span style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: 700, color: C.text }}>
-                      {item.quantity}
-                    </span>
-                    <button
-                      aria-label="Increase quantity"
-                      disabled={isResumed}
-                      title={isResumed ? 'Cancel resume to edit items' : undefined}
-                      onClick={() =>
-                        p.setCartItems(
-                          p.cartItems.map((ci) =>
-                            makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
-                              ? { ...ci, quantity: ci.quantity + 1 }
-                              : ci,
-                          ),
-                        )
-                      }
-                      style={{
-                        width: 32, height: 32, borderRadius: 8,
-                        background: C.bg, border: `1px solid ${C.border}`,
-                        fontSize: 18, lineHeight: 1, color: C.text,
-                        cursor: isResumed ? 'not-allowed' : 'pointer',
-                        opacity: isResumed ? 0.4 : 1,
-                      }}
-                    >+</button>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {/* Note button — opens a chip-only picker so the
-                        cashier can attach kitchen instructions ("No
-                        salt", etc.) without typing. Disabled in
-                        resumed mode for the same reason qty +/− is. */}
-                    {p.quickNotes.length > 0 && (
-                      <button
-                        type="button"
-                        aria-label={notes.length > 0 ? `Edit notes (${notes.length})` : 'Add a note'}
-                        disabled={isResumed}
-                        title={isResumed ? 'Cancel resume to edit items' : 'Add kitchen note'}
-                        onClick={() => p.onOpenNotePicker?.(itemKey)}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          padding: '4px 10px',
-                          borderRadius: 999,
-                          border: `1px solid ${notes.length > 0 ? '#FBD9B8' : C.border2}`,
-                          background: notes.length > 0 ? '#FEF3E8' : '#FFFFFF',
-                          color: notes.length > 0 ? C.primaryDark : C.muted,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          cursor: isResumed ? 'not-allowed' : 'pointer',
-                          opacity: isResumed ? 0.4 : 1,
-                        }}
-                      >
-                        📝 {notes.length > 0 ? `${notes.length} note${notes.length > 1 ? 's' : ''}` : 'Note'}
-                      </button>
-                    )}
-                    <div style={{ fontSize: 11, color: C.subtle }}>
-                      @ MVR {Number(item.price ?? 0).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          p.cartItems.map((item) => (
+            <CartLine
+              key={makeCartKey(item.id, item.modifiers, item.variant_id, item.notes)}
+              item={item}
+              cartItems={p.cartItems}
+              setCartItems={p.setCartItems}
+              quickNotes={p.quickNotes}
+              onOpenNotePicker={p.onOpenNotePicker}
+              isResumed={isResumed}
+            />
+          ))
         )}
       </div>
 
@@ -553,6 +424,292 @@ export function OrderCart(p: Props) {
       </div>
     </aside>
   );
+}
+
+/**
+ * Single line in the cart list. Lives as its own component so the
+ * row can manage its own swipe-to-delete state without forcing the
+ * whole cart to re-render on every touchmove.
+ *
+ * Layout (tight 2-row): title row carries the item name + variant +
+ * modifiers + notes inline alongside the line total, with a 1-tap
+ * × delete button on the far right. The control row holds qty −/+
+ * and the optional 📝 Note chip. Compared to the old layout this
+ * saves ~24px of vertical space per item, which adds up to one or
+ * two extra visible items in the cart on a 9.7" iPad.
+ */
+function CartLine({
+  item,
+  cartItems,
+  setCartItems,
+  quickNotes,
+  onOpenNotePicker,
+  isResumed,
+}: {
+  item: CartItem;
+  cartItems: CartItem[];
+  setCartItems: (items: CartItem[]) => void;
+  quickNotes: string[];
+  onOpenNotePicker?: (cartKey: string) => void;
+  isResumed: boolean;
+}) {
+  const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes);
+  const unitPrice = Number(item.price ?? 0) +
+    item.modifiers.reduce((s, m) => s + Number(m.price ?? 0), 0);
+  const lineTotal = unitPrice * item.quantity;
+  const notes = item.notes ?? [];
+
+  // Swipe-to-delete state. Tracks the horizontal drag offset; positive
+  // = swiped left (Mail.app pattern). We only act on big swipes so
+  // accidental brushes during a +/− tap don't accidentally delete.
+  const [drag, setDrag] = useState(0);
+  const startXRef = useRef<number | null>(null);
+  const SWIPE_REVEAL = 80;       // px to reveal the delete affordance
+  const SWIPE_COMMIT = 140;      // px to auto-commit on release
+  const isDragging = drag > 0;
+
+  const removeLine = () => {
+    setCartItems(
+      cartItems.filter(
+        (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) !== itemKey,
+      ),
+    );
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (isResumed) return;
+    startXRef.current = e.touches[0].clientX;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (isResumed || startXRef.current == null) return;
+    const dx = startXRef.current - e.touches[0].clientX;
+    // Only follow leftward swipes — rightward gestures are reserved
+    // for the iOS back-swipe at the screen edge.
+    setDrag(Math.max(0, Math.min(dx, 200)));
+  };
+  const onTouchEnd = () => {
+    if (isResumed) return;
+    if (drag >= SWIPE_COMMIT) {
+      removeLine();
+    } else if (drag >= SWIPE_REVEAL) {
+      // Snap to the revealed position so the cashier sees the delete
+      // hint and can tap to confirm rather than committing on a
+      // half-swipe. A second swipe-left or tapping the red strip
+      // commits.
+      setDrag(SWIPE_REVEAL);
+    } else {
+      setDrag(0);
+    }
+    startXRef.current = null;
+  };
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        borderBottom: `1px solid ${C.border}`,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Red "Delete" backdrop revealed by a left swipe. Hit target
+          is the full strip so a confirming tap is forgiving. */}
+      {isDragging && (
+        <button
+          onClick={removeLine}
+          aria-label="Delete item"
+          style={{
+            position: 'absolute', top: 0, bottom: 0, right: 0,
+            width: SWIPE_REVEAL,
+            background: '#EF4444', color: '#FFFFFF',
+            border: 'none', fontSize: 12, fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          Delete
+        </button>
+      )}
+
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          padding: '8px 12px',
+          display: 'flex', flexDirection: 'column', gap: 4,
+          background: C.panel,
+          transform: `translateX(-${drag}px)`,
+          transition: startXRef.current == null ? 'transform 0.15s ease' : 'none',
+        }}
+      >
+        {/* Title row: name (+ inline variant) on the left, line total
+            and × delete on the right. The × is always visible so
+            cashiers without iPad swipe instincts can still nuke a
+            line in one tap regardless of quantity. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: C.text, lineHeight: 1.25 }}>
+            <span style={{ fontWeight: 600 }}>{item.name}</span>
+            {item.variant_name && (
+              <span style={{ color: C.muted, fontWeight: 500 }}> · {item.variant_name}</span>
+            )}
+          </div>
+          <div style={{
+            fontSize: 14, fontWeight: 700, color: C.text,
+            whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+          }}>
+            MVR {lineTotal.toFixed(2)}
+          </div>
+          <button
+            type="button"
+            aria-label={`Remove ${item.name}`}
+            disabled={isResumed}
+            title={isResumed ? 'Cancel resume to edit items' : 'Remove item'}
+            onClick={removeLine}
+            style={{
+              width: 28, height: 28, borderRadius: 999,
+              background: 'transparent', border: 'none',
+              color: C.subtle, fontSize: 16, lineHeight: 1,
+              cursor: isResumed ? 'not-allowed' : 'pointer',
+              opacity: isResumed ? 0.3 : 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => { if (!isResumed) e.currentTarget.style.color = '#EF4444'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = C.subtle; }}
+          >×</button>
+        </div>
+
+        {/* Modifiers + notes — inline, one tight line each, only
+            when present. Keeps the row compact for the common case
+            (no mods, no notes) while still surfacing the detail
+            when it matters. */}
+        {(item.modifiers.length > 0 || notes.length > 0) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {item.modifiers.length > 0 && (
+              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.3 }}>
+                + {item.modifiers.map((m) => m.name).join(', ')}
+              </div>
+            )}
+            {notes.length > 0 && (
+              <div style={{
+                fontSize: 11, color: C.primaryDark, lineHeight: 1.3,
+                display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center',
+              }}>
+                <span aria-hidden style={{ fontSize: 10 }}>📝</span>
+                {notes.map((n) => (
+                  <span
+                    key={n}
+                    style={{
+                      padding: '1px 6px',
+                      borderRadius: 999,
+                      background: '#FEF3E8',
+                      border: '1px solid #FBD9B8',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {n}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Control row: qty stepper on the left, optional Note chip
+            on the right, with the unit price tucked between them as
+            small caption text so the cashier can audit per-unit
+            without losing the line total above. */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button
+              aria-label="Decrease quantity"
+              disabled={isResumed}
+              title={isResumed ? 'Cancel resume to edit items' : undefined}
+              onClick={() =>
+                setCartItems(
+                  cartItems
+                    .map((ci) =>
+                      makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
+                        ? { ...ci, quantity: ci.quantity - 1 }
+                        : ci,
+                    )
+                    .filter((ci) => ci.quantity > 0),
+                )
+              }
+              style={qtyBtnStyle(isResumed)}
+            >−</button>
+            <span style={{
+              minWidth: 24, textAlign: 'center',
+              fontSize: 13, fontWeight: 700, color: C.text,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {item.quantity}
+            </span>
+            <button
+              aria-label="Increase quantity"
+              disabled={isResumed}
+              title={isResumed ? 'Cancel resume to edit items' : undefined}
+              onClick={() =>
+                setCartItems(
+                  cartItems.map((ci) =>
+                    makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
+                      ? { ...ci, quantity: ci.quantity + 1 }
+                      : ci,
+                  ),
+                )
+              }
+              style={qtyBtnStyle(isResumed)}
+            >+</button>
+            {item.quantity > 1 && (
+              <span style={{
+                marginLeft: 6, fontSize: 10, color: C.subtle,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                @ {unitPrice.toFixed(2)}
+              </span>
+            )}
+          </div>
+
+          {quickNotes.length > 0 && (
+            <button
+              type="button"
+              aria-label={notes.length > 0 ? `Edit notes (${notes.length})` : 'Add a note'}
+              disabled={isResumed}
+              title={isResumed ? 'Cancel resume to edit items' : 'Add kitchen note'}
+              onClick={() => onOpenNotePicker?.(itemKey)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '3px 8px', borderRadius: 999,
+                border: `1px solid ${notes.length > 0 ? '#FBD9B8' : C.border2}`,
+                background: notes.length > 0 ? '#FEF3E8' : '#FFFFFF',
+                color: notes.length > 0 ? C.primaryDark : C.muted,
+                fontSize: 10, fontWeight: 700,
+                cursor: isResumed ? 'not-allowed' : 'pointer',
+                opacity: isResumed ? 0.4 : 1,
+              }}
+            >
+              📝 {notes.length > 0 ? notes.length : 'Note'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function qtyBtnStyle(isResumed: boolean): React.CSSProperties {
+  return {
+    width: 28, height: 28, borderRadius: 6,
+    background: C.bg, border: `1px solid ${C.border}`,
+    fontSize: 16, lineHeight: 1, color: C.text,
+    cursor: isResumed ? 'not-allowed' : 'pointer',
+    opacity: isResumed ? 0.4 : 1,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 0,
+  };
 }
 
 function Row({ label, value, accent }: { label: string; value: string; accent?: string }) {

@@ -578,11 +578,17 @@ function ConfigurePanel({
     [item],
   );
 
-  // Pre-select the default variant the same way `useCart` would, so the
-  // cashier just has to tap "Add to ticket" if they're happy with the
-  // default. They can still pick a different size before adding.
+  // When modifiers exist alongside variants we pre-select the default
+  // variant so the cashier can flip through modifier chips and then
+  // tap the bottom Add button to commit. In the one-tap-add case
+  // (variants but NO modifiers) we deliberately leave the choice
+  // empty — the first variant tap IS the add, and pre-selecting one
+  // confuses cashiers ("Large is highlighted but the cart didn't
+  // update?").
+  const oneTapMode = item.has_variants && mods.length === 0;
   const [chosenVariantId, setChosenVariantId] = useState<number | null>(() => {
     if (!item.has_variants) return null;
+    if (oneTapMode) return null;
     const def = variants[0];
     return def?.id ?? null;
   });
@@ -591,10 +597,14 @@ function ConfigurePanel({
 
   // Headline price reflects the currently-chosen variant (or base price
   // when there are no variants). Keeps the modal honest about what will
-  // hit the receipt.
+  // hit the receipt. In one-tap mode with nothing yet chosen we show
+  // "from X" using the cheapest variant so the cashier sees the price
+  // range up-front.
   const headlinePrice = chosenVariant
     ? Number(chosenVariant.price)
-    : effectiveItemPrice(item);
+    : oneTapMode && variants.length > 0
+      ? Math.min(...variants.map((v) => Number(v.price)))
+      : effectiveItemPrice(item);
 
   const needsVariant = item.has_variants && variants.length > 0 && chosenVariantId == null;
   const canAdd = !needsVariant;
@@ -626,7 +636,7 @@ function ConfigurePanel({
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
-              MVR {headlinePrice.toFixed(2)}
+              {oneTapMode && !chosenVariant ? 'from ' : ''}MVR {headlinePrice.toFixed(2)}
               {chosenVariant && (
                 <span style={{ marginLeft: 8, opacity: 0.85 }}>· {chosenVariant.name}</span>
               )}
@@ -771,36 +781,59 @@ function ConfigurePanel({
         </div>
 
         <div style={{ padding: 16, borderTop: `1px solid ${C.border}`, display: 'flex', gap: 8 }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1, padding: '12px 16px', borderRadius: 10,
-              background: '#FFFFFF', border: `1px solid ${C.border2}`,
-              fontSize: 14, fontWeight: 700, color: C.muted, cursor: 'pointer',
-              minHeight: 48,
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onAdd(chosenVariant)}
-            disabled={!canAdd}
-            title={needsVariant ? 'Pick a size/option to continue' : undefined}
-            style={{
-              flex: 2, padding: '12px 16px', borderRadius: 10,
-              background: canAdd ? '#10B981' : '#A7F3D0',
-              border: 'none',
-              fontSize: 14, fontWeight: 700, color: '#FFFFFF',
-              cursor: canAdd ? 'pointer' : 'not-allowed',
-              minHeight: 48,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}
-          >
-            <span>Add to ticket</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-              MVR {headlinePrice.toFixed(2)}
-            </span>
-          </button>
+          {/* In one-tap variant mode (no modifiers) tapping a size IS
+              the add — a second "Add to ticket" button next to it
+              was confusing cashiers ("why is this here?") and risked
+              double-adding if they tapped it after a variant. We
+              collapse the footer to a full-width Cancel so the only
+              way to commit is the variant tap, which makes the flow
+              unambiguous. */}
+          {oneTapMode ? (
+            <button
+              onClick={onClose}
+              style={{
+                flex: 1, padding: '12px 16px', borderRadius: 10,
+                background: '#FFFFFF', border: `1px solid ${C.border2}`,
+                fontSize: 14, fontWeight: 700, color: C.muted, cursor: 'pointer',
+                minHeight: 48,
+              }}
+            >
+              Cancel
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                style={{
+                  flex: 1, padding: '12px 16px', borderRadius: 10,
+                  background: '#FFFFFF', border: `1px solid ${C.border2}`,
+                  fontSize: 14, fontWeight: 700, color: C.muted, cursor: 'pointer',
+                  minHeight: 48,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onAdd(chosenVariant)}
+                disabled={!canAdd}
+                title={needsVariant ? 'Pick a size/option to continue' : undefined}
+                style={{
+                  flex: 2, padding: '12px 16px', borderRadius: 10,
+                  background: canAdd ? '#10B981' : '#A7F3D0',
+                  border: 'none',
+                  fontSize: 14, fontWeight: 700, color: '#FFFFFF',
+                  cursor: canAdd ? 'pointer' : 'not-allowed',
+                  minHeight: 48,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}
+              >
+                <span>Add to ticket</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  MVR {headlinePrice.toFixed(2)}
+                </span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
