@@ -573,9 +573,11 @@ function MarketingTab({ ops }: { ops: OpsState }) {
       )}
 
       {confirming && ops.promoEstimate && (
-        <ConfirmDialog
-          title={`Send to ${ops.promoEstimate.recipient_count} recipients?`}
-          body={`Cost: ${mvr(ops.promoEstimate.total_cost_mvr)}. This cannot be undone.`}
+        <SmsBlastConfirmDialog
+          recipients={ops.promoEstimate.recipient_count}
+          costMvr={ops.promoEstimate.total_cost_mvr}
+          segments={ops.promoEstimate.segments}
+          message={ops.promoMessage}
           onConfirm={() => { ops.handleSendPromotion(); setConfirming(false); }}
           onCancel={() => setConfirming(false)}
         />
@@ -683,28 +685,120 @@ function Empty({ emoji, title, body }: { emoji: string; title: string; body: str
   );
 }
 
-function ConfirmDialog({ title, body, onConfirm, onCancel }: {
-  title: string; body: string;
-  onConfirm: () => void; onCancel: () => void;
+/**
+ * Bug-019: dedicated SMS-blast confirm dialog with a message
+ * preview, full cost/recipient breakdown, and (for big blasts)
+ * type-to-confirm so a stray tap can't accidentally fire off a
+ * 500-recipient promotion. The plain ConfirmDialog wasn't enough
+ * because cashiers couldn't see the actual message they were
+ * about to send and the cost callout was buried in body text.
+ */
+function SmsBlastConfirmDialog({
+  recipients,
+  costMvr,
+  segments,
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  recipients: number;
+  costMvr: number;
+  segments: number;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
 }) {
+  // Big-blast threshold: 100 recipients OR MVR 50 cost. Either
+  // is a "no take-backs" level of money / customer reach, so we
+  // force a typed acknowledgement before the Send button enables.
+  const requiresTypeToConfirm = recipients >= 100 || costMvr >= 50;
+  const [typed, setTyped] = useState("");
+  const isReady = !requiresTypeToConfirm || typed.trim().toUpperCase() === "SEND";
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 800,
-      background: "rgba(15,23,42,0.55)",
+      background: "rgba(15,23,42,0.6)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
     }}>
-      <div style={{ background: "#fff", borderRadius: 14, padding: 22, width: "100%", maxWidth: 380 }}>
-        <h3 style={{ margin: 0, fontSize: 16, color: C.text }}>{title}</h3>
-        <p style={{ margin: "6px 0 16px", fontSize: 13, color: C.muted }}>{body}</p>
+      <div style={{ background: "#fff", borderRadius: 14, padding: 22, width: "100%", maxWidth: 480, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 18, color: C.text }}>
+            📣 Send SMS blast?
+          </h3>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: C.muted }}>
+            Once you tap Send the messages start queueing immediately. This cannot be undone.
+          </p>
+        </div>
+
+        <div style={{
+          background: "#F8FAFC", border: `1px solid ${C.border}`, borderRadius: 10,
+          padding: "10px 12px", fontSize: 13, color: C.text,
+          display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10,
+        }}>
+          <Cell label="Recipients" value={recipients.toLocaleString()} />
+          <Cell label="Segments / msg" value={String(segments)} />
+          <Cell label="Total cost" value={mvr(costMvr)} accent />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+            Message preview
+          </div>
+          <div style={{
+            background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8,
+            padding: "10px 12px", fontSize: 13, color: "#78350F",
+            whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 140, overflowY: "auto",
+          }}>
+            {message || <em style={{ color: "#A8A29E" }}>(empty)</em>}
+          </div>
+        </div>
+
+        {requiresTypeToConfirm && (
+          <div>
+            <div style={{ fontSize: 12, color: "#B45309", fontWeight: 700, marginBottom: 6 }}>
+              ⚠️ Large blast — type SEND to confirm
+            </div>
+            <input
+              autoFocus
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              placeholder='Type "SEND" here'
+              style={{
+                width: "100%", padding: "10px 12px", borderRadius: 8,
+                border: `1px solid ${isReady ? "#15803D" : "#CBD5E1"}`,
+                fontSize: 14, color: C.text, boxSizing: "border-box",
+                outline: "none",
+              }}
+            />
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <SecondaryBtn onClick={onCancel}>Cancel</SecondaryBtn>
-          <button onClick={onConfirm} style={{
-            padding: "10px 18px", borderRadius: 8, border: "none",
-            background: C.accent, color: "#fff",
-            fontWeight: 700, fontSize: 13, cursor: "pointer",
-          }}>Send now</button>
+          <button
+            onClick={onConfirm}
+            disabled={!isReady}
+            style={{
+              padding: "10px 18px", borderRadius: 8, border: "none",
+              background: isReady ? C.accent : "#F1B98C",
+              color: "#fff", fontWeight: 800, fontSize: 13,
+              cursor: isReady ? "pointer" : "not-allowed",
+            }}
+          >
+            Send {recipients.toLocaleString()} SMS
+          </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Cell({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 800, color: accent ? C.accent : C.text }}>{value}</span>
     </div>
   );
 }

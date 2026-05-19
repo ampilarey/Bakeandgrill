@@ -71,6 +71,32 @@ class SmsPromotionController extends Controller
             return response()->json(['message' => 'Too many recipients. Refine filters.'], 422);
         }
 
+        // Bug-019: daily SMS-blast safety net. Counts every recipient
+        // queued or sent in the last 24 hours, including by other
+        // staff members, and refuses if adding this campaign would
+        // push the rolling 24-hour total above 5,000 recipients.
+        // Catches double-fired blasts and prevents a single mis-
+        // taped 8,000-recipient promotion from blowing the SMS
+        // budget for the day. Override the limit (or raise it) by
+        // adding `services.dhiraagu.daily_recipient_cap` to config.
+        $dailyCap = (int) config('services.dhiraagu.daily_recipient_cap', 5000);
+        if ($dailyCap > 0) {
+            $sentInLast24h = (int) SmsPromotion::where('created_at', '>=', now()->subDay())
+                ->whereIn('status', ['queued', 'sending', 'sent', 'completed'])
+                ->sum('recipient_count');
+
+            if ($sentInLast24h + $recipientCount > $dailyCap) {
+                return response()->json([
+                    'message' => sprintf(
+                        'Daily SMS cap reached. Sent %s in the last 24h, this campaign adds %s, cap is %s. Try again later or split the campaign.',
+                        number_format($sentInLast24h),
+                        number_format($recipientCount),
+                        number_format($dailyCap),
+                    ),
+                ], 429);
+            }
+        }
+
         $promotion = DB::transaction(function () use ($validated, $filters, $recipientsQuery) {
             $promotion = SmsPromotion::create([
                 'user_id' => request()->user()?->id,
