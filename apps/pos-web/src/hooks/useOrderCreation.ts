@@ -439,7 +439,18 @@ export function useOrderCreation(params: Params) {
       }
       return settled;
     } catch (err: unknown) {
-      if (orderCreated) return false;
+      if (orderCreated) {
+        // Bug-014: createOrder succeeded but settle / rewards failed.
+        // The order now exists on the server as an unpaid open
+        // ticket (visible in OpenTicketsPanel with its own Send
+        // Bill / Send Pay Link / Charge actions). Drop the local
+        // `lastCreatedOrderId` so a stale "Send Bill for #X"
+        // button doesn't haunt the OrderCart for the next ticket
+        // the cashier rings up — they should drive the orphan
+        // from the Open Tickets pane instead.
+        setLastCreatedOrderId(null);
+        return false;
+      }
       const message = (err as Error)?.message ?? "";
       const isApiError = err instanceof ApiRequestError;
       const status = isApiError ? err.status : undefined;
