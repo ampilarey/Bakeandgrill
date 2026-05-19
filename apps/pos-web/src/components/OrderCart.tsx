@@ -225,7 +225,7 @@ export function OrderCart(p: Props) {
       </div>
 
       {/* ── Cart lines ───────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '2px 0' }}>
         {p.cartItems.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -505,6 +505,7 @@ function CartLine({
 
   return (
     <div
+      className="pos-cart-line"
       style={{
         position: 'relative',
         borderBottom: `1px solid ${C.border}`,
@@ -535,95 +536,27 @@ function CartLine({
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         style={{
-          padding: '8px 12px',
-          display: 'flex', flexDirection: 'column', gap: 4,
+          padding: '6px 10px',
+          display: 'flex', flexDirection: 'column', gap: 2,
           background: C.panel,
           transform: `translateX(-${drag}px)`,
           transition: startXRef.current == null ? 'transform 0.15s ease' : 'none',
         }}
       >
-        {/* Title row: name (+ inline variant) on the left, line total
-            and × delete on the right. The × is always visible so
-            cashiers without iPad swipe instincts can still nuke a
-            line in one tap regardless of quantity. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: C.text, lineHeight: 1.25 }}>
-            <span style={{ fontWeight: 600 }}>{item.name}</span>
-            {item.variant_name && (
-              <span style={{ color: C.muted, fontWeight: 500 }}> · {item.variant_name}</span>
-            )}
-          </div>
-          <div style={{
-            fontSize: 14, fontWeight: 700, color: C.text,
-            whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
-          }}>
-            MVR {lineTotal.toFixed(2)}
-          </div>
-          <button
-            type="button"
-            aria-label={`Remove ${item.name}`}
-            disabled={isResumed}
-            title={isResumed ? 'Cancel resume to edit items' : 'Remove item'}
-            onClick={removeLine}
-            style={{
-              width: 28, height: 28, borderRadius: 999,
-              background: 'transparent', border: 'none',
-              color: C.subtle, fontSize: 16, lineHeight: 1,
-              cursor: isResumed ? 'not-allowed' : 'pointer',
-              opacity: isResumed ? 0.3 : 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}
-            onMouseEnter={(e) => { if (!isResumed) e.currentTarget.style.color = '#EF4444'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = C.subtle; }}
-          >×</button>
-        </div>
-
-        {/* Modifiers + notes — inline, one tight line each, only
-            when present. Keeps the row compact for the common case
-            (no mods, no notes) while still surfacing the detail
-            when it matters. */}
-        {(item.modifiers.length > 0 || notes.length > 0) && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {item.modifiers.length > 0 && (
-              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.3 }}>
-                + {item.modifiers.map((m) => m.name).join(', ')}
-              </div>
-            )}
-            {notes.length > 0 && (
-              <div style={{
-                fontSize: 11, color: C.primaryDark, lineHeight: 1.3,
-                display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center',
-              }}>
-                <span aria-hidden style={{ fontSize: 10 }}>📝</span>
-                {notes.map((n) => (
-                  <span
-                    key={n}
-                    style={{
-                      padding: '1px 6px',
-                      borderRadius: 999,
-                      background: '#FEF3E8',
-                      border: '1px solid #FBD9B8',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {n}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Control row: qty stepper on the left, optional Note chip
-            on the right, with the unit price tucked between them as
-            small caption text so the cashier can audit per-unit
-            without losing the line total above. */}
+        {/* Single-row layout: qty stepper · name+variant · price ·
+            note chip · × delete. Everything the cashier needs on one
+            ~38px row so 8–10 items are visible on a 9.7" iPad without
+            scrolling. Modifiers and notes wrap onto a secondary tight
+            line below only when they exist. */}
         <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', gap: 8,
+          display: 'flex', alignItems: 'center', gap: 6,
+          minHeight: 32,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* Qty stepper — left side, compact 26×26 buttons. */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 2,
+            flexShrink: 0,
+          }}>
             <button
               aria-label="Decrease quantity"
               disabled={isResumed}
@@ -642,7 +575,7 @@ function CartLine({
               style={qtyBtnStyle(isResumed)}
             >−</button>
             <span style={{
-              minWidth: 24, textAlign: 'center',
+              minWidth: 18, textAlign: 'center',
               fontSize: 13, fontWeight: 700, color: C.text,
               fontVariantNumeric: 'tabular-nums',
             }}>
@@ -663,16 +596,35 @@ function CartLine({
               }
               style={qtyBtnStyle(isResumed)}
             >+</button>
-            {item.quantity > 1 && (
-              <span style={{
-                marginLeft: 6, fontSize: 10, color: C.subtle,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                @ {unitPrice.toFixed(2)}
-              </span>
+          </div>
+
+          {/* Name + variant — flex:1 with ellipsis so long names don't
+              push the price off-screen on narrow tablet portrait. */}
+          <div style={{
+            flex: 1, minWidth: 0, fontSize: 13, color: C.text,
+            lineHeight: 1.2,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            <span style={{ fontWeight: 600 }}>{item.name}</span>
+            {item.variant_name && (
+              <span style={{ color: C.muted, fontWeight: 500 }}> · {item.variant_name}</span>
             )}
           </div>
 
+          {/* Line total — right-aligned, tabular figures so columns
+              line up vertically even at different quantities. */}
+          <div style={{
+            fontSize: 13, fontWeight: 700, color: C.text,
+            whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0,
+          }}>
+            {lineTotal.toFixed(2)}
+          </div>
+
+          {/* Note chip — tiny icon-only when no notes attached, becomes
+              a coloured pill with the count when notes exist. Hidden
+              entirely when the owner hasn't curated any quick-note
+              chips so the row stays even tighter for the common case. */}
           {quickNotes.length > 0 && (
             <button
               type="button"
@@ -681,20 +633,94 @@ function CartLine({
               title={isResumed ? 'Cancel resume to edit items' : 'Add kitchen note'}
               onClick={() => onOpenNotePicker?.(itemKey)}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 3,
-                padding: '3px 8px', borderRadius: 999,
-                border: `1px solid ${notes.length > 0 ? '#FBD9B8' : C.border2}`,
-                background: notes.length > 0 ? '#FEF3E8' : '#FFFFFF',
-                color: notes.length > 0 ? C.primaryDark : C.muted,
-                fontSize: 10, fontWeight: 700,
+                width: 26, height: 26, borderRadius: 999,
+                border: `1px solid ${notes.length > 0 ? '#FBD9B8' : 'transparent'}`,
+                background: notes.length > 0 ? '#FEF3E8' : 'transparent',
+                color: notes.length > 0 ? C.primaryDark : C.subtle,
+                fontSize: 12,
                 cursor: isResumed ? 'not-allowed' : 'pointer',
                 opacity: isResumed ? 0.4 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                position: 'relative',
               }}
             >
-              📝 {notes.length > 0 ? notes.length : 'Note'}
+              📝
+              {notes.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  background: C.primary, color: '#fff',
+                  fontSize: 9, fontWeight: 800,
+                  width: 14, height: 14, borderRadius: 999,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1.5px solid #fff',
+                }}>
+                  {notes.length}
+                </span>
+              )}
             </button>
           )}
+
+          {/* × delete — last item in the row, ghost button so it
+              doesn't compete visually with the qty stepper but is
+              still a one-tap escape for the whole line. */}
+          <button
+            type="button"
+            aria-label={`Remove ${item.name}`}
+            disabled={isResumed}
+            title={isResumed ? 'Cancel resume to edit items' : 'Remove item'}
+            onClick={removeLine}
+            style={{
+              width: 26, height: 26, borderRadius: 999,
+              background: 'transparent', border: 'none',
+              color: C.subtle, fontSize: 16, lineHeight: 1,
+              cursor: isResumed ? 'not-allowed' : 'pointer',
+              opacity: isResumed ? 0.3 : 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, padding: 0,
+            }}
+            onMouseEnter={(e) => { if (!isResumed) e.currentTarget.style.color = '#EF4444'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = C.subtle; }}
+          >×</button>
         </div>
+
+        {/* Optional second line — only renders when there's something
+            worth showing (modifiers, notes, or a useful unit-price
+            hint for qty > 1). Indented under the qty stepper so the
+            visual column lines up with the title above. */}
+        {(item.modifiers.length > 0 || notes.length > 0 || item.quantity > 1) && (
+          <div style={{
+            paddingLeft: 70,  // qty stepper + gap width, aligned with name
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+            gap: 6, fontSize: 10, color: C.subtle, lineHeight: 1.2,
+          }}>
+            {item.quantity > 1 && (
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                @ {unitPrice.toFixed(2)}
+              </span>
+            )}
+            {item.modifiers.length > 0 && (
+              <span style={{ color: C.muted }}>
+                + {item.modifiers.map((m) => m.name).join(', ')}
+              </span>
+            )}
+            {notes.length > 0 && notes.map((n) => (
+              <span
+                key={n}
+                style={{
+                  padding: '0 6px',
+                  borderRadius: 999,
+                  background: '#FEF3E8',
+                  color: C.primaryDark,
+                  border: '1px solid #FBD9B8',
+                  fontWeight: 700,
+                }}
+              >
+                {n}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -702,13 +728,14 @@ function CartLine({
 
 function qtyBtnStyle(isResumed: boolean): React.CSSProperties {
   return {
-    width: 28, height: 28, borderRadius: 6,
+    width: 26, height: 26, borderRadius: 6,
     background: C.bg, border: `1px solid ${C.border}`,
-    fontSize: 16, lineHeight: 1, color: C.text,
+    fontSize: 15, lineHeight: 1, color: C.text,
     cursor: isResumed ? 'not-allowed' : 'pointer',
     opacity: isResumed ? 0.4 : 1,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     padding: 0,
+    flexShrink: 0,
   };
 }
 
