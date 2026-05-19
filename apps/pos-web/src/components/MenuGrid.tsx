@@ -555,10 +555,30 @@ function ConfigurePanel({
               variants; otherwise the section is omitted entirely.
               Previously this block just said "the default variant will
               be added", which meant cashiers physically could not ring
-              up Medium or Large. */}
+              up Medium or Large.
+
+              UX shortcut: when the item has variants but NO modifiers,
+              tapping a variant adds the line straight to the ticket
+              (no second "Add" tap). When modifiers also exist we just
+              select the variant — the cashier still needs to pick
+              their mods before the Add button completes the line. */}
           {item.has_variants && (
             <div>
-              <div style={sectionLabel}>Size / Option</div>
+              <div style={sectionLabel}>
+                Size / Option
+                {mods.length === 0 && variants.length > 0 && (
+                  <span style={{
+                    marginLeft: 8,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: C.subtle,
+                    textTransform: 'none',
+                    letterSpacing: 0,
+                  }}>
+                    · tap to add
+                  </span>
+                )}
+              </div>
               {variants.length === 0 ? (
                 <div style={{ fontSize: 13, color: C.muted }}>
                   No active variants — ask a manager to enable at least one.
@@ -571,12 +591,16 @@ function ConfigurePanel({
                 }}>
                   {variants.map((v) => {
                     const active = chosenVariantId === v.id;
+                    const oneTapAdd = mods.length === 0;
                     return (
                       <button
                         key={v.id}
-                        onClick={() => setChosenVariantId(v.id)}
+                        onClick={() => {
+                          setChosenVariantId(v.id);
+                          if (oneTapAdd) onAdd(v);
+                        }}
                         style={{
-                          padding: '12px 14px',
+                          padding: '14px 14px',
                           borderRadius: 10,
                           border: `2px solid ${active ? C.text : C.border2}`,
                           background: active ? C.text : '#FFFFFF',
@@ -587,9 +611,14 @@ function ConfigurePanel({
                           flexDirection: 'column',
                           gap: 4,
                           minHeight: 64,
+                          transition: 'transform 60ms ease, box-shadow 120ms ease',
+                          boxShadow: active ? '0 2px 8px rgba(15,23,42,0.18)' : 'none',
                         }}
+                        onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
+                        onMouseUp={(e) => (e.currentTarget.style.transform = '')}
+                        onMouseLeave={(e) => (e.currentTarget.style.transform = '')}
                       >
-                        <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>
                           {v.name}
                         </span>
                         <span style={{
