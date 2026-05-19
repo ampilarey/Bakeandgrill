@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   adjustInventory,
   closeShift,
@@ -39,7 +39,42 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [reportFrom, setReportFrom] = useState(today);
   const [reportTo, setReportTo] = useState(today);
   const [reportData, setReportData] = useState<SalesSummary | null>(null);
-  const [opsMessage, setOpsMessage] = useState("");
+  // Bug-049: opsMessage used to be a plain string overwritten by
+  // every action. A cashier who hit "Open shift" + immediately
+  // "Cash in" would see only "Cash movement recorded" — the
+  // shift-open success was wiped before they could read it.
+  // Now `setOpsMessage` is a queue-aware setter: a new message
+  // is APPENDED with ` · ` to whatever's still showing, and the
+  // whole accumulated banner auto-clears after a sliding 8s
+  // window. Errors get a 12s window so the cashier has time to
+  // act on them.
+  const [opsMessage, setOpsMessageRaw] = useState("");
+  const clearTimerRef = useRef<number | null>(null);
+  const setOpsMessage = useCallback((text: string) => {
+    if (clearTimerRef.current !== null) {
+      window.clearTimeout(clearTimerRef.current);
+      clearTimerRef.current = null;
+    }
+    setOpsMessageRaw((prev) => {
+      if (!text) return "";
+      if (!prev) return text;
+      // Avoid runaway concatenation if the same message is fired
+      // back-to-back (idempotent retry case).
+      if (prev === text || prev.endsWith(` · ${text}`)) return prev;
+      return `${prev} · ${text}`;
+    });
+    if (text) {
+      const isError = /unable|failed|invalid|cannot|enter a valid|add a reason/i.test(text);
+      const ms = isError ? 12000 : 8000;
+      clearTimerRef.current = window.setTimeout(() => {
+        setOpsMessageRaw("");
+        clearTimerRef.current = null;
+      }, ms);
+    }
+  }, []);
+  useEffect(() => () => {
+    if (clearTimerRef.current !== null) window.clearTimeout(clearTimerRef.current);
+  }, []);
   const [inventoryItems, setInventoryItems] = useState<
     Array<{ id: number; name: string; current_stock: number | null; unit: string }>
   >([]);

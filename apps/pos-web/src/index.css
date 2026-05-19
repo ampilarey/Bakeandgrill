@@ -1,6 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Bug-038: Tailwind directives removed. A search of every file in
+ * src/ found ZERO Tailwind utility classes — the POS uses inline
+ * style objects (see `src/theme.ts`) and the few global rules
+ * below. The @tailwind directives were emitting ~200KB of unused
+ * utility CSS into the production bundle. Dropping them shaves the
+ * gzipped CSS to ~2KB and the unminified file to under 8KB.
+ * Tailwind dependencies stay in package.json for now (the admin
+ * dashboard still uses them) but the POS workspace's
+ * tailwind.config / postcss.config are no longer applied to its
+ * bundle. */
 
 /* ──────────────────────────────────────────────────────────────────────
  * POS global styles — see src/theme.ts for the design tokens that

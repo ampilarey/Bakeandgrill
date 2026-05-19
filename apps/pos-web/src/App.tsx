@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts, fetchPosQuickNotes } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts, fetchPosQuickNotes, pingAuth } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -467,6 +467,36 @@ function App() {
     window.addEventListener("auth_expired", onExpired);
     return () => window.removeEventListener("auth_expired", onExpired);
   }, []);
+
+  // Bug-052: proactive token-validity check on tab focus.
+  // Sanctum tokens silently expire after the configured idle TTL;
+  // without this the cashier learns about it the first time they
+  // try to ring up an order after coming back from lunch, which
+  // adds 5 seconds of "tap charge → spinner → 401 → relogin" to
+  // a queued customer's wait. Now we ping /auth/me on every
+  // visible event; a 401 fires the existing auth_expired listener
+  // above and the cashier sees the login screen IMMEDIATELY on
+  // returning to the iPad. Throttled to once per 30s so a manager
+  // who keeps switching tabs doesn't hammer the backend.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let lastPing = 0;
+    const tryPing = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastPing < 30_000) return;
+      lastPing = now;
+      // pingAuth dispatches auth_expired internally on 401; we just
+      // need to call it. Swallow other errors (network blips) since
+      // they'll surface naturally on the next real request.
+      void pingAuth().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", tryPing);
+    // Also ping immediately so a freshly-restored tab gets gated
+    // without waiting for the first visibility change.
+    tryPing();
+    return () => document.removeEventListener("visibilitychange", tryPing);
+  }, [isLoggedIn]);
 
   const handleOpenShift = async (openingCash: number, notes?: string) => {
     setOpenShiftBusy(true);

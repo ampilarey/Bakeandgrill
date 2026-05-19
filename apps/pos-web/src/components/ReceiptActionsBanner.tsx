@@ -77,12 +77,16 @@ export function ReceiptActionsBanner({ orderId, customerPhone, onDismiss }: Prop
     };
   }, [orderId]);
 
-  // Auto-dismiss — also keyed only on the order. 25s gives the cashier
-  // time to glance at print/resend without lingering forever.
+  // Bug-043: bumped auto-dismiss from 25s → 60s for Loyverse parity.
+  // 25s wasn't long enough for the cashier to: hand the customer
+  // their change, look up, and decide "yes, print a receipt." The
+  // 60s window matches Loyverse/Square's post-tender shortcut bar
+  // and gives the cashier a real chance to act after the customer
+  // asks for a printed copy a few seconds in.
   useEffect(() => {
     dismissTimer.current = window.setTimeout(() => {
       onDismissRef.current();
-    }, 25_000);
+    }, 60_000);
     return () => {
       if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
       dismissTimer.current = null;

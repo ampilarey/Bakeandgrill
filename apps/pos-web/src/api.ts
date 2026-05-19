@@ -193,6 +193,19 @@ export async function staffLogin(
   });
 }
 
+/**
+ * Bug-052: cheap "is my token still good?" ping. Used by the POS
+ * shell on visibilitychange to proactively boot the cashier to
+ * the lock screen if the Sanctum token expired while the tab was
+ * backgrounded — instead of letting them ring up a ticket and
+ * fail at charge time. Resolves silently on success; the 401
+ * branch in `request()` already dispatches `auth_expired` which
+ * App.tsx listens for.
+ */
+export async function pingAuth(): Promise<void> {
+  await request<{ user?: unknown }>("/auth/me");
+}
+
 export async function selfRegisterDevice(identifier: string, name: string): Promise<{ status: string }> {
   return request<{ status: string }>("/devices/self-register", {
     method: "POST",
