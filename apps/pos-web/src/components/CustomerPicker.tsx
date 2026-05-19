@@ -74,6 +74,7 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
 
   const [results, setResults] = useState<PosCustomer[]>([]);
   const [recents, setRecents] = useState<PosCustomer[]>([]);
+  const [recentsTotal, setRecentsTotal] = useState<number | null>(null);
   const [loadingRecents, setLoadingRecents] = useState(false);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -87,10 +88,13 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
   const phoneValid = isValidPhone(phone);
 
   // ── Recent customers — fetched once when the picker opens ─────────
-  // Backed by /customers/search?q= (empty query → recent list). Gives
-  // the cashier a tap-shortcut for regulars without making them type
-  // a phone number. Refetched on every open so a newly-added customer
-  // shows up immediately on the next ticket.
+  // Backed by /customers/search?q= (empty query → recent list).
+  // Backend now returns up to 50 customers ordered by
+  // COALESCE(last_order_at, created_at) DESC, so brand-new customers
+  // also appear (the old query only showed people who had ordered).
+  // We also surface the total count so the cashier knows when there
+  // are more customers than the 50-row scroll panel can show, and to
+  // type a name/phone to search the rest.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -98,9 +102,15 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
     void (async () => {
       try {
         const res = await fetchRecentCustomers();
-        if (!cancelled) setRecents(res.data ?? []);
+        if (!cancelled) {
+          setRecents(res.data ?? []);
+          setRecentsTotal(res.total ?? null);
+        }
       } catch {
-        if (!cancelled) setRecents([]);
+        if (!cancelled) {
+          setRecents([]);
+          setRecentsTotal(null);
+        }
       } finally {
         if (!cancelled) setLoadingRecents(false);
       }
@@ -416,7 +426,10 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
         <div style={{
           borderTop: `1px solid ${C.border}`,
           background: C.bg,
-          maxHeight: 260,
+          // Doubled from 260 → 420 so the 50-row customer list is
+          // actually scrollable. Below 420 the list felt cramped and
+          // cashiers were thumb-flicking past regulars.
+          maxHeight: 420,
           overflow: "auto",
         }}>
           {(loading || (loadingRecents && results.length === 0 && query.length < 2)) && (
@@ -432,13 +445,21 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
             <CustomerRow key={c.id} customer={c} onAttach={handleAttach} />
           ))}
 
-          {/* Recent customers — only when nothing is being searched,
+          {/* Customer list — shown only when nothing is being searched,
               so we don't double-render rows that already appear in
-              the live results. Cashier can scroll-tap a regular and
-              skip typing entirely. */}
+              the live results. Header explicitly tells the cashier
+              there may be more in the database so they know to type
+              a name/phone instead of assuming this is everyone. */}
           {!loading && query.length < 2 && recents.length > 0 && (
             <>
-              <SectionHeader label="Recent customers" hint="Tap to attach" />
+              <SectionHeader
+                label="Customers"
+                hint={
+                  recentsTotal != null && recentsTotal > recents.length
+                    ? `Showing ${recents.length} of ${recentsTotal} — type to search`
+                    : `${recents.length} total · tap to attach`
+                }
+              />
               {recents.map((c) => (
                 <CustomerRow key={c.id} customer={c} onAttach={handleAttach} />
               ))}

@@ -35,22 +35,30 @@ class CustomerController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         // No-query mode: the POS Customer Picker calls this with an
-        // empty `q` when it opens, so we return the 10 most-recently-
-        // active customers as a "recent customers" suggestion list.
-        // This means cashiers can tap a regular instead of typing
-        // their phone every single ticket. Staff-only endpoint, same
-        // shape as the search response so the frontend doesn't need
-        // two code paths.
+        // empty `q` when it opens. We return the 50 most-recent
+        // customers and explicitly INCLUDE customers who have never
+        // ordered (sort falls back to created_at) — the old
+        // whereNotNull('last_order_at') filter hid every brand-new
+        // customer the manager just imported, which made the picker
+        // look like the only people in the system were the 10
+        // existing regulars. 50 is a deliberate cap: enough to scroll
+        // and recognise a regular, not so much we ship the whole
+        // table over the wire on every ticket. The cashier types ≥2
+        // chars to search the full list.
+        $limit = max(1, min(100, (int) $request->query('limit', 50)));
         if (mb_strlen($q) < 2) {
             $recent = Customer::query()
-                ->select(['id', 'name', 'phone', 'email', 'loyalty_points', 'tier', 'sms_opt_out', 'last_order_at'])
+                ->select(['id', 'name', 'phone', 'email', 'loyalty_points', 'tier', 'sms_opt_out', 'last_order_at', 'created_at'])
                 ->withCount('orders')
-                ->whereNotNull('last_order_at')
-                ->orderByDesc('last_order_at')
-                ->limit(10)
+                ->orderByRaw('COALESCE(last_order_at, created_at) DESC')
+                ->limit($limit)
                 ->get();
 
-            return response()->json(['data' => $recent]);
+            return response()->json([
+                'data' => $recent,
+                'total' => Customer::count(),
+                'limit' => $limit,
+            ]);
         }
 
         // If it looks like a phone number, normalise so "+960 712-3456",

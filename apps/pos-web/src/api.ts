@@ -227,14 +227,21 @@ export async function searchCustomers(q: string): Promise<{ data: PosCustomer[] 
 }
 
 /**
- * Pull the 10 most recently active customers (ordered by last_order_at).
- * Used by the POS Customer Picker as a "tap a regular" shortcut when
- * the cashier opens the picker without typing anything yet — saves a
- * round of search input per ticket for repeat customers. Backed by the
- * same /customers/search endpoint with an empty q.
+ * Pull the most recent customers — defaults to 50, ordered by
+ * COALESCE(last_order_at, created_at) DESC so brand-new customers
+ * (no order yet) still appear. Used by the POS Customer Picker as a
+ * "tap a regular" shortcut when the cashier opens the picker without
+ * typing anything yet. Backed by the same /customers/search endpoint
+ * with an empty q. The cashier types ≥2 chars to search the full
+ * database; the `total` lets us show "Showing X of N — type to search
+ * all".
  */
-export async function fetchRecentCustomers(): Promise<{ data: PosCustomer[] }> {
-  return request<{ data: PosCustomer[] }>(`/customers/search?q=`);
+export async function fetchRecentCustomers(
+  limit = 50,
+): Promise<{ data: PosCustomer[]; total: number; limit: number }> {
+  return request<{ data: PosCustomer[]; total: number; limit: number }>(
+    `/customers/search?q=&limit=${limit}`,
+  );
 }
 
 export async function quickCreateCustomer(
