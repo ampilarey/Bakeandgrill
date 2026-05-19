@@ -185,13 +185,35 @@ export function KDSPage() {
             {(t) => (
               <>
                 <TicketHeader ticket={t} />
-                <Btn
-                  small onClick={() => act(t.id, kdsBump)}
-                  disabled={acting === t.id}
-                  style={{ marginTop: 12, width: '100%', background: '#3b82f6', color: '#fff', border: 'none' }}
+                {/*
+                  Marking ready moved to POS — cashier owns the
+                  "Ready for pickup!" SMS so the call to notify the
+                  customer can't fire without someone at the till.
+                  Kitchen finishes cooking → tells the cashier
+                  verbally / hands the bag over → cashier hits Mark
+                  ready in POS → SMS goes → order shows up in the
+                  Ready column here automatically.
+                  We render a passive label instead of a button so
+                  the chef knows the workflow has shifted without
+                  having to read release notes.
+                */}
+                <div
+                  style={{
+                    marginTop: 12,
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: '#EFF6FF',
+                    border: '1px dashed #BFDBFE',
+                    borderRadius: 8,
+                    color: '#1E40AF',
+                    fontSize: 12,
+                    textAlign: 'center',
+                    fontWeight: 600,
+                    lineHeight: 1.3,
+                  }}
                 >
-                  {acting === t.id ? '…' : 'Mark Ready ✓'}
-                </Btn>
+                  ⏳ Ready? Tell the cashier — they mark ready from POS
+                </div>
               </>
             )}
           </Column>

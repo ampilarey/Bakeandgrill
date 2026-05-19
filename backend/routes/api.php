@@ -188,6 +188,13 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // the customer a BML Connect pay link for the remaining balance.
     Route::post('/orders/{id}/fire-to-kitchen', [OrderController::class, 'fireToKitchen'])->middleware('throttle:20,1');
     Route::post('/orders/{id}/send-pay-link', [OrderController::class, 'sendPayLink'])->middleware('throttle:10,1');
+    // Cashier-callable lifecycle bumps — POS equivalents of KDS
+    // bump/complete. Lets a cashier-only setup (no KDS terminal) move
+    // pickup orders through ready → completed and trigger the
+    // customer-facing SMS chain without the kitchen needing extra
+    // hardware.
+    Route::post('/orders/{id}/mark-ready', [OrderController::class, 'markReady'])->middleware('throttle:30,1');
+    Route::post('/orders/{id}/mark-picked-up', [OrderController::class, 'markPickedUp'])->middleware('throttle:30,1');
     Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])->middleware('throttle:20,1');
     Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])->middleware('throttle:10,1');
 

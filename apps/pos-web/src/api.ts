@@ -597,6 +597,34 @@ export async function sendPayLink(
 }
 
 /**
+ * Cashier-callable lifecycle bumps — let a cashier-only setup move a
+ * pickup order through "ready → completed" without needing a KDS
+ * terminal in the kitchen. The backend reuses the same state
+ * transitions KDS uses, so the existing "Ready for pickup!" SMS
+ * still fires once on transition to ready, and OrderCompleted +
+ * loyalty awards still fire on transition to completed.
+ *
+ * `markPickedUp` is guarded server-side: it refuses to close an
+ * unpaid order. Take payment first (cash, card, or Send pay link)
+ * before tapping "Picked up".
+ *
+ * The {unchanged: true} return flag distinguishes a real transition
+ * from a no-op (e.g. cashier double-tapped) so the UI can suppress
+ * a duplicate toast.
+ */
+export async function markOrderReady(
+  orderId: number,
+): Promise<{ order: { id: number; status: string }; unchanged: boolean }> {
+  return request(`/orders/${orderId}/mark-ready`, { method: "POST" });
+}
+
+export async function markOrderPickedUp(
+  orderId: number,
+): Promise<{ order: { id: number; status: string }; unchanged: boolean }> {
+  return request(`/orders/${orderId}/mark-picked-up`, { method: "POST" });
+}
+
+/**
  * Receipts/orders list shaped for the POS — same backing endpoint as admin,
  * but with cashier-friendly filters (current shift, today, search).
  */
@@ -605,9 +633,16 @@ export async function fetchReceipts(params: {
   date?: string;
   current_shift?: boolean;
   held_only?: boolean;
-  /** New: unified Open Tickets feed — held OR fired-but-unpaid. */
+  /** Held OR fired-but-unpaid. Legacy — kept for callers that
+   *  specifically want the narrower view (e.g. an end-of-shift
+   *  "what's still owed me" check). */
   open_only?: boolean;
-  /** New: surface anything cooking with a balance, manager view. */
+  /** Active Orders feed — superset of `open_only`. Includes every
+   *  non-terminal ticket regardless of payment state, so a paid-but-
+   *  cooking ticket stays visible to the cashier until the customer
+   *  physically picks it up. This is the new POS default. */
+  active_only?: boolean;
+  /** Manager view — surface anything cooking with a balance. */
   unpaid_only?: boolean;
   device_identifier?: string;
   per_page?: number;

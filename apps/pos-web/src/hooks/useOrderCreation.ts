@@ -42,6 +42,24 @@ function normalizePayments(rows: PaymentRow[]): { method: string; amount: number
     .filter((p) => Number.isFinite(p.amount) && p.amount > 0);
 }
 
+/**
+ * Post-charge banner text. For Pickup orders we nudge the cashier
+ * toward Active orders so they don't forget the ticket is still
+ * cooking — paid pickup orders now stay visible in that panel until
+ * the customer physically collects (and the cashier marks them
+ * picked up there). Dine-in and Takeaway behave as before.
+ */
+function pickupAwareSuccess(orderType: OrderType, hasCustomer: boolean): string {
+  if (orderType === "Pickup") {
+    return hasCustomer
+      ? "✅ Paid. Cooking — track in Active orders, then tap Picked up."
+      : "✅ Paid and sent to kitchen — track in Active orders, then tap Picked up.";
+  }
+  return hasCustomer
+    ? "Order paid. Receipt SMS sent to customer."
+    : "Order paid and sent to kitchen.";
+}
+
 type Params = {
   isOnline: boolean;
   deviceId: string;
@@ -321,12 +339,8 @@ export function useOrderCreation(params: Params) {
           setResumedOrderTotal(null);
           params.clearCart();
           params.setSelectedItem(null);
-          setStatusMessage(
-            cid
-              ? "Order paid. Receipt SMS sent to customer."
-              : "Order paid and sent to kitchen.",
-          );
-          setTimeout(() => setStatusMessage(""), 5000);
+          setStatusMessage(pickupAwareSuccess(params.orderType, cid != null));
+          setTimeout(() => setStatusMessage(""), 6000);
           params.onOrderSettled?.(settledOrderId, cid, cphone);
         }
         return settled;
@@ -384,12 +398,8 @@ export function useOrderCreation(params: Params) {
         // we never cleared this flag on success. The ReceiptActions
         // banner takes over the "what now?" duty for paid orders.
         setLastCreatedOrderId(null);
-        setStatusMessage(
-          cid
-            ? "Order paid. Receipt SMS sent to customer."
-            : "Order paid and sent to kitchen.",
-        );
-        setTimeout(() => setStatusMessage(""), 5000);
+        setStatusMessage(pickupAwareSuccess(params.orderType, cid != null));
+        setTimeout(() => setStatusMessage(""), 6000);
         params.onOrderSettled?.(response.order.id, cid, cphone);
       }
       return settled;

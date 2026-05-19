@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { fetchReceipts, fireOrderToKitchen, sendBill, sendPayLink } from "../api";
+import {
+  fetchReceipts,
+  fireOrderToKitchen,
+  markOrderPickedUp,
+  markOrderReady,
+  sendBill,
+  sendPayLink,
+} from "../api";
 import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, type, z } from "../theme";
 
 export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
@@ -15,9 +22,25 @@ type Props = {
 };
 
 /**
- * List of held / parked tickets. Replaces the old single-held-order
- * "Resume #123" button — that pattern silently overwrote previous holds
- * and made multi-tab service impossible.
+ * "Active orders" panel — every in-flight ticket the cashier still has
+ * work to do on, organised by lifecycle stage with stage-appropriate
+ * actions:
+ *
+ *   📋 PARKED   held tickets the kitchen has not seen
+ *               actions: Fire to kitchen / Resume / Send pay link
+ *
+ *   🍳 COOKING  fired but not yet ready (pending / in_progress)
+ *               actions: Mark ready / Charge (if unpaid) / Pay link
+ *
+ *   ✅ READY    kitchen says it's done; waiting for the customer
+ *               actions: Picked up (if paid) / Charge (if unpaid)
+ *
+ * Lifecycle is decoupled from payment — a ticket can be PAID at any
+ * stage and a ticket can be picked up only when PAID. This solves
+ * the old gap where charging a pickup order made it vanish from POS
+ * even though the kitchen was still cooking; now the same ticket
+ * stays visible with a "🍳 COOKING + PAID" badge until the cashier
+ * marks it picked up.
  */
 export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhone }: Props) {
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
@@ -52,7 +75,11 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       try {
         if (showSpinner) setLoading(true);
         const res = await fetchReceipts({
-          open_only: true,
+          // active_only is the new default — superset of open_only.
+          // Includes paid-but-cooking and ready-but-not-yet-picked-up
+          // tickets so the cashier sees the full pipeline, not just
+          // the unpaid slice.
+          active_only: true,
           device_identifier: deviceId,
           per_page: 50,
         });
@@ -128,6 +155,56 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   };
 
   /**
+   * Cashier hits "Mark ready" — flips the order to status=ready, which
+   * fires the existing "Ready for pickup!" SMS chain. Used in
+   * cashier-only setups (no KDS terminal in the kitchen) so the
+   * lifecycle SMS still goes out. Idempotent — if the order is already
+   * ready (e.g. KDS bumped it first), the backend returns
+   * {unchanged: true} and we silently skip the success toast.
+   */
+  const handleMarkReady = async (t: OpenTicket) => {
+    setBusyId(t.id);
+    setRowMsg(null);
+    try {
+      const res = await markOrderReady(t.id);
+      patchTicket(t.id, { status: res.order.status });
+      if (!res.unchanged) {
+        setRowMsg({ id: t.id, kind: "ok", text: "Marked ready — customer notified." });
+      }
+    } catch (e) {
+      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't mark ready" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /**
+   * Cashier hits "Picked up" — flips the order to status=completed,
+   * which removes it from the Active orders feed and fires
+   * OrderCompleted (loyalty award, webhook notify, etc.). Backend
+   * guards against unpaid orders, so the action is hidden from the
+   * row when the ticket still owes a balance.
+   */
+  const handleMarkPickedUp = async (t: OpenTicket) => {
+    setBusyId(t.id);
+    setRowMsg(null);
+    try {
+      const res = await markOrderPickedUp(t.id);
+      // Optimistic: drop from the list. A poll cycle would do it
+      // anyway, but this avoids the half-second of "wait, did it
+      // work?" between the tap and the next refresh.
+      setTickets((curr) => curr.filter((row) => row.id !== t.id));
+      if (res.unchanged) {
+        // Already completed — no need to toast, just disappeared.
+      }
+    } catch (e) {
+      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't mark picked up" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /**
    * Send Bill (SMS) for a parked ticket. Two paths:
    *   - ticket already has a linked customer with a phone → use that phone
    *     immediately (server-side firstOrCreate keeps the same customer row).
@@ -196,8 +273,8 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
 
   return (
     <PanelShell
-      title="Open tickets"
-      subtitle="Parked orders and unpaid phone-call tickets"
+      title="Active orders"
+      subtitle="Parked, cooking, and ready-for-pickup tickets"
       onClose={onClose}
     >
       {loading && <p style={{ color: palette.panelMuted, fontSize: type.bodySm.fontSize }}>Loading…</p>}
@@ -205,24 +282,43 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       {!loading && tickets.length === 0 && (
         <EmptyState
           emoji="🎫"
-          title="No open tickets"
-          body="Parked tickets and unpaid phone-call orders will show up here."
+          title="No active orders"
+          body="Parked, cooking, and ready-for-pickup tickets will show up here."
         />
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
         {tickets.map((t) => {
           const busy = busyId === t.id;
           const msg = rowMsg?.id === t.id ? rowMsg : null;
-          // Two new ticket states beyond classic held:
-          //   isFired      — kitchen is cooking (fired_at is set). Shows
-          //                  the 🍳 badge so cashier doesn't double-fire.
-          //   isUnpaid     — payment_status is unpaid/partial. Combined
-          //                  with isFired this is the "phone-call pickup
-          //                  waiting for the customer to pay" state.
-          const isFired = !!t.fired_at;
+
+          // Stage derivation — single source of truth for which
+          // badge + action buttons to render. Decoupled from
+          // payment so a paid ticket can still be 'cooking', and
+          // an unpaid ticket can still be 'ready'.
+          //   parked   → held (kitchen hasn't seen it)
+          //   cooking  → pending / in_progress / paid + fired
+          //   ready    → kitchen says it's done
+          // Anything else (completed, cancelled, refunded) should
+          // not arrive here because active_only filters them out.
+          let stage: "parked" | "cooking" | "ready";
+          if (t.status === "held") stage = "parked";
+          else if (t.status === "ready") stage = "ready";
+          else stage = "cooking";
+
+          const isPaid = t.payment_status === "paid";
           const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
-          const isHeld = t.status === "held";
           const hasPhone = !!t.customer?.phone;
+
+          // Stage badge config — colours and labels match the
+          // mental model: red(parked/unpaid) → amber(cooking) →
+          // green(ready) → grey(done). Cashier scans down the list
+          // for whatever's most urgent.
+          const stageBadge = {
+            parked: { label: "📋 PARKED", color: "#475569", bg: "#F1F5F9", border: "#CBD5E1", title: "Kitchen has not seen this yet" },
+            cooking: { label: "🍳 COOKING", color: "#A16207", bg: "#FEFCE8", border: "#FDE68A", title: "Kitchen is preparing this" },
+            ready: { label: "✅ READY", color: "#047857", bg: "#ECFDF5", border: "#A7F3D0", title: "Ready for the customer to collect" },
+          }[stage];
+
           return (
             <div
               key={t.id}
@@ -242,22 +338,33 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                     <div style={{ fontWeight: 700, fontSize: type.body.fontSize, color: palette.panelInk }}>
                       {t.ticket_name || `Order ${t.order_number}`}
                     </div>
-                    {isFired && (
+                    <span
+                      title={stageBadge.title}
+                      style={{
+                        fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                        color: stageBadge.color, background: stageBadge.bg,
+                        padding: "2px 6px", borderRadius: 4,
+                        border: `1px solid ${stageBadge.border}`,
+                      }}
+                    >
+                      {stageBadge.label}
+                    </span>
+                    {isPaid && (
                       <span
-                        title="Sent to kitchen"
+                        title="Customer has paid"
                         style={{
                           fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                          color: "#047857", background: "#ECFDF5",
+                          color: "#1E40AF", background: "#EFF6FF",
                           padding: "2px 6px", borderRadius: 4,
-                          border: "1px solid #A7F3D0",
+                          border: "1px solid #BFDBFE",
                         }}
                       >
-                        🍳 COOKING
+                        💳 PAID
                       </span>
                     )}
-                    {isUnpaid && isFired && (
+                    {isUnpaid && (
                       <span
-                        title="Not paid yet"
+                        title="Customer has not paid yet"
                         style={{
                           fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
                           color: "#B91C1C", background: "#FEF2F2",
@@ -265,20 +372,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                           border: "1px solid #FECACA",
                         }}
                       >
-                        UNPAID
-                      </span>
-                    )}
-                    {isHeld && (
-                      <span
-                        title="Parked — kitchen has not seen this yet"
-                        style={{
-                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                          color: "#475569", background: "#F1F5F9",
-                          padding: "2px 6px", borderRadius: 4,
-                          border: "1px solid #CBD5E1",
-                        }}
-                      >
-                        📋 PARKED
+                        {t.payment_status === "partial" ? "PARTIAL" : "UNPAID"}
                       </span>
                     )}
                   </div>
@@ -295,19 +389,36 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
               </div>
 
               <div style={{ display: "flex", gap: space.xs, flexWrap: "wrap" }}>
-                {/* Resume always present — cashier uses it to charge
-                    at the counter when the customer arrives, or to
-                    edit a parked ticket. */}
-                <button onClick={() => onResume(t)} disabled={busy} style={{ ...btnPrimary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}>
-                  ▶ {isUnpaid && isFired ? "Charge" : "Resume"}
-                </button>
-
-                {/* Fire to kitchen — only meaningful for held tickets
-                    that haven't been sent yet. Hidden once cooking
-                    so cashier doesn't double-print the chit. */}
-                {isHeld && (
+                {/*
+                  ── Stage-appropriate primary action ──────────────
+                  parked            → 🍳 Fire to kitchen
+                  cooking + paid    → ✅ Mark ready
+                  cooking + unpaid  → ✅ Mark ready (cashier can mark
+                                       ready before payment — common
+                                       when customer is at counter
+                                       waiting to pay AND collect)
+                  ready + paid      → 📦 Picked up
+                  ready + unpaid    → 💳 Charge (must pay before pickup)
+                */}
+                {stage === "parked" && (
                   <button
                     onClick={() => handleFireToKitchen(t)}
+                    disabled={busy}
+                    style={{
+                      padding: `${space.s}px ${space.m}px`,
+                      minHeight: 36, fontSize: type.bodySm.fontSize,
+                      borderRadius: radius.m, fontWeight: 700,
+                      background: "#A16207", color: "#fff",
+                      border: "none", cursor: busy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    🍳 {busy ? "…" : "Fire to kitchen"}
+                  </button>
+                )}
+
+                {stage === "cooking" && (
+                  <button
+                    onClick={() => handleMarkReady(t)}
                     disabled={busy}
                     style={{
                       padding: `${space.s}px ${space.m}px`,
@@ -317,7 +428,45 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                       border: "none", cursor: busy ? "not-allowed" : "pointer",
                     }}
                   >
-                    🍳 {busy ? "…" : "Fire to kitchen"}
+                    ✅ {busy ? "…" : "Mark ready"}
+                  </button>
+                )}
+
+                {stage === "ready" && isPaid && (
+                  <button
+                    onClick={() => handleMarkPickedUp(t)}
+                    disabled={busy}
+                    style={{
+                      padding: `${space.s}px ${space.m}px`,
+                      minHeight: 36, fontSize: type.bodySm.fontSize,
+                      borderRadius: radius.m, fontWeight: 700,
+                      background: "#0F766E", color: "#fff",
+                      border: "none", cursor: busy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    📦 {busy ? "…" : "Picked up"}
+                  </button>
+                )}
+
+                {/*
+                  ── Resume / Charge ──────────────────────────────
+                  Always available except for paid-already ready
+                  tickets (where the primary action is Picked up).
+                  Label depends on whether there's something to
+                  charge: unpaid → "Charge", parked → "Edit",
+                  paid → "View".
+                */}
+                {!(stage === "ready" && isPaid) && (
+                  <button
+                    onClick={() => onResume(t)}
+                    disabled={busy}
+                    style={{
+                      ...btnPrimary(busy),
+                      padding: `${space.s}px ${space.m}px`,
+                      minHeight: 36, fontSize: type.bodySm.fontSize,
+                    }}
+                  >
+                    {isUnpaid ? "💳 Charge" : stage === "parked" ? "▶ Edit" : "👁 View"}
                   </button>
                 )}
 

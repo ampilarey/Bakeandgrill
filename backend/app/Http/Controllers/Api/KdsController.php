@@ -66,8 +66,23 @@ class KdsController extends Controller
             // Re-fetch with a row lock inside the transaction to prevent duplicate bumps
             $order = Order::lockForUpdate()->findOrFail($id);
 
-            // Determine target status through the machine
-            $targetStatus = $order->status === 'ready' ? 'completed' : 'ready';
+            // Marking-ready is now POS-only — the cashier owns the
+            // "tell the customer it's ready" call so the SMS chain
+            // can't fire without someone looking at the till.
+            // Kitchen can still clear ready tickets off their screen
+            // by bumping ready → completed (post-handoff bookkeeping).
+            //
+            // Anything else (pending/in_progress/paid → ready) is
+            // refused here so a stale KDS terminal can't backdoor
+            // the customer-notification SMS. The cashier hits
+            // "Mark ready" in POS → POST /orders/{id}/mark-ready
+            // → OrderStatusChanged → existing "Ready for pickup!"
+            // SMS listener fires exactly once.
+            if ($order->status !== 'ready') {
+                return ['error' => 'Marking ready is now handled by the cashier from POS. Tell the cashier the order is up.'];
+            }
+
+            $targetStatus = 'completed';
             $machine = app(OrderStatusMachine::class);
             if (!$machine->isAllowed($order->status, $targetStatus)) {
                 return ['error' => 'Order cannot be bumped.'];
@@ -75,7 +90,8 @@ class KdsController extends Controller
 
             $oldStatus = $order->status;
 
-            // State machine: pending/paid/in_progress → ready; ready → completed
+            // State machine (KDS-side, after the POS-only readiness
+            // pivot): only ready → completed remains here.
             $newStatus = $targetStatus;
 
             $order->update([

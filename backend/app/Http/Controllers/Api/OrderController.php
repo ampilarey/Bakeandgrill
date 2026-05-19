@@ -125,6 +125,24 @@ class OrderController extends Controller
             });
         }
 
+        // Active orders feed — superset of `open_only`. Returns every
+        // ticket that is STILL IN FLIGHT regardless of payment state:
+        //   - held tickets (parked, kitchen hasn't seen them)
+        //   - cooking tickets (pending / in_progress / preparing)
+        //   - ready tickets waiting for customer pickup
+        //   - paid-but-not-completed tickets (cooked + paid, customer
+        //     hasn't physically collected yet — phone-pickup customer
+        //     who paid via BML link)
+        // Excludes the terminal trio (cancelled / refunded / completed)
+        // because those are done — they belong in Receipts.
+        //
+        // This is the new POS "Active orders" panel default. Old
+        // `open_only` is kept for any caller that still wants the
+        // narrower held+unpaid view.
+        if ($request->filled('active_only') && $request->boolean('active_only')) {
+            $query->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'payment_pending']);
+        }
+
         // Receipt search: order number, ticket name, customer phone, customer name.
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
@@ -549,6 +567,148 @@ class OrderController extends Controller
             'message' => 'Pay link sent.',
             'amount' => $remainingLaar / 100,
             'sent_to' => $phone,
+        ]);
+    }
+
+    /**
+     * POST /api/orders/{id}/mark-ready
+     *
+     * Cashier-callable equivalent of KDS bump. Walks pending /
+     * in_progress orders to `ready`, which triggers the existing
+     * SendCustomerOrderStatusSmsListener "Ready for pickup!" SMS.
+     *
+     * Why this exists: cashier-only setups have no KDS terminal in
+     * the kitchen, so the lifecycle SMS chain breaks at "Ready". With
+     * this endpoint the cashier can move the order from POS once
+     * they hear the bell / see the food, and the customer gets the
+     * SMS without the kitchen needing extra hardware.
+     *
+     * Idempotent for already-ready orders (no-op).
+     */
+    public function markReady(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $result = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+
+            if ($order->status === 'ready') {
+                // Idempotent — cashier double-tapping shouldn't bounce.
+                return ['order' => $order, 'unchanged' => true];
+            }
+
+            $machine = app(OrderStatusMachine::class);
+            if (!$machine->isAllowed($order->status, 'ready')) {
+                return ['error' => "Order is {$order->status} and can't be marked ready."];
+            }
+
+            $oldStatus = $order->status;
+            $order->update(['status' => 'ready']);
+
+            app(AuditLogService::class)->log(
+                'order.ready',
+                'Order',
+                $order->id,
+                ['status' => $oldStatus],
+                ['status' => 'ready'],
+                // Tagged 'pos' so audit logs distinguish cashier-marked
+                // ready from KDS-marked ready. Useful for future
+                // analytics ("how often does the cashier override KDS?").
+                ['source' => 'pos'],
+                $request,
+            );
+
+            // OrderStatusChanged event is dispatched by the model
+            // observer on status update — that's what fires the
+            // existing "Ready for pickup!" SMS, so we don't need to
+            // emit anything extra here.
+
+            return ['order' => $order];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json([
+            'order' => $result['order']->fresh(),
+            'unchanged' => $result['unchanged'] ?? false,
+        ]);
+    }
+
+    /**
+     * POST /api/orders/{id}/mark-picked-up
+     *
+     * Cashier-callable equivalent of KDS complete — physically moves
+     * an order to the "done" state. Used when the customer has
+     * collected their food. Closes the loyalty/referral loop via
+     * OrderCompleted (same event KDS bump fires).
+     *
+     * GUARDED: refuses to complete an unpaid order. This is a till
+     * protection — if the cashier accidentally hits "Picked up" on
+     * a phone-order that the customer walked away with without
+     * paying, we keep the order visible (in Active orders with the
+     * UNPAID badge) so it gets chased down at end-of-day.
+     * Override path: take the payment first (cash or Send pay link),
+     * then this endpoint will accept the transition.
+     */
+    public function markPickedUp(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $result = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+
+            if ($order->payment_status !== 'paid' && $order->status !== 'paid') {
+                return ['error' => "Order is {$order->payment_status} — take payment or send pay link before marking picked up."];
+            }
+
+            if ($order->status === 'completed') {
+                return ['order' => $order, 'unchanged' => true];
+            }
+
+            $machine = app(OrderStatusMachine::class);
+            if (!$machine->isAllowed($order->status, 'completed')) {
+                return ['error' => "Order is {$order->status} and can't be marked picked up."];
+            }
+
+            $oldStatus = $order->status;
+            $order->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+
+            app(AuditLogService::class)->log(
+                'order.completed',
+                'Order',
+                $order->id,
+                ['status' => $oldStatus],
+                ['status' => 'completed'],
+                ['source' => 'pos'],
+                $request,
+            );
+
+            $orderForEvent = $order->fresh();
+            DB::afterCommit(function () use ($orderForEvent): void {
+                \App\Domains\Orders\Events\OrderCompleted::dispatch(
+                    \App\Domains\Orders\DTOs\OrderCompletedData::fromOrder($orderForEvent),
+                );
+            });
+
+            return ['order' => $order];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json([
+            'order' => $result['order']->fresh(),
+            'unchanged' => $result['unchanged'] ?? false,
         ]);
     }
 
