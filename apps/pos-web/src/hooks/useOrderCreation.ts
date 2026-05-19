@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import {
   applyGiftCardToOrder,
@@ -137,7 +137,19 @@ export function useOrderCreation(params: Params) {
     return raw ? Number(raw) : null;
   });
   const [lastCreatedOrderId, setLastCreatedOrderId] = useState<number | null>(null);
-  const [barcode, setBarcode] = useState("");
+  const [barcode, setBarcodeState] = useState("");
+  // Mirror barcode in a ref so the async lookupBarcode resolver
+  // (Bug-030) can read the LATEST value, not the closure-captured
+  // value from when handleBarcodeSubmit was called. Without the
+  // ref the `barcode.trim() !== scannedFor` guard always passed
+  // (because `barcode` IS `scannedFor` in that closure), and an
+  // out-of-order resolve from a previous scan could add the
+  // wrong item.
+  const barcodeRef = useRef("");
+  const setBarcode = (value: string) => {
+    barcodeRef.current = value;
+    setBarcodeState(value);
+  };
   // When createOrder succeeds but payment fails, we expose this so the
   // cashier can retry collecting payment for the SAME order instead of
   // unwittingly creating a duplicate.
@@ -899,18 +911,22 @@ export function useOrderCreation(params: Params) {
       // against the captured value before adding to cart, so an
       // out-of-order resolve from a previous scan can never add the
       // wrong item.
+      //
+      // Bug-030: the previous version read `barcode` (the closure-
+      // captured state) inside .then, which equalled `scannedFor`
+      // for the duration of the closure — so the guard was a no-op
+      // and out-of-order resolves slipped through. Now we read
+      // `barcodeRef.current`, which the synchronous `setBarcode`
+      // wrapper updates immediately on every keystroke / scan.
       const scannedFor = trimmed;
       lookupBarcode(trimmed)
         .then((item) => {
-          // Only act on this resolve if the input still shows the same
-          // barcode (i.e. the user didn't scan something else in the
-          // meantime).
-          if (barcode.trim() !== scannedFor) return;
+          if (barcodeRef.current.trim() !== scannedFor) return;
           if (item) { addToCart(item); setBarcode(""); return; }
           if (fallbackMatch) { addToCart(fallbackMatch); setBarcode(""); }
         })
         .catch(() => {
-          if (barcode.trim() !== scannedFor) return;
+          if (barcodeRef.current.trim() !== scannedFor) return;
           if (fallbackMatch) { addToCart(fallbackMatch); setBarcode(""); }
         });
       return;
