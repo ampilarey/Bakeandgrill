@@ -878,11 +878,10 @@ function App() {
                 // looks like "the Confirm button does nothing". Catch
                 // the most common ones inline so the cashier sees them.
                 if (cart.cartItems.length === 0) return;
-                if (orderType === "Dine-in" && tables.length > 0 && !selectedTableId) {
-                  order.setStatusMessage("Select a table before charging a Dine-in ticket.");
-                  setTimeout(() => order.setStatusMessage(""), 4000);
-                  return;
-                }
+                // Table is OPTIONAL on Dine-in tickets — some venues
+                // ring up at the counter before seating, so we don't
+                // gate Charge on it. The cashier can still pick a
+                // table later from the Save Ticket modal if needed.
                 // Clear any stale error from a previous attempt so the
                 // overlay doesn't open with a red banner from a closed-
                 // but-not-resolved earlier flow (e.g. cashier hit

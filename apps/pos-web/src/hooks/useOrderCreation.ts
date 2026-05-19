@@ -323,10 +323,11 @@ export function useOrderCreation(params: Params) {
   ): Promise<boolean> => {
     if (params.cartItems.length === 0) return false;
     if (isSubmitting) return false;
-    if (params.orderType === "Dine-in" && !params.selectedTableId) {
-      setStatusMessage("Select a table for dine-in orders.");
-      return false;
-    }
+    // Note: table is OPTIONAL on Dine-in tickets. Some venues ring up
+    // dine-in food at the counter before seating ("still seating" /
+    // "walk-up bar order"), and the backend already treats
+    // restaurant_table_id as nullable, so we don't block the charge
+    // on it client-side either.
 
     const paymentSnapshot: PaymentRow[] = rows.map((r) => ({
       id: crypto.randomUUID(),
@@ -533,9 +534,10 @@ export function useOrderCreation(params: Params) {
   const handleSaveTicket = async (name: string, note?: string, fireToKitchen = false): Promise<void> => {
     if (!params.isOnline) throw new Error("Go online to save tickets.");
     if (params.cartItems.length === 0) throw new Error("Add items first.");
-    if (params.orderType === "Dine-in" && !params.selectedTableId) {
-      throw new Error("Select a table for dine-in orders.");
-    }
+    // Table is OPTIONAL on Dine-in tickets — the backend accepts a
+    // null restaurant_table_id, and venues often save the ticket
+    // before seating the customer (the cashier comes back later to
+    // assign a table from the Save Ticket modal).
 
     if (fireToKitchen) {
       // Pickup phone-call workflow uses a two-step path so all
