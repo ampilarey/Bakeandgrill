@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchRecentCustomers, quickCreateCustomer, searchCustomers, type PosCustomer } from "../api";
+import {
+  fetchRecentCustomers, quickCreateCustomer, searchCustomers,
+  updateCustomerFromPos, type PosCustomer,
+} from "../api";
 
 /**
  * Customer Picker — sits at the top of the OrderCart.
@@ -221,58 +224,11 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
   // ── ATTACHED CHIP ──────────────────────────────────────────────────
   if (customer) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 10px",
-          background: C.primarySoft,
-          border: `1px solid ${C.primary}33`,
-          borderRadius: 8,
-          marginBottom: 10,
-        }}
-      >
-        <div
-          style={{
-            width: 28, height: 28, borderRadius: "50%",
-            background: C.primary, color: "#fff",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 800, fontSize: 12, flexShrink: 0,
-          }}
-          aria-hidden="true"
-        >
-          {(customer.name ?? customer.phone ?? "?").slice(0, 1).toUpperCase()}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 13, fontWeight: 700, color: C.text,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            }}
-          >
-            {customer.name || "(no name)"}
-          </div>
-          <div style={{ fontSize: 11, color: C.muted, display: "flex", gap: 6 }}>
-            <span>{customer.phone}</span>
-            {typeof customer.loyalty_points === "number" && customer.loyalty_points > 0 && (
-              <span>· {customer.loyalty_points} pts</span>
-            )}
-            {customer.sms_opt_out && <span style={{ color: C.danger }}>· SMS opted out</span>}
-          </div>
-        </div>
-        <button
-          aria-label="Detach customer"
-          onClick={onDetach}
-          style={{
-            background: "transparent", border: "none", color: C.muted,
-            fontSize: 22, lineHeight: 1, cursor: "pointer",
-            padding: "4px 8px", minWidth: 36, minHeight: 36,
-          }}
-        >
-          ×
-        </button>
-      </div>
+      <AttachedCustomerChip
+        customer={customer}
+        onDetach={onDetach}
+        onUpdated={(updated) => onAttach(updated)}
+      />
     );
   }
 
@@ -515,6 +471,185 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
         <div style={{ padding: "8px 12px", fontSize: 12, color: C.danger, background: C.bg }}>
           {error}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Attached chip with inline name edit ────────────────────────────────────
+// Lets the cashier add a name (or fix a typo'd one) on a customer who was
+// quick-attached by phone only. The phone is intentionally read-only here —
+// editing the matching key from POS is dangerous (silent customer merges,
+// broken SMS); admin handles that case via Admin → Customers.
+function AttachedCustomerChip({
+  customer, onDetach, onUpdated,
+}: {
+  customer: PosCustomer;
+  onDetach: () => void;
+  onUpdated: (c: PosCustomer) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState(customer.name ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const startEdit = () => {
+    setDraftName(customer.name ?? "");
+    setError("");
+    setEditing(true);
+  };
+
+  const saveName = async () => {
+    const next = draftName.trim();
+    if (next === (customer.name ?? "").trim()) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await updateCustomerFromPos(customer.id, { name: next || null });
+      onUpdated(res.customer);
+      setEditing(false);
+    } catch (e) {
+      setError((e as Error).message || "Couldn't save.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // No-name customer: surface the edit button prominently so the
+  // cashier immediately sees "you can fix this" instead of having to
+  // guess that tapping the chip is editable.
+  const hasName = !!customer.name?.trim();
+
+  return (
+    <div
+      style={{
+        padding: "8px 10px",
+        background: C.primarySoft,
+        border: `1px solid ${C.primary}33`,
+        borderRadius: 8,
+        marginBottom: 10,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            width: 28, height: 28, borderRadius: "50%",
+            background: C.primary, color: "#fff",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontWeight: 800, fontSize: 12, flexShrink: 0,
+          }}
+          aria-hidden="true"
+        >
+          {(customer.name ?? customer.phone ?? "?").slice(0, 1).toUpperCase()}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {!editing ? (
+            <>
+              <div
+                style={{
+                  fontSize: 13, fontWeight: 700,
+                  color: hasName ? C.text : C.muted,
+                  fontStyle: hasName ? "normal" : "italic",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}
+              >
+                {customer.name || "(no name)"}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, display: "flex", gap: 6 }}>
+                <span>{customer.phone}</span>
+                {typeof customer.loyalty_points === "number" && customer.loyalty_points > 0 && (
+                  <span>· {customer.loyalty_points} pts</span>
+                )}
+                {customer.sms_opt_out && <span style={{ color: C.danger }}>· SMS opted out</span>}
+              </div>
+            </>
+          ) : (
+            <input
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void saveName();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              placeholder="Customer name"
+              autoFocus
+              maxLength={120}
+              disabled={saving}
+              style={{
+                width: "100%", padding: "8px 10px",
+                borderRadius: 6, border: `1.5px solid ${C.primary}`,
+                fontSize: 14, fontWeight: 600, color: C.text,
+                background: "#FFFFFF", outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          )}
+        </div>
+
+        {!editing ? (
+          <>
+            <button
+              onClick={startEdit}
+              aria-label={hasName ? "Edit customer name" : "Add customer name"}
+              title={hasName ? "Edit name" : "Add name"}
+              style={{
+                background: hasName ? "transparent" : "#FFFFFF",
+                border: hasName ? "none" : `1px solid ${C.primary}`,
+                color: hasName ? C.muted : C.primary,
+                fontSize: 12, fontWeight: 700,
+                padding: "6px 10px", borderRadius: 6,
+                cursor: "pointer", minHeight: 36,
+              }}
+            >
+              {hasName ? "✎" : "+ Name"}
+            </button>
+            <button
+              aria-label="Detach customer"
+              onClick={onDetach}
+              style={{
+                background: "transparent", border: "none", color: C.muted,
+                fontSize: 22, lineHeight: 1, cursor: "pointer",
+                padding: "4px 8px", minWidth: 36, minHeight: 36,
+              }}
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => void saveName()}
+              disabled={saving}
+              style={{
+                background: C.primary, color: "#FFFFFF",
+                border: "none", fontSize: 12, fontWeight: 700,
+                padding: "8px 12px", borderRadius: 6,
+                cursor: saving ? "wait" : "pointer", minHeight: 36,
+              }}
+            >
+              {saving ? "…" : "Save"}
+            </button>
+            <button
+              onClick={() => { setEditing(false); setError(""); }}
+              disabled={saving}
+              style={{
+                background: "transparent", border: "none", color: C.muted,
+                fontSize: 12, fontWeight: 600,
+                padding: "8px 10px", borderRadius: 6,
+                cursor: "pointer", minHeight: 36,
+              }}
+            >
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
+
+      {error && (
+        <div style={{ marginTop: 6, fontSize: 11, color: C.danger }}>{error}</div>
       )}
     </div>
   );

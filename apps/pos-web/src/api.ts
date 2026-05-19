@@ -250,6 +250,22 @@ export async function quickCreateCustomer(
   return request(`/customers/quick`, { method: "POST", body: JSON.stringify(payload) });
 }
 
+/**
+ * Update a customer's name/email straight from the POS chip — used to
+ * add a name on a customer who was registered phone-only. Phone is
+ * intentionally NOT settable here (it's the matching key for
+ * quick-attach + SMS; a fix has to go through Admin → Customers).
+ */
+export async function updateCustomerFromPos(
+  id: number,
+  patch: { name?: string | null; email?: string | null },
+): Promise<{ customer: PosCustomer }> {
+  return request(`/customers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
 // ── Customer dashboard / rewards (POS-only) ──────────────────────────────
 //
 // All of the endpoints below are NEW POS-scoped twins that live alongside

@@ -96,6 +96,39 @@ class CustomerController extends Controller
      * Name is optional (only set when not already present, so a cashier
      * can't accidentally clobber an existing customer's profile).
      */
+    /**
+     * POS-scoped customer profile update. Lets a cashier add a name
+     * (or fix a typo'd one / set an email) on a customer who was
+     * registered phone-only.
+     *
+     * Phone is intentionally NOT editable here — it's the
+     * idempotency key used by quick-attach and SMS delivery, so a
+     * cashier mis-typing a new phone could silently merge two
+     * customers' history. If a phone really needs to change, the
+     * owner does it from Admin → Customers where there's a full
+     * audit trail.
+     */
+    public function updateFromPos(Request $request, int $id)
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $data = $request->validate([
+            'name'  => ['sometimes', 'nullable', 'string', 'max:120'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:120'],
+        ]);
+
+        $customer = Customer::findOrFail($id);
+        // $data only contains keys the request sent (sometimes rule),
+        // so this is a partial update — sending {"name": "Ahmed"}
+        // won't null out the email and vice versa. Allowing explicit
+        // null is intentional: cashier may want to wipe a wrong name.
+        $customer->update($data);
+
+        return response()->json(['customer' => $customer->fresh()]);
+    }
+
     public function quickCreate(Request $request)
     {
         if (!$request->user()?->tokenCan('staff')) {

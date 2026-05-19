@@ -239,6 +239,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         ->middleware('throttle:60,1');
     Route::post('/customers/quick', [App\Http\Controllers\Api\CustomerController::class, 'quickCreate'])
         ->middleware('throttle:30,1');
+    // Add/fix a customer's name or email straight from the POS chip —
+    // intentionally name/email only, NOT phone (see updateFromPos doc).
+    Route::patch('/customers/{id}', [App\Http\Controllers\Api\CustomerController::class, 'updateFromPos'])
+        ->middleware('throttle:30,1');
     // Compact customer "dashboard" for the POS Customer chip (profile +
     // loyalty + lifetime stats + last 5 paid orders). One round-trip
     // when the cashier attaches a customer to a ticket.
