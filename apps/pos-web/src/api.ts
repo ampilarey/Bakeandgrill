@@ -738,11 +738,13 @@ export async function fetchReceipts(params: {
     ticket_name?: string | null;
     ticket_note?: string | null;
     /** Restaurant table the dine-in ticket was rung against. Surfaced
-     *  here so the POS Active orders search can match on table
-     *  number / zone (e.g. cashier types "12" → table 12's open
-     *  ticket bubbles up). Null/undefined for non-dine-in tickets. */
+     *  here so the POS Active orders search can match on table name
+     *  (e.g. cashier types "T4" → Table T4's open ticket bubbles
+     *  up). Null/undefined for non-dine-in tickets. Relation method
+     *  on the Order model is `table()`, so Laravel serialises it
+     *  here as `table`. */
     restaurant_table_id?: number | null;
-    restaurant_table?: { id: number; number: string | number; zone?: string | null } | null;
+    table?: { id: number; name: string; location?: string | null } | null;
   }>;
 }> {
   const qs = new URLSearchParams();

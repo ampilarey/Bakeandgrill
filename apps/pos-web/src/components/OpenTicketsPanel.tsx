@@ -444,10 +444,10 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       if (paymentFilter === "paid" && t.payment_status !== "paid") return false;
       if (paymentFilter === "unpaid" && t.payment_status === "paid") return false;
       if (q.length > 0) {
-        // restaurant_table can carry a numeric "number" OR a string
-        // like "Patio 3", so we just stringify the whole thing.
-        const tableHay = t.restaurant_table
-          ? `${t.restaurant_table.number ?? ""} ${t.restaurant_table.zone ?? ""}`
+        // Tables carry a name like "T4" plus an optional free-form
+        // location ("Patio", "Window"), so we just stringify both.
+        const tableHay = t.table
+          ? `${t.table.name ?? ""} ${t.table.location ?? ""}`
           : "";
         const haystack = [
           t.order_number,

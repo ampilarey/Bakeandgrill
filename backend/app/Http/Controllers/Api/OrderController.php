@@ -40,10 +40,11 @@ class OrderController extends Controller
                 'customer:id,name,phone',
                 'items:id,order_id,item_name,quantity,unit_price,total_price',
                 // Eager-load the table so the POS Active orders search
-                // can match on table number / zone (e.g. cashier types
-                // "12" and lands on table 12's open ticket without
-                // scrolling). Scoped to the three columns the UI needs.
-                'restaurantTable:id,number,zone',
+                // can match on table name (e.g. cashier types "T4"
+                // and lands on Table T4's open ticket without
+                // scrolling). Relation on Order is `table()`, schema
+                // columns are id/name/location.
+                'table:id,name,location',
             ])
             ->orderBy('created_at', 'desc');
 
