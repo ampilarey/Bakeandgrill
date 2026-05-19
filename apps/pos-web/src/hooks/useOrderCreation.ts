@@ -430,7 +430,7 @@ export function useOrderCreation(params: Params) {
         params.clearCart();
         params.setSelectedItem(null);
         setStatusMessage("Offline order queued. Will sync when online.");
-        setTimeout(() => setStatusMessage(""), 5000);
+        setTimeout(() => setStatusMessage(""), 6000);
         return true;
       } catch (err) {
         if (err instanceof OfflineQueueFullError) {
@@ -564,7 +564,10 @@ export function useOrderCreation(params: Params) {
           params.setSelectedItem(null);
           setLastCreatedOrderId(null);
           setStatusMessage("Payment recorded.");
-          setTimeout(() => setStatusMessage(""), 4000);
+          // Bug-015: 4s was too quick for a busy cashier to look up
+          // from the cash drawer and read the message. 6s is the
+          // POS-wide floor for success banners.
+          setTimeout(() => setStatusMessage(""), 6000);
           params.onOrderSettled?.(orderId, cid, cphone);
         }
       } finally {
@@ -619,7 +622,7 @@ export function useOrderCreation(params: Params) {
       params.clearCart();
       params.setSelectedItem(null);
       setStatusMessage(`Ticket "${name}" fired to kitchen — unpaid.`);
-      setTimeout(() => setStatusMessage(""), 4000);
+      setTimeout(() => setStatusMessage(""), 6000);
       return;
     }
 
@@ -633,7 +636,7 @@ export function useOrderCreation(params: Params) {
     params.clearCart();
     params.setSelectedItem(null);
     setStatusMessage(`Ticket "${name}" saved.`);
-    setTimeout(() => setStatusMessage(""), 4000);
+    setTimeout(() => setStatusMessage(""), 6000);
   };
 
   /**
@@ -739,7 +742,7 @@ export function useOrderCreation(params: Params) {
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
     setStatusMessage(`Ticket #${orderId} resumed — ready to charge.`);
-    setTimeout(() => setStatusMessage(""), 3000);
+    setTimeout(() => setStatusMessage(""), 6000);
   };
 
   /**
@@ -778,7 +781,7 @@ export function useOrderCreation(params: Params) {
         ? `Ticket #${id} returned to Open Tickets.`
         : `Cancelled — ticket #${id} is still in Active orders.`,
     );
-    setTimeout(() => setStatusMessage(""), 3000);
+    setTimeout(() => setStatusMessage(""), 6000);
   };
 
   /**
@@ -807,7 +810,7 @@ export function useOrderCreation(params: Params) {
     if (resumedOrderId === null) return false;
     if (params.cartItems.length === 0) {
       setStatusMessage("Add at least one item before saving changes.");
-      setTimeout(() => setStatusMessage(""), 4000);
+      setTimeout(() => setStatusMessage(""), 6000);
       return false;
     }
     setIsSubmitting(true);
@@ -842,11 +845,13 @@ export function useOrderCreation(params: Params) {
           ? `Ticket #${resumedOrderId} updated — kitchen chit reprinted.`
           : `Ticket #${resumedOrderId} saved — no item changes, kitchen not notified.`,
       );
-      setTimeout(() => setStatusMessage(""), 4000);
+      setTimeout(() => setStatusMessage(""), 6000);
       return true;
     } catch (err) {
       setStatusMessage(`Couldn't save changes: ${(err as Error).message}`);
-      setTimeout(() => setStatusMessage(""), 5000);
+      // Errors get a longer fuse — cashier needs time to read,
+      // remember to retry, and decide what to tell the customer.
+      setTimeout(() => setStatusMessage(""), 10000);
       return false;
     } finally {
       setIsSubmitting(false);

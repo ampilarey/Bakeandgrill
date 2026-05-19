@@ -955,7 +955,9 @@ function App() {
                   const msg = (err as Error)?.message ?? "Couldn't open ticket";
                   if (!msg.includes("Already paid")) {
                     order.setStatusMessage(`Couldn't open ticket: ${msg}`);
-                    setTimeout(() => order.setStatusMessage(""), 5000);
+                    // Bug-015: errors get the long 10s fuse so the
+                    // cashier has time to read + recover.
+                    setTimeout(() => order.setStatusMessage(""), 10000);
                   }
                 });
             }}
