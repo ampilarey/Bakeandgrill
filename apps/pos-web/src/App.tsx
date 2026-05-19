@@ -276,30 +276,75 @@ function App() {
   // mis-tag a takeaway-at-counter ring. The pre-flight validation in
   // onCheckout already forces the cashier to pick a table before the
   // Charge overlay opens, so leaving this null is the safer default.
-  useEffect(() => {
+  const refreshTables = useCallback(async () => {
     if (!isLoggedIn) return;
-    fetchTables()
-      .then((r) => { setTables(r.tables); })
-      .catch(() => { setTables([]); });
+    try {
+      const r = await fetchTables();
+      setTables(r.tables);
+    } catch {
+      // Best-effort: keep last-known table list on transient failure so
+      // a flaky network doesn't blank out the table picker mid-service.
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => { void refreshTables(); }, [refreshTables]);
+
+  // ── Quick-note chip refresh helper (used by refreshAll + visibility) ──
+  // The owner edits the chip library from Admin → Settings → POS. We
+  // pulled it out into a memoised helper so refreshAll() can call it
+  // without spinning up a new closure on every render.
+  const refreshQuickNotes = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      const chips = await fetchPosQuickNotes();
+      setQuickNotes(chips);
+    } catch {
+      // Same logic as refreshTables — keep showing the last-known list.
+    }
   }, [isLoggedIn]);
 
   // ── Load quick-note chip library after login ───────────────────────────────
-  // Best-effort: fetchPosQuickNotes already swallows errors, so failure
-  // here just means the cashier doesn't see the Note button. We
-  // re-fetch on isLoggedIn so a fresh sign-in picks up any chips the
+  // Re-fetch on isLoggedIn so a fresh sign-in picks up any chips the
   // owner added since the last session, and again whenever the tab
-  // regains focus so an owner edit propagates without a relog.
+  // regains focus so an owner edit propagates without a relog. (The
+  // manual ↻ button now also routes through refreshAll below, which
+  // calls refreshQuickNotes alongside menu/tables/tickets.)
   useEffect(() => {
+    void refreshQuickNotes();
     if (!isLoggedIn) return;
-    fetchPosQuickNotes().then(setQuickNotes);
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        fetchPosQuickNotes().then(setQuickNotes);
+        void refreshQuickNotes();
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [isLoggedIn]);
+  }, [isLoggedIn, refreshQuickNotes]);
+
+  // ── One-tap "refresh everything" ─────────────────────────────────────────
+  // Originally the top-banner ↻ only refetched the menu + chips. The
+  // tables list (loaded once on login), the held-tickets badge, and the
+  // shift summary were stale until the cashier re-installed the PWA.
+  // That's the bug behind "I refreshed but tables didn't update".
+  // Now every once-per-login data source is folded into a single
+  // promise so the cashier doesn't have to think about which slice is
+  // stale. A short status banner confirms the refresh ran.
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+  const refreshAll = useCallback(async () => {
+    if (isRefreshingAll) return;
+    setIsRefreshingAll(true);
+    try {
+      await Promise.allSettled([
+        Promise.resolve(menu.refresh()),
+        refreshTables(),
+        refreshQuickNotes(),
+        refreshOpenTickets(),
+        shift.refreshSummary(),
+      ]);
+    } finally {
+      setIsRefreshingAll(false);
+    }
+  }, [isRefreshingAll, menu, refreshTables, refreshQuickNotes, refreshOpenTickets, shift]);
 
   // ── Device-blocked event (dispatched by api.ts when middleware rejects) ────
   useEffect(() => {
@@ -673,7 +718,7 @@ function App() {
     { id: "shift",          label: "Current Shift",  icon: "💰", group: "main" as const },
     { id: "shift_history",  label: "Shift History",  icon: "📚", group: "main" as const },
     { id: "ops",            label: "Operations",     icon: "🛠", group: "main" as const },
-    { id: "refresh_menu",   label: "Refresh menu",   icon: "↻",  group: "user" as const },
+    { id: "refresh_menu",   label: "Refresh data",   icon: "↻",  group: "user" as const },
     { id: "check_update",   label: "Check for app update", icon: "⬇", group: "user" as const },
     { id: "lock",           label: "Lock screen",    icon: "🔒", group: "user" as const },
     { id: "logout",         label: "Log out",        icon: "↩",  group: "user" as const },
@@ -733,26 +778,24 @@ function App() {
             {isOnline ? 'Online' : 'Offline'}
           </span>
 
-          {/* Always-visible menu refresh — same as the ↻ inside the
-              menu search bar but accessible from any pane (Receipts,
-              Shift, etc) without going back to Sales. Also reloads
-              the kitchen-note chip library so an owner edit shows up
-              right away. Spins while a refresh is in flight. */}
+          {/* Always-visible "refresh everything" — accessible from any
+              pane (Receipts, Shift, etc) without going back to Sales.
+              Reloads menu items + categories, tables, kitchen-note
+              chips, held-tickets badge, and the shift summary in one
+              shot, so the cashier doesn't have to wonder which slice
+              is stale. Spins while any refresh is in flight. */}
           <button
-            onClick={() => {
-              menu.refresh();
-              void fetchPosQuickNotes().then(setQuickNotes);
-            }}
-            disabled={menu.isRefreshing}
-            aria-label="Refresh menu"
+            onClick={() => { void refreshAll(); }}
+            disabled={isRefreshingAll || menu.isRefreshing}
+            aria-label="Refresh everything"
             title={menu.lastRefreshedAt
-              ? `Menu updated ${Math.max(0, Math.floor((Date.now() - menu.lastRefreshedAt) / 1000))}s ago — tap to refresh now`
-              : 'Refresh menu now'}
+              ? `Last refreshed ${Math.max(0, Math.floor((Date.now() - menu.lastRefreshedAt) / 1000))}s ago — tap to refresh menu, tables, chips, tickets & shift`
+              : 'Refresh menu, tables, chips, tickets & shift'}
             style={{
               width: 36, height: 36, borderRadius: 10,
               background: '#F1F5F9', border: '1px solid #E2E8F0',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: menu.isRefreshing ? 'wait' : 'pointer',
+              cursor: (isRefreshingAll || menu.isRefreshing) ? 'wait' : 'pointer',
               fontSize: 16, color: '#334155',
             }}
           >
@@ -760,7 +803,7 @@ function App() {
               aria-hidden
               style={{
                 display: 'inline-block',
-                animation: menu.isRefreshing ? 'pos-spin 0.8s linear infinite' : undefined,
+                animation: (isRefreshingAll || menu.isRefreshing) ? 'pos-spin 0.8s linear infinite' : undefined,
               }}
             >↻</span>
           </button>
@@ -891,8 +934,8 @@ function App() {
               setBarcode={order.setBarcode}
               onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
               readOnly={order.resumedOrderId !== null}
-              onRefreshMenu={menu.refresh}
-              isRefreshingMenu={menu.isRefreshing}
+              onRefreshMenu={refreshAll}
+              isRefreshingMenu={isRefreshingAll || menu.isRefreshing}
               lastRefreshedAt={menu.lastRefreshedAt}
             />
           </>
@@ -948,11 +991,12 @@ function App() {
           if (id === "logout") return handleLogout();
           if (id === "lock") return lockScreen();
           if (id === "refresh_menu") {
-            // Two-for-one: pull a fresh menu AND a fresh quick-note
-            // chip list, so the cashier can see everything the owner
-            // changed without logging out.
-            menu.refresh();
-            void fetchPosQuickNotes().then(setQuickNotes);
+            // One-tap full refresh — menu items + categories, tables,
+            // kitchen-note chips, held-tickets badge, and the shift
+            // summary. Replaces the old menu-only refresh which left
+            // tables and other once-per-login data stale until the
+            // cashier re-installed the PWA.
+            void refreshAll();
             return;
           }
           if (id === "check_update") {
