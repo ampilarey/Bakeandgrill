@@ -543,11 +543,13 @@ function CartLine({
           transition: startXRef.current == null ? 'transform 0.15s ease' : 'none',
         }}
       >
-        {/* Single-row layout: qty stepper · name+variant · price ·
-            note chip · × delete. Everything the cashier needs on one
-            ~38px row so 8–10 items are visible on a 9.7" iPad without
-            scrolling. Modifiers and notes wrap onto a secondary tight
-            line below only when they exist. */}
+        {/* Single-row layout:
+              [−] qty [+]  name · variant · @ unit       total  📝
+            Item names are usually short on this menu, so the @ unit
+            hint fits inline with the title and saves a whole sub-line
+            of vertical space. The explicit × delete button was dropped
+            — cashiers swipe a row left to reveal the red Delete strip
+            (Mail.app pattern). */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
           minHeight: 32,
@@ -598,8 +600,12 @@ function CartLine({
             >+</button>
           </div>
 
-          {/* Name + variant — flex:1 with ellipsis so long names don't
-              push the price off-screen on narrow tablet portrait. */}
+          {/* Name · variant · @ unit price — all inline with ellipsis,
+              so long names truncate cleanly instead of pushing the
+              line total off the screen on narrow tablet portrait.
+              The @ price is shown only for qty > 1 (where the unit
+              vs line total distinction matters); single-qty rows
+              skip it since "total" and "unit" are the same number. */}
           <div style={{
             flex: 1, minWidth: 0, fontSize: 13, color: C.text,
             lineHeight: 1.2,
@@ -608,6 +614,14 @@ function CartLine({
             <span style={{ fontWeight: 600 }}>{item.name}</span>
             {item.variant_name && (
               <span style={{ color: C.muted, fontWeight: 500 }}> · {item.variant_name}</span>
+            )}
+            {item.quantity > 1 && (
+              <span style={{
+                color: C.subtle, fontWeight: 500,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {' '}· @ {unitPrice.toFixed(2)}
+              </span>
             )}
           </div>
 
@@ -660,45 +674,19 @@ function CartLine({
               )}
             </button>
           )}
-
-          {/* × delete — last item in the row, ghost button so it
-              doesn't compete visually with the qty stepper but is
-              still a one-tap escape for the whole line. */}
-          <button
-            type="button"
-            aria-label={`Remove ${item.name}`}
-            disabled={isResumed}
-            title={isResumed ? 'Cancel resume to edit items' : 'Remove item'}
-            onClick={removeLine}
-            style={{
-              width: 26, height: 26, borderRadius: 999,
-              background: 'transparent', border: 'none',
-              color: C.subtle, fontSize: 16, lineHeight: 1,
-              cursor: isResumed ? 'not-allowed' : 'pointer',
-              opacity: isResumed ? 0.3 : 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, padding: 0,
-            }}
-            onMouseEnter={(e) => { if (!isResumed) e.currentTarget.style.color = '#EF4444'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = C.subtle; }}
-          >×</button>
         </div>
 
-        {/* Optional second line — only renders when there's something
-            worth showing (modifiers, notes, or a useful unit-price
-            hint for qty > 1). Indented under the qty stepper so the
-            visual column lines up with the title above. */}
-        {(item.modifiers.length > 0 || notes.length > 0 || item.quantity > 1) && (
+        {/* Optional second line — only renders for modifier and note
+            metadata that wouldn't fit cleanly inline. Indented under
+            the qty stepper so the column visually lines up with the
+            name above. Unit price is no longer here (it lives inline
+            in the title for qty > 1). */}
+        {(item.modifiers.length > 0 || notes.length > 0) && (
           <div style={{
             paddingLeft: 70,  // qty stepper + gap width, aligned with name
             display: 'flex', flexWrap: 'wrap', alignItems: 'center',
             gap: 6, fontSize: 10, color: C.subtle, lineHeight: 1.2,
           }}>
-            {item.quantity > 1 && (
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                @ {unitPrice.toFixed(2)}
-              </span>
-            )}
             {item.modifiers.length > 0 && (
               <span style={{ color: C.muted }}>
                 + {item.modifiers.map((m) => m.name).join(', ')}
