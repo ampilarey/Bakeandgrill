@@ -135,7 +135,11 @@ function App() {
   } | null>(null);
 
   // ── Tables / order type ─────────────────────────────────────────────────────
-  const [orderType, setOrderType] = useState<OrderType>("Takeaway");
+  // Dine-in is the most common ticket type for an in-store cashier
+  // (someone walks up, picks a table, orders), so we default there.
+  // Cashiers can flip to Takeaway / Pickup with the segmented control
+  // at the top of the cart.
+  const [orderType, setOrderType] = useState<OrderType>("Dine-in");
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   // Owner-curated quick-note chip library (e.g. "No salt", "Extra
