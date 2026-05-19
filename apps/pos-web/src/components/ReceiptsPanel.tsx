@@ -145,7 +145,7 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today" }: Prop
 function ReceiptDetail({ receipt }: { receipt: Receipt }) {
   const [link, setLink] = useState<string | null>(null);
   const [phone, setPhone] = useState(receipt.customer?.phone ?? "");
-  const [busy, setBusy] = useState<"" | "send" | "refund" | "link">("");
+  const [busy, setBusy] = useState<"" | "send" | "refund" | "link" | "print">("");
   const [info, setInfo] = useState("");
   const [refundAmount, setRefundAmount] = useState(Number(receipt.total).toFixed(2));
   const [refundReason, setRefundReason] = useState("");
@@ -169,6 +169,29 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
       try { await navigator.clipboard.writeText(res.link); setInfo("Link copied."); }
       catch { setInfo("Link ready."); }
     } catch (e) { setInfo((e as Error).message || "Could not get link."); }
+    finally { setBusy(""); }
+  };
+
+  /**
+   * Opens the public receipt URL in a new tab with ?print=1, which the
+   * Blade view honours by auto-firing window.print() on load. Reuses
+   * the link we already fetched (or fetches lazily on first click) so
+   * a cashier asking the customer "want a printed receipt?" five
+   * minutes after charging has a one-tap action here in the Receipts
+   * pane (the post-charge green banner auto-dismisses after 25s).
+   */
+  const handlePrint = async () => {
+    setBusy("print"); setInfo("");
+    try {
+      let url = link;
+      if (!url) {
+        const res = await getReceiptLink(receipt.id);
+        url = res.link;
+        setLink(url);
+      }
+      const printUrl = url.includes("?") ? `${url}&print=1` : `${url}?print=1`;
+      window.open(printUrl, "_blank", "noopener,noreferrer");
+    } catch (e) { setInfo((e as Error).message || "Could not get print link."); }
     finally { setBusy(""); }
   };
 
@@ -228,6 +251,23 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
         marginTop: 10, padding: 10, borderRadius: 8, background: "#fff",
         border: "1px solid #E2E8F0", display: "flex", flexDirection: "column", gap: 8,
       }}>
+        {/* Print is the most-asked-for action when a customer comes
+            back asking for a paper receipt, so it gets the prominent
+            primary button. SMS and Copy link sit alongside for the
+            customer who wants it digitally. */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            onClick={handlePrint}
+            disabled={busy === "print"}
+            style={primaryBtn}
+            title="Open the printable receipt in a new tab and auto-print"
+          >
+            {busy === "print" ? "Opening…" : "🖨 Print receipt"}
+          </button>
+          <button onClick={handleLink} disabled={busy === "link"} style={secondaryBtn}>
+            {busy === "link" ? "…" : "Copy link"}
+          </button>
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={phone}
@@ -235,11 +275,8 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
             placeholder="Phone for SMS"
             style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
           />
-          <button onClick={handleSend} disabled={busy === "send"} style={primaryBtn}>
+          <button onClick={handleSend} disabled={busy === "send"} style={secondaryBtn}>
             {busy === "send" ? "Sending…" : "Send SMS"}
-          </button>
-          <button onClick={handleLink} disabled={busy === "link"} style={secondaryBtn}>
-            {busy === "link" ? "…" : "Copy link"}
           </button>
         </div>
 
