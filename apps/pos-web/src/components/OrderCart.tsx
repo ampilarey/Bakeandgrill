@@ -227,6 +227,7 @@ export function OrderCart(p: Props) {
   return (
     <aside
       className="pos-cart"
+      aria-label="Order cart"
       style={{
         // Bug-020: bumped from 380 → 420 so 16-char item names
         // and modifier rows stop wrapping awkwardly on iPad Mini

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CashInput } from "./CashInput";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { z } from "../theme";
 
 export type ChargeMethod = "cash" | "card" | "digital_wallet";
@@ -198,12 +199,24 @@ export function ChargeOverlay({
     void amount;
   };
 
+  // Bug-035: trap Tab inside the charge overlay so keyboard focus
+  // can't slip behind to the (hidden) sales UI mid-payment. Esc is
+  // still gated on `submitting` via the existing useEffect.
+  const trapRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(trapRef, true);
+
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: z.overlay,
-      background: "rgba(15,23,42,0.65)",
-      display: "flex", alignItems: "stretch", justifyContent: "stretch",
-    }}>
+    <div
+      ref={trapRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Charge"
+      style={{
+        position: "fixed", inset: 0, zIndex: z.overlay,
+        background: "rgba(15,23,42,0.65)",
+        display: "flex", alignItems: "stretch", justifyContent: "stretch",
+      }}
+    >
       <div className="pos-charge" style={{
         margin: "auto", background: "#fff", width: "100%", maxWidth: 760, maxHeight: "100%",
         borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column",

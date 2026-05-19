@@ -20,6 +20,36 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Bug-042: kill the iPad Safari double-tap-to-zoom delay on every
+ * tappable surface in the POS. Without `touch-action: manipulation`
+ * iOS waits ~300ms after every button press in case a second tap
+ * is coming for zoom — which on a fast cashier feels like the POS
+ * is dragging. Combined with `user-select: none` so a long-press
+ * on a price doesn't pop the iOS share/lookup menu mid-sale. */
+.pos-shell,
+.pos-shell button,
+.pos-shell [role="button"],
+.pos-shell .pos-cart-line {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+          user-select: none;
+}
+
+/* Bug-041: respect the iPad home-indicator (and any future
+ * dynamic islands) so the bottom of the POS doesn't get
+ * clipped on full-screen PWA installs. We pad both the shell
+ * root and the cart/charge surfaces because the cart sticks
+ * to the bottom on phone-mode (the 700px breakpoint). */
+.pos-shell {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+.pos-cart,
+.pos-charge {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
 /* Buttons / inputs get a brand focus ring instead of the default ugly
  * blue outline. Cashiers on touch don't see this, but admin users
  * tabbing through the form do — and it makes accessibility audits

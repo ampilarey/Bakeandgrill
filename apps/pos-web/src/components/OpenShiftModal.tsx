@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getShiftHistory } from "../api";
 import { CashInput } from "./CashInput";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 type Props = {
   onConfirm: (openingCash: number, notes?: string) => Promise<void>;
@@ -160,14 +161,25 @@ const secondary: React.CSSProperties = {
   fontWeight: 600, fontSize: 14, cursor: "pointer",
 };
 
-export function Overlay({ children }: { children: React.ReactNode }) {
+export function Overlay({ children, onEscape }: { children: React.ReactNode; onEscape?: () => void }) {
+  // Bug-035: shared modal overlay traps focus while open. Several
+  // call-sites (OpenShift, CloseShift, ShiftPanel, history) all
+  // route through this Overlay so wiring the trap once here gives
+  // every shift dialog the same a11y guarantee for free.
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref, true, onEscape);
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 1000,
-      background: "rgba(15,23,42,0.55)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 16,
-    }}>
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(15,23,42,0.55)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 16,
+      }}
+    >
       {children}
     </div>
   );
