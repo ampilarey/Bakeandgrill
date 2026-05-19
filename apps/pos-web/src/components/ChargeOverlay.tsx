@@ -17,6 +17,13 @@ type Props = {
   onClose: () => void;
   onConfirm: (rows: Array<{ method: ChargeMethod; amount: number }>) => Promise<void>;
   submitting: boolean;
+  /** Optional inline error to surface inside the overlay. The overlay
+   *  is z-index 900 (covers the cart status banner area), so without
+   *  this any failure in handleCharge would look like "the Confirm
+   *  button did nothing". Caller wires this to the order hook's
+   *  statusMessage so device-blocked / table / network errors land
+   *  on the cashier's screen. */
+  errorMessage?: string;
 };
 
 const METHOD_LABEL: Record<ChargeMethod, string> = {
@@ -40,6 +47,7 @@ export function ChargeOverlay({
   onClose,
   onConfirm,
   submitting,
+  errorMessage,
 }: Props) {
   const showBreakdown =
     (typeof subtotal === "number" && (subtotal !== total || (tax ?? 0) > 0 || (discount ?? 0) > 0));
@@ -363,22 +371,39 @@ export function ChargeOverlay({
         {/* Footer */}
         <div style={{
           padding: 16, borderTop: "1px solid #E2E8F0", background: "#fff",
-          display: "flex", gap: 10,
+          display: "flex", flexDirection: "column", gap: 10,
         }}>
-          <button onClick={onClose} disabled={submitting} style={{
-            flex: 1, padding: "14px 18px", borderRadius: 12,
-            background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
-            fontWeight: 600, fontSize: 15, cursor: "pointer",
-          }}>Cancel</button>
-          <button onClick={confirm} disabled={(!enough && !splitValid) || submitting} style={{
-            flex: 2, padding: "14px 18px", borderRadius: 12,
-            background: (!enough && !splitValid) || submitting ? "#A7F3D0" : "#10B981",
-            color: "#fff", border: "none",
-            fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
-            cursor: !enough || submitting ? "not-allowed" : "pointer",
-          }}>
-            {submitting ? "PROCESSING…" : `CONFIRM PAYMENT — MVR ${total.toFixed(2)}`}
-          </button>
+          {/* Inline error banner — surfaces anything handleCharge sets
+              into statusMessage while the overlay is open (table
+              required, device blocked, server rejected, network down,
+              etc). Without this the overlay would silently swallow
+              failures because it covers the main app's banner area. */}
+          {errorMessage && (
+            <div role="alert" style={{
+              padding: "10px 12px", borderRadius: 8,
+              background: "#FEE2E2", border: "1px solid #FCA5A5",
+              color: "#B91C1C", fontSize: 13, fontWeight: 600,
+              animation: "pos-fade-in 0.18s ease",
+            }}>
+              ⛔ {errorMessage}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={onClose} disabled={submitting} style={{
+              flex: 1, padding: "14px 18px", borderRadius: 12,
+              background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
+              fontWeight: 600, fontSize: 15, cursor: "pointer",
+            }}>Cancel</button>
+            <button onClick={confirm} disabled={(!enough && !splitValid) || submitting} style={{
+              flex: 2, padding: "14px 18px", borderRadius: 12,
+              background: (!enough && !splitValid) || submitting ? "#A7F3D0" : "#10B981",
+              color: "#fff", border: "none",
+              fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
+              cursor: !enough || submitting ? "not-allowed" : "pointer",
+            }}>
+              {submitting ? "PROCESSING…" : `CONFIRM PAYMENT — MVR ${total.toFixed(2)}`}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -834,7 +834,20 @@ function App() {
               onClearCart={cart.clearCart}
               onSaveTicket={() => setShowSaveTicket(true)}
               onOpenTickets={() => setPane("open_tickets")}
-              onCheckout={() => setShowCharge(true)}
+              onCheckout={() => {
+                // Pre-flight checks BEFORE opening the charge overlay.
+                // Once the overlay is up (z-index 900) it covers the
+                // status banner area, so a silent handleCharge failure
+                // looks like "the Confirm button does nothing". Catch
+                // the most common ones inline so the cashier sees them.
+                if (cart.cartItems.length === 0) return;
+                if (orderType === "Dine-in" && tables.length > 0 && !selectedTableId) {
+                  order.setStatusMessage("Select a table before charging a Dine-in ticket.");
+                  setTimeout(() => order.setStatusMessage(""), 4000);
+                  return;
+                }
+                setShowCharge(true);
+              }}
               onRetryPayment={order.handleRetryPayment}
               onOpenSendBill={() => setShowSendBill(true)}
               quickNotes={quickNotes}
@@ -960,8 +973,13 @@ function App() {
           tax={cart.cartTax}
           total={cart.cartTotal}
           submitting={order.isSubmitting}
+          errorMessage={order.statusMessage}
           onClose={() => setShowCharge(false)}
           onConfirm={async (rows) => {
+            // Clear any stale error (e.g. from a previous attempt) so
+            // a fresh confirm tap doesn't show the old message while
+            // the new request is in flight.
+            order.setStatusMessage("");
             const ok = await order.handleCharge(rows);
             if (ok) setShowCharge(false);
           }}
