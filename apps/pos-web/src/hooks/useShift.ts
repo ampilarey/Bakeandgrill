@@ -65,11 +65,42 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean) {
   // Live polling for the shift summary so the cashier sees fresh expected
   // cash + sales counts without manually refreshing. 30s is plenty for
   // an actual cash drawer; faster would just hammer the API.
+  //
+  // Bug-027: gate polling on Page Visibility. If the iPad screen is off,
+  // the POS tab is backgrounded, or another app is focused, the
+  // interval used to keep firing — burning battery and hitting the
+  // /shifts/{id}/summary endpoint with stale-tab requests. Now the
+  // interval clears when document.visibilityState !== "visible" and
+  // re-arms on visibilitychange. A burst-refresh runs on each
+  // become-visible event so the first thing the cashier sees when
+  // they wake the screen is already up-to-date.
   useEffect(() => {
     if (!current) return;
-    void refreshSummary();
-    const id = setInterval(() => { void refreshSummary(); }, 30_000);
-    return () => clearInterval(id);
+    let timerId: number | null = null;
+
+    const arm = () => {
+      if (timerId !== null) return;
+      void refreshSummary();
+      timerId = window.setInterval(() => { void refreshSummary(); }, 30_000);
+    };
+    const disarm = () => {
+      if (timerId !== null) {
+        window.clearInterval(timerId);
+        timerId = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") arm();
+      else disarm();
+    };
+
+    if (document.visibilityState === "visible") arm();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      disarm();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [current, refreshSummary]);
 
   const open = useCallback(async (openingCash: number, notes?: string) => {
