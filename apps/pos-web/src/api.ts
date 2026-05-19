@@ -737,6 +737,12 @@ export async function fetchReceipts(params: {
     items?: Array<{ id: number; item_name: string; quantity: number; unit_price: number; total_price: number }>;
     ticket_name?: string | null;
     ticket_note?: string | null;
+    /** Restaurant table the dine-in ticket was rung against. Surfaced
+     *  here so the POS Active orders search can match on table
+     *  number / zone (e.g. cashier types "12" → table 12's open
+     *  ticket bubbles up). Null/undefined for non-dine-in tickets. */
+    restaurant_table_id?: number | null;
+    restaurant_table?: { id: number; number: string | number; zone?: string | null } | null;
   }>;
 }> {
   const qs = new URLSearchParams();

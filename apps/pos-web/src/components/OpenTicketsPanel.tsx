@@ -59,25 +59,36 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
 
   // ── Filter state ──────────────────────────────────────────────
-  // Single-row compact filter bar:
-  //   [All] [Cooking] [Ready] [Parked]   Type ▾   ✕ Clear
-  // Stage chips are one-tap (most common workflow filter); Type is a
-  // dropdown to save horizontal space (4 types don't fit as chips
-  // alongside the 4 stage chips on tablet widths). Clear surfaces
-  // only when at least one filter is non-default.
+  // Three chip groups (stage / type / payment) plus a search button
+  // that toggles a slim search input. All chips are one-tap; the
+  // groups wrap to a second line on narrow tablet widths. Clear
+  // surfaces only when at least one filter is non-default.
   type TypeFilter = "all" | "dine_in" | "takeaway" | "online_pickup";
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   type StageFilter = "all" | "parked" | "cooking" | "ready";
+  type PaymentFilter = "all" | "paid" | "unpaid";
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
-  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
+  // Search bar visibility + value. Hidden until 🔍 is tapped so the
+  // chip row stays the at-rest UI. Auto-shows when typing on a
+  // physical keyboard (keypress listener) — not yet wired but easy
+  // to add if needed.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   // Reset to default — used by the ✕ Clear button. Tied to a single
   // helper so we never miss a filter when we add more later.
   const clearFilters = () => {
     setStageFilter("all");
     setTypeFilter("all");
+    setPaymentFilter("all");
+    setSearch("");
   };
-  const hasActiveFilters = stageFilter !== "all" || typeFilter !== "all";
+  const hasActiveFilters =
+    stageFilter !== "all" ||
+    typeFilter !== "all" ||
+    paymentFilter !== "all" ||
+    search.trim().length > 0;
 
   // ── Merge / split state ────────────────────────────────────────
   // Two-tap-plus-confirm merge flow:
@@ -416,18 +427,52 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   // ── Derived: filtered ticket list ─────────────────────────────
   // Stage derivation lives in the row map too (for the badge), but
   // we need it here for stage-filter matching. Keep both in sync.
+  // Search is plain client-side .includes() across the obvious POS
+  // identifiers — orders are <50 rows so server-side search would
+  // be overkill. Restaurant table number is included so cashier can
+  // type "12" and land on table 12's open ticket.
   const filteredTickets = useMemo(() => {
     const stageOf = (status: string | null | undefined): "parked" | "cooking" | "ready" => {
       if (status === "held") return "parked";
       if (status === "ready") return "ready";
       return "cooking";
     };
+    const q = search.trim().toLowerCase();
     return tickets.filter((t) => {
       if (typeFilter !== "all" && t.type !== typeFilter) return false;
       if (stageFilter !== "all" && stageOf(t.status) !== stageFilter) return false;
+      if (paymentFilter === "paid" && t.payment_status !== "paid") return false;
+      if (paymentFilter === "unpaid" && t.payment_status === "paid") return false;
+      if (q.length > 0) {
+        // restaurant_table can carry a numeric "number" OR a string
+        // like "Patio 3", so we just stringify the whole thing.
+        const tableHay = t.restaurant_table
+          ? `${t.restaurant_table.number ?? ""} ${t.restaurant_table.zone ?? ""}`
+          : "";
+        const haystack = [
+          t.order_number,
+          t.ticket_name ?? "",
+          t.ticket_note ?? "",
+          t.customer?.name ?? "",
+          t.customer?.phone ?? "",
+          tableHay,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
       return true;
     });
-  }, [tickets, typeFilter, stageFilter]);
+  }, [tickets, typeFilter, stageFilter, paymentFilter, search]);
+
+  const paymentCounts = useMemo(() => {
+    const counts = { all: tickets.length, paid: 0, unpaid: 0 };
+    tickets.forEach((t) => {
+      if (t.payment_status === "paid") counts.paid++;
+      else counts.unpaid++;
+    });
+    return counts;
+  }, [tickets]);
 
   // Counts for the chip badges — recomputed on the unfiltered set so
   // the chip count always shows the TOTAL of each bucket, not the
@@ -499,15 +544,14 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
         </div>
       )}
 
-      {/* ── Compact one-row filter bar ─────────────────────────
-            Layout:  [All N] [Cooking N] [Ready N] [Parked N]  Type ▾  ✕ Clear
-            - Stage chips on the left as single-tap toggles.
-            - Type as a dropdown (4 types alongside 4 stage chips
-              would wrap on tablet widths and break the one-row goal).
-            - ✕ Clear only renders when ≥1 filter is non-default.
-            Chip counts always reflect the unfiltered tickets so the
-            cashier knows what's available in each bucket regardless
-            of the active filter. */}
+      {/* ── Filter bar ────────────────────────────────────────
+            Three chip groups (stage, type, payment) + 🔍 search
+            toggle + ✕ Clear. Groups are flex-wrapped so they sit
+            on one row on landscape iPads and wrap to a second row
+            on portrait / phone widths. Divider pipes between
+            groups keep the eye anchored even when wrapping.
+            Counts always reflect the unfiltered ticket set so the
+            cashier knows what's hidden by the current filter. */}
       <div
         style={{
           marginBottom: space.m,
@@ -517,12 +561,14 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           border: `1px solid ${palette.border}`,
           display: "flex",
           alignItems: "center",
-          gap: space.xs,
+          gap: 6,
           flexWrap: "wrap",
         }}
       >
-        {/* Stage chips — single-tap. Inline style so they sit
-            flush in the same row as the type dropdown. */}
+        {/* ── Stage chips ─────────────────────────────────────
+              The primary workflow filter — "what state is the
+              order in?" Dark fill when active so the cashier's
+              eye snaps to whatever's currently selected. */}
         {([
           { key: "all", label: "All", count: stageCounts.all },
           { key: "cooking", label: "🍳 Cooking", count: stageCounts.cooking },
@@ -535,7 +581,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
               key={opt.key}
               onClick={() => setStageFilter(opt.key)}
               style={{
-                padding: "6px 12px",
+                padding: "6px 10px",
                 borderRadius: 999,
                 border: `1px solid ${active ? "#0F172A" : palette.border}`,
                 background: active ? "#0F172A" : "#fff",
@@ -568,116 +614,156 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           );
         })}
 
-        {/* Type dropdown — anchored to the right side of the row so
-            it groups with the Clear button visually. */}
-        <div style={{ position: "relative", marginLeft: "auto" }}>
-          <button
-            onClick={() => setTypeMenuOpen((v) => !v)}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 999,
-              border: `1px solid ${typeFilter !== "all" ? "#1D4ED8" : palette.border}`,
-              background: typeFilter !== "all" ? "#EFF6FF" : "#fff",
-              color: typeFilter !== "all" ? "#1E40AF" : palette.panelInk,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            {(() => {
-              const labels: Record<TypeFilter, string> = {
-                all: "All types",
-                dine_in: "🍽 Dine-in",
-                takeaway: "🥡 Takeaway",
-                online_pickup: "📦 Pickup",
-              };
-              return labels[typeFilter];
-            })()}
-            <span style={{ fontSize: 9 }}>▾</span>
-          </button>
-          {typeMenuOpen && (
-            <>
-              {/* Click-away catcher — fixed inset so a tap anywhere
-                  outside the menu closes it. Sits below the menu in
-                  z-order so the menu itself stays clickable. */}
-              <div
-                onClick={() => setTypeMenuOpen(false)}
+        {/* Subtle divider — kept as a thin grey pipe so the eye
+            still groups the chips even when they wrap. */}
+        <span
+          aria-hidden
+          style={{ width: 1, height: 18, background: palette.border, margin: "0 2px" }}
+        />
+
+        {/* ── Type chips ──────────────────────────────────────
+              Blue tint when active to distinguish from stage. */}
+        {([
+          { key: "dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
+          { key: "takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
+          { key: "online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
+        ] as const).map((opt) => {
+          const active = opt.key === typeFilter;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setTypeFilter(active ? "all" : opt.key)}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: `1px solid ${active ? "#1D4ED8" : palette.border}`,
+                background: active ? "#1D4ED8" : "#fff",
+                color: active ? "#fff" : palette.panelInk,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>{opt.label}</span>
+              <span
                 style={{
-                  position: "fixed",
-                  inset: 0,
-                  zIndex: z.modalBackdrop - 1,
-                }}
-              />
-              <div
-                role="menu"
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 4px)",
-                  right: 0,
-                  background: "#fff",
-                  border: `1px solid ${palette.border}`,
-                  borderRadius: radius.m,
-                  boxShadow: shadow.m,
-                  zIndex: z.modalBackdrop,
-                  minWidth: 180,
-                  padding: 4,
-                  display: "flex",
-                  flexDirection: "column",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  background: active ? "rgba(255,255,255,0.18)" : "#E2E8F0",
+                  color: active ? "#fff" : palette.panelMuted,
+                  padding: "1px 6px",
+                  borderRadius: 999,
+                  minWidth: 16,
+                  textAlign: "center",
                 }}
               >
-                {([
-                  { key: "all", label: "All types", count: typeCounts.all },
-                  { key: "dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
-                  { key: "takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
-                  { key: "online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
-                ] as const).map((opt) => {
-                  const active = opt.key === typeFilter;
-                  return (
-                    <button
-                      key={opt.key}
-                      onClick={() => {
-                        setTypeFilter(opt.key);
-                        setTypeMenuOpen(false);
-                      }}
-                      style={{
-                        padding: "8px 12px",
-                        background: active ? "#EFF6FF" : "transparent",
-                        color: active ? "#1E40AF" : palette.panelInk,
-                        border: "none",
-                        borderRadius: radius.s,
-                        textAlign: "left",
-                        fontSize: 13,
-                        fontWeight: active ? 800 : 600,
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                    >
-                      <span>{opt.label}</span>
-                      <span style={{ fontSize: 11, color: palette.panelMuted, fontWeight: 700 }}>
-                        {opt.count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+                {opt.count}
+              </span>
+            </button>
+          );
+        })}
 
-        {/* Clear — only when at least one filter deviates from
-            the default. Avoids "✕ Clear" being a permanent
-            no-op button at end of row. */}
+        <span
+          aria-hidden
+          style={{ width: 1, height: 18, background: palette.border, margin: "0 2px" }}
+        />
+
+        {/* ── Payment chips ───────────────────────────────────
+              Green = paid, red = unpaid. Quick way for a cashier
+              to triage "what still owes me money?" without going
+              into the manager view. */}
+        {([
+          { key: "paid", label: "💳 Paid", count: paymentCounts.paid, accent: "#15803D" },
+          { key: "unpaid", label: "UNPAID", count: paymentCounts.unpaid, accent: "#B91C1C" },
+        ] as const).map((opt) => {
+          const active = opt.key === paymentFilter;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setPaymentFilter(active ? "all" : opt.key)}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: `1px solid ${active ? opt.accent : palette.border}`,
+                background: active ? opt.accent : "#fff",
+                color: active ? "#fff" : palette.panelInk,
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                letterSpacing: opt.key === "unpaid" ? 0.6 : undefined,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>{opt.label}</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  background: active ? "rgba(255,255,255,0.18)" : "#E2E8F0",
+                  color: active ? "#fff" : palette.panelMuted,
+                  padding: "1px 6px",
+                  borderRadius: 999,
+                  minWidth: 16,
+                  textAlign: "center",
+                }}
+              >
+                {opt.count}
+              </span>
+            </button>
+          );
+        })}
+
+        {/* Spacer — pushes the search + clear buttons to the
+            right edge when there's horizontal room. Collapses to
+            zero when wrapping so the right-side controls just
+            flow naturally on phones. */}
+        <div style={{ flex: 1, minWidth: 8 }} />
+
+        {/* ── Search toggle ───────────────────────────────────
+              Tapping reveals a slim search input on the second
+              line of the filter bar. We keep it collapsed by
+              default so the chip row is the at-rest UI. */}
+        <button
+          onClick={() => {
+            setSearchOpen((v) => {
+              const next = !v;
+              if (!next) setSearch("");
+              return next;
+            });
+          }}
+          title="Search by name, phone, table, or order #"
+          style={{
+            padding: "6px 10px",
+            borderRadius: 999,
+            border: `1px solid ${searchOpen || search ? "#0F172A" : palette.border}`,
+            background: searchOpen || search ? "#0F172A" : "#fff",
+            color: searchOpen || search ? "#fff" : palette.panelInk,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          🔍 Search
+        </button>
+
         {hasActiveFilters && (
           <button
-            onClick={clearFilters}
-            title="Reset filters"
+            onClick={() => {
+              clearFilters();
+              setSearchOpen(false);
+            }}
+            title="Reset all filters"
             style={{
               padding: "6px 10px",
               borderRadius: 999,
@@ -694,6 +780,34 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           >
             ✕ Clear
           </button>
+        )}
+
+        {/* ── Search input (collapsible) ──────────────────────
+              Sits on its own line below the chips when expanded.
+              The full-width 100% basis + flex-wrap forces it onto
+              the next visual row regardless of how the chips
+              above wrapped. */}
+        {searchOpen && (
+          <div style={{ flexBasis: "100%", marginTop: 6 }}>
+            <input
+              type="search"
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Name, phone, table, order # or ticket note…"
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: radius.m,
+                border: `1px solid ${palette.border}`,
+                background: "#fff",
+                color: palette.panelInk,
+                fontSize: 13,
+                fontWeight: 500,
+                outline: "none",
+              }}
+            />
+          </div>
         )}
       </div>
 

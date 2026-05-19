@@ -36,7 +36,15 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
-        $query = Order::with(['customer:id,name,phone', 'items:id,order_id,item_name,quantity,unit_price,total_price'])
+        $query = Order::with([
+                'customer:id,name,phone',
+                'items:id,order_id,item_name,quantity,unit_price,total_price',
+                // Eager-load the table so the POS Active orders search
+                // can match on table number / zone (e.g. cashier types
+                // "12" and lands on table 12's open ticket without
+                // scrolling). Scoped to the three columns the UI needs.
+                'restaurantTable:id,number,zone',
+            ])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('status')) {
