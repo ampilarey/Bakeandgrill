@@ -13,6 +13,35 @@ import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, t
 
 export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
 
+/**
+ * Robust money display for a ticket.
+ *
+ * The backend `total` column drifts to 0 in several edge cases we've
+ * had to firefight — orders created via legacy paths, orders saved
+ * before `OrderTotalsCalculator` was wired into every code path, and
+ * any future race where the order is created before items are
+ * persisted. When that happens the cashier sees "MVR 0.00" on a
+ * ticket that clearly has items, which destroys trust in the panel.
+ *
+ * Falls back to summing line-item `total_price` when the persisted
+ * `total` is 0 or missing. Items are eager-loaded by the API so the
+ * data is already on the row — no extra request, no flicker.
+ *
+ * Laravel's `decimal:2` cast returns money values as strings (e.g.
+ * `"50.00"`), so every field has to go through `Number()` before any
+ * arithmetic or `.toFixed()` call to avoid `NaN` (Bug-053 / Bug-055).
+ */
+export function ticketDisplayTotal(t: OpenTicket): number {
+  const stored = Number(t.total ?? 0);
+  if (stored > 0) return stored;
+  const items = t.items ?? [];
+  const summed = items.reduce(
+    (sum, it) => sum + Number(it.total_price ?? 0),
+    0,
+  );
+  return summed > 0 ? summed : stored;
+}
+
 type Props = {
   deviceId: string;
   onResume: (ticket: OpenTicket) => void;
@@ -884,7 +913,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                   </div>
                 </div>
                 <div style={{ fontWeight: 800, fontSize: type.subtitle.fontSize, color: palette.panelInk, whiteSpace: "nowrap" }}>
-                  MVR {Number(t.total).toFixed(2)}
+                  MVR {ticketDisplayTotal(t).toFixed(2)}
                 </div>
               </div>
 
@@ -964,7 +993,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                         busy={busy}
                         bg="#1D4ED8"
                         confirm
-                        confirmLabel={`Send MVR ${Number(t.total ?? 0).toFixed(2)} link?`}
+                        confirmLabel={`Send MVR ${ticketDisplayTotal(t).toFixed(2)} link?`}
                       >
                         💳 Send pay link
                       </ActionButton>
@@ -1459,7 +1488,7 @@ function MergeConfirmModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const combinedTotal = Number(target.total) + Number(source.total);
+  const combinedTotal = ticketDisplayTotal(target) + ticketDisplayTotal(source);
   // Bug-010: cross-stage merges leave kitchen state inconsistent.
   // - source has been fired but target is still parked → the
   //   kitchen chit for the source items survives, but the merged
@@ -1510,7 +1539,7 @@ function MergeConfirmModal({
         {t.customer?.name ? ` · ${t.customer.name}` : ""}
       </div>
       <div style={{ fontWeight: 800, color: palette.panelInk, fontSize: type.subtitle.fontSize, marginTop: 4 }}>
-        MVR {Number(t.total).toFixed(2)}
+        MVR {ticketDisplayTotal(t).toFixed(2)}
       </div>
     </div>
   );

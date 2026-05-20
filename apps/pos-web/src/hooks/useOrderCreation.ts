@@ -891,7 +891,7 @@ export function useOrderCreation(params: Params) {
         items,
         reprint_kitchen: itemsChanged,
       });
-      setResumedOrderTotal(res.order.total ?? null);
+      setResumedOrderTotal(res.order.total != null ? Number(res.order.total) : null);
       setResumedItemsFingerprint(currentFp);
       setIsEditingActive(false);
       setStatusMessage(
