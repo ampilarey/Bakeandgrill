@@ -220,21 +220,24 @@ function App() {
   const refreshOpenTickets = useCallback(async () => {
     if (!isLoggedIn || deviceStatus !== "approved") return;
     try {
-      // Count what the Active Orders panel actually shows — the badge
-      // was using `held_only` (parked tickets only, status=held), but
-      // the panel uses `active_only` which is the superset (parked +
-      // cooking + ready + paid-but-uncollected). So a station with
-      // three cooking tickets and one ready ticket saw "Active orders
-      // (4)" inside the panel but a bare unbadged "Open Tickets"
-      // button outside it. Use the same filter in both places so the
-      // count never lies.
+      // Count what the Active Orders panel actually shows. Two earlier
+      // bugs here, both fixed:
+      //   1. Badge used `held_only` while the panel used `active_only`,
+      //      so the badge undercounted by every cooking/ready ticket.
+      //   2. Badge read `res.meta.total`, but OrderController::index
+      //      returns a bare Laravel paginator which puts `total` at
+      //      the TOP level (no meta wrapper). Combined with the
+      //      backend's `min(100, max(10, per_page))` clamp on per_page,
+      //      the fallback to `res.data.length` topped out at 10 even
+      //      when 50 tickets were live.
       //
-      // Also drops the device_identifier scope — Active Orders is a
-      // station-wide queue (the kitchen serves the whole venue), so
-      // scoping the badge to one POS terminal would understate every
-      // multi-station setup. The panel itself is unscoped already.
+      // Now reads `total` at the top level (Laravel paginator shape),
+      // matches the panel's `active_only` filter, and skips the
+      // device_identifier scope because Active Orders is venue-wide.
+      // per_page is set to 1 so the badge call stays cheap — only the
+      // count matters here, not the row payload.
       const res = await fetchReceipts({ active_only: true, per_page: 1 });
-      const total = (res as { meta?: { total?: number } }).meta?.total ?? res.data.length;
+      const total = (res as { total?: number }).total ?? res.data.length;
       setOpenTicketsCount(total);
     } catch { /* best-effort */ }
   }, [isLoggedIn, deviceStatus]);
