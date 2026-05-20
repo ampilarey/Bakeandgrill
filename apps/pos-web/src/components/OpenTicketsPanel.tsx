@@ -787,9 +787,37 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           const isMergeTarget = mergeTargetId === t.id;
           const isMergeCandidate = mergeTargetId !== null && !isMergeTarget;
 
+          // Bug-054: the whole card is the "open ticket to edit"
+          // hit target now. Previously only the header strip (title +
+          // badges + total) carried the onResume handler, so a tap
+          // anywhere in the bottom half of the card — between action
+          // buttons, on the items-count text, or on the customer-name
+          // sub-line — did nothing. Cashiers reported "I had to tap
+          // twice to open it." Every per-row action button already
+          // calls e.stopPropagation() so promoting the handler to the
+          // outer card doesn't accidentally fire them. Keyboard
+          // (Enter / Space) and aria roles move up too so screen
+          // readers see one consistent button-shaped target instead
+          // of a nested one.
+          const cardClickHandler = mergeTargetId === null
+            ? () => onResume(t)
+            : isMergeCandidate
+              ? () => handlePickMergeSource(t)
+              : undefined;
           return (
             <div
               key={t.id}
+              role={cardClickHandler ? "button" : undefined}
+              tabIndex={cardClickHandler ? 0 : undefined}
+              onKeyDown={cardClickHandler ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  cardClickHandler();
+                }
+              } : undefined}
+              title={mergeTargetId === null
+                ? "Open ticket in main POS to add/remove items, charge, etc."
+                : undefined}
               style={{
                 padding: space.m,
                 borderRadius: radius.l,
@@ -798,22 +826,12 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                 display: "flex",
                 flexDirection: "column",
                 gap: space.s,
-                cursor: isMergeCandidate ? "pointer" : "default",
+                cursor: cardClickHandler ? "pointer" : "default",
               }}
-              onClick={isMergeCandidate ? () => handlePickMergeSource(t) : undefined}
+              onClick={cardClickHandler}
             >
               <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m, cursor: mergeTargetId === null ? "pointer" : undefined }}
-                role={mergeTargetId === null ? "button" : undefined}
-                tabIndex={mergeTargetId === null ? 0 : undefined}
-                onClick={mergeTargetId === null ? () => onResume(t) : undefined}
-                onKeyDown={mergeTargetId === null ? (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onResume(t);
-                  }
-                } : undefined}
-                title={mergeTargetId === null ? "Open ticket in main POS to add/remove items, charge, etc." : undefined}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
