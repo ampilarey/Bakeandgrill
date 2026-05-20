@@ -74,7 +74,10 @@ type Props = {
  * stays visible with a "🍳 COOKING + PAID" badge until the cashier
  * marks it picked up.
  */
-export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhone }: Props) {
+export function OpenTicketsPanel({ deviceId: _deviceId, onResume, onClose, cartCustomerPhone }: Props) {
+  // _deviceId is intentionally unused — see notes below the fetchReceipts
+  // call. Kept on Props so future per-station filtering can be reintroduced
+  // without a parent-side API change.
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -176,8 +179,17 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           // Includes paid-but-cooking and ready-but-not-yet-picked-up
           // tickets so the cashier sees the full pipeline, not just
           // the unpaid slice.
+          //
+          // No device_identifier filter — Active Orders is a venue-
+          // wide queue. The kitchen cooks every ticket (online orders,
+          // tickets from other POS terminals, BML-paid pickup orders)
+          // and any cashier on any station may need to mark them
+          // ready / pick up / void. Scoping to one terminal made the
+          // panel show 3 tickets while the badge counted the full 10
+          // (online + other stations + this one), and made online
+          // orders invisible to the cashier even though they were
+          // sitting in the kitchen.
           active_only: true,
-          device_identifier: deviceId,
           per_page: 50,
         });
         if (!cancelled) {
@@ -213,7 +225,12 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [deviceId]);
+    // No deviceId dep — Active Orders is venue-wide. The deviceId
+    // prop is kept on Props so future per-station filtering can be
+    // bolted back on without an API rename, but it deliberately does
+    // not drive the query today.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update the local row after a side action so the cashier sees the
   // new state (e.g. "fired" badge appearing, payment_status flipping)
@@ -474,7 +491,6 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       // active feed in one round-trip.
       const fresh = await fetchReceipts({
         active_only: true,
-        device_identifier: deviceId,
         per_page: 50,
       });
       setTickets(fresh.data);
@@ -511,7 +527,6 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       // have the full row shape for the brand-new order locally).
       const fresh = await fetchReceipts({
         active_only: true,
-        device_identifier: deviceId,
         per_page: 50,
       });
       setTickets(fresh.data);
