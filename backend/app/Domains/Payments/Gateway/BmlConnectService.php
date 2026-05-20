@@ -76,9 +76,24 @@ class BmlConnectService
             ],
         ];
 
-        // Optional: include webhook URL so BML can push status updates
+        // Optional: include webhook URL so BML can push status updates.
+        // Only attach when the webhook host matches this install's APP_URL.
+        // A test Connect app (domain test.bakeandgrill.mv) with
+        // BML_WEBHOOK_URL=https://bakeandgrill.mv/... makes BML reject
+        // payment creation with a generic 4xx — the portal webhook (live)
+        // still receives callbacks globally; test relies on the return
+        // URL fallback for order confirmation.
         if ($webhookUrl = config('bml.webhook_url')) {
-            $payload['webhook'] = $webhookUrl;
+            $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+            $webhookHost = parse_url($webhookUrl, PHP_URL_HOST);
+            if ($appHost && $webhookHost && strcasecmp($appHost, $webhookHost) === 0) {
+                $payload['webhook'] = $webhookUrl;
+            } else {
+                Log::info('BML: omitting cross-domain webhook from createPayment payload', [
+                    'app_host' => $appHost,
+                    'webhook_host' => $webhookHost,
+                ]);
+            }
         }
 
         $url = "{$this->baseUrl}/v2/transactions";

@@ -767,6 +767,7 @@ export async function fetchReceipts(params: {
   unpaid_only?: boolean;
   device_identifier?: string;
   per_page?: number;
+  page?: number;
   status?: string;
   /** Restrict receipts to a specific shift. Used by ReceiptsPanel's
    *  "current shift" scope so the cashier sees only their own
@@ -804,6 +805,11 @@ export async function fetchReceipts(params: {
     restaurant_table_id?: number | null;
     table?: { id: number; name: string; location?: string | null } | null;
   }>;
+  /** Laravel paginator fields — present on GET /orders list responses. */
+  total?: number;
+  last_page?: number;
+  current_page?: number;
+  per_page?: number;
 }> {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
@@ -811,6 +817,29 @@ export async function fetchReceipts(params: {
     qs.set(k, typeof v === "boolean" ? (v ? "1" : "0") : String(v));
   });
   return request(`/orders?${qs.toString()}`);
+}
+
+/** Active orders for one POS station (this device + shared online/delivery). */
+export async function fetchActiveOrdersForStation(
+  deviceIdentifier: string,
+): Promise<{ data: Awaited<ReturnType<typeof fetchReceipts>>["data"]; total: number }> {
+  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [];
+  const perPage = 100;
+  let total = 0;
+  for (let page = 1; page <= 20; page++) {
+    const res = await fetchReceipts({
+      active_only: true,
+      device_identifier: deviceIdentifier,
+      per_page: perPage,
+      page,
+    });
+    total = res.total ?? out.length + (res.data?.length ?? 0);
+    const batch = res.data ?? [];
+    out.push(...batch);
+    const lastPage = res.last_page ?? page;
+    if (batch.length === 0 || page >= lastPage) break;
+  }
+  return { data: out, total };
 }
 
 export async function getReceiptLink(orderId: number): Promise<{ link: string }> {

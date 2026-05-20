@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelOrder,
+  fetchActiveOrdersForStation,
   fetchReceipts,
   fireOrderToKitchen,
   markOrderPickedUp,
@@ -74,11 +75,10 @@ type Props = {
  * stays visible with a "🍳 COOKING + PAID" badge until the cashier
  * marks it picked up.
  */
-export function OpenTicketsPanel({ deviceId: _deviceId, onResume, onClose, cartCustomerPhone }: Props) {
-  // _deviceId is intentionally unused — see notes below the fetchReceipts
-  // call. Kept on Props so future per-station filtering can be reintroduced
-  // without a parent-side API change.
+export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhone }: Props) {
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
+  /** Server total for this station scope (may exceed loaded rows). */
+  const [activeTotal, setActiveTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   // Per-row "action in progress" indicator (sendBill is the only async
@@ -174,26 +174,10 @@ export function OpenTicketsPanel({ deviceId: _deviceId, onResume, onClose, cartC
       if (cancelled) return;
       try {
         if (showSpinner) setLoading(true);
-        const res = await fetchReceipts({
-          // active_only is the new default — superset of open_only.
-          // Includes paid-but-cooking and ready-but-not-yet-picked-up
-          // tickets so the cashier sees the full pipeline, not just
-          // the unpaid slice.
-          //
-          // No device_identifier filter — Active Orders is a venue-
-          // wide queue. The kitchen cooks every ticket (online orders,
-          // tickets from other POS terminals, BML-paid pickup orders)
-          // and any cashier on any station may need to mark them
-          // ready / pick up / void. Scoping to one terminal made the
-          // panel show 3 tickets while the badge counted the full 10
-          // (online + other stations + this one), and made online
-          // orders invisible to the cashier even though they were
-          // sitting in the kitchen.
-          active_only: true,
-          per_page: 50,
-        });
+        const { data, total } = await fetchActiveOrdersForStation(deviceId);
         if (!cancelled) {
-          setTickets(res.data);
+          setTickets(data);
+          setActiveTotal(total);
           setErr("");
         }
       } catch (e) {
@@ -225,12 +209,7 @@ export function OpenTicketsPanel({ deviceId: _deviceId, onResume, onClose, cartC
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-    // No deviceId dep — Active Orders is venue-wide. The deviceId
-    // prop is kept on Props so future per-station filtering can be
-    // bolted back on without an API rename, but it deliberately does
-    // not drive the query today.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [deviceId]);
 
   // Update the local row after a side action so the cashier sees the
   // new state (e.g. "fired" badge appearing, payment_status flipping)
@@ -489,11 +468,9 @@ export function OpenTicketsPanel({ deviceId: _deviceId, onResume, onClose, cartC
       // Full reload — pulls the updated target (new total + items)
       // and reflects the cancelled source falling out of the
       // active feed in one round-trip.
-      const fresh = await fetchReceipts({
-        active_only: true,
-        per_page: 50,
-      });
+      const fresh = await fetchActiveOrdersForStation(deviceId);
       setTickets(fresh.data);
+      setActiveTotal(fresh.total);
       setMergeTargetId(null);
       setMergeConfirm(null);
       setRowMsg({
@@ -525,11 +502,9 @@ export function OpenTicketsPanel({ deviceId: _deviceId, onResume, onClose, cartC
       // Force reload to pull both the slimmed source AND the new
       // sibling ticket. Optimistic patch is awkward here (we don't
       // have the full row shape for the brand-new order locally).
-      const fresh = await fetchReceipts({
-        active_only: true,
-        per_page: 50,
-      });
+      const fresh = await fetchActiveOrdersForStation(deviceId);
       setTickets(fresh.data);
+      setActiveTotal(fresh.total);
     } catch (e) {
       setRowMsg({ id: sourceId, kind: "err", text: (e as Error).message || "Couldn't split" });
     } finally {
@@ -612,7 +587,7 @@ export function OpenTicketsPanel({ deviceId: _deviceId, onResume, onClose, cartC
     });
   }, [tickets, search]);
 
-  const allCount = searchScopedTickets.length;
+  const allCount = search.trim() ? searchScopedTickets.length : activeTotal;
 
   const paymentCounts = useMemo(() => {
     let paid = 0;

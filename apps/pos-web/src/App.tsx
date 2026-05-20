@@ -231,16 +231,17 @@ function App() {
       //      the fallback to `res.data.length` topped out at 10 even
       //      when 50 tickets were live.
       //
-      // Now reads `total` at the top level (Laravel paginator shape),
-      // matches the panel's `active_only` filter, and skips the
-      // device_identifier scope because Active Orders is venue-wide.
-      // per_page is set to 1 so the badge call stays cheap — only the
-      // count matters here, not the row payload.
-      const res = await fetchReceipts({ active_only: true, per_page: 1 });
-      const total = (res as { total?: number }).total ?? res.data.length;
+      // Same scope as OpenTicketsPanel: this station + online/delivery.
+      // per_page 1 — only the paginator `total` is needed for the badge.
+      const res = await fetchReceipts({
+        active_only: true,
+        device_identifier: deviceId,
+        per_page: 1,
+      });
+      const total = res.total ?? res.data.length;
       setOpenTicketsCount(total);
     } catch { /* best-effort */ }
-  }, [isLoggedIn, deviceStatus]);
+  }, [isLoggedIn, deviceStatus, deviceId]);
 
   useEffect(() => { void refreshOpenTickets(); }, [refreshOpenTickets, pane, shift.current?.id]);
 

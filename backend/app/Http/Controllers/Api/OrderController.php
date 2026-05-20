@@ -85,7 +85,19 @@ class OrderController extends Controller
             $query->where('device_id', (int) $request->input('device_id'));
         }
         if ($request->filled('device_identifier')) {
-            $query->whereHas('device', fn ($q) => $q->where('identifier', $request->input('device_identifier')));
+            $identifier = (string) $request->input('device_identifier');
+            // POS Active orders: this station's tickets PLUS in-flight
+            // online/delivery orders (they are not tied to one iPad).
+            // Without the OR, online_pickup tickets vanish from every
+            // register when we scope by device_identifier.
+            if ($request->filled('active_only') && $request->boolean('active_only')) {
+                $query->where(function ($w) use ($identifier) {
+                    $w->whereHas('device', fn ($q) => $q->where('identifier', $identifier))
+                        ->orWhereIn('type', ['online_pickup', 'delivery']);
+                });
+            } else {
+                $query->whereHas('device', fn ($q) => $q->where('identifier', $identifier));
+            }
         }
         if ($request->filled('shift_id')) {
             $query->where('shift_id', (int) $request->input('shift_id'));
