@@ -749,17 +749,24 @@ export function useOrderCreation(params: Params) {
       params.setSelectedTableId(response.order.restaurant_table_id ?? null);
     }
 
+    // Bug-055: Laravel's decimal:2 casts come back as STRINGS
+    // ("50.00"), not numbers. If we put them straight into the cart
+    // `item.price + modifiers.reduce(...)` becomes a string concat
+    // ("50.00" + 0 = "50.000"), then `* quantity` yields NaN, then
+    // cartSubtotal / cartTotal both end up NaN — and the cashier
+    // sees "Balance: MVR 0.00" on a perfectly real ticket. Coerce
+    // every money field to a Number on the way in.
     const restoredItems: CartItem[] = response.order.items.map((item) => ({
       id: item.item_id ?? 0,
       name: item.item_name,
-      price: item.unit_price,
-      quantity: item.quantity,
+      price: Number(item.unit_price ?? 0),
+      quantity: Number(item.quantity ?? 0),
       variant_id: item.variant_id ?? null,
       variant_name: item.variant_name ?? null,
       modifiers: item.modifiers?.map((m) => ({
         id: m.modifier_id ?? 0,
         name: m.modifier_name,
-        price: m.modifier_price,
+        price: Number(m.modifier_price ?? 0),
       })) ?? [],
       // Restore the per-line tax snapshot so the cart breakdown still
       // shows GST when the cashier resumes a held ticket. Without this
@@ -781,7 +788,8 @@ export function useOrderCreation(params: Params) {
     setResumedOrderId(orderId);
     // Snapshot the authoritative server total so charge time uses it
     // even if the local cart calculation produces a different number.
-    setResumedOrderTotal(response.order.total ?? null);
+    // Bug-055: coerce — same decimal-string trap as item prices above.
+    setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
     // Take a fingerprint of the resumed items so handleSaveActiveChanges
     // can later decide if the kitchen actually needs a reprint.
     setResumedItemsFingerprint(cartFingerprint(restoredItems));

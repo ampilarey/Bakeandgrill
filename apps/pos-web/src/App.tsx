@@ -943,7 +943,13 @@ function App() {
               barcode={order.barcode}
               setBarcode={order.setBarcode}
               onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
-              readOnly={order.resumedOrderId !== null}
+              // Bug-055: the menu was disabled the moment ANY ticket
+              // was resumed, including edit mode — the cashier
+              // couldn't add items even though the cart was unlocked.
+              // Lock the menu only in charge-only resume (where the
+              // cart is read-only). In edit mode the cashier MUST be
+              // able to tap items to add them to the open ticket.
+              readOnly={order.resumedOrderId !== null && !order.isEditingActive}
               onRefreshMenu={refreshAll}
               isRefreshingMenu={isRefreshingAll || menu.isRefreshing}
               lastRefreshedAt={menu.lastRefreshedAt}
