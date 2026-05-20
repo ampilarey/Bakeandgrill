@@ -220,15 +220,24 @@ function App() {
   const refreshOpenTickets = useCallback(async () => {
     if (!isLoggedIn || deviceStatus !== "approved") return;
     try {
-      // Use pagination metadata for the actual total — the badge was
-      // showing `res.data.length` (capped to per_page=50) so a busy
-      // station with 60+ parked tickets was permanently stuck at
-      // "50" even after settling some. Pagination total is the truth.
-      const res = await fetchReceipts({ held_only: true, device_identifier: deviceId, per_page: 1 });
+      // Count what the Active Orders panel actually shows — the badge
+      // was using `held_only` (parked tickets only, status=held), but
+      // the panel uses `active_only` which is the superset (parked +
+      // cooking + ready + paid-but-uncollected). So a station with
+      // three cooking tickets and one ready ticket saw "Active orders
+      // (4)" inside the panel but a bare unbadged "Open Tickets"
+      // button outside it. Use the same filter in both places so the
+      // count never lies.
+      //
+      // Also drops the device_identifier scope — Active Orders is a
+      // station-wide queue (the kitchen serves the whole venue), so
+      // scoping the badge to one POS terminal would understate every
+      // multi-station setup. The panel itself is unscoped already.
+      const res = await fetchReceipts({ active_only: true, per_page: 1 });
       const total = (res as { meta?: { total?: number } }).meta?.total ?? res.data.length;
       setOpenTicketsCount(total);
     } catch { /* best-effort */ }
-  }, [isLoggedIn, deviceStatus, deviceId]);
+  }, [isLoggedIn, deviceStatus]);
 
   useEffect(() => { void refreshOpenTickets(); }, [refreshOpenTickets, pane, shift.current?.id]);
 
