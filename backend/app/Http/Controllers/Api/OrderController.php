@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\DTOs\OrderPaidData;
+use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerOrderRequest;
@@ -20,6 +22,10 @@ use App\Services\AuditLogService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
 use App\Services\OrderStatusMachine;
+use App\Services\StockManagementService;
+use App\Models\Item;
+use App\Models\Variant;
+use App\Models\RestaurantTable;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -618,6 +624,171 @@ class OrderController extends Controller
      *
      * Idempotent for already-ready orders (no-op).
      */
+    /**
+     * POST /api/orders/{id}/cancel
+     *
+     * Void a non-terminal order from the POS Active Orders panel.
+     *
+     * Cancels the ticket, returns deducted POS stock, releases any
+     * loyalty / promo / gift-card holds (via OrderCancelled listeners),
+     * frees the dine-in table, and writes a full audit row. Refuses to
+     * touch paid / refunded / completed / already-cancelled orders —
+     * money-touching reversals must go through the refund flow which
+     * tracks cash movement, ledger entries, and the like.
+     *
+     * Request body:
+     *   reason (required, max 255) — short note shown in the void
+     *                                confirm dialog. Recorded on the
+     *                                order itself and in the audit log
+     *                                so a manager reviewing the day's
+     *                                voids can see why each one was
+     *                                pulled.
+     *
+     * Idempotency: a second call on an already-cancelled order short-
+     * circuits with a 200 OK ("unchanged"). Prevents double-restore of
+     * stock if the cashier double-taps Void.
+     */
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $result = DB::transaction(function () use ($id, $validated, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+
+            if ($order->status === 'cancelled') {
+                return ['order' => $order, 'unchanged' => true];
+            }
+
+            // Hard-block reversal of money-touching states. Refunding a
+            // paid order changes inventory + creates a refund ledger
+            // entry + (optionally) returns cash from the drawer — none
+            // of which this endpoint does. Force the cashier through
+            // the proper refund flow instead of silently voiding their
+            // way past it.
+            $blocked = ['paid', 'completed', 'refunded', 'partially_refunded'];
+            if (in_array($order->status, $blocked, true)) {
+                return ['error' => "Order is {$order->status} — issue a refund instead of voiding."];
+            }
+
+            $machine = app(OrderStatusMachine::class);
+            if (!$machine->isAllowed($order->status, 'cancelled')) {
+                return ['error' => "Order is {$order->status} and can't be voided."];
+            }
+
+            $oldStatus = $order->status;
+            $reason = trim($validated['reason']);
+
+            $order->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $reason,
+                'cancelled_at' => now(),
+                'cancelled_by' => $request->user()->id,
+            ]);
+
+            // Return deducted POS stock to the shelves. Online orders
+            // only RESERVE stock — the existing OrderCancelled listener
+            // (ReleasePreparedStockOnCancelListener) handles those. POS
+            // orders DEDUCT immediately on create, so we have to walk
+            // every line item here and call restorePreparedStock /
+            // restoreVariantStock with a dedicated cancel idempotency
+            // key (so a future double-cancel of the same order can't
+            // double-restore inventory).
+            $isPosOrder = !in_array($order->type, ['online_pickup', 'delivery'], true);
+            if ($isPosOrder) {
+                $stockService = app(StockManagementService::class);
+                $order->load('items');
+                foreach ($order->items as $orderItem) {
+                    $qty = (int) $orderItem->quantity;
+                    if ($qty <= 0) {
+                        continue;
+                    }
+
+                    if ($orderItem->variant_id) {
+                        $variant = Variant::find($orderItem->variant_id);
+                        if ($variant && $variant->track_stock) {
+                            $stockService->restoreVariantStock(
+                                $variant,
+                                $qty,
+                                'pos:cancel:order:' . $order->id . ':variant:' . $orderItem->id,
+                                $order->id,
+                                $request->user()->id,
+                            );
+                        }
+                        continue;
+                    }
+
+                    if (!$orderItem->item_id) {
+                        continue;
+                    }
+                    $item = Item::find($orderItem->item_id);
+                    if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
+                        continue;
+                    }
+                    $stockService->restorePreparedStock(
+                        $item,
+                        $qty,
+                        'pos:cancel:order:' . $order->id . ':item:' . $orderItem->id,
+                        $order->id,
+                        $request->user()->id,
+                    );
+                }
+            }
+
+            // Free up the dine-in table if no other active order still
+            // sits on it. Only checks for non-terminal sibling orders —
+            // a long-since-completed ticket on the same table is fine.
+            if ($order->restaurant_table_id) {
+                $hasOtherActive = Order::where('restaurant_table_id', $order->restaurant_table_id)
+                    ->where('id', '!=', $order->id)
+                    ->whereNotIn('status', ['cancelled', 'completed', 'refunded'])
+                    ->exists();
+                if (!$hasOtherActive) {
+                    RestaurantTable::where('id', $order->restaurant_table_id)
+                        ->update(['status' => 'available']);
+                }
+            }
+
+            app(AuditLogService::class)->log(
+                'order.cancelled',
+                'Order',
+                $order->id,
+                ['status' => $oldStatus],
+                ['status' => 'cancelled', 'reason' => $reason],
+                [
+                    'source' => 'pos',
+                    'cancelled_by_user_id' => $request->user()->id,
+                ],
+                $request,
+            );
+
+            // OrderCancelled fires after commit so promo / loyalty /
+            // gift-card holds get released and webhooks dispatched. We
+            // already restored POS stock inline above — the listener's
+            // releaseForOrder() is a safe no-op when no reservation
+            // exists, so no double-restore risk.
+            DB::afterCommit(function () use ($order): void {
+                OrderCancelled::dispatch(OrderCancelledData::fromOrder($order->fresh()));
+            });
+
+            return ['order' => $order];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json([
+            'order' => $result['order']->fresh(['items', 'customer']),
+            'unchanged' => $result['unchanged'] ?? false,
+        ]);
+    }
+
     public function markReady(Request $request, int $id): JsonResponse
     {
         if (!$request->user()?->tokenCan('staff')) {

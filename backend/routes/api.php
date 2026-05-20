@@ -195,6 +195,12 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // hardware.
     Route::post('/orders/{id}/mark-ready', [OrderController::class, 'markReady'])->middleware('throttle:30,1');
     Route::post('/orders/{id}/mark-picked-up', [OrderController::class, 'markPickedUp'])->middleware('throttle:30,1');
+    // Void a non-terminal ticket from the POS Active Orders panel —
+    // returns deducted POS stock, releases promo/loyalty/gift-card
+    // holds, frees the dine-in table, audit-logs the cashier + reason.
+    // Refuses paid/completed/refunded states (those go via refund).
+    // Tighter throttle than mark-ready because voids are destructive.
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel'])->middleware('throttle:10,1');
     // Active-ticket editing — POS "Save changes" lets a cashier swap
     // out the line items on a parked / cooking / ready ticket and
     // reprint the kitchen chit in one round-trip.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  cancelOrder,
   fetchReceipts,
   fireOrderToKitchen,
   markOrderPickedUp,
@@ -98,6 +99,20 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   // native window.prompt which was fragile, off-brand, and unusable
   // on iPad in PWA fullscreen mode.
   const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
+
+  // Void / cancel modal — explicit two-step destructive flow.
+  // Cashier hits the red 🗑️ Void chip on a row, this modal opens
+  // and demands a reason before enabling Confirm. Required because:
+  //   - Voids return stock to inventory (irreversible without a manual
+  //     stock adjustment)
+  //   - Voids release loyalty / promo / gift-card holds
+  //   - A high void rate is a leakage indicator, so every void needs
+  //     a written note for the manager review
+  //
+  // Backend refuses paid / completed / refunded — UI hides the button
+  // for those states too, but the server is the source of truth.
+  const [voidPrompt, setVoidPrompt] = useState<{ ticket: OpenTicket; reason: string } | null>(null);
+  const [voidBusy, setVoidBusy] = useState(false);
 
   // ── Filter state ──────────────────────────────────────────────
   // Single-select chip filter — at any moment exactly ONE chip is
@@ -267,6 +282,41 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
    * guards against unpaid orders, so the action is hidden from the
    * row when the ticket still owes a balance.
    */
+  /**
+   * Cashier voids an open ticket — opens the reason modal first,
+   * then on Confirm calls `cancelOrder()` which atomically:
+   *   - flips status → cancelled
+   *   - returns POS-deducted stock to the shelves
+   *   - releases promo / loyalty / gift-card holds
+   *   - frees the dine-in table
+   *   - audit-logs the cashier + reason
+   *
+   * Optimistically removes the ticket from the panel on success so
+   * the cashier sees instant feedback (active_only filter would
+   * exclude it on the next poll anyway). Errors fall through to the
+   * row banner — common server-side rejection is "Order is paid —
+   * issue a refund instead", and the cashier needs to see that.
+   */
+  const handleConfirmVoid = async () => {
+    if (!voidPrompt) return;
+    const t = voidPrompt.ticket;
+    const reason = voidPrompt.reason.trim();
+    if (reason.length === 0) return;
+
+    setVoidBusy(true);
+    try {
+      await cancelOrder(t.id, reason);
+      setTickets((curr) => curr.filter((row) => row.id !== t.id));
+      setVoidPrompt(null);
+      setRowMsg({ id: t.id, kind: "ok", text: `Ticket voided — ${reason}` });
+    } catch (e) {
+      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't void ticket" });
+      setVoidPrompt(null);
+    } finally {
+      setVoidBusy(false);
+    }
+  };
+
   const handleMarkPickedUp = async (t: OpenTicket) => {
     setBusyId(t.id);
     setRowMsg(null);
@@ -1073,6 +1123,34 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
                         ✂️ Split
                       </button>
                     )}
+                    {/* Void — destructive action, hidden for paid tickets
+                        because money-touching reversals must go through
+                        the refund flow (cash drawer, ledger, etc.).
+                        Two-step: this button opens VoidConfirmModal,
+                        cashier types the reason, only then the cancel
+                        API fires. Last in the row so it's farthest from
+                        the primary tap targets — reduces fat-finger
+                        misclicks on a busy ticket card. */}
+                    {!isPaid && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setVoidPrompt({ ticket: t, reason: "" });
+                        }}
+                        disabled={busy}
+                        title="Void this ticket (returns stock, releases holds)"
+                        style={{
+                          padding: `${space.s}px ${space.m}px`,
+                          minHeight: 36, fontSize: type.bodySm.fontSize,
+                          borderRadius: radius.m, fontWeight: 700,
+                          background: "#fff", color: palette.dangerDark,
+                          border: `1px solid ${palette.dangerDark}`,
+                          cursor: busy ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        🗑️ Void
+                      </button>
+                    )}
                   </>
                 )}
                 {isMergeTarget && (
@@ -1124,6 +1202,19 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
             // different source without restarting the whole flow.
           }}
           onConfirm={() => void handleConfirmMerge()}
+        />
+      )}
+      {voidPrompt && (
+        <VoidConfirmModal
+          ticket={voidPrompt.ticket}
+          reason={voidPrompt.reason}
+          busy={voidBusy}
+          onReasonChange={(reason) => setVoidPrompt((p) => p ? { ...p, reason } : p)}
+          onCancel={() => {
+            if (voidBusy) return;
+            setVoidPrompt(null);
+          }}
+          onConfirm={() => void handleConfirmVoid()}
         />
       )}
     </PanelShell>
@@ -1714,6 +1805,157 @@ function PhonePromptModal({
           <button type="button" onClick={onCancel} style={btnSecondary()}>Cancel</button>
           <button type="button" onClick={onSubmit} disabled={!phone.trim()} style={btnPrimary(!phone.trim())}>
             Send SMS
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Two-step void confirm.
+ *
+ * The cashier already tapped 🗑️ Void on the row, this modal forces a
+ * written reason (free-form, 1–255 chars) before enabling Confirm.
+ * Designed to bias toward "honest manager review later" — a sloppy
+ * cashier can type "x" and proceed, but the audit log will show the
+ * lazy reason and that's its own signal.
+ *
+ * Surfaces what the void does so a junior cashier knows it's not a
+ * trivial action:
+ *   - returns deducted stock
+ *   - releases promo / loyalty / gift-card holds
+ *   - frees the dine-in table
+ *
+ * Esc cancels. Enter from the textarea is ignored on purpose so a
+ * cashier composing a multi-line reason doesn't accidentally submit
+ * mid-typing; they have to physically tap the red Confirm button.
+ */
+function VoidConfirmModal({
+  ticket,
+  reason,
+  busy,
+  onReasonChange,
+  onCancel,
+  onConfirm,
+}: {
+  ticket: OpenTicket;
+  reason: string;
+  busy: boolean;
+  onReasonChange: (v: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const total = ticketDisplayTotal(ticket);
+  const label = ticket.ticket_name || `Order ${ticket.order_number}`;
+  const itemCount = ticket.items?.length ?? 0;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Void ticket — reason required"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.5)",
+        zIndex: z.modalBackdrop,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: space.l,
+        animation: "pos-fade-in 120ms ease",
+      }}
+      onClick={() => {
+        if (!busy) onCancel();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !busy) onCancel();
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(460px, 100%)",
+          background: palette.panel,
+          borderRadius: radius.xl,
+          boxShadow: shadow.xl,
+          padding: space.xl,
+          display: "flex",
+          flexDirection: "column",
+          gap: space.m,
+          animation: "pos-scale-in 140ms ease",
+        }}
+      >
+        <div>
+          <div style={{ ...type.subtitle, color: palette.dangerDark }}>🗑️ Void this ticket?</div>
+          <div style={{ ...type.bodySm, color: palette.panelMuted, marginTop: 4 }}>
+            <strong style={{ color: palette.panelInk }}>{label}</strong>
+            {" · "}{itemCount} item{itemCount === 1 ? "" : "s"}
+            {" · MVR "}{total.toFixed(2)}
+          </div>
+        </div>
+
+        <div style={{
+          background: "#FEF2F2",
+          border: "1px solid #FCA5A5",
+          borderRadius: radius.m,
+          padding: space.m,
+          fontSize: type.bodySm.fontSize,
+          color: "#7F1D1D",
+          lineHeight: 1.5,
+        }}>
+          Voiding will:
+          <ul style={{ margin: `${space.xxs}px 0 0 ${space.l}px`, padding: 0 }}>
+            <li>Return deducted stock to inventory</li>
+            <li>Release any loyalty / promo / gift-card holds</li>
+            <li>Free the dine-in table (if no other open ticket on it)</li>
+            <li>Stay on record with your name + reason in the audit log</li>
+          </ul>
+        </div>
+
+        <div>
+          <label
+            htmlFor="void-reason"
+            style={{ ...type.label, color: palette.panelMuted, display: "block", marginBottom: space.xxs }}
+          >
+            Reason (required)
+          </label>
+          <textarea
+            id="void-reason"
+            autoFocus
+            value={reason}
+            onChange={(e) => onReasonChange(e.target.value.slice(0, 255))}
+            placeholder="e.g. Customer changed mind, wrong order, walked out…"
+            disabled={busy}
+            rows={3}
+            style={{
+              ...inputField,
+              width: "100%",
+              fontSize: type.body.fontSize,
+              resize: "vertical",
+              minHeight: 72,
+              fontFamily: "inherit",
+            }}
+          />
+          <div style={{ ...type.caption, color: palette.panelMuted, marginTop: 4, textAlign: "right" }}>
+            {reason.length}/255
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: space.s, justifyContent: "flex-end", marginTop: space.xs }}>
+          <button type="button" onClick={onCancel} disabled={busy} style={btnSecondary(busy)}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy || reason.trim().length === 0}
+            style={{
+              ...btnPrimary(busy || reason.trim().length === 0),
+              background: busy || reason.trim().length === 0 ? "#FCA5A5" : palette.dangerDark,
+            }}
+          >
+            {busy ? "Voiding…" : "🗑️ Confirm void"}
           </button>
         </div>
       </div>

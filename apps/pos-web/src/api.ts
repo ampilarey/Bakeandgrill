@@ -654,6 +654,29 @@ export async function markOrderPickedUp(
 }
 
 /**
+ * Void a non-terminal ticket from the POS Active Orders panel.
+ *
+ * Backend:
+ *  - refuses paid / completed / refunded / partially_refunded (use refund flow)
+ *  - returns deducted POS stock to the shelves (idempotent)
+ *  - releases promo / loyalty / gift-card holds via OrderCancelled event
+ *  - frees the dine-in table if no other active order sits on it
+ *  - audit-logs the cashier + reason
+ *
+ * `reason` is a short free-form note ("Customer changed mind", "Walked
+ * out", "Wrong items") capped at 255 chars on the server. Required.
+ */
+export async function cancelOrder(
+  orderId: number,
+  reason: string,
+): Promise<{ order: { id: number; status: string }; unchanged: boolean }> {
+  return request(`/orders/${orderId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/**
  * Replace the line items on an existing (non-completed) order. Used by
  * the POS "Save changes" button when the cashier edited a resumed
  * active ticket. Backend wipes existing items, re-adds the payload,
