@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelOrder,
   fetchActiveOrdersForStation,
+  fetchActiveOrdersVenueWide,
   fetchReceipts,
   fireOrderToKitchen,
   markOrderPickedUp,
@@ -46,6 +47,8 @@ export function ticketDisplayTotal(t: OpenTicket): number {
 
 type Props = {
   deviceId: string;
+  /** Owners/managers can switch to a venue-wide active-order feed. */
+  canViewAllStations?: boolean;
   onResume: (ticket: OpenTicket) => void;
   onClose: () => void;
   /** Phone of the currently-attached cart customer, if any — used to
@@ -75,10 +78,17 @@ type Props = {
  * stays visible with a "🍳 COOKING + PAID" badge until the cashier
  * marks it picked up.
  */
-export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhone }: Props) {
+export function OpenTicketsPanel({
+  deviceId,
+  canViewAllStations = false,
+  onResume,
+  onClose,
+  cartCustomerPhone,
+}: Props) {
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
-  /** Server total for this station scope (may exceed loaded rows). */
+  /** Server total for the current list scope (may exceed loaded rows). */
   const [activeTotal, setActiveTotal] = useState(0);
+  const [listScope, setListScope] = useState<"station" | "venue">("station");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   // Per-row "action in progress" indicator (sendBill is the only async
@@ -132,7 +142,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   type FilterKey =
     | "all"
     | "stage:cooking" | "stage:ready" | "stage:parked"
-    | "type:dine_in" | "type:takeaway" | "type:online_pickup"
+    | "type:dine_in" | "type:takeaway" | "type:online_pickup" | "type:delivery"
     | "payment:paid" | "payment:unpaid";
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   // Search bar is a separate dimension — it narrows whatever chip
@@ -167,6 +177,13 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
    */
   const POLL_MS = 15_000;
 
+  const loadActiveOrders = useCallback(async () => {
+    if (listScope === "venue") {
+      return fetchActiveOrdersVenueWide();
+    }
+    return fetchActiveOrdersForStation(deviceId);
+  }, [deviceId, listScope]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -174,7 +191,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       if (cancelled) return;
       try {
         if (showSpinner) setLoading(true);
-        const { data, total } = await fetchActiveOrdersForStation(deviceId);
+        const { data, total } = await loadActiveOrders();
         if (!cancelled) {
           setTickets(data);
           setActiveTotal(total);
@@ -209,7 +226,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [deviceId]);
+  }, [loadActiveOrders]);
 
   // Update the local row after a side action so the cashier sees the
   // new state (e.g. "fired" badge appearing, payment_status flipping)
@@ -468,7 +485,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       // Full reload — pulls the updated target (new total + items)
       // and reflects the cancelled source falling out of the
       // active feed in one round-trip.
-      const fresh = await fetchActiveOrdersForStation(deviceId);
+      const fresh = await loadActiveOrders();
       setTickets(fresh.data);
       setActiveTotal(fresh.total);
       setMergeTargetId(null);
@@ -502,7 +519,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       // Force reload to pull both the slimmed source AND the new
       // sibling ticket. Optimistic patch is awkward here (we don't
       // have the full row shape for the brand-new order locally).
-      const fresh = await fetchActiveOrdersForStation(deviceId);
+      const fresh = await loadActiveOrders();
       setTickets(fresh.data);
       setActiveTotal(fresh.total);
     } catch (e) {
@@ -600,11 +617,12 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
   }, [searchScopedTickets]);
 
   const typeCounts = useMemo(() => {
-    const counts = { dine_in: 0, takeaway: 0, online_pickup: 0 };
+    const counts = { dine_in: 0, takeaway: 0, online_pickup: 0, delivery: 0 };
     searchScopedTickets.forEach((t) => {
       if (t.type === "dine_in") counts.dine_in++;
       else if (t.type === "takeaway") counts.takeaway++;
       else if (t.type === "online_pickup") counts.online_pickup++;
+      else if (t.type === "delivery") counts.delivery++;
     });
     return counts;
   }, [searchScopedTickets]);
@@ -625,7 +643,9 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
       subtitle={
         mergeTargetId !== null
           ? `Tap any other ticket to preview the merge (you'll confirm before anything changes)`
-          : "Parked, cooking, and ready-for-pickup tickets"
+          : listScope === "venue"
+            ? "All stations — parked, cooking, and ready-for-pickup"
+            : "This iPad + online/delivery — parked, cooking, and ready"
       }
       onClose={onClose}
     >
@@ -662,6 +682,37 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
           >
             Cancel
           </button>
+        </div>
+      )}
+
+      {canViewAllStations && mergeTargetId === null && (
+        <div
+          style={{
+            marginBottom: space.s,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flexWrap: "wrap",
+          }}
+        >
+          <ScopeChip
+            active={listScope === "station"}
+            onClick={() => {
+              setListScope("station");
+              setActiveFilter("all");
+            }}
+          >
+            🖥 This iPad
+          </ScopeChip>
+          <ScopeChip
+            active={listScope === "venue"}
+            onClick={() => {
+              setListScope("venue");
+              setActiveFilter("all");
+            }}
+          >
+            🏢 All stations
+          </ScopeChip>
         </div>
       )}
 
@@ -721,6 +772,7 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
             { key: "type:dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
             { key: "type:takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
             { key: "type:online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
+            { key: "type:delivery", label: "🚗 Delivery", count: typeCounts.delivery },
           ]}
           selected={activeFilter}
           onSelect={(k) => setActiveFilter(k as FilterKey)}
@@ -1222,6 +1274,37 @@ export function OpenTicketsPanel({ deviceId, onResume, onClose, cartCustomerPhon
  * (used by the Payment group where Paid/Unpaid have different
  * traffic-light colours).
  */
+function ScopeChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "10px 14px",
+        minHeight: 44,
+        borderRadius: radius.m,
+        border: `1px solid ${active ? "#7C3AED" : palette.border}`,
+        background: active ? "#7C3AED" : "#fff",
+        color: active ? "#fff" : palette.panelInk,
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function FilterGroup({
   options,
   selected,

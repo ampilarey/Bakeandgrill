@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts, fetchPosQuickNotes, pingAuth } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts, fetchPosQuickNotes, pingAuth, fetchMe } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -76,6 +76,7 @@ function App() {
   const [username, setUsername]       = useState<string>(() => localStorage.getItem("pos_username") ?? "");
   const [pin, setPin]                 = useState("");
   const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
+  const [staffRole, setStaffRole] = useState<string>(() => localStorage.getItem("pos_staff_role") ?? "");
   const [deviceId]                    = useState(() => {
     // Priority order:
     //  1. `?device=<id>` in the URL — set by the owner when pre-provisioning
@@ -244,6 +245,19 @@ function App() {
   }, [isLoggedIn, deviceStatus, deviceId]);
 
   useEffect(() => { void refreshOpenTickets(); }, [refreshOpenTickets, pane, shift.current?.id]);
+
+  // Sync role from /auth/me so manager "All stations" works without
+  // forcing a re-login after this feature ships.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    void fetchMe()
+      .then((user) => {
+        const role = user.role ?? "";
+        localStorage.setItem("pos_staff_role", role);
+        setStaffRole(role);
+      })
+      .catch(() => undefined);
+  }, [isLoggedIn]);
 
   const order = useOrderCreation({
     isOnline,
@@ -440,7 +454,9 @@ function App() {
       localStorage.setItem("pos_username", username.trim());
       const name = response.user?.name ?? username.trim();
       localStorage.setItem("pos_cashier_name", name);
+      localStorage.setItem("pos_staff_role", response.user?.role ?? "");
       setCashierName(name);
+      setStaffRole(response.user?.role ?? "");
       setAuthToken(response.token);
       setIsLoggedIn(true);
       setPin("");
@@ -453,10 +469,12 @@ function App() {
     localStorage.removeItem("pos_token");
     localStorage.removeItem("pos_cashier_name");
     localStorage.removeItem("pos_username");
+    localStorage.removeItem("pos_staff_role");
     setAuthToken(null);
     setIsLoggedIn(false);
     setDeviceStatus('unknown');
     setCashierName("");
+    setStaffRole("");
     setUsername("");
     setIsLocked(false);
   };
@@ -552,7 +570,9 @@ function App() {
     try {
       const res = await staffLogin(identifier, testPin, deviceId);
       localStorage.setItem("pos_token", res.token);
+      localStorage.setItem("pos_staff_role", res.user?.role ?? "");
       setAuthToken(res.token);
+      setStaffRole(res.user?.role ?? "");
       setIsLocked(false);
       return true;
     } catch { return false; }
@@ -756,7 +776,7 @@ function App() {
   const drawerItems = [
     { id: "sales",          label: "Sales",          icon: "🛒", group: "main" as const },
     { id: "receipts",       label: "Receipts",       icon: "🧾", group: "main" as const },
-    { id: "open_tickets",   label: "Open Tickets",   icon: "🎫", group: "main" as const,
+    { id: "open_tickets",   label: "Active Orders",   icon: "🎫", group: "main" as const,
       badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined },
     { id: "shift",          label: "Current Shift",  icon: "💰", group: "main" as const },
     { id: "shift_history",  label: "Shift History",  icon: "📚", group: "main" as const },
@@ -980,6 +1000,7 @@ function App() {
         {pane === 'open_tickets' && (
           <OpenTicketsPanel
             deviceId={deviceId}
+            canViewAllStations={staffRole === "owner" || staffRole === "manager"}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             onClose={() => setPane("sales")}
             onResume={(t) => {
@@ -1182,7 +1203,7 @@ function paneTitle(p: Pane): string {
   switch (p) {
     case "sales": return "Sale";
     case "receipts": return "Receipts";
-    case "open_tickets": return "Open Tickets";
+    case "open_tickets": return "Active Orders";
     case "shift": return "Current Shift";
     case "shift_history": return "Shift History";
     case "ops": return "Operations";

@@ -570,7 +570,7 @@ export function OrderCart(p: Props) {
             disabled={p.isSubmitting}
             style={{ ...smallBtn(p.isSubmitting), position: 'relative' }}
           >
-            Open tickets
+            Active orders
             {p.openTicketsCount > 0 && (
               <span style={{
                 marginLeft: 6, padding: '1px 8px', borderRadius: 999,
