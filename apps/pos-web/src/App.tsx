@@ -78,14 +78,41 @@ function App() {
   const [pin, setPin]                 = useState("");
   const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
   const [staffRole, setStaffRole] = useState<string>(() => localStorage.getItem("pos_staff_role") ?? "");
+  // Cashier's resolved permission slugs (DB grants + role defaults, owner
+  // bypass already flattened to all slugs server-side). Persisted in
+  // localStorage so the void/refund buttons stay hidden during the brief
+  // window between page load and the next /auth/me call.
+  const [staffPermissions, setStaffPermissions] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("pos_staff_permissions");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const canVoidOrders = staffRole === "owner" || staffPermissions.includes("orders.void");
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
-    //  1. `?device=<id>` in the URL — set by the owner when pre-provisioning
-    //     a headless device (KDS / display). This wins over any stored id
-    //     so a single QR/link can re-bind a fresh browser profile.
-    //  2. Previously persisted id in localStorage.
+    //  1. Previously persisted id in localStorage — once a device is
+    //     bound, that binding is sticky. URL params can no longer
+    //     overwrite it, which prevents anyone-with-a-link from re-
+    //     attributing this POS's orders to a different station id.
+    //  2. `?device=<id>` in the URL — ONLY honored on the very first
+    //     load (no stored id yet) so the owner can pre-provision a
+    //     headless device (KDS / display) with a single QR / link.
+    //     Subsequent loads ignore the param, even if it's still in
+    //     the URL bar after a share.
     //  3. Newly minted POS id for first-time interactive cashier flow.
+    //
+    // Previously the URL param won unconditionally — useful for
+    // re-binding a fresh browser profile, but it also meant a stale
+    // bookmark or a copy-pasted link could silently rebind a busy POS
+    // to the wrong station mid-shift, breaking per-device order
+    // attribution + station-scoped active orders.
+    const stored = localStorage.getItem("pos_device_id");
+    if (stored) return stored;
+
     try {
       const params = new URLSearchParams(window.location.search);
       const fromUrl = (params.get("device") ?? params.get("device_id") ?? "").trim();
@@ -94,16 +121,14 @@ function App() {
         params.delete("device");
         params.delete("device_id");
         // Strip the query param so a hard refresh doesn't keep re-binding
-        // (e.g. after the cashier shares the screen).
+        // (defensive — the localStorage check above already handles this).
         const cleanQs = params.toString();
         const cleanUrl = window.location.pathname + (cleanQs ? `?${cleanQs}` : "") + window.location.hash;
         window.history.replaceState({}, "", cleanUrl);
         return fromUrl;
       }
-    } catch { /* ignore — fall through to existing logic */ }
+    } catch { /* ignore — fall through to generated id */ }
 
-    const stored = localStorage.getItem("pos_device_id");
-    if (stored) return stored;
     const generated = `POS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     localStorage.setItem("pos_device_id", generated);
     return generated;
@@ -169,6 +194,32 @@ function App() {
 
   useEffect(() => { setOfflineQueueCount(getQueueCount()); }, [isOnline]);
 
+  // Auto-flush the offline queue when connectivity returns. Previously
+  // the cashier had to remember to tap "Sync" in the header — easy to
+  // forget during a busy lunch rush, and tickets sat in localStorage
+  // until someone noticed. Debounced 2s so a flaky wifi (online ↔
+  // offline cycling) doesn't fire repeated sync attempts that all
+  // collide on the same offline_id rows.
+  //
+  // Gated on isLoggedIn so we never sync against a stale/expired token
+  // immediately after the auth_expired flow lands the cashier back on
+  // the lock screen.
+  useEffect(() => {
+    if (!isOnline || !isLoggedIn) return;
+    if (offlineQueueCount === 0) return;
+    const handle = window.setTimeout(() => {
+      try {
+        order.handleSyncQueue();
+      } catch { /* sync hook surfaces its own error toast */ }
+    }, 2000);
+    return () => window.clearTimeout(handle);
+    // Intentionally omit `order` from deps — its identity changes every
+    // render and would cause this effect to re-run continuously. The
+    // closure captures the latest handleSyncQueue from the current
+    // render anyway (React 18 useEffect semantics).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline, isLoggedIn, offlineQueueCount]);
+
   // ── Hooks ───────────────────────────────────────────────────────────────────
   // Passing orderType lets the menu refilter when the cashier flips
   // between Dine-in / Takeaway / Pickup — items the admin has
@@ -179,6 +230,22 @@ function App() {
   const cart = useCart();
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
   const shift = useShift(isLoggedIn, deviceStatus === "approved");
+
+  // Auto-dismiss the note picker if the cart line it's editing
+  // disappears (e.g. cashier removed the line in another panel before
+  // saving the note). Lives here (after useCart) so we don't call
+  // setState during the render of the modal IIFE below — fixes a
+  // React warning + sporadic freezes on iPad when the modal stayed
+  // mounted with a stale key.
+  useEffect(() => {
+    if (notePickerKey === null) return;
+    const exists = cart.cartItems.some(
+      (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === notePickerKey,
+    );
+    if (!exists) {
+      setNotePickerKey(null);
+    }
+  }, [notePickerKey, cart.cartItems]);
   // Background watcher for incoming online_pickup orders. Polls every
   // 30s when logged in + approved, shows a corner toast for any order
   // newer than the cashier's last-seen high-water mark. Enabled-flag
@@ -258,6 +325,9 @@ function App() {
         const role = user.role ?? "";
         localStorage.setItem("pos_staff_role", role);
         setStaffRole(role);
+        const perms = user.permissions ?? [];
+        localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
+        setStaffPermissions(perms);
         setIdleLockMinutes(resolveIdleLockMinutes(user));
       })
       .catch(() => undefined);
@@ -289,6 +359,13 @@ function App() {
     setAttachedCustomer: cart.setAttachedCustomer,
     setOrderType,
     setSelectedTableId,
+    // M6 fix — repaint the discount/promo/loyalty/gift-card rows on
+    // the cart sidebar when resuming a held ticket so the cashier
+    // sees the same totals the customer was quoted at hold time.
+    setDiscountAmount: cart.setDiscountAmount,
+    setAppliedPromo: cart.setAppliedPromo,
+    setAppliedLoyalty: cart.setAppliedLoyalty,
+    setAppliedGiftCard: cart.setAppliedGiftCard,
     onOrderSettled: (orderId, customerId, customerPhone) => {
       void refreshOpenTickets();
       void shift.refreshSummary();
@@ -459,8 +536,11 @@ function App() {
       const name = response.user?.name ?? username.trim();
       localStorage.setItem("pos_cashier_name", name);
       localStorage.setItem("pos_staff_role", response.user?.role ?? "");
+      const loginPerms = response.user?.permissions ?? [];
+      localStorage.setItem("pos_staff_permissions", JSON.stringify(loginPerms));
       setCashierName(name);
       setStaffRole(response.user?.role ?? "");
+      setStaffPermissions(loginPerms);
       setIdleLockMinutes(resolveIdleLockMinutes(response.user));
       setAuthToken(response.token);
       setIsLoggedIn(true);
@@ -475,11 +555,13 @@ function App() {
     localStorage.removeItem("pos_cashier_name");
     localStorage.removeItem("pos_username");
     localStorage.removeItem("pos_staff_role");
+    localStorage.removeItem("pos_staff_permissions");
     setAuthToken(null);
     setIsLoggedIn(false);
     setDeviceStatus('unknown');
     setCashierName("");
     setStaffRole("");
+    setStaffPermissions([]);
     setIdleLockMinutes(5);
     setUsername("");
     setIsLocked(false);
@@ -577,8 +659,11 @@ function App() {
       const res = await staffLogin(identifier, testPin, deviceId);
       localStorage.setItem("pos_token", res.token);
       localStorage.setItem("pos_staff_role", res.user?.role ?? "");
+      const unlockPerms = res.user?.permissions ?? [];
+      localStorage.setItem("pos_staff_permissions", JSON.stringify(unlockPerms));
       setAuthToken(res.token);
       setStaffRole(res.user?.role ?? "");
+      setStaffPermissions(unlockPerms);
       setIdleLockMinutes(resolveIdleLockMinutes(res.user));
       setIsLocked(false);
       return true;
@@ -1006,6 +1091,7 @@ function App() {
           <OpenTicketsPanel
             deviceId={deviceId}
             canViewAllStations={staffRole === "owner" || staffRole === "manager"}
+            canVoidOrders={canVoidOrders}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             onClose={() => setPane("sales")}
             onResume={(t) => {
@@ -1125,7 +1211,17 @@ function App() {
           // money went.
           discount={cart.discountValue + cart.rewardsDiscount}
           tax={cart.cartTax}
-          total={cart.cartTotal}
+          // Use the SERVER total for resumed tickets so the cashier
+          // confirms the same number that handleCharge will settle
+          // against. Without this, a ticket resumed with server-side
+          // promo/loyalty/gift-card baked in (but not yet hydrated
+          // into the cart fields) could show one MVR total here and
+          // settle a different one — wrong change handed back, customer
+          // disputes. Falls back to cart.cartTotal for fresh tickets
+          // (no resumed total available yet).
+          total={order.resumedOrderId !== null
+            ? (order.resumedOrderTotal ?? cart.cartTotal)
+            : cart.cartTotal}
           submitting={order.isSubmitting}
           errorMessage={order.statusMessage}
           onClose={() => setShowCharge(false)}
@@ -1164,13 +1260,15 @@ function App() {
       {/* Per-line kitchen note picker. We look up the active cart line
           by key so the picker stays correct even if other lines are
           added/removed underneath while the modal is open. If the line
-          was removed entirely (rare race), we just dismiss. */}
+          was removed entirely (rare race), we just dismiss via the
+          effect below — calling setState inside this IIFE during render
+          tripped React's "Cannot update a component while rendering"
+          warning and occasionally desynced the modal on iPad. */}
       {notePickerKey !== null && (() => {
         const line = cart.cartItems.find(
           (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === notePickerKey,
         );
         if (!line) {
-          setNotePickerKey(null);
           return null;
         }
         const label = line.variant_name

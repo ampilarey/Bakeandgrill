@@ -212,32 +212,51 @@ class ShiftController extends Controller
 
     public function close(CloseShiftRequest $request, $id)
     {
-        $shift = Shift::where('user_id', $request->user()?->id)
-            ->findOrFail($id);
+        // Wrap the close in a row-locked transaction so two concurrent
+        // close requests (e.g. cashier double-tapping Close + manager
+        // closing from the admin panel) can't both pass the
+        // "already closed?" check and corrupt closing_cash / variance.
+        // open() already uses lockForUpdate; close was the asymmetric
+        // gap.
+        $shift = DB::transaction(function () use ($id, $request) {
+            $shift = Shift::where('user_id', $request->user()?->id)
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        if ($shift->closed_at) {
+            if ($shift->closed_at) {
+                return null;
+            }
+
+            $cash = $this->expectedCashFor($shift);
+            $expectedCash = $cash['expected'];
+            $closingCash = (float) $request->input('closing_cash');
+            $variance = $closingCash - $expectedCash;
+
+            $shift->update([
+                'closed_at' => now(),
+                'closing_cash' => $closingCash,
+                'expected_cash' => $expectedCash,
+                'variance' => $variance,
+                'notes' => $request->input('notes') ?? $shift->notes,
+            ]);
+
+            return $shift;
+        });
+
+        if ($shift === null) {
             return response()->json(['message' => 'Shift already closed.'], 422);
         }
 
-        // Use the same helper as summary() so the close-time expected cash
-        // matches what the cashier was just looking at on the summary panel.
+        // Re-read cash breakdown outside the lock for the response body /
+        // audit log payload — at this point the close is committed so
+        // the totals are stable.
         $cash = $this->expectedCashFor($shift);
         $cashIn = $cash['cash_in'];
         $cashOut = $cash['cash_out'];
-        // Net cash sales (positive sales minus refunds) — the closing math
-        // wants a single signed number per the original column semantics.
         $cashSales = $cash['cash_sales'] - $cash['cash_refunds'];
         $expectedCash = $cash['expected'];
-        $closingCash = (float) $request->input('closing_cash');
-        $variance = $closingCash - $expectedCash;
-
-        $shift->update([
-            'closed_at' => now(),
-            'closing_cash' => $closingCash,
-            'expected_cash' => $expectedCash,
-            'variance' => $variance,
-            'notes' => $request->input('notes') ?? $shift->notes,
-        ]);
+        $closingCash = (float) $shift->closing_cash;
+        $variance = (float) $shift->variance;
 
         app(AuditLogService::class)->log(
             'shift.closed',

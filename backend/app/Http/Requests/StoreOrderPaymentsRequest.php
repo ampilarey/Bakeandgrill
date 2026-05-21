@@ -8,6 +8,29 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreOrderPaymentsRequest extends FormRequest
 {
+    /**
+     * Whitelist of payment methods the POS endpoint accepts. Anything
+     * outside this set is rejected with a 422 — previously any string
+     * up to 50 chars passed validation, which meant a typo / future
+     * frontend bug could persist garbage like "venmo" or "bml-pay" and
+     * silently drift the payments ledger.
+     *
+     * Keep in sync with the gateway dispatch in OrderController::addPayments —
+     * 'bml_pay', 'bml', 'online' there map to async confirmation.
+     */
+    public const ALLOWED_METHODS = [
+        'cash',
+        'card',
+        'card_pos',
+        'bank_transfer',
+        'bml_pay',
+        'bml',
+        'online',
+        'wallet',
+        'cheque',
+        'house_account',
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -18,7 +41,10 @@ class StoreOrderPaymentsRequest extends FormRequest
         return [
             'payments' => 'required|array|min:1',
             'print_receipt' => 'sometimes|boolean',
-            'payments.*.method' => 'required|string|max:50',
+            // Method must be one of the whitelisted strings. Surfaced as
+            // a clear 422 to the POS so a typo can't ring up an order
+            // with an unrecognised tender type.
+            'payments.*.method' => ['required', 'string', \Illuminate\Validation\Rule::in(self::ALLOWED_METHODS)],
             // Allow 0.00 here so a fully-discounted ticket (100% promo
             // / loyalty / gift card / complimentary ring) can be
             // settled. The POS sends a single { method: "cash",

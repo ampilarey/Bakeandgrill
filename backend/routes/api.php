@@ -201,7 +201,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // holds, frees the dine-in table, audit-logs the cashier + reason.
     // Refuses paid/completed/refunded states (those go via refund).
     // Tighter throttle than mark-ready because voids are destructive.
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel'])->middleware('throttle:10,1');
+    // Permission gate (orders.void) is ALSO enforced inside the controller
+    // so the policy + DB-override path stays the single source of truth.
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel'])
+        ->middleware(['permission:orders.void', 'device.active', 'throttle:10,1']);
     // Active-ticket editing — POS "Save changes" lets a cashier swap
     // out the line items on a parked / cooking / ready ticket and
     // reprint the kitchen chit in one round-trip.
@@ -211,14 +214,19 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // guards as updateItems.
     Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])->middleware('throttle:10,1');
     Route::post('/orders/{id}/split', [OrderController::class, 'split'])->middleware('throttle:10,1');
-    Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])->middleware('throttle:20,1');
+    Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])
+        ->middleware(['device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])->middleware('throttle:10,1');
 
-    // KDS
+    // KDS — list endpoint stays unauthenticated by device (any approved
+    // staff token can pull the kitchen queue read-only). Mutations
+    // (start/bump/recall) require an approved device header so a stolen
+    // staff token alone can't progress the queue from an off-prem
+    // browser.
     Route::get('/kds/orders', [KdsController::class, 'index']);
-    Route::post('/kds/orders/{id}/start', [KdsController::class, 'start']);
-    Route::post('/kds/orders/{id}/bump', [KdsController::class, 'bump']);
-    Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall']);
+    Route::post('/kds/orders/{id}/start', [KdsController::class, 'start'])->middleware('device.active');
+    Route::post('/kds/orders/{id}/bump', [KdsController::class, 'bump'])->middleware('device.active');
+    Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall'])->middleware('device.active');
 
     // Print jobs
     Route::get('/print-jobs', [PrintJobController::class, 'index']);
@@ -298,7 +306,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/shifts/{id}/summary', [ShiftController::class, 'summary']);
     Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('throttle:5,1');
     Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
-    Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])->middleware('throttle:30,1');
+    Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])
+        ->middleware(['permission:finance.cash_manage', 'throttle:30,1']);
 
     // Reports — restricted to users with reports.view permission
     Route::middleware('permission:reports.view')->group(function () {
@@ -330,10 +339,17 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/orders/{orderId}/receipt-link', [ReceiptController::class, 'linkForOrder']);
     Route::post('/receipts/{orderId}/send', [ReceiptController::class, 'send']);
 
-    // Refunds
-    Route::get('/refunds', [RefundController::class, 'index']);
-    Route::get('/refunds/{id}', [RefundController::class, 'show']);
-    Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store'])->middleware('throttle:10,1');
+    // Refunds — view requires orders.view (read), create requires
+    // orders.refund. RefundController already calls Gate::authorize but
+    // adding the middleware lets us reject the request before the
+    // controller is even instantiated, and surfaces a clear "required"
+    // slug to the POS frontend in the 403 body.
+    Route::get('/refunds', [RefundController::class, 'index'])
+        ->middleware('permission:orders.view');
+    Route::get('/refunds/{id}', [RefundController::class, 'show'])
+        ->middleware('permission:orders.view');
+    Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store'])
+        ->middleware(['permission:orders.refund', 'throttle:10,1']);
 
     // SMS promotions
     Route::get('/sms/promotions', [SmsPromotionController::class, 'index']);

@@ -3,7 +3,10 @@
         "id": "__VOLATILE__",
         "name": "__VOLATILE__",
         "email": "me-test@owner.com",
+        "phone": null,
         "role": "owner",
-        "permissions": "__VOLATILE__"
+        "permissions": "__VOLATILE__",
+        "pos_idle_lock_minutes": null,
+        "pos_idle_lock_minutes_resolved": 5
     }
 }

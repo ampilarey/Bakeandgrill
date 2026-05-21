@@ -16,11 +16,26 @@ use Illuminate\Support\Facades\DB;
 
 class KdsController extends Controller
 {
+    /**
+     * Canonical list of statuses the kitchen needs to see. Shared with
+     * KdsStreamProvider so the REST list endpoint and the SSE stream
+     * agree — previously these diverged (REST had 'ready'/no 'preparing',
+     * SSE had 'preparing'/no 'ready') and tickets flickered or vanished
+     * on the kitchen display.
+     *
+     * 'paid'      — online orders received but not yet started
+     * 'partial'   — split-tender order, first leg taken but still cooking
+     *               (CRITICAL: without this, taking a cash deposit on
+     *                a dine-in ticket hid it from the kitchen)
+     * 'preparing' — alias used by the customer-facing display + some
+     *               POS flows; SSE used to use this exclusively
+     * 'ready'     — cooked, waiting for pickup/delivery handoff
+     */
+    public const KDS_STATUSES = ['pending', 'in_progress', 'paid', 'partial', 'preparing', 'ready'];
+
     public function index(Request $request): JsonResponse
     {
-        // 'paid' = online orders received but not yet started by kitchen
-        // 'ready' = cooked and waiting for pickup/delivery
-        $allowed = ['pending', 'in_progress', 'paid', 'ready'];
+        $allowed = self::KDS_STATUSES;
         $statuses = $request->query('status')
             ? array_intersect(explode(',', $request->query('status')), $allowed)
             : $allowed;
@@ -86,6 +101,24 @@ class KdsController extends Controller
             $machine = app(OrderStatusMachine::class);
             if (!$machine->isAllowed($order->status, $targetStatus)) {
                 return ['error' => 'Order cannot be bumped.'];
+            }
+
+            // Belt-and-braces payment guard for online-pickup orders
+            // ONLY. Online pickup is the only flow where the customer
+            // has already paid before the order reaches the kitchen
+            // (via the online ordering app + BML webhook). If
+            // payment_status is still unpaid here it means the webhook
+            // hasn't confirmed yet, so completing the order would
+            // wrongly fire loyalty points / completion notifications
+            // for a payment that hasn't actually settled.
+            //
+            // Takeaway / delivery are EXCLUDED — those are legitimate
+            // cash-on-pickup / pay-at-door flows. Dine-in is excluded —
+            // pay-after-meal is the whole model.
+            if ($order->type === 'online_pickup'
+                && $order->payment_status !== 'paid'
+                && $order->status !== 'paid') {
+                return ['error' => 'Online order payment not yet confirmed — wait for webhook before completing.'];
             }
 
             $oldStatus = $order->status;

@@ -235,6 +235,7 @@ class OrderController extends Controller
         $payloads = $request->validated()['orders'];
         $user = $request->user();
         $processed = 0;
+        $deduped = 0;
         $failed = [];
 
         // Intentional partial-success: each order is processed individually so
@@ -242,6 +243,24 @@ class OrderController extends Controller
         // other orders in the batch. The caller inspects `failed` to retry.
         foreach ($payloads as $index => $payload) {
             try {
+                // Idempotency on offline_id — if the queue retried (network
+                // blip, exponential backoff, cashier hit Sync twice) we'd
+                // otherwise duplicate the order AND double-deduct POS stock,
+                // which is the worst kind of silent inventory bug.
+                //
+                // OfflineSyncController already does this for its own endpoint;
+                // /orders/sync used to skip the check and was the last way
+                // duplicate orders could sneak into the database after a
+                // dropped connection.
+                $offlineId = $payload['offline_id'] ?? null;
+                if ($offlineId !== null && $offlineId !== '') {
+                    $existing = Order::where('offline_id', $offlineId)->first();
+                    if ($existing) {
+                        $deduped++;
+                        continue;
+                    }
+                }
+
                 $order = app(OrderCreationService::class)->createFromPayload($payload, $user);
                 app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'sync', 'index' => $index], $request);
                 $processed++;
@@ -255,7 +274,11 @@ class OrderController extends Controller
             }
         }
 
-        return response()->json(['processed' => $processed, 'failed' => $failed]);
+        return response()->json([
+            'processed' => $processed,
+            'deduped' => $deduped,
+            'failed' => $failed,
+        ]);
     }
 
     public function show(Request $request, int $id): JsonResponse
@@ -521,32 +544,40 @@ class OrderController extends Controller
             return response()->json(['message' => 'Attach a customer phone before sending a pay link.'], 422);
         }
 
-        // Compute remaining balance — sum confirmed payments (cash/card
-        // taken at the counter already, BML half-payments, etc.) and
-        // subtract from order total. Use integer laari throughout to
-        // avoid float drift on the final BML amount.
-        $paidLaar = (int) $order->payments
-            ->whereIn('status', ['paid', 'completed', 'confirmed'])
-            ->reduce(
-                fn ($carry, $p) => $carry + ($p->amount_laar ?? (int) round((float) $p->amount * 100)),
-                0,
-            );
-        $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
-        $remainingLaar = max(0, $orderLaar - $paidLaar);
+        // Compute remaining balance via the same helper the rest of the
+        // payment stack uses (COALESCE-safe for legacy POS payments).
+        $paymentService = app(\App\Domains\Payments\Services\PaymentService::class);
+        $remainingLaar = $paymentService->getRemainingBalanceLaar($order);
 
         if ($remainingLaar === 0) {
             return response()->json(['message' => 'Nothing left to charge.'], 422);
         }
 
-        // Local id uniqueness — BML keys off this. Suffix with timestamp
-        // so re-sending a link after a previous expiry doesn't collide.
-        $localId = 'BG-PAYLINK-' . $order->id . '-' . now()->format('YmdHis');
+        // Route the pay link through PaymentService so a real Payment row
+        // is created (with local_id + amount_laar). Without this, the BML
+        // webhook had no record to confirm against — orders stayed UNPAID
+        // even after the customer settled, OrderPaid never fired, and
+        // shift tender totals / loyalty / inventory listeners didn't run.
+        //
+        // initiatePartialBmlPayment row-locks the order, double-checks the
+        // remaining balance, persists a Payment, and calls BML in one
+        // transaction so a concurrent /payments call can't both pass the
+        // "amount <= remaining" check.
+        //
+        // Idempotency key suffixed with seconds-precision timestamp so a
+        // cashier re-sending a link after an expired one gets a fresh
+        // Payment row and a fresh URL (the customer always taps the latest
+        // SMS link).
+        $idempotencyKey = 'paylink:' . $order->id . ':' . now()->format('YmdHis');
 
         try {
-            $session = app(\App\Domains\Payments\Gateway\BmlConnectService::class)
-                ->createPayment($remainingLaar, $localId);
+            $session = $paymentService->initiatePartialBmlPayment(
+                $order,
+                $remainingLaar,
+                $idempotencyKey,
+            );
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('sendPayLink: BML createPayment failed', [
+            \Illuminate\Support\Facades\Log::error('sendPayLink: BML initiate failed', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
@@ -554,6 +585,8 @@ class OrderController extends Controller
                 'message' => "Couldn't generate a pay link right now. Tell the customer to pay at pickup.",
             ], 503);
         }
+
+        $localId = $session['local_id'] ?? $idempotencyKey;
 
         try {
             $orderNum = $order->order_number ?? "#{$order->id}";
@@ -609,7 +642,12 @@ class OrderController extends Controller
             'Order',
             $order->id,
             [],
-            ['payment_url' => $session['payment_url'], 'amount_laar' => $remainingLaar, 'sms_to' => $phone],
+            [
+                'payment_url' => $session['payment_url'],
+                'payment_id' => $session['payment_id'] ?? null,
+                'amount_laar' => $remainingLaar,
+                'sms_to' => $phone,
+            ],
             [],
             $request,
         );
@@ -666,6 +704,19 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
+        // Permission gate — restricts voids to users with the orders.void
+        // permission (owner/manager by default, but overridable per-user
+        // from Settings → Roles & Permissions). VoidPolicy now routes via
+        // HasPermissions so the DB override actually takes effect.
+        // Returns 403 with a clear message instead of leaking the policy
+        // name, so the POS UI can surface "You're not allowed to void
+        // tickets" to the cashier.
+        if (!\Illuminate\Support\Facades\Gate::check('order.void')) {
+            return response()->json([
+                'message' => "You don't have permission to void orders. Ask a manager.",
+            ], 403);
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:255',
         ]);
@@ -683,9 +734,29 @@ class OrderController extends Controller
             // of which this endpoint does. Force the cashier through
             // the proper refund flow instead of silently voiding their
             // way past it.
-            $blocked = ['paid', 'completed', 'refunded', 'partially_refunded'];
+            //
+            // 'partial' is also blocked here: addPayments sets
+            // status='partial' (and payment_status='partial') the moment
+            // a cashier takes a split-tender first leg (e.g. MVR 50 cash
+            // on a MVR 120 ticket). Without this guard the cashier could
+            // void the ticket, restore the stock, and keep the cash off-book.
+            $blocked = ['paid', 'completed', 'partial', 'refunded', 'partially_refunded'];
             if (in_array($order->status, $blocked, true)) {
                 return ['error' => "Order is {$order->status} — issue a refund instead of voiding."];
+            }
+
+            // Belt-and-braces: even if the lifecycle status is still 'pending'
+            // (e.g. legacy data from before payment_status was wired up),
+            // any confirmed payment row means money has changed hands and
+            // void is unsafe. Force the refund flow.
+            if (in_array($order->payment_status, ['partial', 'paid'], true)) {
+                return ['error' => "Payment recorded on this order — issue a refund instead of voiding."];
+            }
+            $confirmedPaymentExists = $order->payments()
+                ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                ->exists();
+            if ($confirmedPaymentExists) {
+                return ['error' => 'Confirmed payments exist on this order — issue a refund instead of voiding.'];
             }
 
             $machine = app(OrderStatusMachine::class);
@@ -818,6 +889,24 @@ class OrderController extends Controller
             $machine = app(OrderStatusMachine::class);
             if (!$machine->isAllowed($order->status, 'ready')) {
                 return ['error' => "Order is {$order->status} and can't be marked ready."];
+            }
+
+            // Online-pickup orders are pre-paid by the customer via the
+            // online ordering app — if the order somehow reached this
+            // status without payment confirmed, refuse to mark ready
+            // (the BML webhook hasn't landed yet, so customer would
+            // walk out with food the venue hasn't collected on).
+            //
+            // Takeaway and delivery are EXCLUDED — those are legitimate
+            // cash-on-pickup / pay-at-counter / pay-at-door flows. The
+            // POS markPickedUp endpoint enforces a final payment check
+            // when the food actually leaves with the customer.
+            //
+            // Dine-in is EXCLUDED — pay-after-meal is the entire model.
+            if ($order->type === 'online_pickup'
+                && $order->payment_status !== 'paid'
+                && $order->status !== 'paid') {
+                return ['error' => 'Online order is unpaid — wait for payment confirmation before marking ready.'];
             }
 
             $oldStatus = $order->status;
@@ -1080,8 +1169,22 @@ class OrderController extends Controller
                 $request,
             );
 
-            return ['order' => $target];
+            return ['order' => $target, 'source' => $source];
         });
+
+        // Fire OrderCancelled for the source AFTER commit so loyalty /
+        // promo / gift-card holds, reservation cleanup, and webhook
+        // dispatches all run for the merged-away ticket. Previously the
+        // source was silently flipped to 'cancelled' without firing the
+        // event, leaving holds tied to a ticket that no longer existed
+        // (loyalty points couldn't be re-redeemed until the hold expired,
+        // gift cards stayed "in use").
+        if (isset($result['source'])) {
+            $sourceOrder = $result['source']->fresh();
+            DB::afterCommit(function () use ($sourceOrder): void {
+                OrderCancelled::dispatch(OrderCancelledData::fromOrder($sourceOrder));
+            });
+        }
 
         if (isset($result['error'])) {
             return response()->json(['message' => $result['error']], 422);
@@ -1209,6 +1312,53 @@ class OrderController extends Controller
                 $order->refresh();
             }
 
+            // Sanity cap to block fat-finger overpayments. We don't cap
+            // strictly at the remaining balance because cash payments
+            // legitimately tender ABOVE the total (cashier gives change
+            // physically) and the cashier records the actual cash
+            // handed over so the drawer reconciles. Non-cash methods
+            // (card/online/bank) have NO change-making, so an
+            // overshoot there is always a typo.
+            //
+            // Policy:
+            //   - All-cash row(s): allow up to 5x the remaining balance
+            //     (covers reasonable change-making on small tickets;
+            //     blocks "MVR 12000 on a MVR 120 ticket" typos).
+            //   - Any non-cash row: cap the TOTAL incoming at the
+            //     remaining balance (no change is given on a card
+            //     swipe).
+            $orderTotalLaarPre = (int) ($order->total_laar ?? round((float) $order->total * 100));
+            $alreadyPaidLaar = (int) $order->payments()
+                ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as t')
+                ->value('t');
+            $remainingLaar = max(0, $orderTotalLaarPre - $alreadyPaidLaar);
+
+            $incomingLaar = 0;
+            $anyNonCash = false;
+            foreach ($validated['payments'] as $row) {
+                $incomingLaar += (int) round((float) $row['amount'] * 100);
+                if ($row['method'] !== 'cash') {
+                    $anyNonCash = true;
+                }
+            }
+
+            // Skip the cap entirely on zero-balance tickets (fully-
+            // discounted comp orders settle with a single
+            // { cash, 0 } row and we don't want the cap to reject that).
+            if ($remainingLaar > 0) {
+                $capLaar = $anyNonCash
+                    ? $remainingLaar + 50 // small rounding tolerance for non-cash
+                    : max($remainingLaar * 5, $remainingLaar + 10000); // cash: 5x or +MVR 100 floor
+                if ($incomingLaar > $capLaar) {
+                    abort(422, sprintf(
+                        'Tender (MVR %.2f) far exceeds remaining balance (MVR %.2f). Re-check the amount.',
+                        $incomingLaar / 100,
+                        $remainingLaar / 100,
+                    ));
+                }
+            }
+
             $oldStatus = $order->status;
 
             foreach ($validated['payments'] as $paymentPayload) {
@@ -1217,10 +1367,17 @@ class OrderController extends Controller
                 $gatewayMethods = ['bml_pay', 'bml', 'online'];
                 $paymentStatus = in_array($paymentPayload['method'], $gatewayMethods, true) ? 'pending' : 'paid';
 
+                // Always persist amount_laar alongside amount so downstream
+                // laari sums (BML remainder calc, payment_status flips) don't
+                // need a COALESCE fallback. Float→laari conversion uses round()
+                // to avoid 19.99 * 100 = 1998.9999… type drift.
+                $amountLaar = (int) round((float) $paymentPayload['amount'] * 100);
+
                 $payment = Payment::create([
                     'order_id' => $order->id,
                     'method' => $paymentPayload['method'],
                     'amount' => $paymentPayload['amount'],
+                    'amount_laar' => $amountLaar,
                     'status' => $paymentStatus,
                     'reference_number' => $paymentPayload['reference_number'] ?? null,
                     'processed_at' => now(),

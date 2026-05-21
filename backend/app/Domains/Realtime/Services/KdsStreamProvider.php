@@ -12,9 +12,12 @@ use App\Models\Order;
  */
 class KdsStreamProvider
 {
-    // 'preparing' is used by the customer-facing display and by some POS flows;
-    // include it so those orders are visible on the kitchen screen too.
-    private const KDS_STATUSES = ['pending', 'in_progress', 'paid', 'preparing'];
+    // Defer to KdsController::KDS_STATUSES so REST + SSE always agree.
+    // Previously this list was authored independently and drifted:
+    // REST had 'ready' but no 'preparing'; SSE had 'preparing' but no
+    // 'ready'. Tickets would either flicker between the two delivery
+    // mechanisms or disappear entirely on the kitchen display.
+    private const KDS_STATUSES = \App\Http\Controllers\Api\KdsController::KDS_STATUSES;
 
     public function __construct(private OrderStreamProvider $orderStreamProvider) {}
 

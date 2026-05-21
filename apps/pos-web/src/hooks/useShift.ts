@@ -39,9 +39,30 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean) {
       setCurrent(res.shift as ShiftRow | null);
       setError("");
     } catch (e) {
-      // 401/403 — token gone, treat as no shift.
-      if (e instanceof ApiRequestError) setError(e.message);
-      setCurrent(null);
+      // Distinguish "no shift" (genuine null response or 404) from
+      // transient network/server failures so a flaky API doesn't
+      // bounce a busy cashier into the Shift Closed gate mid-service.
+      //
+      //   - 404            → server says "no current shift" → treat as null
+      //   - 401 / 403      → token gone → bubble up via setError, blank shift
+      //   - 5xx / network  → keep the LAST known shift in place + log error
+      //                       so the cashier can keep ringing while we retry
+      if (e instanceof ApiRequestError) {
+        if (e.status === 404) {
+          setCurrent(null);
+          setError("");
+        } else if (e.status === 401 || e.status === 403) {
+          setError(e.message);
+          setCurrent(null);
+        } else {
+          // 5xx or other API error — keep existing shift, surface message
+          // so a banner can prompt the cashier to retry.
+          setError(e.message || "Couldn't refresh shift — retrying.");
+        }
+      } else {
+        // Network / offline — same treatment as 5xx: keep last shift.
+        setError("Network issue — shift status may be stale.");
+      }
     } finally {
       setLoading(false);
     }

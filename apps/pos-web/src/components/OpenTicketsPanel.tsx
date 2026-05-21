@@ -49,6 +49,10 @@ type Props = {
   deviceId: string;
   /** Owners/managers can switch to a venue-wide active-order feed. */
   canViewAllStations?: boolean;
+  /** Hide the destructive Void chip for cashiers without the
+   *  orders.void permission. The backend also enforces this (403) but
+   *  hiding the button avoids dead-tap UX. */
+  canVoidOrders?: boolean;
   onResume: (ticket: OpenTicket) => void;
   onClose: () => void;
   /** Phone of the currently-attached cart customer, if any — used to
@@ -81,6 +85,7 @@ type Props = {
 export function OpenTicketsPanel({
   deviceId,
   canViewAllStations = false,
+  canVoidOrders = true,
   onResume,
   onClose,
   cartCustomerPhone,
@@ -1173,7 +1178,7 @@ export function OpenTicketsPanel({
                         API fires. Last in the row so it's farthest from
                         the primary tap targets — reduces fat-finger
                         misclicks on a busy ticket card. */}
-                    {!isPaid && (
+                    {!isPaid && canVoidOrders && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

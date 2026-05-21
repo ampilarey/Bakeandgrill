@@ -8,6 +8,7 @@ use App\Domains\Inventory\Events\LowStockReached;
 use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Domains\Inventory\Listeners\DeductInventoryListener;
 use App\Domains\Inventory\Listeners\DeductPreparedStockListener;
+use App\Domains\Inventory\Listeners\RestoreInventoryOnRefundListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
@@ -93,6 +94,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         ],
 
         OrderRefunded::class => [
+            RestoreInventoryOnRefundListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],
 

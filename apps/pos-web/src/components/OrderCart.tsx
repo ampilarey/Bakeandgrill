@@ -358,7 +358,23 @@ export function OrderCart(p: Props) {
           {ORDER_TYPES.map((t) => (
             <button
               key={t}
-              onClick={() => p.setOrderType(t)}
+              onClick={() => {
+                // Switching order type with a non-empty cart can leave
+                // channel-restricted items (e.g. dine-in-only specials)
+                // on a takeaway/pickup ticket. The backend
+                // KitchenMenuResolver rejects those at create time
+                // (422), but that's a surprise at Charge — confirm
+                // here so the cashier proactively reviews the cart.
+                // Only prompts when actually switching to a different
+                // type and there are items at risk.
+                if (t !== p.orderType && p.cartItems.length > 0) {
+                  const ok = window.confirm(
+                    `Switch to ${t}? Items that aren't available on ${t} may be rejected at checkout.`,
+                  );
+                  if (!ok) return;
+                }
+                p.setOrderType(t);
+              }}
               style={{
                 flex: 1, padding: '8px 6px', fontSize: 12, fontWeight: 700,
                 borderRadius: 6, border: 'none', cursor: 'pointer',

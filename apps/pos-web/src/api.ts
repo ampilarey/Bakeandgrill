@@ -41,6 +41,20 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
 
 // Module-level token — initialised from localStorage so page refresh
 // doesn't silently log out the POS. Cleared on explicit logout.
+//
+// SECURITY DEBT (H9): storing the Sanctum token in localStorage exposes
+// it to XSS exfiltration and to anyone with physical access to the iPad
+// (e.g. via Safari → Develop → Storage). Production-grade fix is to move
+// staff auth onto HttpOnly cookies with Sanctum's stateful flow, which
+// requires:
+//   - Sanctum SPA mode + sanctum/csrf-cookie endpoint
+//   - SANCTUM_STATEFUL_DOMAINS env on the API
+//   - withCredentials: true on every fetch
+//   - Backend CORS + same-site cookie config
+// That migration touches every app (pos, admin, online-order) plus the
+// kiosk receipt flow — tracked as a separate effort. For now we mitigate
+// with strict CSP on the kiosk Safari profile (no external scripts) and
+// short-lived tokens (Sanctum default).
 let _token: string | null = localStorage.getItem('pos_token');
 export function setAuthToken(t: string | null): void {
   _token = t;
@@ -564,6 +578,24 @@ export async function getOrder(orderId: number): Promise<{
      *  resume flow checks this to detect "customer paid online
      *  while ticket was open" and short-circuits Charge → Receipt. */
     payment_status?: "unpaid" | "partial" | "paid" | null;
+    /** Manual cashier-applied discount (MVR amount). Hydrated on resume
+     *  so the cart sidebar shows the same discount line the cashier
+     *  applied when the ticket was held. */
+    discount_amount?: number | string | null;
+    /** Gift card code applied to the ticket + the laari value redeemed.
+     *  Surface both so resume can re-paint the rewards row without an
+     *  extra round-trip to validate the code. */
+    gift_card_code?: string | null;
+    gift_card_discount_laar?: number | null;
+    /** Loyalty laari held against the ticket — non-null when the
+     *  cashier redeemed points before holding. Used to repaint the
+     *  rewards strip without re-requesting a fresh hold. */
+    loyalty_discount_laar?: number | null;
+    /** Promo discount applied (laari) — surfaces same as above for
+     *  the promo row. The promo CODE itself isn't stored on the order
+     *  (lives in the redemption table), so the cart shows "Promo: -MVR x"
+     *  without the code text. */
+    promo_discount_laar?: number | null;
     /** Customer linked to the ticket when it was held, so the picker
      *  re-attaches them on resume and the bill SMS still goes to the
      *  right phone. Null/undefined for walk-in tickets. */

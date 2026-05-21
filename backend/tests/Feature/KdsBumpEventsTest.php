@@ -67,18 +67,29 @@ class KdsBumpEventsTest extends TestCase
             'is_active' => true,
         ]);
         Device::create(['name' => 'KDS POS', 'identifier' => 'KDS-POS', 'type' => 'pos', 'is_active' => true]);
+        // KDS mutation routes (start/bump/recall) now require the
+        // X-Device-Identifier header via the device.active middleware
+        // — set it globally for every postJson in this suite so
+        // individual tests don't need to repeat themselves.
+        $this->withHeader('X-Device-Identifier', 'KDS-POS');
     }
 
     public function test_bumping_unpaid_order_to_completed_fires_OrderCompleted_not_OrderPaid(): void
     {
+        // KDS bump no longer transitions in_progress→ready — the
+        // cashier marks ready from POS, KDS only does ready→completed.
+        // Rewritten to start from ready so the assertion intent
+        // (OrderCompleted fires, OrderPaid does NOT re-fire on KDS bump)
+        // is still exercised.
         Event::fake([OrderPaid::class, OrderCompleted::class]);
         Sanctum::actingAs($this->staff, ['staff']);
 
-        // Create an unpaid in_progress order (cash-on-pickup style).
+        // Create an unpaid READY takeaway order (cash-on-pickup style)
+        // — cashier already marked ready, KDS just confirms pickup.
         $order = Order::create([
             'order_number' => 'KDS-001',
             'type' => 'takeaway',
-            'status' => 'in_progress',
+            'status' => 'ready',
             'subtotal' => 30.0,
             'tax_amount' => 0,
             'discount_amount' => 0,
@@ -86,9 +97,7 @@ class KdsBumpEventsTest extends TestCase
             'total_laar' => 3000,
         ]);
 
-        // First bump: in_progress → ready
-        $this->postJson("/api/kds/orders/{$order->id}/bump")->assertOk();
-        // Second bump: ready → completed
+        // Bump ready → completed (the only KDS transition).
         $this->postJson("/api/kds/orders/{$order->id}/bump")->assertOk();
 
         $fresh = Order::find($order->id);

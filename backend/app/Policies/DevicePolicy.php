@@ -10,6 +10,15 @@ class DevicePolicy
 {
     public function manage(User $user): bool
     {
-        return in_array($user->role?->slug, ['owner'], true);
+        if ($user->role?->slug === 'owner') {
+            return true;
+        }
+        $user->loadMissing('permissions');
+        $override = $user->permissions->firstWhere('slug', 'devices.manage');
+        if ($override !== null) {
+            return (bool) $override->pivot->granted;
+        }
+
+        return $user->role?->slug === 'owner';
     }
 }

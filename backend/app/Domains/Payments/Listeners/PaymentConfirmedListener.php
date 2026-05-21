@@ -105,7 +105,18 @@ class PaymentConfirmedListener implements ShouldQueue
             // Online orders held at payment_pending move to pending (visible on KDS).
             // POS orders already in the kitchen queue go straight to paid.
             $newStatus = $locked->status === 'payment_pending' ? 'pending' : 'paid';
-            $this->orders->updateStatus($locked->id, $newStatus, ['paid_at' => now()]);
+            // ALSO set payment_status='paid' alongside the lifecycle status.
+            // Without this, gateway-confirmed orders (Stripe path, and any
+            // future PaymentConfirmed-only flow) leave payment_status at
+            // 'unpaid'/'partial' even though the order is fully paid.
+            // The POS Open Tickets UNPAID badge filters on payment_status —
+            // so the ticket would still show UNPAID despite being settled.
+            // (BML path sets this directly inside PaymentService::confirmPayment,
+            //  which is why the regression only manifested on Stripe.)
+            $this->orders->updateStatus($locked->id, $newStatus, [
+                'paid_at' => now(),
+                'payment_status' => 'paid',
+            ]);
 
             $fresh = $this->orders->findById($locked->id);
             if (!$fresh) {

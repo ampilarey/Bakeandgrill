@@ -6,8 +6,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\TimePunch;
+use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TimeClockController extends Controller
 {
@@ -24,24 +26,49 @@ class TimeClockController extends Controller
     public function clockIn(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
-
-        $open = TimePunch::where('user_id', $userId)
-            ->whereNull('clocked_out_at')
-            ->first();
-
-        if ($open) {
-            return response()->json(['message' => 'Already clocked in.'], 422);
-        }
-
         $validated = $request->validate([
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $punch = TimePunch::create([
-            'user_id' => $userId,
-            'clocked_in_at' => now(),
-            'notes' => $validated['notes'] ?? null,
-        ]);
+        // Wrap the open-punch check + insert in a transaction with a
+        // row lock on every open punch for this user. Without this, two
+        // concurrent /clock-in requests (cashier double-tapping; iPad
+        // retry on flaky wifi) could both pass the "is there an open
+        // punch?" check and both insert — leaving the user with two
+        // simultaneous open punches and a payroll report that
+        // double-counts their hours.
+        $punch = DB::transaction(function () use ($userId, $validated) {
+            $existing = TimePunch::where('user_id', $userId)
+                ->whereNull('clocked_out_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return null;
+            }
+
+            return TimePunch::create([
+                'user_id' => $userId,
+                'clocked_in_at' => now(),
+                'notes' => $validated['notes'] ?? null,
+            ]);
+        });
+
+        if ($punch === null) {
+            return response()->json(['message' => 'Already clocked in.'], 422);
+        }
+
+        // Audit punches so payroll disputes / labour-law inquiries have
+        // a tamper-evident record outside the time_punches table itself.
+        app(AuditLogService::class)->log(
+            'time_punch.clock_in',
+            'TimePunch',
+            $punch->id,
+            [],
+            ['clocked_in_at' => $punch->clocked_in_at],
+            ['user_id' => $userId],
+            $request,
+        );
 
         return response()->json(['punch' => $punch], 201);
     }
@@ -50,25 +77,50 @@ class TimeClockController extends Controller
     {
         $userId = $request->user()->id;
 
-        $punch = TimePunch::where('user_id', $userId)
-            ->whereNull('clocked_out_at')
-            ->latest('clocked_in_at')
-            ->first();
-
-        if (!$punch) {
-            return response()->json(['message' => 'Not clocked in.'], 422);
-        }
-
         $clockOutValidated = $request->validate([
             'break_minutes' => ['nullable', 'numeric', 'min:0', 'max:1440'],
         ]);
 
         $breakMinutes = (float) ($clockOutValidated['break_minutes'] ?? 0);
 
-        $punch->clocked_out_at = now();
-        $punch->break_minutes = $breakMinutes;
-        $punch->total_hours = $punch->calculateHours();
-        $punch->save();
+        // Same transactional treatment as clockIn — close + sum in one
+        // locked window so the punch can't be double-closed.
+        $punch = DB::transaction(function () use ($userId, $breakMinutes) {
+            $row = TimePunch::where('user_id', $userId)
+                ->whereNull('clocked_out_at')
+                ->latest('clocked_in_at')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$row) {
+                return null;
+            }
+
+            $row->clocked_out_at = now();
+            $row->break_minutes = $breakMinutes;
+            $row->total_hours = $row->calculateHours();
+            $row->save();
+
+            return $row;
+        });
+
+        if ($punch === null) {
+            return response()->json(['message' => 'Not clocked in.'], 422);
+        }
+
+        app(AuditLogService::class)->log(
+            'time_punch.clock_out',
+            'TimePunch',
+            $punch->id,
+            [],
+            [
+                'clocked_out_at' => $punch->clocked_out_at,
+                'break_minutes' => $punch->break_minutes,
+                'total_hours' => $punch->total_hours,
+            ],
+            ['user_id' => $userId],
+            $request,
+        );
 
         return response()->json(['punch' => $punch]);
     }

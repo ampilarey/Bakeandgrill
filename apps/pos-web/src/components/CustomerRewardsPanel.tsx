@@ -133,8 +133,17 @@ export function CustomerRewardsPanel({
       // discount, but a percentage promo's discount is roughly
       // `subtotal * discount_value / 100` and a fixed promo is
       // `discount_value` directly. Use a conservative estimate so the
-      // cashier sees the right ballpark on the Charge button — the
-      // real number lands when applyPromoToOrder runs server-side.
+      // cashier sees the right ballpark on the Charge button.
+      //
+      // M11 reconciliation: this is intentionally a CLIENT estimate.
+      // Once Save Ticket / Charge happens, useOrderCreation calls
+      // applyStagedRewards which hits the real /apply endpoint and
+      // re-reads the order.total back from the server — and the
+      // Charge overlay (C5 fix) now uses resumedOrderTotal so any
+      // estimate drift is corrected the moment the order is created.
+      // Promoting this to a true preview API would require sending
+      // the full cart to a new /pos/promos/preview endpoint; tracked
+      // as a follow-up but no longer a correctness risk after C5+H6.
       let estimate = 0;
       if (res.promotion) {
         if (res.promotion.type === "percentage") {

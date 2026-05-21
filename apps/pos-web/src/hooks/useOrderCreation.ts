@@ -126,6 +126,17 @@ type Params = {
   setAttachedCustomer?: (c: PosCustomer | null) => void;
   setOrderType?: (t: OrderType) => void;
   setSelectedTableId?: (id: number | null) => void;
+  /** Resume hydration setters — repaint the rewards/discount rows in
+   *  the cart sidebar so the cashier sees the same discount lines on
+   *  the resumed ticket that were visible when it was held. Without
+   *  these, the resumed cart subtotal showed gross + the Charge button
+   *  used the server total — visually disagreeing with the rewards
+   *  the customer thought they had. Optional (callers that haven't
+   *  wired the setters yet just skip the hydration). */
+  setDiscountAmount?: (s: string) => void;
+  setAppliedPromo?: (p: { code: string; promotionId: number | null; discount: number } | null) => void;
+  setAppliedLoyalty?: (l: { points: number; discount: number } | null) => void;
+  setAppliedGiftCard?: (g: { code: string; discount: number; cardBalance: number } | null) => void;
   onOrderSettled?: (orderId: number, customerId: number | null, customerPhone: string | null) => void;
 };
 
@@ -664,6 +675,12 @@ export function useOrderCreation(params: Params) {
       // visible to KDS once fired. Two HTTP calls but cleaner code.
       const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
       const response = await createOrder(payload);
+      // Apply any staged promo / loyalty / gift card BEFORE firing so
+      // the kitchen chit reflects the actual ticket value the customer
+      // will pay. Skipping this is how rewards quietly disappeared on
+      // saved tickets — the cashier staged "20% off" in the cart, hit
+      // Save & Fire, and the order was created at full price.
+      await applyStagedRewards(response.order.id, response.order.total);
       await fireOrderToKitchen(response.order.id);
       params.clearCart();
       params.setSelectedItem(null);
@@ -675,6 +692,11 @@ export function useOrderCreation(params: Params) {
     // Classic save-for-later: create then hold so KDS never sees it.
     const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
     const response = await createOrder(payload);
+    // Apply staged rewards on the parked ticket too — when the cashier
+    // resumes and tenders, the saved discount/promo/loyalty/gift card
+    // is already attached server-side so the resumed total is correct
+    // (matches what they showed the customer at save time).
+    await applyStagedRewards(response.order.id, response.order.total);
     await holdOrder(response.order.id, { ticket_name: name, ticket_note: note });
 
     localStorage.setItem("pos_last_held_order", String(response.order.id));
@@ -785,6 +807,48 @@ export function useOrderCreation(params: Params) {
         : [],
     }));
     params.setCartItems(restoredItems);
+
+    // Hydrate discount + reward rows from the order so the cart
+    // sidebar matches what was visible when the ticket was held.
+    // Each setter is optional so older callers still type-check.
+    if (params.setDiscountAmount) {
+      const manualDiscount = response.order.discount_amount != null
+        ? Number(response.order.discount_amount)
+        : 0;
+      params.setDiscountAmount(manualDiscount > 0 ? manualDiscount.toFixed(2) : "");
+    }
+    if (params.setAppliedGiftCard) {
+      const gcCode = response.order.gift_card_code ?? null;
+      const gcDiscountLaar = response.order.gift_card_discount_laar ?? 0;
+      // cardBalance not surfaced by the order endpoint — set to 0 so
+      // the UI shows "Gift card applied" without a misleading balance.
+      // A re-validate of the code would refresh the balance line.
+      params.setAppliedGiftCard(gcCode && gcDiscountLaar > 0
+        ? { code: gcCode, discount: gcDiscountLaar / 100, cardBalance: 0 }
+        : null);
+    }
+    if (params.setAppliedLoyalty) {
+      const loyaltyDiscountLaar = response.order.loyalty_discount_laar ?? 0;
+      // The order doesn't track the original POINTS count — only the
+      // laari value it converted to. Best-effort: surface a single
+      // synthetic "1pt" placeholder so the cart line renders, and the
+      // discount value is correct. A re-hold round-trip can correct
+      // the points count if the cashier edits the loyalty redemption.
+      params.setAppliedLoyalty(loyaltyDiscountLaar > 0
+        ? { points: 1, discount: loyaltyDiscountLaar / 100 }
+        : null);
+    }
+    if (params.setAppliedPromo) {
+      const promoDiscountLaar = response.order.promo_discount_laar ?? 0;
+      // Promo code isn't surfaced on the Order model (lives in the
+      // redemption table), so we tag it as 'applied' to drive the
+      // rewards-row UI without leaking a misleading code. Cashier
+      // can re-enter the code if they need to remove + reapply.
+      params.setAppliedPromo(promoDiscountLaar > 0
+        ? { code: 'applied', promotionId: null, discount: promoDiscountLaar / 100 }
+        : null);
+    }
+
     setResumedOrderId(orderId);
     // Snapshot the authoritative server total so charge time uses it
     // even if the local cart calculation produces a different number.
@@ -1077,6 +1141,7 @@ export function useOrderCreation(params: Params) {
     lastCreatedOrderId,
     pendingPaymentForOrderId,
     resumedOrderId,
+    resumedOrderTotal,
     resumedFromStatus,
     isEditingActive,
     setIsEditingActive,

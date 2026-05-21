@@ -12,6 +12,109 @@ use Illuminate\Support\Facades\DB;
 
 class InventoryDeductionService
 {
+    /**
+     * Reverse a previous deductForOrder() — restores recipe-level
+     * inventory when an order is refunded. Idempotent: uses a
+     * distinct 'refund:' prefix on the StockMovement idempotency
+     * key so a double-refund call can't double-restore raw
+     * ingredients, AND a refund following a never-deducted order
+     * (online order paid → refunded before kitchen prep) is a
+     * safe no-op because the matching 'order:…' deduction movement
+     * is absent.
+     *
+     * Without this, refunds restored menu-item stock (in RefundController)
+     * but left raw recipe ingredients permanently decremented —
+     * COGS reports inflated, low-stock alerts fired earlier than they
+     * should, and the cashier had no way to put the flour/butter/oil
+     * back on the shelf for a refunded ticket.
+     */
+    public function restoreForOrder(Order $order, ?int $userId = null): void
+    {
+        DB::transaction(function () use ($order, $userId): void {
+            $order->loadMissing('items.item.recipe.recipeItems.inventoryItem');
+
+            foreach ($order->items as $orderItem) {
+                $item = $orderItem->item;
+                $recipe = $item?->recipe;
+
+                if (!$recipe) {
+                    continue;
+                }
+
+                $yieldQuantity = max(1.0, (float) $recipe->yield_quantity);
+
+                foreach ($recipe->recipeItems as $recipeItem) {
+                    $inventoryItem = $recipeItem->inventoryItem;
+                    $perUnitQuantity = (float) $recipeItem->quantity;
+
+                    if (!$inventoryItem || $perUnitQuantity <= 0) {
+                        continue;
+                    }
+
+                    $restoreQuantity = ($perUnitQuantity * (float) $orderItem->quantity) / $yieldQuantity;
+                    if ($restoreQuantity <= 0) {
+                        continue;
+                    }
+
+                    // Only restore if the matching deduction actually happened.
+                    // The deduction key is 'order:{id}:item:{itemId}:inv:{invId}';
+                    // if it isn't present, the order never had its recipe stock
+                    // deducted (e.g. refunded before payment confirmed) and we
+                    // must not add phantom inventory.
+                    $deductKey = 'order:' . $order->id . ':item:' . $orderItem->id . ':inv:' . $inventoryItem->id;
+                    $wasDeducted = StockMovement::where('idempotency_key', $deductKey)->exists();
+                    if (!$wasDeducted) {
+                        continue;
+                    }
+
+                    $restoreKey = 'refund:order:' . $order->id . ':item:' . $orderItem->id . ':inv:' . $inventoryItem->id;
+                    $alreadyRestored = StockMovement::where('idempotency_key', $restoreKey)->exists();
+                    if ($alreadyRestored) {
+                        continue;
+                    }
+
+                    $lockedItem = DB::table('inventory_items')
+                        ->where('id', $inventoryItem->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$lockedItem) {
+                        continue;
+                    }
+
+                    $oldStock = (float) $lockedItem->current_stock;
+
+                    DB::table('inventory_items')
+                        ->where('id', $inventoryItem->id)
+                        ->increment('current_stock', $restoreQuantity);
+
+                    $inventoryItem->refresh();
+
+                    event(new StockLevelChanged(new StockLevelChangedData(
+                        itemId: $inventoryItem->id,
+                        itemName: $inventoryItem->name,
+                        oldQuantity: $oldStock,
+                        newQuantity: (float) $inventoryItem->current_stock,
+                        reason: 'refund',
+                    )));
+
+                    StockMovement::create([
+                        'idempotency_key' => $restoreKey,
+                        'inventory_item_id' => $inventoryItem->id,
+                        'user_id' => $userId ?? $order->user_id,
+                        'type' => 'refund',
+                        'quantity' => $restoreQuantity,
+                        'balance_after' => $inventoryItem->current_stock,
+                        'unit_cost' => $inventoryItem->unit_cost ?? 0,
+                        'reference_type' => 'order',
+                        'reference_id' => $order->id,
+                        'notes' => $order->order_number ? "Refund of order {$order->order_number}" : 'Refund restore',
+                    ]);
+                }
+            }
+        });
+    }
+
     public function deductForOrder(Order $order, ?int $userId = null): void
     {
         DB::transaction(function () use ($order, $userId): void {

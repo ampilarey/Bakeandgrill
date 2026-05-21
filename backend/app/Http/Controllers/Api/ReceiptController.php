@@ -129,7 +129,7 @@ class ReceiptController extends Controller
         }
 
         try {
-            $sent = $this->deliverReceipt($receipt);
+            $sent = $this->deliverReceipt($receipt, isResend: true);
         } catch (\Throwable $e) {
             report($e);
 
@@ -189,7 +189,15 @@ class ReceiptController extends Controller
         return response()->json(['feedback' => $feedback], 201);
     }
 
-    private function deliverReceipt(Receipt $receipt): bool
+    /**
+     * @param bool $isResend Set true only when the caller is acting on
+     *   behalf of an explicit resend request (staff "Resend SMS" button
+     *   or customer "Resend to phone" on the public receipt page).
+     *   The very first delivery (post-payment auto-send) should pass
+     *   false so resend_count starts at 0 — otherwise the cashier's
+     *   initial send burns one of the customer's 3 allowed resends.
+     */
+    private function deliverReceipt(Receipt $receipt, bool $isResend = false): bool
     {
         $receipt->loadMissing('order.items.modifiers', 'order.payments', 'order.customer', 'customer');
 
@@ -221,7 +229,13 @@ class ReceiptController extends Controller
             $receipt->channel = $channel;
             $receipt->sent_at = $receipt->sent_at ?? now();
             $receipt->last_sent_at = now();
-            $receipt->resend_count = ($receipt->resend_count ?? 0) + 1;
+            // Only count true RESENDS toward the MAX_RESENDS cap. The
+            // initial delivery (auto-send after payment) sets sent_at
+            // but leaves resend_count at 0, so the customer still gets
+            // 3 self-service resends from the public receipt page.
+            if ($isResend) {
+                $receipt->resend_count = ($receipt->resend_count ?? 0) + 1;
+            }
             $receipt->save();
         }
 

@@ -27,8 +27,23 @@ class OrderCreationService
     public function createFromPayload(array $payload, ?object $user): Order
     {
         $device = null;
-        if (!empty($payload['device_identifier'])) {
-            $device = Device::where('identifier', $payload['device_identifier'])->first();
+        // Prefer the payload identifier when supplied (explicit), but
+        // fall back to the X-Device-Identifier header set by every POS
+        // request. Without the fallback an order created via a flow
+        // that doesn't echo device_identifier in the body (older POS
+        // builds, retried offline syncs) sailed past the
+        // EnsureActiveDevice middleware but stored device_id=null —
+        // breaking per-station Active Orders attribution and shift
+        // anchoring against the device's open shift.
+        $identifier = $payload['device_identifier'] ?? null;
+        if (empty($identifier) && request() !== null) {
+            $headerIdentifier = request()->header('X-Device-Identifier');
+            if ($headerIdentifier !== null && $headerIdentifier !== '') {
+                $identifier = (string) $headerIdentifier;
+            }
+        }
+        if (!empty($identifier)) {
+            $device = Device::where('identifier', $identifier)->first();
         }
 
         // Anchor the order to the cashier's currently-open shift so the
@@ -208,6 +223,58 @@ class OrderCreationService
     public function replaceOrderItems(Order $order, array $items, bool $reprintKitchen = true): Order
     {
         $updated = DB::transaction(function () use ($order, $items): Order {
+            // Restore POS-deducted stock BEFORE soft-deleting the old lines,
+            // otherwise the subsequent addOrderItems re-deducts and we leak
+            // inventory on every "Save changes" tap. Online orders only
+            // RESERVE stock (released elsewhere by ReleasePreparedStockOnCancelListener
+            // when the order is cancelled, never on edit) so we skip them
+            // here — mirroring the POS-vs-online split in addOrderItems.
+            //
+            // Idempotency key derived from the OLD order_item id so a
+            // repeated edit of the same line can't double-restore. The
+            // re-add path uses keys based on the NEW order_item id, so
+            // restore + re-deduct keys never collide.
+            $isPosOrder = !in_array($order->type, ['online_pickup', 'delivery'], true);
+            if ($isPosOrder) {
+                $stockService = app(\App\Services\StockManagementService::class);
+                $existingItems = $order->items()->get();
+                foreach ($existingItems as $existing) {
+                    $qty = (int) $existing->quantity;
+                    if ($qty <= 0) {
+                        continue;
+                    }
+
+                    if ($existing->variant_id) {
+                        $variant = \App\Models\Variant::find($existing->variant_id);
+                        if ($variant && $variant->track_stock) {
+                            $stockService->restoreVariantStock(
+                                $variant,
+                                $qty,
+                                'pos:edit:order:' . $order->id . ':variant_item:' . $existing->id,
+                                $order->id,
+                                null,
+                            );
+                        }
+                        continue;
+                    }
+
+                    if (!$existing->item_id) {
+                        continue;
+                    }
+                    $item = Item::find($existing->item_id);
+                    if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
+                        continue;
+                    }
+                    $stockService->restorePreparedStock(
+                        $item,
+                        $qty,
+                        'pos:edit:order:' . $order->id . ':item:' . $existing->id,
+                        $order->id,
+                        null,
+                    );
+                }
+            }
+
             // Soft-delete current modifiers + items. We don't hard-delete
             // because finance reports and refund flows still want to be
             // able to surface the original ticket if asked.

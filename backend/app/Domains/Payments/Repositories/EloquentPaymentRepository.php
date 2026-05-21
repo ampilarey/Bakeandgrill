@@ -64,11 +64,24 @@ class EloquentPaymentRepository implements PaymentRepositoryInterface
             ->sum('amount');
     }
 
-    /** @param string[] $statuses */
+    /**
+     * Sum confirmed payments in laari for an order.
+     *
+     * Uses `COALESCE(amount_laar, ROUND(amount * 100))` so legacy POS
+     * payments that only populated `amount` (no `amount_laar`) still
+     * contribute to the total. Without this, split-tender flows
+     * (cash at the counter via addPayments + BML pay-link for the
+     * remainder) under-counted paid totals — the BML confirmation
+     * path would either over-charge the customer or refuse to mark
+     * the order paid even after the customer settled in full.
+     *
+     * @param string[] $statuses
+     */
     public function sumAmountLaarForOrder(int $orderId, array $statuses): int
     {
         return (int) Payment::where('order_id', $orderId)
             ->whereIn('status', $statuses)
-            ->sum('amount_laar');
+            ->selectRaw('COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0) as total_laar')
+            ->value('total_laar');
     }
 }
