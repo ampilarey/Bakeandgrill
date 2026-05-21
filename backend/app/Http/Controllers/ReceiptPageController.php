@@ -4,23 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domains\Notifications\DTOs\SmsMessage;
-use App\Domains\Notifications\Services\SmsService;
 use App\Http\Requests\ReceiptFeedbackRequest;
-use App\Mail\ReceiptMail;
 use App\Models\Order;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 
 class ReceiptPageController extends Controller
 {
-    private const MAX_RESENDS = 3;
-
-    private const RESEND_COOLDOWN_SECONDS = 120;
-
     public function show($token)
     {
         $receipt = Receipt::with(['order.items.modifiers', 'order.payments'])
@@ -51,38 +43,6 @@ class ReceiptPageController extends Controller
         return $pdf->stream('receipt-' . $receipt->order?->order_number . '.pdf');
     }
 
-    public function resend(Request $request, $token)
-    {
-        $receipt = Receipt::with('order.customer')
-            ->where('token', $token)
-            ->firstOrFail();
-
-        if ($receipt->resend_count >= self::MAX_RESENDS) {
-            return redirect()->back()->with('error', 'Resend limit reached.');
-        }
-
-        if ($receipt->last_sent_at && abs($receipt->last_sent_at->diffInSeconds(now())) < self::RESEND_COOLDOWN_SECONDS) {
-            return redirect()->back()->with('error', 'Please wait before resending.');
-        }
-
-        try {
-            $sent = $this->deliverReceipt($receipt);
-        } catch (\Throwable $e) {
-            report($e);
-
-            return redirect()->back()->with('error', 'Failed to resend receipt.');
-        }
-
-        if (!$sent) {
-            $msg = $receipt->resolveRecipient()
-                ? 'Failed to resend receipt.'
-                : 'No phone or email on file for this order. Ask the shop to resend from the till.';
-            return redirect()->back()->with('error', $msg);
-        }
-
-        return redirect()->back()->with('success', 'Receipt resent.');
-    }
-
     public function feedback(ReceiptFeedbackRequest $request, $token)
     {
         $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();
@@ -101,50 +61,6 @@ class ReceiptPageController extends Controller
         return redirect()->back()->with('success', 'Thank you for the feedback.');
     }
 
-    private function deliverReceipt(Receipt $receipt): bool
-    {
-        $receipt->loadMissing('order.items.modifiers', 'order.payments', 'order.customer', 'customer');
-
-        $recipient = $receipt->resolveRecipient();
-        if (!$recipient) {
-            return false;
-        }
-
-        $channel = $receipt->resolveChannel($recipient);
-
-        if ($channel === 'sms') {
-            $message = $this->smsBodyForReceipt($receipt);
-            $log = app(SmsService::class)->send(new SmsMessage(
-                to: $recipient,
-                message: $message,
-                type: 'transactional',
-                customerId: $receipt->customer_id ?? $receipt->order?->customer_id,
-                referenceType: 'receipt',
-                referenceId: (string) $receipt->id,
-            ));
-            $sent = in_array($log->status, ['sent', 'demo'], true);
-        } else {
-            Mail::to($recipient)->send(new ReceiptMail($receipt));
-            $sent = true;
-        }
-
-        if ($sent) {
-            $receipt->recipient = $recipient;
-            $receipt->channel = $channel;
-            $receipt->sent_at = $receipt->sent_at ?? now();
-            $receipt->last_sent_at = now();
-            $receipt->resend_count = ($receipt->resend_count ?? 0) + 1;
-            $receipt->save();
-        }
-
-        return $sent;
-    }
-
-    private function receiptLink(Receipt $receipt): string
-    {
-        return rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
-    }
-
     private function orderIsPaidForReceipt(?Order $order): bool
     {
         if ($order === null) {
@@ -153,18 +69,5 @@ class ReceiptPageController extends Controller
 
         return $order->paid_at !== null
             || in_array($order->status ?? '', ['paid', 'completed', 'delivered', 'refunded'], true);
-    }
-
-    private function smsBodyForReceipt(Receipt $receipt): string
-    {
-        $receipt->loadMissing('order');
-        $order = $receipt->order;
-        $link = $this->receiptLink($receipt);
-
-        if ($this->orderIsPaidForReceipt($order)) {
-            return 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
-        }
-
-        return 'Bake & Grill: Here is your invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;
     }
 }

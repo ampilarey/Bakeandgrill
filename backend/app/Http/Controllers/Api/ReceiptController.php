@@ -114,51 +114,6 @@ class ReceiptController extends Controller
         ]);
     }
 
-    public function resend(Request $request, $token)
-    {
-        $receipt = Receipt::with('order.customer')
-            ->where('token', $token)
-            ->firstOrFail();
-
-        if ($receipt->resend_count >= self::MAX_RESENDS) {
-            return response()->json(['message' => 'Resend limit reached.'], 429);
-        }
-
-        if ($receipt->last_sent_at && abs($receipt->last_sent_at->diffInSeconds(now())) < self::RESEND_COOLDOWN_SECONDS) {
-            return response()->json(['message' => 'Please wait before resending.'], 429);
-        }
-
-        try {
-            $sent = $this->deliverReceipt($receipt, isResend: true);
-        } catch (\Throwable $e) {
-            report($e);
-
-            return response()->json(['message' => 'Failed to resend receipt.'], 500);
-        }
-
-        if (!$sent) {
-            $msg = $receipt->resolveRecipient()
-                ? 'Failed to resend receipt.'
-                : 'No phone or email on file for this order.';
-            return response()->json(['message' => $msg], 500);
-        }
-
-        app(AuditLogService::class)->log(
-            'receipt.resent',
-            'Receipt',
-            $receipt->id,
-            [],
-            $receipt->toArray(),
-            [],
-            $request,
-        );
-
-        return response()->json([
-            'receipt' => $receipt->fresh(),
-            'link' => $this->receiptLink($receipt),
-        ]);
-    }
-
     public function feedback(ReceiptFeedbackRequest $request, $token)
     {
         $receipt = Receipt::with('order')->where('token', $token)->firstOrFail();

@@ -222,10 +222,6 @@
             <div class="actions">
                 @if ($isPaid)
                     <a class="btn btn-primary" href="{{ url('/receipts/' . $receipt->token . '/pdf') }}">Download PDF</a>
-                    <form method="POST" action="{{ url('/receipts/' . $receipt->token . '/resend') }}" style="display:inline;">
-                        @csrf
-                        <button class="btn" type="submit">Resend to phone</button>
-                    </form>
                 @endif
             </div>
 

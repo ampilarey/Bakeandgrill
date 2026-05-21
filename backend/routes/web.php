@@ -81,7 +81,6 @@ Route::get('/pre-order/{id}/confirmation', [PreOrderController::class, 'confirma
 Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])->name('receipts.show');
 Route::get('/receipts/{token}/pdf', [ReceiptPageController::class, 'pdf'])->name('receipts.pdf');
 Route::post('/receipts/{token}/feedback', [ReceiptPageController::class, 'feedback'])->name('receipts.feedback');
-Route::post('/receipts/{token}/resend', [ReceiptPageController::class, 'resend'])->name('receipts.resend');
 
 // Invoice public pages (no auth — token-gated)
 Route::get('/invoices/{token}', [InvoicePageController::class, 'show'])->name('invoices.show');

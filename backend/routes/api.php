@@ -387,8 +387,6 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
 |--------------------------------------------------------------------------
 */
 Route::get('/receipts/{token}', [ReceiptController::class, 'show']);
-Route::post('/receipts/{token}/resend', [ReceiptController::class, 'resend'])
-    ->middleware('throttle:5,10');
 Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback'])
     ->middleware('throttle:10,10');
 
