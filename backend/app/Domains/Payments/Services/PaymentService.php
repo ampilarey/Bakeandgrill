@@ -29,6 +29,7 @@ class PaymentService
         private PaymentRepositoryInterface $payments,
         private OrderRepositoryInterface $orders,
         private PaymentConfirmationNotifier $confirmationNotifier,
+        private OrderPaymentStateService $paymentState,
     ) {}
 
     /**
@@ -423,6 +424,9 @@ class PaymentService
 
             $this->redeemGiftCardForOrder($order);
 
+            // Always mirror partial/full financial state for pay-link flows.
+            $this->paymentState->syncPaymentStatus($order->fresh());
+
             if ($paidLaar >= $orderLaar && !in_array($order->status, ['paid', 'completed'], true)) {
                 // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
                 // POS orders already in the kitchen queue go straight to paid.
@@ -436,22 +440,14 @@ class PaymentService
                 ]);
 
                 DB::afterCommit(function () use ($order): void {
-                    try {
-                        $freshOrder = $this->orders->findById($order->id);
-                        if ($freshOrder) {
-                            // Send confirmation SMS/email synchronously — no queue dependency.
-                            // The queued SendPaymentConfirmationListener is a no-op if this succeeds
-                            // (idempotency key 'order:paid:confirm:{id}' blocks duplicate sends).
-                            $this->confirmationNotifier->notify($freshOrder);
-
-                            OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
-                        }
-                    } catch (\Throwable $e) {
-                        Log::error('confirmBmlPayment: post-commit notification failed', [
-                            'order_id' => $order->id,
-                            'error' => $e->getMessage(),
-                        ]);
+                    $freshOrder = $this->orders->findById($order->id);
+                    if (!$freshOrder) {
+                        return;
                     }
+
+                    // Send confirmation SMS/email synchronously — no queue dependency.
+                    $this->confirmationNotifier->notify($freshOrder);
+                    OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
                 });
             }
         });

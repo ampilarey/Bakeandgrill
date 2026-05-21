@@ -106,6 +106,7 @@ class PermissionSeeder extends Seeder
         'dashboard.view',
         'orders.create', 'orders.view',
         'reports.view',
+        'finance.cash_manage',
         'inventory.view',
         'menu.view',
         'customers.view',

@@ -37,6 +37,17 @@ class EnsureActiveDevice
             return response()->json(['message' => $message, 'status' => $status], 403);
         }
 
+        $user = $request->user();
+        if ($user) {
+            if ($device->user_id === null) {
+                $device->update(['user_id' => $user->id]);
+            } elseif ((int) $device->user_id !== (int) $user->id) {
+                return response()->json([
+                    'message' => 'This device is registered to another staff member.',
+                ], 403);
+            }
+        }
+
         $device->update([
             'last_seen_at' => now(),
             'ip_address' => $request->ip(),

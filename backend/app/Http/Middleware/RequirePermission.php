@@ -66,6 +66,21 @@ class RequirePermission
             return in_array($user->role?->slug, ['owner', 'manager'], true);
         }
 
+        $staffDefaults = ['finance.cash_manage'];
+        if (in_array($slug, $staffDefaults, true)) {
+            return in_array($user->role?->slug, ['owner', 'manager', 'staff'], true);
+        }
+
+        $smsDefaults = ['integrations.sms'];
+        if (in_array($slug, $smsDefaults, true)) {
+            return in_array($user->role?->slug, ['owner', 'manager'], true);
+        }
+
+        $inventoryManageDefaults = ['inventory.manage'];
+        if (in_array($slug, $inventoryManageDefaults, true)) {
+            return in_array($user->role?->slug, ['owner', 'manager'], true);
+        }
+
         return false;
     }
 }

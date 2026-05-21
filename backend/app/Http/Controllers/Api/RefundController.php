@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Orders\DTOs\OrderRefundedData;
 use App\Domains\Orders\Events\OrderRefunded;
+use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRefundRequest;
 use App\Models\Order;
@@ -18,6 +19,9 @@ use Illuminate\Support\Facades\Gate;
 
 class RefundController extends Controller
 {
+    public function __construct(
+        private readonly PaymentRepositoryInterface $payments,
+    ) {}
     public function index(Request $request)
     {
         Gate::authorize('refund.process');
@@ -51,7 +55,7 @@ class RefundController extends Controller
         $amount = (float) $validated['amount'];
         $amountLaar = (int) round($amount * 100);
 
-        [$refund, $order] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request) {
+        [$refund, $order, $refundRatio] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request) {
             $order = Order::with(['items.item', 'items.variant'])->lockForUpdate()->findOrFail($orderId);
 
             $orderTotalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
@@ -60,14 +64,11 @@ class RefundController extends Controller
             // order total. A partially-paid order (e.g. MVR 50 collected on a
             // MVR 100 ticket) must never refund more than MVR 50.
             //
-            // This matches the canonical "what counts as paid" query in
-            // OrderController::addPayments — same status whitelist, same
-            // COALESCE on the integer laari column for accuracy on legacy
-            // POS payments that only populated `amount`.
-            $paidLaar = (int) ($order->payments()
-                ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
-                ->value('total_laar') ?? 0);
+            // Canonical paid sum — per-row COALESCE via PaymentRepository.
+            $paidLaar = $this->payments->sumAmountLaarForOrder(
+                $order->id,
+                ['paid', 'completed', 'confirmed'],
+            );
 
             // Aggregate prior refunds in integer laari to avoid float-precision
             // off-by-cent rejections on long refund histories. ROUND on the
@@ -104,6 +105,12 @@ class RefundController extends Controller
             // never paid for would be wrong.
             $isFullRefund = ($amountLaar + $alreadyRefundedLaar >= $refundableLaar) && $refundableLaar > 0;
 
+            // Fraction of the paid ticket this refund represents — used to
+            // restore prepared/variant stock proportionally on partial refunds.
+            $thisRefundRatio = $refundableLaar > 0
+                ? min(1.0, $amountLaar / $refundableLaar)
+                : 0.0;
+
             // Partial refunds now flip the order to `partially_refunded` instead
             // of leaving it as `paid`. Reports + receipt summaries downstream
             // can short-circuit on this status to render the right thing.
@@ -116,9 +123,7 @@ class RefundController extends Controller
                 }
             }
 
-            if ($isFullRefund) {
-                // Restore stock for each line item. Idempotent: StockMovement
-                // unique key blocks any double-restore.
+            if ($isFullRefund || ($amountLaar > 0 && $thisRefundRatio > 0)) {
                 $stockService = app(StockManagementService::class);
                 foreach ($order->items as $orderItem) {
                     $item = $orderItem->item;
@@ -126,30 +131,39 @@ class RefundController extends Controller
                         continue;
                     }
 
+                    $lineQty = (int) $orderItem->quantity;
+                    $restoreQty = $isFullRefund
+                        ? $lineQty
+                        : max(0, (int) floor($lineQty * $thisRefundRatio));
+                    if ($restoreQty <= 0) {
+                        continue;
+                    }
+
                     // Variant-level stock takes priority when the variant tracks
                     // its own inventory (mirrors the deduction logic in OrderCreationService).
                     $variant = $orderItem->variant;
                     if ($variant && $variant->track_stock) {
-                        $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id;
+                        $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id
+                            . ($isFullRefund ? '' : ':partial:' . $refund->id);
                         $stockService->restoreVariantStock(
                             $variant,
-                            (int) $orderItem->quantity,
+                            $restoreQty,
                             $key,
                             $order->id,
                             $request->user()?->id,
                         );
 
-                        continue; // Variant tracked — do not also restore item-level stock.
+                        continue;
                     }
 
-                    // Item-level stock (non-variant tracked products).
                     if (!$item->track_stock || $item->availability_type !== 'stock_based') {
                         continue;
                     }
-                    $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id;
+                    $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id
+                        . ($isFullRefund ? '' : ':partial:' . $refund->id);
                     $stockService->restorePreparedStock(
                         $item,
-                        (int) $orderItem->quantity,
+                        $restoreQty,
                         $key,
                         $order->id,
                         $request->user()?->id,
@@ -157,7 +171,7 @@ class RefundController extends Controller
                 }
             }
 
-            return [$refund, $order];
+            return [$refund, $order, $thisRefundRatio];
         });
 
         app(AuditLogService::class)->log(
@@ -171,7 +185,7 @@ class RefundController extends Controller
         );
 
         $refund->load('order');
-        event(new OrderRefunded(OrderRefundedData::fromRefund($refund)));
+        event(new OrderRefunded(OrderRefundedData::fromRefund($refund, $refundRatio)));
 
         return response()->json(['refund' => $refund], 201);
     }

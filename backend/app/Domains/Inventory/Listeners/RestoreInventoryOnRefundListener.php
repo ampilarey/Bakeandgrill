@@ -50,7 +50,12 @@ class RestoreInventoryOnRefundListener implements ShouldQueue
         }
 
         try {
-            $this->deductionService->restoreForOrder($order);
+            $this->deductionService->restoreForOrder(
+                $order,
+                null,
+                $event->data->refundRatio,
+                $event->data->refundId,
+            );
         } catch (\Throwable $e) {
             Log::error('RestoreInventoryOnRefundListener: restore failed', [
                 'order_id' => $event->data->orderId,

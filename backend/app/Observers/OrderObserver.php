@@ -33,20 +33,41 @@ class OrderObserver
         OrderItem::withTrashed()->where('order_id', $order->id)->restore();
     }
 
+    public function updating(Order $order): bool
+    {
+        if (!$order->isDirty('status')) {
+            return true;
+        }
+
+        $previous = $order->getOriginal('status');
+        $next = $order->status;
+
+        if (!$previous || $previous === $next) {
+            return true;
+        }
+
+        $machine = app(OrderStatusMachine::class);
+        if (!$machine->isAllowed($previous, $next)) {
+            Log::warning('Order status transition blocked by state machine', [
+                'order_id' => $order->id,
+                'from' => $previous,
+                'to' => $next,
+            ]);
+
+            return false;
+        }
+
+        return true;
+    }
+
     public function updated(Order $order): void
     {
         if (!$order->wasChanged('status')) {
             return;
         }
 
-        // Defense in depth: log any status change that didn't pass through
-        // the state machine. We don't *block* the change here (the observer
-        // runs after the model has already been written and abort()ing would
-        // corrupt the transaction), but we surface every direct status set
-        // that bypassed OrderStatusMachine::assertTransitionAllowed so we can
-        // find the offending call site in logs and route it through the
-        // machine. The audit found several controllers that updated
-        // `status` directly without going through the machine.
+        // Log direct sets that bypass assertTransitionAllowed() in controllers
+        // (updating() above already blocked invalid transitions).
         $previous = $order->getOriginal('status');
         if ($previous && $previous !== $order->status) {
             $machine = app(OrderStatusMachine::class);

@@ -233,15 +233,17 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/print-jobs/{id}/retry', [PrintJobController::class, 'retry']);
 
     // Inventory — static paths MUST come before {id} wildcard to avoid shadowing
-    Route::get('/inventory', [InventoryController::class, 'index']);
-    Route::post('/inventory', [InventoryController::class, 'store']);
-    Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
-    Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount']);
-    Route::get('/inventory/{id}', [InventoryController::class, 'show']);
-    Route::patch('/inventory/{id}', [InventoryController::class, 'update']);
-    Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust']);
-    Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory']);
-    Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier']);
+    Route::middleware('permission:inventory.view')->group(function () {
+        Route::get('/inventory', [InventoryController::class, 'index']);
+        Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock']);
+        Route::get('/inventory/{id}', [InventoryController::class, 'show']);
+        Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory']);
+        Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier']);
+    });
+    Route::post('/inventory', [InventoryController::class, 'store'])->middleware('permission:inventory.manage');
+    Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount'])->middleware('permission:inventory.manage');
+    Route::patch('/inventory/{id}', [InventoryController::class, 'update'])->middleware('permission:inventory.manage');
+    Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust'])->middleware('permission:inventory.manage');
 
     // Finance & Inventory Routes (invoices, expenses, reports, supplier intelligence,
     // purchase workflow, forecasting) — required HERE so static paths like
@@ -301,13 +303,15 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     });
 
     // Shifts + cash drawer
-    Route::get('/shifts/current', [ShiftController::class, 'current']);
-    Route::get('/shifts/history', [ShiftController::class, 'history']);
-    Route::get('/shifts/{id}/summary', [ShiftController::class, 'summary']);
-    Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('throttle:5,1');
-    Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
-    Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])
-        ->middleware(['permission:finance.cash_manage', 'throttle:30,1']);
+    Route::middleware('permission:finance.cash_manage')->group(function () {
+        Route::get('/shifts/current', [ShiftController::class, 'current']);
+        Route::get('/shifts/history', [ShiftController::class, 'history']);
+        Route::get('/shifts/{id}/summary', [ShiftController::class, 'summary']);
+        Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('throttle:5,1');
+        Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
+        Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])
+            ->middleware(['device.active', 'throttle:30,1']);
+    });
 
     // Reports — restricted to users with reports.view permission
     Route::middleware('permission:reports.view')->group(function () {
@@ -339,25 +343,24 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/orders/{orderId}/receipt-link', [ReceiptController::class, 'linkForOrder']);
     Route::post('/receipts/{orderId}/send', [ReceiptController::class, 'send']);
 
-    // Refunds — view requires orders.view (read), create requires
-    // orders.refund. RefundController already calls Gate::authorize but
-    // adding the middleware lets us reject the request before the
-    // controller is even instantiated, and surfaces a clear "required"
-    // slug to the POS frontend in the 403 body.
+    // Refunds — list/show/create all require refund.process (owner/manager
+    // or explicit orders.refund grant). Gate::authorize in controller matches.
     Route::get('/refunds', [RefundController::class, 'index'])
-        ->middleware('permission:orders.view');
+        ->middleware('permission:orders.refund');
     Route::get('/refunds/{id}', [RefundController::class, 'show'])
-        ->middleware('permission:orders.view');
+        ->middleware('permission:orders.refund');
     Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store'])
         ->middleware(['permission:orders.refund', 'throttle:10,1']);
 
-    // SMS promotions
-    Route::get('/sms/promotions', [SmsPromotionController::class, 'index']);
-    Route::get('/sms/promotions/{id}', [SmsPromotionController::class, 'show']);
+    // SMS promotions — preview/list for marketing staff; send is manager-only
+    Route::get('/sms/promotions', [SmsPromotionController::class, 'index'])
+        ->middleware('permission:integrations.sms');
+    Route::get('/sms/promotions/{id}', [SmsPromotionController::class, 'show'])
+        ->middleware('permission:integrations.sms');
     Route::post('/sms/promotions/preview', [SmsPromotionController::class, 'preview'])
-        ->middleware('throttle:10,5');
+        ->middleware(['permission:integrations.sms', 'throttle:10,5']);
     Route::post('/sms/promotions/send', [SmsPromotionController::class, 'send'])
-        ->middleware('throttle:5,60');
+        ->middleware(['permission:integrations.sms', 'throttle:5,60']);
 });
 
 /*

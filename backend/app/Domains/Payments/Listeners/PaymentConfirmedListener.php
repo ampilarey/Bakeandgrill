@@ -10,6 +10,7 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
+use App\Domains\Payments\Services\OrderPaymentStateService;
 use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +45,7 @@ class PaymentConfirmedListener implements ShouldQueue
         private readonly PaymentRepositoryInterface $payments,
         private readonly OrderRepositoryInterface $orders,
         private readonly PaymentConfirmationNotifier $confirmationNotifier,
+        private readonly OrderPaymentStateService $paymentState,
     ) {}
 
     public function failed(PaymentConfirmed $event, \Throwable $e): void
@@ -88,6 +90,8 @@ class PaymentConfirmedListener implements ShouldQueue
         ]);
 
         if ($paidLaar < $orderLaar) {
+            $this->paymentState->syncPaymentStatus($order);
+
             return;
         }
 

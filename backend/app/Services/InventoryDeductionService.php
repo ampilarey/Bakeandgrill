@@ -28,9 +28,14 @@ class InventoryDeductionService
      * should, and the cashier had no way to put the flour/butter/oil
      * back on the shelf for a refunded ticket.
      */
-    public function restoreForOrder(Order $order, ?int $userId = null): void
+    public function restoreForOrder(Order $order, ?int $userId = null, float $ratio = 1.0, ?int $refundId = null): void
     {
-        DB::transaction(function () use ($order, $userId): void {
+        $ratio = max(0.0, min(1.0, $ratio));
+        if ($ratio <= 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $userId, $ratio, $refundId): void {
             $order->loadMissing('items.item.recipe.recipeItems.inventoryItem');
 
             foreach ($order->items as $orderItem) {
@@ -51,7 +56,7 @@ class InventoryDeductionService
                         continue;
                     }
 
-                    $restoreQuantity = ($perUnitQuantity * (float) $orderItem->quantity) / $yieldQuantity;
+                    $restoreQuantity = (($perUnitQuantity * (float) $orderItem->quantity) / $yieldQuantity) * $ratio;
                     if ($restoreQuantity <= 0) {
                         continue;
                     }
@@ -67,7 +72,8 @@ class InventoryDeductionService
                         continue;
                     }
 
-                    $restoreKey = 'refund:order:' . $order->id . ':item:' . $orderItem->id . ':inv:' . $inventoryItem->id;
+                    $restoreKey = 'refund:order:' . $order->id . ':item:' . $orderItem->id . ':inv:' . $inventoryItem->id
+                        . ($ratio >= 1.0 ? '' : ':partial:' . ($refundId ?? '0'));
                     $alreadyRestored = StockMovement::where('idempotency_key', $restoreKey)->exists();
                     if ($alreadyRestored) {
                         continue;

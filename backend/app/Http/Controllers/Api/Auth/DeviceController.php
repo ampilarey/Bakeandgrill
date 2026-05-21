@@ -72,14 +72,23 @@ class DeviceController extends Controller
         $existing = Device::where('identifier', $data['identifier'])->first();
 
         if ($existing) {
-            $existing->update(['last_seen_at' => now(), 'ip_address' => $request->ip()]);
-            return response()->json(['device' => $existing, 'status' => $existing->status]);
+            if ($request->user() && $existing->user_id === null) {
+                $existing->update([
+                    'user_id' => $request->user()->id,
+                    'last_seen_at' => now(),
+                    'ip_address' => $request->ip(),
+                ]);
+            } else {
+                $existing->update(['last_seen_at' => now(), 'ip_address' => $request->ip()]);
+            }
+            return response()->json(['device' => $existing->fresh(), 'status' => $existing->status]);
         }
 
         $device = Device::create([
             'name'         => $data['name'],
             'identifier'   => $data['identifier'],
             'type'         => $data['type'] ?? 'pos',
+            'user_id'      => $request->user()?->id,
             'ip_address'   => $request->ip(),
             'is_active'    => false,
             'status'       => 'pending',

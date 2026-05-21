@@ -16,8 +16,8 @@ export function InvoicesPage() {
   const [invoices, setInvoices]     = useState<Invoice[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
-  const [typeFilter, setType]       = useState('');
-  const [statusFilter, setStatus]   = useState('');
+  const [typeFilter, setType]       = useState('all');
+  const [statusFilter, setStatus]   = useState('all');
   const [selected, setSelected]           = useState<Invoice | null>(null);
   const [paying, setPaying]               = useState(false);
   const [payMethod, setPayMethod]         = useState('cash');
@@ -110,8 +110,8 @@ export function InvoicesPage() {
     setLoading(true); setError('');
     try {
       const res = await getInvoices({
-        type: typeFilter || undefined,
-        status: statusFilter || undefined,
+        type: typeFilter !== 'all' ? typeFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
         page,
         per_page: 50,
       });
@@ -309,13 +309,13 @@ export function InvoicesPage() {
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <select value={typeFilter} onChange={(e) => setType(e.target.value)} style={selectStyle}>
-          <option value="">All Types</option>
+          <option value="all">All Types</option>
           <option value="sale">Sale</option>
           <option value="purchase">Purchase</option>
           <option value="credit_note">Credit Note</option>
         </select>
         <select value={statusFilter} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
-          <option value="">All Statuses</option>
+          <option value="all">All Statuses</option>
           {['draft', 'sent', 'paid', 'overdue', 'void'].map((s) => (
             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
           ))}

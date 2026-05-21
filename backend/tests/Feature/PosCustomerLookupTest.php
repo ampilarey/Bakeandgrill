@@ -71,14 +71,17 @@ class PosCustomerLookupTest extends TestCase
         $this->assertEquals('+9607123456', $res->json('data.0.phone'));
     }
 
-    public function test_search_ignores_short_queries(): void
+    public function test_search_short_query_returns_recent_customers(): void
     {
         Customer::create(['name' => 'A', 'phone' => '+9607770099', 'is_active' => true]);
+        Customer::create(['name' => 'Recent Regular', 'phone' => '+9607770101', 'is_active' => true]);
 
         Sanctum::actingAs($this->staffUser, ['staff']);
         $res = $this->getJson('/api/customers/search?q=a');
         $res->assertOk();
-        $this->assertSame([], $res->json('data'));
+        // Queries shorter than 2 chars return recent customers (POS picker mode),
+        // not an empty list — the cashier sees regulars before typing a name.
+        $this->assertGreaterThanOrEqual(1, count($res->json('data')));
     }
 
     public function test_search_rejects_customer_token(): void

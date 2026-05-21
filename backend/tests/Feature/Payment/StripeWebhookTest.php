@@ -111,6 +111,8 @@ class StripeWebhookTest extends TestCase
             'order_id' => $order->id,
             'method' => 'stripe',
             'status' => 'completed',
+            'amount_laar' => 5000,
+            'amount' => 50.00,
         ]);
     }
 

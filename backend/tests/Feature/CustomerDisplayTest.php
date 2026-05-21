@@ -78,7 +78,11 @@ class CustomerDisplayTest extends TestCase
 
         $order = Order::find($response->json('order.id'));
         if ($order->status !== $status) {
-            $order->update(['status' => $status]);
+            // Display tests set legacy/terminal statuses directly — bypass the
+            // OrderObserver state machine which only allows production transitions.
+            Order::withoutEvents(function () use ($order, $status): void {
+                $order->forceFill(['status' => $status])->save();
+            });
         }
 
         return $order->fresh();

@@ -78,28 +78,29 @@ class StockManagementService
             return;
         }
 
-        // Floor at 0 — stock cannot go negative in the DB.
-        // CASE WHEN is portable across SQLite, MySQL, and PostgreSQL.
-        // We still log a warning so overselling can be investigated and corrected.
-        //
-        // Use parameter bindings even though $quantity is type-hinted int —
-        // defense in depth keeps us safe against future callers, type juggling
-        // bugs, or refactors that introduce a string path. The audit flagged
-        // string interpolation into DB::raw as a long-tail SQL-injection vector.
-        DB::update(
-            'UPDATE items SET stock_quantity = CASE WHEN stock_quantity >= ? THEN stock_quantity - ? ELSE 0 END WHERE id = ?',
-            [$quantity, $quantity, $item->id],
-        );
         $item->refresh();
-
-        if ($item->stock_quantity === 0 && $quantity > 0) {
-            Log::warning('StockManagementService: item stock floored at 0 — possible oversell, check reservation/deduction flow', [
-                'item_id' => $item->id,
-                'item_name' => $item->name,
-                'quantity' => $quantity,
-                'order_id' => $orderId,
-            ]);
+        if ((int) $item->stock_quantity < $quantity) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for "%s". Available: %d, requested: %d.',
+                $item->name,
+                (int) $item->stock_quantity,
+                $quantity,
+            ));
         }
+
+        $rows = DB::table('items')
+            ->where('id', $item->id)
+            ->where('stock_quantity', '>=', $quantity)
+            ->decrement('stock_quantity', $quantity);
+
+        if ($rows === 0) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for "%s" — concurrent sale detected.',
+                $item->name,
+            ));
+        }
+
+        $item->refresh();
 
         StockMovement::create([
             'idempotency_key' => $idempotencyKey,
@@ -255,21 +256,29 @@ class StockManagementService
             return;
         }
 
-        // See deductPreparedStock() for rationale on the bound-parameter form.
-        DB::update(
-            'UPDATE variants SET stock_qty = CASE WHEN stock_qty >= ? THEN stock_qty - ? ELSE 0 END WHERE id = ?',
-            [$quantity, $quantity, $variant->id],
-        );
         $variant->refresh();
-
-        if ($variant->stock_qty === 0 && $quantity > 0) {
-            Log::warning('StockManagementService: variant stock floored at 0 — possible oversell, check reservation/deduction flow', [
-                'variant_id' => $variant->id,
-                'variant_name' => $variant->name ?? null,
-                'quantity' => $quantity,
-                'order_id' => $orderId,
-            ]);
+        if ((int) $variant->stock_qty < $quantity) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for variant "%s". Available: %d, requested: %d.',
+                $variant->name ?? (string) $variant->id,
+                (int) $variant->stock_qty,
+                $quantity,
+            ));
         }
+
+        $rows = DB::table('variants')
+            ->where('id', $variant->id)
+            ->where('stock_qty', '>=', $quantity)
+            ->decrement('stock_qty', $quantity);
+
+        if ($rows === 0) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for variant "%s" — concurrent sale detected.',
+                $variant->name ?? (string) $variant->id,
+            ));
+        }
+
+        $variant->refresh();
 
         StockMovement::create([
             'idempotency_key' => $idempotencyKey,

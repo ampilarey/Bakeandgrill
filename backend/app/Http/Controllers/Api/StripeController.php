@@ -78,12 +78,16 @@ class StripeController extends Controller
             if ($orderId) {
                 $order = Order::find($orderId);
                 if ($order) {
+                    // Stripe amounts are in laari (smallest unit). Persist both
+                    // columns: amount_laar for integer sums, amount as MVR float
+                    // for receipts/legacy readers — same shape as BML/POS rows.
                     $payment = Payment::firstOrCreate(
                         ['idempotency_key' => 'stripe:' . $pi['id']],
                         [
                             'order_id' => $order->id,
                             'method' => 'stripe',
-                            'amount' => $amount,
+                            'amount' => round($amount / 100, 2),
+                            'amount_laar' => $amount,
                             'status' => 'completed',
                             'reference' => $pi['id'],
                             'processed_at' => now(),
