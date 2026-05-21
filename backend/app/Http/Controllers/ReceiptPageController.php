@@ -61,11 +61,18 @@ class ReceiptPageController extends Controller
             return redirect()->back()->with('error', 'Resend limit reached.');
         }
 
-        if ($receipt->last_sent_at && $receipt->last_sent_at->diffInSeconds(now()) < self::RESEND_COOLDOWN_SECONDS) {
+        if ($receipt->last_sent_at && abs($receipt->last_sent_at->diffInSeconds(now())) < self::RESEND_COOLDOWN_SECONDS) {
             return redirect()->back()->with('error', 'Please wait before resending.');
         }
 
-        $sent = $this->deliverReceipt($receipt);
+        try {
+            $sent = $this->deliverReceipt($receipt);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->back()->with('error', 'Failed to resend receipt.');
+        }
+
         if (!$sent) {
             $msg = $receipt->resolveRecipient()
                 ? 'Failed to resend receipt.'

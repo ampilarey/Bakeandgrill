@@ -72,11 +72,10 @@ class Receipt extends Model
 
     public function resolveChannel(?string $recipient = null): string
     {
-        if ($this->channel) {
-            return $this->channel;
-        }
-
         $recipient ??= $this->resolveRecipient();
+
+        // Always derive from the destination — stored channel defaults to
+        // 'email' in the DB even when we only have a customer phone.
         if ($recipient !== null && str_contains($recipient, '@')) {
             return 'email';
         }

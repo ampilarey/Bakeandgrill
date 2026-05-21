@@ -107,4 +107,42 @@ class ReceiptTest extends TestCase
 
         $this->assertStringContainsString('/receipts/', $response->json('link'));
     }
+
+    public function test_customer_can_resend_receipt_via_web_when_only_phone_on_customer(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Jane Doe',
+            'phone' => '+9607001234',
+            'email' => null,
+            'is_active' => true,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BG-TEST-RESEND',
+            'type' => 'takeaway',
+            'status' => 'completed',
+            'paid_at' => now(),
+            'customer_id' => $customer->id,
+            'subtotal' => 10,
+            'total' => 10,
+        ]);
+
+        $receipt = \App\Models\Receipt::create([
+            'order_id' => $order->id,
+            'customer_id' => $customer->id,
+            'token' => 'test-resend-token-' . str_repeat('a', 32),
+            // DB default is 'email' — reproduces the 500 when recipient is empty.
+            'channel' => 'email',
+            'recipient' => null,
+        ]);
+
+        $response = $this->post('/receipts/' . $receipt->token . '/resend');
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Receipt resent.');
+
+        $receipt->refresh();
+        $this->assertSame('+9607001234', $receipt->recipient);
+        $this->assertSame('sms', $receipt->channel);
+    }
 }

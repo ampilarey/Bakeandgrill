@@ -124,11 +124,18 @@ class ReceiptController extends Controller
             return response()->json(['message' => 'Resend limit reached.'], 429);
         }
 
-        if ($receipt->last_sent_at && $receipt->last_sent_at->diffInSeconds(now()) < self::RESEND_COOLDOWN_SECONDS) {
+        if ($receipt->last_sent_at && abs($receipt->last_sent_at->diffInSeconds(now())) < self::RESEND_COOLDOWN_SECONDS) {
             return response()->json(['message' => 'Please wait before resending.'], 429);
         }
 
-        $sent = $this->deliverReceipt($receipt);
+        try {
+            $sent = $this->deliverReceipt($receipt);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['message' => 'Failed to resend receipt.'], 500);
+        }
+
         if (!$sent) {
             $msg = $receipt->resolveRecipient()
                 ? 'Failed to resend receipt.'
