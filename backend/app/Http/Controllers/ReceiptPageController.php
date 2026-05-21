@@ -67,7 +67,10 @@ class ReceiptPageController extends Controller
 
         $sent = $this->deliverReceipt($receipt);
         if (!$sent) {
-            return redirect()->back()->with('error', 'Failed to resend receipt.');
+            $msg = $receipt->resolveRecipient()
+                ? 'Failed to resend receipt.'
+                : 'No phone or email on file for this order. Ask the shop to resend from the till.';
+            return redirect()->back()->with('error', $msg);
         }
 
         return redirect()->back()->with('success', 'Receipt resent.');
@@ -93,29 +96,37 @@ class ReceiptPageController extends Controller
 
     private function deliverReceipt(Receipt $receipt): bool
     {
-        $receipt->loadMissing('order.items.modifiers', 'order.payments', 'customer');
+        $receipt->loadMissing('order.items.modifiers', 'order.payments', 'order.customer', 'customer');
 
-        if (!$receipt->recipient) {
+        $recipient = $receipt->resolveRecipient();
+        if (!$recipient) {
             return false;
         }
 
-        if ($receipt->channel === 'sms') {
+        $channel = $receipt->resolveChannel($recipient);
+
+        if ($channel === 'sms') {
             $message = $this->smsBodyForReceipt($receipt);
             $log = app(SmsService::class)->send(new SmsMessage(
-                to: $receipt->recipient,
+                to: $recipient,
                 message: $message,
                 type: 'transactional',
+                customerId: $receipt->customer_id ?? $receipt->order?->customer_id,
+                referenceType: 'receipt',
+                referenceId: (string) $receipt->id,
             ));
             $sent = in_array($log->status, ['sent', 'demo'], true);
         } else {
-            Mail::to($receipt->recipient)->send(new ReceiptMail($receipt));
+            Mail::to($recipient)->send(new ReceiptMail($receipt));
             $sent = true;
         }
 
         if ($sent) {
-            $receipt->sent_at = now();
+            $receipt->recipient = $recipient;
+            $receipt->channel = $channel;
+            $receipt->sent_at = $receipt->sent_at ?? now();
             $receipt->last_sent_at = now();
-            $receipt->resend_count = $receipt->resend_count + 1;
+            $receipt->resend_count = ($receipt->resend_count ?? 0) + 1;
             $receipt->save();
         }
 

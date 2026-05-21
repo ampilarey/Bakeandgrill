@@ -37,6 +37,13 @@ class ReceiptController extends Controller
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
+        if ($phone = $order->customer?->phone) {
+            $receipt->channel = $receipt->channel ?? 'sms';
+            $receipt->recipient = $receipt->recipient ?? $phone;
+        } elseif ($email = $order->customer?->email) {
+            $receipt->channel = $receipt->channel ?? 'email';
+            $receipt->recipient = $receipt->recipient ?? $email;
+        }
         $receipt->save();
 
         return response()->json([
@@ -123,7 +130,10 @@ class ReceiptController extends Controller
 
         $sent = $this->deliverReceipt($receipt);
         if (!$sent) {
-            return response()->json(['message' => 'Failed to resend receipt.'], 500);
+            $msg = $receipt->resolveRecipient()
+                ? 'Failed to resend receipt.'
+                : 'No phone or email on file for this order.';
+            return response()->json(['message' => $msg], 500);
         }
 
         app(AuditLogService::class)->log(
@@ -174,29 +184,37 @@ class ReceiptController extends Controller
 
     private function deliverReceipt(Receipt $receipt): bool
     {
-        $receipt->loadMissing('order.items.modifiers', 'order.payments', 'customer');
+        $receipt->loadMissing('order.items.modifiers', 'order.payments', 'order.customer', 'customer');
 
-        if (!$receipt->recipient) {
+        $recipient = $receipt->resolveRecipient();
+        if (!$recipient) {
             return false;
         }
 
-        if ($receipt->channel === 'sms') {
+        $channel = $receipt->resolveChannel($recipient);
+
+        if ($channel === 'sms') {
             $body = $this->smsBodyForReceipt($receipt);
             $log = app(SmsService::class)->send(new SmsMessage(
-                to: $receipt->recipient,
+                to: $recipient,
                 message: $body,
                 type: 'transactional',
+                customerId: $receipt->customer_id ?? $receipt->order?->customer_id,
+                referenceType: 'receipt',
+                referenceId: (string) $receipt->id,
             ));
             $sent = in_array($log->status, ['sent', 'demo'], true);
         } else {
-            Mail::to($receipt->recipient)->send(new ReceiptMail($receipt));
+            Mail::to($recipient)->send(new ReceiptMail($receipt));
             $sent = true;
         }
 
         if ($sent) {
-            $receipt->sent_at = now();
+            $receipt->recipient = $recipient;
+            $receipt->channel = $channel;
+            $receipt->sent_at = $receipt->sent_at ?? now();
             $receipt->last_sent_at = now();
-            $receipt->resend_count = $receipt->resend_count + 1;
+            $receipt->resend_count = ($receipt->resend_count ?? 0) + 1;
             $receipt->save();
         }
 

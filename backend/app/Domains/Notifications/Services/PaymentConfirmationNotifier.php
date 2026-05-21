@@ -53,14 +53,13 @@ class PaymentConfirmationNotifier
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
-        if (!$isOnline) {
-            $receipt->fill([
-                'channel' => 'sms',
-                'recipient' => $phone,
-                'sent_at' => now(),
-                'last_sent_at' => now(),
-                'resend_count' => ($receipt->resend_count ?? 0) + 1,
-            ]);
+        $receipt->fill([
+            'channel' => 'sms',
+            'recipient' => $phone,
+        ]);
+        if (!$receipt->exists || !$receipt->sent_at) {
+            $receipt->sent_at = now();
+            $receipt->last_sent_at = now();
         }
         $receipt->save();
 

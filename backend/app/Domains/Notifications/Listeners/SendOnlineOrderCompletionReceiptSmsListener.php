@@ -48,6 +48,10 @@ final class SendOnlineOrderCompletionReceiptSmsListener
             $receipt->token = Str::random(48);
         }
         $receipt->customer_id = $order->customer_id;
+        $receipt->fill([
+            'channel' => 'sms',
+            'recipient' => $phone,
+        ]);
         $receipt->save();
 
         $link = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
