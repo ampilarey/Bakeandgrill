@@ -8,7 +8,7 @@ import { useCart }          from "./hooks/useCart";
 import { useOrderCreation } from "./hooks/useOrderCreation";
 import { useOps }           from "./hooks/useOps";
 import { useShift }         from "./hooks/useShift";
-import { useIdleLock, getIdleLockMinutes } from "./hooks/useIdleLock";
+import { useIdleLock, resolveIdleLockMinutes } from "./hooks/useIdleLock";
 import { useOnlineOrderWatcher } from "./hooks/useOnlineOrderWatcher";
 import { OnlineOrderToasts }     from "./components/OnlineOrderToasts";
 
@@ -77,6 +77,7 @@ function App() {
   const [pin, setPin]                 = useState("");
   const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
   const [staffRole, setStaffRole] = useState<string>(() => localStorage.getItem("pos_staff_role") ?? "");
+  const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
     //  1. `?device=<id>` in the URL — set by the owner when pre-provisioning
@@ -255,6 +256,7 @@ function App() {
         const role = user.role ?? "";
         localStorage.setItem("pos_staff_role", role);
         setStaffRole(role);
+        setIdleLockMinutes(resolveIdleLockMinutes(user));
       })
       .catch(() => undefined);
   }, [isLoggedIn]);
@@ -457,6 +459,7 @@ function App() {
       localStorage.setItem("pos_staff_role", response.user?.role ?? "");
       setCashierName(name);
       setStaffRole(response.user?.role ?? "");
+      setIdleLockMinutes(resolveIdleLockMinutes(response.user));
       setAuthToken(response.token);
       setIsLoggedIn(true);
       setPin("");
@@ -475,6 +478,7 @@ function App() {
     setDeviceStatus('unknown');
     setCashierName("");
     setStaffRole("");
+    setIdleLockMinutes(5);
     setUsername("");
     setIsLocked(false);
   };
@@ -573,6 +577,7 @@ function App() {
       localStorage.setItem("pos_staff_role", res.user?.role ?? "");
       setAuthToken(res.token);
       setStaffRole(res.user?.role ?? "");
+      setIdleLockMinutes(resolveIdleLockMinutes(res.user));
       setIsLocked(false);
       return true;
     } catch { return false; }
@@ -645,15 +650,12 @@ function App() {
   }, [cart.cartItems.length]);
 
   // ── Auto-lock on inactivity ─────────────────────────────────────
-  // Default 5 minutes; cashier-configurable via localStorage
-  // `pos_idle_lock_minutes` (0 disables). Auto-lock is also paused
-  // while any blocking modal is open — taking >5min on the charge
-  // overlay (counting cash, customer fishes for card) should not
-  // yank the screen out from under the cashier mid-payment.
+  // Per-staff minutes from admin → My Account (default 5). 0 = never.
+  // Paused while any blocking modal is open.
   const isAnyModalOpen = showCharge || showSendBill || showSaveTicket || showOpenShift || showCloseShift;
   useIdleLock({
-    enabled: isLoggedIn && !isLocked && !showTimeClock && !isAnyModalOpen,
-    timeoutMs: getIdleLockMinutes() * 60_000,
+    enabled: isLoggedIn && !isLocked && !showTimeClock && !isAnyModalOpen && idleLockMinutes > 0,
+    timeoutMs: idleLockMinutes * 60_000,
     onIdle: lockScreen,
   });
 

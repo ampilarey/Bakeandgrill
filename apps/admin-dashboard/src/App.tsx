@@ -43,6 +43,7 @@ const PrintJobsPage           = lazy(() => import('./pages/PrintJobsPage'));
 const XeroPage                = lazy(() => import('./pages/XeroPage'));
 const OnlineOrderingPage      = lazy(() => import('./pages/OnlineOrderingPage'));
 const DeliverySettingsPage    = lazy(() => import('./pages/DeliverySettingsPage'));
+const MyAccountPage           = lazy(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 
 function PageFallback() {
   return (
@@ -169,6 +170,7 @@ export default function App() {
                     <DashboardPage />
                   </PermissionGuard>
                 } />
+                <Route path="account" element={<MyAccountPage />} />
                 <Route path="orders" element={
                   <PermissionGuard user={user} permission="orders.view">
                     <OrdersPage />

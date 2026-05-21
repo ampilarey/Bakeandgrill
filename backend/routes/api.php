@@ -145,6 +145,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->post('/auth/customer/logo
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // Get current user (staff)
     Route::get('/auth/me', [StaffAuthController::class, 'me']);
+    Route::patch('/auth/me/preferences', [StaffAuthController::class, 'updatePreferences']);
 
     // Online ordering gate — toggle (owner/manager) and public status is above
     Route::prefix('admin/ordering')->middleware('role:owner,manager')->group(function () {

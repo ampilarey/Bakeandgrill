@@ -17,6 +17,8 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, HasPermissions, Notifiable;
 
+    public const POS_IDLE_LOCK_DEFAULT_MINUTES = 5;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -31,6 +33,7 @@ class User extends Authenticatable
         'pin_hash',
         'is_active',
         'last_login_at',
+        'pos_idle_lock_minutes',
     ];
 
     /**
@@ -56,7 +59,18 @@ class User extends Authenticatable
             'password' => 'hashed',
             'last_login_at' => 'datetime',
             'is_active' => 'boolean',
+            'pos_idle_lock_minutes' => 'integer',
         ];
+    }
+
+    /** Stored preference, or venue default when unset. */
+    public function resolvedPosIdleLockMinutes(): int
+    {
+        if ($this->pos_idle_lock_minutes === null) {
+            return self::POS_IDLE_LOCK_DEFAULT_MINUTES;
+        }
+
+        return max(0, min(60, (int) $this->pos_idle_lock_minutes));
     }
 
     public function role(): BelongsTo

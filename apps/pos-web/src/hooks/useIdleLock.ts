@@ -71,13 +71,26 @@ export function useIdleLock({
   }, [enabled, timeoutMs]);
 }
 
-/** localStorage key for the cashier-configured idle-lock timeout in
- *  minutes. 0 = never auto-lock. Default 5 min. */
+/** Resolve effective POS idle-lock minutes from the logged-in staff user. */
+export function resolveIdleLockMinutes(user?: {
+  pos_idle_lock_minutes_resolved?: number | null;
+  pos_idle_lock_minutes?: number | null;
+} | null): number {
+  if (user?.pos_idle_lock_minutes_resolved != null) {
+    const resolved = user.pos_idle_lock_minutes_resolved;
+    if (Number.isFinite(resolved) && resolved >= 0) return resolved;
+  }
+  if (user?.pos_idle_lock_minutes != null) {
+    const stored = user.pos_idle_lock_minutes;
+    if (Number.isFinite(stored) && stored >= 0) return stored;
+  }
+  return 5;
+}
+
+/** @deprecated Per-staff preference is stored on the server — use resolveIdleLockMinutes. */
 export const IDLE_LOCK_MIN_KEY = "pos_idle_lock_minutes";
 
+/** @deprecated Per-staff preference is stored on the server — use resolveIdleLockMinutes. */
 export function getIdleLockMinutes(): number {
-  const raw = localStorage.getItem(IDLE_LOCK_MIN_KEY);
-  if (raw === null) return 5; // sensible default
-  const n = parseInt(raw, 10);
-  return Number.isFinite(n) && n >= 0 ? n : 5;
+  return 5;
 }

@@ -31,6 +31,12 @@ export async function getMe(): Promise<{ user: StaffUser }> {
   return req('/auth/me');
 }
 
+export async function updateMyPreferences(data: {
+  pos_idle_lock_minutes: number;
+}): Promise<{ message: string; user: StaffUser }> {
+  return req('/auth/me/preferences', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 export async function logout(): Promise<void> {
   await req('/auth/logout', { method: 'POST' });
 }

@@ -113,4 +113,51 @@ class StaffAuthTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    public function test_staff_can_update_own_pos_idle_lock_preference(): void
+    {
+        $owner = $this->createOwner();
+
+        $login = $this->postJson('/api/auth/staff/pin-login', [
+            'username' => 'owner@example.com',
+            'pin' => '1234',
+            'device_identifier' => 'POS-001',
+        ]);
+
+        $token = $login->json('token');
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->patchJson('/api/auth/me/preferences', [
+                'pos_idle_lock_minutes' => 15,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.pos_idle_lock_minutes', 15)
+            ->assertJsonPath('user.pos_idle_lock_minutes_resolved', 15);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $owner->id,
+            'pos_idle_lock_minutes' => 15,
+        ]);
+    }
+
+    public function test_me_includes_pos_idle_lock_preference(): void
+    {
+        $owner = $this->createOwner();
+        $owner->update(['pos_idle_lock_minutes' => 0]);
+
+        $login = $this->postJson('/api/auth/staff/pin-login', [
+            'username' => 'owner@example.com',
+            'pin' => '1234',
+            'device_identifier' => 'POS-001',
+        ]);
+
+        $token = $login->json('token');
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('user.pos_idle_lock_minutes', 0)
+            ->assertJsonPath('user.pos_idle_lock_minutes_resolved', 0);
+    }
 }

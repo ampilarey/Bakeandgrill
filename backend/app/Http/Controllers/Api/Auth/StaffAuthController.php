@@ -67,13 +67,7 @@ class StaffAuthController extends Controller
         return response()->json([
             'message' => 'Login successful',
             'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role?->slug,
-                'permissions' => $this->resolvePermissionSlugs($user),
-            ],
+            'user' => $this->serializeStaffUser($user),
         ]);
     }
 
@@ -116,14 +110,7 @@ class StaffAuthController extends Controller
         return response()->json([
             'message' => 'Login successful',
             'token'   => $token,
-            'user'    => [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'email'       => $user->email,
-                'phone'       => $user->phone,
-                'role'        => $user->role?->slug,
-                'permissions' => $this->resolvePermissionSlugs($user),
-            ],
+            'user'    => $this->serializeStaffUser($user),
         ]);
     }
 
@@ -249,13 +236,49 @@ class StaffAuthController extends Controller
         $user->loadMissing('role');
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role?->slug,
-                'permissions' => $this->resolvePermissionSlugs($user),
-            ],
+            'user' => $this->serializeStaffUser($user),
         ]);
+    }
+
+    /**
+     * Update the authenticated staff member's personal preferences.
+     */
+    public function updatePreferences(Request $request)
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $validated = $request->validate([
+            'pos_idle_lock_minutes' => 'required|integer|min:0|max:60',
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'pos_idle_lock_minutes' => $validated['pos_idle_lock_minutes'],
+        ]);
+        $user->loadMissing('role');
+
+        return response()->json([
+            'message' => 'Preferences saved',
+            'user' => $this->serializeStaffUser($user),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeStaffUser(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role?->slug,
+            'permissions' => $this->resolvePermissionSlugs($user),
+            'pos_idle_lock_minutes' => $user->pos_idle_lock_minutes,
+            'pos_idle_lock_minutes_resolved' => $user->resolvedPosIdleLockMinutes(),
+        ];
     }
 }

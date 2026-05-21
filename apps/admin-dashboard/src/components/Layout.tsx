@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
-import { Bell, BellOff, ChevronDown, ChevronLeft, ChevronRight, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { Bell, BellOff, ChevronDown, ChevronLeft, ChevronRight, Menu, Moon, Search, Sun, UserCircle, X } from 'lucide-react';
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
 import { NAV_GROUPS, ALL_NAV_ITEMS, BOTTOM_TABS, can, LogOut } from './navConfig';
@@ -133,6 +133,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const notifRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount } = useNotifications();
   const location = useLocation();
+  const navigate = useNavigate();
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const toggleAudio = () => {
@@ -396,7 +397,21 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                   );
                 })}
 
-                {/* Logout */}
+                {/* My account + Logout */}
+                <button
+                  type="button"
+                  onClick={() => { setMoreOpen(false); navigate('/account'); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    width: '100%', padding: 16, borderRadius: 12,
+                    border: '1px solid #E8E0D8', background: '#fff',
+                    color: '#3D2B1F', fontWeight: 600, fontSize: 14,
+                    cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8,
+                  }}
+                >
+                  <UserCircle size={18} />
+                  My Account
+                </button>
                 <button
                   onClick={() => { setMoreOpen(false); onLogout(); }}
                   style={{
@@ -515,7 +530,17 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         {/* User + Logout + Collapse */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: 8, flexShrink: 0 }}>
           {!collapsed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 4 }}>
+            <button
+              type="button"
+              onClick={() => navigate('/account')}
+              title="My account preferences"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '8px 12px', marginBottom: 4,
+                border: 'none', borderRadius: 8, background: 'transparent',
+                cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+              }}
+            >
               <div style={{
                 width: 28, height: 28, borderRadius: '50%',
                 background: 'rgba(212,129,58,0.2)',
@@ -530,7 +555,17 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                 </p>
                 <p style={{ color: '#C4B5A3', fontSize: 10, margin: 0, textTransform: 'capitalize' }}>{user.role}</p>
               </div>
-            </div>
+            </button>
+          )}
+          {collapsed && (
+            <SidebarFooterBtn
+              onClick={() => navigate('/account')}
+              title="My account"
+              collapsed={collapsed}
+              hoverStyle={{ background: 'rgba(212,129,58,0.1)', color: '#E8A66A' }}
+            >
+              <UserCircle size={16} style={{ flexShrink: 0 }} />
+            </SidebarFooterBtn>
           )}
           <SidebarFooterBtn
             onClick={onLogout}

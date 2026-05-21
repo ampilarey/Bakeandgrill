@@ -15,8 +15,13 @@ export type StaffUser = {
   id: number;
   name: string;
   email: string;
+  phone?: string | null;
   role: string | null;
   permissions?: string[];
+  /** Stored POS auto-lock preference; null = venue default (5 min). */
+  pos_idle_lock_minutes?: number | null;
+  /** Effective minutes used by POS (never null). */
+  pos_idle_lock_minutes_resolved?: number;
 };
 
 export type StaffLoginResponse = {
