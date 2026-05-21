@@ -28,6 +28,7 @@ import { OpenTicketsPanel }  from "./components/OpenTicketsPanel";
 import { ReceiptsPanel }     from "./components/ReceiptsPanel";
 import { ShiftPanel }        from "./components/ShiftPanel";
 import { ShiftHistoryPanel } from "./components/ShiftHistoryPanel";
+import { PosPreferencesModal } from "./components/PosPreferencesModal";
 import { SideDrawer }        from "./components/SideDrawer";
 import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
@@ -115,6 +116,7 @@ function App() {
   // ── View + connectivity ─────────────────────────────────────────────────────
   const [pane, setPane] = useState<Pane>("sales");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineQueueCount, setOfflineQueueCount] = useState(getQueueCount());
 
@@ -652,7 +654,7 @@ function App() {
   // ── Auto-lock on inactivity ─────────────────────────────────────
   // Per-staff minutes from admin → My Account (default 5). 0 = never.
   // Paused while any blocking modal is open.
-  const isAnyModalOpen = showCharge || showSendBill || showSaveTicket || showOpenShift || showCloseShift;
+  const isAnyModalOpen = showCharge || showSendBill || showSaveTicket || showOpenShift || showCloseShift || showPreferences;
   useIdleLock({
     enabled: isLoggedIn && !isLocked && !showTimeClock && !isAnyModalOpen && idleLockMinutes > 0,
     timeoutMs: idleLockMinutes * 60_000,
@@ -785,6 +787,7 @@ function App() {
     { id: "ops",            label: "Operations",     icon: "🛠", group: "main" as const },
     { id: "refresh_menu",   label: "Refresh data",   icon: "↻",  group: "user" as const },
     { id: "check_update",   label: "Check for app update", icon: "⬇", group: "user" as const },
+    { id: "preferences",  label: "My settings",        icon: "⚙️", group: "user" as const },
     { id: "lock",           label: "Lock screen",    icon: "🔒", group: "user" as const },
     { id: "logout",         label: "Log out",        icon: "↩",  group: "user" as const },
   ];
@@ -1077,9 +1080,21 @@ function App() {
             void forceAppReload();
             return;
           }
+          if (id === "preferences") {
+            setShowPreferences(true);
+            return;
+          }
           setPane(id as Pane);
         }}
       />
+
+      {showPreferences && (
+        <PosPreferencesModal
+          idleLockMinutes={idleLockMinutes}
+          onClose={() => setShowPreferences(false)}
+          onSaved={(resolved) => setIdleLockMinutes(resolved)}
+        />
+      )}
 
       <OnlineOrderToasts
         toasts={onlineOrderWatch.toasts}

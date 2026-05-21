@@ -208,6 +208,15 @@ export async function fetchMe(): Promise<StaffUser> {
   return res.user;
 }
 
+export async function updateMyPreferences(data: {
+  pos_idle_lock_minutes: number;
+}): Promise<{ message: string; user: StaffUser }> {
+  return request("/auth/me/preferences", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function pingAuth(): Promise<void> {
   await fetchMe();
 }
