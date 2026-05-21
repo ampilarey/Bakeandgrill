@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <title>Invoice {{ $invoice->invoice_number }}</title>
     <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #0f172a; }
-        h2 { margin-bottom: 4px; }
-        .muted { color: #475569; }
+        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #1C1408; }
+        h2 { margin-bottom: 4px; color: #D4813A; }
+        .muted { color: #6B5D4F; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { text-align: left; padding: 6px 0; border-bottom: 1px solid #e2e8f0; }
+        th, td { text-align: left; padding: 6px 0; border-bottom: 1px solid #EDE4D4; }
         .amount { text-align: right; }
         .totals { margin-top: 12px; }
         .totals p { display: flex; justify-content: space-between; margin: 3px 0; }
-        .grand { font-weight: 700; font-size: 13px; border-top: 1px solid #0f172a; padding-top: 4px; margin-top: 4px; }
+        .grand { font-weight: 700; font-size: 13px; border-top: 2px solid #D4813A; padding-top: 4px; margin-top: 4px; color: #D4813A; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; }
-        .badge-paid { color: #047857; }
-        .badge-unpaid { color: #b91c1c; }
+        .badge-paid { color: #195C36; }
+        .badge-unpaid { color: #8C1C0E; }
     </style>
 </head>
 <body>

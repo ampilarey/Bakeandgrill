@@ -5,7 +5,7 @@
 @section('styles')
 <style>
     .menu-hero {
-        background: linear-gradient(135deg, rgba(27, 163, 185, 0.08), rgba(184, 168, 144, 0.08));
+        background: linear-gradient(135deg, rgba(212, 129, 58, 0.08), rgba(184, 168, 144, 0.08));
         padding: 3rem 2rem;
         text-align: center;
     }
@@ -35,7 +35,7 @@
     .menu-card:hover {
         transform: translateY(-6px);
         box-shadow: 0 12px 28px rgba(0,0,0,0.12);
-        border-color: var(--teal);
+        border-color: var(--amber);
     }
 
     .menu-card-image {
@@ -72,14 +72,14 @@
     .price {
         font-size: 1.6rem;
         font-weight: 700;
-        color: var(--teal);
+        color: var(--amber);
         margin-bottom: 1rem;
     }
 
     .add-btn {
         width: 100%;
         padding: 0.85rem;
-        background: var(--teal);
+        background: var(--amber);
         color: white;
         border: none;
         border-radius: 10px;
@@ -89,7 +89,7 @@
     }
 
     .add-btn:hover {
-        background: var(--teal-hover);
+        background: var(--amber-hover);
     }
 
     .best-seller-badge {

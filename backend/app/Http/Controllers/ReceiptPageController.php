@@ -15,7 +15,7 @@ class ReceiptPageController extends Controller
 {
     public function show($token)
     {
-        $receipt = Receipt::with(['order.items.modifiers', 'order.payments'])
+        $receipt = Receipt::with(['order.items.modifiers', 'order.payments', 'order.refunds'])
             ->where('token', $token)
             ->firstOrFail();
 
@@ -27,7 +27,7 @@ class ReceiptPageController extends Controller
 
     public function pdf($token)
     {
-        $receipt = Receipt::with(['order.items.modifiers', 'order.payments'])
+        $receipt = Receipt::with(['order.items.modifiers', 'order.payments', 'order.refunds'])
             ->where('token', $token)
             ->firstOrFail();
 

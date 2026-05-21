@@ -92,7 +92,7 @@ input[type="number"] {
                 <h3 style="font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700; color: var(--dark);">🍽️ Step 1: Select Items</h3>
             <div id="summary" style="display: none; background: #f8f9fa; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
                 <div id="summaryContent"></div>
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #e9ecef; font-size: 1.3rem; font-weight: 700; color: var(--teal);">Total: MVR <span id="total">0.00</span></div>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #e9ecef; font-size: 1.3rem; font-weight: 700; color: var(--amber);">Total: MVR <span id="total">0.00</span></div>
             </div>
             <div id="items" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem;">
                 @foreach($items as $item)
@@ -105,13 +105,13 @@ input[type="number"] {
                         <div style="padding: 1rem;">
                             <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.05rem;">{{ $item->name }}</div>
                             <div style="font-size: 0.85rem; color: #95a5a6; margin-bottom: 0.5rem;">{{ $item->category?->name }}</div>
-                            <div style="font-weight: 700; color: var(--teal); margin-bottom: 1rem; font-size: 1.15rem;">MVR {{ number_format($item->base_price, 2) }}</div>
+                            <div style="font-weight: 700; color: var(--amber); margin-bottom: 1rem; font-size: 1.15rem;">MVR {{ number_format($item->base_price, 2) }}</div>
                         
                         <!-- Quantity Controls (Always Visible) -->
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <button type="button" onclick="decreaseQty({{ $item->id }})" style="width: 32px; height: 32px; border: 2px solid #e9ecef; border-radius: 50%; background: white; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center;">−</button>
                             <input type="number" id="qty-{{ $item->id }}" name="items[{{ $item->id }}][quantity]" value="0" min="0" onchange="qtyChanged({{ $item->id }})" style="width: 50px; padding: 0.5rem; border: 2px solid #e9ecef; border-radius: 8px; text-align: center; font-weight: 600; font-size: 1rem;" disabled>
-                            <button type="button" onclick="increaseQty({{ $item->id }})" style="width: 32px; height: 32px; border: 2px solid var(--teal); background: var(--teal); color: white; border-radius: 50%; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center;">+</button>
+                            <button type="button" onclick="increaseQty({{ $item->id }})" style="width: 32px; height: 32px; border: 2px solid var(--amber); background: var(--amber); color: white; border-radius: 50%; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center;">+</button>
                         </div>
                             <input type="hidden" name="items[{{ $item->id }}][item_id]" value="{{ $item->id }}" disabled>
                         </div>
@@ -137,7 +137,7 @@ input[type="number"] {
             <div><label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Notes</label><textarea name="customer_notes" rows="3" style="width: 100%; padding: 0.85rem 1rem; border: 2px solid #e9ecef; border-radius: 8px; font-family: 'Poppins', sans-serif;"></textarea></div>
         </div>
 
-        <button type="submit" style="width: 100%; padding: 1.25rem; background: var(--teal); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 1.15rem; cursor: pointer; box-shadow: 0 4px 12px rgba(27, 163, 185, 0.3);">📅 Submit Pre-Order</button>
+        <button type="submit" style="width: 100%; padding: 1.25rem; background: var(--amber); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 1.15rem; cursor: pointer; box-shadow: 0 4px 12px rgba(212, 129, 58, 0.3);">📅 Submit Pre-Order</button>
     </form>
 </div>
 
@@ -150,7 +150,7 @@ function increaseQty(id) {
     input.value = parseInt(input.value) + 1;
     input.disabled = false;
     hidden.disabled = false;
-    card.style.borderColor = 'var(--teal)';
+    card.style.borderColor = 'var(--amber)';
     card.style.background = 'rgba(27, 163, 185, 0.05)';
     updateTotal();
 }
@@ -182,7 +182,7 @@ function qtyChanged(id) {
     if (parseInt(input.value) > 0) {
         input.disabled = false;
         hidden.disabled = false;
-        card.style.borderColor = 'var(--teal)';
+        card.style.borderColor = 'var(--amber)';
         card.style.background = 'rgba(27, 163, 185, 0.05)';
     } else {
         input.disabled = true;
