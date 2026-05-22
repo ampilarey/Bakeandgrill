@@ -89,20 +89,20 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
 
         [$message, $idempotencyKey] = match ($status) {
             'in_progress' => [
-                "Bake & Grill: Your order {$orderNum} is now being prepared! 🍳 We'll let you know when it's ready. Track: {$trackingUrl}",
+                "#{$orderNum} is being prepared. We'll text when ready. {$trackingUrl}",
                 "order:preparing:{$order->id}",
             ],
             'ready' => $order->type === 'delivery'
                 ? [
-                    "Bake & Grill: Your order {$orderNum} is packed and ready! 🎉 A rider will pick it up shortly. Track: {$trackingUrl}",
+                    "#{$orderNum} is packed. Rider will pick up soon. {$trackingUrl}",
                     "order:ready:{$order->id}",
                 ]
                 : [
-                    "Bake & Grill: Your order {$orderNum} is ready for pickup! 🎉 Come collect it from our counter. Track: {$trackingUrl}",
+                    "#{$orderNum} is ready for pickup. {$trackingUrl}",
                     "order:ready:{$order->id}",
                 ],
             'on_the_way' => [
-                "Bake & Grill: Your order {$orderNum} is on its way! 🛵 Our rider is heading to you. Track: {$trackingUrl}",
+                "#{$orderNum} is on the way. {$trackingUrl}",
                 "order:on_the_way:{$order->id}",
             ],
         };

@@ -81,19 +81,20 @@ class PaymentConfirmationNotifier
             $url = $this->buildOrderStatusUrl($order);
             $method = $this->paymentMethodLabel($order);
             $readyHint = (string) $order->type === OrderType::Delivery->value
-                ? "We'll text you when our rider is on the way."
-                : "We'll text you when it's ready for pickup.";
-            $message = 'Bake & Grill: Payment received'
+                ? "We'll text when we're on the way."
+                : "We'll text when it's ready.";
+            $message = 'Paid'
                 . ($method ? ' via ' . $method : '')
-                . '. Order #' . $order->order_number . ' is confirmed. '
-                . $readyHint . ' Track: ' . $url;
+                . '. #' . $order->order_number . ' confirmed. '
+                . $readyHint . ' '
+                . $url;
         } else {
             // POS dine-in / takeaway: customer is at the counter. The
             // receipt link is the only useful SMS — no order-confirmed
             // / preparing / ready noise (those listeners now skip
             // POS types).
             $url = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
-            $message = 'Bake & Grill: Thanks for visiting! Receipt for order #' . $order->order_number . ': ' . $url;
+            $message = 'Receipt for #' . $order->order_number . ': ' . $url;
         }
 
         try {

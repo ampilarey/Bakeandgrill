@@ -554,7 +554,7 @@ class OrderController extends Controller
                 // second GSM-7 segment (~180 chars with link) — fine,
                 // 2 segments costs basically nothing.
                 $lines = [
-                    "Bake & Grill: {$greeting} {$orderNum} received.",
+                    "{$greeting} {$orderNum} received.",
                     "Order total: MVR {$total}",
                 ];
                 if ($link !== null) {
@@ -1594,7 +1594,7 @@ class OrderController extends Controller
         if (!empty($request->input('phone'))) {
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
-                message: 'Bake & Grill: Your bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
+                message: 'Bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
                 type: 'transactional',
                 referenceType: 'invoice',
                 referenceId: (string) $invoice->id,

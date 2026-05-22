@@ -55,7 +55,7 @@ final class SendOnlineOrderCompletionReceiptSmsListener
         $receipt->save();
 
         $link = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
-        $message = 'Bake & Grill: Your order #' . $order->order_number . ' is complete! View your receipt: ' . $link;
+        $message = 'Order #' . $order->order_number . ' complete. Receipt: ' . $link;
 
         try {
             $this->sms->send(new SmsMessage(

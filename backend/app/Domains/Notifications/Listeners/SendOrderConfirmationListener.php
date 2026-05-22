@@ -76,7 +76,7 @@ class SendOrderConfirmationListener implements ShouldQueue
         try {
             $this->sms->send(new SmsMessage(
                 to: $phone,
-                message: "Bake & Grill: Order #{$order->order_number} confirmed! Track your order: {$url}",
+                message: "#{$order->order_number} confirmed. Track: {$url}",
                 type: 'transactional',
                 customerId: $data->customerId,
                 referenceType: 'order',

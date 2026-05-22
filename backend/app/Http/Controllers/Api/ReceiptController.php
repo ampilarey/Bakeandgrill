@@ -222,6 +222,6 @@ class ReceiptController extends Controller
             return 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
         }
 
-        return 'Bake & Grill: Here is your invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;
+        return 'Invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;
     }
 }

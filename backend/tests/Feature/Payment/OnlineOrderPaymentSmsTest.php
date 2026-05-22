@@ -94,7 +94,7 @@ class OnlineOrderPaymentSmsTest extends TestCase
             ->first();
 
         $this->assertNotNull($sms);
-        $this->assertStringContainsString('Payment received', (string) $sms->message);
+        $this->assertStringContainsString('Paid', (string) $sms->message);
         $this->assertStringContainsString('/order/track/', (string) $sms->message);
         $this->assertStringContainsString($order->tracking_token, (string) $sms->message);
     }
