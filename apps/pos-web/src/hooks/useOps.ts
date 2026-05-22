@@ -55,17 +55,10 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
       window.clearTimeout(clearTimerRef.current);
       clearTimerRef.current = null;
     }
-    setOpsMessageRaw((prev) => {
-      if (!text) return "";
-      if (!prev) return text;
-      // Avoid runaway concatenation if the same message is fired
-      // back-to-back (idempotent retry case).
-      if (prev === text || prev.endsWith(` · ${text}`)) return prev;
-      return `${prev} · ${text}`;
-    });
+    setOpsMessageRaw(text);
     if (text) {
       const isError = /unable|failed|invalid|cannot|enter a valid|add a reason/i.test(text);
-      const ms = isError ? 12000 : 8000;
+      const ms = isError ? 8000 : 3500;
       clearTimerRef.current = window.setTimeout(() => {
         setOpsMessageRaw("");
         clearTimerRef.current = null;
@@ -150,7 +143,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     const value = Number.parseFloat(openingCash);
     if (!Number.isFinite(value)) { setOpsMessage("Enter a valid opening cash amount."); return; }
     openShift({ opening_cash: value })
-      .then(() => { setOpsMessage("Shift opened."); setOpeningCash(""); return getCurrentShift(); })
+      .then(() => { setOpeningCash(""); return getCurrentShift(); })
       .then((r) => setShift(r.shift))
       .catch(() => setOpsMessage("Unable to open shift."));
   };
@@ -160,7 +153,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     const value = Number.parseFloat(closingCash);
     if (!Number.isFinite(value)) { setOpsMessage("Enter a valid closing cash amount."); return; }
     closeShift(shift.id, { closing_cash: value })
-      .then(() => { setOpsMessage("Shift closed."); setClosingCash(""); setShift(null); })
+      .then(() => { setClosingCash(""); setShift(null); })
       .catch(() => setOpsMessage("Unable to close shift."));
   };
 
@@ -170,7 +163,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     if (!Number.isFinite(amount) || amount <= 0) { setOpsMessage("Enter a valid cash movement amount."); return; }
     if (!cashMoveReason.trim()) { setOpsMessage("Add a reason for the cash movement."); return; }
     createCashMovement(shift.id, { type: cashMoveType, amount, reason: cashMoveReason.trim() })
-      .then(() => { setOpsMessage("Cash movement recorded."); setCashMoveAmount(""); setCashMoveReason(""); })
+      .then(() => { setCashMoveAmount(""); setCashMoveReason(""); })
       .catch(() => setOpsMessage("Unable to record cash movement."));
   };
 
@@ -185,7 +178,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     const quantity = Number.parseFloat(adjustQuantity);
     if (!Number.isFinite(quantity)) { setOpsMessage("Enter a valid adjustment quantity."); return; }
     adjustInventory(adjustItemId, { quantity, type: adjustType, notes: adjustNotes || undefined })
-      .then(() => { setOpsMessage("Inventory updated."); setAdjustQuantity(""); setAdjustNotes(""); return fetchInventory(); })
+      .then(() => { setAdjustQuantity(""); setAdjustNotes(""); return fetchInventory(); })
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to adjust inventory."));
   };
@@ -193,7 +186,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const handleCreateSupplier = () => {
     if (!newSupplierName.trim()) return;
     createSupplier({ name: newSupplierName.trim(), phone: newSupplierPhone || undefined })
-      .then(() => { setNewSupplierName(""); setNewSupplierPhone(""); setOpsMessage("Supplier added."); return fetchSuppliers(); })
+      .then(() => { setNewSupplierName(""); setNewSupplierPhone(""); return fetchSuppliers(); })
       .then((r) => setSuppliers(r.suppliers.data))
       .catch(() => setOpsMessage("Unable to add supplier."));
   };
@@ -208,7 +201,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
       purchase_date: purchaseDate,
       items: [{ name: purchaseItemName.trim(), quantity, unit_cost: unitCost }],
     })
-      .then(() => { setPurchaseItemName(""); setPurchaseQuantity(""); setPurchaseUnitCost(""); setOpsMessage("Purchase recorded."); return fetchInventory(); })
+      .then(() => { setPurchaseItemName(""); setPurchaseQuantity(""); setPurchaseUnitCost(""); return fetchInventory(); })
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to record purchase."));
   };
@@ -219,7 +212,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     if (!Number.isFinite(orderId) || orderId <= 0) { setOpsMessage("Enter a valid order ID."); return; }
     if (!Number.isFinite(amount) || amount <= 0) { setOpsMessage("Enter a valid refund amount."); return; }
     createRefund(orderId, { amount, reason: refundReason || undefined })
-      .then(() => { setRefundOrderId(""); setRefundAmount(""); setRefundReason(""); setOpsMessage("Refund recorded."); return fetchRefunds(); })
+      .then(() => { setRefundOrderId(""); setRefundAmount(""); setRefundReason(""); return fetchRefunds(); })
       .then((r) => setRefunds(r.refunds.data))
       .catch(() => setOpsMessage("Unable to record refund."));
   };
@@ -236,7 +229,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     if (!promoMessage.trim()) { setOpsMessage("Enter a promotion message."); return; }
     const lastOrderDays = promoLastOrderDays ? Number.parseInt(promoLastOrderDays, 10) : undefined;
     sendSmsPromotion({ name: "POS Promotion", message: promoMessage.trim(), filters: { last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined } })
-      .then(() => { setOpsMessage("Promotion SMS queued."); setPromoMessage(""); setPromoLastOrderDays(""); setPromoEstimate(null); })
+      .then(() => { setPromoMessage(""); setPromoLastOrderDays(""); setPromoEstimate(null); })
       .catch(() => setOpsMessage("Unable to send promotion SMS."));
   };
 

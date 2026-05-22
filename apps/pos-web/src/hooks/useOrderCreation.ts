@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { ApiRequestError } from "@shared/api";
 import {
   applyGiftCardToOrder,
@@ -72,24 +72,6 @@ function cartFingerprint(items: CartItem[]): string {
     .join(";");
 }
 
-/**
- * Post-charge banner text. For Pickup orders we nudge the cashier
- * toward Active orders so they don't forget the ticket is still
- * cooking — paid pickup orders now stay visible in that panel until
- * the customer physically collects (and the cashier marks them
- * picked up there). Dine-in and Takeaway behave as before.
- */
-function pickupAwareSuccess(orderType: OrderType, hasCustomer: boolean): string {
-  if (orderType === "Pickup") {
-    return hasCustomer
-      ? "✅ Paid. Cooking — track in Active orders, then tap Picked up."
-      : "✅ Paid and sent to kitchen — track in Active orders, then tap Picked up.";
-  }
-  return hasCustomer
-    ? "Order paid. Receipt SMS sent to customer."
-    : "Order paid and sent to kitchen.";
-}
-
 type Params = {
   isOnline: boolean;
   deviceId: string;
@@ -142,6 +124,29 @@ type Params = {
 
 export function useOrderCreation(params: Params) {
   const [statusMessage, setStatusMessage] = useState("");
+  const statusTimerRef = useRef<number | null>(null);
+
+  const clearStatus = useCallback(() => {
+    if (statusTimerRef.current !== null) {
+      window.clearTimeout(statusTimerRef.current);
+      statusTimerRef.current = null;
+    }
+    setStatusMessage("");
+  }, []);
+
+  /** Top banner — errors and offline/sync only. Routine successes use inline UI. */
+  const flashStatus = useCallback((msg: string, ms: number) => {
+    clearStatus();
+    setStatusMessage(msg);
+    statusTimerRef.current = window.setTimeout(clearStatus, ms);
+  }, [clearStatus]);
+
+  const flashError = useCallback((msg: string) => flashStatus(msg, 8000), [flashStatus]);
+  const flashNotice = useCallback((msg: string) => flashStatus(msg, 3500), [flashStatus]);
+
+  useEffect(() => () => {
+    if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current);
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastHeldOrderId, setLastHeldOrderId] = useState<number | null>(() => {
     const raw = localStorage.getItem("pos_last_held_order");
@@ -330,12 +335,10 @@ export function useOrderCreation(params: Params) {
     }
 
     if (failures.length > 0) {
-      setStatusMessage(
+      flashError(
         `⚠️ ${failures.length === 1 ? "Reward failed:" : "Rewards failed:"} ${failures.join("; ")}. ` +
         `The new total is MVR ${total.toFixed(2)}. Confirm before tendering.`,
       );
-      // Sticky for 12s — long enough to read and decide what to do.
-      setTimeout(() => setStatusMessage(""), 12000);
     }
 
     return total;
@@ -383,12 +386,12 @@ export function useOrderCreation(params: Params) {
         // nothing useful to retry until the cashier re-authenticates.
         if (err.status === 401) {
           window.dispatchEvent(new Event("auth_expired"));
-          setStatusMessage("Session expired — please log back in.");
+          flashError("Session expired — please log back in.");
           return false;
         }
-        setStatusMessage(`Payment failed: ${msg}`);
+        flashError(`Payment failed: ${msg}`);
       } else {
-        setStatusMessage("Network issue — payment not recorded. Retry once back online.");
+        flashError("Network issue — payment not recorded. Retry once back online.");
       }
       setPendingPaymentForOrderId(orderId);
       // Snapshot the totalDue AND the rows from THIS attempt so retry
@@ -429,23 +432,12 @@ export function useOrderCreation(params: Params) {
     // so the queue path below is a non-issue for this branch.
     if (resumedOrderId !== null) {
       if (resumedIsPaid) {
-        setStatusMessage("This order was already paid online — view only.");
-        setTimeout(() => setStatusMessage(""), 6000);
         return false;
       }
-      // Edit-mode safety: if the cashier opened the ticket for editing
-      // and made changes (add/remove items, qty tweaks), settling now
-      // would charge `resumedOrderTotal` — the SERVER's pre-edit total
-      // — not what the cart actually contains. Customer would over-
-      // or under-pay. Force them to commit the edits via "Save
-      // changes" first; that call refreshes `resumedOrderTotal` and
-      // flips `isEditingActive` back off, after which Charge is safe
-      // to use the (now-authoritative) server total.
       if (isEditingActive) {
-        setStatusMessage(
+        flashError(
           "Tap \u201cSave changes\u201d on the resume banner first \u2014 the new total has to be sent to the server before you can charge.",
         );
-        setTimeout(() => setStatusMessage(""), 6000);
         return false;
       }
       setIsSubmitting(true);
@@ -470,8 +462,6 @@ export function useOrderCreation(params: Params) {
           setResumedOrderType(null);
           params.clearCart();
           params.setSelectedItem(null);
-          setStatusMessage(pickupAwareSuccess(params.orderType, cid != null));
-          setTimeout(() => setStatusMessage(""), 6000);
           params.onOrderSettled?.(settledOrderId, cid, cphone);
         }
         return settled;
@@ -502,14 +492,13 @@ export function useOrderCreation(params: Params) {
         params.setOfflineQueueCount(getQueueCount());
         params.clearCart();
         params.setSelectedItem(null);
-        setStatusMessage("Offline order queued. Will sync when online.");
-        setTimeout(() => setStatusMessage(""), 6000);
+        flashNotice("Offline order queued. Will sync when online.");
         return true;
       } catch (err) {
         if (err instanceof OfflineQueueFullError) {
-          setStatusMessage(`⛔ Offline queue full (${err.size}). Reconnect and Sync.`);
+          flashError(`⛔ Offline queue full (${err.size}). Reconnect and Sync.`);
         } else {
-          setStatusMessage("Unable to save offline order. Please try again.");
+          flashError("Unable to save offline order. Please try again.");
         }
         return false;
       }
@@ -543,8 +532,6 @@ export function useOrderCreation(params: Params) {
         // we never cleared this flag on success. The ReceiptActions
         // banner takes over the "what now?" duty for paid orders.
         setLastCreatedOrderId(null);
-        setStatusMessage(pickupAwareSuccess(params.orderType, cid != null));
-        setTimeout(() => setStatusMessage(""), 6000);
         params.onOrderSettled?.(response.order.id, cid, cphone);
       }
       return settled;
@@ -565,19 +552,19 @@ export function useOrderCreation(params: Params) {
       const isApiError = err instanceof ApiRequestError;
 
       if (isApiError) {
-        setStatusMessage(`Order failed: ${message}`);
+        flashError(`Order failed: ${message}`);
         return false;
       }
 
       try {
         await enqueue({ order: payload, payments: paymentSnapshot, rewards: stagedRewards });
         params.setOfflineQueueCount(getQueueCount());
-        setStatusMessage("Network error. Order queued for sync (payments included).");
+        flashNotice("Network error. Order queued for sync (payments included).");
       } catch (e) {
         if (e instanceof OfflineQueueFullError) {
-          setStatusMessage(`⛔ Offline queue full (${e.size}). Reconnect and Sync.`);
+          flashError(`⛔ Offline queue full (${e.size}). Reconnect and Sync.`);
         } else {
-          setStatusMessage("Network error and unable to queue. Try again.");
+          flashError("Network error and unable to queue. Try again.");
         }
       }
       return false;
@@ -628,11 +615,6 @@ export function useOrderCreation(params: Params) {
           params.clearCart();
           params.setSelectedItem(null);
           setLastCreatedOrderId(null);
-          setStatusMessage("Payment recorded.");
-          // Bug-015: 4s was too quick for a busy cashier to look up
-          // from the cash drawer and read the message. 6s is the
-          // POS-wide floor for success banners.
-          setTimeout(() => setStatusMessage(""), 6000);
           params.onOrderSettled?.(orderId, cid, cphone);
         }
       } finally {
@@ -692,8 +674,6 @@ export function useOrderCreation(params: Params) {
       await fireOrderToKitchen(response.order.id);
       params.clearCart();
       params.setSelectedItem(null);
-      setStatusMessage(`Ticket "${name}" fired to kitchen — unpaid.`);
-      setTimeout(() => setStatusMessage(""), 6000);
       return;
     }
 
@@ -711,8 +691,6 @@ export function useOrderCreation(params: Params) {
     setLastHeldOrderId(response.order.id);
     params.clearCart();
     params.setSelectedItem(null);
-    setStatusMessage(`Ticket "${name}" saved.`);
-    setTimeout(() => setStatusMessage(""), 6000);
   };
 
   /**
@@ -801,6 +779,7 @@ export function useOrderCreation(params: Params) {
    * Paid online orders open in view-only mode (no Charge / no edit).
    */
   const handleResumeTicket = async (orderId: number): Promise<{ isPaid: boolean }> => {
+    clearStatus();
     const preflight = await getOrder(orderId);
     const isPaid = preflight.order.payment_status === "paid"
       || preflight.order.status === "paid";
@@ -820,8 +799,6 @@ export function useOrderCreation(params: Params) {
       setIsEditingActive(false);
       localStorage.removeItem("pos_last_held_order");
       setLastHeldOrderId(null);
-      setStatusMessage(`Order ${label} loaded — already paid online. View only.`);
-      setTimeout(() => setStatusMessage(""), 6000);
       return { isPaid: true };
     }
 
@@ -842,8 +819,6 @@ export function useOrderCreation(params: Params) {
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
-    setStatusMessage(`Ticket ${label} resumed — ready to charge.`);
-    setTimeout(() => setStatusMessage(""), 6000);
     return { isPaid: false };
   };
 
@@ -881,12 +856,6 @@ export function useOrderCreation(params: Params) {
     setResumedOrderType(null);
     params.clearCart();
     params.setSelectedItem(null);
-    setStatusMessage(
-      wasHeld
-        ? `Ticket #${id} returned to Open Tickets.`
-        : `Cancelled — ticket #${id} is still in Active orders.`,
-    );
-    setTimeout(() => setStatusMessage(""), 6000);
   };
 
   /**
@@ -914,8 +883,7 @@ export function useOrderCreation(params: Params) {
   const handleSaveActiveChanges = async (): Promise<boolean> => {
     if (resumedOrderId === null) return false;
     if (params.cartItems.length === 0) {
-      setStatusMessage("Add at least one item before saving changes.");
-      setTimeout(() => setStatusMessage(""), 6000);
+      flashError("Add at least one item before saving changes.");
       return false;
     }
     setIsSubmitting(true);
@@ -945,18 +913,9 @@ export function useOrderCreation(params: Params) {
       setResumedOrderTotal(res.order.total != null ? Number(res.order.total) : null);
       setResumedItemsFingerprint(currentFp);
       setIsEditingActive(false);
-      setStatusMessage(
-        itemsChanged
-          ? `Ticket #${resumedOrderId} updated — kitchen chit reprinted.`
-          : `Ticket #${resumedOrderId} saved — no item changes, kitchen not notified.`,
-      );
-      setTimeout(() => setStatusMessage(""), 6000);
       return true;
     } catch (err) {
-      setStatusMessage(`Couldn't save changes: ${(err as Error).message}`);
-      // Errors get a longer fuse — cashier needs time to read,
-      // remember to retry, and decide what to tell the customer.
-      setTimeout(() => setStatusMessage(""), 10000);
+      flashError(`Couldn't save changes: ${(err as Error).message}`);
       return false;
     } finally {
       setIsSubmitting(false);
@@ -967,7 +926,7 @@ export function useOrderCreation(params: Params) {
    *  without naming. Falls back to a default name based on the cart. */
   const handleHoldOrder = () => {
     void handleSaveTicket(`Ticket ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`)
-      .catch((e) => setStatusMessage((e as Error).message));
+      .catch((e) => flashError((e as Error).message));
   };
 
   const handleBarcodeSubmit = (
@@ -1022,17 +981,11 @@ export function useOrderCreation(params: Params) {
    * for the next sync attempt.
    */
   const handleSyncQueue = () => {
-    if (!params.isOnline) { setStatusMessage("You are offline. Sync paused."); return; }
-    // Re-entrancy guard. Without this, a fast double-tap on "Sync" or a
-    // back-to-back online event + visibility event will start two
-    // concurrent syncs that both pop from the queue and each try to
-    // create the same orders — server-side idempotency would handle it,
-    // but client-side counter math gets confused and status messages
-    // race each other.
-    if (isSyncingQueue) { setStatusMessage("Sync already in progress…"); return; }
+    if (!params.isOnline) { flashNotice("You are offline. Sync paused."); return; }
+    if (isSyncingQueue) { flashNotice("Sync already in progress…"); return; }
 
     const queue = getQueue();
-    if (queue.length === 0) { setStatusMessage("No queued orders to sync."); return; }
+    if (queue.length === 0) { flashNotice("No queued orders to sync."); return; }
 
     setIsSyncingQueue(true);
     void (async () => {
@@ -1108,11 +1061,11 @@ export function useOrderCreation(params: Params) {
       params.setOfflineQueueCount(remaining.length);
 
       if (remaining.length === 0 && paymentMisses === 0) {
-        setStatusMessage(`Synced ${processed} orders.`);
+        clearStatus();
       } else if (remaining.length === 0) {
-        setStatusMessage(`Synced ${processed} orders. ⚠ ${paymentMisses} need payment in admin.`);
+        flashError(`Synced ${processed} orders. ${paymentMisses} need payment in admin.`);
       } else {
-        setStatusMessage(
+        flashError(
           `Synced ${processed}, ${remaining.length} failed (kept in queue)${paymentMisses ? `, ${paymentMisses} need payment in admin` : ''}.`,
         );
       }
@@ -1123,6 +1076,8 @@ export function useOrderCreation(params: Params) {
   return {
     statusMessage,
     setStatusMessage,
+    clearStatus,
+    flashError,
     isSubmitting,
     lastHeldOrderId,
     lastCreatedOrderId,

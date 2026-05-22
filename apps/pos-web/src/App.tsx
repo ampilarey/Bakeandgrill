@@ -545,12 +545,9 @@ function App() {
     finally { setOpenShiftBusy(false); }
   };
   const handleCloseShift = async (closingCash: number, notes?: string) => {
-    const res = await shift.close(closingCash, notes);
+    await shift.close(closingCash, notes);
     setShowCloseShift(false);
     setPane("sales");
-    if (res.message) {
-      order.setStatusMessage(res.message);
-    }
   };
   const handleSaveTicketSubmit = async (name: string, note: string | undefined, fireToKitchen: boolean) => {
     await order.handleSaveTicket(name, note, fireToKitchen);
@@ -883,7 +880,11 @@ function App() {
       {/* Status banners */}
       {(order.statusMessage || ops.opsMessage || lastPaidOrder) && (
         <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {order.statusMessage && <Banner text={order.statusMessage} />}
+          {order.statusMessage && (
+            shouldShowStatusBanner(order.statusMessage)
+              ? <Banner text={order.statusMessage} />
+              : <NoticeBanner text={order.statusMessage} />
+          )}
           {ops.opsMessage && <Banner text={ops.opsMessage} />}
           {lastPaidOrder && (
             <ReceiptActionsBanner
@@ -958,11 +959,7 @@ function App() {
                 // looks like "the Confirm button does nothing". Catch
                 // the most common ones inline so the cashier sees them.
                 if (cart.cartItems.length === 0) return;
-                if (order.resumedIsPaid) {
-                  order.setStatusMessage("This order was already paid online — view only.");
-                  setTimeout(() => order.setStatusMessage(""), 6000);
-                  return;
-                }
+                if (order.resumedIsPaid) return;
                 // Table is OPTIONAL on Dine-in tickets — some venues
                 // ring up at the counter before seating, so we don't
                 // gate Charge on it. The cashier can still pick a
@@ -1040,8 +1037,7 @@ function App() {
                 })
                 .catch((err) => {
                   const msg = (err as Error)?.message ?? "Couldn't open ticket";
-                  order.setStatusMessage(`Couldn't open ticket: ${msg}`);
-                  setTimeout(() => order.setStatusMessage(""), 10000);
+                  order.flashError(`Couldn't open ticket: ${msg}`);
                 });
             }}
           />
@@ -1125,8 +1121,7 @@ function App() {
             .then(() => setPane("sales"))
             .catch((err) => {
               const msg = (err as Error)?.message ?? "Couldn't open order";
-              order.setStatusMessage(`Couldn't open order: ${msg}`);
-              setTimeout(() => order.setStatusMessage(""), 10000);
+              order.flashError(`Couldn't open order: ${msg}`);
             });
         }}
       />
@@ -1261,11 +1256,24 @@ function paneTitle(p: Pane): string {
   }
 }
 
+function shouldShowStatusBanner(text: string): boolean {
+  return /failed|couldn't|unable|error|invalid|offline|expired|before you can|add at least|network|queue full|retry|not recorded|reward failed|⚠|session expired|sync paused|need payment/i.test(text);
+}
+
 function Banner({ text }: { text: string }) {
   return (
     <div style={{
-      background: '#FFFFFF', borderRadius: 8, padding: '10px 14px',
-      fontSize: 13, color: '#475569', border: '1px solid #E2E8F0', marginBottom: 6,
+      background: '#FEF2F2', borderRadius: 8, padding: '10px 14px',
+      fontSize: 13, color: '#991B1B', border: '1px solid #FECACA', marginBottom: 6,
+    }}>{text}</div>
+  );
+}
+
+function NoticeBanner({ text }: { text: string }) {
+  return (
+    <div style={{
+      background: '#FFFBEB', borderRadius: 8, padding: '10px 14px',
+      fontSize: 13, color: '#92400E', border: '1px solid #FDE68A', marginBottom: 6,
     }}>{text}</div>
   );
 }

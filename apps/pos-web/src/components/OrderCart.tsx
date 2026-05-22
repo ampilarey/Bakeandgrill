@@ -293,7 +293,7 @@ export function OrderCart(p: Props) {
             </div>
             <div style={{ marginTop: 2 }}>
               {p.resumedIsPaid
-                ? 'View only — customer already paid. Close when done.'
+                ? 'Already paid online.'
                 : editing
                   ? 'Add or remove items, then Save changes. Kitchen chit will reprint.'
                   : wasHeld
