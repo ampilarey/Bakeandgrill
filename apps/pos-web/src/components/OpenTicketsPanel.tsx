@@ -1026,9 +1026,9 @@ export function OpenTicketsPanel({
                         {t.payment_status === "partial" ? "PARTIAL" : "UNPAID"}
                       </span>
                     )}
-                    {t.type && (t.type === "online_pickup" || t.type === "delivery") && (
+                    {(t.type === "online_pickup" || t.type === "delivery") && (
                       <span
-                        title={posOrderTypeLabel(t.type) ?? t.type}
+                        title={posOrderTypeLabel(t.type, t.user?.id) ?? t.type}
                         style={{
                           fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
                           color: t.type === "delivery" ? "#7C2D12" : "#92400E",
@@ -1037,7 +1037,7 @@ export function OpenTicketsPanel({
                           border: `1px solid ${t.type === "delivery" ? "#FDBA74" : "#FDE68A"}`,
                         }}
                       >
-                        {posOrderTypeEmoji(t.type)} {posOrderTypeLabel(t.type)}
+                        {posOrderTypeEmoji(t.type, t.user?.id)} {posOrderTypeLabel(t.type, t.user?.id)}
                       </span>
                     )}
                   </div>

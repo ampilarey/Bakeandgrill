@@ -223,6 +223,11 @@ export function useOrderCreation(params: Params) {
   const [resumedOrderLabel, setResumedOrderLabel] = useState<string | null>(null);
   /** Backend order type (online_pickup, delivery, …) for fulfillment badges. */
   const [resumedOrderType, setResumedOrderType] = useState<string | null>(null);
+  /** Staff who rang the ticket — used to label POS pickup vs app takeaway. */
+  const [resumedStaffUserId, setResumedStaffUserId] = useState<number | null>(null);
+
+  const staffUserIdFromOrder = (order: { user_id?: number | null; user?: { id?: number } | null }) =>
+    order.user_id ?? order.user?.id ?? null;
   /**
    * Snapshot of the totalDue AND tender rows captured when an order
    * was created but payment failed. Used by handleRetryPayment so we
@@ -460,6 +465,7 @@ export function useOrderCreation(params: Params) {
           setResumedIsPaid(false);
           setResumedOrderLabel(null);
           setResumedOrderType(null);
+          setResumedStaffUserId(null);
           params.clearCart();
           params.setSelectedItem(null);
           params.onOrderSettled?.(settledOrderId, cid, cphone);
@@ -796,6 +802,7 @@ export function useOrderCreation(params: Params) {
       setResumedIsPaid(true);
       setResumedOrderLabel(label);
       setResumedOrderType(preflight.order.type ?? null);
+      setResumedStaffUserId(staffUserIdFromOrder(preflight.order));
       setIsEditingActive(false);
       localStorage.removeItem("pos_last_held_order");
       setLastHeldOrderId(null);
@@ -815,6 +822,7 @@ export function useOrderCreation(params: Params) {
 
     setResumedOrderId(orderId);
     setResumedOrderType(response.order.type ?? null);
+    setResumedStaffUserId(staffUserIdFromOrder(response.order));
     setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
     localStorage.removeItem("pos_last_held_order");
@@ -854,6 +862,7 @@ export function useOrderCreation(params: Params) {
     setResumedIsPaid(false);
     setResumedOrderLabel(null);
     setResumedOrderType(null);
+    setResumedStaffUserId(null);
     params.clearCart();
     params.setSelectedItem(null);
   };
@@ -1090,6 +1099,7 @@ export function useOrderCreation(params: Params) {
     resumedIsPaid,
     resumedOrderLabel,
     resumedOrderType,
+    resumedStaffUserId,
     barcode,
     setBarcode,
     handleCheckout,

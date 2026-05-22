@@ -6,7 +6,7 @@ import type { PosCustomer } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { palette } from "../theme";
-import { posOrderTypeEmoji, posOrderTypeLabel } from "../orderTypeLabels";
+import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder } from "../orderTypeLabels";
 
 type AppliedPromo = { code: string; promotionId: number | null; discount: number };
 type AppliedLoyalty = { points: number; discount: number };
@@ -65,6 +65,8 @@ type Props = {
   resumedOrderLabel?: string | null;
   /** Backend type slug for online delivery/pickup badges. */
   resumedOrderType?: string | null;
+  /** Staff user id on the resumed ticket — distinguishes POS pickup from app orders. */
+  resumedStaffUserId?: number | null;
   /** True when the cashier opened the resumed ticket via "Edit" (vs.
    *  via a direct Charge action). Unlocks cart mutations and surfaces
    *  the "💾 Save changes" button. */
@@ -134,9 +136,10 @@ export function OrderCart(p: Props) {
   // "Lock cart for read-only" — charge-only resumes and paid-online view.
   const lockedReadOnly = isResumed && (!editing || !!p.resumedIsPaid);
   const wasHeld = p.resumedFromStatus === "held";
-  const onlineFulfillment = p.resumedOrderType === "online_pickup" || p.resumedOrderType === "delivery";
-  const fulfillmentLabel = posOrderTypeLabel(p.resumedOrderType);
-  const fulfillmentEmoji = posOrderTypeEmoji(p.resumedOrderType);
+  const onlineFulfillment = isResumed
+    && isCustomerAppOrder(p.resumedOrderType, p.resumedStaffUserId);
+  const fulfillmentLabel = posOrderTypeLabel(p.resumedOrderType, p.resumedStaffUserId);
+  const fulfillmentEmoji = posOrderTypeEmoji(p.resumedOrderType, p.resumedStaffUserId);
 
   // ── Two-tap confirm for the "Clear" button ────────────────────
   // One tap on Clear used to wipe the entire cart instantly — 10+

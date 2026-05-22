@@ -943,6 +943,7 @@ function App() {
               resumedIsPaid={order.resumedIsPaid}
               resumedOrderLabel={order.resumedOrderLabel}
               resumedOrderType={order.resumedOrderType}
+              resumedStaffUserId={order.resumedStaffUserId}
               isEditingActive={order.isEditingActive}
               onUnlockEdit={() => order.setIsEditingActive(true)}
               onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}

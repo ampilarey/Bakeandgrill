@@ -594,6 +594,9 @@ export async function getOrder(orderId: number): Promise<{
      *  re-attaches them on resume and the bill SMS still goes to the
      *  right phone. Null/undefined for walk-in tickets. */
     customer?: PosCustomer | null;
+    /** Staff cashier who rang the ticket — null for customer-app orders. */
+    user_id?: number | null;
+    user?: { id: number; name?: string | null } | null;
     items: Array<{
       item_id: number | null;
       item_name: string;
