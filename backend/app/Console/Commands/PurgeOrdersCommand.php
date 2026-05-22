@@ -19,12 +19,6 @@ class PurgeOrdersCommand extends Command
 
     protected $description = 'Permanently delete all orders and related payment/kitchen/receipt data';
 
-    /** Live site path on sg-s2 — test.bakeandgrill.mv is allowed without extra flags. */
-    private function isLiveProductionInstall(): bool
-    {
-        return str_contains(base_path(), '/public_html/');
-    }
-
     /** @var list<string> Tables truncated before orders (child → parent order). */
     private const TRUNCATE_FIRST = [
         'order_item_modifiers',
@@ -39,10 +33,24 @@ class PurgeOrdersCommand extends Command
         'gift_card_transactions',
     ];
 
+    /** Test install on sg-s2 is always allowed; live public_html needs --allow-production. */
+    private function isLiveProductionInstall(): bool
+    {
+        $base = str_replace('\\', '/', base_path());
+
+        if (str_contains($base, 'test.bakeandgrill')) {
+            return false;
+        }
+
+        return str_contains($base, '/public_html');
+    }
+
     public function handle(): int
     {
-        if (app()->environment('production') && !$this->option('allow-production')) {
-            $this->error('Refusing to purge on production. Pass --allow-production if you really mean it.');
+        if ($this->isLiveProductionInstall() && !$this->option('allow-production')) {
+            $this->error('Refusing to purge on the live site (public_html).');
+            $this->line('Install path: ' . base_path());
+            $this->line('Pass --allow-production only if you intend to wipe the LIVE site.');
 
             return self::FAILURE;
         }
