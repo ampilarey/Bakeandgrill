@@ -809,10 +809,9 @@ export async function fetchReceipts(params: {
    *  specifically want the narrower view (e.g. an end-of-shift
    *  "what's still owed me" check). */
   open_only?: boolean;
-  /** Active Orders feed — superset of `open_only`. Includes every
-   *  non-terminal ticket regardless of payment state, so a paid-but-
-   *  cooking ticket stays visible to the cashier until the customer
-   *  physically picks it up. This is the new POS default. */
+  /** Active Orders feed — non-terminal tickets that still need cashier
+   *  action. Paid dine-in/takeaway are excluded (Receipts only); paid
+   *  pickup/delivery stay until picked up or delivered. */
   active_only?: boolean;
   /** Manager view — surface anything cooking with a balance. */
   unpaid_only?: boolean;

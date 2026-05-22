@@ -161,6 +161,8 @@ function App() {
     customerId: number | null;
     customerPhone: string | null;
   } | null>(null);
+  /** After a paid dine-in/takeaway sale, jump to Receipts with this order selected. */
+  const [receiptsFocusOrderId, setReceiptsFocusOrderId] = useState<number | null>(null);
 
   // ── Tables / order type ─────────────────────────────────────────────────────
   // Dine-in is the most common ticket type for an in-store cashier
@@ -346,12 +348,14 @@ function App() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: (orderId, customerId, customerPhone) => {
+    onOrderSettled: (orderId, customerId, customerPhone, settledType) => {
       void refreshOpenTickets();
       void shift.refreshSummary();
-      // Stash the just-paid order so the post-charge action banner
-      // can offer "Print receipt" / "Resend SMS" without a re-fetch.
       setLastPaidOrder({ orderId, customerId, customerPhone });
+      if (settledType === "dine_in" || settledType === "takeaway") {
+        setReceiptsFocusOrderId(orderId);
+        setPane("receipts");
+      }
     },
   });
 
@@ -1012,8 +1016,12 @@ function App() {
 
         {pane === 'receipts' && (
           <ReceiptsPanel
-            onClose={() => setPane("sales")}
+            onClose={() => {
+              setReceiptsFocusOrderId(null);
+              setPane("sales");
+            }}
             shiftId={shift.current?.id ?? null}
+            initialOrderId={receiptsFocusOrderId}
           />
         )}
 

@@ -182,22 +182,30 @@ class OrderController extends Controller
             });
         }
 
-        // Active orders feed — superset of `open_only`. Returns every
-        // ticket that is STILL IN FLIGHT regardless of payment state:
-        //   - held tickets (parked, kitchen hasn't seen them)
-        //   - cooking tickets (pending / in_progress / preparing)
-        //   - ready tickets waiting for customer pickup
-        //   - paid-but-not-completed tickets (cooked + paid, customer
-        //     hasn't physically collected yet — phone-pickup customer
-        //     who paid via BML link)
-        // Excludes the terminal trio (cancelled / refunded / completed)
-        // because those are done — they belong in Receipts.
+        // Active orders feed — tickets the cashier still has operational
+        // work on. Excludes terminal states (cancelled / refunded /
+        // completed / payment_pending).
         //
-        // This is the new POS "Active orders" panel default. Old
-        // `open_only` is kept for any caller that still wants the
-        // narrower held+unpaid view.
+        // Payment + type rules:
+        //   - dine_in / takeaway: only while UNPAID (or partial). Once
+        //     paid the sale is done — it belongs in Receipts, not here.
+        //   - online_pickup / delivery: stay until physically fulfilled,
+        //     even when paid, so staff can Start cooking → Ready →
+        //     Picked up / Delivered.
         if ($request->filled('active_only') && $request->boolean('active_only')) {
             $query->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'payment_pending']);
+
+            $query->where(function ($w) {
+                $w->whereIn('type', ['online_pickup', 'delivery'])
+                    ->orWhere(function ($w2) {
+                        $w2->whereIn('type', ['dine_in', 'takeaway'])
+                            ->where(function ($w3) {
+                                $w3->whereNull('payment_status')
+                                    ->orWhereIn('payment_status', ['unpaid', 'partial']);
+                            });
+                    })
+                    ->orWhereNotIn('type', ['dine_in', 'takeaway', 'online_pickup', 'delivery']);
+            });
         }
 
         // Cashier scope for receipts/history only — active orders are venue-wide.

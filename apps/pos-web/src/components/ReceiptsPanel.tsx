@@ -8,6 +8,8 @@ type Props = {
   onClose: () => void;
   shiftId?: number | null;
   defaultScope?: "today" | "shift";
+  /** Select this order when the list loads (post-charge redirect). */
+  initialOrderId?: number | null;
 };
 
 /**
@@ -16,7 +18,7 @@ type Props = {
  * send via SMS, refund, or copy the public receipt link. Replaces the
  * old "no way to find past sales from the POS" gap.
  */
-export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today" }: Props) {
+export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today", initialOrderId = null }: Props) {
   const [scope, setScope] = useState<"today" | "shift" | "all">(defaultScope);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -46,7 +48,11 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today" }: Prop
         });
         if (!cancelled) {
           setItems(res.data);
-          if (res.data.length && selectedId == null) setSelectedId(res.data[0].id);
+          if (initialOrderId != null && res.data.some((r) => r.id === initialOrderId)) {
+            setSelectedId(initialOrderId);
+          } else if (res.data.length && selectedId == null) {
+            setSelectedId(res.data[0].id);
+          }
         }
       } catch (e) {
         if (!cancelled) setErr((e as Error).message);
@@ -56,7 +62,7 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today" }: Prop
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, debouncedQ, shiftId, today]);
+  }, [scope, debouncedQ, shiftId, today, initialOrderId]);
 
   const selected = items.find((r) => r.id === selectedId) ?? null;
 

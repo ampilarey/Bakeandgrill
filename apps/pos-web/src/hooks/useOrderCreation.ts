@@ -119,7 +119,12 @@ type Params = {
   setAppliedPromo?: (p: { code: string; promotionId: number | null; discount: number } | null) => void;
   setAppliedLoyalty?: (l: { points: number; discount: number } | null) => void;
   setAppliedGiftCard?: (g: { code: string; discount: number; cardBalance: number } | null) => void;
-  onOrderSettled?: (orderId: number, customerId: number | null, customerPhone: string | null) => void;
+  onOrderSettled?: (
+    orderId: number,
+    customerId: number | null,
+    customerPhone: string | null,
+    orderType?: string | null,
+  ) => void;
 };
 
 export function useOrderCreation(params: Params) {
@@ -457,6 +462,7 @@ export function useOrderCreation(params: Params) {
           const cid = params.customerId;
           const cphone = params.customerPhone;
           const settledOrderId = resumedOrderId;
+          const settledType = resumedOrderType;
           setResumedOrderId(null);
           setResumedOrderTotal(null);
           setResumedItemsFingerprint(null);
@@ -468,7 +474,7 @@ export function useOrderCreation(params: Params) {
           setResumedStaffUserId(null);
           params.clearCart();
           params.setSelectedItem(null);
-          params.onOrderSettled?.(settledOrderId, cid, cphone);
+          params.onOrderSettled?.(settledOrderId, cid, cphone, settledType);
         }
         return settled;
       } finally {
@@ -538,7 +544,12 @@ export function useOrderCreation(params: Params) {
         // we never cleared this flag on success. The ReceiptActions
         // banner takes over the "what now?" duty for paid orders.
         setLastCreatedOrderId(null);
-        params.onOrderSettled?.(response.order.id, cid, cphone);
+        params.onOrderSettled?.(
+          response.order.id,
+          cid,
+          cphone,
+          payload.type ?? mapOrderType(params.orderType),
+        );
       }
       return settled;
     } catch (err: unknown) {
@@ -621,7 +632,12 @@ export function useOrderCreation(params: Params) {
           params.clearCart();
           params.setSelectedItem(null);
           setLastCreatedOrderId(null);
-          params.onOrderSettled?.(orderId, cid, cphone);
+          params.onOrderSettled?.(
+            orderId,
+            cid,
+            cphone,
+            mapOrderType(params.orderType),
+          );
         }
       } finally {
         setIsSubmitting(false);

@@ -264,4 +264,45 @@ class OpenOrderContinuationTest extends TestCase
         $this->assertContains($delivery->id, $ids);
         $this->assertNotContains($posOrderId, $ids);
     }
+
+    public function test_paid_dine_in_and_takeaway_drop_out_of_active_orders(): void
+    {
+        Sanctum::actingAs($this->sara, ['staff']);
+        $this->openShiftFor($this->sara);
+
+        $dineIn = Order::factory()->dineIn()->pending()->create([
+            'user_id' => $this->sara->id,
+            'payment_status' => 'paid',
+        ]);
+        $takeaway = Order::factory()->takeaway()->pending()->create([
+            'user_id' => $this->sara->id,
+            'payment_status' => 'paid',
+        ]);
+        $unpaidDineIn = Order::factory()->dineIn()->pending()->create([
+            'user_id' => $this->sara->id,
+            'payment_status' => 'unpaid',
+        ]);
+
+        $ids = collect($this->getJson('/api/orders?active_only=1')->assertOk()->json('data'))
+            ->pluck('id');
+
+        $this->assertFalse($ids->contains($dineIn->id));
+        $this->assertFalse($ids->contains($takeaway->id));
+        $this->assertTrue($ids->contains($unpaidDineIn->id));
+    }
+
+    public function test_paid_pickup_stays_in_active_orders(): void
+    {
+        Sanctum::actingAs($this->sara, ['staff']);
+
+        $pickup = Order::factory()->onlinePickup()->pending()->create([
+            'user_id' => $this->sara->id,
+            'payment_status' => 'paid',
+        ]);
+
+        $ids = collect($this->getJson('/api/orders?active_only=1')->assertOk()->json('data'))
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($pickup->id));
+    }
 }
