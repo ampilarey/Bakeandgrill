@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchReceipts, fetchPosQuickNotes, pingAuth, fetchMe } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -291,24 +291,7 @@ function App() {
   const refreshOpenTickets = useCallback(async () => {
     if (!isLoggedIn) return;
     try {
-      // Count what the Active Orders panel actually shows. Two earlier
-      // bugs here, both fixed:
-      //   1. Badge used `held_only` while the panel used `active_only`,
-      //      so the badge undercounted by every cooking/ready ticket.
-      //   2. Badge read `res.meta.total`, but OrderController::index
-      //      returns a bare Laravel paginator which puts `total` at
-      //      the TOP level (no meta wrapper). Combined with the
-      //      backend's `min(100, max(10, per_page))` clamp on per_page,
-      //      the fallback to `res.data.length` topped out at 10 even
-      //      when 50 tickets were live.
-      //
-      // Same scope as OpenTicketsPanel: this cashier's tickets + online/delivery.
-      const res = await fetchReceipts({
-        active_only: true,
-        per_page: 1,
-      });
-      const total = res.total ?? res.data.length;
-      setOpenTicketsCount(total);
+      setOpenTicketsCount(await countActiveOrders());
     } catch { /* best-effort */ }
   }, [isLoggedIn]);
 

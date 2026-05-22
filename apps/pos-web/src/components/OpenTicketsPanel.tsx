@@ -94,7 +94,10 @@ export function OpenTicketsPanel({
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
   /** Server total for the current list scope (may exceed loaded rows). */
   const [activeTotal, setActiveTotal] = useState(0);
-  const [listScope, setListScope] = useState<"station" | "venue">("station");
+  // Default venue-wide so the list matches the sales-page badge (which
+  // always counts every in-flight ticket). Managers can narrow to this
+  // iPad via the scope chips when they need station-only view.
+  const [listScope, setListScope] = useState<"station" | "venue">("venue");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   // Per-row "action in progress" indicator (sendBill is the only async

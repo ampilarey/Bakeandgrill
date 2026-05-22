@@ -858,6 +858,12 @@ export async function fetchReceipts(params: {
   return request(`/orders?${qs.toString()}`);
 }
 
+/** Venue-wide active order count — matches OpenTicketsPanel default scope. */
+export async function countActiveOrders(): Promise<number> {
+  const res = await fetchReceipts({ active_only: true, per_page: 1, page: 1 });
+  return res.total ?? res.data?.length ?? 0;
+}
+
 /** Active orders venue-wide (every station). Manager/owner scope. */
 export async function fetchActiveOrdersVenueWide(): Promise<{
   data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
