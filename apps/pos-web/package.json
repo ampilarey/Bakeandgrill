@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "node scripts/generate-version.mjs && vite",
+    "build": "node scripts/generate-version.mjs && tsc && vite build",
     "preview": "vite preview",
     "test": "vitest"
   },

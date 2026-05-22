@@ -1,0 +1,11 @@
+# POS PWA shell files — must revalidate quickly after deploy (iPad standalone cache).
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest|manifest\.json|pos-version\.json)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>

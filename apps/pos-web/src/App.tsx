@@ -34,6 +34,9 @@ import { SideDrawer }        from "./components/SideDrawer";
 import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
 import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
+import { PosUpdateBanner, PosVersionLabel } from "./components/PosUpdateBanner";
+import { usePosAppUpdate } from "./hooks/usePosAppUpdate";
+import { POS_BUILD_INFO } from "./posBuildInfo";
 
 import { palette } from "./theme";
 
@@ -359,6 +362,22 @@ function App() {
     },
   });
 
+  const posUpdate = usePosAppUpdate({
+    cartHasItems: cart.cartItems.length > 0,
+    resumedOrderId: order.resumedOrderId,
+    isEditingActive: order.isEditingActive,
+    showCharge,
+    showSendBill,
+    showSaveTicket,
+    showOpenShift,
+    showCloseShift,
+    showPreferences,
+    isSubmitting: order.isSubmitting,
+    pendingPaymentForOrderId: order.pendingPaymentForOrderId,
+    offlineQueueCount,
+    shiftCashFormOpen: false,
+  });
+
   // ── Load tables after login ─────────────────────────────────────────────────
   // We load the list so the table picker has data, but we do NOT auto-
   // select the first active table. Auto-selecting silently routed
@@ -617,51 +636,6 @@ function App() {
     setIsLocked(true);
   }, [isLoggedIn]);
 
-  /**
-   * Force the PWA shell (HTML + JS bundle) to reload from the server.
-   *
-   * Background: when the POS is installed as a PWA on iOS / Android
-   * and a new deploy ships, the device keeps serving the cached
-   * bundle until the user manually hard-refreshes — which is hard to
-   * do from a home-screen app with no browser chrome. This action
-   * gives the cashier a one-tap "get me the latest version" button.
-   *
-   * It clears every Cache Storage entry (in case a service worker
-   * landed in a future deploy), unregisters any service workers,
-   * then reloads the page. Cart/shift state is in-memory so closing
-   * the tab loses it — we don't reload mid-ticket without warning.
-   */
-  const forceAppReload = useCallback(async () => {
-    const hasCart = cart.cartItems.length > 0;
-    if (hasCart) {
-      const ok = window.confirm(
-        'Reloading discards the current cart. Continue?',
-      );
-      if (!ok) return;
-    }
-    try {
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k)));
-      }
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((r) => r.unregister()));
-      }
-    } catch {
-      // Best-effort cleanup — never block the reload on a cache API
-      // hiccup. The reload below will still pick up new HTML thanks
-      // to the no-cache meta tags in index.html.
-    }
-    // Cache-busting query so iOS Safari (which can be aggressive with
-    // its memory cache even with no-cache headers) is forced to
-    // re-fetch index.html. The browser strips the query for asset
-    // resolution; only HTML sees it.
-    const url = new URL(window.location.href);
-    url.searchParams.set('_r', Date.now().toString(36));
-    window.location.replace(url.toString());
-  }, [cart.cartItems.length]);
-
   // ── Auto-lock on inactivity ─────────────────────────────────────
   // Per-staff minutes from admin → My Account (default 5). 0 = never.
   // Paused while any blocking modal is open.
@@ -818,8 +792,9 @@ function App() {
             <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.1 }}>
               {paneTitle(pane)}
             </div>
-            <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2 }}>
-              {cashierName || 'Cashier'} · {deviceId}
+            <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span>{cashierName || 'Cashier'} · {deviceId}</span>
+              <PosVersionLabel version={POS_BUILD_INFO.version} build={POS_BUILD_INFO.build} />
             </div>
           </div>
         </div>
@@ -880,6 +855,19 @@ function App() {
           )}
         </div>
       </header>
+
+      <PosUpdateBanner
+        visible={isLoggedIn && !isLocked && posUpdate.bannerVisible}
+        updateBlocked={posUpdate.updateBlocked}
+        applying={posUpdate.applying}
+        serverVersion={posUpdate.serverBuild?.version ?? null}
+        onLater={posUpdate.dismissBanner}
+        onUpdateNow={() => {
+          void posUpdate.applyUpdate().then((res) => {
+            if (!res.ok && res.message) order.flashError(res.message);
+          });
+        }}
+      />
 
       {/* Status banners */}
       {(order.statusMessage || ops.opsMessage || lastPaidOrder) && (
@@ -1102,7 +1090,13 @@ function App() {
             return;
           }
           if (id === "check_update") {
-            void forceAppReload();
+            void posUpdate.checkNow().then((available) => {
+              if (available) {
+                order.flashNotice("Update available — use the banner when ready.");
+              } else {
+                order.flashNotice("You're on the latest POS version.");
+              }
+            });
             return;
           }
           if (id === "preferences") {

@@ -1103,6 +1103,7 @@ export function useOrderCreation(params: Params) {
     setStatusMessage,
     clearStatus,
     flashError,
+    flashNotice,
     isSubmitting,
     lastHeldOrderId,
     lastCreatedOrderId,

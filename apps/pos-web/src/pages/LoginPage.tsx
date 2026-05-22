@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { PosVersionLabel } from '../components/PosUpdateBanner';
+import { POS_BUILD_INFO } from '../posBuildInfo';
 import { palette, radius, shadow, space, type, btnPrimary, btnSecondary, inputField } from '../theme';
 
 type Props = {
@@ -257,6 +259,9 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
             <a href="/" style={{ ...type.caption, color: palette.panelSubtle, textDecoration: 'none' }}>
               ← Main website
             </a>
+            <div style={{ marginTop: 8 }}>
+              <PosVersionLabel version={POS_BUILD_INFO.version} build={POS_BUILD_INFO.build} />
+            </div>
           </div>
 
           {import.meta.env.DEV && (

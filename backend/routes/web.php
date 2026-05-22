@@ -117,6 +117,19 @@ Route::redirect('/t/{token}', '/order/track/{token}', 301)
     ->where('token', '[A-Za-z0-9]+')
     ->name('order.track.short');
 
+// POS version manifest — must never be cached (iPad PWA update checks).
+Route::get('/pos-version.json', function () {
+    $path = public_path('pos/pos-version.json');
+    abort_unless(is_file($path), 404, 'POS version file not deployed.');
+
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'application/json; charset=utf-8',
+        'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma' => 'no-cache',
+        'Expires' => '0',
+    ]);
+})->name('pos.version');
+
 Route::get('/order/{any}', function () {
     $path = public_path('order/index.html');
     abort_if(!file_exists($path), 503, 'Order app not deployed.');
