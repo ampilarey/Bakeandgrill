@@ -223,7 +223,7 @@ export function useOrderCreation(params: Params) {
   const [resumedOrderLabel, setResumedOrderLabel] = useState<string | null>(null);
   /** Backend order type (online_pickup, delivery, …) for fulfillment badges. */
   const [resumedOrderType, setResumedOrderType] = useState<string | null>(null);
-  /** Staff who rang the ticket — used to label POS pickup vs app takeaway. */
+  /** Staff who rang the ticket — used to label POS pickup vs app online pickup. */
   const [resumedStaffUserId, setResumedStaffUserId] = useState<number | null>(null);
 
   const staffUserIdFromOrder = (order: { user_id?: number | null; user?: { id?: number } | null }) =>

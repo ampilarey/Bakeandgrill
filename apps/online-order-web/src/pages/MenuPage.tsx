@@ -343,13 +343,13 @@ export function MenuPage() {
 
         {/* Online ordering status bar */}
         {isOpen !== null && (
-          <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'takeaway-only') : 'closed'}`}>
+          <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'pickup-only') : 'closed'}`}>
             <span className="ordering-status-bar-dot" />
             <span className="ordering-status-bar-text">
               {isOpen
                 ? deliveryAvailable
                   ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}${waitMinutes !== null ? ` · ~${waitMinutes} min` : ''}`
-                  : `Online ordering is open · Takeaway only${nextDeliveryWindow ? ` · Delivery from ${fmtOrderingTime(nextDeliveryWindow)}` : ''}${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
+                  : `Online ordering is open · Pickup only${nextDeliveryWindow ? ` · Delivery from ${fmtOrderingTime(nextDeliveryWindow)}` : ''}${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
                 : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
               }
             </span>

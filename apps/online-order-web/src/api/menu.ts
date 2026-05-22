@@ -5,7 +5,7 @@ import { request } from './client';
 
 export type { MenuItem };
 
-/** Sales channel for public menu API (`online_pickup` = takeaway, `delivery` = delivery). */
+/** Sales channel for public menu API (`online_pickup` = pickup, `delivery` = delivery). */
 export type SalesChannel = 'online_pickup' | 'delivery';
 
 const SALES_CHANNEL_KEY = 'bakegrill_sales_channel';
@@ -46,7 +46,7 @@ export interface OnlineOrderingStatus {
   current_close: string | null;
   /** ISO 8601 start of the next window (when closed). Used for "Opens X:XX PM". */
   next_open_window: string | null;
-  /** Whether delivery is currently available (false = takeaway only). */
+  /** Whether delivery is currently available (false = pickup only). */
   delivery_available: boolean;
   /** ISO 8601 start of the next delivery window, when delivery is currently unavailable. */
   next_delivery_window: string | null;

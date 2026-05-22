@@ -48,7 +48,7 @@
                                     <td style="font-size:13px; font-weight:600; color:#0f172a; text-align:right; padding-top:8px;">
                                         @php
                                             $typeLabels = [
-                                                'online_pickup' => 'Takeaway (Online)',
+                                                'online_pickup' => 'Online Pickup',
                                                 'takeaway'      => 'Takeaway',
                                                 'delivery'      => 'Delivery',
                                                 'dine_in'       => 'Dine In',

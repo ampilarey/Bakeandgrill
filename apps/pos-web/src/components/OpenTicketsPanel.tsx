@@ -811,7 +811,7 @@ export function OpenTicketsPanel({
           options={[
             { key: "type:dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
             { key: "type:takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
-            { key: "type:online_pickup", label: "📦 Pickup", count: typeCounts.online_pickup },
+            { key: "type:online_pickup", label: "📦 Online Pickup", count: typeCounts.online_pickup },
             { key: "type:delivery", label: "🚗 Delivery", count: typeCounts.delivery },
           ]}
           selected={activeFilter}

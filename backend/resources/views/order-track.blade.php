@@ -4,7 +4,7 @@
     $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
     $waLink = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
     $typeLabels = [
-        'online_pickup' => 'Takeaway (Online)',
+        'online_pickup' => 'Online Pickup',
         'takeaway' => 'Takeaway',
         'delivery' => 'Delivery',
         'dine_in' => 'Dine-in',

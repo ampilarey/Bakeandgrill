@@ -18,7 +18,7 @@ interface CartContextValue {
   addItem: (item: Item, quantity: number, modifiers?: Modifier[], variant?: Variant | null) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
-  /** Remove lines whose item id is not in the allowed set (e.g. after switching takeaway ↔ delivery). */
+  /** Remove lines whose item id is not in the allowed set (e.g. after switching pickup ↔ delivery). */
   pruneCartToAllowedItemIds: (allowedIds: Set<number>) => void;
 }
 

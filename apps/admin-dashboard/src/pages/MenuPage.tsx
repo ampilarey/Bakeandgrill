@@ -204,7 +204,7 @@ function CategoryFormModal({
 const SALES_CHANNELS = [
   { id: 'dine_in', label: 'Dine-in' },
   { id: 'takeaway', label: 'Takeaway (POS)' },
-  { id: 'online_pickup', label: 'Online takeaway' },
+  { id: 'online_pickup', label: 'Online pickup' },
   { id: 'delivery', label: 'Delivery' },
 ] as const;
 

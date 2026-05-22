@@ -529,7 +529,7 @@ function DeliverySettings() {
 
       <div style={{ padding: '12px 16px', background: '#FFF7ED', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
         <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.6 }}>
-          💡 When delivery is off or outside schedule, the order app shows an amber <strong>"Takeaway only"</strong> pill. Customers can still place takeaway orders.
+          💡 When delivery is off or outside schedule, the order app shows an amber <strong>"Pickup only"</strong> pill. Customers can still place pickup orders.
         </p>
       </div>
     </div>

@@ -33,7 +33,7 @@ export type CartItem = {
   taxRate?: number;
 };
 
-export type OrderType = "takeaway" | "delivery";
+export type OrderType = "pickup" | "delivery";
 
 export type DeliveryForm = {
   address_line1: string;
@@ -118,7 +118,7 @@ export function useCheckout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [orderType, setOrderType]   = useState<OrderType>("takeaway");
+  const [orderType, setOrderType]   = useState<OrderType>("pickup");
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
 

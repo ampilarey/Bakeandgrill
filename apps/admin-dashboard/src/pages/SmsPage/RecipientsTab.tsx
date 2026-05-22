@@ -11,7 +11,7 @@ import {
 import { Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH } from '../../components/Layout';
 
 const ORDER_TYPES = [
-  { value: 'online_pickup', label: 'Takeaway' },
+  { value: 'online_pickup', label: 'Online Pickup' },
   { value: 'delivery', label: 'Delivery' },
   { value: 'dine_in', label: 'Dine-in' },
 ];
@@ -443,7 +443,7 @@ export function RecipientsTab() {
                           <Badge label="All orders" color="green" />
                         ) : orderTypes && orderTypes.length > 0 ? (
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {orderTypes.map(t => <Badge key={t} label={t.replace('online_pickup', 'Takeaway').replace('dine_in', 'Dine-in').replace('delivery', 'Delivery')} color="blue" />)}
+                            {orderTypes.map(t => <Badge key={t} label={t.replace('online_pickup', 'Online Pickup').replace('dine_in', 'Dine-in').replace('delivery', 'Delivery')} color="blue" />)}
                           </div>
                         ) : (
                           <span style={{ color: '#9C8E7E', fontSize: 12 }}>Not configured</span>

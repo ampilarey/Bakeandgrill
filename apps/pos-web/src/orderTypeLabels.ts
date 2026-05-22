@@ -14,7 +14,7 @@ export function posOrderTypeLabel(
 ): string | null {
   if (!type) return null;
   if (type === "online_pickup") {
-    return isCustomerAppOrder(type, staffUserId) ? "Online Takeaway" : "Pickup";
+    return isCustomerAppOrder(type, staffUserId) ? "Online Pickup" : "Pickup";
   }
   const map: Record<string, string> = {
     dine_in: "Dine-in",

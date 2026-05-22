@@ -41,7 +41,7 @@ const TYPE_OPTIONS = [
 function typeLabel(t: string) {
   const m: Record<string, string> = {
     dine_in: 'Dine In', takeaway: 'Takeaway',
-    online_pickup: 'Online', delivery: 'Delivery', preorder: 'Pre-order',
+    online_pickup: 'Online Pickup', delivery: 'Delivery', preorder: 'Pre-order',
   };
   return m[t] ?? t;
 }

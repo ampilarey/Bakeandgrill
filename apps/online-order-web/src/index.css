@@ -840,7 +840,7 @@ a { text-decoration: none; color: inherit; }
   color: #6EE7A0;
   border: 1px solid rgba(110, 231, 160, 0.25);
 }
-.ordering-status-bar.takeaway-only {
+.ordering-status-bar.pickup-only {
   background: rgba(120, 75, 0, 0.9);
   color: #FDE68A;
   border: 1px solid rgba(253, 230, 138, 0.25);
@@ -857,7 +857,7 @@ a { text-decoration: none; color: inherit; }
   flex-shrink: 0;
 }
 .ordering-status-bar.open           .ordering-status-bar-dot { background: #4ADE80; box-shadow: 0 0 6px #4ADE80; animation: pulse-dot 2s infinite; }
-.ordering-status-bar.takeaway-only  .ordering-status-bar-dot { background: #FCD34D; box-shadow: 0 0 6px #FCD34D; animation: pulse-dot 2s infinite; }
+.ordering-status-bar.pickup-only  .ordering-status-bar-dot { background: #FCD34D; box-shadow: 0 0 6px #FCD34D; animation: pulse-dot 2s infinite; }
 .ordering-status-bar.closed         .ordering-status-bar-dot { background: #FCA5A5; }
 .ordering-status-bar-text {
   overflow: hidden;

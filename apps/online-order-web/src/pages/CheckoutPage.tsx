@@ -222,7 +222,7 @@ export function CheckoutPage() {
   const deliveryBlocked = orderElig != null && !orderElig.delivery.accepting;
   const orderingGateClosed = onlineGate != null && !onlineGate.open;
   useEffect(() => {
-    if (deliveryBlocked && orderType === 'delivery') setOrderType('takeaway');
+    if (deliveryBlocked && orderType === 'delivery') setOrderType('pickup');
   }, [deliveryBlocked, orderType, setOrderType]);
 
   if (cart.length === 0) {
@@ -252,7 +252,7 @@ export function CheckoutPage() {
   const sectionOrderType = (
     <SectionCard title="Order Type">
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {(['takeaway', 'delivery'] as const).map((type) => (
+        {(['pickup', 'delivery'] as const).map((type) => (
           <button
             key={type}
             type="button"
@@ -268,13 +268,13 @@ export function CheckoutPage() {
             }}
             aria-pressed={orderType === type}
           >
-            {type === 'takeaway' ? '🥡 Takeaway' : '🛵 Delivery'}
+            {type === 'pickup' ? '🥡 Pickup' : '🛵 Delivery'}
           </button>
         ))}
       </div>
       {deliveryBlocked && (
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-          {orderElig.delivery.message ?? 'Delivery is not available right now. Please choose takeaway.'}
+          {orderElig.delivery.message ?? 'Delivery is not available right now. Please choose pickup.'}
         </p>
       )}
     </SectionCard>

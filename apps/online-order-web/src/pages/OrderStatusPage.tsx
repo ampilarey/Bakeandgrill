@@ -225,7 +225,7 @@ function stepIndex(status: string): number {
 function orderTypeLabel(type: string): string {
   const map: Record<string, string> = {
     dine_in: "Dine In", takeaway: "Takeaway",
-    online_pickup: "Takeaway (Online)", delivery: "Delivery", preorder: "Pre-order",
+    online_pickup: "Online Pickup", delivery: "Delivery", preorder: "Pre-order",
   };
   return map[type] ?? type;
 }

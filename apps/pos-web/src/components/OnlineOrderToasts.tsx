@@ -108,7 +108,7 @@ function ToastCard({
             {order.type === "delivery"
               ? `${posOrderTypeEmoji(order.type)} New delivery order`
               : order.type === "online_pickup"
-                ? `${posOrderTypeEmoji(order.type)} New online takeaway`
+                ? `${posOrderTypeEmoji(order.type)} New online pickup`
                 : "New online order"}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLOR.text, fontVariantNumeric: "tabular-nums" }}>

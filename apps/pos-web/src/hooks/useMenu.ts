@@ -17,7 +17,7 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000;
  * Mirror of the admin's order-type → sales-channel mapping in
  * `KitchenMenuResolver::channelForOrderType`. Keeps the POS aligned
  * with the same channel constants the backend filters on, so an item
- * the admin marked "Takeaway only" actually disappears when the
+ * the admin marked "Online pickup only" actually disappears when the
  * cashier switches to Dine-in.
  */
 function channelForOrderType(orderType: "Dine-in" | "Takeaway" | "Pickup"): PosSalesChannel {
