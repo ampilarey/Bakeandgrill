@@ -8,6 +8,7 @@ use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Models\Customer;
 use App\Models\SmsLog;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -80,39 +81,50 @@ class SmsService
         }
 
         if ($existing !== null) {
-            $existing->update([
-                'message' => $sms->message,
-                'to' => $normalized,
-                'type' => $sms->type,
-                'status' => 'queued',
-                'encoding' => $estimate['encoding'],
-                'segments' => $estimate['segments'],
-                'cost_estimate_mvr' => $estimate['cost_mvr'],
-                'customer_id' => $sms->customerId,
-                'campaign_id' => $sms->campaignId,
-                'reference_type' => $sms->referenceType,
-                'reference_id' => $sms->referenceId,
-                'gateway_response' => null,
-                'error_message' => null,
-                'sent_at' => null,
-            ]);
-            $log = $existing->fresh();
+            $log = $this->refreshSmsLogForRetry($existing, $sms, $normalized, $estimate);
         } else {
-            $log = SmsLog::create([
-                'message' => $sms->message,
-                'to' => $normalized,
-                'type' => $sms->type,
-                'status' => 'queued',
-                'encoding' => $estimate['encoding'],
-                'segments' => $estimate['segments'],
-                'cost_estimate_mvr' => $estimate['cost_mvr'],
-                'provider' => 'dhiraagu',
-                'customer_id' => $sms->customerId,
-                'campaign_id' => $sms->campaignId,
-                'reference_type' => $sms->referenceType,
-                'reference_id' => $sms->referenceId,
-                'idempotency_key' => $sms->idempotencyKey,
-            ]);
+            try {
+                $log = SmsLog::create([
+                    'message' => $sms->message,
+                    'to' => $normalized,
+                    'type' => $sms->type,
+                    'status' => 'queued',
+                    'encoding' => $estimate['encoding'],
+                    'segments' => $estimate['segments'],
+                    'cost_estimate_mvr' => $estimate['cost_mvr'],
+                    'provider' => 'dhiraagu',
+                    'customer_id' => $sms->customerId,
+                    'campaign_id' => $sms->campaignId,
+                    'reference_type' => $sms->referenceType,
+                    'reference_id' => $sms->referenceId,
+                    'idempotency_key' => $sms->idempotencyKey,
+                ]);
+            } catch (QueryException $e) {
+                // Unique idempotency_key is global, but the lookup above only
+                // scans 24h. After orders:purge reuses numeric IDs, a stale row
+                // from months ago can block inserts — recover by updating it.
+                if (!$this->isDuplicateIdempotencyKey($e) || !$sms->idempotencyKey) {
+                    throw $e;
+                }
+
+                $stale = SmsLog::where('idempotency_key', $sms->idempotencyKey)->first();
+                if ($stale === null) {
+                    throw $e;
+                }
+
+                if ($stale->status === 'sent'
+                    && $stale->reference_type === $sms->referenceType
+                    && $stale->reference_id === $sms->referenceId
+                ) {
+                    Log::info('SMS: Duplicate send prevented (legacy row already sent)', [
+                        'key' => $sms->idempotencyKey,
+                    ]);
+
+                    return $stale;
+                }
+
+                $log = $this->refreshSmsLogForRetry($stale, $sms, $normalized, $estimate);
+            }
         }
 
         [$success, $response, $error] = $this->provider->send($normalized, $sms->message);
@@ -127,6 +139,41 @@ class SmsService
         ]);
 
         return $log->fresh();
+    }
+
+    /** @param array{encoding: string, segments: int, cost_mvr: float} $estimate */
+    private function refreshSmsLogForRetry(
+        SmsLog $log,
+        SmsMessage $sms,
+        string $normalized,
+        array $estimate,
+    ): SmsLog {
+        $log->update([
+            'message' => $sms->message,
+            'to' => $normalized,
+            'type' => $sms->type,
+            'status' => 'queued',
+            'encoding' => $estimate['encoding'],
+            'segments' => $estimate['segments'],
+            'cost_estimate_mvr' => $estimate['cost_mvr'],
+            'customer_id' => $sms->customerId,
+            'campaign_id' => $sms->campaignId,
+            'reference_type' => $sms->referenceType,
+            'reference_id' => $sms->referenceId,
+            'gateway_response' => null,
+            'error_message' => null,
+            'sent_at' => null,
+        ]);
+
+        return $log->fresh();
+    }
+
+    private function isDuplicateIdempotencyKey(QueryException $e): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, 'sms_logs_idempotency_key_unique')
+            || (str_contains($message, 'Duplicate entry') && str_contains($message, 'idempotency_key'));
     }
 
     /**

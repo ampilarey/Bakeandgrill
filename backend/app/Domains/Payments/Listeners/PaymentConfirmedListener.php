@@ -72,15 +72,26 @@ class PaymentConfirmedListener implements ShouldQueue
             return;
         }
 
-        // Already fully processed — nothing to do (idempotency guard).
-        // paid_at being set means we already ran the full payment transition,
-        // even if the order is still 'pending' waiting for kitchen action.
-        if ($order->paid_at !== null || in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
-            return;
-        }
-
         $paidLaar = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
         $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+
+        // BML path sets paid_at synchronously inside PaymentService::confirmPayment
+        // before this queued listener runs. If the sync SMS failed or was skipped,
+        // still attempt delivery here (SmsService idempotency prevents duplicates).
+        if ($order->paid_at !== null || in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+            if ($paidLaar >= $orderLaar && $order->status !== 'cancelled') {
+                try {
+                    $this->confirmationNotifier->notify($order->loadMissing(['customer', 'payments']));
+                } catch (\Throwable $e) {
+                    Log::error('PaymentConfirmedListener: SMS retry failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return;
+        }
 
         Log::info('PaymentConfirmedListener: checking full payment', [
             'payment_id' => $data->paymentId,

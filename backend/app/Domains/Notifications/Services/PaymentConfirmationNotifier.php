@@ -8,6 +8,7 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Enums\OrderType;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
+use App\Support\OrderTrackingUrl;
 use App\Models\Receipt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -21,7 +22,7 @@ use Illuminate\Support\Str;
  *      (inside DB::afterCommit — fires immediately when payment is confirmed).
  *   2. Queued via SendPaymentConfirmationListener as a retry fallback.
  *
- * The SmsService idempotency key ('order:paid:confirm:{id}') prevents duplicate
+ * The SmsService idempotency key ('order:paid:confirm:{order_number}') prevents duplicate
  * SMS delivery — whichever path fires first wins; the second is a no-op.
  */
 class PaymentConfirmationNotifier
@@ -37,15 +38,21 @@ class PaymentConfirmationNotifier
     {
         $order->loadMissing(['customer', 'payments']);
 
-        $phone = $order->customer?->phone;
+        $phone = $this->resolveRecipientPhone($order);
         $email = $order->customer?->email;
         $name = $order->customer?->name ?? 'Customer';
 
         if (!$phone) {
+            Log::warning('PaymentConfirmationNotifier: no recipient phone — SMS skipped', [
+                'order_id' => $order->id,
+                'order_type' => $order->type,
+                'customer_id' => $order->customer_id,
+            ]);
+
             return;
         }
 
-        $isOnline = in_array($order->type, self::ONLINE_TYPES, true);
+        $isOnline = in_array((string) $order->type, self::ONLINE_TYPES, true);
 
         // Ensure a Receipt row exists for every paid order (online: for completion SMS + web receipt; POS: SMS + email).
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
@@ -71,9 +78,9 @@ class PaymentConfirmationNotifier
             // when it's ready" so the cashier doesn't get phone calls
             // asking for updates. The lifecycle SMS will follow at
             // 'ready' (handled by SendCustomerOrderStatusSmsListener).
-            $url = rtrim(config('frontend.order_status_url', config('app.url') . '/order/orders'), '/') . '/' . $order->id . '?tok=' . $order->tracking_token;
+            $url = $this->buildOrderStatusUrl($order);
             $method = $this->paymentMethodLabel($order);
-            $readyHint = $order->type === OrderType::Delivery->value
+            $readyHint = (string) $order->type === OrderType::Delivery->value
                 ? "We'll text you when our rider is on the way."
                 : "We'll text you when it's ready for pickup.";
             $message = 'Bake & Grill: Payment received'
@@ -97,7 +104,7 @@ class PaymentConfirmationNotifier
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,
-                idempotencyKey: 'order:paid:confirm:' . $order->id,
+                idempotencyKey: 'order:paid:confirm:' . $order->order_number,
             ));
         } catch (\Throwable $e) {
             Log::error('PaymentConfirmationNotifier: SMS failed', [
@@ -132,7 +139,7 @@ class PaymentConfirmationNotifier
             ->pluck('method')
             ->filter()
             ->map(fn ($m) => match ((string) $m) {
-                'bml_pay', 'bml', 'online' => 'BML Pay',
+                'bml_pay', 'bml', 'bml_connect', 'online' => 'BML Pay',
                 'cash'                     => 'cash',
                 'card'                     => 'card',
                 'gift_card'                => 'gift card',
@@ -148,5 +155,27 @@ class PaymentConfirmationNotifier
 
         // "BML Pay" or "cash + card" (rare split-tender case)
         return $methods->implode(' + ');
+    }
+
+    private function resolveRecipientPhone(Order $order): ?string
+    {
+        $phone = $order->customer?->phone;
+        if (is_string($phone) && trim($phone) !== '') {
+            return $phone;
+        }
+
+        if ((string) $order->type === OrderType::Delivery->value) {
+            $deliveryPhone = $order->delivery_contact_phone;
+            if (is_string($deliveryPhone) && trim($deliveryPhone) !== '') {
+                return $deliveryPhone;
+            }
+        }
+
+        return null;
+    }
+
+    private function buildOrderStatusUrl(Order $order): string
+    {
+        return OrderTrackingUrl::for($order);
     }
 }

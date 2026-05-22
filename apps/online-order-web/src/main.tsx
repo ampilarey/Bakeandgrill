@@ -68,6 +68,7 @@ ReactDOM.createRoot(rootEl).render(
 
                   {/* Standalone pages — no Layout wrapper */}
                   <Route path="checkout" element={<ErrorBoundary inline><CheckoutPage /></ErrorBoundary>} />
+                  <Route path="track/:trackingToken" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                   <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                 </Routes>
               </Suspense>

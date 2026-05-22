@@ -9,6 +9,7 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\SiteSetting;
+use App\Support\OrderTrackingUrl;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -82,8 +83,7 @@ final class SendCustomerOrderStatusSmsListener implements ShouldQueue
             return;
         }
 
-        $trackingUrl = rtrim(config('app.url'), '/') . '/order/orders/' . $order->id
-            . '?tok=' . $order->tracking_token;
+        $trackingUrl = OrderTrackingUrl::for($order);
 
         $orderNum = $order->order_number ?? "#{$order->id}";
 

@@ -66,6 +66,12 @@ class PurgeOrdersCommand extends Command
         Schema::disableForeignKeyConstraints();
 
         try {
+            // Order-scoped SMS idempotency keys use order_number, but legacy rows
+            // keyed by order id will block payment-confirmation SMS after IDs reset.
+            if (Schema::hasTable('sms_logs')) {
+                DB::table('sms_logs')->where('reference_type', 'order')->delete();
+            }
+
             foreach (self::TRUNCATE_FIRST as $table) {
                 if (Schema::hasTable($table)) {
                     DB::table($table)->truncate();

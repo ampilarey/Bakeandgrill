@@ -237,14 +237,14 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function OrderStatusPage() {
-  const { orderId } = useParams<{ orderId: string }>();
+  const { orderId, trackingToken: trackingTokenFromPath } = useParams<{ orderId?: string; trackingToken?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { clearCart } = useCart();
   const s = useSiteSettings();
 
   const paymentState = searchParams.get("payment") as PaymentState;
-  const trackingToken = searchParams.get("tok");
+  const trackingToken = trackingTokenFromPath ?? searchParams.get("tok");
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -261,8 +261,9 @@ export function OrderStatusPage() {
 
   // useCallback gives a stable reference so polling intervals don't capture stale closures
   const loadOrder = useCallback(async () => {
-    if (!orderId) return;
-    const parsedId = parseInt(orderId, 10);
+    if (!trackingToken && !orderId) return;
+
+    const parsedId = orderId ? parseInt(orderId, 10) : NaN;
     if (!trackingToken && !Number.isFinite(parsedId)) {
       setError("Invalid order ID.");
       setLoading(false);
@@ -277,7 +278,7 @@ export function OrderStatusPage() {
         const res = await getOrderDetail(token, parsedId);
         setOrder(res.order);
       } else {
-        setError("Please log in to view your order.");
+        setError("Open the full link from your SMS, or log in to view your order.");
       }
     } catch (e) {
       setError((e as Error).message);
@@ -313,15 +314,16 @@ export function OrderStatusPage() {
 
   useEffect(() => { void loadOrder(); }, [loadOrder]);
 
-  // SSE real-time tracking
+  // SSE real-time tracking (requires numeric order id from loaded order or URL)
   useEffect(() => {
-    if (!orderId) return;
+    const streamOrderId = order?.id ?? (orderId ? parseInt(orderId, 10) : NaN);
+    if (!Number.isFinite(streamOrderId)) return;
     const controller = new AbortController();
     const startStream = async () => {
       let ticketParam = "";
       if (token) {
         try {
-          const res = await fetch(`${API_ORIGIN}/api/orders/${orderId}/stream-ticket`, {
+          const res = await fetch(`${API_ORIGIN}/api/orders/${streamOrderId}/stream-ticket`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             signal: controller.signal,
@@ -335,7 +337,7 @@ export function OrderStatusPage() {
         }
       }
       if (controller.signal.aborted) return;
-      const sseUrl = `${API_ORIGIN}/api/stream/order-status/${orderId}${ticketParam}`;
+      const sseUrl = `${API_ORIGIN}/api/stream/order-status/${streamOrderId}${ticketParam}`;
       const es = new EventSource(sseUrl, { withCredentials: false });
       const handleStatus = (e: MessageEvent) => {
         try {
@@ -356,7 +358,7 @@ export function OrderStatusPage() {
       controller.abort();
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
     };
-  }, [orderId, token]);
+  }, [order?.id, orderId, token]);
 
   // Fallback polling — uses stable loadOrder reference from useCallback
   useEffect(() => {

@@ -7,45 +7,22 @@ namespace App\Domains\Notifications\Listeners;
 use App\Domains\Notifications\Services\PaymentConfirmationNotifier;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\Order;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Queued retry fallback for payment confirmation SMS + email.
+ * Synchronous retry fallback for payment confirmation SMS + email.
  *
- * PaymentService already calls PaymentConfirmationNotifier synchronously inside
- * DB::afterCommit, so the SMS is usually sent before this job even runs.
- * The SmsService idempotency key ('order:paid:confirm:{id}') ensures no duplicate
- * is delivered — this job is a no-op if the sync call already succeeded.
+ * PaymentService calls PaymentConfirmationNotifier inside DB::afterCommit when
+ * BML/Stripe confirms payment. This listener runs on OrderPaid without a queue
+ * worker so delivery still succeeds if the sync call failed or was skipped.
  *
- * Queued (`ShouldQueue`) — a running worker is required for the retry to fire.
- * Without a worker, the sync path in PaymentService still guarantees delivery.
+ * SmsService idempotency key ('order:paid:confirm:{order_number}') prevents duplicates.
  */
-class SendPaymentConfirmationListener implements ShouldQueue
+class SendPaymentConfirmationListener
 {
     public bool $afterCommit = true;
 
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
-
-    public int $timeout = 30;
-
     public function __construct(private PaymentConfirmationNotifier $notifier) {}
-
-    public function failed(OrderPaid $event, \Throwable $e): void
-    {
-        Log::error('SendPaymentConfirmationListener: exhausted retries', [
-            'order_id' => $event->data->orderId,
-            'error' => $e->getMessage(),
-        ]);
-
-        if (app()->bound('sentry')) {
-            \Sentry\captureException($e);
-        }
-    }
 
     public function handle(OrderPaid $event): void
     {

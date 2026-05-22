@@ -454,8 +454,17 @@ class PaymentService
                         return;
                     }
 
-                    // Send confirmation SMS/email synchronously — no queue dependency.
-                    $this->confirmationNotifier->notify($freshOrder);
+                    try {
+                        // Send confirmation SMS/email synchronously — no queue dependency.
+                        $this->confirmationNotifier->notify($freshOrder);
+                    } catch (\Throwable $e) {
+                        Log::error('BML confirmPayment: payment confirmation notify failed', [
+                            'order_id' => $freshOrder->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+
+                    // OrderPaid triggers SendPaymentConfirmationListener as a sync retry fallback.
                     OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
                 });
             }
