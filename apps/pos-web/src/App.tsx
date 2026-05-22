@@ -861,6 +861,8 @@ function App() {
         updateBlocked={posUpdate.updateBlocked}
         applying={posUpdate.applying}
         serverVersion={posUpdate.serverBuild?.version ?? null}
+        serverBuild={posUpdate.serverBuild?.build ?? null}
+        localBuild={POS_BUILD_INFO.build}
         onLater={posUpdate.dismissBanner}
         onUpdateNow={() => {
           void posUpdate.applyUpdate().then((res) => {

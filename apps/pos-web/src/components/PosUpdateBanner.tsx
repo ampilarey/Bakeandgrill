@@ -3,6 +3,8 @@ type Props = {
   updateBlocked: boolean;
   applying: boolean;
   serverVersion: string | null;
+  serverBuild: string | null;
+  localBuild: string;
   onUpdateNow: () => void;
   onLater: () => void;
 };
@@ -16,6 +18,8 @@ export function PosUpdateBanner({
   updateBlocked,
   applying,
   serverVersion,
+  serverBuild,
+  localBuild,
   onUpdateNow,
   onLater,
 }: Props) {
@@ -46,7 +50,11 @@ export function PosUpdateBanner({
           {updateBlocked
             ? "Finish the current order or payment before updating."
             : "Please update after finishing the current order."}
-          {serverVersion ? ` · v${serverVersion}` : ""}
+          {serverVersion && serverBuild && serverBuild !== localBuild && (
+            <span style={{ display: "block", marginTop: 2, fontSize: 11 }}>
+              New build: {shortBuildId(serverBuild)} (yours: {shortBuildId(localBuild)})
+            </span>
+          )}
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -90,6 +98,12 @@ export function PosUpdateBanner({
       </div>
     </div>
   );
+}
+
+function shortBuildId(build: string): string {
+  const parts = build.split("-");
+  if (parts.length >= 2) return parts.slice(-2).join("-");
+  return build.length > 20 ? build.slice(-20) : build;
 }
 
 /** Small version label for header / login footer / drawer. */

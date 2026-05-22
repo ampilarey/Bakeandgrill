@@ -10,7 +10,7 @@ import {
 
 const VERSION_URL = "/pos-version.json";
 const POLL_MS = 3 * 60 * 1000;
-const RELOAD_FALLBACK_MS = 1200;
+const RELOAD_FALLBACK_MS = 800;
 
 export type ManualUpdateResult =
   | "current"
@@ -47,32 +47,30 @@ async function fetchServerVersion(): Promise<PosVersionInfo | null> {
   }
 }
 
-/** Hard navigation — reliable on iPad standalone PWAs when SW skipWaiting alone stalls. */
-async function hardReloadPosApp(
+/**
+ * Reload the POS shell. MUST NOT await service-worker activation first —
+ * on iPad standalone PWAs `updateSW(true)` often never resolves, which
+ * blocked every "Update Now" tap in production.
+ */
+function hardReloadPosApp(
   updateSW: ((reloadPage?: boolean) => Promise<void>) | null,
-): Promise<void> {
-  if ("serviceWorker" in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.getRegistration("/pos/");
-      reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
-    } catch {
-      // continue to reload
-    }
-  }
-
+): void {
   if (updateSW) {
-    try {
-      await updateSW(true);
-    } catch {
-      // fall through — many browsers no-op when no worker is waiting
-    }
+    void Promise.race([
+      updateSW(true),
+      new Promise<void>((resolve) => window.setTimeout(resolve, 400)),
+    ]).catch(() => undefined);
   }
 
-  const url = new URL(window.location.href);
-  url.searchParams.delete("_u");
-  url.searchParams.delete("_r");
-  url.searchParams.set("_u", Date.now().toString(36));
-  window.location.replace(url.toString());
+  if ("serviceWorker" in navigator) {
+    void navigator.serviceWorker.getRegistration("/pos/").then((reg) => {
+      reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
+    });
+  }
+
+  const target = new URL("/pos/", window.location.origin);
+  target.searchParams.set("_u", Date.now().toString(36));
+  window.location.assign(target.href);
 }
 
 export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState {
@@ -118,6 +116,15 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     [localBuild],
   );
 
+  const readSwWaiting = useCallback(async (): Promise<boolean> => {
+    if (!("serviceWorker" in navigator)) return swWaiting;
+    const reg = await navigator.serviceWorker.getRegistration("/pos/");
+    await reg?.update();
+    const waiting = Boolean(reg?.waiting);
+    if (waiting) setSwWaiting(true);
+    return waiting || swWaiting;
+  }, [swWaiting]);
+
   const checkNow = useCallback(async (opts?: { force?: boolean }): Promise<boolean> => {
     const force = opts?.force === true;
     setChecking(true);
@@ -125,16 +132,7 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
       const server = await fetchServerVersion();
       if (server) setServerBuild(server);
 
-      let sw = swWaiting;
-      if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration("/pos/");
-        await reg?.update();
-        if (reg?.waiting) {
-          sw = true;
-          setSwWaiting(true);
-        }
-      }
-
+      const sw = await readSwWaiting();
       const mismatch = server !== null && isNewerPosBuild(server, localBuild);
       const available = mismatch || sw;
       if (available) markUpdateAvailable(server, sw, force);
@@ -145,7 +143,7 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     } finally {
       setChecking(false);
     }
-  }, [localBuild, markUpdateAvailable, stickyBanner, swWaiting]);
+  }, [localBuild, markUpdateAvailable, readSwWaiting, stickyBanner]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -180,14 +178,8 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
 
     updateSWRef.current = updateSW;
 
-    const onControllerChange = () => {
-      window.location.reload();
-    };
-    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-
     return () => {
       if (pollInterval !== undefined) window.clearInterval(pollInterval);
-      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       if (reloadTimerRef.current !== null) window.clearTimeout(reloadTimerRef.current);
     };
   }, []);
@@ -225,42 +217,34 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
       };
     }
 
+    const server = await fetchServerVersion();
+    if (server) setServerBuild(server);
+    const sw = await readSwWaiting();
+
     const hasUpdate =
-      (serverBuild !== null && isNewerPosBuild(serverBuild, localBuild)) || swWaiting;
+      (server !== null && isNewerPosBuild(server, localBuild)) || sw;
 
     if (!hasUpdate) {
+      dismissBanner();
       return { ok: false, message: "Already on the latest POS version." };
     }
 
     setApplying(true);
-    try {
-      void hardReloadPosApp(updateSWRef.current);
-      reloadTimerRef.current = window.setTimeout(() => {
-        void hardReloadPosApp(updateSWRef.current);
-      }, RELOAD_FALLBACK_MS);
-      return { ok: true };
-    } catch {
-      if (reloadTimerRef.current !== null) {
-        window.clearTimeout(reloadTimerRef.current);
-      }
-      return { ok: false, message: "Update failed — try again from the menu." };
-    } finally {
-      setApplying(false);
-    }
-  }, [updateBlocked, serverBuild, localBuild, swWaiting]);
+    hardReloadPosApp(updateSWRef.current);
+    reloadTimerRef.current = window.setTimeout(() => {
+      hardReloadPosApp(updateSWRef.current);
+    }, RELOAD_FALLBACK_MS);
+
+    return { ok: true };
+  }, [updateBlocked, localBuild, readSwWaiting, dismissBanner]);
 
   const requestManualUpdate = useCallback(async (): Promise<ManualUpdateResult> => {
     const available = await checkNow({ force: true });
     if (!available) return "current";
     if (updateBlocked) return "blocked";
     setApplying(true);
-    try {
-      await hardReloadPosApp(updateSWRef.current);
-      return "applying";
-    } catch {
-      setApplying(false);
-      return "available";
-    }
+    hardReloadPosApp(updateSWRef.current);
+    return "applying";
   }, [checkNow, updateBlocked]);
 
   return {
