@@ -91,6 +91,11 @@ class OrderController extends Controller
             $query->where('user_id', (int) $request->input('user_id'));
         }
 
+        // POS Active Orders — narrow to tickets this cashier created.
+        if ($request->filled('created_by_me') && $request->boolean('created_by_me')) {
+            $query->where('user_id', $cashierId);
+        }
+
         if ($canViewAllStations && $request->filled('device_id')) {
             $query->where('device_id', (int) $request->input('device_id'));
         }

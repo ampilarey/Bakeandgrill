@@ -218,4 +218,24 @@ class OpenOrderContinuationTest extends TestCase
         $summary = $this->getJson("/api/shifts/{$saraShift->id}/summary")->assertOk()->json('cash_drawer');
         $this->assertEquals(75.0, (float) $summary['expected_cash']);
     }
+
+    public function test_created_by_me_filter_scopes_active_orders_to_creator(): void
+    {
+        $ahmedOrderId = $this->createUnpaidOrder($this->ahmed);
+
+        Sanctum::actingAs($this->sara, ['staff']);
+        $this->openShiftFor($this->sara);
+        $saraOrderId = $this->postJson('/api/orders', [
+            'type' => 'dine_in',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])->assertCreated()->json('order.id');
+
+        $all = $this->getJson('/api/orders?active_only=1')->assertOk();
+        $this->assertGreaterThanOrEqual(2, $all->json('total'));
+
+        $mine = $this->getJson('/api/orders?active_only=1&created_by_me=1')->assertOk();
+        $ids = collect($mine->json('data'))->pluck('id')->all();
+        $this->assertContains($saraOrderId, $ids);
+        $this->assertNotContains($ahmedOrderId, $ids);
+    }
 }

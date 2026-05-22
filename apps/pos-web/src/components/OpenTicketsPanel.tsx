@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelOrder,
-  fetchActiveOrdersForCashier,
-  fetchActiveOrdersForStation,
+  fetchActiveOrdersMine,
   fetchActiveOrdersVenueWide,
   fetchReceipts,
   fireOrderToKitchen,
@@ -47,9 +46,6 @@ export function ticketDisplayTotal(t: OpenTicket): number {
 }
 
 type Props = {
-  deviceId: string;
-  /** Owners/managers can switch to a venue-wide active-order feed. */
-  canViewAllStations?: boolean;
   /** Hide the destructive Void chip for cashiers without the
    *  orders.void permission. The backend also enforces this (403) but
    *  hiding the button avoids dead-tap UX. */
@@ -84,8 +80,6 @@ type Props = {
  * marks it picked up.
  */
 export function OpenTicketsPanel({
-  deviceId,
-  canViewAllStations = false,
   canVoidOrders = true,
   onResume,
   onClose,
@@ -94,10 +88,9 @@ export function OpenTicketsPanel({
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
   /** Server total for the current list scope (may exceed loaded rows). */
   const [activeTotal, setActiveTotal] = useState(0);
-  // Default venue-wide so the list matches the sales-page badge (which
-  // always counts every in-flight ticket). Managers can narrow to this
-  // iPad via the scope chips when they need station-only view.
-  const [listScope, setListScope] = useState<"station" | "venue">("venue");
+  // Default all-staff so the list matches the sales-page badge. Cashiers
+  // can narrow to tickets they created via the scope chips.
+  const [listScope, setListScope] = useState<"all" | "mine">("all");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   // Per-row "action in progress" indicator (sendBill is the only async
@@ -187,14 +180,11 @@ export function OpenTicketsPanel({
   const POLL_MS = 15_000;
 
   const loadActiveOrders = useCallback(async () => {
-    if (listScope === "venue") {
-      return fetchActiveOrdersVenueWide();
+    if (listScope === "mine") {
+      return fetchActiveOrdersMine();
     }
-    if (canViewAllStations) {
-      return fetchActiveOrdersForStation(deviceId);
-    }
-    return fetchActiveOrdersForCashier();
-  }, [listScope, canViewAllStations, deviceId]);
+    return fetchActiveOrdersVenueWide();
+  }, [listScope]);
 
   useEffect(() => {
     let cancelled = false;
@@ -655,9 +645,9 @@ export function OpenTicketsPanel({
       subtitle={
         mergeTargetId !== null
           ? `Tap any other ticket to preview the merge (you'll confirm before anything changes)`
-          : listScope === "venue"
-            ? "All stations — parked, cooking, and ready-for-pickup"
-            : "Open tickets — parked, cooking, and ready (all staff)"
+          : listScope === "all"
+            ? "All staff — parked, cooking, and ready-for-pickup"
+            : "My tickets — ones I created on this shift"
       }
       onClose={onClose}
     >
@@ -697,7 +687,7 @@ export function OpenTicketsPanel({
         </div>
       )}
 
-      {canViewAllStations && mergeTargetId === null && (
+      {mergeTargetId === null && (
         <div
           style={{
             marginBottom: space.s,
@@ -708,22 +698,22 @@ export function OpenTicketsPanel({
           }}
         >
           <ScopeChip
-            active={listScope === "station"}
+            active={listScope === "all"}
             onClick={() => {
-              setListScope("station");
+              setListScope("all");
               setActiveFilter("all");
             }}
           >
-            🖥 This iPad
+            👥 All staff
           </ScopeChip>
           <ScopeChip
-            active={listScope === "venue"}
+            active={listScope === "mine"}
             onClick={() => {
-              setListScope("venue");
+              setListScope("mine");
               setActiveFilter("all");
             }}
           >
-            🏢 All stations
+            👤 Mine
           </ScopeChip>
         </div>
       )}

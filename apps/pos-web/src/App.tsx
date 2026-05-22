@@ -67,7 +67,6 @@ function App() {
     }
   });
   const canVoidOrders = hasPosPermission(staffPermissions, "orders.void");
-  const canViewAllStations = hasPosPermission(staffPermissions, "pos.view_all_station_orders");
   const canOpenShift = hasPosPermission(staffPermissions, "pos.open_shift");
   const canCloseShift = hasPosPermission(staffPermissions, "pos.close_shift");
   const canRingSales = hasPosPermission(staffPermissions, "pos.ring_sales");
@@ -1014,8 +1013,6 @@ function App() {
 
         {pane === 'open_tickets' && (
           <OpenTicketsPanel
-            deviceId={deviceId}
-            canViewAllStations={canViewAllStations}
             canVoidOrders={canVoidOrders}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             onClose={() => setPane("sales")}

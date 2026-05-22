@@ -803,6 +803,8 @@ export async function fetchReceipts(params: {
   active_only?: boolean;
   /** Manager view — surface anything cooking with a balance. */
   unpaid_only?: boolean;
+  /** Active orders created by the logged-in cashier only. */
+  created_by_me?: boolean;
   device_identifier?: string;
   per_page?: number;
   page?: number;
@@ -887,8 +889,8 @@ export async function fetchActiveOrdersVenueWide(): Promise<{
   return { data: out, total };
 }
 
-/** Active orders for all in-flight venue tickets (staff default). */
-export async function fetchActiveOrdersForCashier(): Promise<{
+/** Active orders created by the logged-in cashier only. */
+export async function fetchActiveOrdersMine(): Promise<{
   data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
   total: number;
 }> {
@@ -898,6 +900,7 @@ export async function fetchActiveOrdersForCashier(): Promise<{
   for (let page = 1; page <= 20; page++) {
     const res = await fetchReceipts({
       active_only: true,
+      created_by_me: true,
       per_page: perPage,
       page,
     });
@@ -910,27 +913,19 @@ export async function fetchActiveOrdersForCashier(): Promise<{
   return { data: out, total };
 }
 
-/** Active orders for one POS station (managers — this iPad + online/delivery). */
+/** Active orders for all in-flight venue tickets (staff default). */
+export async function fetchActiveOrdersForCashier(): Promise<{
+  data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
+  total: number;
+}> {
+  return fetchActiveOrdersVenueWide();
+}
+
+/** @deprecated Device scope removed — use fetchActiveOrdersMine instead. */
 export async function fetchActiveOrdersForStation(
-  deviceIdentifier: string,
+  _deviceIdentifier: string,
 ): Promise<{ data: Awaited<ReturnType<typeof fetchReceipts>>["data"]; total: number }> {
-  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [];
-  const perPage = 100;
-  let total = 0;
-  for (let page = 1; page <= 20; page++) {
-    const res = await fetchReceipts({
-      active_only: true,
-      device_identifier: deviceIdentifier,
-      per_page: perPage,
-      page,
-    });
-    total = res.total ?? out.length + (res.data?.length ?? 0);
-    const batch = res.data ?? [];
-    out.push(...batch);
-    const lastPage = res.last_page ?? page;
-    if (batch.length === 0 || page >= lastPage) break;
-  }
-  return { data: out, total };
+  return fetchActiveOrdersVenueWide();
 }
 
 export async function getReceiptLink(orderId: number): Promise<{ link: string }> {
