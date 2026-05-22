@@ -47,21 +47,13 @@ class OrderController extends Controller
         $user = $request->user();
         $permissions = app(PermissionService::class);
         $canViewAllStations = $permissions->hasPermission($user, 'pos.view_all_station_orders');
+        $cashierId = (int) $user->id;
 
-        // Staff without all-station permission must scope active orders to their device.
-        if ($request->filled('active_only') && $request->boolean('active_only') && !$canViewAllStations) {
-            $scopedIdentifier = $request->input('device_identifier')
-                ?: $request->header('X-Device-Identifier')
-                ?: $request->header('X-Device-Id');
-
-            if (!$scopedIdentifier) {
-                return response()->json([
-                    'message' => 'You do not have permission to view all station orders. Device scope is required.',
-                    'required' => 'pos.view_all_station_orders',
-                ], 403);
-            }
-
-            $request->merge(['device_identifier' => $scopedIdentifier]);
+        // Cashiers may only query their own sales — not another staff member's.
+        if (!$canViewAllStations
+            && $request->filled('user_id')
+            && (int) $request->input('user_id') !== $cashierId) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         $query = Order::with([
@@ -98,7 +90,7 @@ class OrderController extends Controller
             $query->where('user_id', (int) $request->input('user_id'));
         }
 
-        if ($request->filled('device_id')) {
+        if ($canViewAllStations && $request->filled('device_id')) {
             $query->where('device_id', (int) $request->input('device_id'));
         }
 
@@ -113,16 +105,10 @@ class OrderController extends Controller
             $query->whereDate('created_at', '<=', $request->input('date_to'));
         }
 
-        // POS receipts panel — restrict to one device or one shift.
-        if ($request->filled('device_id')) {
-            $query->where('device_id', (int) $request->input('device_id'));
-        }
-        if ($request->filled('device_identifier')) {
+        // Device filter — managers/owners only. Cashiers see their own
+        // orders across every device they've logged into (iPad + phone).
+        if ($canViewAllStations && $request->filled('device_identifier')) {
             $identifier = (string) $request->input('device_identifier');
-            // POS Active orders: this station's tickets PLUS in-flight
-            // online/delivery orders (they are not tied to one iPad).
-            // Without the OR, online_pickup tickets vanish from every
-            // register when we scope by device_identifier.
             if ($request->filled('active_only') && $request->boolean('active_only')) {
                 $query->where(function ($w) use ($identifier) {
                     $w->whereHas('device', fn ($q) => $q->where('identifier', $identifier))
@@ -201,6 +187,19 @@ class OrderController extends Controller
         // narrower held+unpaid view.
         if ($request->filled('active_only') && $request->boolean('active_only')) {
             $query->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'payment_pending']);
+        }
+
+        // Cashier scope: own sales on every device, plus shared online/delivery
+        // active tickets (no owning cashier until someone picks them up).
+        if (!$canViewAllStations) {
+            if ($request->filled('active_only') && $request->boolean('active_only')) {
+                $query->where(function ($w) use ($cashierId) {
+                    $w->where('user_id', $cashierId)
+                        ->orWhereIn('type', ['online_pickup', 'delivery']);
+                });
+            } else {
+                $query->where('user_id', $cashierId);
+            }
         }
 
         // Receipt search: order number, ticket name, customer phone, customer name.
@@ -324,6 +323,15 @@ class OrderController extends Controller
 
         $order = Order::with(['items.modifiers', 'payments', 'customer', 'table', 'user:id,name', 'device:id,name,identifier', 'shift:id,opened_at'])
             ->findOrFail($id);
+
+        $permissions = app(PermissionService::class);
+        if (!$permissions->hasPermission($request->user(), 'pos.view_all_station_orders')) {
+            $ownsOrder = (int) $order->user_id === (int) $request->user()->id;
+            $sharedOnline = in_array($order->type, ['online_pickup', 'delivery'], true);
+            if (!$ownsOrder && !$sharedOnline) {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+        }
 
         return response()->json(['order' => $order]);
     }

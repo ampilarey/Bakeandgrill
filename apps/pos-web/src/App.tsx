@@ -328,17 +328,15 @@ function App() {
       //      the fallback to `res.data.length` topped out at 10 even
       //      when 50 tickets were live.
       //
-      // Same scope as OpenTicketsPanel: this station + online/delivery.
-      // per_page 1 — only the paginator `total` is needed for the badge.
+      // Same scope as OpenTicketsPanel: this cashier's tickets + online/delivery.
       const res = await fetchReceipts({
         active_only: true,
-        device_identifier: deviceId,
         per_page: 1,
       });
       const total = res.total ?? res.data.length;
       setOpenTicketsCount(total);
     } catch { /* best-effort */ }
-  }, [isLoggedIn, deviceStatus, deviceId]);
+  }, [isLoggedIn, deviceStatus]);
 
   useEffect(() => { void refreshOpenTickets(); }, [refreshOpenTickets, pane, shift.current?.id]);
 

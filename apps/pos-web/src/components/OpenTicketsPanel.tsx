@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelOrder,
+  fetchActiveOrdersForCashier,
   fetchActiveOrdersForStation,
   fetchActiveOrdersVenueWide,
   fetchReceipts,
@@ -186,8 +187,11 @@ export function OpenTicketsPanel({
     if (listScope === "venue") {
       return fetchActiveOrdersVenueWide();
     }
-    return fetchActiveOrdersForStation(deviceId);
-  }, [deviceId, listScope]);
+    if (canViewAllStations) {
+      return fetchActiveOrdersForStation(deviceId);
+    }
+    return fetchActiveOrdersForCashier();
+  }, [listScope, canViewAllStations, deviceId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -650,7 +654,7 @@ export function OpenTicketsPanel({
           ? `Tap any other ticket to preview the merge (you'll confirm before anything changes)`
           : listScope === "venue"
             ? "All stations — parked, cooking, and ready-for-pickup"
-            : "This iPad + online/delivery — parked, cooking, and ready"
+            : "Your tickets (all devices) + online/delivery — parked, cooking, and ready"
       }
       onClose={onClose}
     >

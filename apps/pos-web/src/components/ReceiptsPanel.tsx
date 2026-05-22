@@ -61,7 +61,7 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today" }: Prop
   const selected = items.find((r) => r.id === selectedId) ?? null;
 
   return (
-    <PanelShell title="Receipts" subtitle="Recent sales from this POS" onClose={onClose}>
+    <PanelShell title="Receipts" subtitle="Your sales — every device you've logged in on" onClose={onClose}>
       {/* Bug-040: master/detail used to be a hardcoded 260px+1fr grid,
           which on iPad Mini portrait (~744px) gave the detail pane
           ~450px — too narrow for the refund form rows. Now we use

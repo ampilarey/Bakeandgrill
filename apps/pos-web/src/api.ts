@@ -889,7 +889,30 @@ export async function fetchActiveOrdersVenueWide(): Promise<{
   return { data: out, total };
 }
 
-/** Active orders for one POS station (this device + shared online/delivery). */
+/** Active orders for the logged-in cashier (every device they've used). */
+export async function fetchActiveOrdersForCashier(): Promise<{
+  data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
+  total: number;
+}> {
+  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [];
+  const perPage = 100;
+  let total = 0;
+  for (let page = 1; page <= 20; page++) {
+    const res = await fetchReceipts({
+      active_only: true,
+      per_page: perPage,
+      page,
+    });
+    total = res.total ?? out.length + (res.data?.length ?? 0);
+    const batch = res.data ?? [];
+    out.push(...batch);
+    const lastPage = res.last_page ?? page;
+    if (batch.length === 0 || page >= lastPage) break;
+  }
+  return { data: out, total };
+}
+
+/** Active orders for one POS station (managers — this iPad + online/delivery). */
 export async function fetchActiveOrdersForStation(
   deviceIdentifier: string,
 ): Promise<{ data: Awaited<ReturnType<typeof fetchReceipts>>["data"]; total: number }> {

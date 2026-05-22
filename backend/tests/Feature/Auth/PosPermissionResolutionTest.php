@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Device;
+use App\Models\Order;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -150,13 +151,68 @@ class PosPermissionResolutionTest extends TestCase
             ->assertStatus(403);
     }
 
-    public function test_staff_active_orders_without_device_scope_returns_403(): void
+    public function test_staff_active_orders_scoped_to_own_sales(): void
+    {
+        $other = User::create([
+            'name' => 'Other Staff', 'email' => 'other@test.com',
+            'password' => Hash::make('password'), 'role_id' => $this->staff->role_id,
+            'pin_hash' => Hash::make('1234'), 'is_active' => true,
+        ]);
+
+        $mine = Order::factory()->pending()->create(['user_id' => $this->staff->id]);
+        $theirs = Order::factory()->pending()->create(['user_id' => $other->id]);
+        $online = Order::factory()->onlinePickup()->pending()->create(['user_id' => null]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $ids = collect($this->getJson('/api/orders?active_only=1')
+            ->assertOk()
+            ->json('data'))
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($mine->id));
+        $this->assertFalse($ids->contains($theirs->id));
+        $this->assertTrue($ids->contains($online->id));
+    }
+
+    public function test_staff_receipts_scoped_to_own_sales(): void
+    {
+        $other = User::create([
+            'name' => 'Other Staff 2', 'email' => 'other2@test.com',
+            'password' => Hash::make('password'), 'role_id' => $this->staff->role_id,
+            'pin_hash' => Hash::make('1234'), 'is_active' => true,
+        ]);
+
+        $mine = Order::factory()->paid()->create(['user_id' => $this->staff->id]);
+        $theirs = Order::factory()->paid()->create(['user_id' => $other->id]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $ids = collect($this->getJson('/api/orders')
+            ->assertOk()
+            ->json('data'))
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($mine->id));
+        $this->assertFalse($ids->contains($theirs->id));
+    }
+
+    public function test_staff_cannot_view_other_cashier_order_detail(): void
+    {
+        $order = Order::factory()->pending()->create(['user_id' => $this->manager->id]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $this->getJson("/api/orders/{$order->id}")
+            ->assertForbidden();
+    }
+
+    public function test_staff_cannot_query_another_cashiers_user_id_filter(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
 
-        $this->getJson('/api/orders?active_only=1')
-            ->assertStatus(403)
-            ->assertJsonPath('required', 'pos.view_all_station_orders');
+        $this->getJson('/api/orders?user_id=' . $this->manager->id)
+            ->assertForbidden();
     }
 
     public function test_manager_can_list_active_orders_venue_wide(): void
