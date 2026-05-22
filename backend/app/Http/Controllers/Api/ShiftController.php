@@ -108,9 +108,7 @@ class ShiftController extends Controller
         $cashRefunds = $cash['cash_refunds'];
         $expectedCash = $cash['expected'];
 
-        $paymentsInShift = Payment::query()
-            ->where('shift_id', $shift->id)
-            ->whereIn('status', ['paid', 'completed', 'confirmed']);
+        $paymentsInShift = $this->paymentsForShiftSummary($shift);
 
         $gross = (float) (clone $paymentsInShift)->sum('amount');
         $refundsTotal = (float) Refund::where('shift_id', $shift->id)
@@ -121,15 +119,11 @@ class ShiftController extends Controller
             ->whereNotIn('status', ['cancelled']);
         $ordersCreatedCount = (clone $ordersCreated)->count();
 
-        $orderCount = (int) Payment::query()
-            ->where('shift_id', $shift->id)
-            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+        $orderCount = (int) (clone $paymentsInShift)
             ->distinct()
             ->count('order_id');
 
-        $tenders = Payment::query()
-            ->where('shift_id', $shift->id)
-            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+        $tenders = (clone $paymentsInShift)
             ->select('method', DB::raw('SUM(amount) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -166,6 +160,34 @@ class ShiftController extends Controller
             'tenders' => $tenders,
             'open_unpaid_orders' => $openUnpaidOrders,
         ]);
+    }
+
+    /**
+     * Payments that belong on this shift's sales summary.
+     *
+     * POS-tendered payments carry shift_id directly. Online/gateway
+     * payments (BML, etc.) have no shift on the order — when exactly
+     * one shift is open we also include gateway payments confirmed
+     * during that shift so the POS header isn't stuck at "0 orders".
+     */
+    private function paymentsForShiftSummary(Shift $shift)
+    {
+        $gatewayMethods = ['bml_connect', 'bml_pay', 'bml', 'online', 'stripe'];
+        $singleOpenShift = Shift::whereNull('closed_at')->count() === 1;
+
+        return Payment::query()
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->where(function ($q) use ($shift, $gatewayMethods, $singleOpenShift) {
+                $q->where('shift_id', $shift->id);
+
+                if ($singleOpenShift && $shift->closed_at === null) {
+                    $q->orWhere(function ($q2) use ($shift, $gatewayMethods) {
+                        $q2->whereNull('shift_id')
+                            ->whereIn('method', $gatewayMethods)
+                            ->where('processed_at', '>=', $shift->opened_at);
+                    });
+                }
+            });
     }
 
     /**

@@ -116,7 +116,8 @@ export function useSse(
       }
 
       if (!stopped) {
-        retryTimer = setTimeout(() => connect(lastEventId.current), reconnectDelay);
+        // Server streams close after MAX_EXECUTION_SECONDS — reconnect quickly.
+        retryTimer = setTimeout(() => connect(lastEventId.current), 250);
       }
     }
 

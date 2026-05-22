@@ -17,6 +17,7 @@ use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
 use App\Domains\Payments\StateMachine\PaymentStateMachine;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Shift;
 use App\Models\WebhookLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -407,6 +408,8 @@ class PaymentService
             // Advance status via state machine — single validated transition path.
             $sm->transition('confirmed', ['gateway_response' => $payload]);
 
+            $this->attributeGatewayPaymentToOpenShift($locked);
+
             $order = $this->orders->findById($locked->order_id);
             if (!$order) {
                 Log::error('BML: Order not found during payment confirmation', [
@@ -469,6 +472,29 @@ class PaymentService
                 });
             }
         });
+    }
+
+    /**
+     * Tag gateway payments to the sole open shift so shift summary reflects
+     * online BML sales the cashier can see on the POS header.
+     */
+    private function attributeGatewayPaymentToOpenShift(Payment $payment): void
+    {
+        if ($payment->shift_id !== null) {
+            return;
+        }
+
+        $gatewayMethods = ['bml_connect', 'bml_pay', 'bml', 'online', 'stripe'];
+        if (!in_array($payment->method, $gatewayMethods, true)) {
+            return;
+        }
+
+        $openShiftIds = Shift::query()->whereNull('closed_at')->pluck('id');
+        if ($openShiftIds->count() !== 1) {
+            return;
+        }
+
+        $payment->update(['shift_id' => $openShiftIds->first()]);
     }
 
     /**

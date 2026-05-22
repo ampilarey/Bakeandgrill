@@ -24,7 +24,7 @@ class SseStreamService
 
     private const POLL_INTERVAL_MS = 1000000; // 1 second in microseconds
 
-    private const MAX_EXECUTION_SECONDS = 55; // Leave 5s buffer before PHP timeout
+    private const MAX_EXECUTION_SECONDS = 300; // Reconnect before typical proxy idle timeout
 
     public function stream(callable $fetchEvents, string $initialCursor = ''): StreamedResponse
     {

@@ -46,6 +46,18 @@ export function ticketDisplayTotal(t: OpenTicket): number {
   return summed > 0 ? summed : stored;
 }
 
+/** Kitchen lifecycle stage — aligned with KDS columns (Pending / Cooking / Ready). */
+export type TicketStage = "parked" | "queued" | "cooking" | "ready";
+
+export function ticketStage(status: string | null | undefined): TicketStage {
+  if (status === "held") return "parked";
+  if (status === "ready") return "ready";
+  if (status === "in_progress" || status === "preparing") return "cooking";
+  // KDS Pending column: paid online orders + POS tickets fired but not started.
+  if (status === "pending" || status === "paid") return "queued";
+  return "cooking";
+}
+
 type Props = {
   /** Hide the destructive Void chip for cashiers without the
    *  orders.void permission. The backend also enforces this (403) but
@@ -67,18 +79,17 @@ type Props = {
  *   📋 PARKED   held tickets the kitchen has not seen
  *               actions: Fire to kitchen / Resume / Send pay link
  *
- *   🍳 COOKING  fired but not yet ready (pending / in_progress)
+ *   ⏳ NEW       on KDS Pending — paid/fired but kitchen hasn't started
+ *               (status pending or paid). Matches admin Kitchen Display.
+ *
+ *   🍳 COOKING  kitchen actively preparing (in_progress / preparing)
  *               actions: Mark ready / Charge (if unpaid) / Pay link
  *
  *   ✅ READY    kitchen says it's done; waiting for the customer
  *               actions: Picked up (if paid) / Charge (if unpaid)
  *
  * Lifecycle is decoupled from payment — a ticket can be PAID at any
- * stage and a ticket can be picked up only when PAID. This solves
- * the old gap where charging a pickup order made it vanish from POS
- * even though the kitchen was still cooking; now the same ticket
- * stays visible with a "🍳 COOKING + PAID" badge until the cashier
- * marks it picked up.
+ * stage and a ticket can be picked up only when PAID.
  */
 export function OpenTicketsPanel({
   canVoidOrders = true,
@@ -144,7 +155,7 @@ export function OpenTicketsPanel({
   // toggle logic trivial and prevents the old multi-state bug.
   type FilterKey =
     | "all"
-    | "stage:cooking" | "stage:ready" | "stage:parked"
+    | "stage:queued" | "stage:cooking" | "stage:ready" | "stage:parked"
     | "type:dine_in" | "type:takeaway" | "type:online_pickup" | "type:delivery"
     | "payment:paid" | "payment:unpaid";
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
@@ -537,24 +548,19 @@ export function OpenTicketsPanel({
 
   // ── Derived: filtered ticket list ─────────────────────────────
   // ONE chip-filter at a time + an optional search. Stage of each
-  // ticket maps to: held → parked, ready → ready, else → cooking.
+  // ticket maps to KDS columns via ticketStage().
   // Search is plain client-side .includes() across the obvious POS
   // identifiers — orders are <50 rows so server-side search would
   // be overkill. Table name + location are searched so the cashier
   // can type "T4" or "Patio".
   const filteredTickets = useMemo(() => {
-    const stageOf = (status: string | null | undefined): "parked" | "cooking" | "ready" => {
-      if (status === "held") return "parked";
-      if (status === "ready") return "ready";
-      return "cooking";
-    };
     const q = search.trim().toLowerCase();
     return tickets.filter((t) => {
       if (activeFilter === "all") {
         // no chip-level filter
       } else if (activeFilter.startsWith("stage:")) {
-        const want = activeFilter.slice(6) as "cooking" | "ready" | "parked";
-        if (stageOf(t.status) !== want) return false;
+        const want = activeFilter.slice(6) as TicketStage;
+        if (ticketStage(t.status) !== want) return false;
       } else if (activeFilter.startsWith("type:")) {
         const want = activeFilter.slice(5);
         if (t.type !== want) return false;
@@ -634,11 +640,9 @@ export function OpenTicketsPanel({
   }, [searchScopedTickets]);
 
   const stageCounts = useMemo(() => {
-    const counts = { parked: 0, cooking: 0, ready: 0 };
+    const counts = { parked: 0, queued: 0, cooking: 0, ready: 0 };
     searchScopedTickets.forEach((t) => {
-      if (t.status === "held") counts.parked++;
-      else if (t.status === "ready") counts.ready++;
-      else counts.cooking++;
+      counts[ticketStage(t.status)]++;
     });
     return counts;
   }, [searchScopedTickets]);
@@ -772,6 +776,7 @@ export function OpenTicketsPanel({
         <FilterGroup
           activeColor="#0F172A"
           options={[
+            { key: "stage:queued", label: "⏳ New", count: stageCounts.queued },
             { key: "stage:cooking", label: "🍳 Cooking", count: stageCounts.cooking },
             { key: "stage:ready", label: "✅ Ready", count: stageCounts.ready },
             { key: "stage:parked", label: "📋 Parked", count: stageCounts.parked },
@@ -891,19 +896,8 @@ export function OpenTicketsPanel({
           const busy = busyId === t.id;
           const msg = rowMsg?.id === t.id ? rowMsg : null;
 
-          // Stage derivation — single source of truth for which
-          // badge + action buttons to render. Decoupled from
-          // payment so a paid ticket can still be 'cooking', and
-          // an unpaid ticket can still be 'ready'.
-          //   parked   → held (kitchen hasn't seen it)
-          //   cooking  → pending / in_progress / paid + fired
-          //   ready    → kitchen says it's done
-          // Anything else (completed, cancelled, refunded) should
-          // not arrive here because active_only filters them out.
-          let stage: "parked" | "cooking" | "ready";
-          if (t.status === "held") stage = "parked";
-          else if (t.status === "ready") stage = "ready";
-          else stage = "cooking";
+          // Stage derivation — ticketStage() matches KDS columns.
+          const stage = ticketStage(t.status);
 
           const isPaid = t.payment_status === "paid";
           const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
@@ -915,6 +909,7 @@ export function OpenTicketsPanel({
           // for whatever's most urgent.
           const stageBadge = {
             parked: { label: "📋 PARKED", color: "#475569", bg: "#F1F5F9", border: "#CBD5E1", title: "Kitchen has not seen this yet" },
+            queued: { label: "⏳ NEW", color: "#1D4ED8", bg: "#EFF6FF", border: "#BFDBFE", title: "Waiting for kitchen to start (KDS Pending)" },
             cooking: { label: "🍳 COOKING", color: "#A16207", bg: "#FEFCE8", border: "#FDE68A", title: "Kitchen is preparing this" },
             ready: { label: "✅ READY", color: "#047857", bg: "#ECFDF5", border: "#A7F3D0", title: "Ready for the customer to collect" },
           }[stage];
@@ -1056,13 +1051,13 @@ export function OpenTicketsPanel({
                         🍳 Fire to kitchen
                       </ActionButton>
                     )}
-                    {stage === "cooking" && (
+                    {(stage === "cooking" || stage === "queued") && (
                       <ActionButton
                         onClick={() => handleMarkReady(t)}
                         busy={busy}
                         bg="#047857"
                         confirm
-                        confirmLabel="Send 'ready' SMS?"
+                        confirmLabel={stage === "queued" ? "Mark ready without KDS start?" : "Send 'ready' SMS?"}
                       >
                         ✅ Mark ready
                       </ActionButton>

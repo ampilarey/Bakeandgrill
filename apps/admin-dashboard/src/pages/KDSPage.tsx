@@ -150,7 +150,7 @@ export function KDSPage() {
     <div ref={kdsRef} style={isFullscreen ? { background: '#F8F6F3', padding: 20, minHeight: '100vh' } : undefined}>
       <PageHeader
         title="Kitchen Display"
-        subtitle={sseConnected ? '● Live' : '○ Polling (reconnecting…)'}
+        subtitle={sseConnected ? '● Live' : '○ Polling every 15s'}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
