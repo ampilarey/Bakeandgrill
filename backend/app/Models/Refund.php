@@ -12,6 +12,7 @@ class Refund extends Model
     protected $fillable = [
         'order_id',
         'user_id',
+        'shift_id',
         'amount',
         'status',
         'reason',
@@ -20,6 +21,7 @@ class Refund extends Model
     protected $casts = [
         'order_id' => 'integer',
         'user_id' => 'integer',
+        'shift_id' => 'integer',
         'amount' => 'decimal:2',
     ];
 
@@ -31,5 +33,10 @@ class Refund extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class);
     }
 }

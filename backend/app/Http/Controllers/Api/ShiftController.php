@@ -59,14 +59,17 @@ class ShiftController extends Controller
 
         $cashSales = (float) Payment::where('method', 'cash')
             ->where('amount', '>', 0)
-            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->where('shift_id', $shift->id)
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
             ->sum('amount');
 
-        // Cash refunds (negative-amount cash payments). Kept separate for
-        // reporting clarity in the UI; both arms feed the same expected total.
         $cashRefundsRaw = (float) Payment::where('method', 'cash')
             ->where('amount', '<', 0)
-            ->whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+            ->where('shift_id', $shift->id)
+            ->sum('amount');
+
+        $refundCashOut = (float) Refund::where('shift_id', $shift->id)
+            ->whereNotIn('status', ['rejected'])
             ->sum('amount');
 
         $opening = (float) ($shift->opening_cash ?? 0);
@@ -76,8 +79,8 @@ class ShiftController extends Controller
             'cash_in' => $cashIn,
             'cash_out' => $cashOut,
             'cash_sales' => $cashSales,
-            'cash_refunds' => abs($cashRefundsRaw),
-            'expected' => $opening + $cashIn - $cashOut + $cashSales + $cashRefundsRaw,
+            'cash_refunds' => abs($cashRefundsRaw) + $refundCashOut,
+            'expected' => $opening + $cashIn - $cashOut + $cashSales + $cashRefundsRaw - $refundCashOut,
         ];
     }
 
@@ -102,26 +105,39 @@ class ShiftController extends Controller
         $cashIn = $cash['cash_in'];
         $cashOut = $cash['cash_out'];
         $cashSales = $cash['cash_sales'];
-        $cashRefunds = -$cash['cash_refunds'];
+        $cashRefunds = $cash['cash_refunds'];
         $expectedCash = $cash['expected'];
 
-        // Sales summary across every order in the shift (any tender, any status
-        // except cancelled). Matches what Loyverse calls "Gross sales".
-        $orders = Order::where('shift_id', $shift->id)
-            ->whereNotIn('status', ['cancelled']);
+        $paymentsInShift = Payment::query()
+            ->where('shift_id', $shift->id)
+            ->whereIn('status', ['paid', 'completed', 'confirmed']);
 
-        $orderCount = (clone $orders)->count();
-        $gross = (float) (clone $orders)->sum('total');
-        $discounts = (float) (clone $orders)->sum(DB::raw('COALESCE(discount_amount,0) + COALESCE(manual_discount_laar,0)/100'));
-        $refundsTotal = (float) Refund::whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+        $gross = (float) (clone $paymentsInShift)->sum('amount');
+        $refundsTotal = (float) Refund::where('shift_id', $shift->id)
             ->whereNotIn('status', ['rejected'])
             ->sum('amount');
 
-        // Tender breakdown for non-cash methods (handy for end-of-shift reports).
-        $tenders = Payment::whereHas('order', fn ($q) => $q->where('shift_id', $shift->id))
+        $ordersCreated = Order::where('shift_id', $shift->id)
+            ->whereNotIn('status', ['cancelled']);
+        $ordersCreatedCount = (clone $ordersCreated)->count();
+
+        $orderCount = (int) Payment::query()
+            ->where('shift_id', $shift->id)
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->distinct()
+            ->count('order_id');
+
+        $tenders = Payment::query()
+            ->where('shift_id', $shift->id)
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
             ->select('method', DB::raw('SUM(amount) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
+
+        $openUnpaidOrders = Order::where('shift_id', $shift->id)
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->whereNotIn('status', ['cancelled', 'refunded', 'completed'])
+            ->count();
 
         return response()->json([
             'shift' => [
@@ -134,19 +150,21 @@ class ShiftController extends Controller
             'cash_drawer' => [
                 'opening_cash' => $openingCash,
                 'cash_sales'   => $cashSales,
-                'cash_refunds' => abs($cashRefunds),
+                'cash_refunds' => $cashRefunds,
                 'paid_in'      => $cashIn,
                 'paid_out'     => $cashOut,
                 'expected_cash' => $expectedCash,
             ],
             'sales_summary' => [
                 'order_count' => $orderCount,
+                'orders_created_count' => $ordersCreatedCount,
                 'gross_sales' => $gross,
-                'discounts'   => $discounts,
+                'discounts'   => 0,
                 'refunds'     => $refundsTotal,
                 'net_sales'   => $gross - $refundsTotal,
             ],
             'tenders' => $tenders,
+            'open_unpaid_orders' => $openUnpaidOrders,
         ]);
     }
 
@@ -341,7 +359,7 @@ class ShiftController extends Controller
         $cash = $this->expectedCashFor($shift);
         $cashIn = $cash['cash_in'];
         $cashOut = $cash['cash_out'];
-        $cashSales = $cash['cash_sales'] - $cash['cash_refunds'];
+        $cashSales = $cash['cash_sales'];
         $expectedCash = $cash['expected'];
         $closingCash = (float) $shift->closing_cash;
         $variance = (float) $shift->variance;
@@ -370,13 +388,20 @@ class ShiftController extends Controller
             $request,
         );
 
-        $orderCount = Order::where('shift_id', $shift->id)
-            ->whereNotIn('status', ['cancelled'])
-            ->count();
+        $orderCount = (int) Payment::query()
+            ->where('shift_id', $shift->id)
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->distinct()
+            ->count('order_id');
 
-        $totalRevenue = Order::where('shift_id', $shift->id)
-            ->whereNotIn('status', ['cancelled'])
-            ->sum('total');
+        $totalRevenue = (float) Payment::where('shift_id', $shift->id)
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->sum('amount');
+
+        $openUnpaidOrders = Order::where('shift_id', $shift->id)
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->whereNotIn('status', ['cancelled', 'refunded', 'completed'])
+            ->count();
 
         event(new ShiftClosed(new ShiftClosedData(
             shiftId: $shift->id,
@@ -386,14 +411,21 @@ class ShiftController extends Controller
             actualCash: $closingCash,
             variance: (float) $variance,
             orderCount: $orderCount,
-            totalRevenue: (float) $totalRevenue,
+            totalRevenue: $totalRevenue,
         )));
 
-        return response()->json([
+        $response = [
             'shift' => $shift,
             'cash_sales' => $cashSales,
             'cash_in' => $cashIn,
             'cash_out' => $cashOut,
-        ]);
+        ];
+
+        if ($openUnpaidOrders > 0) {
+            $response['open_unpaid_orders'] = $openUnpaidOrders;
+            $response['message'] = 'This shift has open unpaid orders created during it. They will remain active and can be paid by another staff shift.';
+        }
+
+        return response()->json($response);
     }
 }

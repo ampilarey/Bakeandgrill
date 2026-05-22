@@ -60,7 +60,7 @@ class DeviceController extends Controller
 
     /**
      * Self-registration from a POS device after staff login.
-     * Creates a pending approval request if device is new.
+     * Audit-only — auto-approved; does not block sales.
      */
     public function selfRegister(Request $request)
     {
@@ -71,34 +71,35 @@ class DeviceController extends Controller
         ]);
 
         $existing = Device::where('identifier', $data['identifier'])->first();
+        $staffId = $request->user()?->id;
 
         if ($existing) {
-            if ($request->user() && $existing->user_id === null) {
-                $existing->update([
-                    'user_id' => $request->user()->id,
-                    'last_seen_at' => now(),
-                    'ip_address' => $request->ip(),
-                ]);
-            } else {
-                $existing->update(['last_seen_at' => now(), 'ip_address' => $request->ip()]);
-            }
-            return response()->json(['device' => $existing->fresh(), 'status' => $existing->status]);
+            $existing->update([
+                'last_seen_at' => now(),
+                'ip_address'   => $request->ip(),
+                'last_user_id' => $staffId ?? $existing->last_user_id,
+            ]);
+
+            return response()->json([
+                'device' => $existing->fresh(),
+                'status' => $existing->status ?? 'approved',
+            ]);
         }
 
         $device = Device::create([
             'name'         => $data['name'],
             'identifier'   => $data['identifier'],
             'type'         => $data['type'] ?? 'pos',
-            'user_id'      => $request->user()?->id,
+            'last_user_id' => $staffId,
             'ip_address'   => $request->ip(),
-            'is_active'    => false,
-            'status'       => 'pending',
+            'is_active'    => true,
+            'status'       => 'approved',
             'last_seen_at' => now(),
         ]);
 
         app(AuditLogService::class)->log('device.self_registered', 'Device', $device->id, [], $device->toArray(), [], $request);
 
-        return response()->json(['device' => $device, 'status' => 'pending']);
+        return response()->json(['device' => $device, 'status' => 'approved']);
     }
 
     /**
@@ -170,7 +171,7 @@ class DeviceController extends Controller
     {
         $openShiftIds = Shift::whereNull('closed_at')->pluck('id', 'device_id');
 
-        $devices = Device::with('user:id,name')
+        $devices = Device::with(['user:id,name', 'lastUser:id,name'])
             ->orderBy('name')
             ->get()
             ->map(function (Device $device) use ($openShiftIds) {
@@ -179,7 +180,7 @@ class DeviceController extends Controller
                 if ($openShiftId) {
                     $data['open_shift_id'] = $openShiftId;
                 }
-                $data['registered_by'] = $device->user?->name;
+                $data['registered_by'] = $device->lastUser?->name ?? $device->user?->name;
 
                 return $data;
             });

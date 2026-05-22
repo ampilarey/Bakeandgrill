@@ -654,7 +654,7 @@ export function OpenTicketsPanel({
           ? `Tap any other ticket to preview the merge (you'll confirm before anything changes)`
           : listScope === "venue"
             ? "All stations — parked, cooking, and ready-for-pickup"
-            : "Your tickets (all devices) + online/delivery — parked, cooking, and ready"
+            : "Open tickets — parked, cooking, and ready (all staff)"
       }
       onClose={onClose}
     >
@@ -1008,6 +1008,7 @@ export function OpenTicketsPanel({
                   </div>
                   <div style={{ fontSize: type.caption.fontSize, color: palette.panelMuted, marginTop: 2 }}>
                     {(t.items?.length ?? 0)} items
+                    {t.user?.name ? ` · by ${t.user.name}` : ""}
                     {t.ticket_note ? ` · ${t.ticket_note}` : ""}
                     {t.customer?.name ? ` · ${t.customer.name}` : ""}
                     {t.customer?.phone ? ` · ${t.customer.phone}` : ""}

@@ -151,7 +151,7 @@ class PosPermissionResolutionTest extends TestCase
             ->assertStatus(403);
     }
 
-    public function test_staff_active_orders_scoped_to_own_sales(): void
+    public function test_staff_active_orders_are_venue_wide(): void
     {
         $other = User::create([
             'name' => 'Other Staff', 'email' => 'other@test.com',
@@ -171,7 +171,7 @@ class PosPermissionResolutionTest extends TestCase
             ->pluck('id');
 
         $this->assertTrue($ids->contains($mine->id));
-        $this->assertFalse($ids->contains($theirs->id));
+        $this->assertTrue($ids->contains($theirs->id));
         $this->assertTrue($ids->contains($online->id));
     }
 
@@ -197,9 +197,26 @@ class PosPermissionResolutionTest extends TestCase
         $this->assertFalse($ids->contains($theirs->id));
     }
 
-    public function test_staff_cannot_view_other_cashier_order_detail(): void
+    public function test_staff_can_view_other_cashier_active_unpaid_order(): void
     {
-        $order = Order::factory()->pending()->create(['user_id' => $this->manager->id]);
+        $order = Order::factory()->pending()->create([
+            'user_id' => $this->manager->id,
+            'payment_status' => 'unpaid',
+        ]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $this->getJson("/api/orders/{$order->id}")
+            ->assertOk();
+    }
+
+    public function test_staff_cannot_view_other_cashier_completed_receipt(): void
+    {
+        $order = Order::factory()->paid()->create([
+            'user_id' => $this->manager->id,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
 
         Sanctum::actingAs($this->staff, ['staff']);
 

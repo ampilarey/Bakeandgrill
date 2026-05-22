@@ -17,6 +17,7 @@ class Device extends Model
         'identifier',
         'type',
         'user_id',
+        'last_user_id',
         'ip_address',
         'is_active',
         'status',
@@ -31,5 +32,10 @@ class Device extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function lastUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'last_user_id');
     }
 }

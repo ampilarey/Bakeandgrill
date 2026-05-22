@@ -9,7 +9,7 @@
         "customer_id": null,
         "user_id": "__VOLATILE__",
         "device_id": "__VOLATILE__",
-        "shift_id": null,
+        "shift_id": 1,
         "ticket_name": null,
         "ticket_note": null,
         "offline_id": null,

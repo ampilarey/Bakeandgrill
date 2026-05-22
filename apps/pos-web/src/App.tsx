@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchReceipts, fetchPosQuickNotes, pingAuth, fetchMe } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchReceipts, fetchPosQuickNotes, pingAuth, fetchMe } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -35,35 +35,10 @@ import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
 import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
 
-import { palette, radius, shadow, space, type as typeRamp, btnPrimary } from "./theme";
-
-// Theme shortcut object so deeply-nested style blocks in this file
-// don't get pulled apart with 6 import lines. `TH` is just a renamed
-// re-export of the imports above.
-const TH = {
-  bg: palette.bg,
-  bgAlt: palette.bgAlt,
-  panel: palette.panel,
-  panelInk: palette.panelInk,
-  panelMuted: palette.panelMuted,
-  panelSubtle: palette.panelSubtle,
-  border: palette.border,
-  ink: palette.ink,
-  inkSoft: palette.inkSoft,
-  primary: palette.primary,
-  primaryDark: palette.primaryDark,
-  primaryLight: palette.primaryLight,
-  primaryBg: palette.primaryBg,
-  radius,
-  shadow,
-  space,
-  type: typeRamp,
-};
+import { palette } from "./theme";
 
 const orderTypes = ["Dine-in", "Takeaway", "Pickup"] as const;
 type OrderType = (typeof orderTypes)[number];
-
-type DeviceStatus = 'unknown' | 'checking' | 'pending' | 'approved' | 'rejected' | 'registration_failed';
 
 type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | "ops";
 
@@ -160,7 +135,6 @@ function App() {
     localStorage.setItem("pos_device_db_id", String(id));
   }, []);
   const [authError, setAuthError]     = useState("");
-  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>('unknown');
   const [showTimeClock, setShowTimeClock] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -255,7 +229,7 @@ function App() {
   const menu = useMenu(isLoggedIn, orderType);
   const cart = useCart();
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
-  const shift = useShift(isLoggedIn, deviceStatus === "approved");
+  const shift = useShift(isLoggedIn, isLoggedIn);
 
   // Auto-dismiss the note picker if the cart line it's editing
   // disappears (e.g. cashier removed the line in another panel before
@@ -277,7 +251,7 @@ function App() {
   // newer than the cashier's last-seen high-water mark. Enabled-flag
   // also pauses polling when the device is rejected/pending so we don't
   // hammer an endpoint we can't read from anyway.
-  const onlineOrderWatch = useOnlineOrderWatcher(isLoggedIn && deviceStatus === "approved");
+  const onlineOrderWatch = useOnlineOrderWatcher(isLoggedIn);
 
   /**
    * Items visible in the menu grid for the current category selection.
@@ -315,7 +289,7 @@ function App() {
   }, [menu.items, menu.categories, menu.selectedCategoryId]);
 
   const refreshOpenTickets = useCallback(async () => {
-    if (!isLoggedIn || deviceStatus !== "approved") return;
+    if (!isLoggedIn) return;
     try {
       // Count what the Active Orders panel actually shows. Two earlier
       // bugs here, both fixed:
@@ -336,7 +310,7 @@ function App() {
       const total = res.total ?? res.data.length;
       setOpenTicketsCount(total);
     } catch { /* best-effort */ }
-  }, [isLoggedIn, deviceStatus]);
+  }, [isLoggedIn]);
 
   useEffect(() => { void refreshOpenTickets(); }, [refreshOpenTickets, pane, shift.current?.id]);
 
@@ -478,76 +452,15 @@ function App() {
     }
   }, [isRefreshingAll, menu, refreshTables, refreshQuickNotes, refreshOpenTickets, shift]);
 
-  // ── Device-blocked event (dispatched by api.ts when middleware rejects) ────
-  useEffect(() => {
-    const onBlocked = (e: Event) => {
-      const msg = (e as CustomEvent<string>).detail ?? '';
-      if (msg.includes('pending')) setDeviceStatus('pending');
-      else setDeviceStatus('rejected');
-    };
-    window.addEventListener('pos_device_blocked', onBlocked);
-    return () => window.removeEventListener('pos_device_blocked', onBlocked);
-  }, []);
-
-  const applyDeviceStatus = (apiStatus: string, isActive?: boolean) => {
-    if (apiStatus === 'pending')                            setDeviceStatus('pending');
-    else if (apiStatus === 'rejected')                      setDeviceStatus('rejected');
-    else if (apiStatus === 'unregistered')                  setDeviceStatus('pending');
-    else if (apiStatus === 'approved' && isActive === false) setDeviceStatus('rejected');
-    else if (apiStatus === 'approved')                      setDeviceStatus('approved');
-  };
-
+  // Fire-and-forget device audit registration — never blocks sales.
   useEffect(() => {
     if (!isLoggedIn) return;
-    let cancelled = false;
-    setDeviceStatus('checking');
-    void (async () => {
-      try {
-        const res = await selfRegisterDevice(deviceId, `POS ${deviceId}`);
-        if (!cancelled) {
-          applyDeviceStatus(res.status);
-          if (res.device?.id) persistDeviceDbId(res.device.id);
-        }
-      } catch {
-        if (!cancelled) setDeviceStatus('registration_failed');
-      }
-    })();
-    return () => { cancelled = true; };
+    void selfRegisterDevice(deviceId, `POS ${deviceId}`)
+      .then((res) => {
+        if (res.device?.id) persistDeviceDbId(res.device.id);
+      })
+      .catch(() => { /* optional audit metadata */ });
   }, [isLoggedIn, deviceId, persistDeviceDbId]);
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    if (deviceStatus !== 'pending' && deviceStatus !== 'approved') return;
-    const baseCadence = deviceStatus === 'approved' ? 20000 : 4000;
-    let cadence = baseCadence;
-    let consecutiveFailures = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const tick = () => {
-      void (async () => {
-        try {
-          const s = await selfDeviceStatus(deviceId);
-          applyDeviceStatus(s.status, s.is_active);
-          if (s.id) persistDeviceDbId(s.id);
-          // Success — reset cadence to the steady-state value.
-          consecutiveFailures = 0;
-          cadence = baseCadence;
-        } catch {
-          // Exponential backoff capped at 5 minutes so a long offline
-          // window doesn't hammer the network every 4 seconds. The
-          // foreground UI is already grey on a network blip; an
-          // occasional retry is enough.
-          consecutiveFailures += 1;
-          cadence = Math.min(baseCadence * 2 ** consecutiveFailures, 300000);
-        } finally {
-          timer = setTimeout(tick, cadence);
-        }
-      })();
-    };
-
-    timer = setTimeout(tick, cadence);
-    return () => { if (timer) clearTimeout(timer); };
-  }, [isLoggedIn, deviceId, deviceStatus, persistDeviceDbId]);
 
   // ── Login handler ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -586,7 +499,6 @@ function App() {
     localStorage.removeItem("pos_staff_permissions");
     setAuthToken(null);
     setIsLoggedIn(false);
-    setDeviceStatus('unknown');
     setCashierName("");
     setStaffRole("");
     setStaffPermissions([]);
@@ -651,9 +563,12 @@ function App() {
     finally { setOpenShiftBusy(false); }
   };
   const handleCloseShift = async (closingCash: number, notes?: string) => {
-    await shift.close(closingCash, notes);
+    const res = await shift.close(closingCash, notes);
     setShowCloseShift(false);
     setPane("sales");
+    if (res.message) {
+      order.setStatusMessage(res.message);
+    }
   };
   const handleSaveTicketSubmit = async (name: string, note: string | undefined, fireToKitchen: boolean) => {
     await order.handleSaveTicket(name, note, fireToKitchen);
@@ -867,46 +782,6 @@ function App() {
         cashierName={cashierName}
         onUnlock={handleUnlock}
         onSwitchUser={handleLogout}
-      />
-    );
-  }
-
-  if (deviceStatus === 'checking' || deviceStatus === 'unknown') {
-    return <FullScreenCard emoji="⏳" title="Checking device…" body="Please wait" />;
-  }
-
-  if (deviceStatus === 'registration_failed') {
-    return (
-      <FullScreenCard
-        emoji="📡"
-        title="Device check failed"
-        body={"We could not contact the server to verify this device.\nCheck the internet connection and try again."}
-        primaryAction={{ label: 'Retry', onClick: () => setDeviceStatus('unknown') }}
-        secondaryAction={{ label: 'Log out', onClick: handleLogout }}
-      />
-    );
-  }
-
-  if (deviceStatus === 'pending') {
-    return (
-      <FullScreenCard
-        emoji="🔒"
-        title="Waiting for approval"
-        body={"This device hasn't been approved yet.\nAsk the owner to approve it in the admin panel."}
-        deviceId={deviceId}
-        secondaryAction={{ label: 'Log out', onClick: handleLogout }}
-        footer="Checking automatically every few seconds…"
-      />
-    );
-  }
-
-  if (deviceStatus === 'rejected') {
-    return (
-      <FullScreenCard
-        emoji="🚫"
-        title="Device disabled"
-        body="This device has been disabled by the owner. Contact the owner to re-enable it."
-        primaryAction={{ label: 'Log out', onClick: handleLogout }}
       />
     );
   }
@@ -1410,106 +1285,6 @@ function Banner({ text }: { text: string }) {
       background: '#FFFFFF', borderRadius: 8, padding: '10px 14px',
       fontSize: 13, color: '#475569', border: '1px solid #E2E8F0', marginBottom: 6,
     }}>{text}</div>
-  );
-}
-
-/**
- * Generic gate card — used by device-pending / device-disabled /
- * shift-closed style screens. Rendered in front of the whole POS
- * when the cashier can't proceed.
- *
- * Slate background matches the rest of the POS chrome so transitions
- * in/out of these gates don't feel like switching apps.
- */
-function FullScreenCard({
-  emoji, title, body, deviceId, primaryAction, secondaryAction, footer,
-}: {
-  emoji: string; title: string; body: string;
-  deviceId?: string;
-  primaryAction?: { label: string; onClick: () => void };
-  secondaryAction?: { label: string; onClick: () => void };
-  footer?: string;
-}) {
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: `linear-gradient(135deg, ${TH.ink} 0%, ${TH.inkSoft} 100%)`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: TH.space.xl,
-    }}>
-      <div style={{
-        background: TH.panel,
-        borderRadius: TH.radius.xxl,
-        padding: `${TH.space.xxl}px ${TH.space.xxl}px ${TH.space.xl}px`,
-        width: '100%',
-        maxWidth: 440,
-        textAlign: 'center',
-        boxShadow: TH.shadow.xl,
-        animation: 'pos-scale-in 200ms ease',
-      }}>
-        <p style={{ fontSize: 44, margin: `0 0 ${TH.space.m}px` }}>{emoji}</p>
-        <p style={{ ...TH.type.title, color: TH.panelInk, margin: `0 0 ${TH.space.s}px` }}>{title}</p>
-        <p style={{ ...TH.type.body, color: TH.panelMuted, margin: `0 0 ${TH.space.xl}px`, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-          {body}
-        </p>
-
-        {deviceId && (
-          <div style={{
-            background: TH.primaryBg,
-            border: `1px solid ${TH.primaryLight}`,
-            borderRadius: TH.radius.l,
-            padding: `${TH.space.m}px ${TH.space.l}px`,
-            marginBottom: TH.space.xl,
-          }}>
-            <p style={{ ...TH.type.label, margin: 0, color: TH.primaryDark }}>Device ID</p>
-            <p style={{
-              margin: `${TH.space.xxs}px 0 0`,
-              fontSize: 16,
-              fontWeight: 800,
-              color: TH.primaryDark,
-              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-              letterSpacing: '0.04em',
-            }}>{deviceId}</p>
-          </div>
-        )}
-
-        {footer && (
-          <p style={{ ...TH.type.caption, color: TH.panelSubtle, margin: `0 0 ${TH.space.m}px` }}>{footer}</p>
-        )}
-
-        <div style={{
-          display: 'flex',
-          gap: TH.space.s,
-          justifyContent: 'center',
-          flexDirection: secondaryAction ? 'column' : 'row',
-        }}>
-          {primaryAction && (
-            <button onClick={primaryAction.onClick} style={btnPrimary()}>
-              {primaryAction.label}
-            </button>
-          )}
-          {secondaryAction && (
-            <button
-              onClick={secondaryAction.onClick}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: TH.panelMuted,
-                fontSize: TH.type.bodySm.fontSize,
-                fontWeight: 600,
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                padding: TH.space.s,
-              }}
-            >
-              {secondaryAction.label}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 

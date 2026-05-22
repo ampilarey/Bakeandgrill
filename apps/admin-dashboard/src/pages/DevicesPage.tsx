@@ -169,6 +169,10 @@ export default function DevicesPage() {
         <StatCard label="Pending Approval" value={String(pending.length)} accent="#f59e0b" />
       </div>
 
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#64748B', maxWidth: 720 }}>
+        Device labels are for audit and station tracking only. POS sales no longer require device approval — staff access is controlled by login, permissions, and shift.
+      </p>
+
       {/* ── Pending Approval Section ── */}
       {pending.length > 0 && (
         <div style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>

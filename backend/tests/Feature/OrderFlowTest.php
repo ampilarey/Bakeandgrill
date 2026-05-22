@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
 use App\Models\Device;
 use App\Models\Item;
@@ -20,12 +21,12 @@ class OrderFlowTest extends TestCase
 
     public function test_staff_can_create_order_and_take_payment(): void
     {
-        $role = Role::create([
-            'name' => 'Cashier',
-            'slug' => 'cashier',
-            'description' => 'Cashier role',
-            'is_active' => true,
-        ]);
+        PermissionCatalogSync::sync();
+
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
+        );
 
         $user = User::create([
             'name' => 'Cashier',
@@ -61,6 +62,8 @@ class OrderFlowTest extends TestCase
 
         Sanctum::actingAs($user, ['staff']);
 
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
         $createResponse = $this->withHeader('X-Device-Identifier', $device->identifier)
             ->postJson('/api/orders', [
                 'type' => 'takeaway',
@@ -79,7 +82,8 @@ class OrderFlowTest extends TestCase
 
         $orderId = $createResponse->json('order.id');
 
-        $paymentResponse = $this->postJson("/api/orders/{$orderId}/payments", [
+        $paymentResponse = $this->withHeader('X-Device-Identifier', $device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", [
             'payments' => [
                 [
                     'method' => 'cash',

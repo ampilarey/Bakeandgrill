@@ -58,6 +58,17 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
         {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
         <Summary label="Expected in drawer" value={expected} bold />
 
+        {Number(summary?.open_unpaid_orders ?? 0) > 0 && (
+          <div style={{
+            marginTop: 12, padding: "10px 12px", borderRadius: 8,
+            background: "#FEF3C7", color: "#92400E", fontSize: 13,
+          }}>
+            This shift has {summary!.open_unpaid_orders} open unpaid order
+            {summary!.open_unpaid_orders === 1 ? "" : "s"} created during it.
+            They will stay active and can be paid by another staff shift.
+          </div>
+        )}
+
         <Field label="Counted cash">
           <CashInput
             autoFocus

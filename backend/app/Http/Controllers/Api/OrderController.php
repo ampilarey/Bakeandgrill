@@ -24,6 +24,7 @@ use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
 use App\Services\OrderStatusMachine;
 use App\Services\PermissionService;
+use App\Services\ShiftAccessService;
 use App\Services\StockManagementService;
 use App\Models\Item;
 use App\Models\Variant;
@@ -189,17 +190,9 @@ class OrderController extends Controller
             $query->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'payment_pending']);
         }
 
-        // Cashier scope: own sales on every device, plus shared online/delivery
-        // active tickets (no owning cashier until someone picks them up).
-        if (!$canViewAllStations) {
-            if ($request->filled('active_only') && $request->boolean('active_only')) {
-                $query->where(function ($w) use ($cashierId) {
-                    $w->where('user_id', $cashierId)
-                        ->orWhereIn('type', ['online_pickup', 'delivery']);
-                });
-            } else {
-                $query->where('user_id', $cashierId);
-            }
+        // Cashier scope for receipts/history only — active orders are venue-wide.
+        if (!$canViewAllStations && !($request->filled('active_only') && $request->boolean('active_only'))) {
+            $query->where('user_id', $cashierId);
         }
 
         // Receipt search: order number, ticket name, customer phone, customer name.
@@ -225,6 +218,11 @@ class OrderController extends Controller
         if (!$request->user()->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
+
+        app(ShiftAccessService::class)->requireOpenShift(
+            $request->user(),
+            'Open a shift before ringing sales.',
+        );
 
         $order = app(OrderCreationService::class)->createFromPayload(
             $request->validated(),
@@ -266,6 +264,12 @@ class OrderController extends Controller
     {
         $payloads = $request->validated()['orders'];
         $user = $request->user();
+
+        app(ShiftAccessService::class)->requireOpenShift(
+            $user,
+            'Open a shift before ringing sales.',
+        );
+
         $processed = 0;
         $deduped = 0;
         $failed = [];
@@ -325,15 +329,32 @@ class OrderController extends Controller
             ->findOrFail($id);
 
         $permissions = app(PermissionService::class);
-        if (!$permissions->hasPermission($request->user(), 'pos.view_all_station_orders')) {
-            $ownsOrder = (int) $order->user_id === (int) $request->user()->id;
-            $sharedOnline = in_array($order->type, ['online_pickup', 'delivery'], true);
-            if (!$ownsOrder && !$sharedOnline) {
-                return response()->json(['message' => 'Forbidden.'], 403);
-            }
+        if (!$this->staffCanViewOrder($request, $order, $permissions)) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         return response()->json(['order' => $order]);
+    }
+
+    private function staffCanViewOrder(Request $request, Order $order, PermissionService $permissions): bool
+    {
+        $user = $request->user();
+        if ($permissions->hasPermission($user, 'pos.view_all_station_orders')) {
+            return true;
+        }
+        if ((int) $order->user_id === (int) $user->id) {
+            return true;
+        }
+        if (in_array($order->type, ['online_pickup', 'delivery'], true)) {
+            return true;
+        }
+
+        return $this->isHandoffVisibleOrder($order);
+    }
+
+    private function isHandoffVisibleOrder(Order $order): bool
+    {
+        return !in_array($order->status, ['cancelled', 'refunded', 'completed'], true);
     }
 
     public function hold(Request $request, int $id): JsonResponse
@@ -1287,10 +1308,22 @@ class OrderController extends Controller
 
         $validated = $request->validated();
         $printReceipt = !array_key_exists('print_receipt', $validated) || $validated['print_receipt'] === true;
+        $gatewayMethods = ['bml_pay', 'bml', 'online'];
+        $needsCollectorShift = collect($validated['payments'])->contains(
+            fn (array $row) => !in_array($row['method'], $gatewayMethods, true),
+        );
+        $collectorShift = null;
+        $collector = $request->user();
+        if ($needsCollectorShift) {
+            $collectorShift = app(ShiftAccessService::class)->requireOpenShift(
+                $collector,
+                'Open a shift before taking payment.',
+            );
+        }
 
         // Single transaction with row-lock to prevent concurrent split-payment race conditions
         // where two requests both read paidTotal < total and both set status = 'partial'.
-        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt): array {
+        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt, $gatewayMethods, $collectorShift, $collector): array {
             $order = Order::with('payments')->lockForUpdate()->findOrFail($id);
 
             // Guard: payments cannot be added to terminal or already-paid orders
@@ -1383,6 +1416,10 @@ class OrderController extends Controller
                     'status' => $paymentStatus,
                     'reference_number' => $paymentPayload['reference_number'] ?? null,
                     'processed_at' => now(),
+                    'collected_by_user_id' => $collector->id,
+                    'shift_id' => in_array($paymentPayload['method'], $gatewayMethods, true)
+                        ? null
+                        : $collectorShift?->id,
                 ]);
 
                 app(AuditLogService::class)->log('payment.created', 'Payment', $payment->id, [], $payment->toArray(), ['order_id' => $order->id], $request);

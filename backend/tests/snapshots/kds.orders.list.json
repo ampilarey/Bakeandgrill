@@ -52,7 +52,7 @@
             "referral_code": null,
             "referral_discount_laar": 0,
             "referral_redemption_recorded": false,
-            "shift_id": null,
+            "shift_id": 1,
             "ticket_name": null,
             "ticket_note": null,
             "payment_status": "unpaid",

@@ -70,6 +70,7 @@ class PosResumeAndChargeTest extends TestCase
     public function test_hold_resume_then_charge_settles_same_order_without_duplicate(): void
     {
         Sanctum::actingAs($this->staffUser, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
 
         // 1. Create + hold one order
         $createRes = $this->withHeader('X-Device-Identifier', 'RES-POS')
@@ -116,6 +117,7 @@ class PosResumeAndChargeTest extends TestCase
         // taps "Cancel resume" — the POS calls POST /orders/{id}/hold
         // to put it back into Open Tickets.
         Sanctum::actingAs($this->staffUser, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
 
         $orderId = $this->withHeader('X-Device-Identifier', 'RES-POS')
             ->postJson('/api/orders', [

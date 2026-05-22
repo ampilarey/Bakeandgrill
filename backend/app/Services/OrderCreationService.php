@@ -58,13 +58,6 @@ class OrderCreationService
                 ->latest('opened_at')
                 ->value('id');
         }
-        if ($shiftId === null && $device !== null) {
-            $shiftId = Shift::query()
-                ->where('device_id', $device->id)
-                ->whereNull('closed_at')
-                ->latest('opened_at')
-                ->value('id');
-        }
 
         // Customer online orders (no staff user, type online_pickup/delivery) must start as
         // payment_pending so the KDS never shows them before payment is confirmed.

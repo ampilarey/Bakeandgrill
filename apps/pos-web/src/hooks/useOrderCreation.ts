@@ -547,17 +547,9 @@ export function useOrderCreation(params: Params) {
       }
       const message = (err as Error)?.message ?? "";
       const isApiError = err instanceof ApiRequestError;
-      const status = isApiError ? err.status : undefined;
 
       if (isApiError) {
-        const isDeviceBlock =
-          message.includes("Device disabled") ||
-          message.includes("Device pending") ||
-          message.includes("Device rejected") ||
-          message.includes("Device identifier") ||
-          message.includes("Device not registered") ||
-          status === 401 || status === 403;
-        setStatusMessage(isDeviceBlock ? `⛔ ${message}` : `Order failed: ${message}`);
+        setStatusMessage(`Order failed: ${message}`);
         return false;
       }
 

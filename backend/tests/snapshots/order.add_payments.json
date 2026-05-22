@@ -51,7 +51,7 @@
         "referral_code": null,
         "referral_discount_laar": 0,
         "referral_redemption_recorded": false,
-        "shift_id": null,
+        "shift_id": 1,
         "ticket_name": null,
         "ticket_note": null,
         "payment_status": "paid",
@@ -76,7 +76,9 @@
                 "amount_laar": 2200,
                 "local_id": null,
                 "provider_transaction_id": null,
-                "idempotency_key": null
+                "idempotency_key": null,
+                "collected_by_user_id": 1,
+                "shift_id": 1
             }
         ]
     },

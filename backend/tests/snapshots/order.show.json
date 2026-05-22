@@ -51,7 +51,7 @@
         "referral_code": null,
         "referral_discount_laar": 0,
         "referral_redemption_recorded": false,
-        "shift_id": null,
+        "shift_id": 1,
         "ticket_name": null,
         "ticket_note": null,
         "payment_status": "unpaid",
@@ -81,6 +81,19 @@
         ],
         "payments": [],
         "customer": null,
-        "table": null
+        "table": null,
+        "user": {
+            "id": "__VOLATILE__",
+            "name": "Test Cashier"
+        },
+        "device": {
+            "id": "__VOLATILE__",
+            "name": "POS-01",
+            "identifier": "TEST-001"
+        },
+        "shift": {
+            "id": "__VOLATILE__",
+            "opened_at": "__VOLATILE__"
+        }
     }
 }

@@ -12,6 +12,7 @@ use App\Http\Requests\StoreRefundRequest;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Services\AuditLogService;
+use App\Services\ShiftAccessService;
 use App\Services\StockManagementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -54,8 +55,12 @@ class RefundController extends Controller
         $validated = $request->validated();
         $amount = (float) $validated['amount'];
         $amountLaar = (int) round($amount * 100);
+        $processorShift = app(ShiftAccessService::class)->requireOpenShift(
+            $request->user(),
+            'Open a shift before processing a refund.',
+        );
 
-        [$refund, $order, $refundRatio] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request) {
+        [$refund, $order, $refundRatio] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request, $processorShift) {
             $order = Order::with(['items.item', 'items.variant'])->lockForUpdate()->findOrFail($orderId);
 
             $orderTotalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
@@ -95,6 +100,7 @@ class RefundController extends Controller
             $refund = Refund::create([
                 'order_id' => $order->id,
                 'user_id' => $request->user()?->id,
+                'shift_id' => $processorShift->id,
                 'amount' => $amount,
                 'status' => $validated['status'] ?? 'approved',
                 'reason' => $validated['reason'] ?? null,

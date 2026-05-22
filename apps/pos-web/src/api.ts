@@ -65,8 +65,7 @@ const { request: _coreRequest } = createApiClient({
   getToken: () => _token,
 });
 
-// Wraps every API call: injects X-Device-Identifier header and handles
-// device-blocked (disabled/pending/rejected) errors gracefully.
+// Wraps every API call: injects optional X-Device-Identifier for audit metadata.
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const deviceId = localStorage.getItem('pos_device_id');
   const extraHeaders: HeadersInit = deviceId
@@ -79,14 +78,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
     return await _coreRequest<T>(path, merged);
   } catch (e) {
-    const msg = (e as Error).message ?? '';
-    if (
-      msg.includes('Device disabled') ||
-      msg.includes('Device pending') ||
-      msg.includes('Device rejected')
-    ) {
-      window.dispatchEvent(new CustomEvent('pos_device_blocked', { detail: msg }));
-    }
     // Auth expiry: bubble a single global event the App listens for.
     // Without this, individual call sites silently log a 401 and the
     // cashier wonders why nothing works. ApiRequestError carries the
@@ -840,6 +831,7 @@ export async function fetchReceipts(params: {
     discount_amount: number;
     created_at: string;
     customer?: { id: number; name?: string; phone?: string } | null;
+    user?: { id: number; name?: string } | null;
     items?: Array<{ id: number; item_name: string; quantity: number; unit_price: number; total_price: number }>;
     ticket_name?: string | null;
     ticket_note?: string | null;
@@ -889,7 +881,7 @@ export async function fetchActiveOrdersVenueWide(): Promise<{
   return { data: out, total };
 }
 
-/** Active orders for the logged-in cashier (every device they've used). */
+/** Active orders for all in-flight venue tickets (staff default). */
 export async function fetchActiveOrdersForCashier(): Promise<{
   data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
   total: number;
@@ -967,6 +959,7 @@ export async function getShiftSummary(shiftId: number): Promise<{
     net_sales: number;
   };
   tenders: Record<string, number>;
+  open_unpaid_orders?: number;
 }> {
   return request(`/shifts/${shiftId}/summary`);
 }
@@ -1033,6 +1026,8 @@ export async function closeShift(
   cash_sales: number;
   cash_in: number;
   cash_out: number;
+  open_unpaid_orders?: number;
+  message?: string;
 }> {
   return request(`/shifts/${shiftId}/close`, {
     method: "POST",

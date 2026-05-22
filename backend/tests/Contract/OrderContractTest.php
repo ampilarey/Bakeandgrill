@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Contract;
 
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
 use App\Models\Device;
 use App\Models\Item;
@@ -30,12 +31,12 @@ class OrderContractTest extends ContractTestCase
     {
         parent::setUp();
 
-        $role = Role::create([
-            'name' => 'Cashier',
-            'slug' => 'cashier',
-            'description' => 'Cashier role',
-            'is_active' => true,
-        ]);
+        PermissionCatalogSync::sync();
+
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
+        );
 
         $this->staff = User::create([
             'name' => 'Test Cashier',
@@ -73,9 +74,15 @@ class OrderContractTest extends ContractTestCase
         ]);
     }
 
+    private function openShift(): void
+    {
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+    }
+
     public function test_create_order_response_shape(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
+        $this->openShift();
 
         $response = $this->postJson('/api/orders', [
             'type' => 'takeaway',
@@ -98,6 +105,7 @@ class OrderContractTest extends ContractTestCase
     public function test_order_show_response_shape(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
+        $this->openShift();
 
         $createResponse = $this->postJson('/api/orders', [
             'type' => 'dine_in',
@@ -115,6 +123,7 @@ class OrderContractTest extends ContractTestCase
     public function test_add_payments_completes_order_response_shape(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
+        $this->openShift();
 
         $createResponse = $this->postJson('/api/orders', [
             'type' => 'takeaway',
@@ -140,6 +149,7 @@ class OrderContractTest extends ContractTestCase
     public function test_hold_and_resume_order_response_shape(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
+        $this->openShift();
 
         $createResponse = $this->postJson('/api/orders', [
             'type' => 'takeaway',
@@ -162,6 +172,7 @@ class OrderContractTest extends ContractTestCase
     public function test_kds_orders_list_shape(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
+        $this->openShift();
 
         $this->postJson('/api/orders', [
             'type' => 'dine_in',
@@ -178,6 +189,7 @@ class OrderContractTest extends ContractTestCase
     public function test_order_number_format(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
+        $this->openShift();
 
         $response = $this->postJson('/api/orders', [
             'type' => 'takeaway',
@@ -193,6 +205,7 @@ class OrderContractTest extends ContractTestCase
     public function test_prices_are_sourced_from_db_not_client(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
+        $this->openShift();
 
         $response = $this->postJson('/api/orders', [
             'type' => 'takeaway',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
 use App\Models\Device;
 use App\Models\Item;
@@ -47,6 +48,8 @@ class OrderStatusMachineTest extends TestCase
     {
         parent::setUp();
 
+        PermissionCatalogSync::sync();
+
         MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
         $cat = Category::create(['name' => 'Status Food', 'slug' => 'status-food', 'is_active' => true]);
 
@@ -59,7 +62,10 @@ class OrderStatusMachineTest extends TestCase
             'is_available' => true,
         ]);
 
-        $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'is_active' => true, 'description' => ''],
+        );
         $this->staffUser = User::create([
             'name' => 'Cashier',
             'email' => 'cashier@status-test.com',
@@ -85,11 +91,14 @@ class OrderStatusMachineTest extends TestCase
     private function createOrderWithStatus(string $status): Order
     {
         Sanctum::actingAs($this->staffUser, ['staff']);
+
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
         $response = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson('/api/orders', [
                 'type' => 'dine_in',
                 'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
-            ]);
+            ])->assertCreated();
 
         $order = Order::findOrFail($response->json('order.id'));
         \Illuminate\Support\Facades\DB::table('orders')
