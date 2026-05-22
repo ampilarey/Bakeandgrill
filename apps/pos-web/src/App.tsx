@@ -34,7 +34,7 @@ import { SideDrawer }        from "./components/SideDrawer";
 import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
 import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
-import { PosUpdateBanner, PosVersionLabel } from "./components/PosUpdateBanner";
+import { PosUpdateBanner } from "./components/PosUpdateBanner";
 import { usePosAppUpdate } from "./hooks/usePosAppUpdate";
 import { POS_BUILD_INFO } from "./posBuildInfo";
 
@@ -792,9 +792,8 @@ function App() {
             <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.1 }}>
               {paneTitle(pane)}
             </div>
-            <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span>{cashierName || 'Cashier'} · {deviceId}</span>
-              <PosVersionLabel version={POS_BUILD_INFO.version} build={POS_BUILD_INFO.build} />
+            <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2 }}>
+              {cashierName || 'Cashier'} · {deviceId}
             </div>
           </div>
         </div>
