@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PosVersionLabel } from "./PosUpdateBanner";
 
 export type DrawerItem = {
   id: string;
@@ -17,6 +18,9 @@ type Props = {
   onSelect: (id: string) => void;
   cashierName?: string;
   shiftLabel?: string;
+  appVersion?: string;
+  appBuild?: string;
+  updatePending?: boolean;
 };
 
 /**
@@ -25,7 +29,18 @@ type Props = {
  * other workflow (Receipts, Shift, Open Tickets, History, Switch User,
  * Log out) one tap away.
  */
-export function SideDrawer({ open, onClose, items, active, onSelect, cashierName, shiftLabel }: Props) {
+export function SideDrawer({
+  open,
+  onClose,
+  items,
+  active,
+  onSelect,
+  cashierName,
+  shiftLabel,
+  appVersion,
+  appBuild,
+  updatePending,
+}: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -81,6 +96,23 @@ export function SideDrawer({ open, onClose, items, active, onSelect, cashierName
             </>
           )}
         </nav>
+
+        {(appVersion && appBuild) && (
+          <footer style={{
+            padding: "14px 20px",
+            borderTop: "1px solid #1E293B",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}>
+            <PosVersionLabel version={appVersion} build={appBuild} light />
+            {updatePending && (
+              <span style={{ fontSize: 11, color: "#FCD34D", fontWeight: 600 }}>
+                ● Update ready — use banner or Update app
+              </span>
+            )}
+          </footer>
+        )}
       </aside>
     </>
   );

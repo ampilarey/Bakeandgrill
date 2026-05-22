@@ -10,6 +10,13 @@ import {
 
 const VERSION_URL = "/pos-version.json";
 const POLL_MS = 3 * 60 * 1000;
+const RELOAD_FALLBACK_MS = 1200;
+
+export type ManualUpdateResult =
+  | "current"
+  | "available"
+  | "blocked"
+  | "applying";
 
 export type PosAppUpdateState = {
   localBuild: PosVersionInfo;
@@ -21,19 +28,51 @@ export type PosAppUpdateState = {
   checking: boolean;
   applying: boolean;
   lastCheckedAt: string | null;
-  checkNow: () => Promise<boolean>;
+  checkNow: (opts?: { force?: boolean }) => Promise<boolean>;
+  requestManualUpdate: () => Promise<ManualUpdateResult>;
   dismissBanner: () => void;
   applyUpdate: () => Promise<{ ok: boolean; message?: string }>;
 };
 
 async function fetchServerVersion(): Promise<PosVersionInfo | null> {
   try {
-    const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
     if (!res.ok) return null;
     return (await res.json()) as PosVersionInfo;
   } catch {
     return null;
   }
+}
+
+/** Hard navigation — reliable on iPad standalone PWAs when SW skipWaiting alone stalls. */
+async function hardReloadPosApp(
+  updateSW: ((reloadPage?: boolean) => Promise<void>) | null,
+): Promise<void> {
+  if ("serviceWorker" in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration("/pos/");
+      reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
+    } catch {
+      // continue to reload
+    }
+  }
+
+  if (updateSW) {
+    try {
+      await updateSW(true);
+    } catch {
+      // fall through — many browsers no-op when no worker is waiting
+    }
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("_u");
+  url.searchParams.delete("_r");
+  url.searchParams.set("_u", Date.now().toString(36));
+  window.location.replace(url.toString());
 }
 
 export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState {
@@ -45,8 +84,9 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
   const [applying, setApplying] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const dismissedBuildRef = useRef<string | null>(null);
+  const [stickyBanner, setStickyBanner] = useState(false);
   const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
-  const reloadScheduledRef = useRef(false);
+  const reloadTimerRef = useRef<number | null>(null);
 
   const versionMismatch =
     serverBuild !== null && isNewerPosBuild(serverBuild, localBuild);
@@ -54,41 +94,58 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
   const updateAvailable = versionMismatch || swWaiting;
   const updateBlocked = isPosUpdateBlocked(blockers);
 
-  const showBannerIfNeeded = useCallback(
-    (server: PosVersionInfo | null, sw: boolean) => {
+  const markUpdateAvailable = useCallback(
+    (server: PosVersionInfo | null, sw: boolean, force = false) => {
       const mismatch = server !== null && isNewerPosBuild(server, localBuild);
       const available = mismatch || sw;
+      const key = server?.build ?? (sw ? "sw-waiting" : "");
       if (!available) {
+        setStickyBanner(false);
         setBannerVisible(false);
-        return;
+        return false;
       }
-      const buildKey = server?.build ?? (sw ? "sw-waiting" : "");
-      if (dismissedBuildRef.current && dismissedBuildRef.current === buildKey) {
-        return;
+      if (force) {
+        dismissedBuildRef.current = null;
+        setStickyBanner(true);
       }
+      if (!force && dismissedBuildRef.current && dismissedBuildRef.current === key) {
+        return true;
+      }
+      setStickyBanner(true);
       setBannerVisible(true);
+      return true;
     },
     [localBuild],
   );
 
-  const checkNow = useCallback(async (): Promise<boolean> => {
+  const checkNow = useCallback(async (opts?: { force?: boolean }): Promise<boolean> => {
+    const force = opts?.force === true;
     setChecking(true);
     try {
       const server = await fetchServerVersion();
-      setServerBuild(server);
-      setLastCheckedAt(new Date().toISOString());
-      const mismatch = server !== null && isNewerPosBuild(server, localBuild);
-      const available = mismatch || swWaiting;
-      showBannerIfNeeded(server, swWaiting);
+      if (server) setServerBuild(server);
+
+      let sw = swWaiting;
       if ("serviceWorker" in navigator) {
         const reg = await navigator.serviceWorker.getRegistration("/pos/");
         await reg?.update();
+        if (reg?.waiting) {
+          sw = true;
+          setSwWaiting(true);
+        }
       }
+
+      const mismatch = server !== null && isNewerPosBuild(server, localBuild);
+      const available = mismatch || sw;
+      if (available) markUpdateAvailable(server, sw, force);
+      else if (!stickyBanner) setBannerVisible(false);
+
+      setLastCheckedAt(new Date().toISOString());
       return available;
     } finally {
       setChecking(false);
     }
-  }, [localBuild, showBannerIfNeeded, swWaiting]);
+  }, [localBuild, markUpdateAvailable, stickyBanner, swWaiting]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -99,6 +156,7 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
       immediate: true,
       onNeedRefresh() {
         setSwWaiting(true);
+        setStickyBanner(true);
         setBannerVisible(true);
       },
       onRegistered(registration) {
@@ -112,6 +170,7 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
           installing.addEventListener("statechange", () => {
             if (installing.state === "installed" && navigator.serviceWorker.controller) {
               setSwWaiting(true);
+              setStickyBanner(true);
               setBannerVisible(true);
             }
           });
@@ -122,15 +181,14 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     updateSWRef.current = updateSW;
 
     const onControllerChange = () => {
-      if (reloadScheduledRef.current) {
-        window.location.reload();
-      }
+      window.location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
     return () => {
       if (pollInterval !== undefined) window.clearInterval(pollInterval);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      if (reloadTimerRef.current !== null) window.clearTimeout(reloadTimerRef.current);
     };
   }, []);
 
@@ -149,12 +207,13 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
   }, [checkNow]);
 
   useEffect(() => {
-    if (updateAvailable) showBannerIfNeeded(serverBuild, swWaiting);
-  }, [updateAvailable, serverBuild, swWaiting, showBannerIfNeeded]);
+    if (updateAvailable) markUpdateAvailable(serverBuild, swWaiting);
+  }, [updateAvailable, serverBuild, swWaiting, markUpdateAvailable]);
 
   const dismissBanner = useCallback(() => {
-    const buildKey = serverBuild?.build ?? (swWaiting ? "sw-waiting" : "");
-    dismissedBuildRef.current = buildKey || null;
+    const key = serverBuild?.build ?? (swWaiting ? "sw-waiting" : "");
+    dismissedBuildRef.current = key || null;
+    setStickyBanner(false);
     setBannerVisible(false);
   }, [serverBuild, swWaiting]);
 
@@ -165,37 +224,57 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
         message: "Finish the current order or payment before updating.",
       };
     }
+
+    const hasUpdate =
+      (serverBuild !== null && isNewerPosBuild(serverBuild, localBuild)) || swWaiting;
+
+    if (!hasUpdate) {
+      return { ok: false, message: "Already on the latest POS version." };
+    }
+
     setApplying(true);
-    reloadScheduledRef.current = true;
     try {
-      if (updateSWRef.current) {
-        await updateSWRef.current(true);
-        return { ok: true };
-      }
-      // No service worker (first install / unsupported) — cache-bust reload.
-      const url = new URL(window.location.href);
-      url.searchParams.set("_u", Date.now().toString(36));
-      window.location.replace(url.toString());
+      void hardReloadPosApp(updateSWRef.current);
+      reloadTimerRef.current = window.setTimeout(() => {
+        void hardReloadPosApp(updateSWRef.current);
+      }, RELOAD_FALLBACK_MS);
       return { ok: true };
     } catch {
-      reloadScheduledRef.current = false;
+      if (reloadTimerRef.current !== null) {
+        window.clearTimeout(reloadTimerRef.current);
+      }
       return { ok: false, message: "Update failed — try again from the menu." };
     } finally {
       setApplying(false);
     }
-  }, [updateBlocked]);
+  }, [updateBlocked, serverBuild, localBuild, swWaiting]);
+
+  const requestManualUpdate = useCallback(async (): Promise<ManualUpdateResult> => {
+    const available = await checkNow({ force: true });
+    if (!available) return "current";
+    if (updateBlocked) return "blocked";
+    setApplying(true);
+    try {
+      await hardReloadPosApp(updateSWRef.current);
+      return "applying";
+    } catch {
+      setApplying(false);
+      return "available";
+    }
+  }, [checkNow, updateBlocked]);
 
   return {
     localBuild,
     serverBuild,
     updateAvailable,
     swWaiting,
-    bannerVisible: bannerVisible && updateAvailable,
+    bannerVisible: bannerVisible && (updateAvailable || stickyBanner),
     updateBlocked,
     checking,
     applying,
     lastCheckedAt,
     checkNow,
+    requestManualUpdate,
     dismissBanner,
     applyUpdate,
   };

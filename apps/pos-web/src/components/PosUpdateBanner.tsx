@@ -92,14 +92,32 @@ export function PosUpdateBanner({
   );
 }
 
-/** Small version label for header / login footer. */
-export function PosVersionLabel({ version, build }: { version: string; build: string }) {
+/** Small version label for header / login footer / drawer. */
+export function PosVersionLabel({
+  version,
+  build,
+  light = false,
+}: {
+  version: string;
+  build: string;
+  light?: boolean;
+}) {
+  const shortBuild = build.length > 24 ? build.slice(0, 24) + "…" : build;
   return (
     <span
       title={`Build ${build}`}
-      style={{ fontSize: 10, color: "#94A3B8", fontWeight: 500, whiteSpace: "nowrap" }}
+      style={{
+        fontSize: light ? 11 : 10,
+        color: light ? "#94A3B8" : "#94A3B8",
+        fontWeight: 500,
+        lineHeight: 1.35,
+        display: "block",
+      }}
     >
-      POS v{version}
+      Bake & Grill POS v{version}
+      <span style={{ display: "block", fontSize: light ? 10 : 9, opacity: 0.85 }}>
+        Build {shortBuild}
+      </span>
     </span>
   );
 }

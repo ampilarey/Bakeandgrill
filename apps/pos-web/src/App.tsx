@@ -682,7 +682,7 @@ function App() {
 
     const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [
       { id: "refresh_menu", label: "Refresh data", icon: "↻", group: "user" },
-      { id: "check_update", label: "Check for app update", icon: "⬇", group: "user" },
+      { id: "check_update", label: "Update app", icon: "⬇", group: "user" },
       { id: "preferences", label: "My settings", icon: "⚙️", group: "user" },
     ];
     if (canLockScreen) user.push({ id: "lock", label: "Lock screen", icon: "🔒", group: "user" });
@@ -1076,6 +1076,9 @@ function App() {
         active={pane}
         cashierName={cashierName}
         shiftLabel={shift.current ? `Shift #${shift.current.id} · MVR ${Number(shift.summary?.cash_drawer.expected_cash ?? 0).toFixed(2)} in drawer` : 'No open shift'}
+        appVersion={POS_BUILD_INFO.version}
+        appBuild={POS_BUILD_INFO.build}
+        updatePending={posUpdate.updateAvailable}
         onSelect={(id) => {
           setDrawerOpen(false);
           if (id === "logout") return handleLogout();
@@ -1090,12 +1093,15 @@ function App() {
             return;
           }
           if (id === "check_update") {
-            void posUpdate.checkNow().then((available) => {
-              if (available) {
-                order.flashNotice("Update available — use the banner when ready.");
-              } else {
+            void posUpdate.requestManualUpdate().then((result) => {
+              if (result === "current") {
                 order.flashNotice("You're on the latest POS version.");
+              } else if (result === "blocked") {
+                order.flashError("Update ready — finish the current order or payment first, then tap Update Now.");
+              } else if (result === "available") {
+                order.flashError("Update ready — tap Update Now on the blue banner.");
               }
+              // "applying" navigates away — no toast needed
             });
             return;
           }
