@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImageThumbController;
 use App\Http\Controllers\InvoicePageController;
+use App\Http\Controllers\OrderTrackPageController;
 use App\Http\Controllers\PosPayPageController;
 use App\Http\Controllers\ReceiptPageController;
 use Illuminate\Support\Facades\Route;
@@ -107,6 +108,14 @@ Route::redirect('/order/refund-policy', '/refund', 301);
 Route::redirect('/order/refund', '/refund', 301);
 Route::redirect('/order/terms-and-conditions', '/terms', 301);
 Route::redirect('/order/terms', '/terms', 301);
+
+// SMS order-tracking links — server-rendered HTML (no React / service worker).
+Route::get('/order/track/{token}', [OrderTrackPageController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->name('order.track');
+Route::redirect('/t/{token}', '/order/track/{token}', 301)
+    ->where('token', '[A-Za-z0-9]+')
+    ->name('order.track.short');
 
 Route::get('/order/{any}', function () {
     $path = public_path('order/index.html');
