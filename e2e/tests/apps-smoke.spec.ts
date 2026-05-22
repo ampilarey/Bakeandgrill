@@ -14,7 +14,8 @@
  * the error path and confirm the app is alive.
  */
 import { test, expect } from '@playwright/test';
-import { ADMIN_PIN } from '../fixtures/auth';
+import { ADMIN_PIN, staffPinLoginBody } from '../fixtures/auth';
+import { posEnterPin, posUsernameLocator } from '../helpers/assertions';
 
 // ── KDS (/kds/) ────────────────────────────────────────────────────────────
 test.describe('KDS app', () => {
@@ -82,7 +83,7 @@ test.describe('KDS app', () => {
   test('KDS app injects token and sees board', async ({ page, request }) => {
     // Get a real staff token via API to exercise the logged-in board
     const res = await request.post('/api/auth/staff/pin-login', {
-      data: { pin: ADMIN_PIN },
+      data: staffPinLoginBody(),
     });
     if (!res.ok()) {
       test.skip(true, `Could not get staff token (${res.status()}) — skipping board test`);
@@ -143,17 +144,12 @@ test.describe('POS app', () => {
     await page.goto('/pos/');
     await page.waitForLoadState('networkidle');
 
-    const usernameInput = page.locator('input[autocomplete="username"], input[placeholder*="example.com"]').first();
+    const usernameInput = posUsernameLocator(page);
     await usernameInput.fill('noone@example.com');
+    await posEnterPin(page, '1234');
 
-    // Enter PIN digits
-    for (const digit of ['1', '2', '3', '4']) {
-      const btn = page.locator('button').filter({ hasText: new RegExp(`^\\s*${digit}\\s*$`) }).first();
-      if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) await btn.click();
-    }
-
-    const signInBtn = page.locator('button').filter({ hasText: /sign.?in|login|submit/i }).first();
-    if (await signInBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    const signInBtn = page.getByRole('button', { name: /sign in/i });
+    if (await signInBtn.isEnabled({ timeout: 2_000 }).catch(() => false)) {
       await signInBtn.click();
       await page.waitForTimeout(2000);
     }

@@ -4,12 +4,10 @@
  * Token injection tests fall back to PIN API when ADMIN_PASSWORD is unset.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PIN } from '../fixtures/auth';
+import { ADMIN_PHONE, ADMIN_PASSWORD, staffPinLoginBody } from '../fixtures/auth';
+import { gotoAdminWithToken } from '../helpers/injectAuth';
 
 test.describe.configure({ mode: 'serial' });
-
-const ADMIN_PHONE    = process.env.ADMIN_PHONE    ?? '';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
 let sharedAdminToken = '';
 test.beforeAll(async ({ request }) => {
@@ -29,7 +27,7 @@ test.beforeAll(async ({ request }) => {
   }
 
   const res = await request.post('/api/auth/staff/pin-login', {
-    data: { pin: ADMIN_PIN },
+    data: staffPinLoginBody(),
   });
   if (res.status() === 429) {
     console.warn('Admin PIN login rate-limited in beforeAll — token-based tests will skip');
@@ -42,14 +40,7 @@ test.beforeAll(async ({ request }) => {
 });
 
 async function injectAdminToken(page: Page, token: string) {
-  await page.goto('/admin/');
-  await page.waitForLoadState('networkidle');
-  await page.evaluate((t: string) => {
-    localStorage.setItem('admin_token', t);
-  }, token);
-  await page.goto('/admin/dashboard');
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1000);
+  await gotoAdminWithToken(page, token, '/admin/dashboard');
 }
 
 async function gotoAdminLogin(page: Page) {
@@ -109,17 +100,12 @@ test.describe('Admin login', () => {
     await injectAdminToken(page, sharedAdminToken);
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 12_000 });
 
-    const logoutBtn = page.locator('button').filter({ hasText: /log.?out|sign.?out/i }).first();
-    if (await logoutBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await logoutBtn.click();
-      await page.waitForLoadState('networkidle');
-      const token = await page.evaluate(() => localStorage.getItem('admin_token'));
-      expect(token).toBeNull();
-    } else {
-      await page.evaluate(() => localStorage.removeItem('admin_token'));
-      await page.goto('/admin/dashboard');
-      await page.waitForLoadState('networkidle');
-      await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 8_000 });
-    }
+    const logoutBtn = page.getByRole('button', { name: /log out/i });
+    await logoutBtn.scrollIntoViewIfNeeded();
+    await logoutBtn.click();
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible({ timeout: 10_000 });
+
+    const token = await page.evaluate(() => localStorage.getItem('admin_token'));
+    expect(token).toBeNull();
   });
 });

@@ -15,7 +15,13 @@
  *   - ADMIN_PIN env var (default: '1121') is a valid staff PIN
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PIN } from '../fixtures/auth';
+import { staffPinLoginBody } from '../fixtures/auth';
+import {
+  assertPosAuthenticated,
+  isPosWaitingForApproval,
+  posEnterPin,
+  posUsernameLocator,
+} from '../helpers/assertions';
 
 const POS_URL    = '/pos/';
 const TOKEN_KEY  = 'pos_token';
@@ -24,7 +30,7 @@ const API_LOGIN  = '/api/auth/staff/pin-login';
 // ── Helper: inject a real staff token into the POS app ───────────────────
 
 async function injectPosToken(page: Page): Promise<boolean> {
-  const res = await page.request.post(API_LOGIN, { data: { pin: ADMIN_PIN } });
+  const res = await page.request.post(API_LOGIN, { data: staffPinLoginBody() });
   if (!res.ok()) return false;
 
   const { token } = (await res.json()) as { token: string };
@@ -57,9 +63,8 @@ test.describe('POS — login screen', () => {
     expect(body.length).toBeGreaterThan(0);
     expect(body).not.toContain('Cannot GET /pos/');
 
-    // Email / username input
-    const emailInput = page.locator('input[type="email"], input[type="text"], input[placeholder*="email" i], input[placeholder*="username" i]').first();
-    await expect(emailInput).toBeVisible({ timeout: 10_000 });
+    const usernameInput = posUsernameLocator(page);
+    await expect(usernameInput).toBeVisible({ timeout: 10_000 });
 
     // PIN digits 0–9 on numpad
     const numpadButtons = page.locator('button').filter({ hasText: /^[0-9]$/ });
@@ -68,23 +73,13 @@ test.describe('POS — login screen', () => {
 
   test('wrong credentials show error message', async ({ page }) => {
     await page.goto(POS_URL);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    const emailInput = page.locator('input[type="email"], input[type="text"], input[placeholder*="email" i], input[placeholder*="username" i]').first();
-    await emailInput.fill('wrong@example.com', { timeout: 10_000 });
+    await posUsernameLocator(page).fill('7000000');
+    await posEnterPin(page, '1234');
 
-    // Type a PIN using the numpad
-    for (const digit of '1234'.split('')) {
-      await page
-        .locator('button')
-        .filter({ hasText: new RegExp(`^\\s*${digit}\\s*$`) })
-        .first()
-        .click();
-    }
-
-    // Submit
-    const loginBtn = page.locator('button').filter({ hasText: /sign.?in|login|enter/i }).last();
-    await loginBtn.click();
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeEnabled({ timeout: 3_000 });
+    await page.getByRole('button', { name: /sign in/i }).click();
     await page.waitForTimeout(2500);
 
     const body = await page.textContent('body') ?? '';
@@ -118,14 +113,19 @@ test.describe('POS — authenticated sales screen', () => {
     }
 
     const body = await page.textContent('body') ?? '';
-    // Sales screen shows categories, items, or cart
-    expect(body.toLowerCase()).toMatch(/category|menu|item|cart|table|order|takeaway|dine.?in/);
+    assertPosAuthenticated(body);
   });
 
   test('categories are listed on the sales screen', async ({ page }) => {
     const ok = await injectPosToken(page);
     if (!ok) {
       test.skip(true, 'Could not get staff token');
+      return;
+    }
+
+    const body = await page.textContent('body') ?? '';
+    if (isPosWaitingForApproval(body)) {
+      test.skip(true, 'POS device pending approval — sales UI not available');
       return;
     }
 
@@ -143,6 +143,12 @@ test.describe('POS — authenticated sales screen', () => {
     const ok = await injectPosToken(page);
     if (!ok) {
       test.skip(true, 'Could not get staff token');
+      return;
+    }
+
+    const body = await page.textContent('body') ?? '';
+    if (isPosWaitingForApproval(body)) {
+      test.skip(true, 'POS device pending approval — sales UI not available');
       return;
     }
 
@@ -177,11 +183,16 @@ test.describe('POS — authenticated sales screen', () => {
     }
 
     const body = await page.textContent('body') ?? '';
+    if (isPosWaitingForApproval(body)) {
+      test.skip(true, 'POS device pending approval — sales UI not available');
+      return;
+    }
+
     expect(body.toLowerCase()).toMatch(/takeaway|dine.?in|pickup|delivery/);
   });
 
   test('POS can create a takeaway order via API (backend contract)', async ({ page }) => {
-    const res = await page.request.post(API_LOGIN, { data: { pin: ADMIN_PIN } });
+    const res = await page.request.post(API_LOGIN, { data: staffPinLoginBody() });
     if (!res.ok()) {
       test.skip(true, `Staff login failed (${res.status()}) — skipping order creation test`);
       return;
@@ -252,9 +263,7 @@ test.describe('POS — session handling', () => {
     }
 
     const body = await page.textContent('body') ?? '';
-    // Should NOT be showing login UI
-    expect(body.toLowerCase()).not.toMatch(/sign.?in with email|enter your pin below/);
-    // Should be showing POS content
-    expect(body.toLowerCase()).toMatch(/takeaway|dine.?in|category|menu|cart|table|order/);
+    expect(body.toLowerCase()).not.toMatch(/sign.?in with email|enter your 4.?8 digit pin/);
+    assertPosAuthenticated(body);
   });
 });

@@ -9,22 +9,18 @@
  * and cleaned up without affecting real data.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PIN } from '../fixtures/auth';
-import { injectAdminToken } from '../helpers/injectAuth';
+import { obtainStaffToken } from '../fixtures/auth';
+import { gotoAdminWithToken } from '../helpers/injectAuth';
+import { assertNoServerError } from '../helpers/assertions';
 
 test.describe.configure({ mode: 'serial' });
 
 let sharedAdminToken = '';
 test.beforeAll(async ({ request }) => {
-  const res = await request.post('/api/auth/staff/pin-login', {
-    data: { pin: ADMIN_PIN },
-  });
-  if (!res.ok()) {
-    console.warn(`Admin login failed: ${res.status()} — CRUD tests will skip`);
-    return;
+  sharedAdminToken = await obtainStaffToken(request);
+  if (!sharedAdminToken) {
+    console.warn('Admin login failed — CRUD tests will skip');
   }
-  const data = await res.json() as { token?: string };
-  sharedAdminToken = data.token ?? '';
 });
 
 function skipIfNoToken(token: string) {
@@ -33,12 +29,7 @@ function skipIfNoToken(token: string) {
 
 async function gotoAdmin(page: Page, path: string): Promise<void> {
   if (!sharedAdminToken) return;
-  await page.goto('/admin/');
-  await page.waitForLoadState('networkidle');
-  await page.evaluate((t: string) => localStorage.setItem('admin_token', t), sharedAdminToken);
-  await page.goto(path);
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(800);
+  await gotoAdminWithToken(page, sharedAdminToken, path);
 }
 
 // ── Menu item CRUD ────────────────────────────────────────────────────────
@@ -48,7 +39,7 @@ test.describe('Menu item CRUD', () => {
     skipIfNoToken(sharedAdminToken);
     await gotoAdmin(page, '/admin/menu');
     const body = (await page.textContent('body')) ?? '';
-    expect(body.toLowerCase()).not.toMatch(/500|server error|unexpected/i);
+    assertNoServerError(body);
     expect(body.toLowerCase()).toMatch(/menu|item|category/i);
   });
 
@@ -107,7 +98,7 @@ test.describe('Menu item CRUD', () => {
     await toggleBtn.click().catch(() => {});
     await page.waitForTimeout(500);
     const body = (await page.textContent('body')) ?? '';
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 });
 
@@ -119,7 +110,7 @@ test.describe('Promotions CRUD', () => {
     await gotoAdmin(page, '/admin/promotions');
     const body = (await page.textContent('body')) ?? '';
     expect(body.toLowerCase()).toMatch(/promotion|promo|discount/i);
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 
   test('can open create promotion form', async ({ page }) => {
@@ -142,7 +133,7 @@ test.describe('Promotions CRUD', () => {
 
     // Form/modal should appear
     const body = (await page.textContent('body')) ?? '';
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 
   test('create promotion via API and verify it appears in admin list', async ({ page }) => {
@@ -191,7 +182,7 @@ test.describe('Staff management', () => {
     await gotoAdmin(page, '/admin/staff');
     const body = (await page.textContent('body')) ?? '';
     expect(body.toLowerCase()).toMatch(/staff|employee|team/i);
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 
   test('staff page shows at least one staff record or empty state', async ({ page }) => {
@@ -201,7 +192,7 @@ test.describe('Staff management', () => {
     const body = (await page.textContent('body')) ?? '';
     // Either a table row or "No staff" empty state
     expect(body).not.toBeNull();
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 });
 
@@ -213,7 +204,7 @@ test.describe('Settings', () => {
     await gotoAdmin(page, '/admin/settings');
     const body = (await page.textContent('body')) ?? '';
     expect(body.toLowerCase()).toMatch(/setting|configuration|profile/i);
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 
   test('website settings tab loads', async ({ page }) => {
@@ -231,7 +222,7 @@ test.describe('Settings', () => {
     }
 
     const body = (await page.textContent('body')) ?? '';
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 });
 

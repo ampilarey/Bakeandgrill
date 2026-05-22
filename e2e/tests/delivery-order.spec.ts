@@ -16,6 +16,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MenuPage } from '../pages/MenuPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
+import { assertNoServerError } from '../helpers/assertions';
 
 const TEST_PHONE    = process.env.TEST_PHONE    ?? '7972434';
 const TEST_PASSWORD = process.env.TEST_PASSWORD ?? '';
@@ -141,7 +142,7 @@ test.describe('Delivery order checkout flow', () => {
     if (!added) {
       // No addable items — check page didn't error
       const body = (await page.textContent('body')) ?? '';
-      expect(body.toLowerCase()).not.toMatch(/500|server error|exception/i);
+      assertNoServerError(body);
       return;
     }
 

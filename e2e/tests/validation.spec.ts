@@ -3,7 +3,7 @@
  * Tests empty submits, boundary values, and bad inputs.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PIN } from '../fixtures/auth';
+import { staffPinLoginBody } from '../fixtures/auth';
 
 // ── Customer login page ────────────────────────────────────────────────────
 test.describe('Customer login validation', () => {
@@ -85,7 +85,7 @@ test.describe('Admin promotions validation', () => {
     // Try to get a token via PIN login API
     const page = await browser.newPage();
     const res = await page.request.post('/api/auth/staff/pin-login', {
-      data: { pin: ADMIN_PIN },
+      data: staffPinLoginBody(),
     });
     if (res.ok()) {
       const body = await res.json() as { token?: string };

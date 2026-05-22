@@ -11,22 +11,18 @@
  * the board, the interactive tests skip gracefully.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PIN } from '../fixtures/auth';
+import { obtainStaffToken } from '../fixtures/auth';
+import { assertNoServerError } from '../helpers/assertions';
 
 test.describe.configure({ mode: 'serial' });
 
 let kdsToken = '';
 
 test.beforeAll(async ({ request }) => {
-  const res = await request.post('/api/auth/staff/pin-login', {
-    data: { pin: ADMIN_PIN },
-  });
-  if (!res.ok()) {
-    console.warn(`KDS tests: PIN login failed (${res.status()}) — interactive tests will skip`);
-    return;
+  kdsToken = await obtainStaffToken(request);
+  if (!kdsToken) {
+    console.warn('KDS tests: staff login failed — interactive tests will skip');
   }
-  const data = await res.json() as { token?: string };
-  kdsToken = data.token ?? '';
 });
 
 async function gotoKds(page: Page): Promise<void> {
@@ -102,7 +98,7 @@ test('KDS board renders with column headers or empty state', async ({ page }) =>
   }
 
   // Page must not have crashed
-  expect(body.toLowerCase()).not.toMatch(/500|server error|exception/i);
+  assertNoServerError(body);
 });
 
 // ── Bump a ticket ─────────────────────────────────────────────────────────
@@ -126,7 +122,7 @@ test('KDS bump button works on first ticket if present', async ({ page }) => {
   if (!bumpVisible) {
     // No tickets to bump — board is empty — acceptable
     const body = (await page.textContent('body')) ?? '';
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
     return;
   }
 
@@ -136,7 +132,7 @@ test('KDS bump button works on first ticket if present', async ({ page }) => {
 
   // Verify page didn't crash after bump
   const body = (await page.textContent('body')) ?? '';
-  expect(body.toLowerCase()).not.toMatch(/500|server error|exception/i);
+  assertNoServerError(body);
 });
 
 // ── Recall a ticket ───────────────────────────────────────────────────────
@@ -165,7 +161,7 @@ test('KDS recall button works if present', async ({ page }) => {
   await page.waitForTimeout(600);
 
   const body = (await page.textContent('body')) ?? '';
-  expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+  assertNoServerError(body);
 });
 
 // ── No crash on navigation ────────────────────────────────────────────────

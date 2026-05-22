@@ -6,9 +6,9 @@
  */
 import { type Page, expect } from '@playwright/test';
 
-export const ADMIN_PIN     = process.env.ADMIN_PIN     ?? '1121';
-export const TEST_PHONE    = process.env.TEST_PHONE    ?? '7972434';
-export const TEST_PASSWORD = process.env.TEST_PASSWORD ?? 'Test@1234';
+import { ADMIN_PIN, staffPinLoginBody, TEST_PHONE, TEST_PASSWORD } from '../fixtures/auth';
+
+export { ADMIN_PIN, TEST_PHONE, TEST_PASSWORD };
 
 const ADMIN_API_URL   = process.env.ADMIN_API_URL   ?? 'http://localhost:8000';
 const CUSTOMER_API_URL = ADMIN_API_URL;
@@ -19,12 +19,30 @@ const CUSTOMER_API_URL = ADMIN_API_URL;
  * Obtain a staff Sanctum token via the PIN login endpoint and store it in
  * the page's localStorage so subsequent navigations are authenticated.
  */
+export async function gotoAdminWithToken(page: Page, token: string, path = '/admin/dashboard'): Promise<void> {
+  await page.addInitScript((t: string) => {
+    localStorage.setItem('admin_token', t);
+  }, token);
+  await page.goto(path);
+  await page.waitForLoadState('domcontentloaded');
+  await page
+    .waitForResponse(
+      (resp) => resp.url().includes('/api/auth/me') && resp.status() === 200,
+      { timeout: 15_000 },
+    )
+    .catch(() => undefined);
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Obtain a staff Sanctum token via the PIN login endpoint and store it in
+ * the page's localStorage so subsequent navigations are authenticated.
+ */
 export async function injectAdminToken(page: Page, pin?: string): Promise<string> {
   const usedPin = pin ?? ADMIN_PIN;
 
-  // Get token from API
   const response = await page.request.post('/api/auth/staff/pin-login', {
-    data: { pin: usedPin },
+    data: staffPinLoginBody(usedPin),
   });
   const data = await response.json().catch(() => ({}));
   const token: string = data.token ?? '';
@@ -33,20 +51,11 @@ export async function injectAdminToken(page: Page, pin?: string): Promise<string
     throw new Error(`injectAdminToken: PIN login failed — ${JSON.stringify(data)}`);
   }
 
-  // Inject into localStorage
-  await page.goto('/admin/');
-  await page.waitForLoadState('networkidle');
-  await page.evaluate((t: string) => {
-    localStorage.setItem('admin_token', t);
-  }, token);
-  await page.goto('/admin/dashboard');
-  await page.waitForLoadState('networkidle');
-
+  await gotoAdminWithToken(page, token, '/admin/dashboard');
   return token;
 }
 
 /**
- * Perform a full UI PIN login on the admin numpad.
  * Slower than injectAdminToken but tests the actual UI flow.
  */
 export async function adminLoginViaUI(page: Page, pin?: string): Promise<void> {

@@ -6,7 +6,8 @@
  * Each test injects the token via localStorage (no further API calls).
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PIN } from '../fixtures/auth';
+import { obtainStaffToken } from '../fixtures/auth';
+import { gotoAdminWithToken } from '../helpers/injectAuth';
 
 // Run all tests serially so we share one token and don't exhaust rate limit
 test.describe.configure({ mode: 'serial' });
@@ -14,19 +15,10 @@ test.describe.configure({ mode: 'serial' });
 // ── Shared admin token (obtained once for the whole file) ──────────────────
 let sharedAdminToken = '';
 test.beforeAll(async ({ request }) => {
-  const res = await request.post('/api/auth/staff/pin-login', {
-    data: { pin: ADMIN_PIN },
-  });
-  if (res.status() === 429) {
-    console.warn('Admin PIN rate-limited in beforeAll — all admin-flow tests will skip');
-    return;
+  sharedAdminToken = await obtainStaffToken(request);
+  if (!sharedAdminToken) {
+    console.warn('Admin login failed — all admin-flow tests will skip');
   }
-  if (!res.ok()) {
-    console.warn(`Admin PIN login failed: ${res.status()}`);
-    return;
-  }
-  const data = await res.json() as { token?: string };
-  sharedAdminToken = data.token ?? '';
 });
 
 // ── Helper: inject token and navigate to a specific admin page ────────────
@@ -36,17 +28,7 @@ async function gotoAdmin(page: Page, path = '/admin/dashboard') {
     return;
   }
   // Go to admin first (to set localStorage on the right origin), then navigate
-  const currentUrl = page.url();
-  if (!currentUrl.includes('bakeandgrill.mv/admin')) {
-    await page.goto('/admin/');
-    await page.waitForLoadState('networkidle');
-  }
-  await page.evaluate((t: string) => {
-    localStorage.setItem('admin_token', t);
-  }, sharedAdminToken);
-  await page.goto(path);
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(800);
+  await gotoAdminWithToken(page, sharedAdminToken, path);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

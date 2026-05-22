@@ -13,6 +13,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MenuPage } from '../pages/MenuPage';
 import { CartDrawer } from '../pages/CartDrawer';
+import { assertNoServerError } from '../helpers/assertions';
 
 // ── Helper: check for horizontal overflow ──────────────────────────────────
 async function hasHorizontalOverflow(page: Page): Promise<boolean> {
@@ -143,7 +144,7 @@ test.describe('Mobile ordering flow', () => {
     expect(overflow).toBeFalsy();
 
     const body = (await page.textContent('body')) ?? '';
-    expect(body.toLowerCase()).not.toMatch(/500|server error|exception/i);
+    assertNoServerError(body);
   });
 
   test('checkout or login is reachable after tapping checkout button', async ({ page }) => {
@@ -162,6 +163,6 @@ test.describe('Mobile ordering flow', () => {
     expect(url).toMatch(/checkout|login|order/);
 
     const body = (await page.textContent('body')) ?? '';
-    expect(body.toLowerCase()).not.toMatch(/500|server error/i);
+    assertNoServerError(body);
   });
 });
