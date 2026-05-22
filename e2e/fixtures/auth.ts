@@ -1,34 +1,31 @@
 /**
  * Shared auth helpers for Playwright tests.
- * - adminLogin: clicks PIN digits on the admin numpad
- * - loadCustomerAuth: loads saved customer storageState (must exist before calling)
  */
 import { type Page, expect } from '@playwright/test';
 import path from 'path';
-import fs from 'fs';
 
 export const STORAGE_STATE_PATH = path.resolve(__dirname, '../.auth/customer.json');
 
-/** Single source of truth for the admin PIN used in all E2E tests. */
-export const ADMIN_PIN  = process.env.ADMIN_PIN  ?? '1121';
-const TEST_PHONE        = process.env.TEST_PHONE ?? '7972434';
+/** PIN used for KDS/POS staff API login when password is unavailable. */
+export const ADMIN_PIN = process.env.ADMIN_PIN ?? '1121';
 
-/** Click each digit of a PIN on the admin numpad. */
+const ADMIN_PHONE    = process.env.ADMIN_PHONE    ?? '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
+const TEST_PHONE     = process.env.TEST_PHONE     ?? '7972434';
+
+/** Sign in to admin via phone + password form. Requires ADMIN_PHONE and ADMIN_PASSWORD in e2e/.env.test */
 export async function adminLogin(page: Page): Promise<void> {
-  await page.goto('/admin/');
-  // Wait for the numpad to be visible
-  await page.waitForSelector('button', { timeout: 15_000 });
-
-  for (const digit of ADMIN_PIN.split('')) {
-    // Numpad buttons contain a single digit text
-    await page.locator(`button`).filter({ hasText: new RegExp(`^${digit}$`) }).first().click();
+  if (!ADMIN_PHONE || !ADMIN_PASSWORD) {
+    throw new Error('adminLogin requires ADMIN_PHONE and ADMIN_PASSWORD in e2e/.env.test');
   }
-
-  // After entering PIN, dashboard should load
+  await page.goto('/admin/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('input[placeholder*="+960"], input[placeholder*="7XX"]').first().fill(ADMIN_PHONE);
+  await page.locator('input[type="password"]').first().fill(ADMIN_PASSWORD);
+  await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 }
 
-/** Returns the phone number used for testing. */
 export function testPhone(): string {
   return TEST_PHONE;
 }

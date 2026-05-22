@@ -155,8 +155,11 @@ Route::get('/driver', function () {
     return redirect('/driver/');
 })->name('driver.redirect');
 Route::get('/driver/{any}', function () {
-    abort_if(!file_exists(public_path('driver/index.html')), 503, 'Driver app not deployed.');
+    $path = public_path('driver/index.html');
+    abort_if(!file_exists($path), 503, 'Driver app not deployed.');
 
-    return response()->file(public_path('driver/index.html'))
-        ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'text/html; charset=utf-8',
+        'Cache-Control' => 'no-store, no-cache, must-revalidate',
+    ]);
 })->where('any', '.*')->name('driver.spa');

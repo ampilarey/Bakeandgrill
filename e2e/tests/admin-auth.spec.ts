@@ -1,31 +1,46 @@
 /**
  * Admin dashboard authentication tests.
- * Uses PIN numpad — no SMS involved.
- *
- * Rate limit note: /api/auth/staff/pin-login is throttled at 10 req/min.
- * We run serially and limit PIN API calls to 2 (wrong + correct) to stay safe.
+ * Admin UI uses phone + password (not PIN numpad).
+ * Token injection tests fall back to PIN API when ADMIN_PASSWORD is unset.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { ADMIN_PIN } from '../fixtures/auth';
 
-// Run all tests in this file sequentially to preserve rate-limit budget
 test.describe.configure({ mode: 'serial' });
 
-// ── Shared admin token obtained once for token-based tests ─────────────────
+const ADMIN_PHONE    = process.env.ADMIN_PHONE    ?? '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
+
 let sharedAdminToken = '';
 test.beforeAll(async ({ request }) => {
+  if (ADMIN_PHONE && ADMIN_PASSWORD) {
+    const res = await request.post('/api/auth/staff/login', {
+      data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD },
+    });
+    if (res.status() === 429) {
+      console.warn('Admin login rate-limited in beforeAll — token-based tests will skip');
+      return;
+    }
+    if (res.ok()) {
+      const data = await res.json() as { token?: string };
+      sharedAdminToken = data.token ?? '';
+      return;
+    }
+  }
+
   const res = await request.post('/api/auth/staff/pin-login', {
     data: { pin: ADMIN_PIN },
   });
   if (res.status() === 429) {
-    console.warn('Admin login rate-limited in beforeAll — token-based tests will skip');
+    console.warn('Admin PIN login rate-limited in beforeAll — token-based tests will skip');
     return;
   }
-  const data = await res.json() as { token?: string };
-  sharedAdminToken = data.token ?? '';
+  if (res.ok()) {
+    const data = await res.json() as { token?: string };
+    sharedAdminToken = data.token ?? '';
+  }
 });
 
-// ── Helper: inject admin token and navigate to dashboard ──────────────────
 async function injectAdminToken(page: Page, token: string) {
   await page.goto('/admin/');
   await page.waitForLoadState('networkidle');
@@ -37,50 +52,34 @@ async function injectAdminToken(page: Page, token: string) {
   await page.waitForTimeout(1000);
 }
 
-// ── Helper for UI PIN tests ────────────────────────────────────────────────
 async function gotoAdminLogin(page: Page) {
   await page.goto('/admin/');
   await page.waitForLoadState('networkidle');
-  await page.waitForSelector('button', { timeout: 10_000 });
+  await page.waitForSelector('h2', { timeout: 10_000 });
 }
 
-async function clickPin(page: Page, pin: string) {
-  for (const digit of pin.split('')) {
-    const btn = page.locator('button').filter({ hasText: new RegExp(`^\\s*${digit}\\s*$`) }).first();
-    await expect(btn).toBeVisible({ timeout: 8_000 });
-    await btn.click();
-    await page.waitForTimeout(100);
-  }
-  const signInBtn = page.locator('button').filter({ hasText: /sign in/i }).first();
-  await expect(signInBtn).toBeEnabled({ timeout: 5_000 });
-  await signInBtn.click();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-test.describe('Admin PIN login', () => {
-  test('admin login page renders numpad', async ({ page }) => {
-    // No API call — just verifies the UI renders correctly
+test.describe('Admin login', () => {
+  test('admin login page renders phone and password fields', async ({ page }) => {
     await gotoAdminLogin(page);
     const body = await page.textContent('body') ?? '';
-    expect(body.toLowerCase()).toMatch(/admin|pin|bake|grill/);
-    for (const d of ['1', '2', '3', '5', '9']) {
-      await expect(page.locator('button').filter({ hasText: new RegExp(`^${d}$`) }).first()).toBeVisible();
-    }
+    expect(body.toLowerCase()).toMatch(/admin sign in|bake|grill/);
+    await expect(page.locator('input[type="password"]').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
   });
 
-  test('wrong PIN shows error message', async ({ page }) => {
-    // Uses 1 API call (wrong PIN → 422 or error message)
+  test('wrong credentials show error message', async ({ page }) => {
     await gotoAdminLogin(page);
-    await clickPin(page, '9999');
-    const errorDiv = page.locator('div').filter({ hasText: /invalid|wrong|incorrect|pin|not found|attempt/i }).first();
+    const phoneInput = page.locator('input[placeholder*="+960"], input[placeholder*="7XX"]').first();
+    await phoneInput.fill('7000000');
+    await page.locator('input[type="password"]').first().fill('wrong-password-xyz');
+    await page.getByRole('button', { name: /sign in/i }).click();
+    const errorDiv = page.locator('div, p').filter({ hasText: /invalid|wrong|incorrect|credentials|failed|attempt/i }).first();
     await expect(errorDiv).toBeVisible({ timeout: 8_000 });
   });
 
-  test('correct PIN logs in via API token injection', async ({ page }) => {
-    // Verifies that a valid token grants access — avoids extra UI PIN call
+  test('correct credentials log in via API token injection', async ({ page }) => {
     if (!sharedAdminToken) {
-      test.skip(true, 'Admin token not available (rate limited in beforeAll)');
+      test.skip(true, 'Admin token not available (set ADMIN_PHONE + ADMIN_PASSWORD or ADMIN_PIN)');
       return;
     }
     await injectAdminToken(page, sharedAdminToken);
@@ -110,7 +109,6 @@ test.describe('Admin PIN login', () => {
     await injectAdminToken(page, sharedAdminToken);
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 12_000 });
 
-    // Look for logout button in the UI
     const logoutBtn = page.locator('button').filter({ hasText: /log.?out|sign.?out/i }).first();
     if (await logoutBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await logoutBtn.click();
@@ -118,11 +116,10 @@ test.describe('Admin PIN login', () => {
       const token = await page.evaluate(() => localStorage.getItem('admin_token'));
       expect(token).toBeNull();
     } else {
-      // Manually clear and verify redirect to login
       await page.evaluate(() => localStorage.removeItem('admin_token'));
-      await page.goto('/admin/');
+      await page.goto('/admin/dashboard');
       await page.waitForLoadState('networkidle');
-      await expect(page).not.toHaveURL(/\/dashboard/);
+      await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 8_000 });
     }
   });
 });

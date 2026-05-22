@@ -4,6 +4,6 @@ import App from "./App";
 describe("KDS App", () => {
   it("renders the login header", () => {
     render(<App />);
-    expect(screen.getByText("Bake & Grill KDS")).toBeInTheDocument();
+    expect(screen.getByText(/Kitchen Display/i)).toBeInTheDocument();
   });
 });

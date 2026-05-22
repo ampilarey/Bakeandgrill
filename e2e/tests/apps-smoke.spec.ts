@@ -115,9 +115,9 @@ test.describe('POS app', () => {
     expect(body).not.toBe('');
     expect(body).not.toContain('Cannot GET /pos/');
 
-    // Email input should be visible
-    const emailInput = page.locator('input[type="email"]').first();
-    await expect(emailInput).toBeVisible({ timeout: 12_000 });
+    // Mobile or email username field (type="text", not type="email")
+    const usernameInput = page.locator('input[autocomplete="username"], input[placeholder*="example.com"]').first();
+    await expect(usernameInput).toBeVisible({ timeout: 12_000 });
   });
 
   test('POS logo is visible on login screen', async ({ page }) => {
@@ -143,9 +143,8 @@ test.describe('POS app', () => {
     await page.goto('/pos/');
     await page.waitForLoadState('networkidle');
 
-    // Fill a fake email
-    const emailInput = page.locator('input[type="email"]').first();
-    await emailInput.fill('noone@example.com');
+    const usernameInput = page.locator('input[autocomplete="username"], input[placeholder*="example.com"]').first();
+    await usernameInput.fill('noone@example.com');
 
     // Enter PIN digits
     for (const digit of ['1', '2', '3', '4']) {
@@ -161,7 +160,7 @@ test.describe('POS app', () => {
 
     const body = await page.textContent('body') ?? '';
     // Either error shown or still on login
-    const stillOnLogin = await page.locator('input[type="email"]').first().isVisible({ timeout: 2_000 }).catch(() => false);
+    const stillOnLogin = await page.locator('input[autocomplete="username"], input[placeholder*="example.com"]').first().isVisible({ timeout: 2_000 }).catch(() => false);
     const showsError   = body.toLowerCase().match(/invalid|failed|error|wrong|incorrect|not found/);
     expect(stillOnLogin || !!showsError, 'POS wrong credentials should show error or stay on login').toBe(true);
   });
@@ -172,9 +171,8 @@ test.describe('POS app', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    // Should show the login screen, not the POS order board
-    const emailInput = page.locator('input[type="email"]').first();
-    await expect(emailInput).toBeVisible({ timeout: 10_000 });
+    const usernameInput = page.locator('input[autocomplete="username"], input[placeholder*="example.com"]').first();
+    await expect(usernameInput).toBeVisible({ timeout: 10_000 });
   });
 });
 

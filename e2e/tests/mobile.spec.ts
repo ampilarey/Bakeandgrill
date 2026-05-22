@@ -142,10 +142,11 @@ test('admin login page renders on mobile viewport', async ({ page }) => {
   });
   expect(hasHorizontalOverflow).toBeFalsy();
 
-  // Numpad should still be visible and tappable
-  const btn1 = page.locator('button').filter({ hasText: /^1$/ }).first();
-  await expect(btn1).toBeVisible();
-  const box = await btn1.boundingBox();
+  // Phone + password login form should be visible
+  await expect(page.locator('input[type="password"]').first()).toBeVisible();
+  const signInBtn = page.getByRole('button', { name: /sign in/i });
+  await expect(signInBtn).toBeVisible();
+  const box = await signInBtn.boundingBox();
   expect(box?.width).toBeGreaterThan(30);
   expect(box?.height).toBeGreaterThan(30);
 

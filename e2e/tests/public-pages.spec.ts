@@ -224,7 +224,6 @@ test('customer login page loads', async ({ page }) => {
 test('admin login page loads', async ({ page }) => {
   await page.goto('/admin/');
   await page.waitForLoadState('networkidle');
-  // Numpad should be visible
-  const numpad = page.locator('button').filter({ hasText: '1' }).first();
-  await expect(numpad).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('h2').filter({ hasText: /admin sign in/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('input[type="password"]').first()).toBeVisible();
 });

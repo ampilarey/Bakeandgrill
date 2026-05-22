@@ -27,10 +27,16 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       testIgnore: ['**/mobile-ordering.spec.ts'],
     },
-    // iPhone 14 (mobile) — runs mobile-specific specs
+    // Mobile viewport — Chromium (avoids WebKit install requirement on CI/dev)
     {
       name: 'mobile',
-      use: { ...devices['iPhone 14'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        userAgent: devices['iPhone 14'].userAgent,
+      },
       testMatch: ['**/mobile.spec.ts', '**/mobile-ordering.spec.ts'],
     },
     // Accessibility — desktop Chromium, axe-core scans
