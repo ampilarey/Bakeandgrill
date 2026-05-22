@@ -28,6 +28,22 @@ final class CustomerCreditService
     /**
      * @return array<string, mixed>
      */
+    public function customerFacingSummary(Customer $customer): array
+    {
+        $summary = $this->creditSummary($customer);
+
+        return [
+            'enabled' => (bool) $summary['enabled'],
+            'status' => $summary['status'],
+            'limit_mvr' => round($summary['limit_laar'] / 100, 2),
+            'balance_mvr' => round($summary['balance_laar'] / 100, 2),
+            'available_mvr' => round($summary['available_laar'] / 100, 2),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function creditSummary(Customer $customer): array
     {
         $available = $this->availableCreditLaar($customer);
@@ -251,6 +267,10 @@ final class CustomerCreditService
             $invoice->update([
                 'status' => 'sent',
                 'due_date' => now()->addDays(30)->toDateString(),
+                'paid_at' => null,
+                'payment_method' => null,
+                'payment_reference' => null,
+                'amount_paid_laar' => 0,
                 'notes' => trim(($invoice->notes ?? '') . ' Charged to customer credit account.'),
             ]);
 

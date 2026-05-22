@@ -11,7 +11,7 @@ class InvoicePageController extends Controller
 {
     public function show(string $token)
     {
-        $invoice = Invoice::with(['items', 'order.items', 'customer'])
+        $invoice = Invoice::with(['items', 'order.items', 'order.payments', 'customer'])
             ->where('token', $token)
             ->firstOrFail();
 
@@ -20,7 +20,7 @@ class InvoicePageController extends Controller
 
     public function pdf(string $token)
     {
-        $invoice = Invoice::with(['items', 'order.items', 'customer'])
+        $invoice = Invoice::with(['items', 'order.items', 'order.payments', 'customer'])
             ->where('token', $token)
             ->firstOrFail();
 

@@ -58,6 +58,13 @@ export type OrderItem = {
   modifiers?: OrderItemModifier[];
 };
 
+export type OrderPaymentSettlement = {
+  settlement: 'credit_account' | 'mixed' | 'standard' | 'unpaid';
+  paid_on_credit: boolean;
+  label: string;
+  short_label: string;
+};
+
 export type Order = {
   id: number;
   order_number: string;
@@ -77,6 +84,7 @@ export type Order = {
   notes?: string | null;
   customer_notes?: string | null;
   payment_status?: OrderPaymentStatus | string;
+  payment_settlement?: OrderPaymentSettlement;
   paid_at?: string | null;
   completed_at?: string | null;
   created_at: string;

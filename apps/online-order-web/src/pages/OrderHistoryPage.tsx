@@ -172,6 +172,19 @@ export function OrderHistoryPage() {
                   </div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
                     MVR {Number(order.total).toFixed(2)}
+                    {order.payment_settlement?.paid_on_credit && (
+                      <span style={{
+                        marginLeft: 8,
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        color: '#1D4ED8',
+                        background: '#EFF6FF',
+                        padding: '0.1rem 0.45rem',
+                        borderRadius: 999,
+                      }}>
+                        {order.payment_settlement.short_label}
+                      </span>
+                    )}
                   </div>
                   {order.created_at && (
                     <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>

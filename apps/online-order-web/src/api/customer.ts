@@ -169,3 +169,31 @@ export async function getMyReviews(
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+// ── Credit account ────────────────────────────────────────────────────────────
+
+export type CustomerCreditSummary = {
+  enabled: boolean;
+  status: 'active' | 'on_hold' | 'blocked' | string;
+  limit_mvr: number;
+  balance_mvr: number;
+  available_mvr: number;
+};
+
+export type CustomerCreditInvoice = {
+  id: number;
+  invoice_number: string;
+  order_id: number | null;
+  status: string;
+  issue_date: string | null;
+  total_mvr: number;
+  amount_paid_mvr: number;
+  balance_due_mvr: number;
+  view_url: string | null;
+};
+
+export async function getCustomerCredit(token: string): Promise<{
+  credit: (CustomerCreditSummary & { open_invoices: CustomerCreditInvoice[] }) | null;
+}> {
+  return request('/customer/credit', { headers: { Authorization: `Bearer ${token}` } });
+}

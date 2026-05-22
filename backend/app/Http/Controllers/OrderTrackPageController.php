@@ -18,7 +18,7 @@ class OrderTrackPageController extends Controller
 {
     public function show(string $token): View|Response
     {
-        $order = Order::with(['items'])
+        $order = Order::with(['items', 'payments'])
             ->where('tracking_token', $token)
             ->first();
 

@@ -184,6 +184,51 @@ class CustomerCreditTest extends TestCase
         $invoice = Invoice::where('order_id', $orderId)->where('type', 'sale')->first();
         $this->assertNotNull($invoice);
         $this->assertSame('sent', $invoice->status);
+        $this->assertNull($invoice->paid_at);
+        $this->assertSame(0, (int) $invoice->amount_paid_laar);
+        $this->assertTrue($invoice->isOnCreditAccount());
+    }
+
+    public function test_customer_credit_endpoint_returns_balance_and_open_invoices(): void
+    {
+        $this->approveCustomer(50000);
+        $this->chargeCustomerCredit(5000);
+
+        Sanctum::actingAs($this->customer->fresh(), ['customer']);
+
+        $this->getJson('/api/customer/credit')
+            ->assertOk()
+            ->assertJsonPath('credit.enabled', true)
+            ->assertJsonPath('credit.balance_mvr', 50)
+            ->assertJsonPath('credit.limit_mvr', 500)
+            ->assertJsonCount(1, 'credit.open_invoices');
+
+        $this->getJson('/api/customer/me')
+            ->assertOk()
+            ->assertJsonPath('credit.balance_mvr', 50);
+    }
+
+    public function test_customer_orders_include_credit_settlement_label(): void
+    {
+        $this->approveCustomer(50000);
+        $this->chargeCustomerCredit(5000);
+
+        Sanctum::actingAs($this->customer->fresh(), ['customer']);
+
+        $this->getJson('/api/customer/orders')
+            ->assertOk()
+            ->assertJsonPath('data.0.payment_settlement.settlement', 'credit_account')
+            ->assertJsonPath('data.0.payment_settlement.paid_on_credit', true)
+            ->assertJsonPath('data.0.payment_settlement.label', 'Paid on credit account');
+    }
+
+    public function test_customer_without_credit_gets_null_credit_payload(): void
+    {
+        Sanctum::actingAs($this->customer->fresh(), ['customer']);
+
+        $this->getJson('/api/customer/credit')
+            ->assertOk()
+            ->assertJsonPath('credit', null);
     }
 
     public function test_credit_charge_rejected_when_over_limit(): void

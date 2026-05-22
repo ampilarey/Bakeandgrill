@@ -2,10 +2,14 @@
 
 @php
     $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
-    $badgeClass = match ($invoice->status) {
-        'paid'  => 'doc-badge--paid',
-        'draft' => 'doc-badge--draft',
-        'sent'  => 'doc-badge--sent',
+    $onCredit = $invoice->isOnCreditAccount();
+    $balanceDueMvr = $invoice->balanceDueLaar() / 100;
+    $displayStatus = $invoice->displayStatusLabel();
+    $badgeClass = match (true) {
+        $invoice->status === 'paid' => 'doc-badge--paid',
+        $onCredit && in_array($invoice->status, ['sent', 'overdue'], true) => 'doc-badge--sent',
+        $invoice->status === 'draft' => 'doc-badge--draft',
+        $invoice->status === 'sent' => 'doc-badge--sent',
         default => 'doc-badge--unpaid',
     };
 @endphp
@@ -21,7 +25,7 @@
             <p class="doc-subtitle" style="margin-bottom:0;">{{ $siteName }}</p>
         </div>
         <div style="text-align:right;">
-            <span class="doc-badge {{ $badgeClass }}">{{ strtoupper($invoice->status) }}</span>
+            <span class="doc-badge {{ $badgeClass }}">{{ $displayStatus }}</span>
         </div>
     </div>
 
@@ -43,6 +47,8 @@
             @endif
             @if ($invoice->paid_at)
                 <p style="margin:0.25rem 0 0; color:var(--success-text); font-weight:600;">Paid: {{ $invoice->paid_at->format('d M Y') }}</p>
+            @elseif ($onCredit && $balanceDueMvr > 0)
+                <p style="margin:0.25rem 0 0; color:#92400E; font-weight:600;">Balance due: MVR {{ number_format($balanceDueMvr, 2) }}</p>
             @endif
         </div>
     </div>
@@ -88,6 +94,11 @@
             <p><span>Discount</span><span>− MVR {{ number_format((float) $invoice->discount_amount, 2) }}</span></p>
         @endif
         <p class="grand"><span>Total</span><span>MVR {{ number_format((float) $invoice->total, 2) }}</span></p>
+        @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
+            <p style="display:flex; justify-content:space-between; margin:0.35rem 0 0; font-weight:700; color:#92400E;">
+                <span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span>
+            </p>
+        @endif
     </div>
 
     @if ($invoice->notes)

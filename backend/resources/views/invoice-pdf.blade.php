@@ -25,8 +25,13 @@
 
     <p><strong>Invoice:</strong> {{ $invoice->invoice_number }}
        &nbsp;&nbsp;
+       @php
+           $onCredit = $invoice->isOnCreditAccount();
+           $displayStatus = $invoice->displayStatusLabel();
+           $balanceDueMvr = $invoice->balanceDueLaar() / 100;
+       @endphp
        <span class="badge {{ $invoice->status === 'paid' ? 'badge-paid' : 'badge-unpaid' }}">
-           {{ strtoupper($invoice->status) }}
+           {{ $displayStatus }}
        </span>
     </p>
     <p><strong>Date:</strong> {{ optional($invoice->issue_date)->format('d M Y') ?? optional($invoice->created_at)->format('d M Y') }}</p>
@@ -79,6 +84,9 @@
             <p><span>Discount</span><span>− MVR {{ number_format((float)$invoice->discount_amount, 2) }}</span></p>
         @endif
         <p class="grand"><span>Total</span><span>MVR {{ number_format((float)$invoice->total, 2) }}</span></p>
+        @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
+            <p class="grand" style="color:#92400E;"><span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span></p>
+        @endif
     </div>
 
     @if ($invoice->notes)

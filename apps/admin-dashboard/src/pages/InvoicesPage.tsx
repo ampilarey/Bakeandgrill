@@ -360,10 +360,23 @@ export function InvoicesPage() {
                     <Badge label={inv.type.replace('_', ' ')} color={TYPE_COLOR[inv.type] ?? 'gray'} />
                   </td>
                   <td style={TD}>
-                    <Badge label={inv.status} color={statColor(inv.status)} />
+                    <Badge
+                      label={(inv as { display_status?: string; on_credit_account?: boolean }).display_status
+                        ?? ((inv as { on_credit_account?: boolean }).on_credit_account && inv.status === 'sent' ? 'on credit' : inv.status)}
+                      color={statColor(inv.status)}
+                    />
                   </td>
                   <td style={{ ...TD, color: '#6B5D4F' }}>{inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'}</td>
-                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(inv.total ?? 0)).toFixed(2)}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>
+                    MVR {parseFloat(String(inv.total ?? 0)).toFixed(2)}
+                    {(inv as { balance_due?: number }).balance_due != null
+                      && (inv as { balance_due?: number }).balance_due! > 0
+                      && inv.status !== 'paid' && (
+                      <div style={{ fontSize: 11, color: '#B45309', fontWeight: 600 }}>
+                        MVR {(inv as { balance_due?: number }).balance_due!.toFixed(2)} due
+                      </div>
+                    )}
+                  </td>
                   <td style={{ ...TD, color: '#9C8E7E', whiteSpace: 'nowrap' }}>{inv.issue_date}</td>
                   <td style={{ ...TD, color: inv.status === 'overdue' ? '#ef4444' : '#9C8E7E', whiteSpace: 'nowrap' }}>
                     {inv.due_date ?? '—'}

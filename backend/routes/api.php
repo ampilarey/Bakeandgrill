@@ -385,6 +385,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 */
 Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group(function () {
     Route::get('/me', [CustomerController::class, 'me']);
+    Route::get('/credit', [CustomerController::class, 'credit']);
     Route::get('/orders', [CustomerController::class, 'orders']);
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'storeCustomer']);

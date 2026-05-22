@@ -8,10 +8,12 @@ import {
   getMyReservations, cancelMyReservation, getMyFavourites,
   getMyPreOrders, getMyReviews, submitReview, fetchCustomerOrders,
   getMyReferralCode,
+  getCustomerCredit,
 } from '../api';
 import type {
   AuthCustomer, CustomerReservation, FavouriteItem,
   CustomerPreOrder, CustomerReview, Order,
+  CustomerCreditSummary, CustomerCreditInvoice,
 } from '../api';
 import type { LoyaltyAccount } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
@@ -84,7 +86,7 @@ export function AccountPage() {
   const navigate = useNavigate();
   const { token, authReady, setAuth, clearAuth, customerName } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals' | 'credit'>('profile');
 
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -131,6 +133,12 @@ export function AccountPage() {
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState('');
   const [referralCopied, setReferralCopied] = useState(false);
+
+  // Credit account
+  const [credit, setCredit] = useState<(CustomerCreditSummary & { open_invoices: CustomerCreditInvoice[] }) | null>(null);
+  const [creditLoading, setCreditLoading] = useState(false);
+  const [creditError, setCreditError] = useState('');
+  const [creditLoaded, setCreditLoaded] = useState(false);
 
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '' });
@@ -212,6 +220,15 @@ export function AccountPage() {
       .catch((e: Error) => setReferralError(e.message || 'Failed to load referral code.'))
       .finally(() => setReferralLoading(false));
   }, [token, authReady, activeTab]);
+
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'credit' || creditLoaded) return;
+    setCreditLoading(true);
+    getCustomerCredit(token)
+      .then((res) => { setCredit(res.credit); setCreditLoaded(true); })
+      .catch((e: Error) => setCreditError(e.message || 'Failed to load credit account.'))
+      .finally(() => setCreditLoading(false));
+  }, [token, authReady, activeTab, creditLoaded]);
 
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
 
@@ -347,6 +364,7 @@ export function AccountPage() {
         {([
           { id: 'profile',      label: '👤 Profile'       },
           { id: 'loyalty',      label: '⭐ Loyalty'       },
+          { id: 'credit',       label: '💳 Credit'        },
           { id: 'referrals',    label: '🎁 Referrals'     },
           { id: 'reservations', label: '🗓 Reservations'  },
           { id: 'favourites',   label: '❤️ Favourites'    },
@@ -896,6 +914,80 @@ export function AccountPage() {
               <p style={{ fontSize: 36, margin: '0 0 8px' }}>⭐</p>
               <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>Place your first order to start earning loyalty points.</p>
             </div>
+          )}
+        </>
+      )}
+
+      {/* ── Credit tab ── */}
+      {activeTab === 'credit' && (
+        <>
+          {creditError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{creditError}</p>}
+          {creditLoading ? (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>Loading…</div>
+          ) : !credit ? (
+            <SectionCard title="Credit Account">
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ fontSize: 32, margin: '0 0 8px' }}>💳</p>
+                <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
+                  You do not have an approved credit account. Ask the restaurant if you need to pay on account.
+                </p>
+              </div>
+            </SectionCard>
+          ) : (
+            <>
+              <div style={{
+                background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+                border: '2px solid #BFDBFE',
+                borderRadius: 18,
+                padding: '24px 20px',
+              }}>
+                <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1D4ED8', margin: '0 0 12px' }}>
+                  Credit Account · {credit.status.replace('_', ' ')}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div>
+                    <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>Balance owed</p>
+                    <p style={{ fontSize: 22, fontWeight: 900, color: '#1E3A8A', margin: 0 }}>MVR {credit.balance_mvr.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>Credit limit</p>
+                    <p style={{ fontSize: 22, fontWeight: 900, color: '#1E3A8A', margin: 0 }}>MVR {credit.limit_mvr.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>Available</p>
+                    <p style={{ fontSize: 22, fontWeight: 900, color: '#15803D', margin: 0 }}>MVR {credit.available_mvr.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <SectionCard title="Open Invoices">
+                {credit.open_invoices.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No open invoices — your account is clear.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {credit.open_invoices.map((inv) => (
+                      <div key={inv.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>{inv.invoice_number}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                            {inv.issue_date ? `Issued ${inv.issue_date}` : 'On credit account'}
+                            {inv.order_id ? ` · Order #${inv.order_id}` : ''}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ margin: 0, fontWeight: 800, fontSize: 15, color: '#B45309' }}>MVR {inv.balance_due_mvr.toFixed(2)} due</p>
+                          {inv.view_url && (
+                            <a href={inv.view_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--color-primary)', fontWeight: 600 }}>
+                              View invoice →
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            </>
           )}
         </>
       )}

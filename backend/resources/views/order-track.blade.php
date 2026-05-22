@@ -10,6 +10,8 @@
         'dine_in' => 'Dine-in',
     ];
     $typeLabel = $typeLabels[$order->type ?? ''] ?? str_replace('_', ' ', (string) ($order->type ?? ''));
+    $settlement = \App\Support\OrderSettlement::forOrder($order);
+    $paidOnCredit = $settlement['paid_on_credit'] ?? false;
     $step = match ($order->status) {
         'payment_pending', 'pending', 'paid' => 1,
         'in_progress', 'preparing', 'partial' => 2,
@@ -28,7 +30,9 @@
     <h1 class="doc-title">#{{ $order->order_number }}</h1>
     <p class="doc-subtitle">{{ $statusLabel }}</p>
 
-    @if ($order->payment_status === 'paid' || $order->paid_at)
+    @if ($paidOnCredit)
+        <div class="doc-banner doc-banner--ok">Charged to your credit account — balance due on your monthly statement</div>
+    @elseif ($order->payment_status === 'paid' || $order->paid_at)
         <div class="doc-banner doc-banner--ok">Payment confirmed</div>
     @elseif ($order->status === 'payment_pending')
         <div class="doc-banner doc-banner--warn">Awaiting payment</div>
@@ -50,7 +54,7 @@
         <div class="doc-meta-row"><span>Type</span><span>{{ $typeLabel }}</span></div>
         <div class="doc-meta-row"><span>Status</span><span>{{ $statusLabel }}</span></div>
         @if ($order->paid_at)
-            <div class="doc-meta-row"><span>Paid</span><span>{{ $order->paid_at->timezone(config('app.timezone', 'Indian/Maldives'))->format('j M Y, g:i A') }}</span></div>
+            <div class="doc-meta-row"><span>{{ $paidOnCredit ? 'Charged' : 'Paid' }}</span><span>{{ $order->paid_at->timezone(config('app.timezone', 'Indian/Maldives'))->format('j M Y, g:i A') }}</span></div>
         @endif
     </div>
 

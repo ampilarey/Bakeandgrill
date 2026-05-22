@@ -31,6 +31,7 @@ use App\Models\Item;
 use App\Models\Variant;
 use App\Models\RestaurantTable;
 use App\Support\PhoneNormalizer;
+use App\Support\OrderSettlement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,6 +71,7 @@ class OrderController extends Controller
                 // scrolling). Relation on Order is `table()`, schema
                 // columns are id/name/location.
                 'table:id,name,location',
+                'payments:id,order_id,method,amount,amount_laar,status',
             ])
             ->orderBy('created_at', 'desc');
 
@@ -228,6 +230,13 @@ class OrderController extends Controller
 
         $perPage = min(100, max(10, (int) $request->input('per_page', 30)));
         $orders = $query->paginate($perPage);
+
+        $orders->through(function (Order $order) {
+            $data = $order->toArray();
+            $data['payment_settlement'] = OrderSettlement::forOrder($order);
+
+            return $data;
+        });
 
         return response()->json($orders);
     }

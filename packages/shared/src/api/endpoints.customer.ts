@@ -12,6 +12,7 @@ export const CUSTOMER_ENDPOINTS = {
   // Profile / session
   AUTH_LOGOUT:                '/auth/logout',
   CUSTOMER_ME:                '/customer/me',
+  CUSTOMER_CREDIT:            '/customer/credit',
   CUSTOMER_PROFILE:           '/customer/profile',
   CUSTOMER_COMPLETE_PROFILE:  '/customer/complete-profile',
   CUSTOMER_CHANGE_PASSWORD:   '/customer/change-password',

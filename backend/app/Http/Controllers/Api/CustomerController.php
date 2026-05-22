@@ -8,9 +8,11 @@ use App\Domains\Customers\Services\CustomerCreditService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerSmsOptOutRequest;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\LoyaltyAccount;
 use App\Models\Order;
 use App\Services\AuditLogService;
+use App\Support\OrderSettlement;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -306,7 +308,64 @@ class CustomerController extends Controller
                 'preferred_language' => $customer->preferred_language,
                 'last_order_at' => $customer->last_order_at,
             ],
+            'credit' => $customer->credit_enabled
+                ? app(CustomerCreditService::class)->customerFacingSummary($customer)
+                : null,
         ]);
+    }
+
+    /**
+     * GET /api/customer/credit — balance, limit, and open invoices.
+     */
+    public function credit(Request $request)
+    {
+        $customer = $request->user();
+
+        if (!$customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        if (!$customer->credit_enabled) {
+            return response()->json(['credit' => null]);
+        }
+
+        $creditService = app(CustomerCreditService::class);
+
+        return response()->json([
+            'credit' => array_merge(
+                $creditService->customerFacingSummary($customer),
+                ['open_invoices' => $this->formatCustomerCreditInvoices($customer, $creditService)],
+            ),
+        ]);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function formatCustomerCreditInvoices(Customer $customer, CustomerCreditService $creditService): array
+    {
+        $tokens = Invoice::query()
+            ->whereIn('id', collect($creditService->openCreditInvoices($customer))->pluck('id'))
+            ->pluck('token', 'id');
+
+        return collect($creditService->openCreditInvoices($customer))
+            ->map(function (array $inv) use ($tokens) {
+                return [
+                    'id' => $inv['id'],
+                    'invoice_number' => $inv['invoice_number'],
+                    'order_id' => $inv['order_id'],
+                    'status' => $inv['status'],
+                    'issue_date' => $inv['issue_date'],
+                    'total_mvr' => round($inv['total_laar'] / 100, 2),
+                    'amount_paid_mvr' => round($inv['amount_paid_laar'] / 100, 2),
+                    'balance_due_mvr' => round($inv['balance_due_laar'] / 100, 2),
+                    'view_url' => isset($tokens[$inv['id']])
+                        ? url('/invoices/' . $tokens[$inv['id']])
+                        : null,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -325,6 +384,13 @@ class CustomerController extends Controller
             ->with(['items', 'payments'])
             ->orderBy('created_at', 'desc')
             ->paginate(15);
+
+        $orders->through(function (Order $order) {
+            $data = $order->toArray();
+            $data['payment_settlement'] = OrderSettlement::forOrder($order);
+
+            return $data;
+        });
 
         return response()->json($orders);
     }
@@ -347,7 +413,7 @@ class CustomerController extends Controller
             ->findOrFail($id);
 
         return response()->json([
-            'order' => [
+            'order' => array_merge([
                 'id' => $order->id,
                 'order_number' => $order->order_number,
                 'status' => $order->status,
@@ -387,7 +453,9 @@ class CustomerController extends Controller
                 'delivery_contact_name' => $order->delivery_contact_name,
                 'delivery_contact_phone' => $order->delivery_contact_phone,
                 'delivery_notes' => $order->delivery_notes,
-            ],
+            ], [
+                'payment_settlement' => OrderSettlement::forOrder($order),
+            ]),
         ]);
     }
 

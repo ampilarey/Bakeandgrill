@@ -27,6 +27,7 @@ type Props = {
   orderId: number;
   /** Customer's phone for the Resend button. If undefined, Resend is hidden. */
   customerPhone?: string | null;
+  paidOnCredit?: boolean;
   onDismiss: () => void;
 };
 
@@ -39,7 +40,7 @@ const C = {
   btn: "#FFFFFF",
 };
 
-export function ReceiptActionsBanner({ orderId, customerPhone, onDismiss }: Props) {
+export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = false, onDismiss }: Props) {
   const [link, setLink] = useState<string | null>(null);
   const [linkErr, setLinkErr] = useState(false);
   const [sending, setSending] = useState(false);
@@ -143,7 +144,7 @@ export function ReceiptActionsBanner({ orderId, customerPhone, onDismiss }: Prop
     >
       <div style={{ flex: "1 1 auto", minWidth: 200 }}>
         <div style={{ fontWeight: 800, color: C.text, fontSize: 14 }}>
-          ✓ Order #{orderId} paid
+          ✓ Order #{orderId} {paidOnCredit ? 'charged to credit account' : 'paid'}
         </div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
           {customerPhone

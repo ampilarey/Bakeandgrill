@@ -166,6 +166,7 @@ function App() {
     orderId: number;
     customerId: number | null;
     customerPhone: string | null;
+    paidOnCredit: boolean;
   } | null>(null);
   /** After a paid dine-in/takeaway sale, jump to Receipts with this order selected. */
   const [receiptsFocusOrderId, setReceiptsFocusOrderId] = useState<number | null>(null);
@@ -354,10 +355,10 @@ function App() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: (orderId, customerId, customerPhone, settledType) => {
+    onOrderSettled: (orderId, customerId, customerPhone, settledType, paidOnCredit = false) => {
       void refreshOpenTickets();
       void shift.refreshSummary();
-      setLastPaidOrder({ orderId, customerId, customerPhone });
+      setLastPaidOrder({ orderId, customerId, customerPhone, paidOnCredit });
       if (settledType === "dine_in" || settledType === "takeaway") {
         setReceiptsFocusOrderId(orderId);
         setPane("receipts");
@@ -910,6 +911,7 @@ function App() {
             <ReceiptActionsBanner
               orderId={lastPaidOrder.orderId}
               customerPhone={lastPaidOrder.customerPhone}
+              paidOnCredit={lastPaidOrder.paidOnCredit}
               onDismiss={() => setLastPaidOrder(null)}
             />
           )}

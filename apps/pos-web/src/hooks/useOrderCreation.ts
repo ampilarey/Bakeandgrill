@@ -124,6 +124,7 @@ type Params = {
     customerId: number | null,
     customerPhone: string | null,
     orderType?: string | null,
+    paidOnCredit?: boolean,
   ) => void;
 };
 
@@ -354,6 +355,9 @@ export function useOrderCreation(params: Params) {
     return total;
   };
 
+  const paidOnCreditFromRows = (rows: PaymentRow[]) =>
+    rows.some((r) => r.method === 'house_account');
+
   /**
    * Settle an already-created order with the supplied payment rows. Fills
    * any remainder with cash. Returns true on success.
@@ -474,7 +478,7 @@ export function useOrderCreation(params: Params) {
           setResumedStaffUserId(null);
           params.clearCart();
           params.setSelectedItem(null);
-          params.onOrderSettled?.(settledOrderId, cid, cphone, settledType);
+          params.onOrderSettled?.(settledOrderId, cid, cphone, settledType, paidOnCreditFromRows(paymentSnapshot));
         }
         return settled;
       } finally {
@@ -549,6 +553,7 @@ export function useOrderCreation(params: Params) {
           cid,
           cphone,
           payload.type ?? mapOrderType(params.orderType),
+          paidOnCreditFromRows(paymentSnapshot),
         );
       }
       return settled;
@@ -637,6 +642,7 @@ export function useOrderCreation(params: Params) {
             cid,
             cphone,
             mapOrderType(params.orderType),
+            paidOnCreditFromRows(retryRows),
           );
         }
       } finally {

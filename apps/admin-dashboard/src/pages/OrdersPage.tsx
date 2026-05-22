@@ -725,6 +725,19 @@ export function OrdersPage() {
                           {o.payment_status === 'partial' ? 'PARTIAL' : 'UNPAID'}
                         </span>
                       )}
+                      {(o as { payment_settlement?: { paid_on_credit?: boolean; short_label?: string } }).payment_settlement?.paid_on_credit && (
+                        <span
+                          title="Charged to customer credit account"
+                          style={{
+                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+                            color: '#1D4ED8', background: '#EFF6FF',
+                            padding: '2px 5px', borderRadius: 4,
+                            border: '1px solid #BFDBFE',
+                          }}
+                        >
+                          {(o as { payment_settlement?: { short_label?: string } }).payment_settlement?.short_label ?? 'CREDIT'}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px', color: '#6B5D4F' }}>

@@ -2,6 +2,8 @@
 
 @php
     $order = $receipt->order;
+    $settlement = \App\Support\OrderSettlement::forOrder($order);
+    $paidOnCredit = $settlement['paid_on_credit'] ?? false;
     $isPaid = $order->paid_at !== null
         || in_array($order->status ?? '', ['paid', 'completed', 'delivered', 'refunded'], true);
     $docTitle = $isPaid ? 'Receipt' : 'Invoice';
@@ -58,7 +60,11 @@
         </div>
     @else
         <div class="doc-banner doc-banner--ok">
-            Payment confirmed
+            @if ($paidOnCredit)
+                Charged to credit account
+            @else
+                Payment confirmed
+            @endif
             @if ($order->paid_at)
                 — {{ $order->paid_at->timezone(config('app.timezone', 'Indian/Maldives'))->format('D, j M Y g:i A') }}
             @endif

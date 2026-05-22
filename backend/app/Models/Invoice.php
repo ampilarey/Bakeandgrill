@@ -88,4 +88,47 @@ class Invoice extends Model
 
         return max(0, $total - (int) ($this->amount_paid_laar ?? 0));
     }
+
+    public function isOnCreditAccount(): bool
+    {
+        if (str_contains(strtolower($this->notes ?? ''), 'credit account')) {
+            return true;
+        }
+
+        if (!$this->order_id) {
+            return false;
+        }
+
+        if ($this->relationLoaded('order') && $this->order !== null) {
+            $payments = $this->order->relationLoaded('payments')
+                ? $this->order->payments
+                : null;
+
+            if ($payments !== null) {
+                return $payments->contains(
+                    fn ($p) => $p->method === 'house_account'
+                        && in_array((string) ($p->status ?? ''), ['paid', 'completed', 'confirmed'], true),
+                );
+            }
+        }
+
+        return $this->order()
+            ->whereHas('payments', fn ($q) => $q
+                ->where('method', 'house_account')
+                ->whereIn('status', ['paid', 'completed', 'confirmed']))
+            ->exists();
+    }
+
+    public function displayStatusLabel(): string
+    {
+        if ($this->status === 'paid') {
+            return 'PAID';
+        }
+
+        if ($this->isOnCreditAccount() && in_array($this->status, ['sent', 'overdue'], true)) {
+            return 'ON CREDIT ACCOUNT';
+        }
+
+        return strtoupper((string) $this->status);
+    }
 }
