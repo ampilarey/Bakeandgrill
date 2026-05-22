@@ -18,7 +18,7 @@ class Invoice extends Model
         'invoice_number', 'token', 'type', 'status',
         'order_id', 'purchase_id', 'customer_id', 'supplier_id', 'created_by',
         'recipient_name', 'recipient_phone', 'recipient_email', 'recipient_address',
-        'subtotal_laar', 'tax_laar', 'discount_laar', 'total_laar',
+        'subtotal_laar', 'tax_laar', 'discount_laar', 'total_laar', 'amount_paid_laar',
         'subtotal', 'tax_amount', 'discount_amount', 'total',
         'tax_rate_bp', 'issue_date', 'due_date', 'paid_at',
         'payment_method', 'payment_reference',
@@ -80,5 +80,12 @@ class Invoice extends Model
     public function creditNotes(): HasMany
     {
         return $this->hasMany(Invoice::class, 'parent_invoice_id');
+    }
+
+    public function balanceDueLaar(): int
+    {
+        $total = (int) ($this->total_laar ?? round((float) $this->total * 100));
+
+        return max(0, $total - (int) ($this->amount_paid_laar ?? 0));
     }
 }

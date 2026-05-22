@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import type { RestaurantTable } from "./types";
 
@@ -83,6 +83,7 @@ function App() {
   const canOpsSuppliers = hasPosPermission(staffPermissions, "suppliers.manage");
   const canOpsReports = hasPosPermission(staffPermissions, "reports.view");
   const canOpsMarketing = hasPosPermission(staffPermissions, "integrations.sms");
+  const canUseCredit = hasPosPermission(staffPermissions, "payments.credit");
   const canAccessOps = canOpsInventory || canOpsSuppliers || canOpsReports || canOpsMarketing;
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
@@ -150,6 +151,8 @@ function App() {
   // Modals/overlays
   const [showSendBill, setShowSendBill] = useState(false);
   const [showCharge, setShowCharge] = useState(false);
+  const [chargeCreditAvailable, setChargeCreditAvailable] = useState(0);
+  const [chargeCreditEligible, setChargeCreditEligible] = useState(false);
   const [showSaveTicket, setShowSaveTicket] = useState(false);
   const [showOpenShift, setShowOpenShift] = useState(false);
   const [showCloseShift, setShowCloseShift] = useState(false);
@@ -399,6 +402,29 @@ function App() {
   }, [isLoggedIn]);
 
   useEffect(() => { void refreshTables(); }, [refreshTables]);
+
+  useEffect(() => {
+    if (!showCharge || !cart.attachedCustomer || !canUseCredit) {
+      setChargeCreditEligible(false);
+      setChargeCreditAvailable(0);
+      return;
+    }
+    let cancelled = false;
+    void fetchCustomerSummary(cart.attachedCustomer.id)
+      .then((summary) => {
+        if (cancelled) return;
+        const credit = summary.credit;
+        setChargeCreditEligible(Boolean(credit?.can_charge));
+        setChargeCreditAvailable((credit?.available_laar ?? 0) / 100);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChargeCreditEligible(false);
+          setChargeCreditAvailable(0);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [showCharge, cart.attachedCustomer?.id, canUseCredit]);
 
   // ── Quick-note chip refresh helper (used by refreshAll + visibility) ──
   // The owner edits the chip library from Admin → Settings → POS. We
@@ -1161,6 +1187,8 @@ function App() {
           total={order.resumedOrderId !== null
             ? (order.resumedOrderTotal ?? cart.cartTotal)
             : cart.cartTotal}
+          creditEligible={canUseCredit && chargeCreditEligible}
+          creditAvailableMvr={chargeCreditAvailable}
           submitting={order.isSubmitting}
           errorMessage={order.statusMessage}
           onClose={() => setShowCharge(false)}

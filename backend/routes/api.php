@@ -758,6 +758,17 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admi
     Route::get('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
     Route::patch('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'destroy']);
+
+    Route::middleware('permission:customers.credit.manage')->group(function () {
+        Route::get('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'show']);
+        Route::patch('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'update']);
+        Route::get('/{id}/credit/invoices', [App\Http\Controllers\Api\CustomerCreditController::class, 'invoices']);
+        Route::get('/{id}/credit/ledger', [App\Http\Controllers\Api\CustomerCreditController::class, 'ledger']);
+    });
+
+    Route::middleware('permission:customers.credit.repay')->group(function () {
+        Route::post('/{id}/credit/repayments', [App\Http\Controllers\Api\CustomerCreditController::class, 'repay']);
+    });
 });
 
 // ─── Reservations ────────────────────────────────────────────────────────────

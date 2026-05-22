@@ -17,6 +17,86 @@ export interface AdminCustomer {
   last_login_at: string | null;
   last_order_at: string | null;
   created_at: string;
+  credit_enabled?: boolean;
+  credit_status?: 'active' | 'on_hold' | 'blocked';
+  credit_limit_laar?: number;
+  credit_balance_laar?: number;
+}
+
+export type CustomerCreditInfo = {
+  customer_id: number;
+  enabled: boolean;
+  status: 'active' | 'on_hold' | 'blocked';
+  limit_laar: number;
+  balance_laar: number;
+  available_laar: number;
+  can_charge: boolean;
+  credit_notes?: string | null;
+  approved_by?: number | null;
+  approved_at?: string | null;
+  approved_by_name?: string | null;
+  limit_mvr: number;
+  balance_mvr: number;
+  available_mvr: number;
+};
+
+export type CustomerCreditLedgerRow = {
+  id: number;
+  type: string;
+  amount_laar: number;
+  amount_mvr: number;
+  balance_after_laar: number;
+  balance_after_mvr: number;
+  order_id?: number | null;
+  invoice_id?: number | null;
+  method?: string | null;
+  notes?: string | null;
+  created_at?: string | null;
+};
+
+export type CustomerCreditInvoice = {
+  id: number;
+  invoice_number: string;
+  order_id?: number | null;
+  total_laar: number;
+  amount_paid_laar: number;
+  balance_due_laar: number;
+  issue_date?: string | null;
+  status: string;
+};
+
+export async function fetchCustomerCredit(customerId: number): Promise<{
+  credit: CustomerCreditInfo;
+  ledger: CustomerCreditLedgerRow[];
+  open_invoices: CustomerCreditInvoice[];
+}> {
+  return req(`/admin/customers/${customerId}/credit`);
+}
+
+export async function updateCustomerCredit(
+  customerId: number,
+  data: {
+    action: 'approve' | 'disable' | 'update_limit' | 'set_status';
+    credit_limit_mvr?: number;
+    credit_notes?: string;
+    credit_status?: 'active' | 'on_hold' | 'blocked';
+    override_limit?: boolean;
+  },
+): Promise<{ customer: CustomerCreditInfo }> {
+  return req(`/admin/customers/${customerId}/credit`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function recordCustomerCreditRepayment(
+  customerId: number,
+  data: {
+    amount_mvr: number;
+    method: 'cash' | 'card' | 'bank_transfer';
+    reference?: string;
+    notes?: string;
+    invoice_ids?: number[];
+  },
+): Promise<{ credit: CustomerCreditInfo; ledger: CustomerCreditLedgerRow }> {
+  return req(`/admin/customers/${customerId}/credit/repayments`, { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function fetchAdminCustomers(params?: {

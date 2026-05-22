@@ -8,6 +8,7 @@ use Illuminate\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Sanctum\HasApiTokens;
@@ -40,6 +41,13 @@ class Customer extends Model implements AuthenticatableContract
         'delivery_building',
         'delivery_floor',
         'delivery_notes',
+        'credit_enabled',
+        'credit_approved_by',
+        'credit_approved_at',
+        'credit_limit_laar',
+        'credit_balance_laar',
+        'credit_status',
+        'credit_notes',
     ];
 
     /**
@@ -54,6 +62,7 @@ class Customer extends Model implements AuthenticatableContract
         'password',
         'internal_notes',
         'sms_opt_out_at',
+        'credit_notes',
     ];
 
     protected $casts = [
@@ -66,6 +75,17 @@ class Customer extends Model implements AuthenticatableContract
         'preferences' => 'array',
         'sms_opt_out' => 'boolean',
         'sms_opt_out_at' => 'datetime',
+        'credit_enabled' => 'boolean',
+        'credit_approved_at' => 'datetime',
+        'credit_limit_laar' => 'integer',
+        'credit_balance_laar' => 'integer',
+    ];
+
+    protected $attributes = [
+        'credit_enabled' => false,
+        'credit_limit_laar' => 0,
+        'credit_balance_laar' => 0,
+        'credit_status' => 'blocked',
     ];
 
     public function orders(): HasMany
@@ -86,6 +106,16 @@ class Customer extends Model implements AuthenticatableContract
     public function loyaltyAccount(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(LoyaltyAccount::class);
+    }
+
+    public function creditApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'credit_approved_by');
+    }
+
+    public function creditLedger(): HasMany
+    {
+        return $this->hasMany(CustomerCreditLedger::class);
     }
 
     public function smsLogs(): HasMany

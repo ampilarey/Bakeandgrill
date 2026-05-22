@@ -350,6 +350,14 @@ export type PosCustomerSummary = {
     total: number;
     paid_at: string | null;
   }>;
+  credit?: {
+    enabled: boolean;
+    status: 'active' | 'on_hold' | 'blocked';
+    limit_laar: number;
+    balance_laar: number;
+    available_laar: number;
+    can_charge: boolean;
+  };
 };
 
 export async function fetchCustomerSummary(customerId: number): Promise<PosCustomerSummary> {

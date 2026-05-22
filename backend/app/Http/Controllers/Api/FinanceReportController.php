@@ -334,7 +334,7 @@ class FinanceReportController extends Controller
 
         $totals = Invoice::where('type', 'sale')
             ->whereIn('status', ['sent', 'overdue'])
-            ->selectRaw('SUM(total) as total_outstanding, COUNT(CASE WHEN status = ? THEN 1 END) as overdue_count', ['overdue'])
+            ->selectRaw('SUM(GREATEST(total_laar - amount_paid_laar, 0)) as total_outstanding, COUNT(CASE WHEN status = ? THEN 1 END) as overdue_count', ['overdue'])
             ->first();
 
         $unpaid = Invoice::where('type', 'sale')
@@ -352,14 +352,16 @@ class FinanceReportController extends Controller
         $today = now()->toDateString();
 
         return response()->json([
-            'total_outstanding' => round((float) ($totals->total_outstanding ?? 0), 2),
+            'total_outstanding' => round((float) ($totals->total_outstanding ?? 0) / 100, 2),
             'overdue_count' => (int) ($totals->overdue_count ?? 0),
             'truncated' => $truncated,
             'items' => $unpaid->map(fn ($inv) => [
                 'id' => $inv->id,
                 'invoice_number' => $inv->invoice_number,
                 'customer' => $inv->customer ? ['id' => $inv->customer->id, 'name' => $inv->customer->name, 'phone' => $inv->customer->phone] : null,
-                'total' => (float) $inv->total,
+                'total' => round($inv->balanceDueLaar() / 100, 2),
+                'invoice_total' => (float) $inv->total,
+                'amount_paid' => round((int) ($inv->amount_paid_laar ?? 0) / 100, 2),
                 'due_date' => $inv->due_date?->toDateString(),
                 'days_overdue' => $inv->due_date && $inv->due_date->toDateString() < $today
                     ? (int) $inv->due_date->diffInDays(now())

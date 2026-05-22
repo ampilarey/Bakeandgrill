@@ -116,6 +116,10 @@ class AdminCustomerController extends Controller
             'last_login_at' => $c->last_login_at,
             'last_order_at' => $c->last_order_at,
             'created_at' => $c->created_at,
+            'credit_enabled' => (bool) ($c->credit_enabled ?? false),
+            'credit_status' => $c->credit_status ?? 'blocked',
+            'credit_limit_laar' => (int) ($c->credit_limit_laar ?? 0),
+            'credit_balance_laar' => (int) ($c->credit_balance_laar ?? 0),
         ];
     }
 }

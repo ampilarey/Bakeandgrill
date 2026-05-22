@@ -3,7 +3,7 @@ import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { z } from "../theme";
 
-export type ChargeMethod = "cash" | "card" | "digital_wallet";
+export type ChargeMethod = "cash" | "card" | "digital_wallet" | "house_account";
 
 type Props = {
   total: number;
@@ -16,6 +16,9 @@ type Props = {
   subtotal?: number;
   discount?: number;
   tax?: number;
+  /** Show Credit Account tender when customer is approved for credit. */
+  creditEligible?: boolean;
+  creditAvailableMvr?: number;
   onClose: () => void;
   onConfirm: (rows: Array<{ method: ChargeMethod; amount: number }>) => Promise<void>;
   submitting: boolean;
@@ -32,6 +35,7 @@ const METHOD_LABEL: Record<ChargeMethod, string> = {
   cash: "Cash",
   card: "Card",
   digital_wallet: "Transfer",
+  house_account: "Credit Account",
 };
 
 /**
@@ -46,6 +50,8 @@ export function ChargeOverlay({
   subtotal,
   discount,
   tax,
+  creditEligible = false,
+  creditAvailableMvr = 0,
   onClose,
   onConfirm,
   submitting,
@@ -165,9 +171,13 @@ export function ChargeOverlay({
   const splitValid =
     split
     && method !== "cash"
+    && method !== "house_account"
     && Number.isFinite(splitNum)
     && splitNum > 0
     && splitNum < total;
+
+  const creditOverLimit = method === "house_account" && total > creditAvailableMvr + 0.001;
+  const canConfirmCredit = method === "house_account" && creditEligible && !creditOverLimit && total > 0;
 
   const confirm = async () => {
     // Split tender: send TWO rows — the requested non-cash portion +
@@ -189,7 +199,7 @@ export function ChargeOverlay({
       ]);
       return;
     }
-    if (!enough) return;
+    if (!enough && !splitValid && !canConfirmCredit) return;
     const amount = method === "cash"
       ? Math.max(total, receivedNum) // record what the cashier collected
       : total;
@@ -293,13 +303,13 @@ export function ChargeOverlay({
           }}>
             <div>
               <p style={tinyLabel}>Tender</p>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {(["cash", "card", "digital_wallet"] as ChargeMethod[]).map((m) => (
                   <button
                     key={m}
                     onClick={() => setMethod(m)}
                     style={{
-                      flex: 1, padding: "12px 8px", borderRadius: 10,
+                      flex: "1 1 80px", padding: "12px 8px", borderRadius: 10,
                       background: method === m ? "#0F172A" : "#fff",
                       color: method === m ? "#fff" : "#0F172A",
                       border: `1px solid ${method === m ? "#0F172A" : "#CBD5E1"}`,
@@ -307,10 +317,34 @@ export function ChargeOverlay({
                     }}
                   >{METHOD_LABEL[m]}</button>
                 ))}
+                {creditEligible && (
+                  <button
+                    onClick={() => setMethod("house_account")}
+                    style={{
+                      flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
+                      background: method === "house_account" ? "#1D4ED8" : "#EFF6FF",
+                      color: method === "house_account" ? "#fff" : "#1D4ED8",
+                      border: `1px solid ${method === "house_account" ? "#1D4ED8" : "#BFDBFE"}`,
+                      fontWeight: 700, fontSize: 13, cursor: "pointer",
+                    }}
+                  >Credit Account</button>
+                )}
               </div>
+              {method === "house_account" && (
+                <div style={{
+                  marginTop: 8, padding: "10px 12px", borderRadius: 8,
+                  background: creditOverLimit ? "#FEE2E2" : "#EFF6FF",
+                  border: `1px solid ${creditOverLimit ? "#FCA5A5" : "#BFDBFE"}`,
+                  fontSize: 12, color: creditOverLimit ? "#B91C1C" : "#1D4ED8",
+                }}>
+                  {creditOverLimit
+                    ? `This customer is not approved for credit. Available: MVR ${creditAvailableMvr.toFixed(2)}.`
+                    : `Available credit: MVR ${creditAvailableMvr.toFixed(2)}`}
+                </div>
+              )}
             </div>
 
-            {method !== "cash" && (
+            {method !== "cash" && method !== "house_account" && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "10px 12px", borderRadius: 10, background: "#fff",
@@ -329,7 +363,7 @@ export function ChargeOverlay({
               </div>
             )}
 
-            {split && method !== "cash" && (
+            {split && method !== "cash" && method !== "house_account" && (
               <div>
                 <p style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
                 <CashInput
@@ -394,7 +428,7 @@ export function ChargeOverlay({
               </>
             )}
 
-            {method !== "cash" && !split && (
+            {method !== "cash" && method !== "house_account" && !split && (
               <div style={{
                 padding: 14, borderRadius: 10, background: "#fff",
                 border: "1px solid #E2E8F0", fontSize: 13, color: "#475569",
@@ -433,12 +467,12 @@ export function ChargeOverlay({
               background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
               fontWeight: 600, fontSize: 15, cursor: "pointer",
             }}>Cancel</button>
-            <button onClick={confirm} disabled={(!enough && !splitValid) || submitting} style={{
+            <button onClick={confirm} disabled={(!enough && !splitValid && !canConfirmCredit) || submitting || creditOverLimit} style={{
               flex: 2, padding: "14px 18px", borderRadius: 12,
-              background: (!enough && !splitValid) || submitting ? "#A7F3D0" : "#10B981",
+              background: ((!enough && !splitValid && !canConfirmCredit) || submitting || creditOverLimit) ? "#A7F3D0" : "#10B981",
               color: "#fff", border: "none",
               fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
-              cursor: !enough || submitting ? "not-allowed" : "pointer",
+              cursor: ((!enough && !splitValid && !canConfirmCredit) || submitting || creditOverLimit) ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             }}>
               {submitting ? (

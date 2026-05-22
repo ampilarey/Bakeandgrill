@@ -4,7 +4,7 @@ import type { PosCustomer } from "../api";
 
 export type PaymentRow = {
   id: string;
-  method: "cash" | "card" | "digital_wallet";
+  method: "cash" | "card" | "digital_wallet" | "house_account";
   amount: string;
 };
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Customers\Services\CustomerCreditService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerSmsOptOutRequest;
 use App\Models\Customer;
@@ -278,6 +279,7 @@ class CustomerController extends Controller
                     : ($stats?->last_paid_at ?? null),
             ],
             'recent_orders' => $recent,
+            'credit' => app(CustomerCreditService::class)->creditSummary($customer),
         ]);
     }
 

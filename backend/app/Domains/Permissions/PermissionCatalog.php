@@ -89,6 +89,7 @@ final class PermissionCatalog
             ['group' => 'Payments', 'slug' => 'payments.split', 'name' => 'Split tender payments'],
             ['group' => 'Payments', 'slug' => 'payments.cash_manage', 'name' => 'Manage cash drawer'],
             ['group' => 'Payments', 'slug' => 'payments.cash_in_out', 'name' => 'Cash in / cash out'],
+            ['group' => 'Payments', 'slug' => 'payments.credit', 'name' => 'Charge to customer credit account', 'description' => 'Use Credit Account tender at POS for approved customers'],
             ['group' => 'Payments', 'slug' => 'finance.cash_manage', 'name' => 'Cash management (legacy)'],
 
             // Customers & loyalty
@@ -97,6 +98,8 @@ final class PermissionCatalog
             ['group' => 'Customers', 'slug' => 'customers.lookup', 'name' => 'Customer lookup at POS'],
             ['group' => 'Customers', 'slug' => 'customers.create', 'name' => 'Create customers at POS'],
             ['group' => 'Customers', 'slug' => 'customers.analytics', 'name' => 'Customer analytics'],
+            ['group' => 'Customers', 'slug' => 'customers.credit.manage', 'name' => 'Manage customer credit accounts', 'description' => 'Approve credit, set limits, block/on-hold accounts'],
+            ['group' => 'Customers', 'slug' => 'customers.credit.repay', 'name' => 'Record customer credit repayments', 'description' => 'Apply payments against customer credit balance'],
             ['group' => 'Loyalty', 'slug' => 'loyalty.view', 'name' => 'View loyalty program'],
             ['group' => 'Loyalty', 'slug' => 'loyalty.manage', 'name' => 'Manage loyalty program'],
             ['group' => 'Loyalty', 'slug' => 'loyalty.redeem', 'name' => 'Redeem loyalty at POS'],
@@ -183,6 +186,7 @@ final class PermissionCatalog
             'roles_permissions.manage', 'settings.manage', 'website.manage',
             'webhooks.manage', 'integrations.webhooks',
             'xero.manage', 'integrations.xero',
+            'customers.credit.repay',
         ];
 
         return array_values(array_diff(self::ownerSlugs(), $excluded));
@@ -196,7 +200,7 @@ final class PermissionCatalog
             'pos.ring_sales', 'pos.hold_resume', 'pos.active_orders', 'pos.view_this_device_orders',
             'orders.create', 'orders.view', 'orders.update', 'orders.receipts',
             'orders.send_sms_bill', 'orders.send_payment_link',
-            'payments.cash', 'payments.card', 'payments.split',
+            'payments.cash', 'payments.card', 'payments.split', 'payments.credit',
             'payments.cash_manage', 'payments.cash_in_out', 'finance.cash_manage',
             'customers.view', 'customers.lookup', 'customers.create',
             'loyalty.view', 'loyalty.redeem',

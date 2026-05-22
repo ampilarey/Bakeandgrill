@@ -8,6 +8,7 @@ import {
   PageHeader, Spinner, TableCard, TD, TH,
   ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
+import { CustomerCreditSection } from '../components/CustomerCreditSection';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function fmtDate(iso: string | null | undefined) {
@@ -304,6 +305,10 @@ export function CustomersPage() {
                       ))}
                     </div>
                   </div>
+                )}
+
+                {detail && !editing && (
+                  <CustomerCreditSection customerId={detail.customer.id} />
                 )}
 
                 {/* Order history */}

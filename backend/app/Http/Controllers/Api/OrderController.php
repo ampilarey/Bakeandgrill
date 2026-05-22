@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Customers\Services\CustomerCreditService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\DTOs\OrderCancelledData;
@@ -1381,8 +1382,9 @@ class OrderController extends Controller
         $validated = $request->validated();
         $printReceipt = !array_key_exists('print_receipt', $validated) || $validated['print_receipt'] === true;
         $gatewayMethods = ['bml_pay', 'bml', 'online'];
+        $nonShiftMethods = array_merge($gatewayMethods, ['house_account']);
         $needsCollectorShift = collect($validated['payments'])->contains(
-            fn (array $row) => !in_array($row['method'], $gatewayMethods, true),
+            fn (array $row) => !in_array($row['method'], $nonShiftMethods, true),
         );
         $collectorShift = null;
         $collector = $request->user();
@@ -1395,7 +1397,7 @@ class OrderController extends Controller
 
         // Single transaction with row-lock to prevent concurrent split-payment race conditions
         // where two requests both read paidTotal < total and both set status = 'partial'.
-        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt, $gatewayMethods, $collectorShift, $collector): array {
+        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt, $gatewayMethods, $nonShiftMethods, $collectorShift, $collector): array {
             $order = Order::with('payments')->lockForUpdate()->findOrFail($id);
 
             // Guard: payments cannot be added to terminal or already-paid orders
@@ -1403,6 +1405,26 @@ class OrderController extends Controller
             $terminalStatuses = ['cancelled', 'refunded', 'paid', 'completed'];
             if (in_array($order->status, $terminalStatuses, true)) {
                 abort(422, "Cannot add payments to a {$order->status} order.");
+            }
+
+            $creditService = app(CustomerCreditService::class);
+            $permissions = app(PermissionService::class);
+            $creditCustomer = null;
+            foreach ($validated['payments'] as $paymentPayload) {
+                if (($paymentPayload['method'] ?? '') !== 'house_account') {
+                    continue;
+                }
+                if (!$order->customer_id) {
+                    abort(422, 'This customer is not approved for credit.');
+                }
+                if (!$permissions->hasPermission($collector, 'payments.credit')) {
+                    abort(403, 'You do not have permission to charge customer credit.');
+                }
+                $creditCustomer = Customer::findOrFail((int) $order->customer_id);
+                $creditService->assertCanCharge(
+                    $creditCustomer,
+                    (int) round((float) $paymentPayload['amount'] * 100),
+                );
             }
 
             // Held tickets must transition back to 'pending' before any
@@ -1489,10 +1511,14 @@ class OrderController extends Controller
                     'reference_number' => $paymentPayload['reference_number'] ?? null,
                     'processed_at' => now(),
                     'collected_by_user_id' => $collector->id,
-                    'shift_id' => in_array($paymentPayload['method'], $gatewayMethods, true)
+                    'shift_id' => in_array($paymentPayload['method'], $nonShiftMethods, true)
                         ? null
                         : $collectorShift?->id,
                 ]);
+
+                if ($paymentPayload['method'] === 'house_account' && $creditCustomer !== null) {
+                    $creditService->recordCharge($creditCustomer, $order, $payment, $collector, $request);
+                }
 
                 app(AuditLogService::class)->log('payment.created', 'Payment', $payment->id, [], $payment->toArray(), ['order_id' => $order->id], $request);
             }
