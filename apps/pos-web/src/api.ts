@@ -805,6 +805,8 @@ export async function fetchReceipts(params: {
   unpaid_only?: boolean;
   /** Active orders created by the logged-in cashier only. */
   created_by_me?: boolean;
+  /** Active orders from the online ordering app (pickup + delivery). */
+  online_only?: boolean;
   device_identifier?: string;
   per_page?: number;
   page?: number;
@@ -901,6 +903,30 @@ export async function fetchActiveOrdersMine(): Promise<{
     const res = await fetchReceipts({
       active_only: true,
       created_by_me: true,
+      per_page: perPage,
+      page,
+    });
+    total = res.total ?? out.length + (res.data?.length ?? 0);
+    const batch = res.data ?? [];
+    out.push(...batch);
+    const lastPage = res.last_page ?? page;
+    if (batch.length === 0 || page >= lastPage) break;
+  }
+  return { data: out, total };
+}
+
+/** Active online orders (ordering-app pickup + delivery). */
+export async function fetchActiveOrdersOnline(): Promise<{
+  data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
+  total: number;
+}> {
+  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [];
+  const perPage = 100;
+  let total = 0;
+  for (let page = 1; page <= 20; page++) {
+    const res = await fetchReceipts({
+      active_only: true,
+      online_only: true,
       per_page: perPage,
       page,
     });

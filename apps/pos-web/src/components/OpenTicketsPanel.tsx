@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelOrder,
   fetchActiveOrdersMine,
+  fetchActiveOrdersOnline,
   fetchActiveOrdersVenueWide,
   fetchReceipts,
   fireOrderToKitchen,
@@ -90,7 +91,7 @@ export function OpenTicketsPanel({
   const [activeTotal, setActiveTotal] = useState(0);
   // Default all-staff so the list matches the sales-page badge. Cashiers
   // can narrow to tickets they created via the scope chips.
-  const [listScope, setListScope] = useState<"all" | "mine">("all");
+  const [listScope, setListScope] = useState<"all" | "mine" | "online">("all");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   // Per-row "action in progress" indicator (sendBill is the only async
@@ -182,6 +183,9 @@ export function OpenTicketsPanel({
   const loadActiveOrders = useCallback(async () => {
     if (listScope === "mine") {
       return fetchActiveOrdersMine();
+    }
+    if (listScope === "online") {
+      return fetchActiveOrdersOnline();
     }
     return fetchActiveOrdersVenueWide();
   }, [listScope]);
@@ -647,7 +651,9 @@ export function OpenTicketsPanel({
           ? `Tap any other ticket to preview the merge (you'll confirm before anything changes)`
           : listScope === "all"
             ? "All staff — parked, cooking, and ready-for-pickup"
-            : "My tickets — ones I created on this shift"
+            : listScope === "online"
+              ? "Online orders — pickup and delivery from the ordering app"
+              : "My tickets — ones I created on this shift"
       }
       onClose={onClose}
     >
@@ -714,6 +720,15 @@ export function OpenTicketsPanel({
             }}
           >
             👤 Mine
+          </ScopeChip>
+          <ScopeChip
+            active={listScope === "online"}
+            onClick={() => {
+              setListScope("online");
+              setActiveFilter("all");
+            }}
+          >
+            📱 Online
           </ScopeChip>
         </div>
       )}

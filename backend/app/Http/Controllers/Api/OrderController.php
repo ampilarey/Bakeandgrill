@@ -96,6 +96,11 @@ class OrderController extends Controller
             $query->where('user_id', $cashierId);
         }
 
+        // POS Active Orders — online ordering app (pickup + delivery).
+        if ($request->filled('online_only') && $request->boolean('online_only')) {
+            $query->whereIn('type', ['online_pickup', 'delivery']);
+        }
+
         if ($canViewAllStations && $request->filled('device_id')) {
             $query->where('device_id', (int) $request->input('device_id'));
         }

@@ -238,4 +238,30 @@ class OpenOrderContinuationTest extends TestCase
         $this->assertContains($saraOrderId, $ids);
         $this->assertNotContains($ahmedOrderId, $ids);
     }
+
+    public function test_online_only_filter_scopes_active_orders_to_ordering_app(): void
+    {
+        $posOrderId = $this->createUnpaidOrder($this->ahmed);
+
+        $online = Order::factory()->onlinePickup()->pending()->create([
+            'user_id' => null,
+            'order_number' => 'BG-ONLINE-001',
+        ]);
+        $delivery = Order::factory()->create([
+            'user_id' => null,
+            'order_number' => 'BG-DELIV-001',
+            'type' => 'delivery',
+            'status' => 'pending',
+            'payment_status' => 'paid',
+        ]);
+
+        Sanctum::actingAs($this->sara, ['staff']);
+
+        $onlineOnly = $this->getJson('/api/orders?active_only=1&online_only=1')->assertOk();
+        $ids = collect($onlineOnly->json('data'))->pluck('id')->all();
+
+        $this->assertContains($online->id, $ids);
+        $this->assertContains($delivery->id, $ids);
+        $this->assertNotContains($posOrderId, $ids);
+    }
 }
