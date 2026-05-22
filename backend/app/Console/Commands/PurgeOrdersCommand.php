@@ -15,9 +15,15 @@ class PurgeOrdersCommand extends Command
 {
     protected $signature = 'orders:purge
                             {--force : Skip confirmation prompt}
-                            {--allow-production : Required when APP_ENV=production}';
+                            {--allow-production : Required on the live public_html install}';
 
     protected $description = 'Permanently delete all orders and related payment/kitchen/receipt data';
+
+    /** Live site path on sg-s2 — test.bakeandgrill.mv is allowed without extra flags. */
+    private function isLiveProductionInstall(): bool
+    {
+        return str_contains(base_path(), '/public_html/');
+    }
 
     /** @var list<string> Tables truncated before orders (child → parent order). */
     private const TRUNCATE_FIRST = [
