@@ -210,6 +210,12 @@ export function useOrderCreation(params: Params) {
    * save-changes, or successful charge.
    */
   const [isEditingActive, setIsEditingActive] = useState(false);
+  /** True when the resumed ticket was already paid (e.g. online BML).
+   *  Cart is view-only and Charge is blocked — cashier can inspect
+   *  line items without re-settling. */
+  const [resumedIsPaid, setResumedIsPaid] = useState(false);
+  /** Human-friendly ticket label (BG-YYYYMMDD-NNNN) for banners. */
+  const [resumedOrderLabel, setResumedOrderLabel] = useState<string | null>(null);
   /**
    * Snapshot of the totalDue AND tender rows captured when an order
    * was created but payment failed. Used by handleRetryPayment so we
@@ -420,6 +426,11 @@ export function useOrderCreation(params: Params) {
     // supported here (the order id only exists because we're online),
     // so the queue path below is a non-issue for this branch.
     if (resumedOrderId !== null) {
+      if (resumedIsPaid) {
+        setStatusMessage("This order was already paid online — view only.");
+        setTimeout(() => setStatusMessage(""), 6000);
+        return false;
+      }
       // Edit-mode safety: if the cashier opened the ticket for editing
       // and made changes (add/remove items, qty tweaks), settling now
       // would charge `resumedOrderTotal` — the SERVER's pre-edit total
@@ -452,6 +463,8 @@ export function useOrderCreation(params: Params) {
           setResumedItemsFingerprint(null);
           setResumedFromStatus(null);
           setIsEditingActive(false);
+          setResumedIsPaid(false);
+          setResumedOrderLabel(null);
           params.clearCart();
           params.setSelectedItem(null);
           setStatusMessage(pickupAwareSuccess(params.orderType, cid != null));
@@ -700,57 +713,16 @@ export function useOrderCreation(params: Params) {
   };
 
   /**
-   * Resume a specific held ticket by id.
-   *
-   * Sets `resumedOrderId` so the next `handleCharge` settles THIS
-   * order instead of creating a new one (the duplicate-order bug
-   * fix). The cart UI flips to read-only — cashier must
-   * `handleCancelResume` to put it back into Open Tickets and re-ring
-   * if they need to edit items.
+   * Restore server-side order fields into the local cart. Shared by
+   * normal resume and paid-online view-only open.
    */
-  const handleResumeTicket = async (orderId: number): Promise<void> => {
-    // Pre-flight: a phone-call pickup ticket can be paid online by
-    // the customer via BML pay link between when the cashier opened
-    // Open Tickets and when they tapped Resume. Detect that here and
-    // tell the cashier to print the receipt instead of trying to
-    // resume (which would fail with "paid orders can't be resumed").
-    // This is cheap (one extra GET) and prevents a confusing error.
-    const preflight = await getOrder(orderId);
-    if (preflight.order.payment_status === "paid" || preflight.order.status === "paid") {
-      setStatusMessage(
-        `Ticket #${orderId} was paid online — open it from Receipts to print.`,
-      );
-      setTimeout(() => setStatusMessage(""), 6000);
-      throw new Error("Already paid — see Receipts.");
-    }
-
-    // The backend `resume` endpoint walks held → pending via the state
-    // machine. For any other status (pending/in_progress/ready) the
-    // ticket is already "live" and calling resume would 422 because
-    // pending → pending is not a valid transition. Before Active
-    // orders existed this never came up (the panel only showed held
-    // tickets); now the same Charge button can be tapped on a cooking
-    // ticket, so we skip the transition for non-held orders and just
-    // load them into the cart for settlement.
-    if (preflight.order.status === "held") {
-      await resumeOrder(orderId);
-    }
-    setResumedFromStatus(preflight.order.status ?? null);
-    const response = await getOrder(orderId);
-
-    // Restore the ticket-level context the cashier had when they held
-    // the order. Without this, resuming a held Dine-in / Table 4 /
-    // Aisha ticket dropped you into a Takeaway-default cart with no
-    // customer attached — and the post-charge bill SMS went nowhere
-    // because params.customerPhone was null. Each setter is optional
-    // (gated on whether the caller wired them up).
+  const hydrateCartFromOrder = (
+    response: Awaited<ReturnType<typeof getOrder>>,
+  ): CartItem[] => {
     if (response.order.customer && params.setAttachedCustomer) {
       params.setAttachedCustomer(response.order.customer);
     }
     if (response.order.type && params.setOrderType) {
-      // Backend uses snake_case enum values, the cashier UI uses
-      // friendly labels. Anything we don't recognise falls through
-      // without resetting (defensive: keeps the current type as-is).
       const typeMap: Record<string, OrderType> = {
         dine_in: "Dine-in",
         takeaway: "Takeaway",
@@ -763,13 +735,6 @@ export function useOrderCreation(params: Params) {
       params.setSelectedTableId(response.order.restaurant_table_id ?? null);
     }
 
-    // Bug-055: Laravel's decimal:2 casts come back as STRINGS
-    // ("50.00"), not numbers. If we put them straight into the cart
-    // `item.price + modifiers.reduce(...)` becomes a string concat
-    // ("50.00" + 0 = "50.000"), then `* quantity` yields NaN, then
-    // cartSubtotal / cartTotal both end up NaN — and the cashier
-    // sees "Balance: MVR 0.00" on a perfectly real ticket. Coerce
-    // every money field to a Number on the way in.
     const restoredItems: CartItem[] = response.order.items.map((item) => ({
       id: item.item_id ?? 0,
       name: item.item_name,
@@ -782,27 +747,13 @@ export function useOrderCreation(params: Params) {
         name: m.modifier_name,
         price: Number(m.modifier_price ?? 0),
       })) ?? [],
-      // Restore the per-line tax snapshot so the cart breakdown still
-      // shows GST when the cashier resumes a held ticket. Without this
-      // the cart would render Subtotal only and the Charge button would
-      // visually disagree with the server total (settle still uses the
-      // authoritative `resumedOrderTotal`, but the cashier shouldn't
-      // see a misleading number).
       tax_rate: item.tax_rate != null ? Number(item.tax_rate) : 0,
-      // Restore notes. Backend stores them as a single string (we
-      // joined chips with " · " before sending), so we split back so
-      // the chip picker correctly pre-selects what the cashier
-      // originally chose. Trim each part defensively in case the
-      // string was hand-edited elsewhere.
       notes: typeof item.notes === "string" && item.notes.trim().length > 0
         ? item.notes.split(" · ").map((s) => s.trim()).filter(Boolean)
         : [],
     }));
     params.setCartItems(restoredItems);
 
-    // Hydrate discount + reward rows from the order so the cart
-    // sidebar matches what was visible when the ticket was held.
-    // Each setter is optional so older callers still type-check.
     if (params.setDiscountAmount) {
       const manualDiscount = response.order.discount_amount != null
         ? Number(response.order.discount_amount)
@@ -812,47 +763,83 @@ export function useOrderCreation(params: Params) {
     if (params.setAppliedGiftCard) {
       const gcCode = response.order.gift_card_code ?? null;
       const gcDiscountLaar = response.order.gift_card_discount_laar ?? 0;
-      // cardBalance not surfaced by the order endpoint — set to 0 so
-      // the UI shows "Gift card applied" without a misleading balance.
-      // A re-validate of the code would refresh the balance line.
       params.setAppliedGiftCard(gcCode && gcDiscountLaar > 0
         ? { code: gcCode, discount: gcDiscountLaar / 100, cardBalance: 0 }
         : null);
     }
     if (params.setAppliedLoyalty) {
       const loyaltyDiscountLaar = response.order.loyalty_discount_laar ?? 0;
-      // The order doesn't track the original POINTS count — only the
-      // laari value it converted to. Best-effort: surface a single
-      // synthetic "1pt" placeholder so the cart line renders, and the
-      // discount value is correct. A re-hold round-trip can correct
-      // the points count if the cashier edits the loyalty redemption.
       params.setAppliedLoyalty(loyaltyDiscountLaar > 0
         ? { points: 1, discount: loyaltyDiscountLaar / 100 }
         : null);
     }
     if (params.setAppliedPromo) {
       const promoDiscountLaar = response.order.promo_discount_laar ?? 0;
-      // Promo code isn't surfaced on the Order model (lives in the
-      // redemption table), so we tag it as 'applied' to drive the
-      // rewards-row UI without leaking a misleading code. Cashier
-      // can re-enter the code if they need to remove + reapply.
       params.setAppliedPromo(promoDiscountLaar > 0
         ? { code: 'applied', promotionId: null, discount: promoDiscountLaar / 100 }
         : null);
     }
 
+    return restoredItems;
+  };
+
+  const orderDisplayLabel = (order: { id: number; order_number?: string | null }) =>
+    order.order_number?.trim() || `#${order.id}`;
+
+  /**
+   * Resume a specific held ticket by id.
+   *
+   * Sets `resumedOrderId` so the next `handleCharge` settles THIS
+   * order instead of creating a new one (the duplicate-order bug
+   * fix). The cart UI flips to read-only — cashier must
+   * `handleCancelResume` to put it back into Open Tickets and re-ring
+   * if they need to edit items.
+   *
+   * Paid online orders open in view-only mode (no Charge / no edit).
+   */
+  const handleResumeTicket = async (orderId: number): Promise<{ isPaid: boolean }> => {
+    const preflight = await getOrder(orderId);
+    const isPaid = preflight.order.payment_status === "paid"
+      || preflight.order.status === "paid";
+    const label = orderDisplayLabel(preflight.order);
+
+    if (isPaid) {
+      const restoredItems = hydrateCartFromOrder(preflight);
+      setResumedFromStatus(preflight.order.status ?? null);
+      setResumedOrderId(orderId);
+      setResumedOrderTotal(
+        preflight.order.total != null ? Number(preflight.order.total) : null,
+      );
+      setResumedItemsFingerprint(cartFingerprint(restoredItems));
+      setResumedIsPaid(true);
+      setResumedOrderLabel(label);
+      setIsEditingActive(false);
+      localStorage.removeItem("pos_last_held_order");
+      setLastHeldOrderId(null);
+      setStatusMessage(`Order ${label} loaded — already paid online. View only.`);
+      setTimeout(() => setStatusMessage(""), 6000);
+      return { isPaid: true };
+    }
+
+    setResumedIsPaid(false);
+    setResumedOrderLabel(label);
+
+    if (preflight.order.status === "held") {
+      await resumeOrder(orderId);
+    }
+    setResumedFromStatus(preflight.order.status ?? null);
+    const response = await getOrder(orderId);
+
+    const restoredItems = hydrateCartFromOrder(response);
+
     setResumedOrderId(orderId);
-    // Snapshot the authoritative server total so charge time uses it
-    // even if the local cart calculation produces a different number.
-    // Bug-055: coerce — same decimal-string trap as item prices above.
     setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
-    // Take a fingerprint of the resumed items so handleSaveActiveChanges
-    // can later decide if the kitchen actually needs a reprint.
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
-    setStatusMessage(`Ticket #${orderId} resumed — ready to charge.`);
+    setStatusMessage(`Ticket ${label} resumed — ready to charge.`);
     setTimeout(() => setStatusMessage(""), 6000);
+    return { isPaid: false };
   };
 
   /**
@@ -884,6 +871,8 @@ export function useOrderCreation(params: Params) {
     setResumedItemsFingerprint(null);
     setResumedFromStatus(null);
     setIsEditingActive(false);
+    setResumedIsPaid(false);
+    setResumedOrderLabel(null);
     params.clearCart();
     params.setSelectedItem(null);
     setStatusMessage(
@@ -902,8 +891,8 @@ export function useOrderCreation(params: Params) {
    * (vs. tapping a specific action button).
    */
   const handleEditActiveTicket = async (orderId: number): Promise<void> => {
-    await handleResumeTicket(orderId);
-    setIsEditingActive(true);
+    const { isPaid } = await handleResumeTicket(orderId);
+    if (!isPaid) setIsEditingActive(true);
   };
 
   /**
@@ -1137,6 +1126,8 @@ export function useOrderCreation(params: Params) {
     resumedFromStatus,
     isEditingActive,
     setIsEditingActive,
+    resumedIsPaid,
+    resumedOrderLabel,
     barcode,
     setBarcode,
     handleCheckout,

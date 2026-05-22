@@ -547,6 +547,7 @@ export async function createOrderPayments(
 export async function getOrder(orderId: number): Promise<{
   order: {
     id: number;
+    order_number?: string | null;
     // Server-authoritative totals — see POS-004. We surface `total`
     // here so handleResumeTicket can snapshot the figure the kitchen
     // and accounting already agreed on, instead of re-deriving it

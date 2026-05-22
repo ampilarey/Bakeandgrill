@@ -939,6 +939,8 @@ function App() {
               onDetachCustomer={cart.detachCustomer}
               resumedOrderId={order.resumedOrderId}
               resumedFromStatus={order.resumedFromStatus}
+              resumedIsPaid={order.resumedIsPaid}
+              resumedOrderLabel={order.resumedOrderLabel}
               isEditingActive={order.isEditingActive}
               onUnlockEdit={() => order.setIsEditingActive(true)}
               onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}
@@ -955,6 +957,11 @@ function App() {
                 // looks like "the Confirm button does nothing". Catch
                 // the most common ones inline so the cashier sees them.
                 if (cart.cartItems.length === 0) return;
+                if (order.resumedIsPaid) {
+                  order.setStatusMessage("This order was already paid online — view only.");
+                  setTimeout(() => order.setStatusMessage(""), 6000);
+                  return;
+                }
                 // Table is OPTIONAL on Dine-in tickets — some venues
                 // ring up at the counter before seating, so we don't
                 // gate Charge on it. The cashier can still pick a
@@ -1031,17 +1038,9 @@ function App() {
                   void refreshOpenTickets();
                 })
                 .catch((err) => {
-                  // handleResumeTicket already setStatusMessage for the
-                  // known cases (already-paid). For unexpected failures
-                  // surface the raw message so the cashier isn't left
-                  // wondering why the tap didn't go anywhere.
                   const msg = (err as Error)?.message ?? "Couldn't open ticket";
-                  if (!msg.includes("Already paid")) {
-                    order.setStatusMessage(`Couldn't open ticket: ${msg}`);
-                    // Bug-015: errors get the long 10s fuse so the
-                    // cashier has time to read + recover.
-                    setTimeout(() => order.setStatusMessage(""), 10000);
-                  }
+                  order.setStatusMessage(`Couldn't open ticket: ${msg}`);
+                  setTimeout(() => order.setStatusMessage(""), 10000);
                 });
             }}
           />
@@ -1120,12 +1119,14 @@ function App() {
         toasts={onlineOrderWatch.toasts}
         onDismiss={onlineOrderWatch.dismiss}
         onOpen={(id) => {
-          // Tapping the toast jumps the cashier to the Receipts pane
-          // (which already lists online orders) and dismisses the toast
-          // so it doesn't keep nagging. We don't navigate deeper than
-          // the pane switch — keeps any mid-ring cart untouched.
           onlineOrderWatch.dismiss(id);
-          setPane("receipts");
+          order.handleEditActiveTicket(id)
+            .then(() => setPane("sales"))
+            .catch((err) => {
+              const msg = (err as Error)?.message ?? "Couldn't open order";
+              order.setStatusMessage(`Couldn't open order: ${msg}`);
+              setTimeout(() => order.setStatusMessage(""), 10000);
+            });
         }}
       />
 

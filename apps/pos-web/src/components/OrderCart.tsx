@@ -58,6 +58,10 @@ type Props = {
    *  "in_progress" / "ready"). Drives banner copy + decides whether
    *  Cancel Resume should re-hold the ticket. */
   resumedFromStatus?: string | null;
+  /** True when the resumed ticket was already paid online — view only. */
+  resumedIsPaid?: boolean;
+  /** Display label (e.g. BG-20260522-0001) for resumed banners. */
+  resumedOrderLabel?: string | null;
   /** True when the cashier opened the resumed ticket via "Edit" (vs.
    *  via a direct Charge action). Unlocks cart mutations and surfaces
    *  the "💾 Save changes" button. */
@@ -114,18 +118,18 @@ const C = {
 };
 
 export function OrderCart(p: Props) {
-  const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting || p.canRingSales === false;
+  const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting || p.canRingSales === false
+    || !!p.resumedIsPaid;
   const dineIn = p.orderType === "Dine-in";
   const isResumed = p.resumedOrderId !== null;
+  const orderLabel = p.resumedOrderLabel ?? `#${p.resumedOrderId}`;
   // When the cashier opened a ticket via "Edit" we relax the resumed
   // read-only restrictions so qty +/-, kitchen notes, and Clear all
   // become usable again. The Save Changes button at the bottom
   // pushes the edits back to the server.
-  const editing = isResumed && !!p.isEditingActive;
-  // "Lock cart for read-only" — only applies to charge-only resumes.
-  // (Save Ticket is still disabled while resumed because re-holding
-  // an in-flight ticket is what Cancel Resume does.)
-  const lockedReadOnly = isResumed && !editing;
+  const editing = isResumed && !!p.isEditingActive && !p.resumedIsPaid;
+  // "Lock cart for read-only" — charge-only resumes and paid-online view.
+  const lockedReadOnly = isResumed && (!editing || !!p.resumedIsPaid);
   const wasHeld = p.resumedFromStatus === "held";
 
   // ── Two-tap confirm for the "Clear" button ────────────────────
@@ -266,25 +270,33 @@ export function OrderCart(p: Props) {
       {isResumed && (
         <div style={{
           padding: '10px 14px',
-          background: editing ? '#EFF6FF' : '#FFFBEB',
-          borderBottom: `1px solid ${editing ? '#BFDBFE' : '#FDE68A'}`,
+          background: p.resumedIsPaid ? '#ECFDF5' : editing ? '#EFF6FF' : '#FFFBEB',
+          borderBottom: `1px solid ${p.resumedIsPaid ? '#A7F3D0' : editing ? '#BFDBFE' : '#FDE68A'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           flexWrap: 'wrap',
         }}>
-          <div style={{ fontSize: 12, color: editing ? '#1E3A8A' : '#92400E', lineHeight: 1.4, minWidth: 0, flex: 1 }}>
+          <div style={{
+            fontSize: 12,
+            color: p.resumedIsPaid ? '#065F46' : editing ? '#1E3A8A' : '#92400E',
+            lineHeight: 1.4, minWidth: 0, flex: 1,
+          }}>
             <div style={{ fontWeight: 800 }}>
-              {editing ? '✏️ Editing' : '🎫 Resumed'}: Order #{p.resumedOrderId}
+              {p.resumedIsPaid
+                ? `✅ Paid online: ${orderLabel}`
+                : `${editing ? '✏️ Editing' : '🎫 Resumed'}: Order ${orderLabel}`}
             </div>
             <div style={{ marginTop: 2 }}>
-              {editing
-                ? 'Add or remove items, then Save changes. Kitchen chit will reprint.'
-                : wasHeld
-                  ? 'Charge to settle, or Edit to add/remove items.'
-                  : 'Charge to take payment, or Edit to modify the ticket.'}
+              {p.resumedIsPaid
+                ? 'View only — customer already paid. Close when done.'
+                : editing
+                  ? 'Add or remove items, then Save changes. Kitchen chit will reprint.'
+                  : wasHeld
+                    ? 'Charge to settle, or Edit to add/remove items.'
+                    : 'Charge to take payment, or Edit to modify the ticket.'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            {!editing && p.onUnlockEdit && (
+            {!editing && !p.resumedIsPaid && p.onUnlockEdit && (
               <button
                 onClick={p.onUnlockEdit}
                 disabled={p.isSubmitting}
@@ -326,7 +338,7 @@ export function OrderCart(p: Props) {
                 whiteSpace: 'nowrap',
               }}
             >
-              Cancel
+              {p.resumedIsPaid ? 'Close' : 'Cancel'}
             </button>
           </div>
         </div>
@@ -336,7 +348,7 @@ export function OrderCart(p: Props) {
       <div style={{ padding: 14, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>
-            {isResumed ? `Order #${p.resumedOrderId}` : 'New Order'}
+            {isResumed ? `Order ${orderLabel}` : 'New Order'}
           </div>
           <button
             onClick={handleClearTap}
@@ -639,8 +651,8 @@ export function OrderCart(p: Props) {
           </button>
         )}
 
-        {/* BIG CHARGE button */}
-        {p.canRingSales !== false && (
+        {/* BIG CHARGE button — hidden for already-paid view-only tickets */}
+        {p.canRingSales !== false && !p.resumedIsPaid && (
         <button
           onClick={p.onCheckout}
           disabled={checkoutDisabled}
