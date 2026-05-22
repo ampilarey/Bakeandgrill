@@ -6,6 +6,7 @@ import type { PosCustomer } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { palette } from "../theme";
+import { posOrderTypeEmoji, posOrderTypeLabel } from "../orderTypeLabels";
 
 type AppliedPromo = { code: string; promotionId: number | null; discount: number };
 type AppliedLoyalty = { points: number; discount: number };
@@ -62,6 +63,8 @@ type Props = {
   resumedIsPaid?: boolean;
   /** Display label (e.g. BG-20260522-0001) for resumed banners. */
   resumedOrderLabel?: string | null;
+  /** Backend type slug for online delivery/pickup badges. */
+  resumedOrderType?: string | null;
   /** True when the cashier opened the resumed ticket via "Edit" (vs.
    *  via a direct Charge action). Unlocks cart mutations and surfaces
    *  the "💾 Save changes" button. */
@@ -131,6 +134,9 @@ export function OrderCart(p: Props) {
   // "Lock cart for read-only" — charge-only resumes and paid-online view.
   const lockedReadOnly = isResumed && (!editing || !!p.resumedIsPaid);
   const wasHeld = p.resumedFromStatus === "held";
+  const onlineFulfillment = p.resumedOrderType === "online_pickup" || p.resumedOrderType === "delivery";
+  const fulfillmentLabel = posOrderTypeLabel(p.resumedOrderType);
+  const fulfillmentEmoji = posOrderTypeEmoji(p.resumedOrderType);
 
   // ── Two-tap confirm for the "Clear" button ────────────────────
   // One tap on Clear used to wipe the entire cart instantly — 10+
@@ -370,18 +376,18 @@ export function OrderCart(p: Props) {
         </div>
 
         <div style={{ display: 'flex', background: C.bg, borderRadius: 8, padding: 3, gap: 3 }}>
-          {ORDER_TYPES.map((t) => (
+          {onlineFulfillment && isResumed ? (
+            <div style={{
+              flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 700,
+              borderRadius: 6, background: '#FFFFFF', color: C.text,
+              boxShadow: '0 1px 2px rgba(15,23,42,0.08)', textAlign: 'center',
+            }}>
+              {fulfillmentEmoji} {fulfillmentLabel}
+            </div>
+          ) : ORDER_TYPES.map((t) => (
             <button
               key={t}
               onClick={() => {
-                // Switching order type with a non-empty cart can leave
-                // channel-restricted items (e.g. dine-in-only specials)
-                // on a takeaway/pickup ticket. The backend
-                // KitchenMenuResolver rejects those at create time
-                // (422), but that's a surprise at Charge — confirm
-                // here so the cashier proactively reviews the cart.
-                // Only prompts when actually switching to a different
-                // type and there are items at risk.
                 if (t !== p.orderType && p.cartItems.length > 0) {
                   const ok = window.confirm(
                     `Switch to ${t}? Items that aren't available on ${t} may be rejected at checkout.`,
@@ -390,13 +396,15 @@ export function OrderCart(p: Props) {
                 }
                 p.setOrderType(t);
               }}
+              disabled={lockedReadOnly}
               style={{
                 flex: 1, padding: '8px 6px', fontSize: 12, fontWeight: 700,
-                borderRadius: 6, border: 'none', cursor: 'pointer',
+                borderRadius: 6, border: 'none', cursor: lockedReadOnly ? 'not-allowed' : 'pointer',
                 background: p.orderType === t ? '#FFFFFF' : 'transparent',
                 color: p.orderType === t ? C.text : C.muted,
                 boxShadow: p.orderType === t ? '0 1px 2px rgba(15,23,42,0.08)' : 'none',
                 transition: 'background 0.1s',
+                opacity: lockedReadOnly ? 0.6 : 1,
               }}
             >
               {t}

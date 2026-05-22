@@ -74,7 +74,7 @@ class OrderController extends Controller
 
         if ($request->filled('status')) {
             $statuses = explode(',', $request->input('status'));
-            $validStatuses = ['pending', 'paid', 'payment_pending', 'confirmed', 'preparing', 'ready', 'delivered', 'completed', 'cancelled', 'partial', 'refunded', 'held'];
+            $validStatuses = ['pending', 'paid', 'payment_pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'picked_up', 'on_the_way', 'delivered', 'completed', 'cancelled', 'partial', 'refunded', 'held'];
             $filtered = array_intersect($statuses, $validStatuses);
             if (!empty($filtered)) {
                 count($filtered) === 1
@@ -1544,7 +1544,7 @@ class OrderController extends Controller
      */
     public function trackByToken(string $token): JsonResponse
     {
-        $order = Order::with(['items'])
+        $order = Order::with(['items.modifiers'])
             ->where('tracking_token', $token)
             ->first();
 
@@ -1574,7 +1574,21 @@ class OrderController extends Controller
                 'delivery_island' => $order->delivery_island,
                 'delivery_contact_name' => $order->delivery_contact_name,
                 'delivery_contact_phone' => $order->delivery_contact_phone,
-                'items' => $order->items,
+                'items' => $order->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'item_name' => $item->item_name,
+                    'variant_name' => $item->variant_name,
+                    'quantity' => $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'total_price' => (float) $item->total_price,
+                    'notes' => $item->notes,
+                    'modifiers' => $item->modifiers->map(fn ($m) => [
+                        'id' => $m->id,
+                        'name' => $m->modifier_name,
+                        'modifier_name' => $m->modifier_name,
+                        'modifier_price' => (float) $m->modifier_price,
+                    ])->values(),
+                ])->values(),
             ],
         ]);
     }

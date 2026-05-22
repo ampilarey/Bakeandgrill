@@ -463,6 +463,7 @@ export async function removeGiftCardFromOrder(orderId: number): Promise<{ messag
 export type IncomingOnlineOrder = {
   id: number;
   order_number: string;
+  type: string;
   status: string;
   total: number;
   customer_name: string | null;
@@ -471,27 +472,28 @@ export type IncomingOnlineOrder = {
 };
 
 /**
- * Fetch the most recent online-pickup orders for the toast watcher. We
- * poll this every ~30s, compare the highest id we've seen, and toast
- * anything newer. Status filter excludes already-delivered orders so a
- * stale handed-over order doesn't re-toast every refresh.
+ * Fetch recent online orders (pickup + delivery) for the toast watcher.
+ * After BML payment, online orders move to `pending` with
+ * payment_status=paid — not status=paid.
  */
 export async function fetchRecentOnlineOrders(limit = 10): Promise<IncomingOnlineOrder[]> {
   const res = await request<{
     data: Array<{
       id: number;
       order_number: string;
+      type: string;
       status: string;
       total: number | string;
       created_at: string;
       customer?: { name?: string | null; phone?: string | null } | null;
     }>;
   }>(
-    `/orders?type=online_pickup&status=paid,confirmed,preparing,ready&per_page=${limit}`,
+    `/orders?online_only=1&status=pending,in_progress,preparing,ready&per_page=${limit}`,
   );
   return (res.data ?? []).map((o) => ({
     id: o.id,
     order_number: o.order_number,
+    type: o.type,
     status: o.status,
     total: Number(o.total),
     customer_name: o.customer?.name ?? null,
@@ -855,6 +857,7 @@ export async function fetchReceipts(params: {
      *  here as `table`. */
     restaurant_table_id?: number | null;
     table?: { id: number; name: string; location?: string | null } | null;
+    delivery_island?: string | null;
   }>;
   /** Laravel paginator fields — present on GET /orders list responses. */
   total?: number;

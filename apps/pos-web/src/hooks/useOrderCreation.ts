@@ -216,6 +216,8 @@ export function useOrderCreation(params: Params) {
   const [resumedIsPaid, setResumedIsPaid] = useState(false);
   /** Human-friendly ticket label (BG-YYYYMMDD-NNNN) for banners. */
   const [resumedOrderLabel, setResumedOrderLabel] = useState<string | null>(null);
+  /** Backend order type (online_pickup, delivery, …) for fulfillment badges. */
+  const [resumedOrderType, setResumedOrderType] = useState<string | null>(null);
   /**
    * Snapshot of the totalDue AND tender rows captured when an order
    * was created but payment failed. Used by handleRetryPayment so we
@@ -465,6 +467,7 @@ export function useOrderCreation(params: Params) {
           setIsEditingActive(false);
           setResumedIsPaid(false);
           setResumedOrderLabel(null);
+          setResumedOrderType(null);
           params.clearCart();
           params.setSelectedItem(null);
           setStatusMessage(pickupAwareSuccess(params.orderType, cid != null));
@@ -728,7 +731,7 @@ export function useOrderCreation(params: Params) {
         takeaway: "Takeaway",
         online_pickup: "Pickup",
       };
-      const mapped = typeMap[response.order.type];
+      const mapped = typeMap[response.order.type ?? ""];
       if (mapped) params.setOrderType(mapped);
     }
     if (params.setSelectedTableId) {
@@ -813,6 +816,7 @@ export function useOrderCreation(params: Params) {
       setResumedItemsFingerprint(cartFingerprint(restoredItems));
       setResumedIsPaid(true);
       setResumedOrderLabel(label);
+      setResumedOrderType(preflight.order.type ?? null);
       setIsEditingActive(false);
       localStorage.removeItem("pos_last_held_order");
       setLastHeldOrderId(null);
@@ -833,6 +837,7 @@ export function useOrderCreation(params: Params) {
     const restoredItems = hydrateCartFromOrder(response);
 
     setResumedOrderId(orderId);
+    setResumedOrderType(response.order.type ?? null);
     setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
     localStorage.removeItem("pos_last_held_order");
@@ -873,6 +878,7 @@ export function useOrderCreation(params: Params) {
     setIsEditingActive(false);
     setResumedIsPaid(false);
     setResumedOrderLabel(null);
+    setResumedOrderType(null);
     params.clearCart();
     params.setSelectedItem(null);
     setStatusMessage(
@@ -1128,6 +1134,7 @@ export function useOrderCreation(params: Params) {
     setIsEditingActive,
     resumedIsPaid,
     resumedOrderLabel,
+    resumedOrderType,
     barcode,
     setBarcode,
     handleCheckout,

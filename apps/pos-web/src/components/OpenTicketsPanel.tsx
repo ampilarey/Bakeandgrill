@@ -15,6 +15,7 @@ import {
   splitOpenTicket,
 } from "../api";
 import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, type, z } from "../theme";
+import { posOrderTypeEmoji, posOrderTypeLabel } from "../orderTypeLabels";
 
 export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
 
@@ -1025,9 +1026,24 @@ export function OpenTicketsPanel({
                         {t.payment_status === "partial" ? "PARTIAL" : "UNPAID"}
                       </span>
                     )}
+                    {t.type && (t.type === "online_pickup" || t.type === "delivery") && (
+                      <span
+                        title={posOrderTypeLabel(t.type) ?? t.type}
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: t.type === "delivery" ? "#7C2D12" : "#92400E",
+                          background: t.type === "delivery" ? "#FFF7ED" : "#FFFBEB",
+                          padding: "2px 6px", borderRadius: 4,
+                          border: `1px solid ${t.type === "delivery" ? "#FDBA74" : "#FDE68A"}`,
+                        }}
+                      >
+                        {posOrderTypeEmoji(t.type)} {posOrderTypeLabel(t.type)}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: type.caption.fontSize, color: palette.panelMuted, marginTop: 2 }}>
                     {(t.items?.length ?? 0)} items
+                    {t.type === "delivery" && t.delivery_island ? ` · ${t.delivery_island}` : ""}
                     {t.user?.name ? ` · by ${t.user.name}` : ""}
                     {t.ticket_note ? ` · ${t.ticket_note}` : ""}
                     {t.customer?.name ? ` · ${t.customer.name}` : ""}

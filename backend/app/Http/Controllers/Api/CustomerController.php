@@ -341,7 +341,7 @@ class CustomerController extends Controller
         }
 
         $order = $customer->orders()
-            ->with(['items.item', 'payments'])
+            ->with(['items.modifiers', 'items.item', 'payments'])
             ->findOrFail($id);
 
         return response()->json([
@@ -349,10 +349,12 @@ class CustomerController extends Controller
                 'id' => $order->id,
                 'order_number' => $order->order_number,
                 'status' => $order->status,
+                'payment_status' => $order->payment_status,
                 'type' => $order->type,
                 'total' => (float) $order->total,
                 'total_laar' => (int) ($order->total_laar ?? round((float) $order->total * 100)),
                 'subtotal' => (float) ($order->subtotal ?? $order->total),
+                'tax_amount' => $order->tax_amount !== null ? (float) $order->tax_amount : null,
                 'delivery_fee' => (float) ($order->delivery_fee ?? 0),
                 'promo_discount_laar' => (int) ($order->promo_discount_laar ?? 0),
                 'loyalty_discount_laar' => (int) ($order->loyalty_discount_laar ?? 0),
@@ -360,6 +362,22 @@ class CustomerController extends Controller
                 'referral_discount_laar' => (int) ($order->referral_discount_laar ?? 0),
                 'paid_at' => $order->paid_at?->toIso8601String(),
                 'created_at' => $order->created_at->toIso8601String(),
+                'items' => $order->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'item_id' => $item->item_id,
+                    'item_name' => $item->item_name,
+                    'variant_name' => $item->variant_name,
+                    'quantity' => $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'total_price' => (float) $item->total_price,
+                    'notes' => $item->notes,
+                    'modifiers' => $item->modifiers->map(fn ($m) => [
+                        'id' => $m->id,
+                        'name' => $m->modifier_name,
+                        'modifier_name' => $m->modifier_name,
+                        'modifier_price' => (float) $m->modifier_price,
+                    ])->values(),
+                ])->values(),
                 // Delivery fields
                 'delivery_address_line1' => $order->delivery_address_line1,
                 'delivery_address_line2' => $order->delivery_address_line2,

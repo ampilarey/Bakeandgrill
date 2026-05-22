@@ -1,4 +1,5 @@
 import type { IncomingOnlineOrder } from "../api";
+import { posOrderTypeEmoji } from "../orderTypeLabels";
 
 type Props = {
   toasts: IncomingOnlineOrder[];
@@ -24,7 +25,7 @@ const COLOR = {
 
 /**
  * Stacked floating toast in the bottom-right of the POS for incoming
- * online-pickup orders. Intentionally non-modal — the cashier can keep
+ * online orders (pickup + delivery).
  * ringing in the cart while the toast sits in the corner. Tapping the
  * body opens the receipts pane filtered to this order; the X button
  * dismisses without navigating.
@@ -104,7 +105,11 @@ function ToastCard({
             letterSpacing: "0.05em",
             marginBottom: 2,
           }}>
-            New online order
+            {order.type === "delivery"
+              ? `${posOrderTypeEmoji(order.type)} New delivery order`
+              : order.type === "online_pickup"
+                ? `${posOrderTypeEmoji(order.type)} New online takeaway`
+                : "New online order"}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLOR.text, fontVariantNumeric: "tabular-nums" }}>
             {order.order_number}

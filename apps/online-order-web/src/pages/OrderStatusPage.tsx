@@ -660,7 +660,7 @@ export function OrderStatusPage() {
                       <span style={{ fontWeight: 600, fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>{item.item_name}</span>
                       {item.modifiers && item.modifiers.length > 0 && (
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.125rem' }}>
-                          + {item.modifiers.map((m) => m.name ?? '').join(', ')}
+                          + {item.modifiers.map((m) => m.name ?? m.modifier_name ?? '').filter(Boolean).join(', ')}
                         </div>
                       )}
                     </div>
