@@ -21,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(SmsProviderInterface::class, DhiraaguSmsProvider::class);
+        $this->app->singleton(\App\Services\PermissionService::class);
     }
 
     /**

@@ -113,7 +113,13 @@ export async function setDeliveryOverride(until: string | null): Promise<{ overr
 // ── Permissions ───────────────────────────────────────────────────────────────
 
 export interface PermissionItem {
-  slug: string; name: string; group: string; granted: boolean; source: 'owner' | 'role' | 'override';
+  slug: string;
+  name: string;
+  group: string;
+  granted: boolean;
+  role_default?: boolean;
+  override_mode?: 'inherit' | 'allow' | 'deny';
+  source: 'owner' | 'role' | 'override';
 }
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Shift;
 use App\Services\AuditLogService;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -148,14 +149,14 @@ class ShiftController extends Controller
     public function history(Request $request)
     {
         $user = $request->user();
-        $isManagerOrOwner = in_array($user?->role?->slug, ['owner', 'manager'], true);
+        $canViewAll = app(PermissionService::class)->hasPermission($user, 'shifts.view_all_history');
 
         $query = Shift::query()
             ->whereNotNull('closed_at')
             ->orderByDesc('opened_at')
             ->limit(60);
 
-        if (!$isManagerOrOwner) {
+        if (!$canViewAll) {
             $query->where('user_id', $user?->id);
         }
 

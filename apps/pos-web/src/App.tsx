@@ -8,6 +8,7 @@ import { useCart }          from "./hooks/useCart";
 import { useOrderCreation } from "./hooks/useOrderCreation";
 import { useOps }           from "./hooks/useOps";
 import { useShift }         from "./hooks/useShift";
+import { hasPosPermission } from "./hooks/usePosPermissions";
 import { useIdleLock, resolveIdleLockMinutes } from "./hooks/useIdleLock";
 import { useOnlineOrderWatcher } from "./hooks/useOnlineOrderWatcher";
 import { OnlineOrderToasts }     from "./components/OnlineOrderToasts";
@@ -77,7 +78,7 @@ function App() {
   const [username, setUsername]       = useState<string>(() => localStorage.getItem("pos_username") ?? "");
   const [pin, setPin]                 = useState("");
   const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
-  const [staffRole, setStaffRole] = useState<string>(() => localStorage.getItem("pos_staff_role") ?? "");
+  const [, setStaffRole] = useState<string>(() => localStorage.getItem("pos_staff_role") ?? "");
   // Cashier's resolved permission slugs (DB grants + role defaults, owner
   // bypass already flattened to all slugs server-side). Persisted in
   // localStorage so the void/refund buttons stay hidden during the brief
@@ -90,7 +91,8 @@ function App() {
       return [];
     }
   });
-  const canVoidOrders = staffRole === "owner" || staffPermissions.includes("orders.void");
+  const canVoidOrders = hasPosPermission(staffPermissions, "orders.void");
+  const canViewAllStations = hasPosPermission(staffPermissions, "pos.view_all_station_orders");
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
@@ -1090,7 +1092,7 @@ function App() {
         {pane === 'open_tickets' && (
           <OpenTicketsPanel
             deviceId={deviceId}
-            canViewAllStations={staffRole === "owner" || staffRole === "manager"}
+            canViewAllStations={canViewAllStations}
             canVoidOrders={canVoidOrders}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             onClose={() => setPane("sales")}

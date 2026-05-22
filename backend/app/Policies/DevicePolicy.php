@@ -5,20 +5,19 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\PermissionService;
 
 class DevicePolicy
 {
+    public function __construct(private readonly PermissionService $permissions) {}
+
     public function manage(User $user): bool
     {
-        if ($user->role?->slug === 'owner') {
-            return true;
-        }
-        $user->loadMissing('permissions');
-        $override = $user->permissions->firstWhere('slug', 'devices.manage');
-        if ($override !== null) {
-            return (bool) $override->pivot->granted;
-        }
+        return $this->permissions->hasPermission($user, 'devices.manage');
+    }
 
-        return $user->role?->slug === 'owner';
+    public function approve(User $user): bool
+    {
+        return $this->permissions->hasPermission($user, 'devices.approve');
     }
 }

@@ -654,7 +654,7 @@ export function StaffPage() {
                           {m.is_active ? 'Disable' : 'Enable'}
                         </Btn>
                       )}
-                      {m.role !== 'owner' && can('permissions.manage') && (
+                      {m.role !== 'owner' && can('roles_permissions.manage') && (
                         <Btn small variant="ghost" onClick={() => setPermissionsUser(m)}>Permissions</Btn>
                       )}
                       {canManageStaff && (

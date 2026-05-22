@@ -53,8 +53,9 @@ class PermissionController extends Controller
         $actor = $request->user();
         $actorId = $actor?->id;
 
-        // Prevent modifying own permissions
+        // Prevent modifying own permissions or any owner account
         abort_if($actorId === $user->id, 403, 'You cannot modify your own permissions.');
+        abort_if($user->role?->slug === 'owner', 403, 'Owner permissions cannot be modified — owners always have full access.');
 
         // Authorization rule: you can only touch (grant/revoke/reset) a
         // permission you yourself hold. Owners are exempt because owner

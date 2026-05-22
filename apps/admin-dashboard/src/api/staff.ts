@@ -57,6 +57,14 @@ export async function updateUserPermissions(userId: number, permissions: Record<
   await req(`/users/${userId}/permissions`, { method: 'PUT', body: JSON.stringify({ permissions }) });
 }
 
+export async function getRolePermissions(roleSlug: string): Promise<{ role: string; permissions: PermissionItem[] }> {
+  return req(`/roles/${roleSlug}/permissions`);
+}
+
+export async function updateRolePermissions(roleSlug: string, permissions: Record<string, boolean>): Promise<void> {
+  await req(`/roles/${roleSlug}/permissions`, { method: 'PUT', body: JSON.stringify({ permissions }) });
+}
+
 // ── Staff Schedules ───────────────────────────────────────────────────────────
 //
 // Backend (ScheduleController) speaks `user_id` / `shift_start` / `shift_end`

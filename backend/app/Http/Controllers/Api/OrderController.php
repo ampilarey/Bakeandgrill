@@ -23,6 +23,7 @@ use App\Services\AuditLogService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
 use App\Services\OrderStatusMachine;
+use App\Services\PermissionService;
 use App\Services\StockManagementService;
 use App\Models\Item;
 use App\Models\Variant;
@@ -41,6 +42,26 @@ class OrderController extends Controller
     {
         if (!$request->user()?->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $user = $request->user();
+        $permissions = app(PermissionService::class);
+        $canViewAllStations = $permissions->hasPermission($user, 'pos.view_all_station_orders');
+
+        // Staff without all-station permission must scope active orders to their device.
+        if ($request->filled('active_only') && $request->boolean('active_only') && !$canViewAllStations) {
+            $scopedIdentifier = $request->input('device_identifier')
+                ?: $request->header('X-Device-Identifier')
+                ?: $request->header('X-Device-Id');
+
+            if (!$scopedIdentifier) {
+                return response()->json([
+                    'message' => 'You do not have permission to view all station orders. Device scope is required.',
+                    'required' => 'pos.view_all_station_orders',
+                ], 403);
+            }
+
+            $request->merge(['device_identifier' => $scopedIdentifier]);
         }
 
         $query = Order::with([

@@ -26,27 +26,7 @@ trait HasPermissions
      */
     public function hasPermission(string $slug): bool
     {
-        $this->loadMissing('role');
-
-        if ($this->role?->slug === 'owner') {
-            return true;
-        }
-
-        // Load all user-level permission overrides in one query, then filter in PHP
-        $this->loadMissing('permissions');
-        $override = $this->permissions->firstWhere('slug', $slug);
-        if ($override !== null) {
-            return (bool) $override->pivot->granted;
-        }
-
-        // Role default — load all role permissions in one query, then filter in PHP
-        if ($this->role) {
-            $this->role->loadMissing('permissions');
-
-            return $this->role->permissions->contains('slug', $slug);
-        }
-
-        return false;
+        return app(\App\Services\PermissionService::class)->hasPermission($this, $slug);
     }
 
     public function grantPermission(string $slug, ?int $grantedBy = null): void
@@ -87,43 +67,6 @@ trait HasPermissions
      */
     public function getEffectivePermissions(): array
     {
-        $this->loadMissing('role');
-
-        if ($this->role?->slug === 'owner') {
-            return Permission::all()->map(fn (Permission $p) => [
-                'slug' => $p->slug,
-                'name' => $p->name,
-                'group' => $p->group,
-                'granted' => true,
-                'source' => 'owner',
-            ])->toArray();
-        }
-
-        $allPermissions = Permission::orderBy('group')->orderBy('name')->get();
-        $userOverrides = $this->permissions()->get()->keyBy('slug');
-        $rolePerms = $this->role
-            ? $this->role->permissions()->pluck('slug')->flip()
-            : collect();
-
-        return $allPermissions->map(function (Permission $p) use ($userOverrides, $rolePerms) {
-            $override = $userOverrides->get($p->slug);
-            if ($override) {
-                return [
-                    'slug' => $p->slug,
-                    'name' => $p->name,
-                    'group' => $p->group,
-                    'granted' => (bool) $override->pivot->granted,
-                    'source' => 'override',
-                ];
-            }
-
-            return [
-                'slug' => $p->slug,
-                'name' => $p->name,
-                'group' => $p->group,
-                'granted' => $rolePerms->has($p->slug),
-                'source' => 'role',
-            ];
-        })->toArray();
+        return app(\App\Services\PermissionService::class)->effectivePermissions($this);
     }
 }

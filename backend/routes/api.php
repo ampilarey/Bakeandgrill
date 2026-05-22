@@ -836,8 +836,10 @@ Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function
 });
 
 // ─── Permissions Management (Owner only) ───────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function () {
+Route::middleware(['auth:sanctum', 'permission:roles_permissions.manage'])->group(function () {
     Route::get('/permissions', [App\Http\Controllers\Api\PermissionController::class, 'index']);
+    Route::get('/roles/{slug}/permissions', [App\Http\Controllers\Api\RolePermissionController::class, 'show']);
+    Route::put('/roles/{slug}/permissions', [App\Http\Controllers\Api\RolePermissionController::class, 'update']);
     Route::get('/users/{user}/permissions', [App\Http\Controllers\Api\PermissionController::class, 'show']);
     Route::put('/users/{user}/permissions', [App\Http\Controllers\Api\PermissionController::class, 'update']);
 });

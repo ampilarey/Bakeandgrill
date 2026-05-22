@@ -61,6 +61,13 @@ class StaffAuthController extends Controller
         RateLimiter::clear($rateKey);
         $user->update(['last_login_at' => now()]);
 
+        $user->loadMissing('role');
+        if (!app(\App\Services\PermissionService::class)->hasPermission($user, 'pos.access')) {
+            throw ValidationException::withMessages([
+                'pin' => ['You do not have permission to access the POS.'],
+            ]);
+        }
+
         // Create token with 'staff' ability
         $token = $user->createToken('staff-' . $user->id, ['staff'])->plainTextToken;
 
@@ -200,27 +207,12 @@ class StaffAuthController extends Controller
 
     /**
      * Returns the granted permission slugs for a user (all for owner, else filtered).
+     *
+     * @return list<string>
      */
     private function resolvePermissionSlugs(User $user): array
     {
-        if ($user->role?->slug === 'owner') {
-            return \App\Models\Permission::pluck('slug')->toArray();
-        }
-
-        $allPermissions = \App\Models\Permission::orderBy('slug')->get();
-        $userOverrides = $user->permissions()->get()->keyBy('slug');
-        $rolePerms = $user->role
-            ? $user->role->permissions()->pluck('slug')->flip()
-            : collect();
-
-        return $allPermissions->filter(function (\App\Models\Permission $p) use ($userOverrides, $rolePerms) {
-            $override = $userOverrides->get($p->slug);
-            if ($override !== null) {
-                return (bool) $override->pivot->granted;
-            }
-
-            return $rolePerms->has($p->slug);
-        })->pluck('slug')->toArray();
+        return app(\App\Services\PermissionService::class)->grantedSlugs($user);
     }
 
     /**
@@ -270,13 +262,18 @@ class StaffAuthController extends Controller
      */
     private function serializeStaffUser(User $user): array
     {
+        $roleSlug = $user->role?->slug;
+        $permissions = $this->resolvePermissionSlugs($user);
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
-            'role' => $user->role?->slug,
-            'permissions' => $this->resolvePermissionSlugs($user),
+            'role' => $roleSlug,
+            'permissions' => $permissions,
+            'pos_staff_role' => $roleSlug,
+            'pos_staff_permissions' => $permissions,
             'pos_idle_lock_minutes' => $user->pos_idle_lock_minutes,
             'pos_idle_lock_minutes_resolved' => $user->resolvedPosIdleLockMinutes(),
         ];
