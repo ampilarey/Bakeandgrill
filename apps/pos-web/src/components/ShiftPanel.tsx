@@ -9,6 +9,8 @@ type Props = {
   onCashMovement: (type: "cash_in" | "cash_out", amount: number, reason: string) => Promise<void>;
   onClose: () => void;
   onCloseShift: () => void;
+  canCloseShift?: boolean;
+  canCashInOut?: boolean;
 };
 
 /**
@@ -19,7 +21,7 @@ type Props = {
  * (tips out, supplier pay, owner draw, etc.) without contacting an
  * admin first.
  */
-export function ShiftPanel({ shift, summary, onCashMovement, onClose, onCloseShift }: Props) {
+export function ShiftPanel({ shift, summary, onCashMovement, onClose, onCloseShift, canCloseShift = true, canCashInOut = true }: Props) {
   if (!shift || !summary) {
     return (
       <PanelShell title="Shift" onClose={onClose}>
@@ -70,11 +72,14 @@ export function ShiftPanel({ shift, summary, onCashMovement, onClose, onCloseShi
         </Card>
 
         {/* Cash movement card */}
+        {canCashInOut && (
         <Card title="Cash management" full>
           <CashMovementForm onSubmit={onCashMovement} />
         </Card>
+        )}
       </div>
 
+      {canCloseShift && (
       <button onClick={onCloseShift} style={{
         marginTop: 14, width: "100%", padding: "14px 18px", borderRadius: 12,
         background: "#EF4444", color: "#fff", border: "none",
@@ -82,6 +87,7 @@ export function ShiftPanel({ shift, summary, onCashMovement, onClose, onCloseShi
       }}>
         CLOSE SHIFT
       </button>
+      )}
     </PanelShell>
   );
 }

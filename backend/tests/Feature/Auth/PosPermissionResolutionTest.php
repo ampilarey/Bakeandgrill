@@ -234,4 +234,31 @@ class PosPermissionResolutionTest extends TestCase
         $this->getJson('/api/permissions')
             ->assertOk();
     }
+
+    public function test_staff_without_ring_sales_cannot_create_order(): void
+    {
+        $this->staff->revokePermission('pos.ring_sales');
+        $this->staff->revokePermission('orders.create');
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $this->withHeader('X-Device-Identifier', 'test-device')
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [['item_id' => 1, 'quantity' => 1]],
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_staff_without_open_shift_permission_cannot_open_shift(): void
+    {
+        $this->staff->revokePermission('pos.open_shift');
+        $this->staff->revokePermission('finance.cash_manage');
+        $this->staff->revokePermission('payments.cash_manage');
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])
+            ->assertForbidden();
+    }
 }

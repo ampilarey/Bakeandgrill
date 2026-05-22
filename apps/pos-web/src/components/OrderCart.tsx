@@ -76,6 +76,9 @@ type Props = {
   onRetryPayment: () => void;
   onOpenSendBill: () => void;
 
+  canRingSales?: boolean;
+  canHoldResume?: boolean;
+
   /** Owner-curated chip list of kitchen notes (e.g. "No salt"). The
    *  cashier taps one or more per cart line. Fetched from the public
    *  site-settings endpoint. Empty array = picker not shown. */
@@ -111,7 +114,7 @@ const C = {
 };
 
 export function OrderCart(p: Props) {
-  const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting;
+  const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting || p.canRingSales === false;
   const dineIn = p.orderType === "Dine-in";
   const isResumed = p.resumedOrderId !== null;
   // When the cashier opened a ticket via "Edit" we relax the resumed
@@ -573,6 +576,7 @@ export function OrderCart(p: Props) {
             mode because it would create a brand new held order; the
             cashier already has Cancel Resume + edit + Save flow. */}
         <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+          {p.canHoldResume !== false && (
           <button
             onClick={p.onSaveTicket}
             disabled={p.cartItems.length === 0 || p.isSubmitting || isResumed}
@@ -581,6 +585,7 @@ export function OrderCart(p: Props) {
           >
             🎫 Save ticket
           </button>
+          )}
           <button
             onClick={p.onOpenTickets}
             disabled={p.isSubmitting}
@@ -634,9 +639,8 @@ export function OrderCart(p: Props) {
           </button>
         )}
 
-        {/* BIG CHARGE button — green keeps the "money" affordance
-            (Loyverse / Toast / Square all use a colored CTA distinct
-            from the brand colour for this specific action). */}
+        {/* BIG CHARGE button */}
+        {p.canRingSales !== false && (
         <button
           onClick={p.onCheckout}
           disabled={checkoutDisabled}
@@ -677,6 +681,7 @@ export function OrderCart(p: Props) {
             MVR {p.cartTotal.toFixed(2)}
           </span>
         </button>
+        )}
       </div>
     </aside>
   );

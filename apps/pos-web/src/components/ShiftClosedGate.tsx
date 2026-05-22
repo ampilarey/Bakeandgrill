@@ -2,6 +2,8 @@ type Props = {
   onOpenShift: () => void;
   onLogout: () => void;
   onSwitchUser?: () => void;
+  canOpenShift?: boolean;
+  error?: string;
 };
 
 /**
@@ -9,7 +11,7 @@ type Props = {
  * The POS UI is unreachable until they explicitly open a shift so cash
  * sales are always attributable to a drawer count.
  */
-export function ShiftClosedGate({ onOpenShift, onLogout, onSwitchUser }: Props) {
+export function ShiftClosedGate({ onOpenShift, onLogout, onSwitchUser, canOpenShift = true, error }: Props) {
   return (
     <div style={{
       minHeight: "100vh", background: "#1C1408",
@@ -25,17 +27,30 @@ export function ShiftClosedGate({ onOpenShift, onLogout, onSwitchUser }: Props) 
           No open shift
         </p>
         <p style={{ color: "#64748B", fontSize: 14, margin: "0 0 24px", lineHeight: 1.5 }}>
-          Count the cash in your drawer and open a shift before ringing up sales. Sales recorded outside a shift can't be reconciled at the end of the day.
+          {canOpenShift
+            ? "Count the cash in your drawer and open a shift before ringing up sales. Sales recorded outside a shift can't be reconciled at the end of the day."
+            : "You don't have permission to open a shift. Ask a manager or owner to open one for this station, or contact them to update your permissions."}
         </p>
 
-        <button onClick={onOpenShift} style={{
-          width: "100%", padding: "14px 22px", borderRadius: 12,
-          background: "#10B981", color: "#fff", border: "none",
-          fontWeight: 700, fontSize: 16, cursor: "pointer",
-          marginBottom: 12,
-        }}>
-          Open shift
-        </button>
+        {error && (
+          <div style={{
+            background: "#FEE2E2", color: "#991B1B", borderRadius: 10,
+            padding: "10px 14px", fontSize: 13, marginBottom: 16, textAlign: "left",
+          }}>
+            {error}
+          </div>
+        )}
+
+        {canOpenShift && (
+          <button onClick={onOpenShift} style={{
+            width: "100%", padding: "14px 22px", borderRadius: 12,
+            background: "#10B981", color: "#fff", border: "none",
+            fontWeight: 700, fontSize: 16, cursor: "pointer",
+            marginBottom: 12,
+          }}>
+            Open shift
+          </button>
+        )}
 
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
           {onSwitchUser && (

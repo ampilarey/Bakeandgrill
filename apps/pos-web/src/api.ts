@@ -235,15 +235,15 @@ export async function pingAuth(): Promise<void> {
   await fetchMe();
 }
 
-export async function selfRegisterDevice(identifier: string, name: string): Promise<{ status: string }> {
-  return request<{ status: string }>("/devices/self-register", {
+export async function selfRegisterDevice(identifier: string, name: string): Promise<{ status: string; device?: { id: number } }> {
+  return request<{ status: string; device?: { id: number } }>("/devices/self-register", {
     method: "POST",
     body: JSON.stringify({ identifier, name, type: "pos" }),
   });
 }
 
-export async function selfDeviceStatus(identifier: string): Promise<{ status: string; is_active?: boolean }> {
-  return request<{ status: string; is_active?: boolean }>(`/devices/self-status?identifier=${encodeURIComponent(identifier)}`);
+export async function selfDeviceStatus(identifier: string): Promise<{ status: string; is_active?: boolean; id?: number }> {
+  return request<{ status: string; is_active?: boolean; id?: number }>(`/devices/self-status?identifier=${encodeURIComponent(identifier)}`);
 }
 
 export type PosCustomer = {

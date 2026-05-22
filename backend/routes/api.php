@@ -178,16 +178,19 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // Orders
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store'])
-        ->middleware('device.active');
+        ->middleware(['permission:pos.ring_sales', 'device.active']);
     Route::post('/orders/sync', [OrderController::class, 'sync'])
-        ->middleware('device.active');
+        ->middleware(['permission:pos.ring_sales', 'device.active']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::post('/orders/{id}/hold', [OrderController::class, 'hold'])->middleware('throttle:20,1');
-    Route::post('/orders/{id}/resume', [OrderController::class, 'resume'])->middleware('throttle:20,1');
+    Route::post('/orders/{id}/hold', [OrderController::class, 'hold'])
+        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
+    Route::post('/orders/{id}/resume', [OrderController::class, 'resume'])
+        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
     // Phone-call pickup workflow: send a held ticket to the kitchen
     // without taking payment yet (POS "Save & Fire"), then later SMS
     // the customer a BML Connect pay link for the remaining balance.
-    Route::post('/orders/{id}/fire-to-kitchen', [OrderController::class, 'fireToKitchen'])->middleware('throttle:20,1');
+    Route::post('/orders/{id}/fire-to-kitchen', [OrderController::class, 'fireToKitchen'])
+        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
     Route::post('/orders/{id}/send-pay-link', [OrderController::class, 'sendPayLink'])->middleware('throttle:10,1');
     // Cashier-callable lifecycle bumps — POS equivalents of KDS
     // bump/complete. Lets a cashier-only setup (no KDS terminal) move
@@ -208,14 +211,17 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // Active-ticket editing — POS "Save changes" lets a cashier swap
     // out the line items on a parked / cooking / ready ticket and
     // reprint the kitchen chit in one round-trip.
-    Route::patch('/orders/{id}/items', [OrderController::class, 'updateItems'])->middleware('throttle:30,1');
+    Route::patch('/orders/{id}/items', [OrderController::class, 'updateItems'])
+        ->middleware(['permission:pos.hold_resume', 'throttle:30,1']);
     // Open-ticket consolidation — merge two tickets into one or split
     // selected items off into a sibling ticket. Same editable-state
     // guards as updateItems.
-    Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])->middleware('throttle:10,1');
-    Route::post('/orders/{id}/split', [OrderController::class, 'split'])->middleware('throttle:10,1');
+    Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])
+        ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
+    Route::post('/orders/{id}/split', [OrderController::class, 'split'])
+        ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
     Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])
-        ->middleware(['device.active', 'throttle:20,1']);
+        ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])->middleware('throttle:10,1');
 
     // KDS — list endpoint stays unauthenticated by device (any approved
@@ -303,17 +309,22 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     });
 
     // Shifts + cash drawer
-    Route::middleware('permission:finance.cash_manage')->group(function () {
-        Route::get('/shifts/current', [ShiftController::class, 'current']);
-        Route::get('/shifts/history', [ShiftController::class, 'history']);
-        Route::get('/shifts/live', [ShiftController::class, 'live']);
-        Route::get('/shifts/{id}/summary', [ShiftController::class, 'summary']);
-        Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('throttle:5,1');
-        Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
-        Route::post('/shifts/{id}/force-close', [ShiftController::class, 'forceClose'])->middleware('throttle:5,1');
-        Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])
-            ->middleware(['device.active', 'throttle:30,1']);
-    });
+    Route::get('/shifts/current', [ShiftController::class, 'current'])
+        ->middleware('permission:pos.open_shift');
+    Route::get('/shifts/history', [ShiftController::class, 'history'])
+        ->middleware('permission:shifts.view_own_history');
+    Route::get('/shifts/live', [ShiftController::class, 'live'])
+        ->middleware('permission:shifts.view_all_history');
+    Route::get('/shifts/{id}/summary', [ShiftController::class, 'summary'])
+        ->middleware('permission:shifts.view_own_history');
+    Route::post('/shifts/open', [ShiftController::class, 'open'])
+        ->middleware(['permission:pos.open_shift', 'throttle:5,1']);
+    Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])
+        ->middleware(['permission:pos.close_shift', 'throttle:5,1']);
+    Route::post('/shifts/{id}/force-close', [ShiftController::class, 'forceClose'])
+        ->middleware(['permission:shifts.view_all_history', 'throttle:5,1']);
+    Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])
+        ->middleware(['permission:payments.cash_in_out', 'device.active', 'throttle:30,1']);
 
     // Reports — restricted to users with reports.view permission
     Route::middleware('permission:reports.view')->group(function () {

@@ -93,6 +93,20 @@ function App() {
   });
   const canVoidOrders = hasPosPermission(staffPermissions, "orders.void");
   const canViewAllStations = hasPosPermission(staffPermissions, "pos.view_all_station_orders");
+  const canOpenShift = hasPosPermission(staffPermissions, "pos.open_shift");
+  const canCloseShift = hasPosPermission(staffPermissions, "pos.close_shift");
+  const canRingSales = hasPosPermission(staffPermissions, "pos.ring_sales");
+  const canHoldResume = hasPosPermission(staffPermissions, "pos.hold_resume");
+  const canViewActiveOrders = hasPosPermission(staffPermissions, "pos.active_orders");
+  const canViewReceipts = hasPosPermission(staffPermissions, "orders.receipts");
+  const canViewShiftHistory = hasPosPermission(staffPermissions, "shifts.view_own_history");
+  const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
+  const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
+  const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");
+  const canOpsSuppliers = hasPosPermission(staffPermissions, "suppliers.manage");
+  const canOpsReports = hasPosPermission(staffPermissions, "reports.view");
+  const canOpsMarketing = hasPosPermission(staffPermissions, "integrations.sms");
+  const canAccessOps = canOpsInventory || canOpsSuppliers || canOpsReports || canOpsMarketing;
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
@@ -135,6 +149,16 @@ function App() {
     localStorage.setItem("pos_device_id", generated);
     return generated;
   });
+  const [deviceDbId, setDeviceDbId] = useState<number | null>(() => {
+    const raw = localStorage.getItem("pos_device_db_id");
+    const n = raw ? Number(raw) : NaN;
+    return Number.isFinite(n) ? n : null;
+  });
+  const persistDeviceDbId = useCallback((id: number | undefined | null) => {
+    if (!id) return;
+    setDeviceDbId(id);
+    localStorage.setItem("pos_device_db_id", String(id));
+  }, []);
   const [authError, setAuthError]     = useState("");
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>('unknown');
   const [showTimeClock, setShowTimeClock] = useState(false);
@@ -482,13 +506,16 @@ function App() {
     void (async () => {
       try {
         const res = await selfRegisterDevice(deviceId, `POS ${deviceId}`);
-        if (!cancelled) applyDeviceStatus(res.status);
+        if (!cancelled) {
+          applyDeviceStatus(res.status);
+          if (res.device?.id) persistDeviceDbId(res.device.id);
+        }
       } catch {
         if (!cancelled) setDeviceStatus('registration_failed');
       }
     })();
     return () => { cancelled = true; };
-  }, [isLoggedIn, deviceId]);
+  }, [isLoggedIn, deviceId, persistDeviceDbId]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -503,6 +530,7 @@ function App() {
         try {
           const s = await selfDeviceStatus(deviceId);
           applyDeviceStatus(s.status, s.is_active);
+          if (s.id) persistDeviceDbId(s.id);
           // Success — reset cadence to the steady-state value.
           consecutiveFailures = 0;
           cadence = baseCadence;
@@ -521,7 +549,7 @@ function App() {
 
     timer = setTimeout(tick, cadence);
     return () => { if (timer) clearTimeout(timer); };
-  }, [isLoggedIn, deviceId, deviceStatus]);
+  }, [isLoggedIn, deviceId, deviceStatus, persistDeviceDbId]);
 
   // ── Login handler ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -621,7 +649,7 @@ function App() {
 
   const handleOpenShift = async (openingCash: number, notes?: string) => {
     setOpenShiftBusy(true);
-    try { await shift.open(openingCash, notes); setShowOpenShift(false); }
+    try { await shift.open(openingCash, notes, deviceDbId); setShowOpenShift(false); }
     finally { setOpenShiftBusy(false); }
   };
   const handleCloseShift = async (closingCash: number, notes?: string) => {
@@ -851,9 +879,11 @@ function App() {
         <ShiftClosedGate
           onOpenShift={() => setShowOpenShift(true)}
           onLogout={handleLogout}
-          onSwitchUser={lockScreen}
+          onSwitchUser={canLockScreen ? lockScreen : undefined}
+          canOpenShift={canOpenShift}
+          error={shift.error || undefined}
         />
-        {showOpenShift && (
+        {showOpenShift && canOpenShift && (
           <OpenShiftModal
             onConfirm={handleOpenShift}
             onCancel={() => setShowOpenShift(false)}
@@ -864,20 +894,46 @@ function App() {
     );
   }
 
-  const drawerItems = [
-    { id: "sales",          label: "Sales",          icon: "🛒", group: "main" as const },
-    { id: "receipts",       label: "Receipts",       icon: "🧾", group: "main" as const },
-    { id: "open_tickets",   label: "Active Orders",   icon: "🎫", group: "main" as const,
-      badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined },
-    { id: "shift",          label: "Current Shift",  icon: "💰", group: "main" as const },
-    { id: "shift_history",  label: "Shift History",  icon: "📚", group: "main" as const },
-    { id: "ops",            label: "Operations",     icon: "🛠", group: "main" as const },
-    { id: "refresh_menu",   label: "Refresh data",   icon: "↻",  group: "user" as const },
-    { id: "check_update",   label: "Check for app update", icon: "⬇", group: "user" as const },
-    { id: "preferences",  label: "My settings",        icon: "⚙️", group: "user" as const },
-    { id: "lock",           label: "Lock screen",    icon: "🔒", group: "user" as const },
-    { id: "logout",         label: "Log out",        icon: "↩",  group: "user" as const },
-  ];
+  const drawerItems = useMemo(() => {
+    const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; disabled?: boolean }> = [];
+    if (canRingSales) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
+    if (canViewReceipts) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
+    if (canViewActiveOrders) {
+      main.push({
+        id: "open_tickets", label: "Active Orders", icon: "🎫", group: "main",
+        badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined,
+      });
+    }
+    if (shift.current || canViewShiftHistory) {
+      main.push({ id: "shift", label: "Current Shift", icon: "💰", group: "main" });
+    }
+    if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
+    if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
+
+    const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [
+      { id: "refresh_menu", label: "Refresh data", icon: "↻", group: "user" },
+      { id: "check_update", label: "Check for app update", icon: "⬇", group: "user" },
+      { id: "preferences", label: "My settings", icon: "⚙️", group: "user" },
+    ];
+    if (canLockScreen) user.push({ id: "lock", label: "Lock screen", icon: "🔒", group: "user" });
+    user.push({ id: "logout", label: "Log out", icon: "↩", group: "user" });
+    return [...main, ...user];
+  }, [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, canLockScreen, openTicketsCount, shift.current]);
+
+  const paneAllowed = useMemo((): Record<Pane, boolean> => ({
+    sales: canRingSales,
+    receipts: canViewReceipts,
+    open_tickets: canViewActiveOrders,
+    shift: !!shift.current || canViewShiftHistory,
+    shift_history: canViewShiftHistory,
+    ops: canAccessOps,
+  }), [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, shift.current]);
+
+  useEffect(() => {
+    if (paneAllowed[pane]) return;
+    const fallback = (Object.keys(paneAllowed) as Pane[]).find((p) => paneAllowed[p]);
+    if (fallback) setPane(fallback);
+  }, [pane, paneAllowed]);
 
   return (
     <div className="pos-shell" style={{
@@ -984,6 +1040,15 @@ function App() {
         </div>
       )}
 
+      {shift.error && shift.current && (
+        <div style={{
+          margin: '0 12px', padding: '8px 12px', borderRadius: 8,
+          background: '#FEF3C7', color: '#92400E', fontSize: 12, fontWeight: 600,
+        }}>
+          {shift.error}
+        </div>
+      )}
+
       {/* Main body */}
       <main className="pos-main" style={{ flex: 1, display: 'flex', minHeight: 0, padding: 12, gap: 12 }}>
         {pane === 'sales' && (
@@ -1026,6 +1091,8 @@ function App() {
               onClearCart={cart.clearCart}
               onSaveTicket={() => setShowSaveTicket(true)}
               onOpenTickets={() => setPane("open_tickets")}
+              canRingSales={canRingSales}
+              canHoldResume={canHoldResume}
               onCheckout={() => {
                 // Pre-flight checks BEFORE opening the charge overlay.
                 // Once the overlay is up (z-index 900) it covers the
@@ -1134,6 +1201,8 @@ function App() {
             onCashMovement={shift.cashMovement}
             onClose={() => setPane("sales")}
             onCloseShift={() => setShowCloseShift(true)}
+            canCloseShift={canCloseShift}
+            canCashInOut={canCashInOut}
           />
         )}
 
@@ -1141,7 +1210,17 @@ function App() {
           <ShiftHistoryPanel onClose={() => setPane("sales")} />
         )}
 
-        {pane === 'ops' && <OpsPanel {...ops} />}
+        {pane === 'ops' && (
+          <OpsPanel
+            {...ops}
+            permissions={{
+              inventory: canOpsInventory,
+              suppliers: canOpsSuppliers,
+              reports: canOpsReports,
+              marketing: canOpsMarketing,
+            }}
+          />
+        )}
       </main>
 
       <SideDrawer
@@ -1154,7 +1233,7 @@ function App() {
         onSelect={(id) => {
           setDrawerOpen(false);
           if (id === "logout") return handleLogout();
-          if (id === "lock") return lockScreen();
+          if (id === "lock") return canLockScreen ? lockScreen() : undefined;
           if (id === "refresh_menu") {
             // One-tap full refresh — menu items + categories, tables,
             // kitchen-note chips, held-tickets badge, and the shift
@@ -1251,7 +1330,7 @@ function App() {
         />
       )}
 
-      {showCloseShift && (
+      {showCloseShift && canCloseShift && (
         <CloseShiftModal
           summary={shift.summary}
           onConfirm={handleCloseShift}

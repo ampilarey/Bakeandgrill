@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CloseShiftRequest;
 use App\Http\Requests\OpenShiftRequest;
 use App\Models\CashMovement;
+use App\Models\Device;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
@@ -244,8 +245,16 @@ class ShiftController extends Controller
     public function open(OpenShiftRequest $request)
     {
         $userId = $request->user()?->id;
+        $deviceId = $request->input('device_id');
+        if (!$deviceId) {
+            $identifier = $request->header('X-Device-Identifier')
+                ?? $request->header('X-Device-Id');
+            if ($identifier) {
+                $deviceId = Device::where('identifier', $identifier)->value('id');
+            }
+        }
 
-        $shift = DB::transaction(function () use ($userId, $request) {
+        $shift = DB::transaction(function () use ($userId, $request, $deviceId) {
             // Lock any existing open shift row for this user to prevent double-open race
             $existing = Shift::where('user_id', $userId)
                 ->whereNull('closed_at')
@@ -258,7 +267,7 @@ class ShiftController extends Controller
 
             return Shift::create([
                 'user_id' => $userId,
-                'device_id' => $request->input('device_id'),
+                'device_id' => $deviceId,
                 'opened_at' => now(),
                 'opening_cash' => $request->input('opening_cash'),
                 'notes' => $request->input('notes'),

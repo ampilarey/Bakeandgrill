@@ -20,6 +20,13 @@ const C = {
   rail: "#0F172A",
 };
 
+type OpsPermissions = {
+  inventory?: boolean;
+  suppliers?: boolean;
+  reports?: boolean;
+  marketing?: boolean;
+};
+
 /**
  * The old OpsPanel was a 6-card grid full of cramped raw forms — and half
  * of it (shift, cash drawer, refunds) is now duplicated by the dedicated
@@ -37,7 +44,8 @@ const C = {
  *    can't accidentally fire 3-segment Unicode messages without seeing
  *    the bill first.
  */
-export function OpsPanel(ops: OpsState) {
+export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
+  const { permissions, ...ops } = props;
   const [tab, setTab] = useState<Tab>("inventory");
 
   const lowStockThreshold = 5;
@@ -46,12 +54,27 @@ export function OpsPanel(ops: OpsState) {
     [ops.inventoryItems],
   );
 
+  const showInv = permissions ? !!permissions.inventory : true;
+  const showSup = permissions ? !!permissions.suppliers : true;
+  const showRep = permissions ? !!permissions.reports : true;
+  const showMkt = permissions ? !!permissions.marketing : true;
+
   const tabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
-    { id: "inventory",  label: "Inventory",  icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined },
-    { id: "suppliers",  label: "Suppliers",  icon: "🏭" },
-    { id: "reports",    label: "Reports",    icon: "📊" },
-    { id: "marketing",  label: "Marketing",  icon: "📣" },
+    ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
+    ...(showSup ? [{ id: "suppliers" as Tab, label: "Suppliers", icon: "🏭" }] : []),
+    ...(showRep ? [{ id: "reports" as Tab, label: "Reports", icon: "📊" }] : []),
+    ...(showMkt ? [{ id: "marketing" as Tab, label: "Marketing", icon: "📣" }] : []),
   ];
+
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "inventory");
+
+  if (tabs.length === 0) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 14 }}>
+        No operations available for your role.
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -72,10 +95,10 @@ export function OpsPanel(ops: OpsState) {
             style={{
               display: "flex", alignItems: "center", gap: 10,
               padding: "10px 12px", borderRadius: 8,
-              background: tab === t.id ? C.panel : "transparent",
-              color: tab === t.id ? C.text : C.muted,
+              background: activeTab === t.id ? C.panel : "transparent",
+              color: activeTab === t.id ? C.text : C.muted,
               border: "none",
-              boxShadow: tab === t.id ? "0 1px 2px rgba(15,23,42,0.06)" : "none",
+              boxShadow: activeTab === t.id ? "0 1px 2px rgba(15,23,42,0.06)" : "none",
               textAlign: "left", cursor: "pointer",
               fontWeight: 600, fontSize: 13,
             }}
@@ -98,10 +121,10 @@ export function OpsPanel(ops: OpsState) {
         flex: 1, overflow: "auto", padding: 20,
         display: "flex", flexDirection: "column", gap: 16,
       }}>
-        {tab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} />}
-        {tab === "suppliers"  && <SuppliersTab ops={ops} />}
-        {tab === "reports"    && <ReportsTab ops={ops} />}
-        {tab === "marketing"  && <MarketingTab ops={ops} />}
+        {activeTab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} />}
+        {activeTab === "suppliers"  && <SuppliersTab ops={ops} />}
+        {activeTab === "reports"    && <ReportsTab ops={ops} />}
+        {activeTab === "marketing"  && <MarketingTab ops={ops} />}
       </div>
     </div>
   );

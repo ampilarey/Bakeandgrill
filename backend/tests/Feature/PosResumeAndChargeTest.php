@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
 use App\Models\Device;
 use App\Models\Item;
@@ -50,7 +51,11 @@ class PosResumeAndChargeTest extends TestCase
             'is_available' => true,
         ]);
 
-        $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => '', 'is_active' => true],
+        );
+        PermissionCatalogSync::sync();
         $this->staffUser = User::create([
             'name' => 'Cashier',
             'email' => 'cashier@resume.test',

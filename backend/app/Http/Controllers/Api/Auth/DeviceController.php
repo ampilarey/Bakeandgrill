@@ -119,7 +119,11 @@ class DeviceController extends Controller
             return response()->json(['status' => 'unregistered']);
         }
 
-        return response()->json(['status' => $device->status, 'is_active' => $device->is_active]);
+        return response()->json([
+            'status' => $device->status,
+            'is_active' => $device->is_active,
+            'id' => $device->id,
+        ]);
     }
 
     /**

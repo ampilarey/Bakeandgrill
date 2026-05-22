@@ -124,9 +124,13 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean) {
     };
   }, [current, refreshSummary]);
 
-  const open = useCallback(async (openingCash: number, notes?: string) => {
+  const open = useCallback(async (openingCash: number, notes?: string, deviceId?: number | null) => {
     try {
-      const res = await openShift({ opening_cash: openingCash, notes });
+      const res = await openShift({
+        opening_cash: openingCash,
+        notes,
+        ...(deviceId ? { device_id: deviceId } : {}),
+      });
       await refresh();
       return res.shift;
     } catch (e) {
