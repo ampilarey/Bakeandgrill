@@ -35,6 +35,9 @@ export type CustomerCreditInfo = {
   approved_by?: number | null;
   approved_at?: string | null;
   approved_by_name?: string | null;
+  payment_terms_days: number;
+  reminder_sms_enabled: boolean;
+  next_payment_due_date?: string | null;
   limit_mvr: number;
   balance_mvr: number;
   available_mvr: number;
@@ -62,8 +65,11 @@ export type CustomerCreditInvoice = {
   amount_paid_laar: number;
   balance_due_laar: number;
   issue_date?: string | null;
+  due_date?: string | null;
   status: string;
 };
+
+export const CREDIT_PAYMENT_TERMS_OPTIONS = [7, 14, 30, 45, 60] as const;
 
 export async function fetchCustomerCredit(customerId: number): Promise<{
   credit: CustomerCreditInfo;
@@ -76,10 +82,12 @@ export async function fetchCustomerCredit(customerId: number): Promise<{
 export async function updateCustomerCredit(
   customerId: number,
   data: {
-    action: 'approve' | 'disable' | 'update_limit' | 'set_status';
+    action: 'approve' | 'disable' | 'update_limit' | 'set_status' | 'update_terms' | 'set_reminder_sms';
     credit_limit_mvr?: number;
     credit_notes?: string;
     credit_status?: 'active' | 'on_hold' | 'blocked';
+    credit_payment_terms_days?: number;
+    credit_reminder_sms?: boolean;
     override_limit?: boolean;
   },
 ): Promise<{ customer: CustomerCreditInfo }> {

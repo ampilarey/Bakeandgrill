@@ -9,6 +9,7 @@ import {
   getMyPreOrders, getMyReviews, submitReview, fetchCustomerOrders,
   getMyReferralCode,
   getCustomerCredit,
+  updateCustomerCreditPreferences,
 } from '../api';
 import type {
   AuthCustomer, CustomerReservation, FavouriteItem,
@@ -139,6 +140,7 @@ export function AccountPage() {
   const [creditLoading, setCreditLoading] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [creditLoaded, setCreditLoaded] = useState(false);
+  const [reminderSaving, setReminderSaving] = useState(false);
 
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '' });
@@ -958,14 +960,48 @@ export function AccountPage() {
                     <p style={{ fontSize: 22, fontWeight: 900, color: '#15803D', margin: 0 }}>MVR {credit.available_mvr.toFixed(2)}</p>
                   </div>
                 </div>
+                <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 13, color: '#1E40AF' }}>
+                  <span><strong>Payment terms:</strong> Net {credit.payment_terms_days} days</span>
+                  {credit.next_payment_due_date && (
+                    <span><strong>Next payment due:</strong> {new Date(`${credit.next_payment_due_date}T00:00:00`).toLocaleDateString()}</span>
+                  )}
+                </div>
               </div>
+
+              <SectionCard title="SMS Payment Reminders">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={credit.reminder_sms_enabled}
+                    disabled={reminderSaving || !token}
+                    onChange={(e) => {
+                      if (!token) return;
+                      const enabled = e.target.checked;
+                      setReminderSaving(true);
+                      setCreditError('');
+                      updateCustomerCreditPreferences(token, { credit_reminder_sms: enabled })
+                        .then((res) => setCredit(res.credit))
+                        .catch((err: Error) => setCreditError(err.message || 'Failed to update reminder preference.'))
+                        .finally(() => setReminderSaving(false));
+                    }}
+                  />
+                  Send SMS reminders before and on payment due dates
+                </label>
+                <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  Reminders are on by default. Turn off if you prefer email or in-app only.
+                </p>
+              </SectionCard>
 
               <SectionCard title="Open Invoices">
                 {credit.open_invoices.length === 0 ? (
                   <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No open invoices — your account is clear.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {credit.open_invoices.map((inv) => (
+                    {credit.open_invoices.map((inv) => {
+                      const overdue = inv.due_date
+                        ? new Date(`${inv.due_date}T00:00:00`) < new Date(new Date().toDateString())
+                        : false;
+                      return (
                       <div key={inv.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                         <div>
                           <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>{inv.invoice_number}</p>
@@ -973,6 +1009,11 @@ export function AccountPage() {
                             {inv.issue_date ? `Issued ${inv.issue_date}` : 'On credit account'}
                             {inv.order_id ? ` · Order #${inv.order_id}` : ''}
                           </p>
+                          {inv.due_date && (
+                            <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 600, color: overdue ? '#B45309' : 'var(--color-text-muted)' }}>
+                              {overdue ? 'Overdue — ' : 'Due '}{new Date(`${inv.due_date}T00:00:00`).toLocaleDateString()}
+                            </p>
+                          )}
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <p style={{ margin: 0, fontWeight: 800, fontSize: 15, color: '#B45309' }}>MVR {inv.balance_due_mvr.toFixed(2)} due</p>
@@ -983,7 +1024,8 @@ export function AccountPage() {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </SectionCard>

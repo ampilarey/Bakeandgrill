@@ -340,6 +340,38 @@ class CustomerController extends Controller
     }
 
     /**
+     * PATCH /api/customer/credit/preferences — reminder SMS opt-out.
+     */
+    public function updateCreditPreferences(Request $request)
+    {
+        $customer = $request->user();
+
+        if (!$customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        if (!$customer->credit_enabled) {
+            return response()->json(['message' => 'Credit account is not active.'], 422);
+        }
+
+        $validated = $request->validate([
+            'credit_reminder_sms' => ['required', 'boolean'],
+        ]);
+
+        $updated = app(CustomerCreditService::class)->updateCustomerReminderPreference(
+            $customer,
+            (bool) $validated['credit_reminder_sms'],
+        );
+
+        return response()->json([
+            'credit' => array_merge(
+                app(CustomerCreditService::class)->customerFacingSummary($updated),
+                ['open_invoices' => $this->formatCustomerCreditInvoices($updated, app(CustomerCreditService::class))],
+            ),
+        ]);
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function formatCustomerCreditInvoices(Customer $customer, CustomerCreditService $creditService): array
@@ -356,6 +388,7 @@ class CustomerController extends Controller
                     'order_id' => $inv['order_id'],
                     'status' => $inv['status'],
                     'issue_date' => $inv['issue_date'],
+                    'due_date' => $inv['due_date'] ?? null,
                     'total_mvr' => round($inv['total_laar'] / 100, 2),
                     'amount_paid_mvr' => round($inv['amount_paid_laar'] / 100, 2),
                     'balance_due_mvr' => round($inv['balance_due_laar'] / 100, 2),

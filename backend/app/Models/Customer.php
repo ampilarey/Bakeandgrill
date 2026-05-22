@@ -48,6 +48,8 @@ class Customer extends Model implements AuthenticatableContract
         'credit_balance_laar',
         'credit_status',
         'credit_notes',
+        'credit_payment_terms_days',
+        'credit_reminder_sms',
     ];
 
     /**
@@ -79,6 +81,8 @@ class Customer extends Model implements AuthenticatableContract
         'credit_approved_at' => 'datetime',
         'credit_limit_laar' => 'integer',
         'credit_balance_laar' => 'integer',
+        'credit_payment_terms_days' => 'integer',
+        'credit_reminder_sms' => 'boolean',
     ];
 
     protected $attributes = [
@@ -86,6 +90,8 @@ class Customer extends Model implements AuthenticatableContract
         'credit_limit_laar' => 0,
         'credit_balance_laar' => 0,
         'credit_status' => 'blocked',
+        'credit_payment_terms_days' => 30,
+        'credit_reminder_sms' => true,
     ];
 
     public function orders(): HasMany

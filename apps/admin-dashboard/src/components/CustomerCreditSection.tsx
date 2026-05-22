@@ -3,6 +3,7 @@ import {
   fetchCustomerCredit,
   updateCustomerCredit,
   recordCustomerCreditRepayment,
+  CREDIT_PAYMENT_TERMS_OPTIONS,
   type CustomerCreditInfo,
   type CustomerCreditInvoice,
   type CustomerCreditLedgerRow,
@@ -34,7 +35,9 @@ export function CustomerCreditSection({ customerId }: Props) {
 
   const [approveLimit, setApproveLimit] = useState('');
   const [approveNotes, setApproveNotes] = useState('');
+  const [approveTerms, setApproveTerms] = useState<number>(30);
   const [editLimit, setEditLimit] = useState('');
+  const [editTerms, setEditTerms] = useState<number>(30);
   const [overrideLimit, setOverrideLimit] = useState(false);
 
   const [repayAmount, setRepayAmount] = useState('');
@@ -54,6 +57,7 @@ export function CustomerCreditSection({ customerId }: Props) {
       setLedger(res.ledger ?? []);
       setOpenInvoices(res.open_invoices ?? []);
       setEditLimit(String(res.credit.limit_mvr ?? 0));
+      setEditTerms(res.credit.payment_terms_days ?? 30);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load credit info');
     } finally {
@@ -122,6 +126,18 @@ export function CustomerCreditSection({ customerId }: Props) {
         ? 'On hold'
         : 'Blocked';
 
+  const formatDueDate = (dueDate?: string | null) => {
+    if (!dueDate) return '—';
+    return new Date(`${dueDate}T00:00:00`).toLocaleDateString();
+  };
+
+  const isOverdue = (dueDate?: string | null) => {
+    if (!dueDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(`${dueDate}T00:00:00`) < today;
+  };
+
   return (
     <div style={{ border: '1px solid #E8DDD0', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -158,12 +174,32 @@ export function CustomerCreditSection({ customerId }: Props) {
             </p>
           )}
 
+          {credit.enabled && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#6B5D4F' }}>
+              <span><strong>Payment terms:</strong> Net {credit.payment_terms_days} days</span>
+              {credit.next_payment_due_date && (
+                <span><strong>Next due:</strong> {formatDueDate(credit.next_payment_due_date)}</span>
+              )}
+            </div>
+          )}
+
           {canManage && !credit.enabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Approve credit limit (MVR)</label>
               <input style={inputStyle} type="number" min="0" step="0.01" value={approveLimit} onChange={(e) => setApproveLimit(e.target.value)} placeholder="e.g. 5000" />
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Payment terms</label>
+              <select style={inputStyle} value={approveTerms} onChange={(e) => setApproveTerms(Number(e.target.value))}>
+                {CREDIT_PAYMENT_TERMS_OPTIONS.map((days) => (
+                  <option key={days} value={days}>Net {days} days</option>
+                ))}
+              </select>
               <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={approveNotes} onChange={(e) => setApproveNotes(e.target.value)} placeholder="Credit notes (optional)" />
-              <Btn small onClick={() => void runAction({ action: 'approve', credit_limit_mvr: parseFloat(approveLimit), credit_notes: approveNotes || undefined })} disabled={saving}>
+              <Btn small onClick={() => void runAction({
+                action: 'approve',
+                credit_limit_mvr: parseFloat(approveLimit),
+                credit_notes: approveNotes || undefined,
+                credit_payment_terms_days: approveTerms,
+              })} disabled={saving}>
                 Approve for credit
               </Btn>
             </div>
@@ -189,6 +225,49 @@ export function CustomerCreditSection({ customerId }: Props) {
               <Btn small variant="secondary" onClick={() => void runAction({ action: 'update_limit', credit_limit_mvr: parseFloat(editLimit), override_limit: overrideLimit })} disabled={saving}>
                 Save limit
               </Btn>
+            </div>
+          )}
+
+          {canManage && credit.enabled && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Payment terms</label>
+              <select style={inputStyle} value={editTerms} onChange={(e) => setEditTerms(Number(e.target.value))}>
+                {CREDIT_PAYMENT_TERMS_OPTIONS.map((days) => (
+                  <option key={days} value={days}>Net {days} days</option>
+                ))}
+              </select>
+              <Btn small variant="secondary" onClick={() => void runAction({ action: 'update_terms', credit_payment_terms_days: editTerms })} disabled={saving}>
+                Save payment terms
+              </Btn>
+            </div>
+          )}
+
+          {canManage && credit.enabled && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#6B5D4F' }}>
+              <input
+                type="checkbox"
+                checked={credit.reminder_sms_enabled}
+                onChange={(e) => void runAction({ action: 'set_reminder_sms', credit_reminder_sms: e.target.checked })}
+                disabled={saving}
+              />
+              SMS payment reminders enabled
+            </label>
+          )}
+
+          {openInvoices.length > 0 && (
+            <div>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase' }}>Open invoices</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {openInvoices.map((inv) => (
+                  <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700 }}>{inv.invoice_number}</span>
+                    <span style={{ color: isOverdue(inv.due_date) ? '#B45309' : '#6B5D4F' }}>
+                      Due {formatDueDate(inv.due_date)}
+                    </span>
+                    <span style={{ fontWeight: 700, color: '#B45309' }}>MVR {(inv.balance_due_laar / 100).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

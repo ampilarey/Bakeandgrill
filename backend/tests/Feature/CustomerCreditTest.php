@@ -320,13 +320,109 @@ class CustomerCreditTest extends TestCase
             ->assertJsonPath('credit.available_laar', 8000);
     }
 
-    private function approveCustomer(int $limitLaar): void
+    public function test_approve_with_net_7_sets_invoice_due_date(): void
     {
         Sanctum::actingAs($this->manager, ['staff']);
+
         $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
             'action' => 'approve',
+            'credit_limit_mvr' => 500,
+            'credit_payment_terms_days' => 7,
+        ])->assertOk()
+            ->assertJsonPath('customer.payment_terms_days', 7);
+
+        $this->chargeCustomerCredit(5000);
+
+        $invoice = Invoice::where('customer_id', $this->customer->id)->where('type', 'sale')->first();
+        $this->assertNotNull($invoice);
+        $this->assertNotNull($invoice->due_date);
+        $expectedDue = $invoice->issue_date->copy()->addDays(7)->toDateString();
+        $this->assertSame($expectedDue, $invoice->due_date->toDateString());
+    }
+
+    public function test_customer_can_toggle_credit_reminder_sms_preference(): void
+    {
+        $this->approveCustomer(50000);
+
+        Sanctum::actingAs($this->customer->fresh(), ['customer']);
+
+        $this->patchJson('/api/customer/credit/preferences', [
+            'credit_reminder_sms' => false,
+        ])->assertOk()
+            ->assertJsonPath('credit.reminder_sms_enabled', false);
+
+        $this->customer->refresh();
+        $this->assertFalse((bool) $this->customer->credit_reminder_sms);
+
+        $this->patchJson('/api/customer/credit/preferences', [
+            'credit_reminder_sms' => true,
+        ])->assertOk()
+            ->assertJsonPath('credit.reminder_sms_enabled', true);
+    }
+
+    public function test_customer_without_credit_cannot_update_reminder_preference(): void
+    {
+        Sanctum::actingAs($this->customer->fresh(), ['customer']);
+
+        $this->patchJson('/api/customer/credit/preferences', [
+            'credit_reminder_sms' => false,
+        ])->assertStatus(422);
+    }
+
+    public function test_credit_payment_reminder_command_sends_sms_on_due_date(): void
+    {
+        $this->approveCustomer(50000);
+        $this->chargeCustomerCredit(5000);
+
+        $invoice = Invoice::where('customer_id', $this->customer->id)->where('type', 'sale')->firstOrFail();
+        $dueDate = now()->toDateString();
+        $invoice->update(['due_date' => $dueDate, 'status' => 'sent']);
+
+        $this->artisan('credit:send-payment-reminders', ['--date' => $dueDate])
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('sms_logs', [
+            'customer_id' => $this->customer->id,
+            'type' => 'transactional',
+            'idempotency_key' => "credit:reminder:{$invoice->id}:due_today:{$dueDate}",
+        ]);
+
+        $before = \App\Models\SmsLog::count();
+        $this->artisan('credit:send-payment-reminders', ['--date' => $dueDate])
+            ->assertSuccessful();
+        $this->assertSame($before, \App\Models\SmsLog::count());
+    }
+
+    public function test_credit_payment_reminder_skips_when_opted_out(): void
+    {
+        $this->approveCustomer(50000);
+        $this->customer->update(['credit_reminder_sms' => false]);
+        $this->chargeCustomerCredit(5000);
+
+        $invoice = Invoice::where('customer_id', $this->customer->id)->where('type', 'sale')->firstOrFail();
+        $dueDate = now()->toDateString();
+        $invoice->update(['due_date' => $dueDate]);
+
+        $this->artisan('credit:send-payment-reminders', ['--date' => $dueDate])
+            ->assertSuccessful();
+
+        $this->assertDatabaseMissing('sms_logs', [
+            'customer_id' => $this->customer->id,
+            'idempotency_key' => "credit:reminder:{$invoice->id}:due_today:{$dueDate}",
+        ]);
+    }
+
+    private function approveCustomer(int $limitLaar, ?int $paymentTermsDays = null): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $payload = [
+            'action' => 'approve',
             'credit_limit_laar' => $limitLaar,
-        ])->assertOk();
+        ];
+        if ($paymentTermsDays !== null) {
+            $payload['credit_payment_terms_days'] = $paymentTermsDays;
+        }
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", $payload)->assertOk();
         $this->customer->refresh();
     }
 

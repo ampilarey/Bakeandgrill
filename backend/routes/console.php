@@ -71,6 +71,11 @@ Schedule::command('invoices:mark-overdue')
     ->dailyAt('07:00')
     ->onFailure($alertOnFailure('invoices:mark-overdue'));
 
+// Credit: payment reminder SMS daily at 09:00 (after overdue marking)
+Schedule::command('credit:send-payment-reminders')
+    ->dailyAt('09:00')
+    ->onFailure($alertOnFailure('credit:send-payment-reminders'));
+
 // Inventory: check reorder points daily at 08:00
 Schedule::command('inventory:check-reorder')
     ->dailyAt('08:00')

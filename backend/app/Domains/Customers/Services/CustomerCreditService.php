@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\DB;
 
 final class CustomerCreditService
 {
+    public const MIN_PAYMENT_TERMS_DAYS = 7;
+
+    public const MAX_PAYMENT_TERMS_DAYS = 90;
+
+    public const DEFAULT_PAYMENT_TERMS_DAYS = 30;
+
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly ShiftAccessService $shifts,
@@ -38,7 +44,23 @@ final class CustomerCreditService
             'limit_mvr' => round($summary['limit_laar'] / 100, 2),
             'balance_mvr' => round($summary['balance_laar'] / 100, 2),
             'available_mvr' => round($summary['available_laar'] / 100, 2),
+            'payment_terms_days' => (int) $summary['payment_terms_days'],
+            'reminder_sms_enabled' => (bool) $summary['reminder_sms_enabled'],
+            'next_payment_due_date' => $summary['next_payment_due_date'],
         ];
+    }
+
+    public function validatePaymentTermsDays(int $days): int
+    {
+        if ($days < self::MIN_PAYMENT_TERMS_DAYS || $days > self::MAX_PAYMENT_TERMS_DAYS) {
+            abort(422, sprintf(
+                'Payment terms must be between %d and %d days.',
+                self::MIN_PAYMENT_TERMS_DAYS,
+                self::MAX_PAYMENT_TERMS_DAYS,
+            ));
+        }
+
+        return $days;
     }
 
     /**
@@ -48,6 +70,7 @@ final class CustomerCreditService
     {
         $available = $this->availableCreditLaar($customer);
         $canCharge = $this->canCharge($customer);
+        $nextDue = $this->nextPaymentDueDate($customer);
 
         return [
             'enabled' => (bool) $customer->credit_enabled,
@@ -59,7 +82,34 @@ final class CustomerCreditService
             'credit_notes' => $customer->credit_notes,
             'approved_by' => $customer->credit_approved_by,
             'approved_at' => $customer->credit_approved_at?->toIso8601String(),
+            'payment_terms_days' => (int) ($customer->credit_payment_terms_days ?? self::DEFAULT_PAYMENT_TERMS_DAYS),
+            'reminder_sms_enabled' => (bool) ($customer->credit_reminder_sms ?? true),
+            'next_payment_due_date' => $nextDue,
         ];
+    }
+
+    public function nextPaymentDueDate(Customer $customer): ?string
+    {
+        if (!$customer->credit_enabled || (int) $customer->credit_balance_laar <= 0) {
+            return null;
+        }
+
+        $due = Invoice::query()
+            ->where('customer_id', $customer->id)
+            ->where('type', 'sale')
+            ->whereIn('status', ['sent', 'overdue'])
+            ->whereRaw('total_laar > amount_paid_laar')
+            ->whereNotNull('due_date')
+            ->orderBy('due_date')
+            ->value('due_date');
+
+        if ($due === null) {
+            return null;
+        }
+
+        return $due instanceof \DateTimeInterface
+            ? $due->format('Y-m-d')
+            : (string) $due;
     }
 
     public function availableCreditLaar(Customer $customer): int
@@ -114,12 +164,17 @@ final class CustomerCreditService
         User $actor,
         ?string $notes = null,
         ?Request $request = null,
+        ?int $paymentTermsDays = null,
     ): Customer {
         if ($limitLaar <= 0) {
             abort(422, 'Credit limit must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($customer, $limitLaar, $actor, $notes, $request) {
+        $termsDays = $this->validatePaymentTermsDays(
+            $paymentTermsDays ?? self::DEFAULT_PAYMENT_TERMS_DAYS,
+        );
+
+        return DB::transaction(function () use ($customer, $limitLaar, $actor, $notes, $request, $termsDays) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $old = $this->creditSummary($locked);
 
@@ -130,6 +185,8 @@ final class CustomerCreditService
                 'credit_limit_laar' => $limitLaar,
                 'credit_status' => 'active',
                 'credit_notes' => $notes ?? $locked->credit_notes,
+                'credit_payment_terms_days' => $termsDays,
+                'credit_reminder_sms' => true,
             ]);
 
             $this->audit->log(
@@ -210,6 +267,77 @@ final class CustomerCreditService
         });
     }
 
+    public function updatePaymentTerms(
+        Customer $customer,
+        int $paymentTermsDays,
+        User $actor,
+        ?Request $request = null,
+    ): Customer {
+        if (!$customer->credit_enabled) {
+            abort(422, 'Customer is not approved for credit.');
+        }
+
+        $termsDays = $this->validatePaymentTermsDays($paymentTermsDays);
+
+        return DB::transaction(function () use ($customer, $termsDays, $request) {
+            $locked = Customer::lockForUpdate()->findOrFail($customer->id);
+            $old = $this->creditSummary($locked);
+            $locked->update(['credit_payment_terms_days' => $termsDays]);
+
+            $this->audit->log(
+                'customer.credit.terms_updated',
+                'Customer',
+                $locked->id,
+                $old,
+                $this->creditSummary($locked->fresh()),
+                ['payment_terms_days' => $termsDays],
+                $request,
+            );
+
+            return $locked->fresh(['creditApprovedBy:id,name']);
+        });
+    }
+
+    public function setReminderSms(
+        Customer $customer,
+        bool $enabled,
+        User $actor,
+        ?Request $request = null,
+    ): Customer {
+        if (!$customer->credit_enabled) {
+            abort(422, 'Customer is not approved for credit.');
+        }
+
+        return DB::transaction(function () use ($customer, $enabled, $request) {
+            $locked = Customer::lockForUpdate()->findOrFail($customer->id);
+            $old = $this->creditSummary($locked);
+            $locked->update(['credit_reminder_sms' => $enabled]);
+
+            $this->audit->log(
+                'customer.credit.reminder_sms_updated',
+                'Customer',
+                $locked->id,
+                $old,
+                $this->creditSummary($locked->fresh()),
+                ['credit_reminder_sms' => $enabled],
+                $request,
+            );
+
+            return $locked->fresh(['creditApprovedBy:id,name']);
+        });
+    }
+
+    public function updateCustomerReminderPreference(Customer $customer, bool $enabled): Customer
+    {
+        if (!$customer->credit_enabled) {
+            abort(422, 'Credit account is not active.');
+        }
+
+        $customer->update(['credit_reminder_sms' => $enabled]);
+
+        return $customer->fresh();
+    }
+
     public function setStatus(
         Customer $customer,
         string $status,
@@ -264,9 +392,13 @@ final class CustomerCreditService
             $locked->update(['credit_balance_laar' => $newBalance]);
 
             $invoice = app(InvoiceController::class)->createFromOrderInternal($order, $actor);
+            $termsDays = (int) ($locked->credit_payment_terms_days ?? self::DEFAULT_PAYMENT_TERMS_DAYS);
+            $issueDate = $invoice->issue_date ?? now()->toDateString();
+            $dueDate = \Illuminate\Support\Carbon::parse($issueDate)->addDays($termsDays)->toDateString();
+
             $invoice->update([
                 'status' => 'sent',
-                'due_date' => now()->addDays(30)->toDateString(),
+                'due_date' => $dueDate,
                 'paid_at' => null,
                 'payment_method' => null,
                 'payment_reference' => null,
@@ -470,6 +602,7 @@ final class CustomerCreditService
                 'amount_paid_laar' => (int) $inv->amount_paid_laar,
                 'balance_due_laar' => $inv->balanceDueLaar(),
                 'issue_date' => $inv->issue_date?->toDateString(),
+                'due_date' => $inv->due_date?->toDateString(),
                 'status' => $inv->status,
             ])
             ->values()

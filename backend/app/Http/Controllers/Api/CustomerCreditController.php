@@ -48,11 +48,13 @@ class CustomerCreditController extends Controller
         abort_unless($actor !== null, 401);
 
         $validated = $request->validate([
-            'action' => ['required', 'in:approve,disable,update_limit,set_status'],
+            'action' => ['required', 'in:approve,disable,update_limit,set_status,update_terms,set_reminder_sms'],
             'credit_limit_laar' => ['nullable', 'integer', 'min:0'],
             'credit_limit_mvr' => ['nullable', 'numeric', 'min:0'],
             'credit_notes' => ['nullable', 'string', 'max:2000'],
             'credit_status' => ['nullable', 'in:active,on_hold,blocked'],
+            'credit_payment_terms_days' => ['nullable', 'required_if:action,update_terms', 'integer', 'min:7', 'max:90'],
+            'credit_reminder_sms' => ['nullable', 'boolean'],
             'override_limit' => ['sometimes', 'boolean'],
         ]);
 
@@ -67,6 +69,9 @@ class CustomerCreditController extends Controller
                 $actor,
                 $validated['credit_notes'] ?? null,
                 $request,
+                isset($validated['credit_payment_terms_days'])
+                    ? (int) $validated['credit_payment_terms_days']
+                    : null,
             ),
             'disable' => $this->credit->disableCredit($customer, $actor, $request),
             'update_limit' => $this->credit->updateLimit(
@@ -79,6 +84,18 @@ class CustomerCreditController extends Controller
             'set_status' => $this->credit->setStatus(
                 $customer,
                 (string) ($validated['credit_status'] ?? 'blocked'),
+                $actor,
+                $request,
+            ),
+            'update_terms' => $this->credit->updatePaymentTerms(
+                $customer,
+                (int) $validated['credit_payment_terms_days'],
+                $actor,
+                $request,
+            ),
+            'set_reminder_sms' => $this->credit->setReminderSms(
+                $customer,
+                (bool) $validated['credit_reminder_sms'],
                 $actor,
                 $request,
             ),

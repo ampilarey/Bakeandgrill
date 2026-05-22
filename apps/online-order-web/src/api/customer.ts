@@ -178,6 +178,9 @@ export type CustomerCreditSummary = {
   limit_mvr: number;
   balance_mvr: number;
   available_mvr: number;
+  payment_terms_days: number;
+  reminder_sms_enabled: boolean;
+  next_payment_due_date: string | null;
 };
 
 export type CustomerCreditInvoice = {
@@ -186,6 +189,7 @@ export type CustomerCreditInvoice = {
   order_id: number | null;
   status: string;
   issue_date: string | null;
+  due_date: string | null;
   total_mvr: number;
   amount_paid_mvr: number;
   balance_due_mvr: number;
@@ -196,4 +200,17 @@ export async function getCustomerCredit(token: string): Promise<{
   credit: (CustomerCreditSummary & { open_invoices: CustomerCreditInvoice[] }) | null;
 }> {
   return request('/customer/credit', { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export async function updateCustomerCreditPreferences(
+  token: string,
+  data: { credit_reminder_sms: boolean },
+): Promise<{
+  credit: CustomerCreditSummary & { open_invoices: CustomerCreditInvoice[] };
+}> {
+  return request('/customer/credit/preferences', {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
 }
