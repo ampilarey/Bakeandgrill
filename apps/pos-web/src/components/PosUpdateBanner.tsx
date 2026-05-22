@@ -49,7 +49,7 @@ export function PosUpdateBanner({
         <div style={{ fontSize: 12, color: "#1D4ED8", marginTop: 2 }}>
           {updateBlocked
             ? "Finish the current order or payment before updating."
-            : "Please update after finishing the current order."}
+            : "Tap Update Now to install the latest version."}
           {serverVersion && serverBuild && serverBuild !== localBuild && (
             <span style={{ display: "block", marginTop: 2, fontSize: 11 }}>
               New build: {shortBuildId(serverBuild)} (yours: {shortBuildId(localBuild)})
