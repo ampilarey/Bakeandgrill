@@ -266,7 +266,7 @@ export function MenuGrid({
   }, [filteredItems, search]);
 
   return (
-    <section style={{
+    <section className="pos-menu" style={{
       flex: 1, minWidth: 0,
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
@@ -471,7 +471,7 @@ export function MenuGrid({
             </div>
           </div>
         ) : (
-          <div style={{
+          <div className="pos-menu-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
             gap: 10,

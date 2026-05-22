@@ -77,13 +77,13 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
   }
 
   return (
-    <div style={{
+    <div className="pos-ops" style={{
       flex: 1, minHeight: 0,
       background: C.panel, borderRadius: 12, border: `1px solid ${C.border}`,
       display: "flex", overflow: "hidden",
     }}>
       {/* ── Left rail ─────────────────────────────────────────────── */}
-      <nav style={{
+      <nav className="pos-ops-nav" style={{
         width: 200, flexShrink: 0,
         background: "#F8FAFC", borderRight: `1px solid ${C.border}`,
         padding: "12px 8px", display: "flex", flexDirection: "column", gap: 4,
@@ -225,7 +225,7 @@ function InventoryTab({ ops, lowStockThreshold }: { ops: OpsState; lowStockThres
       )}
 
       {/* Inventory table */}
-      <div style={{
+      <div className="pos-ops-table-wrap" style={{
         background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10,
         overflow: "hidden",
       }}>
@@ -291,7 +291,7 @@ function InventoryActionForm({
 }) {
   return (
     <FormCard title={title} help={help} onCancel={onCancel}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
         <select
           value={itemId ?? ""}
           onChange={(e) => setItemId(e.target.value ? Number(e.target.value) : null)}
@@ -332,7 +332,7 @@ function InventoryActionForm({
 function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => void }) {
   return (
     <FormCard title="Receive stock" help="Logs a purchase from a supplier and increases on-hand inventory accordingly." onCancel={onDone}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 10 }}>
+      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 10 }}>
         <select
           value={ops.purchaseSupplierId ?? ""}
           onChange={(e) => ops.setPurchaseSupplierId(e.target.value ? Number(e.target.value) : null)}
@@ -348,7 +348,7 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
           style={fieldStyle}
         />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginTop: 10 }}>
+      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginTop: 10 }}>
         <input
           value={ops.purchaseItemName}
           onChange={(e) => ops.setPurchaseItemName(e.target.value)}
@@ -392,7 +392,7 @@ function SuppliersTab({ ops }: { ops: OpsState }) {
 
       {/* Add row */}
       <FormCard title="Add supplier" help="Phone is optional but helps when you need to reorder.">
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr auto", gap: 10 }}>
+        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr auto", gap: 10 }}>
           <input
             value={ops.newSupplierName}
             onChange={(e) => ops.setNewSupplierName(e.target.value)}
@@ -475,7 +475,7 @@ function ReportsTab({ ops }: { ops: OpsState }) {
       </div>
 
       {/* KPI tiles */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+      <div className="pos-ops-grid pos-ops-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
         <KpiTile label="Orders"    value={ops.reportData ? String(ops.reportData.totals.orders_count ?? 0) : "—"} />
         <KpiTile label="Gross"     value={ops.reportData ? mvr(ops.reportData.totals.subtotal) : "—"} />
         <KpiTile label="Discounts" value={ops.reportData ? `− ${mvr(ops.reportData.totals.discount_amount)}` : "—"} tone="muted" />
@@ -567,7 +567,7 @@ function MarketingTab({ ops }: { ops: OpsState }) {
           </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
           <input
             value={ops.promoLastOrderDays}
             onChange={(e) => ops.setPromoLastOrderDays(e.target.value)}
@@ -585,7 +585,7 @@ function MarketingTab({ ops }: { ops: OpsState }) {
       </FormCard>
 
       {ops.promoEstimate && (
-        <div style={{
+        <div className="pos-ops-grid pos-ops-grid-3" style={{
           background: C.panel, borderRadius: 10, border: `1px solid ${C.border}`,
           padding: 16, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16,
         }}>
@@ -754,7 +754,7 @@ function SmsBlastConfirmDialog({
           </p>
         </div>
 
-        <div style={{
+        <div className="pos-ops-grid pos-ops-grid-3" style={{
           background: "#F8FAFC", border: `1px solid ${C.border}`, borderRadius: 10,
           padding: "10px 12px", fontSize: 13, color: C.text,
           display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10,

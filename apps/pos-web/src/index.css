@@ -90,8 +90,49 @@ html, body, #root {
   .pos-main { padding: 8px !important; gap: 8px !important; }
 }
 @media (max-width: 700px) {
+  /* Phone: menu on top (full scroll area), cart docked below. DOM order
+   * is cart→menu for tablet side-by-side; flex `order` flips visually. */
   .pos-main { flex-direction: column !important; }
-  .pos-cart { width: 100% !important; max-height: 50vh; }
+  .pos-menu {
+    order: 1 !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+  .pos-cart {
+    order: 2 !important;
+    width: 100% !important;
+    max-height: 42vh;
+    flex-shrink: 0 !important;
+  }
+  /* Larger tap targets on the highest-frequency phone controls. */
+  .pos-category-pill {
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+  }
+  .pos-qty-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+  .pos-line-action-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .pos-header-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+  .pos-menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)) !important;
+    gap: 8px !important;
+  }
+  /* Top bar: drop the shift KPI chip — room for online + lock. */
+  .pos-topbar-chip { display: none !important; }
+}
+
+@media (max-width: 480px) {
+  .pos-topbar-subtitle { display: none !important; }
 }
 
 /* Charge overlay caps at 760px on big screens; on small ones we let
@@ -111,6 +152,47 @@ html, body, #root {
   .pos-receipts {
     grid-template-columns: 1fr !important;
     grid-template-rows: minmax(160px, 40vh) 1fr !important;
+  }
+
+  /* Shift history — same master/detail stack as receipts. */
+  .pos-shift-history {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(140px, 35vh) 1fr !important;
+  }
+
+  /* Ops: horizontal tab rail on top, content below. */
+  .pos-ops {
+    flex-direction: column !important;
+  }
+  .pos-ops-nav {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-shrink: 0 !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+  .pos-ops-nav button {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    min-height: 44px !important;
+  }
+  .pos-ops-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .pos-ops-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .pos-ops-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+  /* Inventory table scrolls horizontally instead of crushing columns. */
+  .pos-ops-table-wrap {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

@@ -800,17 +800,18 @@ function App() {
       display: 'flex', flexDirection: 'column',
     }}>
       {/* ── Top bar ────────────────────────────────────────────────── */}
-      <header style={{
+      <header className="pos-topbar" style={{
         background: '#FFFFFF', borderBottom: '1px solid #E2E8F0',
         padding: '10px 16px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', gap: 12, flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
+            className="pos-header-btn"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
             style={{
-              width: 40, height: 40, borderRadius: 10,
+              width: 44, height: 44, borderRadius: 10,
               background: '#F1F5F9', border: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', fontSize: 18,
@@ -819,7 +820,7 @@ function App() {
             <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.1 }}>
               {paneTitle(pane)}
             </div>
-            <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2 }}>
+            <div className="pos-topbar-subtitle" style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2 }}>
               {cashierName || 'Cashier'} · {deviceId}
             </div>
           </div>
@@ -828,7 +829,7 @@ function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {/* Sales chip — quick at-a-glance shift KPI */}
           {shift.summary && (
-            <span style={{
+            <span className="pos-topbar-chip" style={{
               padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
               background: '#0F172A', color: '#fff',
             }}>
@@ -856,11 +857,12 @@ function App() {
           {/* Visible Lock button. Keeps shift + cart, requires PIN to
               re-open. Cmd/Ctrl+L also triggers this. */}
           <button
+            className="pos-header-btn"
             onClick={lockScreen}
             aria-label="Lock screen"
             title="Lock screen (Ctrl/Cmd+L)"
             style={{
-              width: 36, height: 36, borderRadius: 10,
+              width: 44, height: 44, borderRadius: 10,
               background: '#F1F5F9', border: '1px solid #E2E8F0',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', fontSize: 15,

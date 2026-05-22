@@ -148,11 +148,13 @@ export const z = {
 } as const;
 
 // ── Breakpoints ────────────────────────────────────────────────────────
-// POS is a tablet/desktop tool. Phone support is "doesn't break",
-// tablet portrait is "works comfortably", tablet landscape and up is
-// "designed for".
+// Tablet landscape is the primary design target. Phone support is
+// improved via index.css (menu-first stack, larger touch targets,
+// responsive ops/history panels) for backup / emergency use.
 
 export const bp = {
+  /** Phone — stacked sales layout. */
+  sm: 700,
   /** Tablet portrait (e.g. iPad held vertically). */
   md: 820,
   /** Tablet landscape / small desktop. */

@@ -35,7 +35,7 @@ export function ShiftHistoryPanel({ onClose }: Props) {
 
   return (
     <PanelShell title="Shift history" subtitle="Past shifts (last 60)" onClose={onClose}>
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 12, minHeight: 0, height: "100%" }}>
+      <div className="pos-shift-history" style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 12, minHeight: 0, height: "100%" }}>
         <div style={{ overflow: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
           {loading && <div style={{ color: "#64748B", fontSize: 13, padding: 8 }}>Loading…</div>}
           {err && <div style={{ color: "#B91C1C", fontSize: 13 }}>{err}</div>}

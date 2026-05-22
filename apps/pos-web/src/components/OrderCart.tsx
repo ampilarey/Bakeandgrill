@@ -872,6 +872,7 @@ function CartLine({
           }}>
             <button
               aria-label="Decrease quantity"
+              className="pos-qty-btn"
               disabled={isResumed}
               title={isResumed ? 'Cancel resume to edit items' : undefined}
               onClick={() =>
@@ -896,6 +897,7 @@ function CartLine({
             </span>
             <button
               aria-label="Increase quantity"
+              className="pos-qty-btn"
               disabled={isResumed}
               title={isResumed ? 'Cancel resume to edit items' : undefined}
               onClick={() =>
@@ -968,6 +970,7 @@ function CartLine({
           {quickNotes.length > 0 && (
             <button
               type="button"
+              className="pos-line-action-btn"
               aria-label={notes.length > 0 ? `Edit notes (${notes.length})` : 'Add a note'}
               disabled={isResumed}
               title={isResumed ? 'Cancel resume to edit items' : 'Add kitchen note'}
