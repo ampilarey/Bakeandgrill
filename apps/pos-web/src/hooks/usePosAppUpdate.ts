@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { registerSW } from "virtual:pwa-register";
 import { POS_BUILD_INFO } from "../posBuildInfo";
+import { purgePosCachesAndReload } from "../posHardReload";
 import {
   isNewerPosBuild,
   isPosUpdateBlocked,
@@ -10,7 +11,6 @@ import {
 
 const VERSION_URL = "/pos-version.json";
 const POLL_MS = 3 * 60 * 1000;
-const RELOAD_FALLBACK_MS = 800;
 
 export type ManualUpdateResult =
   | "current"
@@ -47,32 +47,6 @@ async function fetchServerVersion(): Promise<PosVersionInfo | null> {
   }
 }
 
-/**
- * Reload the POS shell. MUST NOT await service-worker activation first —
- * on iPad standalone PWAs `updateSW(true)` often never resolves, which
- * blocked every "Update Now" tap in production.
- */
-function hardReloadPosApp(
-  updateSW: ((reloadPage?: boolean) => Promise<void>) | null,
-): void {
-  if (updateSW) {
-    void Promise.race([
-      updateSW(true),
-      new Promise<void>((resolve) => window.setTimeout(resolve, 400)),
-    ]).catch(() => undefined);
-  }
-
-  if ("serviceWorker" in navigator) {
-    void navigator.serviceWorker.getRegistration("/pos/").then((reg) => {
-      reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
-    });
-  }
-
-  const target = new URL("/pos/", window.location.origin);
-  target.searchParams.set("_u", Date.now().toString(36));
-  window.location.assign(target.href);
-}
-
 export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState {
   const localBuild = POS_BUILD_INFO as PosVersionInfo;
   const [serverBuild, setServerBuild] = useState<PosVersionInfo | null>(null);
@@ -83,8 +57,7 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const dismissedBuildRef = useRef<string | null>(null);
   const [stickyBanner, setStickyBanner] = useState(false);
-  const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
-  const reloadTimerRef = useRef<number | null>(null);
+  const applyingRef = useRef(false);
 
   const versionMismatch =
     serverBuild !== null && isNewerPosBuild(serverBuild, localBuild);
@@ -98,8 +71,10 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
       const available = mismatch || sw;
       const key = server?.build ?? (sw ? "sw-waiting" : "");
       if (!available) {
-        setStickyBanner(false);
-        setBannerVisible(false);
+        if (!applyingRef.current) {
+          setStickyBanner(false);
+          setBannerVisible(false);
+        }
         return false;
       }
       if (force) {
@@ -136,7 +111,7 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
       const mismatch = server !== null && isNewerPosBuild(server, localBuild);
       const available = mismatch || sw;
       if (available) markUpdateAvailable(server, sw, force);
-      else if (!stickyBanner) setBannerVisible(false);
+      else if (!stickyBanner && !applyingRef.current) setBannerVisible(false);
 
       setLastCheckedAt(new Date().toISOString());
       return available;
@@ -150,7 +125,7 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
 
     let pollInterval: number | undefined;
 
-    const updateSW = registerSW({
+    registerSW({
       immediate: true,
       onNeedRefresh() {
         setSwWaiting(true);
@@ -176,11 +151,8 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
       },
     });
 
-    updateSWRef.current = updateSW;
-
     return () => {
       if (pollInterval !== undefined) window.clearInterval(pollInterval);
-      if (reloadTimerRef.current !== null) window.clearTimeout(reloadTimerRef.current);
     };
   }, []);
 
@@ -209,6 +181,12 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     setBannerVisible(false);
   }, [serverBuild, swWaiting]);
 
+  const runHardReload = useCallback(async (): Promise<void> => {
+    applyingRef.current = true;
+    setApplying(true);
+    await purgePosCachesAndReload();
+  }, []);
+
   const applyUpdate = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
     if (updateBlocked) {
       return {
@@ -217,35 +195,24 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
       };
     }
 
-    const server = await fetchServerVersion();
-    if (server) setServerBuild(server);
-    const sw = await readSwWaiting();
-
-    const hasUpdate =
-      (server !== null && isNewerPosBuild(server, localBuild)) || sw;
-
-    if (!hasUpdate) {
-      dismissBanner();
-      return { ok: false, message: "Already on the latest POS version." };
+    try {
+      await runHardReload();
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "Update failed — try Update app from the menu." };
     }
-
-    setApplying(true);
-    hardReloadPosApp(updateSWRef.current);
-    reloadTimerRef.current = window.setTimeout(() => {
-      hardReloadPosApp(updateSWRef.current);
-    }, RELOAD_FALLBACK_MS);
-
-    return { ok: true };
-  }, [updateBlocked, localBuild, readSwWaiting, dismissBanner]);
+  }, [updateBlocked, runHardReload]);
 
   const requestManualUpdate = useCallback(async (): Promise<ManualUpdateResult> => {
-    const available = await checkNow({ force: true });
-    if (!available) return "current";
+    await checkNow({ force: true });
     if (updateBlocked) return "blocked";
-    setApplying(true);
-    hardReloadPosApp(updateSWRef.current);
-    return "applying";
-  }, [checkNow, updateBlocked]);
+    try {
+      await runHardReload();
+      return "applying";
+    } catch {
+      return "available";
+    }
+  }, [checkNow, updateBlocked, runHardReload]);
 
   return {
     localBuild,
@@ -262,4 +229,4 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     dismissBanner,
     applyUpdate,
   };
-}
+};

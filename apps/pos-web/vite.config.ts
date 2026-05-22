@@ -50,9 +50,21 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/pos/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/pos-version\.json$/],
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json,webmanifest}'],
-        // Never cache API — POS is online-first for orders/payments.
-        runtimeCaching: [],
+        // Do NOT precache index.html — iPad PWAs kept serving the old shell
+        // from Workbox even after "Update Now". Hashed JS/CSS can stay cached.
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff2,webmanifest,json}'],
+        globIgnores: ['**/index.html'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pos-nav',
+              networkTimeoutSeconds: 8,
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 10 },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: false,

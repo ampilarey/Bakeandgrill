@@ -865,6 +865,7 @@ function App() {
         localBuild={POS_BUILD_INFO.build}
         onLater={posUpdate.dismissBanner}
         onUpdateNow={() => {
+          if (posUpdate.applying) return;
           void posUpdate.applyUpdate().then((res) => {
             if (!res.ok && res.message) order.flashError(res.message);
           });
@@ -1096,14 +1097,11 @@ function App() {
           }
           if (id === "check_update") {
             void posUpdate.requestManualUpdate().then((result) => {
-              if (result === "current") {
-                order.flashNotice("You're on the latest POS version.");
-              } else if (result === "blocked") {
-                order.flashError("Update ready — finish the current order or payment first, then tap Update Now.");
-              } else if (result === "available") {
-                order.flashError("Update ready — tap Update Now on the blue banner.");
+              if (result === "blocked") {
+                order.flashError("Finish the current order or payment first, then tap Update Now.");
+              } else if (result === "current" || result === "available") {
+                order.flashError("Could not reload — close the app from the home screen and reopen, or clear Safari cache for this site.");
               }
-              // "applying" navigates away — no toast needed
             });
             return;
           }
