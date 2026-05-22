@@ -82,4 +82,29 @@ class Receipt extends Model
 
         return 'sms';
     }
+
+    /**
+     * Ensure a public receipt token exists for an order (POS pay links, SMS bills).
+     */
+    public static function ensureForOrder(Order $order): self
+    {
+        $order->loadMissing('customer');
+        $receipt = self::firstOrNew(['order_id' => $order->id]);
+        $receipt->customer_id = $order->customer_id;
+        if ($phone = $order->customer?->phone) {
+            $receipt->channel = $receipt->channel ?? 'sms';
+            $receipt->recipient = $receipt->recipient ?? $phone;
+        } elseif ($email = $order->customer?->email) {
+            $receipt->channel = $receipt->channel ?? 'email';
+            $receipt->recipient = $receipt->recipient ?? $email;
+        }
+        $receipt->save();
+
+        return $receipt;
+    }
+
+    public function posPayPageUrl(): string
+    {
+        return rtrim((string) config('app.url'), '/') . '/pay/' . $this->token;
+    }
 }

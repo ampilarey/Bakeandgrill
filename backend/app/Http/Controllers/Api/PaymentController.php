@@ -164,6 +164,17 @@ class PaymentController extends Controller
             }
         }
 
+        $receiptToken = $request->query('receiptToken');
+        if (is_string($receiptToken) && $receiptToken !== '') {
+            $message = $state === 'CONFIRMED'
+                ? 'Payment received — thank you!'
+                : 'Payment was not completed. You can try again from the pay link.';
+
+            return redirect()
+                ->route('receipts.show', $receiptToken)
+                ->with($state === 'CONFIRMED' ? 'success' : 'error', $message);
+        }
+
         $baseUrl = config('frontend.order_status_url');
         if (empty($baseUrl)) {
             Log::error('BML return: frontend.order_status_url is not configured — using fallback URL');

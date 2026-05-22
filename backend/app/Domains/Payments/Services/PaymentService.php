@@ -39,7 +39,12 @@ class PaymentService
      * @param int|null $amountLaar Override amount in laari. Null = full order total.
      * @param string|null $idempotencyKey Caller-supplied idempotency key (for partial payments).
      */
-    public function initiateBmlPayment(Order $order, ?int $amountLaar = null, ?string $idempotencyKey = null): array
+    public function initiateBmlPayment(
+        Order $order,
+        ?int $amountLaar = null,
+        ?string $idempotencyKey = null,
+        ?string $returnUrl = null,
+    ): array
     {
         $amountLaar = $amountLaar ?? ($order->total_laar ?? (int) round($order->total * 100));
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
@@ -109,7 +114,7 @@ class PaymentService
 
         // Include orderId in the return URL so bmlReturn() can redirect to the right order page.
         // BML appends its own params (&state=...&transactionId=...) to whatever URL we provide.
-        $bmlReturnUrl = rtrim(config('bml.return_url'), '/') . '?orderId=' . $order->id;
+        $bmlReturnUrl = $returnUrl ?? (rtrim((string) config('bml.return_url'), '/') . '?orderId=' . $order->id);
 
         $result = $this->bml->createPayment(
             $payment->amount_laar,
@@ -160,13 +165,17 @@ class PaymentService
      * so two concurrent requests cannot both pass the "amount <= remaining" check
      * and together exceed the order total.
      */
-    public function initiatePartialBmlPayment(Order $order, int $amountLaar, string $idempotencyKey): array
-    {
+    public function initiatePartialBmlPayment(
+        Order $order,
+        int $amountLaar,
+        string $idempotencyKey,
+        ?string $returnUrl = null,
+    ): array {
         if ($amountLaar <= 0) {
             throw new \InvalidArgumentException('Amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($order, $amountLaar, $idempotencyKey): array {
+        return DB::transaction(function () use ($order, $amountLaar, $idempotencyKey, $returnUrl): array {
             // Lock the order row for the duration of this transaction so a concurrent
             // partial-payment request cannot read the same remaining balance.
             $locked = Order::where('id', $order->id)->lockForUpdate()->firstOrFail();
@@ -179,7 +188,7 @@ class PaymentService
                 );
             }
 
-            $result = $this->initiateBmlPayment($locked, $amountLaar, 'partial:' . $idempotencyKey);
+            $result = $this->initiateBmlPayment($locked, $amountLaar, 'partial:' . $idempotencyKey, $returnUrl);
 
             return array_merge($result, [
                 'remaining_balance_before_laar' => $remainingLaar,

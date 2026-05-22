@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImageThumbController;
 use App\Http\Controllers\InvoicePageController;
+use App\Http\Controllers\PosPayPageController;
 use App\Http\Controllers\ReceiptPageController;
 use Illuminate\Support\Facades\Route;
 
@@ -81,6 +82,12 @@ Route::get('/pre-order/{id}/confirmation', [PreOrderController::class, 'confirma
 Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])->name('receipts.show');
 Route::get('/receipts/{token}/pdf', [ReceiptPageController::class, 'pdf'])->name('receipts.pdf');
 Route::post('/receipts/{token}/feedback', [ReceiptPageController::class, 'feedback'])->name('receipts.feedback');
+
+// POS pay page — order review + terms before BML redirect (token = receipt token)
+Route::get('/pay/{token}', [PosPayPageController::class, 'show'])->name('pos-pay.show');
+Route::post('/pay/{token}', [PosPayPageController::class, 'pay'])
+    ->middleware('throttle:10,1')
+    ->name('pos-pay.pay');
 
 // Invoice public pages (no auth — token-gated)
 Route::get('/invoices/{token}', [InvoicePageController::class, 'show'])->name('invoices.show');

@@ -18,6 +18,7 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Receipt;
 use App\Services\AuditLogService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
@@ -513,9 +514,12 @@ class OrderController extends Controller
     /**
      * POST /api/orders/{id}/send-pay-link
      *
-     * Mints a fresh BML Connect payment URL for the order's remaining
-     * balance and SMSes it to the customer. Powers the "Send pay link"
-     * button on the POS Open Tickets row.
+     * Mints a receipt pay-page URL and SMSes it to the customer. Powers the
+     * "Send pay link" button on the POS Open Tickets row.
+     *
+     * The SMS link opens GET /pay/{token} where the customer reviews the
+     * order, agrees to terms, and only then is redirected to BML Connect.
+     * (Online orders use the React checkout app instead.)
      *
      * Always uses the live remaining balance so a partial cash payment
      * at the counter shortens the link total — customer pays only the
@@ -524,8 +528,9 @@ class OrderController extends Controller
      * No-ops cleanly if:
      *   - order is already paid (returns 422 — cashier sees "already paid")
      *   - customer has no phone
-     *   - BML credentials missing (returns 503 — cashier falls back to
-     *     "pay at pickup")
+     *
+     * BML is only called when the customer taps Pay on the pay page. If BML
+     * credentials are missing at that point, they see an error on /pay/{token}.
      */
     public function sendPayLink(Request $request, int $id): JsonResponse
     {
@@ -553,66 +558,25 @@ class OrderController extends Controller
             return response()->json(['message' => 'Nothing left to charge.'], 422);
         }
 
-        // Route the pay link through PaymentService so a real Payment row
-        // is created (with local_id + amount_laar). Without this, the BML
-        // webhook had no record to confirm against — orders stayed UNPAID
-        // even after the customer settled, OrderPaid never fired, and
-        // shift tender totals / loyalty / inventory listeners didn't run.
-        //
-        // initiatePartialBmlPayment row-locks the order, double-checks the
-        // remaining balance, persists a Payment, and calls BML in one
-        // transaction so a concurrent /payments call can't both pass the
-        // "amount <= remaining" check.
-        //
-        // Idempotency key suffixed with seconds-precision timestamp so a
-        // cashier re-sending a link after an expired one gets a fresh
-        // Payment row and a fresh URL (the customer always taps the latest
-        // SMS link).
+        // Mint a receipt token and send the customer to our pay page first —
+        // they review the order, agree to terms, then we redirect to BML.
+        // (Online ordering uses the React checkout app; POS uses this Blade flow.)
+        $receipt = Receipt::ensureForOrder($order);
+        $payPageUrl = $receipt->posPayPageUrl();
+
         $idempotencyKey = 'paylink:' . $order->id . ':' . now()->format('YmdHis');
-
-        try {
-            $session = $paymentService->initiatePartialBmlPayment(
-                $order,
-                $remainingLaar,
-                $idempotencyKey,
-            );
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('sendPayLink: BML initiate failed', [
-                'order_id' => $order->id,
-                'error' => $e->getMessage(),
-            ]);
-            return response()->json([
-                'message' => "Couldn't generate a pay link right now. Tell the customer to pay at pickup.",
-            ], 503);
-        }
-
-        $localId = $session['local_id'] ?? $idempotencyKey;
 
         try {
             $orderNum = $order->order_number ?? "#{$order->id}";
             $amount = number_format($remainingLaar / 100, 2);
-            // First-name only — keeps GSM-7 segment count low and
-            // matches the casual tone of the other order SMS messages.
-            // Falls back to a generic greeting when we don't have a
-            // name on file (phone-only customer).
             $rawName = trim((string) ($order->customer?->name ?? ''));
             $firstName = $rawName !== '' ? trim(strtok($rawName, ' ')) : '';
             $greeting = $firstName !== '' ? "Hi {$firstName}!" : 'Hi!';
-            // Multi-line message — Dhiraagu segments on raw character
-            // count, so newlines cost 1 char each but read much
-            // better than one giant run-on sentence on the phone.
-            // Each line has one job:
-            //   1. greeting + what this SMS is for
-            //   2. the amount (visually scannable, large in iOS)
-            //   3. the order number for the customer's reference
-            //   4. the actual link
-            //   5. thank-you closer (drops to 4 lines if we want to
-            //      trim a segment later — easy edit)
             $lines = [
                 "{$greeting} Your Bake & Grill bill is ready to pay.",
                 "Amount: MVR {$amount}",
                 "Order: {$orderNum}",
-                "Tap to pay securely: {$session['payment_url']}",
+                "View your order & pay: {$payPageUrl}",
                 'Thanks — see you soon!',
             ];
             app(SmsService::class)->send(new SmsMessage(
@@ -622,9 +586,7 @@ class OrderController extends Controller
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,
-                // Suffix with the local id so re-sending a link generates a
-                // new SMS each time (the customer needs the latest URL).
-                idempotencyKey: 'order:paylink:' . $order->id . ':' . $localId,
+                idempotencyKey: 'order:paylink:' . $order->id . ':' . $idempotencyKey,
             ));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('sendPayLink: SMS failed', [
@@ -633,7 +595,7 @@ class OrderController extends Controller
             ]);
             return response()->json([
                 'message' => 'Pay link created but SMS failed. Read it to the customer manually.',
-                'payment_url' => $session['payment_url'],
+                'pay_page_url' => $payPageUrl,
             ], 502);
         }
 
@@ -643,8 +605,7 @@ class OrderController extends Controller
             $order->id,
             [],
             [
-                'payment_url' => $session['payment_url'],
-                'payment_id' => $session['payment_id'] ?? null,
+                'pay_page_url' => $payPageUrl,
                 'amount_laar' => $remainingLaar,
                 'sms_to' => $phone,
             ],
@@ -656,6 +617,7 @@ class OrderController extends Controller
             'message' => 'Pay link sent.',
             'amount' => $remainingLaar / 100,
             'sent_to' => $phone,
+            'pay_page_url' => $payPageUrl,
         ]);
     }
 
