@@ -23,10 +23,16 @@ class ReportsService
     /**
      * Sales summary totals and payment breakdown for a date range.
      */
-    public function salesSummary(Carbon $from, Carbon $to): array
+    public function salesSummary(Carbon $from, Carbon $to, ?int $userId = null, ?int $shiftId = null, ?int $deviceId = null): array
     {
-        $agg = Order::whereBetween('created_at', [$from, $to])
+        $orderBase = Order::query()
+            ->whereBetween('created_at', [$from, $to])
             ->where('status', 'completed')
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
+            ->when($deviceId, fn ($q) => $q->where('device_id', $deviceId));
+
+        $agg = (clone $orderBase)
             ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(total),0) as total')
             ->first();
 
@@ -40,6 +46,14 @@ class ReportsService
 
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', ['paid', 'completed'])
+            ->when($userId || $shiftId || $deviceId, function ($q) use ($userId, $shiftId, $deviceId) {
+                $q->whereHas('order', function ($oq) use ($userId, $shiftId, $deviceId) {
+                    $oq->where('status', 'completed')
+                        ->when($userId, fn ($q2) => $q2->where('user_id', $userId))
+                        ->when($shiftId, fn ($q2) => $q2->where('shift_id', $shiftId))
+                        ->when($deviceId, fn ($q2) => $q2->where('device_id', $deviceId));
+                });
+            })
             ->select('method', DB::raw('SUM(amount) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -47,6 +61,11 @@ class ReportsService
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
+            'filters' => array_filter([
+                'user_id' => $userId,
+                'shift_id' => $shiftId,
+                'device_id' => $deviceId,
+            ]),
             'totals' => $totals,
             'payments' => $payments,
         ];

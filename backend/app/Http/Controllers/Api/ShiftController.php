@@ -87,7 +87,14 @@ class ShiftController extends Controller
      */
     public function summary(Request $request, int $id)
     {
-        $shift = Shift::where('user_id', $request->user()?->id)->findOrFail($id);
+        $user = $request->user();
+        $canViewAll = app(PermissionService::class)->hasPermission($user, 'shifts.view_all_history');
+
+        $shiftQuery = Shift::query()->where('id', $id);
+        if (!$canViewAll) {
+            $shiftQuery->where('user_id', $user?->id);
+        }
+        $shift = $shiftQuery->firstOrFail();
 
         $cash = $this->expectedCashFor($shift);
         $openingCash = $cash['opening'];
@@ -160,7 +167,78 @@ class ShiftController extends Controller
             $query->where('user_id', $user?->id);
         }
 
-        return response()->json(['shifts' => $query->get()]);
+        return response()->json(['shifts' => $query->with(['user:id,name', 'device:id,name,identifier'])->get()]);
+    }
+
+    /**
+     * All currently open shifts (admin oversight).
+     */
+    public function live(Request $request)
+    {
+        $user = $request->user();
+        if (!app(PermissionService::class)->hasPermission($user, 'shifts.view_all_history')) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $shifts = Shift::query()
+            ->whereNull('closed_at')
+            ->with(['user:id,name', 'device:id,name,identifier'])
+            ->orderByDesc('opened_at')
+            ->get();
+
+        return response()->json(['shifts' => $shifts]);
+    }
+
+    /**
+     * Owner/manager force-close a stuck shift.
+     */
+    public function forceClose(Request $request, int $id)
+    {
+        $actor = $request->user();
+        if (!app(PermissionService::class)->hasPermission($actor, 'shifts.view_all_history')) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $shift = DB::transaction(function () use ($id, $validated, $actor) {
+            $shift = Shift::lockForUpdate()->findOrFail($id);
+
+            if ($shift->closed_at) {
+                return null;
+            }
+
+            $cash = $this->expectedCashFor($shift);
+            $expectedCash = $cash['expected'];
+
+            $shift->update([
+                'closed_at' => now(),
+                'closing_cash' => $expectedCash,
+                'expected_cash' => $expectedCash,
+                'variance' => 0,
+                'notes' => trim(($validated['notes'] ?? '') . ' [Force closed by ' . ($actor->name ?? 'admin') . ']'),
+            ]);
+
+            return $shift;
+        });
+
+        if ($shift === null) {
+            return response()->json(['message' => 'Shift already closed.'], 422);
+        }
+
+        app(AuditLogService::class)->log(
+            'shift.force_closed',
+            'Shift',
+            $shift->id,
+            [],
+            $shift->fresh()->toArray(),
+            ['forced_by' => $actor->id],
+            $request,
+        );
+
+        return response()->json(['shift' => $shift->fresh(), 'message' => 'Shift force-closed.']);
     }
 
     public function open(OpenShiftRequest $request)

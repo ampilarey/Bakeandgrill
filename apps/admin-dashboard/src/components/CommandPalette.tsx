@@ -22,6 +22,7 @@ type StaticLink = Omit<Result, 'action'> & {
 const STATIC_LINKS: StaticLink[] = [
   { id: 's-dashboard',   label: 'Dashboard',           icon: '🏠', sub: 'Overview',              permission: 'dashboard.view' },
   { id: 's-orders',      label: 'Orders',              icon: '📋', sub: 'Manage orders',         permission: 'orders.view' },
+  { id: 's-activity',    label: 'POS Activity',        icon: '⚡', sub: 'Audit log & POS events', permission: 'reports.view' },
   { id: 's-kds',         label: 'Kitchen Display',     icon: '👨‍🍳', sub: 'KDS screen',           permission: 'orders.view' },
   { id: 's-menu',        label: 'Menu',                icon: '🍽️', sub: 'Manage menu items',     permission: 'menu.view' },
   { id: 's-staff',       label: 'Staff',               icon: '👥', sub: 'Manage team',           permission: 'staff.view' },
@@ -49,7 +50,7 @@ const STATIC_LINKS: StaticLink[] = [
 ];
 
 const PAGE_ROUTES: Record<string, string> = {
-  's-dashboard': '/dashboard', 's-orders': '/orders', 's-kds': '/kds',
+  's-dashboard': '/dashboard', 's-orders': '/orders', 's-activity': '/activity', 's-kds': '/kds',
   's-menu': '/menu', 's-staff': '/staff', 's-inventory': '/inventory',
   's-reports': '/reports', 's-invoices': '/invoices', 's-expenses': '/expenses',
   's-customers': '/customers', 's-loyalty': '/loyalty', 's-promotions': '/promotions',

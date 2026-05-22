@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
   getUserPermissions, updateUserPermissions,
@@ -495,6 +496,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
 
 export function StaffPage() {
     usePageTitle('Staff');
+  const navigate = useNavigate();
   const { can } = useCurrentUserPermissions();
   // Schedules tab calls /admin/schedules which is gated on staff.manage
   // server-side. Surfacing the tab to viewers who only have staff.view
@@ -655,7 +657,10 @@ export function StaffPage() {
                         </Btn>
                       )}
                       {m.role !== 'owner' && can('roles_permissions.manage') && (
-                        <Btn small variant="ghost" onClick={() => setPermissionsUser(m)}>Permissions</Btn>
+                        <>
+                          <Btn small variant="ghost" onClick={() => setPermissionsUser(m)}>Permissions</Btn>
+                          <Btn small variant="ghost" onClick={() => navigate(`/settings?tab=permissions&user=${m.id}`)}>POS perms →</Btn>
+                        </>
                       )}
                       {canManageStaff && (
                         <Btn small variant="ghost" onClick={() => setNotifPrefsUser(m)}>SMS Prefs</Btn>

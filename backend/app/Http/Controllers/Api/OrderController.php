@@ -66,6 +66,9 @@ class OrderController extends Controller
 
         $query = Order::with([
                 'customer:id,name,phone',
+                'user:id,name',
+                'device:id,name,identifier',
+                'shift:id,opened_at',
                 'items:id,order_id,item_name,quantity,unit_price,total_price',
                 // Eager-load the table so the POS Active orders search
                 // can match on table name (e.g. cashier types "T4"
@@ -89,6 +92,14 @@ class OrderController extends Controller
 
         if ($request->filled('type')) {
             $query->where('type', $request->input('type'));
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', (int) $request->input('user_id'));
+        }
+
+        if ($request->filled('device_id')) {
+            $query->where('device_id', (int) $request->input('device_id'));
         }
 
         if ($request->filled('date')) {
@@ -311,7 +322,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $order = Order::with(['items.modifiers', 'payments', 'customer', 'table'])
+        $order = Order::with(['items.modifiers', 'payments', 'customer', 'table', 'user:id,name', 'device:id,name,identifier', 'shift:id,opened_at'])
             ->findOrFail($id);
 
         return response()->json(['order' => $order]);

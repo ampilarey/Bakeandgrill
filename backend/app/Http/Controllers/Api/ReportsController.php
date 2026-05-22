@@ -21,8 +21,15 @@ class ReportsController extends Controller
     public function salesSummary(Request $request)
     {
         [$from, $to] = $this->parseRange($request);
+        $filters = $this->parsePosFilters($request);
 
-        return response()->json($this->reports->salesSummary($from, $to));
+        return response()->json($this->reports->salesSummary(
+            $from,
+            $to,
+            $filters['user_id'],
+            $filters['shift_id'],
+            $filters['device_id'],
+        ));
     }
 
     public function salesSummaryCsv(Request $request)
@@ -192,6 +199,16 @@ class ReportsController extends Controller
         }
 
         return [$from, $to];
+    }
+
+    /** @return array{user_id: ?int, shift_id: ?int, device_id: ?int} */
+    private function parsePosFilters(Request $request): array
+    {
+        return [
+            'user_id' => $request->filled('user_id') ? (int) $request->input('user_id') : null,
+            'shift_id' => $request->filled('shift_id') ? (int) $request->input('shift_id') : null,
+            'device_id' => $request->filled('device_id') ? (int) $request->input('device_id') : null,
+        ];
     }
 
     private function csvResponse(string $filename, array $rows)

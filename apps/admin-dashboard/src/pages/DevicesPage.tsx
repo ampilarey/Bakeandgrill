@@ -209,21 +209,29 @@ export default function DevicesPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Name', 'Type', 'Status', 'Last Seen', 'Actions'].map(h => (
+              {['Name', 'Type', 'Status', 'Last Cashier', 'Open Shift', 'Last Seen', 'Actions'].map(h => (
                 <th key={h} style={TH}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
             ) : approved.length === 0 ? (
-              <tr><td colSpan={5}><EmptyState message="No approved devices yet." /></td></tr>
+              <tr><td colSpan={7}><EmptyState message="No approved devices yet." /></td></tr>
             ) : approved.map(d => (
               <tr key={d.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>{d.name}</td>
                 <td style={TD}><Badge color="blue">{d.type?.toUpperCase()}</Badge></td>
                 <td style={TD}><Badge color={d.is_active ? 'green' : 'gray'}>{d.is_active ? 'Active' : 'Disabled'}</Badge></td>
+                <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{d.user?.name ?? d.registered_by ?? '—'}</td>
+                <td style={TD}>
+                  {d.open_shift_id ? (
+                    <Badge color="green">Shift #{d.open_shift_id}</Badge>
+                  ) : (
+                    <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>
+                  )}
+                </td>
                 <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>
                   {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}
                 </td>

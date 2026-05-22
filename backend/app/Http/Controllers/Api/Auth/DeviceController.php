@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Device;
+use App\Models\Shift;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 
@@ -163,8 +164,24 @@ class DeviceController extends Controller
      */
     public function index()
     {
+        $openShiftIds = Shift::whereNull('closed_at')->pluck('id', 'device_id');
+
+        $devices = Device::with('user:id,name')
+            ->orderBy('name')
+            ->get()
+            ->map(function (Device $device) use ($openShiftIds) {
+                $data = $device->toArray();
+                $openShiftId = $openShiftIds->get($device->id);
+                if ($openShiftId) {
+                    $data['open_shift_id'] = $openShiftId;
+                }
+                $data['registered_by'] = $device->user?->name;
+
+                return $data;
+            });
+
         return response()->json([
-            'data' => Device::orderBy('name')->get(),
+            'data' => $devices,
         ]);
     }
 

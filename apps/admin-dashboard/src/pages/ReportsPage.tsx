@@ -3,6 +3,7 @@ import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
   getPromotionReport, getLoyaltyReport,
+  fetchPosStaffOptions, fetchShiftHistory, fetchDevices,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport,
@@ -62,6 +63,12 @@ export function ReportsPage() {
   const [tab, setTab]         = useState<Tab>('Summary');
   const [from, setFrom]       = useState(daysAgo(7));
   const [to, setTo]           = useState(today());
+  const [cashierId, setCashierId] = useState('');
+  const [shiftId, setShiftId]     = useState('');
+  const [deviceId, setDeviceId]   = useState('');
+  const [staffOptions, setStaffOptions] = useState<{ id: number; name: string }[]>([]);
+  const [shiftOptions, setShiftOptions] = useState<{ id: number; label: string }[]>([]);
+  const [deviceOptions, setDeviceOptions] = useState<{ id: number; name: string }[]>([]);
 
   const [summary,   setSummary]   = useState<SalesSummary | null>(null);
   const [breakdown, setBreakdown] = useState<SalesBreakdown | null>(null);
@@ -80,7 +87,12 @@ export function ReportsPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      if (tab === 'Summary')    setSummary(await fetchSalesSummary({ from, to }));
+      const posFilters = {
+        user_id: cashierId ? Number(cashierId) : undefined,
+        shift_id: shiftId ? Number(shiftId) : undefined,
+        device_id: deviceId ? Number(deviceId) : undefined,
+      };
+      if (tab === 'Summary')    setSummary(await fetchSalesSummary({ from, to, ...posFilters }));
       if (tab === 'Breakdown')  setBreakdown(await getSalesBreakdown({ from, to }));
       if (tab === 'Tax')        setTaxReport(await getTaxReport({ from, to }));
       if (tab === 'X / Z Report') {
@@ -100,7 +112,18 @@ export function ReportsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [tab, from, to]);
+  useEffect(() => { void load(); }, [tab, from, to, cashierId, shiftId, deviceId]);
+
+  useEffect(() => {
+    fetchPosStaffOptions().then((r) => setStaffOptions(r.staff ?? [])).catch(() => undefined);
+    fetchShiftHistory().then((r) => {
+      setShiftOptions((r.shifts ?? []).map((s) => ({
+        id: s.id,
+        label: `#${s.id} · ${s.user?.name ?? 'Unknown'} · ${new Date(s.opened_at).toLocaleDateString()}`,
+      })));
+    }).catch(() => undefined);
+    fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
+  }, []);
 
   const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty';
 
@@ -150,6 +173,31 @@ export function ReportsPage() {
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
             <DateInput label="From" value={from} onChange={setFrom} />
             <DateInput label="To"   value={to}   onChange={setTo} />
+            {tab === 'Summary' && (
+              <>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#6B5D4F' }}>
+                  Cashier
+                  <select value={cashierId} onChange={(e) => setCashierId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit', fontSize: 13 }}>
+                    <option value="">All</option>
+                    {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#6B5D4F' }}>
+                  Shift
+                  <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit', fontSize: 13, maxWidth: 220 }}>
+                    <option value="">All</option>
+                    {shiftOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#6B5D4F' }}>
+                  Station
+                  <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit', fontSize: 13 }}>
+                    <option value="">All</option>
+                    {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </label>
+              </>
+            )}
             <div style={{ display: 'flex', gap: 8 }}>
               {[{ label: 'Today', days: 0 }, { label: '7 days', days: 7 }, { label: '30 days', days: 30 }, { label: '90 days', days: 90 }].map(({ label, days }) => (
                 <Btn key={label} small variant="secondary" onClick={() => { setFrom(daysAgo(days)); setTo(today()); }}>

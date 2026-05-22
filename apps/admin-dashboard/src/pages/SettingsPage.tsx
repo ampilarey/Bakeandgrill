@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Globe, Shield, Link2, Bell, Truck, ShoppingBag } from 'lucide-react';
 import { Button, Card } from '../components/ui';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
@@ -538,11 +538,23 @@ function DeliverySettings() {
 
 // ─── Main SettingsPage ────────────────────────────────────────────────────────
 export function SettingsPage() {
-  const [active, setActive] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const userParam = searchParams.get('user');
+  const initialUserId = userParam ? Number(userParam) : null;
+  const [active, setActive] = useState<string | null>(
+    tabParam && HUB_CARDS.some((c) => c.id === tabParam) ? tabParam : null,
+  );
 
   useEffect(() => {
     document.title = 'Settings — Bake & Grill Admin';
   }, []);
+
+  useEffect(() => {
+    if (tabParam && HUB_CARDS.some((c) => c.id === tabParam)) {
+      setActive(tabParam);
+    }
+  }, [tabParam]);
 
   if (active) {
     const card = HUB_CARDS.find((c) => c.id === active) ?? HUB_CARDS[0];
@@ -568,7 +580,7 @@ export function SettingsPage() {
         </div>
 
         {active === 'website'        && <WebsiteSettings />}
-        {active === 'permissions'    && <PermissionsSettings />}
+        {active === 'permissions'    && <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />}
         {active === 'notifications'  && <NotificationsSettings />}
         {active === 'integrations'   && <IntegrationsSettings />}
         {active === 'ordering'       && <OnlineOrderingSettings />}

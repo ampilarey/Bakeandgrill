@@ -5,6 +5,7 @@ import { ToastProvider } from './components/ui';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { CommandPalette } from './components/CommandPalette';
+import { can as userCan } from './components/navConfig';
 
 const OrdersPage              = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const KDSPage                 = lazy(() => import('./pages/KDSPage').then((m) => ({ default: m.KDSPage })));
@@ -35,6 +36,7 @@ const WasteLogsPage           = lazy(() => import('./pages/WasteLogsPage'));
 const CustomersPage           = lazy(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
 const InventoryPage           = lazy(() => import('./pages/InventoryPage'));
 const TablesPage              = lazy(() => import('./pages/TablesPage'));
+const ActivityPage            = lazy(() => import('./pages/ActivityPage'));
 const ShiftsPage              = lazy(() => import('./pages/ShiftsPage'));
 const TimeClockPage           = lazy(() => import('./pages/TimeClockPage'));
 const DevicesPage             = lazy(() => import('./pages/DevicesPage'));
@@ -77,7 +79,7 @@ function PermissionGuard({
   if (!user) return <Navigate to="/login" replace />;
   // Owner bypasses all permission checks
   if (user.role === 'owner') return <>{children}</>;
-  if (!user.permissions?.includes(permission)) {
+  if (!userCan(user, permission)) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
         <div style={{ fontSize: 48 }}>🔒</div>
@@ -174,6 +176,11 @@ export default function App() {
                 <Route path="orders" element={
                   <PermissionGuard user={user} permission="orders.view">
                     <OrdersPage />
+                  </PermissionGuard>
+                } />
+                <Route path="activity" element={
+                  <PermissionGuard user={user} permission="reports.view">
+                    <ActivityPage />
                   </PermissionGuard>
                 } />
                 <Route path="kds" element={

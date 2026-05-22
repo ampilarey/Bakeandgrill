@@ -262,10 +262,16 @@ export type SalesSummary = {
 export async function fetchSalesSummary(params?: {
   from?: string;
   to?: string;
+  user_id?: number;
+  shift_id?: number;
+  device_id?: number;
 }): Promise<SalesSummary> {
   const qs = new URLSearchParams();
   if (params?.from) qs.set('from', params.from);
   if (params?.to) qs.set('to', params.to);
+  if (params?.user_id) qs.set('user_id', String(params.user_id));
+  if (params?.shift_id) qs.set('shift_id', String(params.shift_id));
+  if (params?.device_id) qs.set('device_id', String(params.device_id));
   const res = await req<{
     from: string;
     to: string;

@@ -306,9 +306,11 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::middleware('permission:finance.cash_manage')->group(function () {
         Route::get('/shifts/current', [ShiftController::class, 'current']);
         Route::get('/shifts/history', [ShiftController::class, 'history']);
+        Route::get('/shifts/live', [ShiftController::class, 'live']);
         Route::get('/shifts/{id}/summary', [ShiftController::class, 'summary']);
         Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('throttle:5,1');
         Route::post('/shifts/{id}/close', [ShiftController::class, 'close'])->middleware('throttle:5,1');
+        Route::post('/shifts/{id}/force-close', [ShiftController::class, 'forceClose'])->middleware('throttle:5,1');
         Route::post('/shifts/{id}/cash-movements', [CashMovementController::class, 'store'])
             ->middleware(['device.active', 'throttle:30,1']);
     });
@@ -842,6 +844,14 @@ Route::middleware(['auth:sanctum', 'permission:roles_permissions.manage'])->grou
     Route::put('/roles/{slug}/permissions', [App\Http\Controllers\Api\RolePermissionController::class, 'update']);
     Route::get('/users/{user}/permissions', [App\Http\Controllers\Api\PermissionController::class, 'show']);
     Route::put('/users/{user}/permissions', [App\Http\Controllers\Api\PermissionController::class, 'update']);
+});
+
+// ─── POS Admin oversight (reports.view) ──────────────────────────────────────
+Route::middleware(['auth:sanctum', 'permission:reports.view'])->prefix('admin')->group(function () {
+    Route::get('/pos/overview', [App\Http\Controllers\Api\PosAdminController::class, 'overview']);
+    Route::get('/pos/staff-options', [App\Http\Controllers\Api\PosAdminController::class, 'staffOptions']);
+    Route::get('/audit-logs', [App\Http\Controllers\Api\AuditLogController::class, 'index']);
+    Route::get('/audit-logs/actions', [App\Http\Controllers\Api\AuditLogController::class, 'actions']);
 });
 
 // ─── System Health ─────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import {
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link, ShoppingBag, Menu,
+  Printer, Link, ShoppingBag, Menu, Zap,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -32,10 +32,11 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard.view' },
       { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view'    },
+      { to: '/activity',  icon: Zap,             label: 'POS Activity', permission: 'reports.view' },
       { to: '/kds',       icon: ChefHat,         label: 'Kitchen',   permission: 'orders.view'    },
       { to: '/tables',    icon: LayoutGrid,      label: 'Tables',    permission: 'orders.view'    },
       { to: '/delivery',  icon: Truck,           label: 'Delivery',  permission: 'delivery.view'  },
-      { to: '/shifts',    icon: Wallet,          label: 'Shifts',    permission: 'orders.view'    },
+      { to: '/shifts',    icon: Wallet,          label: 'Shifts',    permission: 'shifts.view_own_history'    },
     ],
   },
   {
@@ -61,7 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/gift-cards',   icon: Gift,          label: 'Gift Cards',   permission: 'promotions.manage' },
       { to: '/referrals',    icon: Share2,        label: 'Referrals',    permission: 'customers.manage'  },
       { to: '/promotions',   icon: Target,        label: 'Promotions',   permission: 'promotions.manage' },
-      { to: '/sms',          icon: MessageSquare, label: 'SMS',          permission: 'integrations.sms'  },
+      { to: '/sms',          icon: MessageSquare, label: 'SMS',          permission: 'sms_marketing.view'  },
     ],
   },
   {
@@ -86,10 +87,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/settings',        icon: Settings,    label: 'Settings',           permission: 'website.manage'        },
       { to: '/online-ordering', icon: ShoppingBag, label: 'Online Ordering',    permission: 'settings.update'       },
       { to: '/delivery-settings', icon: Truck,     label: 'Delivery Settings',  permission: 'settings.update'       },
-      { to: '/devices',         icon: Monitor,     label: 'Devices',         permission: 'devices.manage'        },
-      { to: '/print-jobs',      icon: Printer,     label: 'Print Queue',     permission: 'devices.manage'        },
-      { to: '/webhooks',        icon: Webhook,     label: 'Webhooks',        permission: 'integrations.webhooks' },
-      { to: '/xero',            icon: Link,        label: 'Xero',            permission: 'integrations.xero'     },
+      { to: '/devices',         icon: Monitor,     label: 'Devices',         permission: 'devices.view'        },
+      { to: '/print-jobs',      icon: Printer,     label: 'Print Queue',     permission: 'devices.view'        },
+      { to: '/webhooks',        icon: Webhook,     label: 'Webhooks',        permission: 'webhooks.manage' },
+      { to: '/xero',            icon: Link,        label: 'Xero',            permission: 'xero.manage'     },
     ],
   },
 ];
@@ -104,9 +105,26 @@ export const BOTTOM_TABS: NavItem[] = [
   { to: '#more',     icon: Menu,            label: 'More'                                },
 ];
 
-/** Returns true if the given user has the specified permission. */
+/** Returns true if the given user has the specified permission (with legacy alias support). */
+const PERM_ALIASES: Record<string, string[]> = {
+  'devices.manage': ['devices.approve', 'devices.view'],
+  'devices.view': ['devices.manage', 'devices.approve'],
+  'integrations.sms': ['sms_marketing.view', 'sms_marketing.manage'],
+  'sms_marketing.view': ['integrations.sms'],
+  'website.manage': ['settings.manage', 'roles_permissions.manage'],
+  'roles_permissions.manage': ['website.manage'],
+  'shifts.view_own_history': ['finance.cash_manage'],
+  'shifts.view_all_history': ['reports.view', 'finance.cash_manage'],
+  'reports.view': ['reports.basic'],
+};
+
 export function can(user: StaffUser, permission?: string): boolean {
   if (!permission) return true;
   if (user.role === 'owner') return true;
-  return user.permissions?.includes(permission) ?? false;
+  const perms = user.permissions ?? [];
+  if (perms.includes(permission)) return true;
+  for (const alias of PERM_ALIASES[permission] ?? []) {
+    if (perms.includes(alias)) return true;
+  }
+  return false;
 }

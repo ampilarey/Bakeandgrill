@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, Package, Play, Receipt, ShoppingBag, Trash2, TrendingUp, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, Monitor, Package, Play, Receipt, ShoppingBag, Trash2, TrendingUp, Users } from 'lucide-react';
 import { playChime } from '../utils/audio';
 import { pushNotification } from '../utils/notifications';
 import {
@@ -9,13 +10,17 @@ import {
   getDailySummary,
   getSystemHealth,
   kdsStart,
+  fetchPosOverview,
+  formatAuditAction,
   type InventoryItem,
   type Order,
   type Shift,
   type SystemHealth,
+  type PosOverview,
 } from '../api';
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -202,6 +207,9 @@ function localToday() {
 export function DashboardPage() {
   usePageTitle('Dashboard');
   const now = useNow();
+  const navigate = useNavigate();
+  const { can } = useCurrentUserPermissions();
+  const showPosOverview = can('reports.view');
   const [summaryDate, setSummaryDate] = useState(localToday);
 
   const [summary, setSummary]       = useState<DailySummary | null>(null);
@@ -300,6 +308,21 @@ export function DashboardPage() {
       .catch(() => { /* non-blocking — requires website.manage permission */ });
   }, []);
 
+  const [posOverview, setPosOverview] = useState<PosOverview | null>(null);
+  const [posOverviewErr, setPosOverviewErr] = useState('');
+
+  useEffect(() => {
+    if (!showPosOverview) return;
+    const load = () => {
+      fetchPosOverview()
+        .then(setPosOverview)
+        .catch((e: Error) => setPosOverviewErr(e.message));
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
+  }, [showPosOverview]);
+
 
   // ── derived ──
   const pendingCount   = activeOrders.filter((o) => o.status === 'pending').length;
@@ -334,6 +357,78 @@ export function DashboardPage() {
 
       {/* ── Shift banner ── */}
       {shiftErr ? <ErrorMsg message={shiftErr} /> : <ShiftBanner shift={shift} />}
+
+      {showPosOverview && (
+        <>
+          <div style={{ height: 20 }} />
+          <SectionLabel>POS live</SectionLabel>
+          {posOverviewErr && <ErrorMsg message={posOverviewErr} />}
+          {posOverview && (
+            <>
+              <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14, marginBottom: 16 }}>
+                <StatCard label="Open Shifts" value={String(posOverview.open_shifts_count)} accent="#22c55e" icon={Users} />
+                <StatCard label="Active Tickets" value={String(posOverview.active_tickets)} accent="#D4813A" icon={ShoppingBag} />
+                <StatCard label="Clocked In" value={String(posOverview.clocked_in_count)} accent="#8b5cf6" icon={Clock} />
+                <StatCard label="Pending Devices" value={String(posOverview.pending_devices)} accent="#f59e0b" icon={Monitor} />
+                <StatCard label="Voids Today" value={String(posOverview.today_voids)} accent="#ef4444" icon={Trash2} />
+                <StatCard label="Refunds Today" value={String(posOverview.today_refunds)} accent="#6B5D4F" icon={Receipt} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
+                <Card>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Open shifts</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/shifts')}
+                      style={{ fontSize: 12, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  {posOverview.open_shifts.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>No open shifts.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {posOverview.open_shifts.slice(0, 5).map((s) => (
+                        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ fontWeight: 600, color: '#1C1408' }}>{s.user_name ?? 'Unknown'}</span>
+                          <span style={{ color: '#9C8E7E' }}>{s.device_name ?? 'No device'} · {elapsed(s.opened_at)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+
+                <Card>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Recent POS activity</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/activity')}
+                      style={{ fontSize: 12, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Full log →
+                    </button>
+                  </div>
+                  {posOverview.recent_activity.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>No recent activity.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {posOverview.recent_activity.map((a) => (
+                        <div key={a.id} style={{ fontSize: 12 }}>
+                          <span style={{ fontWeight: 600, color: '#1C1408' }}>{formatAuditAction(a.action)}</span>
+                          <span style={{ color: '#9C8E7E' }}> · {a.user_name ?? 'System'} · {elapsed(a.created_at)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </div>
+            </>
+          )}
+        </>
+      )}
 
       <div style={{ height: 20 }} />
 
@@ -411,7 +506,7 @@ export function DashboardPage() {
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             {liveEvents.length === 0 ? (
               <div style={{ padding: '28px 20px', textAlign: 'center', color: '#9C8E7E', fontSize: 13 }}>
-                <Zap size={20} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                <Users size={20} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
                 Waiting for order events…
               </div>
             ) : (

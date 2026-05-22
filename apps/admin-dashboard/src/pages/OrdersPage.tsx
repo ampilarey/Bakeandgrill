@@ -7,6 +7,7 @@ import {
   getReceiptLinkForOrder, sendReceiptForOrder,
   createInvoiceFromOrder, sendInvoiceToCustomer,
   fetchDeliveryDrivers, assignDeliveryDriver,
+  fetchPosStaffOptions, fetchDevices,
   type Order, type DeliveryDriver,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -301,6 +302,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 <Row label="Phone" value={(order.customer?.phone ?? order.customer_phone)!} />
               )}
               {order.paid_at && <Row label="Paid at" value={new Date(order.paid_at).toLocaleString()} />}
+              {order.user?.name && <Row label="Cashier" value={order.user.name} />}
+              {order.device?.name && <Row label="Station" value={order.device.name} />}
+              {order.shift?.id && <Row label="Shift" value={`#${order.shift.id}`} />}
             </div>
 
             {order.type === 'delivery' && order.delivery_address_line1 && (
@@ -444,6 +448,10 @@ export function OrdersPage() {
   // their food without paying. Persisted via URL query param? Out of
   // scope for v1 — defaults to off, manager flips it on as needed.
   const [unpaidOnly, setUnpaidOnly] = useState(false);
+  const [cashierFilter, setCashierFilter] = useState('');
+  const [deviceFilter, setDeviceFilter] = useState('');
+  const [staffOptions, setStaffOptions] = useState<{ id: number; name: string }[]>([]);
+  const [deviceOptions, setDeviceOptions] = useState<{ id: number; name: string }[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -490,6 +498,11 @@ export function OrdersPage() {
     } catch { showRowToast(o.id, 'SMS failed'); } finally { setSmsBusy(null); }
   };
 
+  useEffect(() => {
+    fetchPosStaffOptions().then((r) => setStaffOptions(r.staff ?? [])).catch(() => undefined);
+    fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
+  }, []);
+
   // Debounce search input 400 ms
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
@@ -526,6 +539,8 @@ export function OrdersPage() {
         per_page: perPage,
         search: debouncedSearch || undefined,
         unpaid_only: unpaidOnly || undefined,
+        user_id: cashierFilter ? Number(cashierFilter) : undefined,
+        device_id: deviceFilter ? Number(deviceFilter) : undefined,
       });
       setOrders(res.data ?? []);
       setTotalPages(res.meta?.last_page ?? 1);
@@ -538,7 +553,7 @@ export function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, typeFilter, page, perPage, debouncedSearch, unpaidOnly]);
+  }, [statusFilter, typeFilter, page, perPage, debouncedSearch, unpaidOnly, cashierFilter, deviceFilter]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -581,6 +596,22 @@ export function OrdersPage() {
         />
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
+        <select
+          value={cashierFilter}
+          onChange={(e) => { setCashierFilter(e.target.value); setPage(1); }}
+          style={{ padding: '7px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
+        >
+          <option value="">All cashiers</option>
+          {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select
+          value={deviceFilter}
+          onChange={(e) => { setDeviceFilter(e.target.value); setPage(1); }}
+          style={{ padding: '7px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
+        >
+          <option value="">All stations</option>
+          {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
         {/* Toggle-chip for the phone-call pickup chase view. Styled
             as a button so it visually reads as a state, not a filter
             dropdown — chip flips red when active so a manager doing
@@ -630,6 +661,8 @@ export function OrdersPage() {
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Type</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Status</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Customer</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Cashier</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Station</th>
                 <th
                   onClick={() => handleSort('total')}
                   style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: '#F8F6F3' }}
@@ -696,6 +729,12 @@ export function OrdersPage() {
                   </td>
                   <td style={{ padding: '12px 16px', color: '#6B5D4F' }}>
                     {o.customer?.name ?? o.customer_name ?? o.table_number ?? '—'}
+                  </td>
+                  <td style={{ padding: '12px 16px', color: '#6B5D4F', fontSize: 13 }}>
+                    {o.user?.name ?? '—'}
+                  </td>
+                  <td style={{ padding: '12px 16px', color: '#9C8E7E', fontSize: 12 }}>
+                    {o.device?.name ?? '—'}
                   </td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>
                     MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}

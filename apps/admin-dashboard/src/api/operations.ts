@@ -298,7 +298,9 @@ export interface Device {
   is_active: boolean;
   status: 'pending' | 'approved' | 'rejected';
   last_seen_at: string | null;
-  registered_by: string | null;
+  registered_by?: string | null;
+  open_shift_id?: number | null;
+  user?: { id: number; name: string } | null;
   created_at: string;
 }
 

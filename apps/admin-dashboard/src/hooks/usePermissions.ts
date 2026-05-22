@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getMe, getUserPermissions, type PermissionItem, type StaffUser } from '../api';
+import { can as navCan } from '../components/navConfig';
 
 interface UsePermissionsResult {
   permissions: PermissionItem[];
@@ -103,8 +104,7 @@ export function useCurrentUserPermissions(): {
   const can = useCallback((slug?: string): boolean => {
     if (!slug) return true;
     if (!user) return false;
-    if (user.role === 'owner') return true;
-    return user.permissions?.includes(slug) ?? false;
+    return navCan(user, slug);
   }, [user]);
 
   return { user, loading, can };

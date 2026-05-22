@@ -141,9 +141,9 @@ function PermissionGroupList({
   );
 }
 
-export function PermissionsSettings() {
+export function PermissionsSettings({ initialUserId }: { initialUserId?: number | null }) {
   const { success, error } = useToast();
-  const [tab, setTab] = useState<Tab>('roles');
+  const [tab, setTab] = useState<Tab>(initialUserId ? 'users' : 'roles');
   const [selectedRole, setSelectedRole] = useState('manager');
   const [rolePerms, setRolePerms] = useState<PermissionItem[]>([]);
   const [roleChanges, setRoleChanges] = useState<Record<string, boolean>>({});
@@ -165,6 +165,13 @@ export function PermissionsSettings() {
       ))
       .catch(() => error('Failed to load staff'));
   }, []);
+
+  useEffect(() => {
+    if (initialUserId) {
+      setTab('users');
+      setSelectedUserId(initialUserId);
+    }
+  }, [initialUserId]);
 
   useEffect(() => {
     if (tab !== 'roles') return;

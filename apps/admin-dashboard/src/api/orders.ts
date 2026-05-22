@@ -26,6 +26,10 @@ export type Order = {
   fired_at?: string | null;
   // Nested customer object returned by the staff list endpoint
   customer?: { id: number; name: string; phone: string } | null;
+  user?: { id: number; name: string } | null;
+  device?: { id: number; name: string; identifier?: string } | null;
+  shift?: { id: number; opened_at?: string } | null;
+  shift_id?: number | null;
   // Flat fields (may be present in other endpoints)
   customer_name?: string | null;
   customer_phone?: string | null;
@@ -58,6 +62,8 @@ export async function fetchOrders(params?: {
    *  the customer hasn't paid for yet). Manager view for chasing
    *  outstanding balances at end of day. */
   unpaid_only?: boolean;
+  user_id?: number;
+  device_id?: number;
 }): Promise<OrdersResponse> {
   const qs = new URLSearchParams();
   if (params?.status)      qs.set('status', params.status);
@@ -67,6 +73,8 @@ export async function fetchOrders(params?: {
   if (params?.date)        qs.set('date', params.date);
   if (params?.search)      qs.set('search', params.search);
   if (params?.unpaid_only) qs.set('unpaid_only', '1');
+  if (params?.user_id)     qs.set('user_id', String(params.user_id));
+  if (params?.device_id)   qs.set('device_id', String(params.device_id));
   return req(`/orders?${qs}`);
 }
 
