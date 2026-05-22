@@ -905,6 +905,60 @@ class OrderController extends Controller
         ]);
     }
 
+    /**
+     * POST /api/orders/{id}/start-cooking
+     *
+     * POS equivalent of KDS "Start Cooking" — moves pending/paid tickets
+     * into in_progress so the cashier workflow matches the kitchen display.
+     */
+    public function startCooking(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        $result = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+
+            if ($order->status === 'in_progress') {
+                return ['order' => $order, 'unchanged' => true];
+            }
+
+            $machine = app(OrderStatusMachine::class);
+            if (!$machine->isAllowed($order->status, 'in_progress')) {
+                return ['error' => "Order is {$order->status} and can't be started."];
+            }
+
+            $oldStatus = $order->status;
+            $updates = ['status' => 'in_progress'];
+            if (!$order->fired_at) {
+                $updates['fired_at'] = now();
+            }
+            $order->update($updates);
+
+            app(AuditLogService::class)->log(
+                'order.started',
+                'Order',
+                $order->id,
+                ['status' => $oldStatus],
+                ['status' => 'in_progress', 'fired_at' => $order->fired_at],
+                ['source' => 'pos'],
+                $request,
+            );
+
+            return ['order' => $order];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json([
+            'order' => $result['order']->fresh(),
+            'unchanged' => $result['unchanged'] ?? false,
+        ]);
+    }
+
     public function markReady(Request $request, int $id): JsonResponse
     {
         if (!$request->user()?->tokenCan('staff')) {

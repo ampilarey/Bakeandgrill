@@ -679,6 +679,13 @@ export async function sendPayLink(
  * from a no-op (e.g. cashier double-tapped) so the UI can suppress
  * a duplicate toast.
  */
+/** POS "Start cooking" — pending/paid → in_progress (KDS Pending → Cooking). */
+export async function startOrderCooking(
+  orderId: number,
+): Promise<{ order: { id: number; status: string }; unchanged: boolean }> {
+  return request(`/orders/${orderId}/start-cooking`, { method: "POST" });
+}
+
 export async function markOrderReady(
   orderId: number,
 ): Promise<{ order: { id: number; status: string }; unchanged: boolean }> {

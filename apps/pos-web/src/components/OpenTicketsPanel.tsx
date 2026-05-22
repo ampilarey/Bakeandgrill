@@ -8,6 +8,7 @@ import {
   fireOrderToKitchen,
   markOrderPickedUp,
   markOrderReady,
+  startOrderCooking,
   mergeOpenTickets,
   sendBill,
   sendPayLink,
@@ -80,7 +81,7 @@ type Props = {
  *               actions: Fire to kitchen / Resume / Send pay link
  *
  *   ⏳ NEW       on KDS Pending — paid/fired but kitchen hasn't started
- *               (status pending or paid). Matches admin Kitchen Display.
+ *               (status pending or paid). Action: Start cooking.
  *
  *   🍳 COOKING  kitchen actively preparing (in_progress / preparing)
  *               actions: Mark ready / Charge (if unpaid) / Pay link
@@ -289,6 +290,22 @@ export function OpenTicketsPanel({
    * ready (e.g. KDS bumped it first), the backend returns
    * {unchanged: true} and we silently skip the success toast.
    */
+  const handleStartCooking = async (t: OpenTicket) => {
+    setBusyId(t.id);
+    setRowMsg(null);
+    try {
+      const res = await startOrderCooking(t.id);
+      patchTicket(t.id, { status: res.order.status });
+      if (!res.unchanged) {
+        setRowMsg({ id: t.id, kind: "ok", text: "Cooking — sent to kitchen." });
+      }
+    } catch (e) {
+      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't start cooking" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleMarkReady = async (t: OpenTicket) => {
     setBusyId(t.id);
     setRowMsg(null);
@@ -1026,11 +1043,8 @@ export function OpenTicketsPanel({
                 {/*
                   ── Stage-appropriate primary action ──────────────
                   parked            → 🍳 Fire to kitchen
-                  cooking + paid    → ✅ Mark ready
-                  cooking + unpaid  → ✅ Mark ready (cashier can mark
-                                       ready before payment — common
-                                       when customer is at counter
-                                       waiting to pay AND collect)
+                  queued (NEW)      → 🍳 Start cooking
+                  cooking           → ✅ Mark ready
                   ready + paid      → 📦 Picked up
                   ready + unpaid    → 💳 Charge (must pay before pickup)
                 */}
@@ -1051,13 +1065,24 @@ export function OpenTicketsPanel({
                         🍳 Fire to kitchen
                       </ActionButton>
                     )}
-                    {(stage === "cooking" || stage === "queued") && (
+                    {stage === "queued" && (
+                      <ActionButton
+                        onClick={() => handleStartCooking(t)}
+                        busy={busy}
+                        bg="#A16207"
+                        confirm
+                        confirmLabel="Start cooking on kitchen display?"
+                      >
+                        🍳 Start cooking
+                      </ActionButton>
+                    )}
+                    {stage === "cooking" && (
                       <ActionButton
                         onClick={() => handleMarkReady(t)}
                         busy={busy}
                         bg="#047857"
                         confirm
-                        confirmLabel={stage === "queued" ? "Mark ready without KDS start?" : "Send 'ready' SMS?"}
+                        confirmLabel="Send 'ready' SMS?"
                       >
                         ✅ Mark ready
                       </ActionButton>
