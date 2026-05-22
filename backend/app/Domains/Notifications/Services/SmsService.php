@@ -283,13 +283,14 @@ class SmsService
         if ($s === null) {
             $s = "@£\$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ" . chr(0x1B) . "ÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
         }
+
         return $s;
     }
 
     /** GSM 03.38 extension table — each char costs 2 septets, not 1. */
     private static function gsm7Ext(): string
     {
-        return "^{}\\[~]|€";
+        return '^{}\\[~]|€';
     }
 
     private function isAllGsm7(string $text): bool
@@ -303,6 +304,7 @@ class SmsService
                 return false;
             }
         }
+
         return true;
     }
 
@@ -318,6 +320,7 @@ class SmsService
         foreach ($chars as $c) {
             $count += mb_strpos($ext, $c) !== false ? 2 : 1;
         }
+
         return $count;
     }
 
@@ -325,10 +328,12 @@ class SmsService
     {
         if ($encoding === 'gsm7') {
             $septets = $this->gsm7Septets($text);
+
             return $septets <= 160 ? 1 : (int) ceil($septets / 153);
         }
 
         $length = mb_strlen($text);
+
         return $length <= 70 ? 1 : (int) ceil($length / 67);
     }
 }

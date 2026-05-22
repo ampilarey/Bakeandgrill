@@ -27,7 +27,8 @@ use Illuminate\Support\Facades\Schema;
  *                        reviews the day's voids the cashier is named
  *                        on every row.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {

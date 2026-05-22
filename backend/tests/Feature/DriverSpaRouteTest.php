@@ -11,7 +11,7 @@ class DriverSpaRouteTest extends TestCase
     public function test_driver_spa_subpaths_return_index_html(): void
     {
         $indexPath = public_path('driver/index.html');
-        if (! file_exists($indexPath)) {
+        if (!file_exists($indexPath)) {
             $this->markTestSkipped('Driver app not built in public/driver/');
         }
 
@@ -22,7 +22,7 @@ class DriverSpaRouteTest extends TestCase
             $this->assertSame(
                 file_get_contents($indexPath),
                 $response->getContent(),
-                "Expected {$path} to serve driver/index.html"
+                "Expected {$path} to serve driver/index.html",
             );
         }
     }

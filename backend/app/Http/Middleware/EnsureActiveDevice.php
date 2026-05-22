@@ -34,19 +34,19 @@ class EnsureActiveDevice
 
         if (!$device) {
             $device = Device::create([
-                'name'         => 'POS ' . $identifier,
-                'identifier'   => $identifier,
-                'type'         => 'pos',
-                'is_active'    => true,
-                'status'       => 'approved',
+                'name' => 'POS ' . $identifier,
+                'identifier' => $identifier,
+                'type' => 'pos',
+                'is_active' => true,
+                'status' => 'approved',
                 'last_seen_at' => now(),
-                'ip_address'   => $request->ip(),
+                'ip_address' => $request->ip(),
                 'last_user_id' => $user?->id,
             ]);
         } else {
             $updates = [
                 'last_seen_at' => now(),
-                'ip_address'   => $request->ip(),
+                'ip_address' => $request->ip(),
             ];
             if ($user) {
                 $updates['last_user_id'] = $user->id;

@@ -47,15 +47,15 @@ class DeliveryGateService
         $freeThreshold = (float) config('delivery.free_threshold', 200.00);
 
         return [
-            'delivery_open'          => $result->allowed,
-            'message'                => $result->allowed ? null : $result->message,
-            'accepting_flag'         => $this->acceptingFlagOn(),
-            'schedule_active'        => $schedule !== null,
-            'zones_enforced'         => $this->parseZones() !== null,
-            'next_delivery_window'   => $schedule ? $this->nextWindow($schedule, $at) : null,
-            'free_delivery_threshold'=> $freeThreshold > 0 ? $freeThreshold : null,
-            'override_active'        => $overrideActive,
-            'override_until'         => $overrideUntil ?: null,
+            'delivery_open' => $result->allowed,
+            'message' => $result->allowed ? null : $result->message,
+            'accepting_flag' => $this->acceptingFlagOn(),
+            'schedule_active' => $schedule !== null,
+            'zones_enforced' => $this->parseZones() !== null,
+            'next_delivery_window' => $schedule ? $this->nextWindow($schedule, $at) : null,
+            'free_delivery_threshold' => $freeThreshold > 0 ? $freeThreshold : null,
+            'override_active' => $overrideActive,
+            'override_until' => $overrideUntil ?: null,
         ];
     }
 
@@ -67,6 +67,7 @@ class DeliveryGateService
         }
         try {
             $until = Carbon::parse($raw);
+
             return ($at ?? now())->lt($until);
         } catch (\Throwable) {
             return false;
@@ -232,7 +233,7 @@ class DeliveryGateService
 
         foreach ($windows as $window) {
             try {
-                $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
                 $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
             } catch (\Throwable) {
                 continue;
@@ -266,6 +267,7 @@ class DeliveryGateService
                 if ($i === 0 && $open->lte($now)) {
                     continue;
                 }
+
                 return $open->toIso8601String();
             }
         }

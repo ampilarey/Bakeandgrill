@@ -21,10 +21,10 @@ class PosVersionJsonTest extends TestCase
         ];
 
         $dir = public_path('pos');
-        if (! is_dir($dir)) {
+        if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
-        file_put_contents($dir.'/pos-version.json', json_encode($payload, JSON_THROW_ON_ERROR));
+        file_put_contents($dir . '/pos-version.json', json_encode($payload, JSON_THROW_ON_ERROR));
 
         $response = $this->get('/pos-version.json');
 
@@ -42,14 +42,14 @@ class PosVersionJsonTest extends TestCase
     {
         $path = public_path('pos/pos-version.json');
         if (is_file($path)) {
-            rename($path, $path.'.bak');
+            rename($path, $path . '.bak');
         }
 
         try {
             $this->get('/pos-version.json')->assertNotFound();
         } finally {
-            if (is_file($path.'.bak')) {
-                rename($path.'.bak', $path);
+            if (is_file($path . '.bak')) {
+                rename($path . '.bak', $path);
             }
         }
     }

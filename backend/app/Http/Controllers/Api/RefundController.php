@@ -23,6 +23,7 @@ class RefundController extends Controller
     public function __construct(
         private readonly PaymentRepositoryInterface $payments,
     ) {}
+
     public function index(Request $request)
     {
         Gate::authorize('refund.process');

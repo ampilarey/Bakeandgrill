@@ -35,6 +35,7 @@ class DriverAuthController extends Controller
         $key = 'driver-pin:' . sha1(strtolower($validated['phone']) . '|' . $request->ip());
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $retryAfter = RateLimiter::availableIn($key);
+
             return response()->json([
                 'message' => "Too many attempts. Try again in {$retryAfter} seconds.",
             ], 429);
@@ -46,6 +47,7 @@ class DriverAuthController extends Controller
 
         if (!$driver || !$driver->pin || !Hash::check($validated['pin'], $driver->pin)) {
             RateLimiter::hit($key, 300); // 5-minute window
+
             return response()->json(['message' => 'Invalid phone number or PIN.'], 401);
         }
 

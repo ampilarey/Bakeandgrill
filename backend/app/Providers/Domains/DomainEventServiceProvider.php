@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers\Domains;
 
+use App\Domains\Customers\Listeners\ReverseCreditOnRefundListener;
 use App\Domains\Inventory\Events\LowStockReached;
 use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Domains\Inventory\Listeners\DeductInventoryListener;
 use App\Domains\Inventory\Listeners\DeductPreparedStockListener;
-use App\Domains\Customers\Listeners\ReverseCreditOnRefundListener;
 use App\Domains\Inventory\Listeners\RestoreInventoryOnRefundListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;

@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Schema;
  *    "Save ticket"). The previous flow only supported one held order per
  *    device.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {

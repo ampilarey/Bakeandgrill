@@ -146,11 +146,11 @@ class ReceiptController extends Controller
 
     /**
      * @param bool $isResend Set true only when the caller is acting on
-     *   behalf of an explicit resend request (staff "Resend SMS" button
-     *   or customer "Resend to phone" on the public receipt page).
-     *   The very first delivery (post-payment auto-send) should pass
-     *   false so resend_count starts at 0 — otherwise the cashier's
-     *   initial send burns one of the customer's 3 allowed resends.
+     *                       behalf of an explicit resend request (staff "Resend SMS" button
+     *                       or customer "Resend to phone" on the public receipt page).
+     *                       The very first delivery (post-payment auto-send) should pass
+     *                       false so resend_count starts at 0 — otherwise the cashier's
+     *                       initial send burns one of the customer's 3 allowed resends.
      */
     private function deliverReceipt(Receipt $receipt, bool $isResend = false): bool
     {

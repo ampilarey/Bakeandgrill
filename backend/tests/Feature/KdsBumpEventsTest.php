@@ -74,7 +74,7 @@ class KdsBumpEventsTest extends TestCase
         $this->withHeader('X-Device-Identifier', 'KDS-POS');
     }
 
-    public function test_bumping_unpaid_order_to_completed_fires_OrderCompleted_not_OrderPaid(): void
+    public function test_bumping_unpaid_order_to_completed_fires_order_completed_not_order_paid(): void
     {
         // KDS bump no longer transitions in_progress→ready — the
         // cashier marks ready from POS, KDS only does ready→completed.
@@ -114,7 +114,7 @@ class KdsBumpEventsTest extends TestCase
         Event::assertDispatched(OrderCompleted::class);
     }
 
-    public function test_bumping_already_paid_order_to_completed_still_fires_OrderCompleted(): void
+    public function test_bumping_already_paid_order_to_completed_still_fires_order_completed(): void
     {
         Event::fake([OrderPaid::class, OrderCompleted::class]);
         Sanctum::actingAs($this->staff, ['staff']);

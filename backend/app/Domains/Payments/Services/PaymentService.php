@@ -45,8 +45,7 @@ class PaymentService
         ?int $amountLaar = null,
         ?string $idempotencyKey = null,
         ?string $returnUrl = null,
-    ): array
-    {
+    ): array {
         $amountLaar = $amountLaar ?? ($order->total_laar ?? (int) round($order->total * 100));
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
         $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));

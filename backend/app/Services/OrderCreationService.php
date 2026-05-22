@@ -176,7 +176,7 @@ class OrderCreationService
         if ($print && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
             DB::afterCommit(function () use ($updated): void {
                 try {
-                    app(\App\Services\PrintJobService::class)
+                    app(PrintJobService::class)
                         ->enqueueKitchen($updated->fresh(['items.modifiers']), 'addItems');
                 } catch (\Throwable $e) {
                     logger()->warning('addItemsToOrder: kitchen print enqueue failed', [
@@ -229,7 +229,7 @@ class OrderCreationService
             // restore + re-deduct keys never collide.
             $isPosOrder = !in_array($order->type, ['online_pickup', 'delivery'], true);
             if ($isPosOrder) {
-                $stockService = app(\App\Services\StockManagementService::class);
+                $stockService = app(StockManagementService::class);
                 $existingItems = $order->items()->get();
                 foreach ($existingItems as $existing) {
                     $qty = (int) $existing->quantity;
@@ -291,7 +291,7 @@ class OrderCreationService
             // doesn't roll back the cashier's edit.
             DB::afterCommit(function () use ($updated): void {
                 try {
-                    app(\App\Services\PrintJobService::class)
+                    app(PrintJobService::class)
                         ->enqueueKitchen($updated->fresh(['items.modifiers']), 'replaceItems');
                 } catch (\Throwable $e) {
                     logger()->warning('replaceOrderItems: kitchen reprint enqueue failed', [

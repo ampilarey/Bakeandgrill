@@ -280,18 +280,18 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     });
 
     // Customers — lightweight POS lookup / quick-create (any authenticated staff)
-    Route::get('/customers/search', [App\Http\Controllers\Api\CustomerController::class, 'search'])
+    Route::get('/customers/search', [CustomerController::class, 'search'])
         ->middleware('throttle:60,1');
-    Route::post('/customers/quick', [App\Http\Controllers\Api\CustomerController::class, 'quickCreate'])
+    Route::post('/customers/quick', [CustomerController::class, 'quickCreate'])
         ->middleware('throttle:30,1');
     // Add/fix a customer's name or email straight from the POS chip —
     // intentionally name/email only, NOT phone (see updateFromPos doc).
-    Route::patch('/customers/{id}', [App\Http\Controllers\Api\CustomerController::class, 'updateFromPos'])
+    Route::patch('/customers/{id}', [CustomerController::class, 'updateFromPos'])
         ->middleware('throttle:30,1');
     // Compact customer "dashboard" for the POS Customer chip (profile +
     // loyalty + lifetime stats + last 5 paid orders). One round-trip
     // when the cashier attaches a customer to a ticket.
-    Route::get('/customers/{id}/pos-summary', [App\Http\Controllers\Api\CustomerController::class, 'posSummary'])
+    Route::get('/customers/{id}/pos-summary', [CustomerController::class, 'posSummary'])
         ->middleware('throttle:60,1');
 
     // ── POS rewards on an in-progress ticket ─────────────────────────────────

@@ -227,7 +227,7 @@ class OnlineOrderingGateService
 
         foreach ($windows as $window) {
             try {
-                $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
                 $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
             } catch (\Throwable) {
                 continue;
@@ -264,7 +264,7 @@ class OnlineOrderingGateService
 
         foreach ($windows as $window) {
             try {
-                $open  = Carbon::createFromFormat('H:i', $window['open'],  $tz)->setDateFrom($now);
+                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
                 $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
             } catch (\Throwable) {
                 continue;

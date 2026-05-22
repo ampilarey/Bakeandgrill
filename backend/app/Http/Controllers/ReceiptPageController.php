@@ -9,7 +9,6 @@ use App\Models\Order;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Request;
 
 class ReceiptPageController extends Controller
 {

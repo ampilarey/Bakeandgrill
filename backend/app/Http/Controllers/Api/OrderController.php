@@ -17,9 +17,12 @@ use App\Http\Requests\StoreOrderBatchRequest;
 use App\Http\Requests\StoreOrderPaymentsRequest;
 use App\Http\Requests\StoreOrderRequest;
 use App\Models\Customer;
+use App\Models\Item;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Receipt;
+use App\Models\RestaurantTable;
+use App\Models\Variant;
 use App\Services\AuditLogService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
@@ -27,11 +30,8 @@ use App\Services\OrderStatusMachine;
 use App\Services\PermissionService;
 use App\Services\ShiftAccessService;
 use App\Services\StockManagementService;
-use App\Models\Item;
-use App\Models\Variant;
-use App\Models\RestaurantTable;
-use App\Support\PhoneNormalizer;
 use App\Support\OrderSettlement;
+use App\Support\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,19 +60,19 @@ class OrderController extends Controller
         }
 
         $query = Order::with([
-                'customer:id,name,phone',
-                'user:id,name',
-                'device:id,name,identifier',
-                'shift:id,opened_at',
-                'items:id,order_id,item_name,quantity,unit_price,total_price',
-                // Eager-load the table so the POS Active orders search
-                // can match on table name (e.g. cashier types "T4"
-                // and lands on Table T4's open ticket without
-                // scrolling). Relation on Order is `table()`, schema
-                // columns are id/name/location.
-                'table:id,name,location',
-                'payments:id,order_id,method,amount,amount_laar,status',
-            ])
+            'customer:id,name,phone',
+            'user:id,name',
+            'device:id,name,identifier',
+            'shift:id,opened_at',
+            'items:id,order_id,item_name,quantity,unit_price,total_price',
+            // Eager-load the table so the POS Active orders search
+            // can match on table name (e.g. cashier types "T4"
+            // and lands on Table T4's open ticket without
+            // scrolling). Relation on Order is `table()`, schema
+            // columns are id/name/location.
+            'table:id,name,location',
+            'payments:id,order_id,method,amount,amount_laar,status',
+        ])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('status')) {
@@ -221,10 +221,10 @@ class OrderController extends Controller
             $q = trim((string) $request->input('q'));
             $query->where(function ($w) use ($q) {
                 $w->where('order_number', 'like', "%{$q}%")
-                  ->orWhere('ticket_name', 'like', "%{$q}%")
-                  ->orWhereHas('customer', function ($c) use ($q) {
-                      $c->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%");
-                  });
+                    ->orWhere('ticket_name', 'like', "%{$q}%")
+                    ->orWhereHas('customer', function ($c) use ($q) {
+                        $c->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%");
+                    });
             });
         }
 
@@ -682,6 +682,7 @@ class OrderController extends Controller
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json([
                 'message' => 'Pay link created but SMS failed. Read it to the customer manually.',
                 'pay_page_url' => $payPageUrl,
@@ -801,7 +802,7 @@ class OrderController extends Controller
             // any confirmed payment row means money has changed hands and
             // void is unsafe. Force the refund flow.
             if (in_array($order->payment_status, ['partial', 'paid'], true)) {
-                return ['error' => "Payment recorded on this order — issue a refund instead of voiding."];
+                return ['error' => 'Payment recorded on this order — issue a refund instead of voiding.'];
             }
             $confirmedPaymentExists = $order->payments()
                 ->whereIn('status', ['paid', 'completed', 'confirmed'])
@@ -1171,7 +1172,7 @@ class OrderController extends Controller
                 return ['error' => 'Order is fully paid — edits must go through refunds.'];
             }
 
-            $updated = app(\App\Services\OrderCreationService::class)
+            $updated = app(OrderCreationService::class)
                 ->replaceOrderItems($order, $validated['items'], $reprintKitchen);
 
             app(AuditLogService::class)->log(
@@ -1223,7 +1224,7 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'source_id' => 'required|integer|different:'.$id,
+            'source_id' => 'required|integer|different:' . $id,
         ]);
 
         $result = DB::transaction(function () use ($id, $validated, $request) {
@@ -1245,7 +1246,7 @@ class OrderController extends Controller
 
             // Recalculate target totals via the calculator (single
             // source of truth — taxes/discounts/etc. all reapply).
-            $target = app(\App\Services\OrderCreationService::class)
+            $target = app(OrderCreationService::class)
                 ->recalculateTotals($target->fresh());
 
             // Cancel the source so it disappears from Active orders.
@@ -1343,7 +1344,7 @@ class OrderController extends Controller
 
             // Mint a sibling order with the source's context but zero
             // items, then reparent the chosen items onto it.
-            $split = app(\App\Services\OrderCreationService::class)->createFromPayload([
+            $split = app(OrderCreationService::class)->createFromPayload([
                 'type' => $source->type,
                 'restaurant_table_id' => $source->restaurant_table_id,
                 'customer_id' => $source->customer_id,
@@ -1355,7 +1356,7 @@ class OrderController extends Controller
 
             \App\Models\OrderItem::whereIn('id', $toSplit)->update(['order_id' => $split->id]);
 
-            $service = app(\App\Services\OrderCreationService::class);
+            $service = app(OrderCreationService::class);
             $source = $service->recalculateTotals($source->fresh());
             $split = $service->recalculateTotals($split->fresh());
 

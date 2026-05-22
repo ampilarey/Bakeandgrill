@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
-use App\Http\Controllers\Controller;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -44,9 +44,9 @@ class StaffAuthController extends Controller
 
         // Look up by phone first (primary), then fall back to email.
         $user = User::where(function ($q) use ($username) {
-                $q->where('phone', $username)
-                  ->orWhere('email', $username);
-            })
+            $q->where('phone', $username)
+                ->orWhere('email', $username);
+        })
             ->where('is_active', true)
             ->whereNotNull('pin_hash')
             ->first();
@@ -84,12 +84,12 @@ class StaffAuthController extends Controller
     public function phoneLogin(Request $request)
     {
         $request->validate([
-            'phone'    => 'required|string|max:20',
+            'phone' => 'required|string|max:20',
             'password' => 'required|string|min:6',
         ]);
 
-        $phone    = trim($request->phone);
-        $rateKey  = 'staff-phone-login:' . $phone . ':' . $request->ip();
+        $phone = trim($request->phone);
+        $rateKey = 'staff-phone-login:' . $phone . ':' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
@@ -102,7 +102,7 @@ class StaffAuthController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             RateLimiter::hit($rateKey, 900);
             throw ValidationException::withMessages([
                 'phone' => ['Invalid phone number or password.'],
@@ -116,8 +116,8 @@ class StaffAuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful',
-            'token'   => $token,
-            'user'    => $this->serializeStaffUser($user),
+            'token' => $token,
+            'user' => $this->serializeStaffUser($user),
         ]);
     }
 
@@ -128,7 +128,7 @@ class StaffAuthController extends Controller
     {
         $request->validate(['phone' => 'required|string|max:20']);
 
-        $phone   = trim($request->phone);
+        $phone = trim($request->phone);
         $rateKey = 'staff-pwd-reset-req:' . $phone;
 
         if (RateLimiter::tooManyAttempts($rateKey, 3)) {
@@ -139,7 +139,7 @@ class StaffAuthController extends Controller
         $user = User::where('phone', $phone)->where('is_active', true)->first();
 
         if ($user) {
-            $otp     = (string) random_int(100000, 999999);
+            $otp = (string) random_int(100000, 999999);
             $cacheKey = 'staff-pwd-reset:' . $phone;
             Cache::put($cacheKey, Hash::make($otp), now()->addMinutes(10));
 
@@ -161,16 +161,16 @@ class StaffAuthController extends Controller
     public function passwordResetVerify(Request $request)
     {
         $request->validate([
-            'phone'        => 'required|string|max:20',
-            'otp'          => 'required|string|size:6',
-            'password'     => 'required|string|min:8|confirmed',
+            'phone' => 'required|string|max:20',
+            'otp' => 'required|string|size:6',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $phone    = trim($request->phone);
+        $phone = trim($request->phone);
         $cacheKey = 'staff-pwd-reset:' . $phone;
-        $stored   = Cache::get($cacheKey);
+        $stored = Cache::get($cacheKey);
 
-        if (! $stored || ! Hash::check($request->otp, $stored)) {
+        if (!$stored || !Hash::check($request->otp, $stored)) {
             throw ValidationException::withMessages([
                 'otp' => ['Invalid or expired OTP.'],
             ]);
@@ -178,7 +178,7 @@ class StaffAuthController extends Controller
 
         $user = User::where('phone', $phone)->where('is_active', true)->first();
 
-        if (! $user) {
+        if (!$user) {
             throw ValidationException::withMessages([
                 'phone' => ['Account not found.'],
             ]);

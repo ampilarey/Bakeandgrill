@@ -95,10 +95,13 @@ class RefundCapTest extends TestCase
             'amount' => 75.00,
             'reason' => 'over-refund attempt',
         ])->assertStatus(422)
-          ->assertSeeText('exceed amount paid');
+            ->assertSeeText('exceed amount paid');
 
-        $this->assertSame(0, Refund::where('order_id', $order->id)->count(),
-            'over-refund attempt must NOT create a refund row');
+        $this->assertSame(
+            0,
+            Refund::where('order_id', $order->id)->count(),
+            'over-refund attempt must NOT create a refund row',
+        );
     }
 
     /**

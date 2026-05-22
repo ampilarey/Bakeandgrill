@@ -26,9 +26,9 @@ class DeviceController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100',
+            'name' => 'required|string|max:100',
             'identifier' => 'nullable|string|max:100|regex:/^[A-Za-z0-9\-_]+$/',
-            'type'       => 'required|string|max:50',
+            'type' => 'required|string|max:50',
             'ip_address' => 'nullable|string|max:50',
         ]);
 
@@ -41,11 +41,11 @@ class DeviceController extends Controller
         $device = Device::updateOrCreate(
             ['identifier' => $identifier],
             [
-                'name'         => $data['name'],
-                'type'         => $data['type'],
-                'ip_address'   => $data['ip_address'] ?? null,
-                'is_active'    => true,
-                'status'       => 'approved',
+                'name' => $data['name'],
+                'type' => $data['type'],
+                'ip_address' => $data['ip_address'] ?? null,
+                'is_active' => true,
+                'status' => 'approved',
                 'last_seen_at' => now(),
             ],
         );
@@ -53,7 +53,7 @@ class DeviceController extends Controller
         app(AuditLogService::class)->log('device.registered', 'Device', $device->id, [], $device->toArray(), [], $request);
 
         return response()->json([
-            'device'     => $device,
+            'device' => $device,
             'identifier' => $device->identifier,
         ]);
     }
@@ -65,9 +65,9 @@ class DeviceController extends Controller
     public function selfRegister(Request $request)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100',
+            'name' => 'required|string|max:100',
             'identifier' => 'required|string|max:100',
-            'type'       => 'nullable|string|max:50',
+            'type' => 'nullable|string|max:50',
         ]);
 
         $existing = Device::where('identifier', $data['identifier'])->first();
@@ -76,7 +76,7 @@ class DeviceController extends Controller
         if ($existing) {
             $existing->update([
                 'last_seen_at' => now(),
-                'ip_address'   => $request->ip(),
+                'ip_address' => $request->ip(),
                 'last_user_id' => $staffId ?? $existing->last_user_id,
             ]);
 
@@ -87,13 +87,13 @@ class DeviceController extends Controller
         }
 
         $device = Device::create([
-            'name'         => $data['name'],
-            'identifier'   => $data['identifier'],
-            'type'         => $data['type'] ?? 'pos',
+            'name' => $data['name'],
+            'identifier' => $data['identifier'],
+            'type' => $data['type'] ?? 'pos',
             'last_user_id' => $staffId,
-            'ip_address'   => $request->ip(),
-            'is_active'    => true,
-            'status'       => 'approved',
+            'ip_address' => $request->ip(),
+            'is_active' => true,
+            'status' => 'approved',
             'last_seen_at' => now(),
         ]);
 
@@ -150,6 +150,7 @@ class DeviceController extends Controller
         }
         $device->update($updates);
         app(AuditLogService::class)->log('device.approved', 'Device', $device->id, ['status' => 'pending'], ['status' => 'approved'], [], $request);
+
         return response()->json(['device' => $device]);
     }
 
@@ -161,6 +162,7 @@ class DeviceController extends Controller
         $device = Device::findOrFail($id);
         $device->update(['status' => 'rejected', 'is_active' => false]);
         app(AuditLogService::class)->log('device.rejected', 'Device', $device->id, ['status' => 'pending'], ['status' => 'rejected'], [], request());
+
         return response()->json(['device' => $device]);
     }
 
@@ -197,10 +199,11 @@ class DeviceController extends Controller
     {
         $data = $request->validate([
             'is_active' => 'sometimes|boolean',
-            'name'      => 'sometimes|string|max:100',
+            'name' => 'sometimes|string|max:100',
         ]);
         $device = Device::findOrFail($id);
         $device->update($data);
+
         return response()->json(['device' => $device->fresh()]);
     }
 
@@ -211,6 +214,7 @@ class DeviceController extends Controller
     {
         $device = Device::findOrFail($id);
         $device->delete();
+
         return response()->json(['message' => 'Device deleted.']);
     }
 
@@ -221,6 +225,7 @@ class DeviceController extends Controller
     {
         $device = Device::findOrFail($id);
         $device->update(['is_active' => false]);
+
         return response()->json(['device' => $device]);
     }
 
@@ -231,6 +236,7 @@ class DeviceController extends Controller
     {
         $device = Device::findOrFail($id);
         $device->update(['is_active' => true]);
+
         return response()->json(['device' => $device]);
     }
 }

@@ -150,6 +150,7 @@ class PrintJobService
                     $job->last_error ?? 'unknown',
                 ),
             ]);
+
             return;
         }
         $job->update(['status' => 'queued', 'last_error' => null]);

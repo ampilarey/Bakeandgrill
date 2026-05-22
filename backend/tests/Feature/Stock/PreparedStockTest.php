@@ -720,7 +720,7 @@ class PreparedStockTest extends TestCase
         ])->assertStatus(422);
 
         // Only one payment record should exist
-        $paymentCount = \App\Models\Payment::where('order_id', $orderId)->count();
+        $paymentCount = Payment::where('order_id', $orderId)->count();
         $this->assertSame(1, $paymentCount, 'Only one Payment record should exist for this order');
     }
 

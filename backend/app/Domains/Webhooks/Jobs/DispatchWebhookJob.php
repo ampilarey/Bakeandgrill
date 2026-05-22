@@ -122,10 +122,14 @@ class DispatchWebhookJob implements ShouldQueue
         $a = @dns_get_record($host, DNS_A) ?: [];
         $aaaa = @dns_get_record($host, DNS_AAAA) ?: [];
         foreach ($a as $r) {
-            if (!empty($r['ip'])) $ips[] = $r['ip'];
+            if (!empty($r['ip'])) {
+                $ips[] = $r['ip'];
+            }
         }
         foreach ($aaaa as $r) {
-            if (!empty($r['ipv6'])) $ips[] = $r['ipv6'];
+            if (!empty($r['ipv6'])) {
+                $ips[] = $r['ipv6'];
+            }
         }
         // If hostname is itself an IP literal, evaluate that directly.
         if (filter_var($host, FILTER_VALIDATE_IP)) {
@@ -143,11 +147,16 @@ class DispatchWebhookJob implements ShouldQueue
                 FILTER_VALIDATE_IP,
                 FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE,
             );
-            if (!$isPublic) return false;
+            if (!$isPublic) {
+                return false;
+            }
 
             // Explicitly block cloud metadata service.
-            if ($ip === '169.254.169.254' || $ip === 'fd00:ec2::254') return false;
+            if ($ip === '169.254.169.254' || $ip === 'fd00:ec2::254') {
+                return false;
+            }
         }
+
         return true;
     }
 

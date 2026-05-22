@@ -8,8 +8,8 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Enums\OrderType;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
-use App\Support\OrderTrackingUrl;
 use App\Models\Receipt;
+use App\Support\OrderTrackingUrl;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -141,11 +141,11 @@ class PaymentConfirmationNotifier
             ->filter()
             ->map(fn ($m) => match ((string) $m) {
                 'bml_pay', 'bml', 'bml_connect', 'online' => 'BML Pay',
-                'cash'                     => 'cash',
-                'card'                     => 'card',
-                'gift_card'                => 'gift card',
-                'loyalty'                  => 'loyalty points',
-                default                    => str_replace('_', ' ', (string) $m),
+                'cash' => 'cash',
+                'card' => 'card',
+                'gift_card' => 'gift card',
+                'loyalty' => 'loyalty points',
+                default => str_replace('_', ' ', (string) $m),
             })
             ->unique()
             ->values();

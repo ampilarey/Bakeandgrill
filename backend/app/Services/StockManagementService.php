@@ -12,7 +12,6 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Variant;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class StockManagementService
 {

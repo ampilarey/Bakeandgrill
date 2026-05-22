@@ -94,7 +94,7 @@ class OrderSendBillTest extends TestCase
         // SmsService should have written an sms_logs row for this invoice.
         $this->assertDatabaseHas('sms_logs', [
             'reference_type' => 'invoice',
-            'to'             => '+9607890123',
+            'to' => '+9607890123',
         ]);
     }
 

@@ -84,14 +84,14 @@ class OrderFlowTest extends TestCase
 
         $paymentResponse = $this->withHeader('X-Device-Identifier', $device->identifier)
             ->postJson("/api/orders/{$orderId}/payments", [
-            'payments' => [
-                [
-                    'method' => 'cash',
-                    'amount' => 40,
+                'payments' => [
+                    [
+                        'method' => 'cash',
+                        'amount' => 40,
+                    ],
                 ],
-            ],
-            'print_receipt' => false,
-        ]);
+                'print_receipt' => false,
+            ]);
 
         $paymentResponse->assertOk()
             ->assertJsonPath('order.id', $orderId);

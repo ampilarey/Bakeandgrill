@@ -15,7 +15,6 @@ use App\Services\AuditLogService;
 use App\Support\OrderSettlement;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
@@ -68,7 +67,10 @@ class CustomerController extends Controller
         // "+9607123456" and "07123456" all hit the same row.
         $normalised = null;
         if (preg_match('/^\+?[\d\s\-]+$/', $q)) {
-            try { $normalised = PhoneNormalizer::normalize($q); } catch (\Throwable) { /* fall back to LIKE */ }
+            try {
+                $normalised = PhoneNormalizer::normalize($q);
+            } catch (\Throwable) { /* fall back to LIKE */
+            }
         }
 
         $like = '%' . $q . '%';
@@ -77,8 +79,8 @@ class CustomerController extends Controller
             ->withCount('orders')
             ->where(function ($w) use ($like, $normalised) {
                 $w->where('name', 'like', $like)
-                  ->orWhere('email', 'like', $like)
-                  ->orWhere('phone', 'like', $like);
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('phone', 'like', $like);
                 if ($normalised) {
                     $w->orWhere('phone', $normalised);
                 }
@@ -118,7 +120,7 @@ class CustomerController extends Controller
         }
 
         $data = $request->validate([
-            'name'  => ['sometimes', 'nullable', 'string', 'max:120'],
+            'name' => ['sometimes', 'nullable', 'string', 'max:120'],
             'email' => ['sometimes', 'nullable', 'email', 'max:120'],
         ]);
 
@@ -144,7 +146,7 @@ class CustomerController extends Controller
             // garbage (returns "+960"), so we gate on the raw string
             // BEFORE handing it to the normalizer.
             'phone' => ['required', 'string', 'max:30', 'regex:/^\+?[\d\s\-]{5,}$/'],
-            'name'  => 'nullable|string|max:120',
+            'name' => 'nullable|string|max:120',
         ]);
 
         try {

@@ -148,7 +148,7 @@ class OnlineOrderingController extends Controller
         SiteSetting::set('delivery_override_until', $validated['override_until'] ?? null);
 
         return response()->json([
-            'override_until'  => $validated['override_until'],
+            'override_until' => $validated['override_until'],
             'delivery_status' => $this->deliveryGate->status(),
         ]);
     }

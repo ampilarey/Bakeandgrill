@@ -15,7 +15,7 @@ return new class extends Migration
             ->update(['value' => 'admin@bakeandgrill.mv']);
 
         // Bust the site settings cache
-        \Illuminate\Support\Facades\Cache::forget('site_settings_all');
+        Illuminate\Support\Facades\Cache::forget('site_settings_all');
     }
 
     public function down(): void
@@ -25,6 +25,6 @@ return new class extends Migration
             ->where('value', 'admin@bakeandgrill.mv')
             ->update(['value' => 'hello@bakeandgrill.mv']);
 
-        \Illuminate\Support\Facades\Cache::forget('site_settings_all');
+        Illuminate\Support\Facades\Cache::forget('site_settings_all');
     }
 };

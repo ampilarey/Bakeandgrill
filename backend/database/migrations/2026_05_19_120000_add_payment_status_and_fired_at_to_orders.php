@@ -29,7 +29,8 @@ use Illuminate\Support\Facades\Schema;
  * for any non-held / non-pending-without-payment row so existing KDS history
  * and Sales Reports don't look broken.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {

@@ -205,7 +205,7 @@ final class CustomerCreditService
 
     public function disableCredit(Customer $customer, User $actor, ?Request $request = null): Customer
     {
-        return DB::transaction(function () use ($customer, $actor, $request) {
+        return DB::transaction(function () use ($customer, $request) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $old = $this->creditSummary($locked);
 
@@ -239,7 +239,7 @@ final class CustomerCreditService
             abort(422, 'Credit limit cannot be negative.');
         }
 
-        return DB::transaction(function () use ($customer, $limitLaar, $actor, $override, $request) {
+        return DB::transaction(function () use ($customer, $limitLaar, $override, $request) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $balance = (int) $locked->credit_balance_laar;
 
