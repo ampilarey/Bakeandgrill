@@ -154,6 +154,12 @@ const STATUS_CONFIG: Record<string, {
     next: "Up next: ready for pickup or delivery",
     color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "👨‍🍳",
   },
+  in_progress: {
+    label: "Being prepared",
+    sub: "Your order is in the kitchen right now.",
+    next: "Up next: ready for pickup",
+    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "👨‍🍳",
+  },
   ready: {
     label: "Ready!",
     sub: "Your order is ready.",
@@ -206,7 +212,7 @@ const STEPS = [
   { key: "completed",  label: "Done" },
 ];
 function stepIndex(status: string): number {
-  const normalised = status === "paid" ? "preparing"
+  const normalised = status === "paid" || status === "in_progress" ? "preparing"
     : status === "payment_pending" ? "pending"
     : status;
   const s = STEPS.findIndex((s) => s.key === normalised);

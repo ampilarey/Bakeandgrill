@@ -51,6 +51,13 @@ ReactDOM.createRoot(rootEl).render(
               <ScrollToTop />
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
+                  {/* Standalone pages — no Layout wrapper. Declared BEFORE
+                      the Layout catch-all so /track/:token isn't swallowed
+                      by the nested path="*" NotFound route. */}
+                  <Route path="checkout" element={<ErrorBoundary inline><CheckoutPage /></ErrorBoundary>} />
+                  <Route path="track/:trackingToken" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
+                  <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
+
                   {/* Public pages wrapped in shared Layout */}
                   <Route element={<Layout />}>
                     <Route index element={<HomePage />} />
@@ -65,11 +72,6 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="account" element={<ErrorBoundary inline><AccountPage /></ErrorBoundary>} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
-
-                  {/* Standalone pages — no Layout wrapper */}
-                  <Route path="checkout" element={<ErrorBoundary inline><CheckoutPage /></ErrorBoundary>} />
-                  <Route path="track/:trackingToken" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
-                  <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                 </Routes>
               </Suspense>
             </BrowserRouter>
