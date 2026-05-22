@@ -794,6 +794,47 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isLoggedIn, isLocked, lockScreen]);
 
+  const drawerItems = useMemo(() => {
+    const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; disabled?: boolean }> = [];
+    if (canRingSales) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
+    if (canViewReceipts) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
+    if (canViewActiveOrders) {
+      main.push({
+        id: "open_tickets", label: "Active Orders", icon: "🎫", group: "main",
+        badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined,
+      });
+    }
+    if (shift.current || canViewShiftHistory) {
+      main.push({ id: "shift", label: "Current Shift", icon: "💰", group: "main" });
+    }
+    if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
+    if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
+
+    const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [
+      { id: "refresh_menu", label: "Refresh data", icon: "↻", group: "user" },
+      { id: "check_update", label: "Check for app update", icon: "⬇", group: "user" },
+      { id: "preferences", label: "My settings", icon: "⚙️", group: "user" },
+    ];
+    if (canLockScreen) user.push({ id: "lock", label: "Lock screen", icon: "🔒", group: "user" });
+    user.push({ id: "logout", label: "Log out", icon: "↩", group: "user" });
+    return [...main, ...user];
+  }, [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, canLockScreen, openTicketsCount, shift.current]);
+
+  const paneAllowed = useMemo((): Record<Pane, boolean> => ({
+    sales: canRingSales,
+    receipts: canViewReceipts,
+    open_tickets: canViewActiveOrders,
+    shift: !!shift.current || canViewShiftHistory,
+    shift_history: canViewShiftHistory,
+    ops: canAccessOps,
+  }), [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, shift.current]);
+
+  useEffect(() => {
+    if (paneAllowed[pane]) return;
+    const fallback = (Object.keys(paneAllowed) as Pane[]).find((p) => paneAllowed[p]);
+    if (fallback) setPane(fallback);
+  }, [pane, paneAllowed]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
   if (showTimeClock) {
     return <TimeClockPanel deviceId={deviceId} onBack={() => setShowTimeClock(false)} />;
@@ -893,47 +934,6 @@ function App() {
       </>
     );
   }
-
-  const drawerItems = useMemo(() => {
-    const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; disabled?: boolean }> = [];
-    if (canRingSales) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
-    if (canViewReceipts) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
-    if (canViewActiveOrders) {
-      main.push({
-        id: "open_tickets", label: "Active Orders", icon: "🎫", group: "main",
-        badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined,
-      });
-    }
-    if (shift.current || canViewShiftHistory) {
-      main.push({ id: "shift", label: "Current Shift", icon: "💰", group: "main" });
-    }
-    if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
-    if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
-
-    const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [
-      { id: "refresh_menu", label: "Refresh data", icon: "↻", group: "user" },
-      { id: "check_update", label: "Check for app update", icon: "⬇", group: "user" },
-      { id: "preferences", label: "My settings", icon: "⚙️", group: "user" },
-    ];
-    if (canLockScreen) user.push({ id: "lock", label: "Lock screen", icon: "🔒", group: "user" });
-    user.push({ id: "logout", label: "Log out", icon: "↩", group: "user" });
-    return [...main, ...user];
-  }, [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, canLockScreen, openTicketsCount, shift.current]);
-
-  const paneAllowed = useMemo((): Record<Pane, boolean> => ({
-    sales: canRingSales,
-    receipts: canViewReceipts,
-    open_tickets: canViewActiveOrders,
-    shift: !!shift.current || canViewShiftHistory,
-    shift_history: canViewShiftHistory,
-    ops: canAccessOps,
-  }), [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, shift.current]);
-
-  useEffect(() => {
-    if (paneAllowed[pane]) return;
-    const fallback = (Object.keys(paneAllowed) as Pane[]).find((p) => paneAllowed[p]);
-    if (fallback) setPane(fallback);
-  }, [pane, paneAllowed]);
 
   return (
     <div className="pos-shell" style={{
