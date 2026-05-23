@@ -862,8 +862,8 @@ export function useOrderCreation(params: Params) {
   const hydrateCartFromOrder = (
     response: Awaited<ReturnType<typeof getOrder>>,
   ): CartItem[] => {
-    if (response.order.customer && params.setAttachedCustomer) {
-      params.setAttachedCustomer(response.order.customer);
+    if (params.setAttachedCustomer) {
+      params.setAttachedCustomer(response.order.customer ?? null);
     }
     if (response.order.type && params.setOrderType) {
       const typeMap: Record<string, OrderType> = {

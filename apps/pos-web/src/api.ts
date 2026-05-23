@@ -1279,6 +1279,17 @@ export async function sendBill(
   });
 }
 
+/** Link, change, or remove customer on an open order (paid pickup handover). */
+export async function updateOrderCustomer(
+  orderId: number,
+  customerId: number | null,
+): Promise<{ order: { customer?: PosCustomer | null } }> {
+  return request(`/orders/${orderId}/customer`, {
+    method: "PATCH",
+    body: JSON.stringify({ customer_id: customerId }),
+  });
+}
+
 export type PosOfflineSyncPayload = {
   orders: Array<{
     idempotency_key: string;

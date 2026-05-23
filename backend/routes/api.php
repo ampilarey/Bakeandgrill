@@ -231,6 +231,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])->middleware('throttle:10,1');
+    Route::patch('/orders/{id}/customer', [OrderController::class, 'updateCustomer'])
+        ->middleware(['permission:pos.ring_sales', 'throttle:30,1']);
 
     // KDS — list endpoint stays unauthenticated by device (any approved
     // staff token can pull the kitchen queue read-only). Mutations

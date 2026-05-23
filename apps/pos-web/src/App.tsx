@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, type PosCustomer } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, OFFLINE_SYNC_V2, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
@@ -415,6 +415,26 @@ function App() {
       setPane("sales");
     },
   });
+
+  const handleAttachCustomer = useCallback(async (customer: PosCustomer) => {
+    cart.setAttachedCustomer(customer);
+    if (!order.resumedIsPaid || order.resumedOrderId == null) return;
+    try {
+      await updateOrderCustomer(order.resumedOrderId, customer.id);
+    } catch (e) {
+      order.flashError((e as Error).message || "Couldn't save customer on this order.");
+    }
+  }, [cart, order]);
+
+  const handleDetachCustomer = useCallback(async () => {
+    cart.detachCustomer();
+    if (!order.resumedIsPaid || order.resumedOrderId == null) return;
+    try {
+      await updateOrderCustomer(order.resumedOrderId, null);
+    } catch (e) {
+      order.flashError((e as Error).message || "Couldn't remove customer from this order.");
+    }
+  }, [cart, order]);
 
   const posUpdate = usePosAppUpdate({
     cartHasItems: cart.cartItems.length > 0,
@@ -1076,8 +1096,8 @@ function App() {
               lastCreatedOrderId={order.lastCreatedOrderId}
               openTicketsCount={openTicketsCount}
               attachedCustomer={cart.attachedCustomer}
-              onAttachCustomer={cart.setAttachedCustomer}
-              onDetachCustomer={cart.detachCustomer}
+              onAttachCustomer={(c) => { void handleAttachCustomer(c); }}
+              onDetachCustomer={() => { void handleDetachCustomer(); }}
               resumedOrderId={order.resumedOrderId}
               resumedFromStatus={order.resumedFromStatus}
               resumedIsPaid={order.resumedIsPaid}

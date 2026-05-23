@@ -296,7 +296,7 @@ export function OrderCart(p: Props) {
             </div>
             <div style={{ marginTop: 2 }}>
               {p.resumedIsPaid
-                ? 'Already paid online.'
+                ? 'Paid — items are locked. You can still add or change the customer below.'
                 : editing
                   ? 'Add or remove items, then Save changes. Kitchen chit will reprint.'
                   : wasHeld
