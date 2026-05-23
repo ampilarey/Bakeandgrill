@@ -1,92 +1,111 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Receipt {{ $order->order_number ?? '' }}</title>
-    @php
-        $typeLabels = [
-            'dine_in' => 'Dine In',
-            'takeaway' => 'Takeaway',
-            'online_pickup' => 'Online Pickup',
-            'delivery' => 'Delivery',
-            'preorder' => 'Pre-order',
-        ];
-        $statusLabels = [
-            'paid' => 'Paid',
-            'completed' => 'Completed',
-            'delivered' => 'Delivered',
-            'refunded' => 'Refunded',
-        ];
-        $typeLabel = $typeLabels[$order->type ?? ''] ?? str_replace('_', ' ', (string) ($order->type ?? ''));
-        $statusLabel = $statusLabels[$order->status ?? ''] ?? str_replace('_', ' ', (string) ($order->status ?? ''));
-        $discount = (float) ($order->discount_amount ?? 0);
-    @endphp
-    <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #1C1408; }
-        h2 { margin-bottom: 4px; color: #D4813A; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { text-align: left; padding: 6px 0; border-bottom: 1px solid #e2e8f0; }
-        .muted { color: #6B5D4F; font-size: 11px; }
-        .totals { margin-top: 12px; }
-        .totals .grand { font-weight: bold; font-size: 13px; color: #D4813A; }
-    </style>
-</head>
-<body>
-    <h2>Bake & Grill</h2>
-    <p class="muted">Receipt {{ $order->order_number ?? '' }}</p>
-    <p><strong>Order type:</strong> {{ $typeLabel }}</p>
-    <p><strong>Status:</strong> {{ $statusLabel }}</p>
-    <p><strong>Placed:</strong> {{ optional($order->created_at)->toDayDateTimeString() }}</p>
-    @if ($order->paid_at)
-        <p><strong>Paid:</strong> {{ $order->paid_at->toDayDateTimeString() }}</p>
-    @endif
+@extends('layouts.pdf')
 
-    <table>
-        <thead>
-            <tr>
-                <th>Item</th>
-                <th>Qty</th>
-                <th>MVR</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($order->items as $item)
-                <tr>
-                    <td>
-                        {{ $item->item_name }}
-                        @if ($item->modifiers->count() > 0)
-                            <div class="muted">
-                                {{ $item->modifiers->map(fn ($mod) => $mod->modifier_name)->join(', ') }}
-                            </div>
-                        @endif
-                    </td>
-                    <td>{{ $item->quantity }}</td>
-                    <td>{{ number_format((float) $item->total_price, 2) }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+@php
+    $typeLabels = [
+        'dine_in' => 'Dine In',
+        'takeaway' => 'Takeaway',
+        'online_pickup' => 'Online Pickup',
+        'delivery' => 'Delivery',
+        'preorder' => 'Pre-order',
+    ];
+    $statusLabels = [
+        'paid' => 'Paid',
+        'completed' => 'Completed',
+        'delivered' => 'Delivered',
+        'refunded' => 'Refunded',
+    ];
+    $typeLabel = $typeLabels[$order->type ?? ''] ?? str_replace('_', ' ', (string) ($order->type ?? ''));
+    $statusLabel = $statusLabels[$order->status ?? ''] ?? str_replace('_', ' ', (string) ($order->status ?? ''));
+    $discount = (float) ($order->discount_amount ?? 0);
+    $refunds = $order->refunds ?? collect();
+    $refundedTotal = (float) $refunds->sum('amount');
+    $isFullyRefunded = $refundedTotal > 0.0001 && in_array($order->status ?? '', ['refunded'], true);
+    $netTotal = max(0, (float) $order->total - $refundedTotal);
+    $tz = config('app.timezone', 'Indian/Maldives');
+@endphp
 
-    <div class="totals">
-        <p><strong>Subtotal:</strong> MVR {{ number_format((float) $order->subtotal, 2) }}</p>
-        <p><strong>Tax:</strong> MVR {{ number_format((float) $order->tax_amount, 2) }}</p>
-        @if ($discount > 0.0001)
-            <p><strong>Discount:</strong> MVR {{ number_format($discount, 2) }}</p>
-        @endif
-        <p class="grand"><strong>Total:</strong> MVR {{ number_format((float) $order->total, 2) }}</p>
+@section('title', 'Receipt ' . ($order->order_number ?? ''))
+@section('doc_type', 'Receipt')
+@section('doc_number', $order->order_number ?? '')
+@section('doc_status', $statusLabel)
+@section('doc_status_class', ($order->status ?? '') === 'refunded' ? 'pending' : 'paid')
+
+@section('meta')
+<div class="pdf-meta-grid">
+    <div class="pdf-meta-col">
+        <div class="pdf-meta-label">Order details</div>
+        <div class="pdf-meta-value"><strong>Type:</strong> {{ $typeLabel }}</div>
+        <div class="pdf-meta-value"><strong>Placed:</strong> {{ optional($order->created_at)->timezone($tz)->format('d M Y, g:i A') }}</div>
     </div>
+    <div class="pdf-meta-col">
+        <div class="pdf-meta-label">Payment</div>
+        @if ($order->paid_at)
+            <div class="pdf-meta-value"><strong>Paid:</strong> {{ $order->paid_at->timezone($tz)->format('d M Y, g:i A') }}</div>
+        @endif
+        <div class="pdf-meta-value"><strong>Status:</strong> {{ ucfirst($statusLabel) }}</div>
+    </div>
+</div>
+@endsection
 
-    @if ($order->payments->count() > 0)
-        <p style="margin-top: 14px;"><strong>Payments</strong></p>
-        @foreach ($order->payments as $p)
-            @php
-                $st = $p->status ?? 'paid';
-                $showPay = in_array($st, ['paid', 'completed', 'confirmed'], true);
-            @endphp
-            @if ($showPay)
-                <p>{{ str_replace('_', ' ', ucfirst($p->method ?? 'Payment')) }}: MVR {{ number_format((float) $p->amount, 2) }}</p>
-            @endif
+@section('content')
+<table class="pdf-table">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th class="center">Qty</th>
+            <th class="right">MVR</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach ($order->items as $item)
+            <tr>
+                <td>
+                    <strong>{{ $item->item_name }}</strong>
+                    @if ($item->variant_name)
+                        <div class="pdf-mods">{{ $item->variant_name }}</div>
+                    @endif
+                    @if ($item->modifiers->count() > 0)
+                        <div class="pdf-mods">{{ $item->modifiers->map(fn ($mod) => $mod->modifier_name)->join(', ') }}</div>
+                    @endif
+                    @if (!empty($item->notes))
+                        <div class="pdf-mods"><em>{{ $item->notes }}</em></div>
+                    @endif
+                </td>
+                <td class="center">{{ $item->quantity }}</td>
+                <td class="right">{{ number_format((float) $item->total_price, 2) }}</td>
+            </tr>
         @endforeach
+    </tbody>
+</table>
+
+<div class="pdf-totals">
+    <div class="pdf-totals-row"><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></div>
+    @if ((float) $order->tax_amount > 0.0001)
+        <div class="pdf-totals-row"><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></div>
     @endif
-</body>
-</html>
+    @if ($discount > 0.0001)
+        <div class="pdf-totals-row"><span>Discount</span><span>− MVR {{ number_format($discount, 2) }}</span></div>
+    @endif
+    <div class="pdf-totals-grand"><span>Total</span><span>MVR {{ number_format((float) $order->total, 2) }}</span></div>
+    @if ($refundedTotal > 0.0001)
+        <div class="pdf-totals-row pdf-totals-refund"><span>Refunded</span><span>− MVR {{ number_format($refundedTotal, 2) }}</span></div>
+        <div class="pdf-totals-grand"><span>{{ $isFullyRefunded ? 'Refunded total' : 'Amount paid' }}</span><span>MVR {{ number_format($netTotal, 2) }}</span></div>
+    @endif
+</div>
+
+@if ($order->payments->count() > 0)
+    <div class="pdf-section-title">Payments</div>
+    @foreach ($order->payments as $p)
+        @php
+            $st = $p->status ?? 'paid';
+            $showPay = in_array($st, ['paid', 'completed', 'confirmed'], true);
+        @endphp
+        @if ($showPay)
+            <div class="pdf-payments-row">
+                <span>{{ str_replace('_', ' ', ucfirst($p->method ?? 'Payment')) }}</span>
+                <span>MVR {{ number_format((float) $p->amount, 2) }}</span>
+            </div>
+        @endif
+    @endforeach
+@endif
+@endsection

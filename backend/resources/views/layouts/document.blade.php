@@ -118,9 +118,72 @@
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 16px;
-            padding: 1.25rem 1.125rem;
+            padding: 0;
             box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);
+            overflow: hidden;
         }
+        .doc-card-body { padding: 1.25rem 1.125rem; }
+        .doc-masthead {
+            background: linear-gradient(135deg, #1C1408 0%, #2a1a0a 100%);
+            color: #fff;
+            padding: 1.125rem 1.25rem;
+            border-bottom: 3px solid var(--amber);
+        }
+        .doc-masthead-inner {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.875rem;
+        }
+        .doc-masthead-inner img {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        .doc-masthead-text { display: flex; flex-direction: column; gap: 0.15rem; }
+        .doc-masthead-name {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        .doc-masthead-tagline {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #F0A96A;
+        }
+        .doc-masthead-doc {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.75rem;
+        }
+        .doc-masthead-type {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #F0A96A;
+        }
+        .doc-masthead-number {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+        .doc-print-footer {
+            display: none;
+            margin-top: 1.25rem;
+            padding-top: 0.875rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .doc-print-footer strong { color: var(--dark); display: block; margin-bottom: 0.25rem; }
         .doc-eyebrow {
             font-size: 0.75rem;
             font-weight: 700;
@@ -155,15 +218,19 @@
         .doc-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
         .doc-table th {
             text-align: left;
-            color: var(--muted);
+            color: var(--amber);
             font-weight: 700;
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            padding: 0.5rem 0;
-            border-bottom: 2px solid var(--border);
+            padding: 0.625rem 0.5rem;
+            border-bottom: 2px solid var(--amber);
+            background: var(--amber-light);
         }
-        .doc-table td { padding: 0.625rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .doc-table th:first-child { padding-left: 0; border-radius: 6px 0 0 0; }
+        .doc-table th:last-child { padding-right: 0; border-radius: 0 6px 0 0; }
+        .doc-table td { padding: 0.625rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .doc-table tbody tr:nth-child(even) td { background: rgba(254, 243, 232, 0.35); }
         .doc-table .qty { text-align: center; width: 2.5rem; color: var(--muted); font-weight: 600; }
         .doc-table .amount { text-align: right; font-weight: 700; white-space: nowrap; }
         .doc-mods { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
@@ -233,10 +300,29 @@
         }
         .doc-footer strong { color: var(--text); }
         @media print {
-            .doc-header, .doc-footer, .doc-actions, .doc-feedback, .doc-alert, .doc-banner { display: none !important; }
+            .doc-header, .doc-footer, .doc-header-links, .doc-actions, .doc-feedback, .doc-alert { display: none !important; }
             body { background: #fff; }
-            .doc-card { box-shadow: none; border: none; padding: 0; }
-            .doc-totals .grand { color: #1C1408; }
+            .doc-main { max-width: 100% !important; padding: 0; }
+            .doc-card {
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+            }
+            .doc-masthead {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                border-radius: 0;
+            }
+            .doc-table th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .doc-table tbody tr:nth-child(even) td {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .doc-print-footer { display: block !important; }
+            .doc-totals .grand { color: #D4813A; }
         }
     </style>
     @endverbatim

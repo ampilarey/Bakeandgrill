@@ -1,96 +1,96 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Invoice {{ $invoice->invoice_number }}</title>
-    <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #1C1408; }
-        h2 { margin-bottom: 4px; color: #D4813A; }
-        .muted { color: #6B5D4F; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { text-align: left; padding: 6px 0; border-bottom: 1px solid #EDE4D4; }
-        .amount { text-align: right; }
-        .totals { margin-top: 12px; }
-        .totals p { display: flex; justify-content: space-between; margin: 3px 0; }
-        .grand { font-weight: 700; font-size: 13px; border-top: 2px solid #D4813A; padding-top: 4px; margin-top: 4px; color: #D4813A; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; }
-        .badge-paid { color: #195C36; }
-        .badge-unpaid { color: #8C1C0E; }
-    </style>
-</head>
-<body>
-    <h2>{{ \App\Models\SiteSetting::get('site_name', 'Bake & Grill') }}</h2>
-    <p class="muted">{{ \App\Models\SiteSetting::get('business_address', '') }}</p>
-    <p class="muted">{{ \App\Models\SiteSetting::get('business_phone', '') }}</p>
+@extends('layouts.pdf')
 
-    <p><strong>Invoice:</strong> {{ $invoice->invoice_number }}
-       &nbsp;&nbsp;
-       @php
-           $onCredit = $invoice->isOnCreditAccount();
-           $displayStatus = $invoice->displayStatusLabel();
-           $balanceDueMvr = $invoice->balanceDueLaar() / 100;
-       @endphp
-       <span class="badge {{ $invoice->status === 'paid' ? 'badge-paid' : 'badge-unpaid' }}">
-           {{ $displayStatus }}
-       </span>
-    </p>
-    <p><strong>Date:</strong> {{ optional($invoice->issue_date)->format('d M Y') ?? optional($invoice->created_at)->format('d M Y') }}</p>
-    @if ($invoice->customer || $invoice->recipient_name)
-        <p><strong>Bill To:</strong> {{ $invoice->customer->name ?? $invoice->recipient_name }}
+@php
+    $onCredit = $invoice->isOnCreditAccount();
+    $displayStatus = $invoice->displayStatusLabel();
+    $balanceDueMvr = $invoice->balanceDueLaar() / 100;
+    $statusClass = match ($invoice->status) {
+        'paid' => 'paid',
+        'sent', 'draft' => 'sent',
+        default => 'pending',
+    };
+@endphp
+
+@section('title', 'Invoice ' . $invoice->invoice_number)
+@section('doc_type', 'Invoice')
+@section('doc_number', $invoice->invoice_number)
+@section('doc_status', $displayStatus)
+@section('doc_status_class', $statusClass)
+
+@section('meta')
+<div class="pdf-meta-grid">
+    <div class="pdf-meta-col">
+        @if ($invoice->customer || $invoice->recipient_name)
+            <div class="pdf-meta-label">Bill to</div>
+            <div class="pdf-meta-value"><strong>{{ $invoice->customer->name ?? $invoice->recipient_name }}</strong></div>
             @if ($invoice->customer->phone ?? $invoice->recipient_phone)
-                — {{ $invoice->customer->phone ?? $invoice->recipient_phone }}
+                <div class="pdf-meta-value">{{ $invoice->customer->phone ?? $invoice->recipient_phone }}</div>
             @endif
-        </p>
-    @endif
-
-    <table>
-        <thead>
-            <tr>
-                <th>Description</th>
-                <th>Qty</th>
-                <th class="amount">Unit</th>
-                <th class="amount">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($invoice->items as $item)
-                <tr>
-                    <td>{{ $item->description ?? $item->name }}</td>
-                    <td>{{ $item->quantity ?? 1 }}</td>
-                    <td class="amount">MVR {{ number_format((float)($item->unit_price ?? $item->amount), 2) }}</td>
-                    <td class="amount">MVR {{ number_format((float)($item->total ?? ($item->unit_price * ($item->quantity ?? 1))), 2) }}</td>
-                </tr>
-            @empty
-                @if ($invoice->order)
-                    @foreach ($invoice->order->items as $orderItem)
-                        <tr>
-                            <td>{{ $orderItem->item_name }}</td>
-                            <td>{{ $orderItem->quantity }}</td>
-                            <td class="amount">MVR {{ number_format((float)$orderItem->unit_price, 2) }}</td>
-                            <td class="amount">MVR {{ number_format((float)$orderItem->total_price, 2) }}</td>
-                        </tr>
-                    @endforeach
-                @endif
-            @endforelse
-        </tbody>
-    </table>
-
-    <div class="totals">
-        <p><span>Subtotal</span><span>MVR {{ number_format((float)$invoice->subtotal, 2) }}</span></p>
-        @if ((float)($invoice->tax_amount ?? 0) > 0)
-            <p><span>Tax</span><span>MVR {{ number_format((float)$invoice->tax_amount, 2) }}</span></p>
-        @endif
-        @if ((float)($invoice->discount_amount ?? 0) > 0)
-            <p><span>Discount</span><span>− MVR {{ number_format((float)$invoice->discount_amount, 2) }}</span></p>
-        @endif
-        <p class="grand"><span>Total</span><span>MVR {{ number_format((float)$invoice->total, 2) }}</span></p>
-        @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
-            <p class="grand" style="color:#92400E;"><span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span></p>
         @endif
     </div>
+    <div class="pdf-meta-col">
+        <div class="pdf-meta-label">Dates</div>
+        <div class="pdf-meta-value">Issued: {{ optional($invoice->issue_date)->format('d M Y') ?? optional($invoice->created_at)->format('d M Y') }}</div>
+        @if ($invoice->due_date)
+            <div class="pdf-meta-value">Due: {{ $invoice->due_date->format('d M Y') }}</div>
+        @endif
+        @if ($invoice->paid_at)
+            <div class="pdf-meta-value">Paid: {{ $invoice->paid_at->format('d M Y') }}</div>
+        @elseif ($onCredit && $balanceDueMvr > 0)
+            <div class="pdf-meta-value">Balance due: MVR {{ number_format($balanceDueMvr, 2) }}</div>
+        @endif
+    </div>
+</div>
+@endsection
 
-    @if ($invoice->notes)
-        <p class="muted" style="margin-top:16px;">Notes: {{ $invoice->notes }}</p>
+@section('content')
+<table class="pdf-table">
+    <thead>
+        <tr>
+            <th>Description</th>
+            <th class="center">Qty</th>
+            <th class="right">Unit</th>
+            <th class="right">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse ($invoice->items as $item)
+            <tr>
+                <td>{{ $item->description ?? $item->name }}</td>
+                <td class="center">{{ $item->quantity ?? 1 }}</td>
+                <td class="right">MVR {{ number_format((float) ($item->unit_price ?? $item->amount), 2) }}</td>
+                <td class="right">MVR {{ number_format((float) ($item->total ?? ($item->unit_price * ($item->quantity ?? 1))), 2) }}</td>
+            </tr>
+        @empty
+            @if ($invoice->order)
+                @foreach ($invoice->order->items as $orderItem)
+                    <tr>
+                        <td>{{ $orderItem->item_name }}</td>
+                        <td class="center">{{ $orderItem->quantity }}</td>
+                        <td class="right">MVR {{ number_format((float) $orderItem->unit_price, 2) }}</td>
+                        <td class="right">MVR {{ number_format((float) $orderItem->total_price, 2) }}</td>
+                    </tr>
+                @endforeach
+            @endif
+        @endforelse
+    </tbody>
+</table>
+
+<div class="pdf-totals">
+    <div class="pdf-totals-row"><span>Subtotal</span><span>MVR {{ number_format((float) $invoice->subtotal, 2) }}</span></div>
+    @if ((float) ($invoice->tax_amount ?? 0) > 0)
+        <div class="pdf-totals-row"><span>Tax</span><span>MVR {{ number_format((float) $invoice->tax_amount, 2) }}</span></div>
     @endif
-</body>
-</html>
+    @if ((float) ($invoice->discount_amount ?? 0) > 0)
+        <div class="pdf-totals-row"><span>Discount</span><span>− MVR {{ number_format((float) $invoice->discount_amount, 2) }}</span></div>
+    @endif
+    <div class="pdf-totals-grand"><span>Total</span><span>MVR {{ number_format((float) $invoice->total, 2) }}</span></div>
+    @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
+        <div class="pdf-totals-grand" style="color:#92400E;"><span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span></div>
+    @endif
+</div>
+
+@if ($invoice->notes)
+    <div class="pdf-notes"><strong>Notes:</strong> {{ $invoice->notes }}</div>
+@endif
+@endsection
