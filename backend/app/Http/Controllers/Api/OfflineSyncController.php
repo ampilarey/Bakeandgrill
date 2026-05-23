@@ -13,9 +13,12 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Handles offline POS sync.
- * When the POS comes back online it POSTs queued orders here in a batch.
+ * Legacy offline POS sync (order creation only, no payment settlement).
  *
+ * @deprecated Use POST /api/pos/offline-sync (PosOfflineSyncController) instead.
+ *             This route remains for backward compatibility with older POS builds.
+ *
+ * When the POS comes back online it POSTs queued orders here in a batch.
  * Each entry runs through OrderCreationService directly (not through
  * OrderController::store) because that controller's signature is
  * `store(StoreOrderRequest $request)` — and PHP's strict type-hint
@@ -107,6 +110,8 @@ class OfflineSyncController extends Controller
             }
         }
 
-        return response()->json(['results' => $results]);
+        return response()->json(['results' => $results])
+            ->header('Deprecation', 'true')
+            ->header('Link', '</api/pos/offline-sync>; rel="successor-version"');
     }
 }

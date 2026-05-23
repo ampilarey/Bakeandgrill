@@ -229,6 +229,37 @@ class OfflinePosSyncTest extends TestCase
         $this->assertSame('conflict', $record->status);
     }
 
+    public function test_legacy_offline_sync_route_returns_deprecation_headers(): void
+    {
+        $payload = [
+            'offline_id' => (string) Str::uuid(),
+            'type' => 'takeaway',
+            'items' => [
+                [
+                    'item_id' => $this->item->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ];
+
+        $response = $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson('/api/offline/sync', ['orders' => [$payload]]);
+
+        $response->assertOk()
+            ->assertHeader('Deprecation', 'true')
+            ->assertHeader('Link', '</api/pos/offline-sync>; rel="successor-version"');
+    }
+
+    public function test_duplicate_payment_idempotency_prevents_second_payment_row(): void
+    {
+        $payload = $this->buildOrderPayload('cash', 50.0);
+
+        $this->syncPayload([$payload])->assertOk();
+        $this->syncPayload([$payload])->assertOk();
+
+        $this->assertSame(1, Payment::where('idempotency_key', 'offline:pay:' . $payload['idempotency_key'])->count());
+    }
+
     /**
      * @param array<int, array<string, mixed>> $orders
      */

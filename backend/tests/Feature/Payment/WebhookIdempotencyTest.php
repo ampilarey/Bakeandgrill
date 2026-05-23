@@ -207,10 +207,38 @@ class WebhookIdempotencyTest extends TestCase
         );
     }
 
+    public function test_bml_webhook_missing_signature_rejected_in_production(): void
+    {
+        config(['bml.enforce_signature' => true, 'app.env' => 'production']);
+
+        $webhookBody = json_encode([
+            'transactionId' => 'TXN-NO-SIG-HEADER',
+            'localId' => 'LOCAL-WH-IDEM-001',
+            'state' => 'CONFIRMED',
+            'amount' => '150.00',
+            'currency' => 'MVR',
+        ]);
+
+        $response = $this->call(
+            'POST',
+            '/api/payments/bml/webhook',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            $webhookBody,
+        );
+
+        $this->assertSame(200, $response->status());
+        $this->assertNotContains(
+            $this->order->fresh()->status,
+            ['paid', 'completed'],
+            'A webhook with no signature must not mark the order as paid in production.',
+        );
+    }
+
     public function test_bml_webhook_enforce_signature_false_processes_payload(): void
     {
-        // When enforce_signature is false (e.g. UAT without a real secret),
-        // the webhook should still process and update the order.
         config(['bml.enforce_signature' => false, 'bml.webhook_secret' => null]);
 
         $transactionId = 'TXN-NO-SIG-001';
@@ -222,7 +250,6 @@ class WebhookIdempotencyTest extends TestCase
             'currency' => 'MVR',
         ]);
 
-        // Update payment to reference this transaction
         $this->payment->update([
             'local_id' => $this->payment->local_id,
             'provider_transaction_id' => $transactionId,
@@ -240,7 +267,6 @@ class WebhookIdempotencyTest extends TestCase
         );
 
         $this->assertSame(200, $response->status());
-        // Webhook log must be created
         $this->assertDatabaseHas('webhook_logs', [
             'gateway' => 'bml',
             'idempotency_key' => 'bml:webhook:' . $transactionId,

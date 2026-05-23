@@ -108,3 +108,25 @@ EOF
 ```
 
 Note: the keepalive uses the install path (`test.bakeandgrill` / `public_html`) in the `pgrep` filter so each cron entry only restarts ITS env's worker, not the other one.
+
+## SMS delivery architecture
+
+| Path | Queue worker required? | Notes |
+|------|------------------------|-------|
+| POS Charge → payment confirmation SMS | **No** | Runs synchronously after `DeferAfterResponse` (fix 7004067d) |
+| Online order status SMS | **No** | Same sync-after-defer pattern |
+| OTP / manual send-bill / pay-link SMS | **No** | Direct `SmsService::send()` |
+| Loyalty earn, inventory, outgoing webhooks, campaign SMS | **Yes** | Queued listeners — worker must run |
+
+Set `SMS_LIVE=true` on test when using real Dhiraagu credentials with `APP_ENV=local`.
+
+## BML payments — test vs production
+
+Both environments may share the **production BML merchant** and portal webhook URL (`bakeandgrill.mv`).
+
+| Environment | Order confirmation path |
+|-------------|---------------------------|
+| **Production** | Webhook (primary) + return URL fallback |
+| **Test** | Return URL (`BML_RETURN_URL=https://test.bakeandgrill.mv/payments/bml/return`) — empty test `webhook_logs` is expected |
+
+Production requires `BML_ENFORCE_SIGNATURE=true` (application boot guard throws if false).

@@ -829,8 +829,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 Route::get('/display/{token}', [App\Http\Controllers\Api\CustomerDisplayController::class, 'show'])
     ->middleware('throttle:60,1');
 
-// ─── Offline POS Sync ────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'staff.token', 'device.active'])->group(function () {
+// ─── Offline POS Sync (legacy — canonical: POST /api/pos/offline-sync) ───────
+Route::middleware(['auth:sanctum', 'staff.token', 'device.active', 'throttle:20,1'])->group(function () {
     Route::post('/offline/sync', [App\Http\Controllers\Api\OfflineSyncController::class, 'sync']);
 });
 

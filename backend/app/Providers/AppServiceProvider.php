@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\StaffSchedule;
 use App\Observers\OrderObserver;
 use App\Observers\StaffScheduleObserver;
+use App\Support\BmlSignatureGuard;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         // Force HTTPS scheme in production so generated URLs and redirects are always secure.
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
+            BmlSignatureGuard::assertProductionEnforcement('production', (bool) config('bml.enforce_signature', true));
         }
     }
 }

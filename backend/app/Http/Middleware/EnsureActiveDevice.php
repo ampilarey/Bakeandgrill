@@ -12,7 +12,9 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Optional device metadata for POS audit/reporting.
  *
- * Never blocks sales — staff auth + permissions + shift gate access.
+ * By default never blocks sales — staff auth + permissions + shift gate access.
+ * Owner-disabled devices (is_active=false) are rejected. Set
+ * POS_STRICT_DEVICE_APPROVAL=true to also require approved status.
  * When X-Device-Identifier is present, upserts a device row and attaches
  * it to the request. Missing header is allowed.
  */
@@ -55,6 +57,20 @@ class EnsureActiveDevice
                 $device->update($updates);
                 $device->refresh();
             }
+        }
+
+        if (!$device->is_active) {
+            return response()->json([
+                'message' => 'This POS device has been disabled. Contact your manager.',
+                'code' => 'device_disabled',
+            ], 403);
+        }
+
+        if (config('pos.strict_device_approval', false) && $device->status !== 'approved') {
+            return response()->json([
+                'message' => 'This POS device is not approved yet.',
+                'code' => 'device_not_approved',
+            ], 403);
         }
 
         $request->attributes->set('device', $device);

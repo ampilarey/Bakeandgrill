@@ -46,10 +46,17 @@ Use on **test.bakeandgrill.mv/pos** before production rollout.
 19. With pending offline orders, Close shift must block with **Sync now** button.
 20. After sync completes, close shift succeeds; expected cash matches server summary.
 
-## PWA update
+## PWA update (manual verification)
 
-21. With pending offline orders, POS update banner must not force reload.
-22. After all orders synced, update may proceed (existing posUpdateSafety behaviour).
+Use after deploying a new POS build to test or production.
+
+1. Open POS on iPad with an **open shift** and **no pending offline orders**.
+2. Deploy new build (`git pull` + POS assets if applicable).
+3. Confirm **Update available** banner appears (do not force-reload with pending offline queue).
+4. Tap **Update now** — app reloads to new version (`pos-version.json` / hashed assets change).
+5. Confirm shift still open, menu loads, one cash sale completes.
+6. With **pending offline orders**, banner must stay non-blocking until sync completes (see items 21–22 above).
+7. Force-close PWA and reopen — should load latest shell via NetworkFirst navigate fallback.
 
 ## Regression (online)
 
