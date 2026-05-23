@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchPosMenu } from "../api";
-import type { PosSalesChannel } from "../api";
+import { fetchPosBootstrap, fetchPosMenu } from "../api";
+import type { PosBootstrapShift, PosSalesChannel } from "../api";
 import type { Category, Item } from "../types";
 import { loadCachedMenu, saveCachedMenu } from "../offline/db";
 import { markOfflineBootstrap } from "../offline/offlineGate";
@@ -32,6 +32,7 @@ export function useMenu(
   isLoggedIn: boolean,
   orderType: "Dine-in" | "Takeaway" | "Pickup",
   isReachable = true,
+  onBootstrapShift?: (shift: PosBootstrapShift | null) => void,
 ) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -43,15 +44,18 @@ export function useMenu(
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
   const attemptRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bootstrapDoneRef = useRef(false);
 
   const channel = channelForOrderType(orderType);
 
   const channelRef = useRef(channel);
   const loggedInRef = useRef(isLoggedIn);
   const reachableRef = useRef(isReachable);
+  const onBootstrapShiftRef = useRef(onBootstrapShift);
   useEffect(() => { channelRef.current = channel; }, [channel]);
   useEffect(() => { loggedInRef.current = isLoggedIn; }, [isLoggedIn]);
   useEffect(() => { reachableRef.current = isReachable; }, [isReachable]);
+  useEffect(() => { onBootstrapShiftRef.current = onBootstrapShift; }, [onBootstrapShift]);
 
   const applyCachedMenu = useCallback((cached: NonNullable<Awaited<ReturnType<typeof loadCachedMenu>>>) => {
     setCategories((cached.categories ?? []) as Category[]);
@@ -66,6 +70,7 @@ export function useMenu(
       const ch = channelRef.current;
 
       let showedCachedMenu = false;
+      const useBootstrap = mode === "initial" && !bootstrapDoneRef.current;
 
       if (mode === "initial") {
         setDataError("");
@@ -93,20 +98,38 @@ export function useMenu(
       }
 
       try {
-        const menu = await fetchPosMenu(ch);
-        const cats = menu.categories;
-        const its = menu.items;
-        if (ch !== channelRef.current) return;
-        setCategories(cats);
-        setItems(its);
-        setDataError("");
-        setUsingCachedMenu(false);
-        setLastRefreshedAt(Date.now());
-        markOfflineBootstrap();
-        void saveCachedMenu(ch, { categories: cats, items: its });
-        attemptRef.current = 0;
-        if (mode === "initial") {
+        if (useBootstrap) {
+          const boot = await fetchPosBootstrap(ch);
+          if (ch !== channelRef.current) return;
+          const cats = boot.categories;
+          const its = boot.items;
+          setCategories(cats);
+          setItems(its);
+          setDataError("");
+          setUsingCachedMenu(false);
+          setLastRefreshedAt(Date.now());
+          markOfflineBootstrap();
+          void saveCachedMenu(ch, { categories: cats, items: its });
+          attemptRef.current = 0;
+          bootstrapDoneRef.current = true;
+          onBootstrapShiftRef.current?.(boot.shift ?? null);
           setSelectedCategoryId(null);
+        } else {
+          const menu = await fetchPosMenu(ch);
+          const cats = menu.categories;
+          const its = menu.items;
+          if (ch !== channelRef.current) return;
+          setCategories(cats);
+          setItems(its);
+          setDataError("");
+          setUsingCachedMenu(false);
+          setLastRefreshedAt(Date.now());
+          markOfflineBootstrap();
+          void saveCachedMenu(ch, { categories: cats, items: its });
+          attemptRef.current = 0;
+          if (mode === "initial") {
+            setSelectedCategoryId(null);
+          }
         }
       } catch (err) {
         if (mode === "initial") {
@@ -154,7 +177,10 @@ export function useMenu(
   }, [load]);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn) {
+      bootstrapDoneRef.current = false;
+      return;
+    }
     attemptRef.current = 0;
     void load("initial");
     return () => {

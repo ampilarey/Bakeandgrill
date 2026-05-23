@@ -6,16 +6,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Http\Controllers\Controller;
+use App\Models\Shift;
 use App\Services\PosMenuBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Single-shot POS menu feed — categories + channel-filtered items in
- * one round trip, without the N+1 availability queries the public
- * /items endpoint runs per row.
+ * Single round trip for POS login — menu + current shift without the
+ * extra cash-movement payload the shift "current" endpoint attaches.
  */
-class PosMenuController extends Controller
+class PosBootstrapController extends Controller
 {
     public function index(
         Request $request,
@@ -32,9 +32,16 @@ class PosMenuController extends Controller
 
         $menu = $menuBuilder->build($channel);
 
+        $shift = Shift::query()
+            ->where('user_id', $request->user()?->id)
+            ->whereNull('closed_at')
+            ->latest('opened_at')
+            ->first(['id', 'opened_at', 'closed_at', 'opening_cash', 'closing_cash', 'expected_cash', 'variance']);
+
         return response()->json([
             'categories' => $menu['categories'],
             'items' => $menu['items'],
+            'shift' => $shift,
         ]);
     }
 }

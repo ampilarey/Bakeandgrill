@@ -237,10 +237,10 @@ function App() {
   // restricted via item_channel_availability disappear or reappear
   // automatically, so the cashier can't accidentally ring something
   // that doesn't belong on that channel.
-  const menu = useMenu(isLoggedIn, orderType, isReachable);
+  const shift = useShift(isLoggedIn, isLoggedIn, deviceId);
+  const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap);
   const cart = useCart();
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
-  const shift = useShift(isLoggedIn, isLoggedIn, deviceId);
 
   const refreshOfflineCounts = useCallback(async () => {
     if (!OFFLINE_SYNC_V2) {

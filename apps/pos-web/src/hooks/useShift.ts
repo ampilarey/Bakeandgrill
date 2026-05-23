@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiRequestError } from "@shared/api";
+import type { PosBootstrapShift } from "../api";
 import {
   closeShift,
   createCashMovement,
@@ -32,6 +33,22 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [summary, setSummary] = useState<ShiftSummary | null>(null);
+  const bootstrapSeededRef = useRef(false);
+  const cacheHydratedRef = useRef(false);
+
+  const seedFromBootstrap = useCallback((shift: PosBootstrapShift | null) => {
+    bootstrapSeededRef.current = true;
+    setCurrent(shift);
+    setLoading(false);
+    setError("");
+    if (shift && deviceIdentifier) {
+      void saveCachedShift({
+        shift_id: shift.id,
+        opened_at: shift.opened_at,
+        device_identifier: deviceIdentifier,
+      });
+    }
+  }, [deviceIdentifier]);
 
   const refresh = useCallback(async () => {
     if (!isLoggedIn || !deviceApproved) return;
@@ -103,7 +120,46 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     }
   }, [current]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  // Hydrate shift from IndexedDB immediately so login doesn't block on
+  // the network when we already cached a shift from the last session.
+  useEffect(() => {
+    if (!isLoggedIn || !deviceApproved || cacheHydratedRef.current) return;
+    cacheHydratedRef.current = true;
+    void loadCachedShift().then((cached) => {
+      if (!cached) return;
+      setCurrent((prev) => prev ?? {
+        id: cached.shift_id,
+        opened_at: cached.opened_at,
+        closed_at: null,
+        opening_cash: 0,
+        closing_cash: null,
+        expected_cash: null,
+        variance: null,
+      });
+      setLoading(false);
+    });
+  }, [isLoggedIn, deviceApproved]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      cacheHydratedRef.current = false;
+      bootstrapSeededRef.current = false;
+      setLoading(true);
+      return;
+    }
+    if (!deviceApproved) return;
+
+    // Let /pos/bootstrap seed shift first; fall back if bootstrap fails.
+    const handle = window.setTimeout(() => {
+      if (bootstrapSeededRef.current) {
+        bootstrapSeededRef.current = false;
+        return;
+      }
+      void refresh();
+    }, 2500);
+
+    return () => window.clearTimeout(handle);
+  }, [refresh, isLoggedIn, deviceApproved]);
 
   // Live polling for the shift summary so the cashier sees fresh expected
   // cash + sales counts without manually refreshing. 30s is plenty for
@@ -120,13 +176,18 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
   useEffect(() => {
     if (!current) return;
     let timerId: number | null = null;
+    let summaryDelayId: number | null = null;
 
     const arm = () => {
       if (timerId !== null) return;
-      void refreshSummary();
+      summaryDelayId = window.setTimeout(() => { void refreshSummary(); }, 5000);
       timerId = window.setInterval(() => { void refreshSummary(); }, 30_000);
     };
     const disarm = () => {
+      if (summaryDelayId !== null) {
+        window.clearTimeout(summaryDelayId);
+        summaryDelayId = null;
+      }
       if (timerId !== null) {
         window.clearInterval(timerId);
         timerId = null;
@@ -193,6 +254,7 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     error,
     refresh,
     refreshSummary,
+    seedFromBootstrap,
     open,
     close,
     cashMovement,

@@ -146,7 +146,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // Get current user (staff)
     Route::get('/auth/me', [StaffAuthController::class, 'me']);
 
-    // POS menu — one request for categories + channel-filtered items
+    // POS bootstrap — menu + current shift in one login round trip
+    Route::get('/pos/bootstrap', [App\Http\Controllers\Api\PosBootstrapController::class, 'index'])
+        ->middleware('throttle:120,1');
+    // POS menu — channel refetch after order-type change (no shift payload)
     Route::get('/pos/menu', [App\Http\Controllers\Api\PosMenuController::class, 'index'])
         ->middleware('throttle:120,1');
     Route::patch('/auth/me/preferences', [StaffAuthController::class, 'updatePreferences']);

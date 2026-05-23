@@ -106,7 +106,37 @@ export async function fetchCategories(): Promise<Category[]> {
   return data.categories ?? data.data ?? [];
 }
 
-/** Single round-trip menu load for the POS register. */
+export type PosBootstrapShift = {
+  id: number;
+  opened_at: string;
+  closed_at: string | null;
+  opening_cash: number;
+  closing_cash: number | null;
+  expected_cash: number | null;
+  variance: number | null;
+};
+
+/** Login bootstrap — menu + current shift in one request. */
+export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
+  categories: Category[];
+  items: Item[];
+  shift: PosBootstrapShift | null;
+}> {
+  const params = new URLSearchParams();
+  if (channel) params.set("channel", channel);
+  const data = await request<{
+    categories: Category[];
+    items: Item[];
+    shift: PosBootstrapShift | null;
+  }>(`/pos/bootstrap?${params.toString()}`);
+  return {
+    categories: data.categories ?? [],
+    items: data.items ?? [],
+    shift: data.shift ?? null,
+  };
+}
+
+/** Single round-trip menu load for the POS register (channel changes). */
 export async function fetchPosMenu(channel?: PosSalesChannel): Promise<{
   categories: Category[];
   items: Item[];
