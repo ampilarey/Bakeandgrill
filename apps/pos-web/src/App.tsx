@@ -408,14 +408,11 @@ function App() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: (orderId, customerId, customerPhone, settledType, paidOnCredit = false) => {
+    onOrderSettled: (orderId, customerId, customerPhone, _settledType, paidOnCredit = false) => {
       void refreshOpenTickets();
       void shift.refreshSummary();
       setLastPaidOrder({ orderId, customerId, customerPhone, paidOnCredit });
-      if (settledType === "dine_in" || settledType === "takeaway") {
-        setReceiptsFocusOrderId(orderId);
-        setPane("receipts");
-      }
+      setPane("sales");
     },
   });
 

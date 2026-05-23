@@ -421,7 +421,7 @@ export function useOrderCreation(params: Params) {
     }
 
     try {
-      await createOrderPayments(orderId, { payments: finalPayments, print_receipt: true });
+      await createOrderPayments(orderId, { payments: finalPayments, print_receipt: false });
       setPendingPaymentForOrderId(null);
       setPendingPaymentSnapshot(null);
       return true;
