@@ -66,7 +66,15 @@ export function CashInput({
     }
     // Strip a leading "0" so "07" becomes "7".
     if (value === "0" && k !== ".") return onChange(k);
-    apply(value + k);
+
+    const appended = value + k;
+    // Pre-filled exact amounts (e.g. "1.08") already use both decimal
+    // places — appending another digit silently fails validation and
+    // looks like a dead numpad. Treat the next key as a fresh entry,
+    // same as selecting-all then typing on a hardware keyboard.
+    if (!/^\d*\.?\d{0,2}$/.test(appended)) return onChange(k);
+
+    apply(appended);
   };
 
   return (
