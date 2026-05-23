@@ -7,28 +7,22 @@ namespace App\Domains\Notifications\Listeners;
 use App\Domains\Notifications\Services\PaymentConfirmationNotifier;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\Order;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Queued payment confirmation SMS + email for fully paid orders.
+ * Payment confirmation SMS + email for fully paid orders.
  *
- * Runs after DB commit on OrderPaid so POS /payments responses are not
- * blocked on the Dhiraagu SMS round-trip (often 10–20s). SmsService
- * idempotency ('order:paid:confirm:{order_number}') prevents duplicates
- * if PaymentService also notified synchronously on the BML path.
+ * Runs synchronously when OrderPaid fires. POS addPayments dispatches
+ * OrderPaid inside DeferAfterResponse (after the JSON response is sent),
+ * so the Dhiraagu round-trip does not slow the Charge button. Keeping
+ * this listener off the queue avoids silent SMS loss when no queue
+ * worker is running. SmsService idempotency
+ * ('order:paid:confirm:{order_number}') prevents duplicates if
+ * PaymentService also notified on the BML path.
  */
-class SendPaymentConfirmationListener implements ShouldQueue
+class SendPaymentConfirmationListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
-
-    public int $timeout = 60;
 
     public function __construct(private PaymentConfirmationNotifier $notifier) {}
 

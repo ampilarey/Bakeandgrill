@@ -47,6 +47,9 @@ return [
         'username' => env('DHIRAAGU_SMS_USERNAME'),
         'password' => env('DHIRAAGU_SMS_PASSWORD'),
         'timeout' => env('DHIRAAGU_SMS_TIMEOUT', 30),
+        // Set SMS_LIVE=true on staging/test servers that use APP_ENV=local but
+        // should hit the real Dhiraagu API (e.g. test.bakeandgrill.mv UAT).
+        'live' => filter_var(env('SMS_LIVE', false), FILTER_VALIDATE_BOOL),
     ],
 
     'stripe' => [

@@ -47,8 +47,13 @@ class DhiraaguSmsProvider implements SmsProviderInterface
             return null;
         }
 
-        // Always use demo mode in non-production environments
-        if (app()->environment(['local', 'testing'])) {
+        // PHPUnit never hits the carrier. Local dev defaults to demo unless
+        // SMS_LIVE=true (staging boxes like test.bakeandgrill.mv set this).
+        if (app()->environment('testing')) {
+            return null;
+        }
+
+        if (app()->environment('local') && !($config['live'] ?? false)) {
             return null;
         }
 
@@ -81,7 +86,7 @@ class DhiraaguSmsProvider implements SmsProviderInterface
                 'transaction_id' => $data['transactionId'] ?? null,
             ]);
 
-            if ($response->successful() && ($data['transactionStatus'] ?? '') === 'true') {
+            if ($response->successful() && $this->transactionAccepted($data)) {
                 return [true, $data, null];
             }
 
@@ -101,5 +106,22 @@ class DhiraaguSmsProvider implements SmsProviderInterface
 
         // success=false so sms_logs show status "demo", not "sent" (avoids false "delivered" in admin).
         return [false, 'demo', null];
+    }
+
+    /** Dhiraagu has returned both string "true" and boolean true. */
+    private function transactionAccepted(array $data): bool
+    {
+        $status = $data['transactionStatus'] ?? $data['transaction_status'] ?? null;
+
+        if ($status === true || $status === 'true' || $status === 'True' || $status === 1 || $status === '1') {
+            return true;
+        }
+
+        // Some responses only expose a transactionId on success.
+        if ($status === null && !empty($data['transactionId'])) {
+            return true;
+        }
+
+        return false;
     }
 }

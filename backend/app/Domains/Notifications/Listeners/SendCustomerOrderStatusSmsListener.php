@@ -10,7 +10,6 @@ use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\SiteSetting;
 use App\Support\OrderTrackingUrl;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,15 +24,9 @@ use Illuminate\Support\Facades\Log;
  * Only fires for orders that have a linked customer with a phone number.
  * Idempotent: SmsService deduplicates via idempotency key.
  */
-final class SendCustomerOrderStatusSmsListener implements ShouldQueue
+final class SendCustomerOrderStatusSmsListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(private readonly SmsService $sms) {}
 

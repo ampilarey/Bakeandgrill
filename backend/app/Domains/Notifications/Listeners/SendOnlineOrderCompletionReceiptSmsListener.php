@@ -16,13 +16,9 @@ use Illuminate\Support\Str;
  * When an online pickup or delivery order reaches completed or delivered, SMS the receipt link.
  * Idempotent per order via SmsService idempotency key.
  */
-final class SendOnlineOrderCompletionReceiptSmsListener implements \Illuminate\Contracts\Queue\ShouldQueue
+final class SendOnlineOrderCompletionReceiptSmsListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
 
     private const ONLINE_TYPES = ['online_pickup', 'delivery'];
 

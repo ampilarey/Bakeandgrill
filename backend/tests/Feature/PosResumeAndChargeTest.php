@@ -6,11 +6,13 @@ namespace Tests\Feature;
 
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\Device;
 use App\Models\Item;
 use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Models\Role;
+use App\Models\SmsLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -174,5 +176,47 @@ class PosResumeAndChargeTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('paid', Order::find($orderId)->status);
+    }
+
+    /**
+     * Payment confirmation SMS must not depend on a queue worker.
+     * OrderPaid fires inside DeferAfterResponse; the SMS listener runs
+     * synchronously there so database/redis queue downtime cannot drop it.
+     */
+    public function test_add_payments_sends_payment_confirmation_sms_without_queue_worker(): void
+    {
+        Sanctum::actingAs($this->staffUser, ['staff']);
+        config(['queue.default' => 'database']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $customer = Customer::create([
+            'name' => 'SMS Customer',
+            'phone' => '+9607890123',
+        ]);
+
+        $orderId = $this->withHeader('X-Device-Identifier', 'RES-POS')
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'print' => false,
+                'customer_id' => $customer->id,
+                'items' => [['item_id' => $this->item->id, 'quantity' => 2]],
+            ])
+            ->assertCreated()
+            ->json('order.id');
+
+        $this->postJson("/api/orders/{$orderId}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => 50.00]],
+            'print_receipt' => false,
+        ])->assertOk();
+
+        $order = Order::findOrFail($orderId);
+        $this->assertSame('paid', $order->status);
+
+        $sms = SmsLog::query()
+            ->where('idempotency_key', 'order:paid:confirm:' . $order->order_number)
+            ->first();
+
+        $this->assertNotNull($sms, 'payment confirmation SMS log must exist without a queue worker');
+        $this->assertSame('+9607890123', $sms->to);
     }
 }

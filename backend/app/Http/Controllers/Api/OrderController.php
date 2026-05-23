@@ -683,7 +683,7 @@ class OrderController extends Controller
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,
-                idempotencyKey: 'order:paylink:' . $order->id . ':' . $idempotencyKey,
+                idempotencyKey: 'order:' . $idempotencyKey,
             ));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('sendPayLink: SMS failed', [
