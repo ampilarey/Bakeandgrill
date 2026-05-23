@@ -36,7 +36,9 @@ class AppServiceProvider extends ServiceProvider
         // Force HTTPS scheme in production so generated URLs and redirects are always secure.
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
-            BmlSignatureGuard::assertProductionEnforcement('production', (bool) config('bml.enforce_signature', true));
+            if (BmlSignatureGuard::shouldRunAtBoot('production', $this->app->runningInConsole())) {
+                BmlSignatureGuard::assertProductionEnforcement('production', (bool) config('bml.enforce_signature', true));
+            }
         }
     }
 }

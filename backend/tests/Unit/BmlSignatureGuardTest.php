@@ -27,4 +27,21 @@ class BmlSignatureGuardTest extends TestCase
         BmlSignatureGuard::assertProductionEnforcement('testing', false);
         $this->assertTrue(true);
     }
+
+    public function test_skips_guard_during_package_discover(): void
+    {
+        $_SERVER['argv'] = ['artisan', 'package:discover'];
+        $this->assertFalse(BmlSignatureGuard::shouldRunAtBoot('production', true));
+    }
+
+    public function test_runs_guard_during_migrate_on_production(): void
+    {
+        $_SERVER['argv'] = ['artisan', 'migrate', '--force'];
+        $this->assertTrue(BmlSignatureGuard::shouldRunAtBoot('production', true));
+    }
+
+    public function test_runs_guard_for_http_on_production(): void
+    {
+        $this->assertTrue(BmlSignatureGuard::shouldRunAtBoot('production', false));
+    }
 }
