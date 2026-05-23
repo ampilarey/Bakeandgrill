@@ -20,6 +20,7 @@ class Order extends Model
         'order_number',
         'tracking_token',
         'offline_id',
+        'offline_local_number',
         'type',
         'status',
         'payment_status',

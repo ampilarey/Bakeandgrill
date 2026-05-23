@@ -20,6 +20,15 @@ import {
   setQueue,
   OfflineQueueFullError,
 } from "../offlineQueue";
+import {
+  countPendingOfflineOrders,
+  OFFLINE_SYNC_V2,
+  saveOfflineOrder,
+  type OfflineOrderRecord,
+} from "../offline/db";
+import { allocateOfflineOrderNumber } from "../offline/offlineOrderNumber";
+import { openLocalReceipt } from "../offline/localReceipt";
+import { runOfflineSync } from "../offline/syncEngine";
 import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
@@ -37,6 +46,17 @@ const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup"
  * row without a positive amount is dropped. The remainder (if any) is
  * collected in `cash` by the checkout flow so the order is always settled.
  */
+function mapChargeMethodToOffline(method: string): OfflineOrderRecord["payment"]["method"] | null {
+  if (method === "cash") return "cash";
+  if (method === "card" || method === "card_pos") return "card";
+  if (method === "digital_wallet" || method === "bank_transfer") return "bank_transfer";
+  return null;
+}
+
+function lineUnitPrice(item: CartItem): number {
+  return item.price + item.modifiers.reduce((sum, m) => sum + (m.price ?? 0), 0);
+}
+
 function normalizePayments(rows: PaymentRow[]): { method: string; amount: number }[] {
   return rows
     .map((p) => ({ method: p.method, amount: Number.parseFloat(p.amount) }))
@@ -74,11 +94,16 @@ function cartFingerprint(items: CartItem[]): string {
 
 type Params = {
   isOnline: boolean;
+  /** True when the API health ping succeeds — drives offline sales + sync. */
+  isReachable: boolean;
   deviceId: string;
+  shiftId: number | null;
   orderType: OrderType;
   selectedTableId: number | null;
   cartItems: CartItem[];
   cartTotal: number;
+  cartSubtotal: number;
+  cartTax: number;
   payments: PaymentRow[];
   discountAmount: string;
   customerId: number | null;
@@ -269,6 +294,7 @@ export function useOrderCreation(params: Params) {
         item_id: item.id,
         name: item.name,
         quantity: item.quantity,
+        unit_price: lineUnitPrice(item),
         ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
         modifiers: item.modifiers.map((m) => ({ modifier_id: m.id, name: m.name, price: m.price })),
         // Free-form kitchen note string. We join the cashier's chip
@@ -502,7 +528,99 @@ export function useOrderCreation(params: Params) {
       gift_card_code: params.appliedGiftCardCode ?? null,
     };
 
-    if (!params.isOnline) {
+    if (!params.isReachable) {
+      if (
+        params.appliedPromoCode
+        || (params.appliedLoyaltyPoints ?? 0) > 0
+        || params.appliedGiftCardCode
+      ) {
+        flashError("Promo, loyalty, and gift cards cannot be used offline.");
+        return false;
+      }
+
+      const blocked = paymentSnapshot.some((p) => {
+        const method = p.method as string;
+        return method === "house_account" || method === "bml" || method === "online";
+      });
+      if (blocked) {
+        flashError("Only cash, card, and transfer are available offline.");
+        return false;
+      }
+
+      if (OFFLINE_SYNC_V2) {
+        if (!params.shiftId) {
+          flashError("No open shift cached. Open a shift while online first.");
+          return false;
+        }
+
+        const primary = paymentSnapshot[0];
+        const offlineMethod = primary ? mapChargeMethodToOffline(primary.method) : null;
+        if (!primary || !offlineMethod) {
+          flashError("Only cash, card, and transfer are available offline.");
+          return false;
+        }
+
+        if (paymentSnapshot.length > 1) {
+          flashError("Split tender is not available offline. Use one payment method.");
+          return false;
+        }
+
+        try {
+          const localOrderId = crypto.randomUUID();
+          const localOrderNumber = await allocateOfflineOrderNumber(params.deviceId);
+          const payload = buildPayload();
+          const record: OfflineOrderRecord = {
+            local_order_id: localOrderId,
+            local_order_number: localOrderNumber,
+            device_identifier: params.deviceId,
+            shift_id: params.shiftId,
+            created_at_local: new Date().toISOString(),
+            type: String(payload.type),
+            items: params.cartItems.map((item) => ({
+              item_id: item.id,
+              quantity: item.quantity,
+              ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
+              unit_price: lineUnitPrice(item),
+              name: item.name,
+              modifiers: item.modifiers.map((m) => ({
+                modifier_id: m.id,
+                name: m.name,
+                price: m.price,
+              })),
+              ...(item.notes?.length ? { notes: item.notes.join(" · ") } : {}),
+            })),
+            totals: {
+              subtotal: params.cartSubtotal,
+              tax: params.cartTax,
+              total: params.cartTotal,
+            },
+            payment: {
+              method: offlineMethod,
+              amount: Number.parseFloat(primary.amount),
+            },
+            discount_amount: Math.max(0, Number.parseFloat(params.discountAmount) || 0),
+            ...(params.customerId ? { customer_id: params.customerId } : {}),
+            ...(payload.ticket_name ? { ticket_name: String(payload.ticket_name) } : {}),
+            ...(payload.ticket_note ? { ticket_note: String(payload.ticket_note) } : {}),
+            ...(params.orderType === "Dine-in" && params.selectedTableId
+              ? { restaurant_table_id: params.selectedTableId }
+              : {}),
+            status: "pending_sync",
+          };
+
+          await saveOfflineOrder(record);
+          params.setOfflineQueueCount(await countPendingOfflineOrders(params.shiftId));
+          openLocalReceipt(record);
+          params.clearCart();
+          params.setSelectedItem(null);
+          flashNotice(`Offline sale saved (${localOrderNumber}). Will sync when online.`);
+          return true;
+        } catch {
+          flashError("Unable to save offline order. Please try again.");
+          return false;
+        }
+      }
+
       try {
         await enqueue({ order: payload, payments: paymentSnapshot, rewards: stagedRewards });
         params.setOfflineQueueCount(getQueueCount());
@@ -1012,8 +1130,31 @@ export function useOrderCreation(params: Params) {
    * for the next sync attempt.
    */
   const handleSyncQueue = () => {
-    if (!params.isOnline) { flashNotice("You are offline. Sync paused."); return; }
+    if (!params.isReachable) { flashNotice("You are offline. Sync paused."); return; }
     if (isSyncingQueue) { flashNotice("Sync already in progress…"); return; }
+
+    if (OFFLINE_SYNC_V2) {
+      setIsSyncingQueue(true);
+      void (async () => {
+        try {
+          const result = await runOfflineSync(true);
+          params.setOfflineQueueCount(result.remaining);
+          if (result.remaining === 0 && result.synced > 0) {
+            clearStatus();
+            flashNotice(`Synced ${result.synced} offline order${result.synced === 1 ? "" : "s"}.`);
+          } else if (result.synced > 0) {
+            flashError(`Synced ${result.synced}, ${result.remaining} remaining${result.conflicts ? `, ${result.conflicts} conflicts` : ""}.`);
+          } else if (result.remaining === 0) {
+            flashNotice("No queued orders to sync.");
+          } else {
+            flashError(`Sync incomplete — ${result.remaining} still pending.`);
+          }
+        } finally {
+          setIsSyncingQueue(false);
+        }
+      })();
+      return;
+    }
 
     const queue = getQueue();
     if (queue.length === 0) { flashNotice("No queued orders to sync."); return; }

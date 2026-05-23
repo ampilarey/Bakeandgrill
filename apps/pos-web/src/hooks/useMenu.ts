@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchCategories, fetchItems } from "../api";
 import type { PosSalesChannel } from "../api";
 import type { Category, Item } from "../types";
+import { loadCachedMenu, saveCachedMenu } from "../offline/db";
+import { markOfflineBootstrap } from "../offline/offlineGate";
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1500;
@@ -26,13 +28,18 @@ function channelForOrderType(orderType: "Dine-in" | "Takeaway" | "Pickup"): PosS
   return "takeaway";
 }
 
-export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" | "Pickup") {
+export function useMenu(
+  isLoggedIn: boolean,
+  orderType: "Dine-in" | "Takeaway" | "Pickup",
+  isReachable = true,
+) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataError, setDataError] = useState("");
+  const [usingCachedMenu, setUsingCachedMenu] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
   const attemptRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -73,7 +80,10 @@ export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" |
         setCategories(cats);
         setItems(its);
         setDataError("");
+        setUsingCachedMenu(false);
         setLastRefreshedAt(Date.now());
+        markOfflineBootstrap();
+        void saveCachedMenu(ch, { categories: cats, items: its });
         attemptRef.current = 0;
         if (mode === "initial") {
           // Default the cashier to "All items" rather than the first
@@ -86,6 +96,18 @@ export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" |
       } catch (err) {
         if (mode === "initial") {
           attemptRef.current++;
+          const cached = await loadCachedMenu(ch);
+          if (cached?.items?.length) {
+            setCategories((cached.categories ?? []) as Category[]);
+            setItems((cached.items ?? []) as Item[]);
+            setUsingCachedMenu(true);
+            setDataError(isReachable
+              ? "Unable to load menu. Check your connection and try again."
+              : "Showing cached menu (offline).");
+            setLastRefreshedAt(Date.parse(cached.cached_at));
+            setIsLoading(false);
+            return;
+          }
           if (attemptRef.current < MAX_RETRIES) {
             const delay = RETRY_BASE_MS * 2 ** (attemptRef.current - 1);
             timerRef.current = setTimeout(() => void load("initial"), delay);
@@ -99,6 +121,12 @@ export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" |
         // last-refreshed timestamp stop advancing and can hit the
         // manual refresh button to retry.
         if (mode === "manual") {
+          const cached = await loadCachedMenu(ch);
+          if (cached?.items?.length) {
+            setCategories((cached.categories ?? []) as Category[]);
+            setItems((cached.items ?? []) as Item[]);
+            setUsingCachedMenu(true);
+          }
           setDataError("Couldn't reach server. Showing last known menu.");
           // Auto-clear the error after a few seconds so it doesn't
           // hang around once connectivity comes back.
@@ -170,5 +198,6 @@ export function useMenu(isLoggedIn: boolean, orderType: "Dine-in" | "Takeaway" |
     dataError,
     refresh,
     lastRefreshedAt,
+    usingCachedMenu,
   };
 }

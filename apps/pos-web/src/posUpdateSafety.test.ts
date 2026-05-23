@@ -34,6 +34,7 @@ describe("posUpdateSafety", () => {
         isSubmitting: false,
         pendingPaymentForOrderId: null,
         offlineQueueCount: 0,
+        offlinePendingCount: 0,
         shiftCashFormOpen: false,
       }),
     ).toBe(true);
@@ -54,6 +55,7 @@ describe("posUpdateSafety", () => {
         isSubmitting: false,
         pendingPaymentForOrderId: null,
         offlineQueueCount: 0,
+        offlinePendingCount: 0,
         shiftCashFormOpen: false,
       }),
     ).toBe(false);

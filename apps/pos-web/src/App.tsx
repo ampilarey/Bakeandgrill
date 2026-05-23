@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary } from "./api";
 import { getQueueCount } from "./offlineQueue";
+import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, OFFLINE_SYNC_V2, saveCachedStaffSession } from "./offline/db";
+import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
+import { startSyncEnginePolling } from "./offline/syncEngine";
+import { useConnectivity } from "./hooks/useConnectivity";
 import type { RestaurantTable } from "./types";
 
 import { useMenu }          from "./hooks/useMenu";
@@ -35,6 +39,7 @@ import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
 import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
 import { PosUpdateBanner } from "./components/PosUpdateBanner";
+import { OfflineSyncPanel } from "./components/OfflineSyncPanel";
 import { usePosAppUpdate } from "./hooks/usePosAppUpdate";
 import { POS_BUILD_INFO } from "./posBuildInfo";
 
@@ -145,8 +150,20 @@ function App() {
   const [pane, setPane] = useState<Pane>("sales");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [offlineQueueCount, setOfflineQueueCount] = useState(getQueueCount());
+  const connectivity = useConnectivity(isLoggedIn);
+  const isOnline = connectivity.isOnline;
+  const isReachable = connectivity.isReachable;
+  const [offlineQueueCount, setOfflineQueueCount] = useState(() => (
+    OFFLINE_SYNC_V2 ? 0 : getQueueCount()
+  ));
+  const [offlinePendingCount, setOfflinePendingCount] = useState(0);
+  const [offlinePendingTotals, setOfflinePendingTotals] = useState({
+    cash: 0,
+    card: 0,
+    transfer: 0,
+  });
+  const [showOfflineSyncPanel, setShowOfflineSyncPanel] = useState(false);
+  const [offlineGate, setOfflineGate] = useState<OfflineGateResult | null>(null);
 
   // Modals/overlays
   const [showSendBill, setShowSendBill] = useState(false);
@@ -188,20 +205,6 @@ function App() {
   // the cart's overflow:auto clip and survives cart state churn.
   const [notePickerKey, setNotePickerKey] = useState<string | null>(null);
 
-  // ── Online / offline events ─────────────────────────────────────────────────
-  useEffect(() => {
-    const onOnline  = () => setIsOnline(true);
-    const onOffline = () => setIsOnline(false);
-    window.addEventListener("online",  onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online",  onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, []);
-
-  useEffect(() => { setOfflineQueueCount(getQueueCount()); }, [isOnline]);
-
   // Auto-flush the offline queue when connectivity returns. Previously
   // the cashier had to remember to tap "Sync" in the header — easy to
   // forget during a busy lunch rush, and tickets sat in localStorage
@@ -213,7 +216,7 @@ function App() {
   // immediately after the auth_expired flow lands the cashier back on
   // the lock screen.
   useEffect(() => {
-    if (!isOnline || !isLoggedIn) return;
+    if (!isReachable || !isLoggedIn) return;
     if (offlineQueueCount === 0) return;
     const handle = window.setTimeout(() => {
       try {
@@ -226,7 +229,7 @@ function App() {
     // closure captures the latest handleSyncQueue from the current
     // render anyway (React 18 useEffect semantics).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline, isLoggedIn, offlineQueueCount]);
+  }, [isReachable, isLoggedIn, offlineQueueCount]);
 
   // ── Hooks ───────────────────────────────────────────────────────────────────
   // Passing orderType lets the menu refilter when the cashier flips
@@ -234,10 +237,48 @@ function App() {
   // restricted via item_channel_availability disappear or reappear
   // automatically, so the cashier can't accidentally ring something
   // that doesn't belong on that channel.
-  const menu = useMenu(isLoggedIn, orderType);
+  const menu = useMenu(isLoggedIn, orderType, isReachable);
   const cart = useCart();
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
-  const shift = useShift(isLoggedIn, isLoggedIn);
+  const shift = useShift(isLoggedIn, isLoggedIn, deviceId);
+
+  const refreshOfflineCounts = useCallback(async () => {
+    if (!OFFLINE_SYNC_V2) {
+      setOfflineQueueCount(getQueueCount());
+      setOfflinePendingCount(0);
+      return;
+    }
+    const shiftId = shift.current?.id ?? null;
+    const pending = await countPendingOfflineOrders(shiftId ?? undefined);
+    const totals = await getOfflineOrderSyncCounts(shiftId ?? undefined);
+    setOfflineQueueCount(pending);
+    setOfflinePendingCount(pending);
+    setOfflinePendingTotals({
+      cash: totals.pendingCashTotal,
+      card: totals.pendingCardTotal,
+      transfer: totals.pendingTransferTotal,
+    });
+  }, [shift.current?.id]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    void initOfflineDb().then(() => refreshOfflineCounts());
+  }, [isLoggedIn, refreshOfflineCounts]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !OFFLINE_SYNC_V2) return;
+    return startSyncEnginePolling(() => isReachable);
+  }, [isLoggedIn, isReachable]);
+
+  useEffect(() => {
+    if (!isLoggedIn || isReachable) {
+      setOfflineGate(null);
+      return;
+    }
+    void evaluateOfflineGate().then(setOfflineGate);
+  }, [isLoggedIn, isReachable]);
+
+  useEffect(() => { void refreshOfflineCounts(); }, [isReachable, refreshOfflineCounts]);
 
   // Auto-dismiss the note picker if the cart line it's editing
   // disappears (e.g. cashier removed the line in another panel before
@@ -318,17 +359,26 @@ function App() {
         localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
         setStaffPermissions(perms);
         setIdleLockMinutes(resolveIdleLockMinutes(user));
+        void saveCachedStaffSession({
+          staff_user_id: user.id,
+          name: user.name,
+          permissions: perms,
+        });
       })
       .catch(() => undefined);
   }, [isLoggedIn]);
 
   const order = useOrderCreation({
     isOnline,
+    isReachable,
     deviceId,
+    shiftId: shift.current?.id ?? null,
     orderType,
     selectedTableId,
     cartItems:     cart.cartItems,
     cartTotal:     cart.cartTotal,
+    cartSubtotal:  cart.cartSubtotal,
+    cartTax:       cart.cartTax,
     payments:      cart.payments,
     discountAmount: cart.discountAmount,
     customerId:    cart.attachedCustomer?.id ?? null,
@@ -339,7 +389,10 @@ function App() {
     clearCart:        cart.clearCart,
     setCartItems:     cart.setCartItems,
     setSelectedItem:  cart.setSelectedItem,
-    setOfflineQueueCount,
+    setOfflineQueueCount: (n) => {
+      setOfflineQueueCount(n);
+      void refreshOfflineCounts();
+    },
     // Resume-time setters so handleResumeTicket can rehydrate the
     // ticket's original context (customer / order type / table). Without
     // these, parking a Dine-in/Table 4/Aisha ticket and resuming it
@@ -379,6 +432,7 @@ function App() {
     isSubmitting: order.isSubmitting,
     pendingPaymentForOrderId: order.pendingPaymentForOrderId,
     offlineQueueCount,
+    offlinePendingCount,
     shiftCashFormOpen: false,
   });
 
@@ -792,6 +846,35 @@ function App() {
     );
   }
 
+  if (!isReachable && offlineGate && !offlineGate.allowed) {
+    return (
+      <div style={{
+        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 24, background: "#F8FAFC", color: "#0F172A",
+      }}>
+        <div style={{
+          maxWidth: 480, width: "100%", background: "#fff", borderRadius: 12,
+          padding: 24, boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+        }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: 22 }}>Offline mode unavailable</h1>
+          <p style={{ margin: 0, color: "#64748B", lineHeight: 1.5 }}>
+            {offlineGate.reason ?? "Connect while online once to cache menu, shift, and staff session."}
+          </p>
+          <button
+            type="button"
+            onClick={() => void connectivity.ping()}
+            style={{
+              marginTop: 16, minHeight: 44, padding: "0 16px", borderRadius: 8,
+              border: "none", background: "#0F172A", color: "#fff", fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            Retry connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pos-shell" style={{
       minHeight: '100vh',
@@ -840,11 +923,11 @@ function App() {
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-            background: isOnline ? '#DCFCE7' : '#FEE2E2',
-            color: isOnline ? '#15803D' : '#B91C1C',
+            background: isReachable ? '#DCFCE7' : '#FEE2E2',
+            color: isReachable ? '#15803D' : '#B91C1C',
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: isOnline ? '#22C55E' : '#EF4444' }} />
-            {isOnline ? 'Online' : 'Offline'}
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: isReachable ? '#22C55E' : '#EF4444' }} />
+            {isReachable ? 'Online' : 'Offline'}
           </span>
 
           {/* Top-banner refresh button removed — the ↻ next to the
@@ -871,7 +954,10 @@ function App() {
 
           {offlineQueueCount > 0 && (
             <button
-              onClick={order.handleSyncQueue}
+              onClick={() => {
+                if (OFFLINE_SYNC_V2) setShowOfflineSyncPanel(true);
+                else order.handleSyncQueue();
+              }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
@@ -883,6 +969,16 @@ function App() {
           )}
         </div>
       </header>
+
+      {!isReachable && (
+        <div style={{
+          padding: "10px 16px", background: "#FEF3C7", color: "#92400E",
+          borderBottom: "1px solid #FDE68A", fontSize: 13, fontWeight: 600,
+        }}>
+          Offline mode — cash, card, and transfer only (manual). Orders sync when internet returns.
+          {menu.usingCachedMenu ? " Showing cached menu." : ""}
+        </div>
+      )}
 
       <PosUpdateBanner
         visible={isLoggedIn && !isLocked && posUpdate.bannerVisible}
@@ -1191,8 +1287,9 @@ function App() {
           total={order.resumedOrderId !== null
             ? (order.resumedOrderTotal ?? cart.cartTotal)
             : cart.cartTotal}
-          creditEligible={canUseCredit && chargeCreditEligible}
+          creditEligible={canUseCredit && chargeCreditEligible && isReachable}
           creditAvailableMvr={chargeCreditAvailable}
+          isOffline={!isReachable}
           submitting={order.isSubmitting}
           errorMessage={order.statusMessage}
           onClose={() => setShowCharge(false)}
@@ -1223,8 +1320,26 @@ function App() {
       {showCloseShift && canCloseShift && (
         <CloseShiftModal
           summary={shift.summary}
+          pendingOfflineCount={offlinePendingCount}
+          pendingOfflineCashTotal={offlinePendingTotals.cash}
+          pendingOfflineCardTotal={offlinePendingTotals.card}
+          pendingOfflineTransferTotal={offlinePendingTotals.transfer}
+          onSyncNow={() => {
+            setShowCloseShift(false);
+            setShowOfflineSyncPanel(true);
+          }}
           onConfirm={handleCloseShift}
           onCancel={() => setShowCloseShift(false)}
+        />
+      )}
+
+      {showOfflineSyncPanel && (
+        <OfflineSyncPanel
+          shiftId={shift.current?.id ?? null}
+          onClose={() => {
+            setShowOfflineSyncPanel(false);
+            void refreshOfflineCounts();
+          }}
         />
       )}
 

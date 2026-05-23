@@ -301,6 +301,9 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // unchanged); these /pos/* twins let a cashier redeem on behalf of
     // the customer attached to the ticket.
     Route::prefix('pos')->group(function (): void {
+        Route::post('/offline-sync', [App\Http\Controllers\Api\PosOfflineSyncController::class, 'sync'])
+            ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
+
         Route::post('/loyalty/preview', [App\Http\Controllers\Api\LoyaltyController::class, 'posHoldPreview']);
         Route::post('/loyalty/hold', [App\Http\Controllers\Api\LoyaltyController::class, 'posHold']);
         Route::delete('/loyalty/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'posReleaseHold']);

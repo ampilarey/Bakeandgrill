@@ -7,6 +7,7 @@ import {
   getShiftSummary,
   openShift,
 } from "../api";
+import { saveCachedShift, loadCachedShift } from "../offline/db";
 
 export type ShiftRow = {
   id: number;
@@ -26,7 +27,7 @@ export type ShiftSummary = Awaited<ReturnType<typeof getShiftSummary>>;
  * the "Open shift" screen before any sales UI loads. This matches the
  * Loyverse "hard shift gate" behaviour.
  */
-export function useShift(isLoggedIn: boolean, deviceApproved: boolean) {
+export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIdentifier?: string) {
   const [current, setCurrent] = useState<ShiftRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -36,7 +37,15 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean) {
     if (!isLoggedIn || !deviceApproved) return;
     try {
       const res = await getCurrentShift();
-      setCurrent(res.shift as ShiftRow | null);
+      const shift = res.shift as ShiftRow | null;
+      setCurrent(shift);
+      if (shift && deviceIdentifier) {
+        void saveCachedShift({
+          shift_id: shift.id,
+          opened_at: shift.opened_at,
+          device_identifier: deviceIdentifier,
+        });
+      }
       setError("");
     } catch (e) {
       // Distinguish "no shift" (genuine null response or 404) from
@@ -60,13 +69,26 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean) {
           setError(e.message || "Couldn't refresh shift — retrying.");
         }
       } else {
-        // Network / offline — same treatment as 5xx: keep last shift.
+        // Network / offline — keep last shift; hydrate from IndexedDB
+        // cache on cold start when the API is unreachable.
+        const cached = await loadCachedShift();
+        if (cached) {
+          setCurrent((prev) => prev ?? {
+            id: cached.shift_id,
+            opened_at: cached.opened_at,
+            closed_at: null,
+            opening_cash: 0,
+            closing_cash: null,
+            expected_cash: null,
+            variance: null,
+          });
+        }
         setError("Network issue — shift status may be stale.");
       }
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn, deviceApproved]);
+  }, [isLoggedIn, deviceApproved, deviceIdentifier]);
 
   const refreshSummary = useCallback(async () => {
     if (!current) {
@@ -124,19 +146,27 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean) {
     };
   }, [current, refreshSummary]);
 
-  const open = useCallback(async (openingCash: number, notes?: string, deviceId?: number | null) => {
+  const open = useCallback(async (openingCash: number, notes?: string, deviceDbId?: number | null) => {
     try {
       const res = await openShift({
         opening_cash: openingCash,
         notes,
-        ...(deviceId ? { device_id: deviceId } : {}),
+        ...(deviceDbId ? { device_id: deviceDbId } : {}),
       });
       await refresh();
+      const opened = res.shift as ShiftRow;
+      if (deviceIdentifier) {
+        void saveCachedShift({
+          shift_id: opened.id,
+          opened_at: opened.opened_at,
+          device_identifier: deviceIdentifier,
+        });
+      }
       return res.shift;
     } catch (e) {
       throw e;
     }
-  }, [refresh]);
+  }, [refresh, deviceIdentifier]);
 
   const close = useCallback(async (closingCash: number, notes?: string) => {
     if (!current) throw new Error("No open shift to close.");

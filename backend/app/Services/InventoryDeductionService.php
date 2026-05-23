@@ -123,7 +123,18 @@ class InventoryDeductionService
 
     public function deductForOrder(Order $order, ?int $userId = null): void
     {
-        DB::transaction(function () use ($order, $userId): void {
+        $this->deductForOrderAndDetectConflict($order, $userId);
+    }
+
+    /**
+     * Deduct recipe inventory for an order. Returns true when any
+     * ingredient ended up below zero (Policy A — sync still succeeds).
+     */
+    public function deductForOrderAndDetectConflict(Order $order, ?int $userId = null): bool
+    {
+        $hadConflict = false;
+
+        DB::transaction(function () use ($order, $userId, &$hadConflict): void {
             $order->loadMissing('items.item.recipe.recipeItems.inventoryItem');
 
             foreach ($order->items as $orderItem) {
@@ -183,6 +194,10 @@ class InventoryDeductionService
 
                     $inventoryItem->refresh();
 
+                    if ((float) $inventoryItem->current_stock < 0) {
+                        $hadConflict = true;
+                    }
+
                     event(new StockLevelChanged(new StockLevelChangedData(
                         itemId: $inventoryItem->id,
                         itemName: $inventoryItem->name,
@@ -206,5 +221,7 @@ class InventoryDeductionService
                 }
             }
         });
+
+        return $hadConflict;
     }
 }

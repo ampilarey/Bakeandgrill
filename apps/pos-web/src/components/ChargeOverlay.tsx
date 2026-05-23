@@ -19,6 +19,8 @@ type Props = {
   /** Show Credit Account tender when customer is approved for credit. */
   creditEligible?: boolean;
   creditAvailableMvr?: number;
+  /** When true, only cash / card / transfer are offered. */
+  isOffline?: boolean;
   onClose: () => void;
   onConfirm: (rows: Array<{ method: ChargeMethod; amount: number }>) => Promise<void>;
   submitting: boolean;
@@ -52,6 +54,7 @@ export function ChargeOverlay({
   tax,
   creditEligible = false,
   creditAvailableMvr = 0,
+  isOffline = false,
   onClose,
   onConfirm,
   submitting,
@@ -317,7 +320,7 @@ export function ChargeOverlay({
                     }}
                   >{METHOD_LABEL[m]}</button>
                 ))}
-                {creditEligible && (
+                {creditEligible && !isOffline && (
                   <button
                     onClick={() => setMethod("house_account")}
                     style={{
@@ -344,7 +347,22 @@ export function ChargeOverlay({
               )}
             </div>
 
-            {method !== "cash" && method !== "house_account" && (
+            {isOffline && (
+              <div style={{
+                padding: "10px 12px", borderRadius: 8, background: "#FEF3C7",
+                border: "1px solid #FDE68A", fontSize: 12, color: "#92400E",
+              }}>
+                Offline mode — cash, card, and transfer only (manual record). Orders sync when internet returns.
+              </div>
+            )}
+
+            {isOffline && (method === "card" || method === "digital_wallet") && (
+              <div style={{ fontSize: 12, color: "#64748B" }}>
+                Payment must already be received — will sync when online.
+              </div>
+            )}
+
+            {method !== "cash" && method !== "house_account" && !isOffline && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "10px 12px", borderRadius: 10, background: "#fff",
@@ -363,7 +381,7 @@ export function ChargeOverlay({
               </div>
             )}
 
-            {split && method !== "cash" && method !== "house_account" && (
+            {split && method !== "cash" && method !== "house_account" && !isOffline && (
               <div>
                 <p style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
                 <CashInput

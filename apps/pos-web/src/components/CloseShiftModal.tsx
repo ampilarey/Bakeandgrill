@@ -5,6 +5,11 @@ import type { ShiftSummary } from "../hooks/useShift";
 
 type Props = {
   summary: ShiftSummary | null;
+  pendingOfflineCount?: number;
+  pendingOfflineCashTotal?: number;
+  pendingOfflineCardTotal?: number;
+  pendingOfflineTransferTotal?: number;
+  onSyncNow?: () => void;
   onConfirm: (closingCash: number, notes?: string) => Promise<void>;
   onCancel: () => void;
 };
@@ -14,7 +19,16 @@ type Props = {
  * ask them to count the drawer. Variance is computed live so the
  * cashier can never be surprised by what closes.
  */
-export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
+export function CloseShiftModal({
+  summary,
+  pendingOfflineCount = 0,
+  pendingOfflineCashTotal = 0,
+  pendingOfflineCardTotal = 0,
+  pendingOfflineTransferTotal = 0,
+  onSyncNow,
+  onConfirm,
+  onCancel,
+}: Props) {
   const [closingCash, setClosingCash] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,6 +52,10 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
   }, [expected, closingCash, summary]);
 
   const submit = async () => {
+    if (pendingOfflineCount > 0) {
+      setErr(`Sync ${pendingOfflineCount} offline order${pendingOfflineCount === 1 ? "" : "s"} before closing the shift.`);
+      return;
+    }
     if (closing == null || !Number.isFinite(closing) || closing < 0) {
       setErr("Enter the cash you counted in the drawer.");
       return;
@@ -57,6 +75,35 @@ export function CloseShiftModal({ summary, onConfirm, onCancel }: Props) {
         {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
         {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
         <Summary label="Expected in drawer" value={expected} bold />
+
+        {pendingOfflineCount > 0 && (
+          <div style={{
+            marginTop: 12, padding: "10px 12px", borderRadius: 8,
+            background: "#FEE2E2", color: "#B91C1C", fontSize: 13,
+          }}>
+            {pendingOfflineCount} offline order{pendingOfflineCount === 1 ? "" : "s"} not synced yet.
+            {pendingOfflineCashTotal > 0 && (
+              <div style={{ marginTop: 4 }}>Pending cash: MVR {pendingOfflineCashTotal.toFixed(2)}</div>
+            )}
+            {(pendingOfflineCardTotal > 0 || pendingOfflineTransferTotal > 0) && (
+              <div style={{ marginTop: 4, color: "#991B1B" }}>
+                Pending card MVR {pendingOfflineCardTotal.toFixed(2)} · transfer MVR {pendingOfflineTransferTotal.toFixed(2)}
+              </div>
+            )}
+            {onSyncNow && (
+              <button
+                type="button"
+                onClick={onSyncNow}
+                style={{
+                  marginTop: 8, padding: "8px 12px", borderRadius: 8, border: "none",
+                  background: "#B91C1C", color: "#fff", fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                Sync now
+              </button>
+            )}
+          </div>
+        )}
 
         {Number(summary?.open_unpaid_orders ?? 0) > 0 && (
           <div style={{

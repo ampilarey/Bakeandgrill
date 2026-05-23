@@ -3,7 +3,8 @@
  * network. Workbox precache otherwise keeps serving old index.html + JS
  * even after location.assign().
  *
- * Does NOT touch localStorage (pos_token, preferences, etc.).
+ * Does NOT touch localStorage (pos_token, preferences, etc.) or IndexedDB
+ * (offline orders / menu cache) — unsynced sales must survive SW updates.
  */
 export async function purgePosCachesAndReload(): Promise<void> {
   const navigate = () => {

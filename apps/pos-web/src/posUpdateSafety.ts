@@ -12,6 +12,7 @@ export type PosUpdateBlockers = {
   isSubmitting: boolean;
   pendingPaymentForOrderId: number | null;
   offlineQueueCount: number;
+  offlinePendingCount: number;
   shiftCashFormOpen: boolean;
 };
 
@@ -29,6 +30,7 @@ export function isPosUpdateBlocked(blockers: PosUpdateBlockers): boolean {
     || blockers.isSubmitting
     || blockers.pendingPaymentForOrderId !== null
     || blockers.offlineQueueCount > 0
+    || blockers.offlinePendingCount > 0
     || blockers.shiftCashFormOpen
   );
 }

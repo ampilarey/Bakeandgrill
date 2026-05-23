@@ -50,8 +50,9 @@ class OrderCreationService
         // close-shift cash drawer reconciliation includes it. Resolved by
         // (cashier user) first, falling back to device. Customer online
         // orders intentionally have no shift_id (no cashier responsible).
-        $shiftId = null;
-        if ($user !== null) {
+        // Offline sync passes an explicit shift_id from the cached snapshot.
+        $shiftId = !empty($payload['shift_id']) ? (int) $payload['shift_id'] : null;
+        if ($shiftId === null && $user !== null) {
             $shiftId = Shift::query()
                 ->where('user_id', $user->id)
                 ->whereNull('closed_at')
@@ -106,6 +107,7 @@ class OrderCreationService
                 // check never matched a previously-synced order so retries
                 // created duplicates.
                 'offline_id' => $payload['offline_id'] ?? null,
+                'offline_local_number' => $payload['offline_local_number'] ?? null,
                 'subtotal' => 0,
                 'tax_amount' => 0,
                 'discount_amount' => 0,
@@ -114,7 +116,7 @@ class OrderCreationService
                 'customer_notes' => $payload['customer_notes'] ?? null,
             ]);
 
-            $this->addOrderItems($order, $payload['items'] ?? [], $user);
+            $this->addOrderItems($order, $payload['items'] ?? [], $user, !empty($payload['offline_sync']));
 
             // Convert any payload-level manual discount to laari and store it so
             // the calculator (single source of truth) can include it correctly.
@@ -305,7 +307,7 @@ class OrderCreationService
         return $updated;
     }
 
-    private function addOrderItems(Order $order, array $items, ?object $user = null): float
+    private function addOrderItems(Order $order, array $items, ?object $user = null, bool $offlineSync = false): float
     {
         $subtotal = 0;
 
@@ -364,23 +366,28 @@ class OrderCreationService
                 }
             }
 
-            $basePrice = $variant ? (float) $variant->price : (float) $itemModel->base_price;
+            $basePrice = isset($itemPayload['unit_price'])
+                ? (float) $itemPayload['unit_price']
+                : ($variant ? (float) $variant->price : (float) $itemModel->base_price);
             $variantName = $variant?->name;
 
             // ── Stock check ───────────────────────────────────────────────────
             // Variant-level stock takes priority when the variant tracks its own stock.
-            if ($variant && $variant->track_stock) {
-                $lockedVariant = \App\Models\Variant::lockForUpdate()->find($variant->id) ?? $variant;
-                $available = app(StockReservationService::class)->getAvailableVariantStock($lockedVariant);
-                if ($available < $quantity) {
-                    abort(422, "Insufficient stock for \"{$itemModel->name} - {$variant->name}\". Available: {$available}, requested: {$quantity}");
-                }
-            } elseif ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
-                // Fall back to item-level stock for simple (non-variant-tracking) products
-                $lockedItem = Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
-                $available = app(StockReservationService::class)->getAvailableStock($lockedItem);
-                if ($available < $quantity) {
-                    abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$available}, requested: {$quantity}");
+            // Offline sync skips availability abort (Policy A) but still deducts below.
+            if (!$offlineSync) {
+                if ($variant && $variant->track_stock) {
+                    $lockedVariant = \App\Models\Variant::lockForUpdate()->find($variant->id) ?? $variant;
+                    $available = app(StockReservationService::class)->getAvailableVariantStock($lockedVariant);
+                    if ($available < $quantity) {
+                        abort(422, "Insufficient stock for \"{$itemModel->name} - {$variant->name}\". Available: {$available}, requested: {$quantity}");
+                    }
+                } elseif ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
+                    // Fall back to item-level stock for simple (non-variant-tracking) products
+                    $lockedItem = Item::lockForUpdate()->find($itemModel->id) ?? $itemModel;
+                    $available = app(StockReservationService::class)->getAvailableStock($lockedItem);
+                    if ($available < $quantity) {
+                        abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$available}, requested: {$quantity}");
+                    }
                 }
             }
 
@@ -417,7 +424,8 @@ class OrderCreationService
 
             // POS only: deduct stock immediately upon order creation.
             // Online orders are handled via reserveForOrder() after the full loop.
-            if (!$isOnlineOrder) {
+            // Offline sync defers prepared-stock handling; recipe inventory runs on sync.
+            if (!$isOnlineOrder && !$offlineSync) {
                 if ($variant && $variant->track_stock) {
                     $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductVariantStock(
