@@ -7,20 +7,28 @@ namespace App\Domains\Notifications\Listeners;
 use App\Domains\Notifications\Services\PaymentConfirmationNotifier;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\Order;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Synchronous retry fallback for payment confirmation SMS + email.
+ * Queued payment confirmation SMS + email for fully paid orders.
  *
- * PaymentService calls PaymentConfirmationNotifier inside DB::afterCommit when
- * BML/Stripe confirms payment. This listener runs on OrderPaid without a queue
- * worker so delivery still succeeds if the sync call failed or was skipped.
- *
- * SmsService idempotency key ('order:paid:confirm:{order_number}') prevents duplicates.
+ * Runs after DB commit on OrderPaid so POS /payments responses are not
+ * blocked on the Dhiraagu SMS round-trip (often 10–20s). SmsService
+ * idempotency ('order:paid:confirm:{order_number}') prevents duplicates
+ * if PaymentService also notified synchronously on the BML path.
  */
-class SendPaymentConfirmationListener
+class SendPaymentConfirmationListener implements ShouldQueue
 {
     public bool $afterCommit = true;
+
+    public string $queue = 'default';
+
+    public int $tries = 3;
+
+    public int $backoff = 5;
+
+    public int $timeout = 60;
 
     public function __construct(private PaymentConfirmationNotifier $notifier) {}
 

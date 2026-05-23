@@ -17,10 +17,9 @@ use Illuminate\Support\Str;
 /**
  * Sends a payment confirmation SMS + optional email for a paid order.
  *
- * Called in two ways:
- *   1. Synchronously from PaymentService::confirmPayment / completeZeroBalanceOnlineOrder
- *      (inside DB::afterCommit — fires immediately when payment is confirmed).
- *   2. Queued via SendPaymentConfirmationListener as a retry fallback.
+ * Called from PaymentService::confirmPayment / completeZeroBalanceOnlineOrder
+ * (sync, inside DB::afterCommit) and from the queued
+ * SendPaymentConfirmationListener on OrderPaid.
  *
  * The SmsService idempotency key ('order:paid:confirm:{order_number}') prevents duplicate
  * SMS delivery — whichever path fires first wins; the second is a no-op.
