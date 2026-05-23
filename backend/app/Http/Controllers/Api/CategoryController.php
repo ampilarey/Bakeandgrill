@@ -20,12 +20,20 @@ class CategoryController extends Controller
                    && $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
 
-        $query = Category::with(['items' => function ($q) use ($isAdmin) {
-            if (!$isAdmin) {
-                $q->where('is_active', true)->where('is_available', true);
-            }
-            $q->orderBy('sort_order')->orderBy('name');
-        }]);
+        // POS only needs category pills — skip nesting every item here
+        // (items are loaded via GET /items with channel filtering).
+        $withItems = !in_array($request->query('with_items'), ['0', 'false', 'no'], true);
+
+        $query = Category::query();
+
+        if ($withItems) {
+            $query->with(['items' => function ($q) use ($isAdmin) {
+                if (!$isAdmin) {
+                    $q->where('is_active', true)->where('is_available', true);
+                }
+                $q->orderBy('sort_order')->orderBy('name');
+            }]);
+        }
 
         if (!$isAdmin) {
             $query->where('is_active', true);

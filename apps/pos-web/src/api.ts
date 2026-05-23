@@ -101,7 +101,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function fetchCategories(): Promise<Category[]> {
   const data = await request<{ categories?: Category[]; data?: Category[] }>(
-    "/categories",
+    "/categories?with_items=0",
   );
   return data.categories ?? data.data ?? [];
 }
@@ -167,9 +167,9 @@ export async function fetchItems(channel?: PosSalesChannel): Promise<Item[]> {
   // through every available page so a 250-item menu is fully
   // loaded. Hard cap at 10 pages (1000 items) as a sanity guard so
   // a runaway server response can't lock the iPad.
-  const out: Item[] = [];
   const MAX_PAGES = 10;
-  for (let page = 1; page <= MAX_PAGES; page++) {
+
+  const fetchPage = async (page: number) => {
     const params = new URLSearchParams();
     if (channel) params.set("channel", channel);
     params.set("per_page", "100");
@@ -181,9 +181,18 @@ export async function fetchItems(channel?: PosSalesChannel): Promise<Item[]> {
       current_page?: number;
     }>(`/items?${params.toString()}`);
     const batch = res.data ?? [];
-    out.push(...batch);
     const lastPage = res.meta?.last_page ?? res.last_page ?? page;
-    if (batch.length === 0 || page >= lastPage) break;
+    return { batch, lastPage };
+  };
+
+  const first = await fetchPage(1);
+  const out: Item[] = [...first.batch];
+  const lastPage = Math.min(first.lastPage, MAX_PAGES);
+  if (lastPage > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: lastPage - 1 }, (_, i) => fetchPage(i + 2)),
+    );
+    for (const page of rest) out.push(...page.batch);
   }
   return out;
 }

@@ -64,9 +64,23 @@ export function useMenu(
       if (!loggedInRef.current) return;
       const ch = channelRef.current;
 
+      let showedCachedMenu = false;
+
       if (mode === "initial") {
-        setIsLoading(true);
         setDataError("");
+        const cached = await loadCachedMenu(ch);
+        if (cached?.items?.length) {
+          setCategories((cached.categories ?? []) as Category[]);
+          setItems((cached.items ?? []) as Item[]);
+          setUsingCachedMenu(true);
+          setLastRefreshedAt(Date.parse(cached.cached_at));
+          setIsLoading(false);
+          setIsRefreshing(true);
+          showedCachedMenu = true;
+        } else {
+          setIsLoading(true);
+          setDataError("");
+        }
       } else if (mode === "manual") {
         setIsRefreshing(true);
       }
@@ -96,22 +110,24 @@ export function useMenu(
       } catch (err) {
         if (mode === "initial") {
           attemptRef.current++;
-          const cached = await loadCachedMenu(ch);
-          if (cached?.items?.length) {
-            setCategories((cached.categories ?? []) as Category[]);
-            setItems((cached.items ?? []) as Item[]);
-            setUsingCachedMenu(true);
-            setDataError(isReachable
-              ? "Unable to load menu. Check your connection and try again."
-              : "Showing cached menu (offline).");
-            setLastRefreshedAt(Date.parse(cached.cached_at));
-            setIsLoading(false);
-            return;
+          if (!showedCachedMenu) {
+            const cached = await loadCachedMenu(ch);
+            if (cached?.items?.length) {
+              setCategories((cached.categories ?? []) as Category[]);
+              setItems((cached.items ?? []) as Item[]);
+              setUsingCachedMenu(true);
+              setDataError(isReachable
+                ? "Unable to load menu. Check your connection and try again."
+                : "Showing cached menu (offline).");
+              setLastRefreshedAt(Date.parse(cached.cached_at));
+              setIsLoading(false);
+              return;
+            }
           }
           if (attemptRef.current < MAX_RETRIES) {
             const delay = RETRY_BASE_MS * 2 ** (attemptRef.current - 1);
             timerRef.current = setTimeout(() => void load("initial"), delay);
-          } else {
+          } else if (!showedCachedMenu) {
             setDataError("Unable to load menu. Check your connection and try again.");
           }
         }
@@ -134,7 +150,10 @@ export function useMenu(
         }
         void err;
       } finally {
-        if (mode === "initial") setIsLoading(false);
+        if (mode === "initial") {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
         if (mode === "manual") setIsRefreshing(false);
       }
     },
