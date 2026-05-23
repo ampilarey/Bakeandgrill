@@ -43,6 +43,7 @@ class PosOfflineSyncRequest extends FormRequest
             'orders.*.payment.reference_number' => ['nullable', 'string', 'max:255'],
             'orders.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
             'orders.*.customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'orders.*.restaurant_table_id' => ['nullable', 'integer', 'exists:restaurant_tables,id'],
             'orders.*.ticket_name' => ['nullable', 'string', 'max:255'],
             'orders.*.ticket_note' => ['nullable', 'string', 'max:500'],
             'orders.*.prepared_locally' => ['nullable', 'boolean'],

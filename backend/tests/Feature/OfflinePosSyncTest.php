@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Role;
 use App\Models\Shift;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -258,6 +259,42 @@ class OfflinePosSyncTest extends TestCase
         $this->syncPayload([$payload])->assertOk();
 
         $this->assertSame(1, Payment::where('idempotency_key', 'offline:pay:' . $payload['idempotency_key'])->count());
+    }
+
+    public function test_offline_sync_deducts_prepared_stock(): void
+    {
+        $this->item->update([
+            'track_stock' => true,
+            'availability_type' => 'stock_based',
+            'stock_quantity' => 10,
+        ]);
+
+        $payload = $this->buildOrderPayload('cash', 50.0);
+        $response = $this->syncPayload([$payload]);
+        $response->assertOk()->assertJsonPath('results.0.status', 'synced');
+
+        $orderId = (int) $response->json('results.0.server_order_id');
+
+        $this->assertSame(9, (int) $this->item->fresh()->stock_quantity);
+        $this->assertSame(
+            1,
+            StockMovement::where('reference_type', 'menu_item')
+                ->where('reference_id', $this->item->id)
+                ->where('type', 'sale')
+                ->count(),
+        );
+    }
+
+    public function test_bank_transfer_payment_method_syncs(): void
+    {
+        $payload = $this->buildOrderPayload('bank_transfer', 50.0, 'TRF-123');
+
+        $this->syncPayload([$payload])->assertOk()
+            ->assertJsonPath('results.0.status', 'synced');
+
+        $orderId = (int) OfflineSyncRecord::where('idempotency_key', $payload['idempotency_key'])->value('server_order_id');
+        $payment = Payment::where('order_id', $orderId)->firstOrFail();
+        $this->assertSame('bank_transfer', $payment->method);
     }
 
     /**

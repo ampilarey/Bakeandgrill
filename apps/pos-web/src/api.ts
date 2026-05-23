@@ -605,6 +605,7 @@ export async function createOrderPayments(
       amount: number;
       status?: string;
       reference_number?: string;
+      idempotency_key?: string;
     }>;
     print_receipt?: boolean;
   }

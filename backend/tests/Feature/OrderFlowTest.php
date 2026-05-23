@@ -96,4 +96,80 @@ class OrderFlowTest extends TestCase
         $paymentResponse->assertOk()
             ->assertJsonPath('order.id', $orderId);
     }
+
+    public function test_add_payments_skips_duplicate_idempotency_key(): void
+    {
+        PermissionCatalogSync::sync();
+
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
+        );
+
+        $user = User::create([
+            'name' => 'Cashier',
+            'email' => 'cashier-idem@example.com',
+            'password' => 'password',
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        $device = Device::create([
+            'name' => 'POS-01',
+            'identifier' => 'POS-IDEM',
+            'type' => 'pos',
+            'is_active' => true,
+        ]);
+
+        $category = Category::create([
+            'name' => 'Food',
+            'slug' => 'food-idem',
+            'is_active' => true,
+        ]);
+
+        $item = Item::create([
+            'category_id' => $category->id,
+            'name' => 'Burger',
+            'base_price' => 20,
+            'sku' => 'FOOD-IDEM',
+            'is_active' => true,
+            'is_available' => true,
+        ]);
+
+        Sanctum::actingAs($user, ['staff']);
+
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $createResponse = $this->withHeader('X-Device-Identifier', $device->identifier)
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'device_identifier' => $device->identifier,
+                'items' => [
+                    ['item_id' => $item->id, 'name' => $item->name, 'quantity' => 1],
+                ],
+            ]);
+
+        $orderId = $createResponse->json('order.id');
+        $payload = [
+            'payments' => [
+                [
+                    'method' => 'cash',
+                    'amount' => 20,
+                    'idempotency_key' => 'pos:pay:test:0:cash',
+                ],
+            ],
+            'print_receipt' => false,
+        ];
+
+        $this->withHeader('X-Device-Identifier', $device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", $payload)
+            ->assertOk();
+
+        $this->withHeader('X-Device-Identifier', $device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", $payload)
+            ->assertOk();
+
+        $this->assertSame(1, \App\Models\Payment::where('idempotency_key', 'pos:pay:test:0:cash')->count());
+    }
 }

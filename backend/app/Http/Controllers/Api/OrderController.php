@@ -1418,6 +1418,22 @@ class OrderController extends Controller
         [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt, $gatewayMethods, $nonShiftMethods, $collectorShift, $collector): array {
             $order = Order::with('payments')->lockForUpdate()->findOrFail($id);
 
+            $paymentRows = $validated['payments'];
+            $allIdempotentReplay = count($paymentRows) > 0 && collect($paymentRows)->every(function (array $row): bool {
+                $key = $row['idempotency_key'] ?? null;
+
+                return is_string($key) && $key !== '' && Payment::where('idempotency_key', $key)->exists();
+            });
+
+            if ($allIdempotentReplay) {
+                $paidTotalLaar = (int) $order->payments()
+                    ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                    ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+                    ->value('total_laar');
+
+                return [$order, round($paidTotalLaar / 100, 2)];
+            }
+
             // Guard: payments cannot be added to terminal or already-paid orders
             $machine = app(OrderStatusMachine::class);
             $terminalStatuses = ['cancelled', 'refunded', 'paid', 'completed'];
@@ -1509,6 +1525,13 @@ class OrderController extends Controller
             $oldStatus = $order->status;
 
             foreach ($validated['payments'] as $paymentPayload) {
+                if (!empty($paymentPayload['idempotency_key'])) {
+                    $existingPayment = Payment::where('idempotency_key', $paymentPayload['idempotency_key'])->first();
+                    if ($existingPayment !== null) {
+                        continue;
+                    }
+                }
+
                 // Online/gateway methods require async confirmation; all other methods (cash, card POS, etc.)
                 // are treated as immediately paid. Staff cannot arbitrarily set status.
                 $gatewayMethods = ['bml_pay', 'bml', 'online'];
@@ -1527,6 +1550,7 @@ class OrderController extends Controller
                     'amount_laar' => $amountLaar,
                     'status' => $paymentStatus,
                     'reference_number' => $paymentPayload['reference_number'] ?? null,
+                    'idempotency_key' => $paymentPayload['idempotency_key'] ?? null,
                     'processed_at' => now(),
                     'collected_by_user_id' => $collector->id,
                     'shift_id' => in_array($paymentPayload['method'], $nonShiftMethods, true)

@@ -376,7 +376,7 @@ class OrderCreationService
 
             // ── Stock check ───────────────────────────────────────────────────
             // Variant-level stock takes priority when the variant tracks its own stock.
-            // Offline sync skips availability abort (Policy A) but still deducts below.
+            // Offline sync skips availability abort (Policy A) — deduct prepared stock below.
             if (!$offlineSync) {
                 if ($variant && $variant->track_stock) {
                     $lockedVariant = \App\Models\Variant::lockForUpdate()->find($variant->id) ?? $variant;
@@ -425,10 +425,9 @@ class OrderCreationService
                 'status' => 'pending',
             ]);
 
-            // POS only: deduct stock immediately upon order creation.
+            // POS only: deduct stock immediately upon order creation (including offline sync).
             // Online orders are handled via reserveForOrder() after the full loop.
-            // Offline sync defers prepared-stock handling; recipe inventory runs on sync.
-            if (!$isOnlineOrder && !$offlineSync) {
+            if (!$isOnlineOrder) {
                 if ($variant && $variant->track_stock) {
                     $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductVariantStock(

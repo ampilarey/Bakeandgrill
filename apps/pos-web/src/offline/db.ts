@@ -213,6 +213,11 @@ export async function ensureCachedStaffSession(): Promise<CachedStaffSession | n
   return loadCachedStaffSession();
 }
 
+export async function clearCachedShift(): Promise<void> {
+  const db = await getOfflineDb();
+  await db.delete("cached_shift", "current");
+}
+
 export async function saveCachedShift(data: Omit<CachedShiftRecord, "id" | "cached_at">): Promise<void> {
   const db = await getOfflineDb();
   await db.put(

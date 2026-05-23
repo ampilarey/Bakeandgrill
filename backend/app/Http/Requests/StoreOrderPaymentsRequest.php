@@ -57,6 +57,7 @@ class StoreOrderPaymentsRequest extends FormRequest
             'payments.*.amount' => 'required|numeric|min:0',
             // status is intentionally ignored — derived server-side from payment method
             'payments.*.reference_number' => 'nullable|string|max:255',
+            'payments.*.idempotency_key' => 'nullable|string|max:128',
         ];
     }
 }

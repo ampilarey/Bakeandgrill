@@ -830,7 +830,7 @@ Route::get('/display/{token}', [App\Http\Controllers\Api\CustomerDisplayControll
     ->middleware('throttle:60,1');
 
 // ─── Offline POS Sync (legacy — canonical: POST /api/pos/offline-sync) ───────
-Route::middleware(['auth:sanctum', 'staff.token', 'device.active', 'throttle:20,1'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:pos.ring_sales', 'device.active', 'throttle:20,1'])->group(function () {
     Route::post('/offline/sync', [App\Http\Controllers\Api\OfflineSyncController::class, 'sync']);
 });
 

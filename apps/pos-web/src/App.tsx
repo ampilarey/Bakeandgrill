@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, type PosCustomer } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, type PosCustomer } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, OFFLINE_SYNC_V2, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
@@ -36,6 +36,9 @@ import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
 import { PosUpdateBanner } from "./components/PosUpdateBanner";
 import { OfflineSyncPanel } from "./components/OfflineSyncPanel";
+import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
+import { OnlineOrderToasts } from "./components/OnlineOrderToasts";
+import { useOnlineOrderWatcher } from "./hooks/useOnlineOrderWatcher";
 import { usePosAppUpdate } from "./hooks/usePosAppUpdate";
 import { POS_BUILD_INFO } from "./posBuildInfo";
 
@@ -173,6 +176,17 @@ function App() {
   const [openTicketsCount, setOpenTicketsCount] = useState(0);
   /** After a paid dine-in/takeaway sale, jump to Receipts with this order selected. */
   const [receiptsFocusOrderId, setReceiptsFocusOrderId] = useState<number | null>(null);
+  /** After a paid sale, show receipt print/SMS actions until dismissed. */
+  const [receiptBanner, setReceiptBanner] = useState<{
+    orderId: number;
+    customerPhone: string | null;
+    paidOnCredit: boolean;
+  } | null>(null);
+  const [deviceBlockedMessage, setDeviceBlockedMessage] = useState<string | null>(null);
+
+  const onlineOrderWatcher = useOnlineOrderWatcher(
+    isLoggedIn && !isLocked && canViewActiveOrders,
+  );
 
   // ── Tables / order type ─────────────────────────────────────────────────────
   // Dine-in is the most common ticket type for an in-store cashier
@@ -409,9 +423,14 @@ function App() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: () => {
+    onOrderSettled: (orderId, _customerId, customerPhone, _orderType, paidOnCredit) => {
       void refreshOpenTickets();
       void shift.refreshSummary();
+      setReceiptBanner({
+        orderId,
+        customerPhone: customerPhone ?? null,
+        paidOnCredit: !!paidOnCredit,
+      });
       setPane("sales");
     },
   });
@@ -552,6 +571,20 @@ function App() {
     }
   }, [isRefreshingAll, menu, refreshTables, refreshQuickNotes, refreshOpenTickets, shift]);
 
+  const checkDeviceStatus = useCallback(async () => {
+    try {
+      const status = await selfDeviceStatus(deviceId);
+      if (status.is_active === false) {
+        setDeviceBlockedMessage("This POS device is disabled. Contact the owner to re-enable it.");
+      } else {
+        setDeviceBlockedMessage(null);
+        if (status.id) persistDeviceDbId(status.id);
+      }
+    } catch {
+      /* best-effort — sales may still work if device was previously registered */
+    }
+  }, [deviceId, persistDeviceDbId]);
+
   // Fire-and-forget device audit registration — never blocks sales.
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -561,9 +594,10 @@ function App() {
           if (res.device?.id) persistDeviceDbId(res.device.id);
         })
         .catch(() => { /* optional audit metadata */ });
+      void checkDeviceStatus();
     }, 6000);
     return () => window.clearTimeout(handle);
-  }, [isLoggedIn, deviceId, persistDeviceDbId]);
+  }, [isLoggedIn, deviceId, persistDeviceDbId, checkDeviceStatus]);
 
   // ── Login handler ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -596,6 +630,7 @@ function App() {
       }
       setIsLoggedIn(true);
       setPin("");
+      void checkDeviceStatus();
     } catch {
       setAuthError("Login failed. Check your mobile/email and PIN.");
     }
@@ -676,9 +711,13 @@ function App() {
     setPane("sales");
   };
   const handleSaveTicketSubmit = async (name: string, note: string | undefined, fireToKitchen: boolean) => {
-    await order.handleSaveTicket(name, note, fireToKitchen);
-    setShowSaveTicket(false);
-    void refreshOpenTickets();
+    try {
+      await order.handleSaveTicket(name, note, fireToKitchen);
+      setShowSaveTicket(false);
+      void refreshOpenTickets();
+    } catch {
+      /* handleSaveTicket already surfaced the error banner */
+    }
   };
 
   /**
@@ -737,21 +776,21 @@ function App() {
    * are preserved (cart state lives in useCart, not in modals).
    */
   const lockScreen = useCallback(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !canLockScreen) return;
     setShowCharge(false);
     setShowSendBill(false);
     setShowSaveTicket(false);
     setShowOpenShift(false);
     setShowCloseShift(false);
     setIsLocked(true);
-  }, [isLoggedIn]);
+  }, [isLoggedIn, canLockScreen]);
 
   // ── Auto-lock on inactivity ─────────────────────────────────────
   // Per-staff minutes from admin → My Account (default 5). 0 = never.
   // Paused while any blocking modal is open.
   const isAnyModalOpen = showCharge || showSendBill || showSaveTicket || showOpenShift || showCloseShift || showPreferences;
   useIdleLock({
-    enabled: isLoggedIn && !isLocked && !showTimeClock && !isAnyModalOpen && idleLockMinutes > 0,
+    enabled: isLoggedIn && canLockScreen && !isLocked && !showTimeClock && !isAnyModalOpen && idleLockMinutes > 0,
     timeoutMs: idleLockMinutes * 60_000,
     onIdle: lockScreen,
   });
@@ -765,14 +804,14 @@ function App() {
       const tag = t?.tagName?.toLowerCase();
       const inField = tag === "input" || tag === "textarea" || t?.isContentEditable === true;
       if (inField) return;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "l") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "l" && canLockScreen) {
         e.preventDefault();
         lockScreen();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isLoggedIn, isLocked, lockScreen]);
+  }, [isLoggedIn, isLocked, lockScreen, canLockScreen]);
 
   const drawerItems = useMemo(() => {
     const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; disabled?: boolean }> = [];
@@ -987,6 +1026,7 @@ function App() {
 
           {/* Visible Lock button. Keeps shift + cart, requires PIN to
               re-open. Cmd/Ctrl+L also triggers this. */}
+          {canLockScreen && (
           <button
             className="pos-header-btn"
             onClick={lockScreen}
@@ -999,6 +1039,7 @@ function App() {
               cursor: 'pointer', fontSize: 15,
             }}
           >🔒</button>
+          )}
 
           {offlineQueueCount > 0 && (
             <button
@@ -1043,6 +1084,26 @@ function App() {
           });
         }}
       />
+
+      {deviceBlockedMessage && (
+        <div style={{
+          padding: "10px 16px", background: "#FEF2F2", color: "#991B1B",
+          borderBottom: "1px solid #FECACA", fontSize: 13, fontWeight: 600,
+        }}>
+          {deviceBlockedMessage}
+        </div>
+      )}
+
+      {receiptBanner && (
+        <div style={{ padding: "8px 16px 0" }}>
+          <ReceiptActionsBanner
+            orderId={receiptBanner.orderId}
+            customerPhone={receiptBanner.customerPhone}
+            paidOnCredit={receiptBanner.paidOnCredit}
+            onDismiss={() => setReceiptBanner(null)}
+          />
+        </div>
+      )}
 
       {/* Status banners */}
       {(order.statusMessage || ops.opsMessage) && (
@@ -1422,6 +1483,15 @@ function App() {
           />
         );
       })()}
+
+      <OnlineOrderToasts
+        toasts={onlineOrderWatcher.toasts}
+        onDismiss={onlineOrderWatcher.dismiss}
+        onOpen={(id) => {
+          setReceiptsFocusOrderId(id);
+          setPane("receipts");
+        }}
+      />
     </div>
   );
 }

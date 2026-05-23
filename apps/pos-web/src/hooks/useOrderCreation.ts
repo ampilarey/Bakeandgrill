@@ -65,9 +65,18 @@ function lineUnitPrice(item: CartItem): number {
   return item.price + (item.modifiers ?? []).reduce((sum, m) => sum + (m.price ?? 0), 0);
 }
 
+/** Map POS ChargeOverlay methods to backend payment method whitelist. */
+function mapPaymentMethodForApi(method: string): string {
+  if (method === "digital_wallet") return "bank_transfer";
+  return method;
+}
+
 function normalizePayments(rows: PaymentRow[]): { method: string; amount: number }[] {
   return rows
-    .map((p) => ({ method: p.method, amount: Number.parseFloat(p.amount) }))
+    .map((p) => ({
+      method: mapPaymentMethodForApi(p.method),
+      amount: Number.parseFloat(p.amount),
+    }))
     .filter((p) => Number.isFinite(p.amount) && p.amount > 0);
 }
 
@@ -392,6 +401,107 @@ export function useOrderCreation(params: Params) {
   const paidOnCreditFromRows = (rows: PaymentRow[]) =>
     rows.some((r) => r.method === 'house_account');
 
+  /** Persist sale to IndexedDB V2 queue (offline or network-failure fallback). */
+  const tryPersistOfflineV2 = async (paymentSnapshot: PaymentRow[]): Promise<boolean> => {
+    if (
+      params.appliedPromoCode
+      || (params.appliedLoyaltyPoints ?? 0) > 0
+      || params.appliedGiftCardCode
+    ) {
+      flashError("Promo, loyalty, and gift cards cannot be used offline.");
+      return false;
+    }
+
+    const blocked = paymentSnapshot.some((p) => {
+      const method = p.method as string;
+      return method === "house_account" || method === "bml" || method === "online";
+    });
+    if (blocked) {
+      flashError("Only cash, card, and transfer are available offline.");
+      return false;
+    }
+
+    const cachedShift = params.shiftId ? null : await loadCachedShift();
+    const shiftId = params.shiftId ?? cachedShift?.shift_id ?? null;
+    if (!shiftId) {
+      flashError("No open shift cached. Open a shift while online first.");
+      return false;
+    }
+
+    const primary = paymentSnapshot[0];
+    const offlineMethod = primary ? mapChargeMethodToOffline(primary.method) : null;
+    if (!primary || !offlineMethod) {
+      flashError("Only cash, card, and transfer are available offline.");
+      return false;
+    }
+
+    if (paymentSnapshot.length > 1) {
+      flashError("Split tender is not available offline. Use one payment method.");
+      return false;
+    }
+
+    try {
+      await initOfflineDb();
+      const localOrderId = newLocalOrderId();
+      const localOrderNumber = await allocateOfflineOrderNumber(params.deviceId);
+      const orderPayload = buildPayload();
+      const record: OfflineOrderRecord = {
+        local_order_id: localOrderId,
+        local_order_number: localOrderNumber,
+        device_identifier: params.deviceId,
+        shift_id: shiftId,
+        created_at_local: new Date().toISOString(),
+        type: String(orderPayload.type),
+        items: params.cartItems.map((item) => ({
+          item_id: item.id,
+          quantity: item.quantity,
+          ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
+          unit_price: lineUnitPrice(item),
+          name: item.name,
+          modifiers: (item.modifiers ?? []).map((m) => ({
+            modifier_id: m.id,
+            name: m.name,
+            price: m.price,
+          })),
+          ...(item.notes?.length ? { notes: item.notes.join(" · ") } : {}),
+        })),
+        totals: {
+          subtotal: params.cartSubtotal,
+          tax: params.cartTax,
+          total: params.cartTotal,
+        },
+        payment: {
+          method: offlineMethod,
+          amount: Number.parseFloat(primary.amount),
+        },
+        discount_amount: Math.max(0, Number.parseFloat(params.discountAmount) || 0),
+        ...(params.customerId ? { customer_id: params.customerId } : {}),
+        ...(orderPayload.ticket_name ? { ticket_name: String(orderPayload.ticket_name) } : {}),
+        ...(orderPayload.ticket_note ? { ticket_note: String(orderPayload.ticket_note) } : {}),
+        ...(params.orderType === "Dine-in" && params.selectedTableId
+          ? { restaurant_table_id: params.selectedTableId }
+          : {}),
+        status: "pending_sync",
+      };
+
+      await saveOfflineOrder(record);
+      try {
+        params.setOfflineQueueCount(await countPendingOfflineOrders(shiftId));
+      } catch (e) {
+        console.warn("[offline] Could not refresh pending count", e);
+      }
+      params.clearCart();
+      params.setSelectedItem(null);
+      flashNotice(`Offline sale saved (${localOrderNumber}). Will sync when online.`);
+      return true;
+    } catch (e) {
+      console.error("[offline] save failed", e);
+      const detail = e instanceof Error ? e.message : "Unknown error";
+      flashError(`Unable to save offline order: ${detail}`);
+      return false;
+    }
+  };
+
   /**
    * Settle an already-created order with the supplied payment rows. Fills
    * any remainder with cash. Returns true on success.
@@ -403,7 +513,10 @@ export function useOrderCreation(params: Params) {
   ): Promise<boolean> => {
     const normalized = normalizePayments(paymentRows);
     const paidTotal = normalized.reduce((s, p) => s + p.amount, 0);
-    const finalPayments = [...normalized];
+    const finalPayments = normalized.map((p, index) => ({
+      ...p,
+      idempotency_key: `pos:pay:${orderId}:${index}:${p.method}`,
+    }));
     // Zero-balance order (100% promo/loyalty/gift-card discount, or
     // an entirely complimentary ring). The server's payment endpoint
     // accepts a single zero-amount cash row in this case and marks
@@ -412,12 +525,16 @@ export function useOrderCreation(params: Params) {
     // validator requires `payments|required|array|min:1`.
     if (totalDue <= 0) {
       if (finalPayments.length === 0) {
-        finalPayments.push({ method: "cash", amount: 0 });
+        finalPayments.push({ method: "cash", amount: 0, idempotency_key: `pos:pay:${orderId}:0:cash` });
       }
     } else if (finalPayments.length === 0) {
-      finalPayments.push({ method: "cash", amount: totalDue });
+      finalPayments.push({ method: "cash", amount: totalDue, idempotency_key: `pos:pay:${orderId}:0:cash` });
     } else if (paidTotal < totalDue) {
-      finalPayments.push({ method: "cash", amount: totalDue - paidTotal });
+      finalPayments.push({
+        method: "cash",
+        amount: totalDue - paidTotal,
+        idempotency_key: `pos:pay:${orderId}:${finalPayments.length}:cash`,
+      });
     }
 
     try {
@@ -537,6 +654,10 @@ export function useOrderCreation(params: Params) {
     };
 
     if (!params.isReachable) {
+      if (OFFLINE_SYNC_V2) {
+        return tryPersistOfflineV2(paymentSnapshot);
+      }
+
       if (
         params.appliedPromoCode
         || (params.appliedLoyaltyPoints ?? 0) > 0
@@ -553,88 +674,6 @@ export function useOrderCreation(params: Params) {
       if (blocked) {
         flashError("Only cash, card, and transfer are available offline.");
         return false;
-      }
-
-      if (OFFLINE_SYNC_V2) {
-        const cachedShift = params.shiftId ? null : await loadCachedShift();
-        const shiftId = params.shiftId ?? cachedShift?.shift_id ?? null;
-        if (!shiftId) {
-          flashError("No open shift cached. Open a shift while online first.");
-          return false;
-        }
-
-        const primary = paymentSnapshot[0];
-        const offlineMethod = primary ? mapChargeMethodToOffline(primary.method) : null;
-        if (!primary || !offlineMethod) {
-          flashError("Only cash, card, and transfer are available offline.");
-          return false;
-        }
-
-        if (paymentSnapshot.length > 1) {
-          flashError("Split tender is not available offline. Use one payment method.");
-          return false;
-        }
-
-        try {
-          await initOfflineDb();
-          const localOrderId = newLocalOrderId();
-          const localOrderNumber = await allocateOfflineOrderNumber(params.deviceId);
-          const payload = buildPayload();
-          const record: OfflineOrderRecord = {
-            local_order_id: localOrderId,
-            local_order_number: localOrderNumber,
-            device_identifier: params.deviceId,
-            shift_id: shiftId,
-            created_at_local: new Date().toISOString(),
-            type: String(payload.type),
-            items: params.cartItems.map((item) => ({
-              item_id: item.id,
-              quantity: item.quantity,
-              ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
-              unit_price: lineUnitPrice(item),
-              name: item.name,
-              modifiers: (item.modifiers ?? []).map((m) => ({
-                modifier_id: m.id,
-                name: m.name,
-                price: m.price,
-              })),
-              ...(item.notes?.length ? { notes: item.notes.join(" · ") } : {}),
-            })),
-            totals: {
-              subtotal: params.cartSubtotal,
-              tax: params.cartTax,
-              total: params.cartTotal,
-            },
-            payment: {
-              method: offlineMethod,
-              amount: Number.parseFloat(primary.amount),
-            },
-            discount_amount: Math.max(0, Number.parseFloat(params.discountAmount) || 0),
-            ...(params.customerId ? { customer_id: params.customerId } : {}),
-            ...(payload.ticket_name ? { ticket_name: String(payload.ticket_name) } : {}),
-            ...(payload.ticket_note ? { ticket_note: String(payload.ticket_note) } : {}),
-            ...(params.orderType === "Dine-in" && params.selectedTableId
-              ? { restaurant_table_id: params.selectedTableId }
-              : {}),
-            status: "pending_sync",
-          };
-
-          await saveOfflineOrder(record);
-          try {
-            params.setOfflineQueueCount(await countPendingOfflineOrders(shiftId));
-          } catch (e) {
-            console.warn("[offline] Could not refresh pending count", e);
-          }
-          params.clearCart();
-          params.setSelectedItem(null);
-          flashNotice(`Offline sale saved (${localOrderNumber}). Will sync when online.`);
-          return true;
-        } catch (e) {
-          console.error("[offline] save failed", e);
-          const detail = e instanceof Error ? e.message : "Unknown error";
-          flashError(`Unable to save offline order: ${detail}`);
-          return false;
-        }
       }
 
       try {
@@ -710,6 +749,10 @@ export function useOrderCreation(params: Params) {
       if (isApiError) {
         flashError(`Order failed: ${message}`);
         return false;
+      }
+
+      if (OFFLINE_SYNC_V2) {
+        return tryPersistOfflineV2(paymentSnapshot);
       }
 
       try {
@@ -808,51 +851,31 @@ export function useOrderCreation(params: Params) {
   const handleSaveTicket = async (name: string, note?: string, fireToKitchen = false): Promise<void> => {
     if (!params.isOnline) throw new Error("Go online to save tickets.");
     if (params.cartItems.length === 0) throw new Error("Add items first.");
-    // Table is OPTIONAL on Dine-in tickets — the backend accepts a
-    // null restaurant_table_id, and venues often save the ticket
-    // before seating the customer (the cashier comes back later to
-    // assign a table from the Save Ticket modal).
 
-    if (fireToKitchen) {
-      // Pickup phone-call workflow uses a two-step path so all
-      // "fire" side effects (kitchen print + customer SMS + audit
-      // log) live in ONE backend endpoint instead of being split
-      // between OrderCreated listeners and the explicit fire
-      // endpoint:
-      //   1. Create order with print=false so OrderCreated fires
-      //      WITHOUT kitchen print or "Order received" SMS.
-      //   2. POST /orders/{id}/fire-to-kitchen — sets fired_at,
-      //      enqueues kitchen print, SMSes the customer.
-      // The status starts at pending (not held) because we want it
-      // visible to KDS once fired. Two HTTP calls but cleaner code.
+    try {
+      if (fireToKitchen) {
+        const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
+        const response = await createOrder(payload);
+        await applyStagedRewards(response.order.id, response.order.total);
+        await fireOrderToKitchen(response.order.id);
+        params.clearCart();
+        params.setSelectedItem(null);
+        return;
+      }
+
       const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
       const response = await createOrder(payload);
-      // Apply any staged promo / loyalty / gift card BEFORE firing so
-      // the kitchen chit reflects the actual ticket value the customer
-      // will pay. Skipping this is how rewards quietly disappeared on
-      // saved tickets — the cashier staged "20% off" in the cart, hit
-      // Save & Fire, and the order was created at full price.
       await applyStagedRewards(response.order.id, response.order.total);
-      await fireOrderToKitchen(response.order.id);
+      await holdOrder(response.order.id, { ticket_name: name, ticket_note: note });
+
+      localStorage.setItem("pos_last_held_order", String(response.order.id));
+      setLastHeldOrderId(response.order.id);
       params.clearCart();
       params.setSelectedItem(null);
-      return;
+    } catch (err) {
+      flashError(`Couldn't save ticket: ${(err as Error).message}`);
+      throw err;
     }
-
-    // Classic save-for-later: create then hold so KDS never sees it.
-    const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
-    const response = await createOrder(payload);
-    // Apply staged rewards on the parked ticket too — when the cashier
-    // resumes and tenders, the saved discount/promo/loyalty/gift card
-    // is already attached server-side so the resumed total is correct
-    // (matches what they showed the customer at save time).
-    await applyStagedRewards(response.order.id, response.order.total);
-    await holdOrder(response.order.id, { ticket_name: name, ticket_note: note });
-
-    localStorage.setItem("pos_last_held_order", String(response.order.id));
-    setLastHeldOrderId(response.order.id);
-    params.clearCart();
-    params.setSelectedItem(null);
   };
 
   /**

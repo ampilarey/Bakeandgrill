@@ -53,7 +53,7 @@ class OfflineOrderSyncService
             return DB::transaction(function () use ($payload, $user, $request, $localOrderId, $idempotencyKey): array {
                 $payloadHash = $this->hashPayload($payload);
 
-                $existing = OfflineSyncRecord::where('idempotency_key', $idempotencyKey)->first();
+                $existing = OfflineSyncRecord::where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
                 if ($existing !== null) {
                     if ($existing->payload_hash !== $payloadHash) {
                         $existing->update([
@@ -178,6 +178,15 @@ class OfflineOrderSyncService
                     throw new \RuntimeException('Client totals do not match server calculation.');
                 }
 
+                $paymentAmountLaar = (int) round((float) ($payload['payment']['amount'] ?? 0) * 100);
+                $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+                if ($paymentAmountLaar + 1 < $orderTotalLaar) {
+                    throw new \RuntimeException('Payment amount is less than order total.');
+                }
+                if ($method !== 'cash' && $paymentAmountLaar > $orderTotalLaar + 1) {
+                    throw new \RuntimeException('Non-cash payment exceeds order total.');
+                }
+
                 $paymentPayload = [
                     'method' => $method,
                     'amount' => (float) ($payload['payment']['amount'] ?? $order->total),
@@ -237,18 +246,27 @@ class OfflineOrderSyncService
 
             $payloadHash = $this->hashPayload($payload);
 
-            OfflineSyncRecord::updateOrCreate(
-                ['idempotency_key' => $idempotencyKey],
-                [
-                    'local_order_id' => $localOrderId,
-                    'device_identifier' => $payload['device_identifier'] ?? null,
-                    'user_id' => $user->id,
-                    'shift_id' => isset($payload['shift_id']) ? (int) $payload['shift_id'] : null,
-                    'status' => 'failed',
-                    'payload_hash' => $payloadHash,
-                    'last_error' => $e->getMessage(),
-                ],
-            );
+            $existing = OfflineSyncRecord::where('idempotency_key', $idempotencyKey)->first();
+            if ($existing !== null && $existing->status === 'synced' && $existing->server_order_id) {
+                $order = Order::find($existing->server_order_id);
+
+                return $this->result($localOrderId, 'synced', $order, (bool) $existing->inventory_conflict, null);
+            }
+
+            if ($existing === null || $existing->status !== 'synced') {
+                OfflineSyncRecord::updateOrCreate(
+                    ['idempotency_key' => $idempotencyKey],
+                    [
+                        'local_order_id' => $localOrderId,
+                        'device_identifier' => $payload['device_identifier'] ?? null,
+                        'user_id' => $user->id,
+                        'shift_id' => isset($payload['shift_id']) ? (int) $payload['shift_id'] : null,
+                        'status' => 'failed',
+                        'payload_hash' => $payloadHash,
+                        'last_error' => $e->getMessage(),
+                    ],
+                );
+            }
 
             $status = str_contains(strtolower($e->getMessage()), 'totals') ? 'conflict' : 'failed';
 

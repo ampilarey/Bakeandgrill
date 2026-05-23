@@ -8,7 +8,7 @@ import {
   getShiftSummary,
   openShift,
 } from "../api";
-import { saveCachedShift, loadCachedShift } from "../offline/db";
+import { saveCachedShift, loadCachedShift, clearCachedShift } from "../offline/db";
 
 export type ShiftRow = {
   id: number;
@@ -77,6 +77,7 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
         if (e.status === 404) {
           setCurrent(null);
           setError("");
+          void clearCachedShift();
         } else if (e.status === 401 || e.status === 403) {
           setError(e.message);
           setCurrent(null);
@@ -234,6 +235,7 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     const res = await closeShift(current.id, { closing_cash: closingCash, notes });
     setCurrent(null);
     setSummary(null);
+    await clearCachedShift();
     return res;
   }, [current]);
 
