@@ -14,9 +14,6 @@ import { useOps }           from "./hooks/useOps";
 import { useShift }         from "./hooks/useShift";
 import { hasPosPermission } from "./hooks/usePosPermissions";
 import { useIdleLock, resolveIdleLockMinutes } from "./hooks/useIdleLock";
-import { useOnlineOrderWatcher } from "./hooks/useOnlineOrderWatcher";
-import { OnlineOrderToasts }     from "./components/OnlineOrderToasts";
-
 import { LoginPage }         from "./pages/LoginPage";
 import { MenuGrid }          from "./components/MenuGrid";
 import { OrderCart }         from "./components/OrderCart";
@@ -37,7 +34,6 @@ import { PosPreferencesModal } from "./components/PosPreferencesModal";
 import { SideDrawer }        from "./components/SideDrawer";
 import { TimeClockPanel }    from "./components/TimeClockPanel";
 import { LockScreen }        from "./components/LockScreen";
-import { ReceiptActionsBanner } from "./components/ReceiptActionsBanner";
 import { PosUpdateBanner } from "./components/PosUpdateBanner";
 import { OfflineSyncPanel } from "./components/OfflineSyncPanel";
 import { usePosAppUpdate } from "./hooks/usePosAppUpdate";
@@ -175,16 +171,6 @@ function App() {
   const [showCloseShift, setShowCloseShift] = useState(false);
   const [openShiftBusy, setOpenShiftBusy] = useState(false);
   const [openTicketsCount, setOpenTicketsCount] = useState(0);
-  // Captured by useOrderCreation.onOrderSettled so the post-charge action
-  // banner can offer Print receipt / Resend SMS. Cleared when the cashier
-  // dismisses or starts a new ticket. Phone is captured at charge time
-  // because the cart (and the attached customer) gets reset right after.
-  const [lastPaidOrder, setLastPaidOrder] = useState<{
-    orderId: number;
-    customerId: number | null;
-    customerPhone: string | null;
-    paidOnCredit: boolean;
-  } | null>(null);
   /** After a paid dine-in/takeaway sale, jump to Receipts with this order selected. */
   const [receiptsFocusOrderId, setReceiptsFocusOrderId] = useState<number | null>(null);
 
@@ -310,13 +296,6 @@ function App() {
       setNotePickerKey(null);
     }
   }, [notePickerKey, cart.cartItems]);
-  // Background watcher for incoming online_pickup orders. Polls every
-  // 30s when logged in + approved, shows a corner toast for any order
-  // newer than the cashier's last-seen high-water mark. Enabled-flag
-  // also pauses polling when the device is rejected/pending so we don't
-  // hammer an endpoint we can't read from anyway.
-  const onlineOrderWatch = useOnlineOrderWatcher(isLoggedIn);
-
   /**
    * Items visible in the menu grid for the current category selection.
    *
@@ -430,10 +409,9 @@ function App() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: (orderId, customerId, customerPhone, _settledType, paidOnCredit = false) => {
+    onOrderSettled: () => {
       void refreshOpenTickets();
       void shift.refreshSummary();
-      setLastPaidOrder({ orderId, customerId, customerPhone, paidOnCredit });
       setPane("sales");
     },
   });
@@ -1047,7 +1025,7 @@ function App() {
       />
 
       {/* Status banners */}
-      {(order.statusMessage || ops.opsMessage || lastPaidOrder) && (
+      {(order.statusMessage || ops.opsMessage) && (
         <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {order.statusMessage && (
             shouldShowStatusBanner(order.statusMessage)
@@ -1055,14 +1033,6 @@ function App() {
               : <NoticeBanner text={order.statusMessage} />
           )}
           {ops.opsMessage && <Banner text={ops.opsMessage} />}
-          {lastPaidOrder && (
-            <ReceiptActionsBanner
-              orderId={lastPaidOrder.orderId}
-              customerPhone={lastPaidOrder.customerPhone}
-              paidOnCredit={lastPaidOrder.paidOnCredit}
-              onDismiss={() => setLastPaidOrder(null)}
-            />
-          )}
         </div>
       )}
 
@@ -1295,20 +1265,6 @@ function App() {
           onSaved={(resolved) => setIdleLockMinutes(resolved)}
         />
       )}
-
-      <OnlineOrderToasts
-        toasts={onlineOrderWatch.toasts}
-        onDismiss={onlineOrderWatch.dismiss}
-        onOpen={(id) => {
-          onlineOrderWatch.dismiss(id);
-          order.handleEditActiveTicket(id)
-            .then(() => setPane("sales"))
-            .catch((err) => {
-              const msg = (err as Error)?.message ?? "Couldn't open order";
-              order.flashError(`Couldn't open order: ${msg}`);
-            });
-        }}
-      />
 
       {showSendBill && (
         <SendBillPanel
