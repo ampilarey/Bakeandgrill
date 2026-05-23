@@ -60,7 +60,7 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'pos-nav',
-              networkTimeoutSeconds: 8,
+              networkTimeoutSeconds: 3,
               expiration: { maxEntries: 2, maxAgeSeconds: 60 * 10 },
             },
           },

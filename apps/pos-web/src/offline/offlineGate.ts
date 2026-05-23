@@ -17,9 +17,11 @@ export type OfflineGateResult = {
 
 export async function evaluateOfflineGate(): Promise<OfflineGateResult> {
   const token = localStorage.getItem("pos_token");
-  const session = await ensureCachedStaffSession();
-  const shift = await loadCachedShift();
-  const menu = await loadCachedMenu();
+  const [session, shift, menu] = await Promise.all([
+    ensureCachedStaffSession(),
+    loadCachedShift(),
+    loadCachedMenu(),
+  ]);
 
   if (!token) {
     return { allowed: false, reason: "Staff session expired. Log in when online.", menu, shift, session };

@@ -3,6 +3,11 @@ import { getApiBaseUrl } from "../api";
 
 type HealthResponse = { status?: string };
 
+/** Grace period after login before a failed health ping marks us offline. */
+const STARTUP_GRACE_MS = 8_000;
+/** Require consecutive failures so one slow ping doesn't flip offline mode. */
+const FAILURES_BEFORE_OFFLINE = 2;
+
 /**
  * Tracks browser online state plus periodic API reachability.
  * Uses the same API base URL as the authenticated client so a
@@ -16,9 +21,12 @@ export function useConnectivity(enabled: boolean) {
     navigator.onLine ? Date.now() : null,
   );
   const timerRef = useRef<number | null>(null);
+  const failStreakRef = useRef(0);
+  const enabledAtRef = useRef(0);
 
   const ping = useCallback(async () => {
     if (!navigator.onLine) {
+      failStreakRef.current = 0;
       setIsReachable(false);
       return;
     }
@@ -36,25 +44,40 @@ export function useConnectivity(enabled: boolean) {
         } catch {
           ok = true;
         }
-        setIsReachable(ok);
-        if (ok) setLastOnlineAt(Date.now());
-      } else {
-        setIsReachable(false);
+        if (ok) {
+          failStreakRef.current = 0;
+          setIsReachable(true);
+          setLastOnlineAt(Date.now());
+          return;
+        }
       }
+      failStreakRef.current += 1;
     } catch {
-      setIsReachable(false);
+      failStreakRef.current += 1;
     }
+
+    const inGrace = Date.now() - enabledAtRef.current < STARTUP_GRACE_MS;
+    if (inGrace || failStreakRef.current < FAILURES_BEFORE_OFFLINE) {
+      return;
+    }
+    setIsReachable(false);
   }, []);
 
   useEffect(() => {
     if (!enabled) return;
 
+    enabledAtRef.current = Date.now();
+    failStreakRef.current = 0;
+    setIsReachable(navigator.onLine);
+
     const onOnline = () => {
       setIsOnline(true);
+      failStreakRef.current = 0;
       void ping();
     };
     const onOffline = () => {
       setIsOnline(false);
+      failStreakRef.current = 0;
       setIsReachable(false);
     };
 

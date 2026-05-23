@@ -47,7 +47,7 @@ async function fetchServerVersion(): Promise<PosVersionInfo | null> {
   }
 }
 
-export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState {
+export function usePosAppUpdate(blockers: PosUpdateBlockers, enabled = true): PosAppUpdateState {
   const localBuild = POS_BUILD_INFO as PosVersionInfo;
   const [serverBuild, setServerBuild] = useState<PosVersionInfo | null>(null);
   const [swWaiting, setSwWaiting] = useState(false);
@@ -91,23 +91,24 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     [localBuild],
   );
 
-  const readSwWaiting = useCallback(async (): Promise<boolean> => {
+  const readSwWaiting = useCallback(async (checkSw = false): Promise<boolean> => {
     if (!("serviceWorker" in navigator)) return swWaiting;
     const reg = await navigator.serviceWorker.getRegistration("/pos/");
-    await reg?.update();
+    if (checkSw) await reg?.update();
     const waiting = Boolean(reg?.waiting);
     if (waiting) setSwWaiting(true);
     return waiting || swWaiting;
   }, [swWaiting]);
 
   const checkNow = useCallback(async (opts?: { force?: boolean }): Promise<boolean> => {
+    if (!enabled) return false;
     const force = opts?.force === true;
     setChecking(true);
     try {
       const server = await fetchServerVersion();
       if (server) setServerBuild(server);
 
-      const sw = await readSwWaiting();
+      const sw = await readSwWaiting(force);
       const mismatch = server !== null && isNewerPosBuild(server, localBuild);
       const available = mismatch || sw;
       if (available) markUpdateAvailable(server, sw, force);
@@ -118,9 +119,10 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     } finally {
       setChecking(false);
     }
-  }, [localBuild, markUpdateAvailable, readSwWaiting, stickyBanner]);
+  }, [enabled, localBuild, markUpdateAvailable, readSwWaiting, stickyBanner]);
 
   useEffect(() => {
+    if (!enabled) return;
     if (!("serviceWorker" in navigator)) return;
 
     let pollInterval: number | undefined;
@@ -154,21 +156,26 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers): PosAppUpdateState 
     return () => {
       if (pollInterval !== undefined) window.clearInterval(pollInterval);
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
-    void checkNow();
+    if (!enabled) return;
+    const handle = window.setTimeout(() => { void checkNow(); }, 12_000);
     const interval = window.setInterval(() => void checkNow(), POLL_MS);
-    return () => window.clearInterval(interval);
-  }, [checkNow]);
+    return () => {
+      window.clearTimeout(handle);
+      window.clearInterval(interval);
+    };
+  }, [enabled, checkNow]);
 
   useEffect(() => {
+    if (!enabled) return;
     const onVisible = () => {
       if (document.visibilityState === "visible") void checkNow();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [checkNow]);
+  }, [enabled, checkNow]);
 
   useEffect(() => {
     if (updateAvailable) markUpdateAvailable(serverBuild, swWaiting);

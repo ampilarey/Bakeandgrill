@@ -3,6 +3,7 @@ import { fetchRecentOnlineOrders } from "../api";
 import type { IncomingOnlineOrder } from "../api";
 
 const POLL_INTERVAL_MS = 30_000;
+const STARTUP_DELAY_MS = 8_000;
 const STORAGE_KEY = "pos_online_orders_last_seen_id";
 
 // Bug-023: lazy module-level AudioContext for the new-order chime.
@@ -129,7 +130,7 @@ export function useOnlineOrderWatcher(enabled: boolean) {
       } catch { /* network blip — try again next tick */ }
     };
 
-    void tick();
+    const startupHandle = window.setTimeout(() => { void tick(); }, STARTUP_DELAY_MS);
     timerRef.current = setInterval(() => void tick(), POLL_INTERVAL_MS);
 
     // Re-poll immediately when the tab comes back to the foreground so
@@ -142,6 +143,7 @@ export function useOnlineOrderWatcher(enabled: boolean) {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(startupHandle);
       document.removeEventListener("visibilitychange", onVisible);
       if (timerRef.current) {
         clearInterval(timerRef.current);

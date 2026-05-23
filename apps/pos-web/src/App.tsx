@@ -262,12 +262,22 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    void initOfflineDb().then(() => ensureCachedStaffSession()).then(() => refreshOfflineCounts());
+    const handle = window.setTimeout(() => {
+      void initOfflineDb().then(() => ensureCachedStaffSession()).then(() => refreshOfflineCounts());
+    }, 1500);
+    return () => window.clearTimeout(handle);
   }, [isLoggedIn, refreshOfflineCounts]);
 
   useEffect(() => {
     if (!isLoggedIn || !OFFLINE_SYNC_V2) return;
-    return startSyncEnginePolling(() => isReachable);
+    let stop: (() => void) | undefined;
+    const handle = window.setTimeout(() => {
+      stop = startSyncEnginePolling(() => isReachable);
+    }, 10_000);
+    return () => {
+      window.clearTimeout(handle);
+      stop?.();
+    };
   }, [isLoggedIn, isReachable]);
 
   useEffect(() => {
@@ -275,10 +285,15 @@ function App() {
       setOfflineGate(null);
       return;
     }
+    if (menu.isLoading || shift.loading) return;
     void evaluateOfflineGate().then(setOfflineGate);
-  }, [isLoggedIn, isReachable]);
+  }, [isLoggedIn, isReachable, menu.isLoading, shift.loading]);
 
-  useEffect(() => { void refreshOfflineCounts(); }, [isReachable, refreshOfflineCounts]);
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const handle = window.setTimeout(() => { void refreshOfflineCounts(); }, 2000);
+    return () => window.clearTimeout(handle);
+  }, [isReachable, isLoggedIn, refreshOfflineCounts]);
 
   // Auto-dismiss the note picker if the cart line it's editing
   // disappears (e.g. cashier removed the line in another panel before
@@ -344,28 +359,35 @@ function App() {
     } catch { /* best-effort */ }
   }, [isLoggedIn]);
 
-  useEffect(() => { void refreshOpenTickets(); }, [refreshOpenTickets, pane, shift.current?.id]);
-
-  // Sync role from /auth/me so manager "All stations" works without
-  // forcing a re-login after this feature ships.
   useEffect(() => {
     if (!isLoggedIn) return;
-    void fetchMe()
-      .then((user) => {
-        const role = user.role ?? "";
-        localStorage.setItem("pos_staff_role", role);
-        setStaffRole(role);
-        const perms = user.permissions ?? [];
-        localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
-        setStaffPermissions(perms);
-        setIdleLockMinutes(resolveIdleLockMinutes(user));
-        void cacheStaffSessionFromUser({
-          id: user.id,
-          name: user.name,
-          permissions: perms,
-        });
-      })
-      .catch(() => undefined);
+    const handle = window.setTimeout(() => { void refreshOpenTickets(); }, 5000);
+    return () => window.clearTimeout(handle);
+  }, [refreshOpenTickets, pane, shift.current?.id, isLoggedIn]);
+
+  // Sync role from /auth/me — deferred so menu + shift win the network on login.
+  // staffLogin already caches role/permissions; this refreshes them quietly.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const handle = window.setTimeout(() => {
+      void fetchMe()
+        .then((user) => {
+          const role = user.role ?? "";
+          localStorage.setItem("pos_staff_role", role);
+          setStaffRole(role);
+          const perms = user.permissions ?? [];
+          localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
+          setStaffPermissions(perms);
+          setIdleLockMinutes(resolveIdleLockMinutes(user));
+          void cacheStaffSessionFromUser({
+            id: user.id,
+            name: user.name,
+            permissions: perms,
+          });
+        })
+        .catch(() => undefined);
+    }, 3000);
+    return () => window.clearTimeout(handle);
   }, [isLoggedIn]);
 
   const order = useOrderCreation({
@@ -431,7 +453,7 @@ function App() {
     offlineQueueCount,
     offlinePendingCount,
     shiftCashFormOpen: false,
-  });
+  }, isLoggedIn);
 
   // ── Load tables after login ─────────────────────────────────────────────────
   // We load the list so the table picker has data, but we do NOT auto-
@@ -453,7 +475,15 @@ function App() {
     }
   }, [isLoggedIn]);
 
-  useEffect(() => { void refreshTables(); }, [refreshTables]);
+  const refreshQuickNotes = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      const chips = await fetchPosQuickNotes();
+      setQuickNotes(chips);
+    } catch {
+      // Same logic as refreshTables — keep showing the last-known list.
+    }
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!showCharge || !cart.attachedCustomer || !canUseCredit) {
@@ -478,36 +508,25 @@ function App() {
     return () => { cancelled = true; };
   }, [showCharge, cart.attachedCustomer?.id, canUseCredit]);
 
-  // ── Quick-note chip refresh helper (used by refreshAll + visibility) ──
-  // The owner edits the chip library from Admin → Settings → POS. We
-  // pulled it out into a memoised helper so refreshAll() can call it
-  // without spinning up a new closure on every render.
-  const refreshQuickNotes = useCallback(async () => {
-    if (!isLoggedIn) return;
-    try {
-      const chips = await fetchPosQuickNotes();
-      setQuickNotes(chips);
-    } catch {
-      // Same logic as refreshTables — keep showing the last-known list.
-    }
-  }, [isLoggedIn]);
-
-  // ── Load quick-note chip library after login ───────────────────────────────
-  // Re-fetch on isLoggedIn so a fresh sign-in picks up any chips the
-  // owner added since the last session, and again whenever the tab
-  // regains focus so an owner edit propagates without a relog. (The
-  // manual ↻ button now also routes through refreshAll below, which
-  // calls refreshQuickNotes alongside menu/tables/tickets.)
   useEffect(() => {
-    void refreshQuickNotes();
     if (!isLoggedIn) return;
+    const handle = window.setTimeout(() => { void refreshTables(); }, 4000);
+    return () => window.clearTimeout(handle);
+  }, [isLoggedIn, refreshTables]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const handle = window.setTimeout(() => { void refreshQuickNotes(); }, 4000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         void refreshQuickNotes();
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearTimeout(handle);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [isLoggedIn, refreshQuickNotes]);
 
   // ── One-tap "refresh everything" ─────────────────────────────────────────
@@ -538,11 +557,14 @@ function App() {
   // Fire-and-forget device audit registration — never blocks sales.
   useEffect(() => {
     if (!isLoggedIn) return;
-    void selfRegisterDevice(deviceId, `POS ${deviceId}`)
-      .then((res) => {
-        if (res.device?.id) persistDeviceDbId(res.device.id);
-      })
-      .catch(() => { /* optional audit metadata */ });
+    const handle = window.setTimeout(() => {
+      void selfRegisterDevice(deviceId, `POS ${deviceId}`)
+        .then((res) => {
+          if (res.device?.id) persistDeviceDbId(res.device.id);
+        })
+        .catch(() => { /* optional audit metadata */ });
+    }, 6000);
+    return () => window.clearTimeout(handle);
   }, [isLoggedIn, deviceId, persistDeviceDbId]);
 
   // ── Login handler ───────────────────────────────────────────────────────────
@@ -642,9 +664,6 @@ function App() {
       void pingAuth().catch(() => undefined);
     };
     document.addEventListener("visibilitychange", tryPing);
-    // Also ping immediately so a freshly-restored tab gets gated
-    // without waiting for the first visibility change.
-    tryPing();
     return () => document.removeEventListener("visibilitychange", tryPing);
   }, [isLoggedIn]);
 
@@ -858,7 +877,7 @@ function App() {
     );
   }
 
-  if (!isReachable && offlineGate && !offlineGate.allowed) {
+  if (!isReachable && offlineGate && !offlineGate.allowed && !menu.isLoading && !shift.loading) {
     const activeSessionFallback =
       !!localStorage.getItem("pos_token")
       && shift.current != null

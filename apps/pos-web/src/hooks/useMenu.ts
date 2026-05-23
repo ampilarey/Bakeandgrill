@@ -5,7 +5,7 @@ import type { Category, Item } from "../types";
 import { loadCachedMenu, saveCachedMenu } from "../offline/db";
 import { markOfflineBootstrap } from "../offline/offlineGate";
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2;
 const RETRY_BASE_MS = 1500;
 /**
  * Silent background refetch interval. 5 minutes balances "owner adds
@@ -46,19 +46,20 @@ export function useMenu(
 
   const channel = channelForOrderType(orderType);
 
-  // Stable refs so the auto-refresh / visibility-change handlers don't
-  // need to be re-registered on every channel/login change.
   const channelRef = useRef(channel);
   const loggedInRef = useRef(isLoggedIn);
+  const reachableRef = useRef(isReachable);
   useEffect(() => { channelRef.current = channel; }, [channel]);
   useEffect(() => { loggedInRef.current = isLoggedIn; }, [isLoggedIn]);
+  useEffect(() => { reachableRef.current = isReachable; }, [isReachable]);
 
-  /**
-   * Internal loader. `mode` distinguishes the cashier's first hit
-   * (where we want the big "Loading menu…" panel) from a silent
-   * background poll or pull-to-refresh (where we want to keep showing
-   * the old items so the cashier never sees an empty grid mid-ticket).
-   */
+  const applyCachedMenu = useCallback((cached: NonNullable<Awaited<ReturnType<typeof loadCachedMenu>>>) => {
+    setCategories((cached.categories ?? []) as Category[]);
+    setItems((cached.items ?? []) as Item[]);
+    setUsingCachedMenu(true);
+    setLastRefreshedAt(Date.parse(cached.cached_at));
+  }, []);
+
   const load = useCallback(
     async (mode: "initial" | "silent" | "manual" = "initial") => {
       if (!loggedInRef.current) return;
@@ -70,10 +71,7 @@ export function useMenu(
         setDataError("");
         const cached = await loadCachedMenu(ch);
         if (cached?.items?.length) {
-          setCategories((cached.categories ?? []) as Category[]);
-          setItems((cached.items ?? []) as Item[]);
-          setUsingCachedMenu(true);
-          setLastRefreshedAt(Date.parse(cached.cached_at));
+          applyCachedMenu(cached);
           setIsLoading(false);
           setIsRefreshing(true);
           showedCachedMenu = true;
@@ -81,17 +79,23 @@ export function useMenu(
           setIsLoading(true);
           setDataError("");
         }
+
+        // Offline with a warm cache — skip a doomed network fetch on login.
+        if (showedCachedMenu && !reachableRef.current) {
+          setIsRefreshing(false);
+          setDataError("Showing cached menu (offline).");
+          return;
+        }
       } else if (mode === "manual") {
         setIsRefreshing(true);
+      } else if (mode === "silent" && !reachableRef.current) {
+        return;
       }
 
       try {
         const menu = await fetchPosMenu(ch);
         const cats = menu.categories;
         const its = menu.items;
-        // Defensive: only commit if the channel didn't change mid-flight.
-        // Otherwise the cashier flipping order types could see the
-        // wrong items pop in for a split second.
         if (ch !== channelRef.current) return;
         setCategories(cats);
         setItems(its);
@@ -102,11 +106,6 @@ export function useMenu(
         void saveCachedMenu(ch, { categories: cats, items: its });
         attemptRef.current = 0;
         if (mode === "initial") {
-          // Default the cashier to "All items" rather than the first
-          // category so the whole menu is visible at a glance. The
-          // pill row makes narrowing obvious. Don't reset on silent
-          // refresh — that would clobber the cashier's current
-          // category selection.
           setSelectedCategoryId(null);
         }
       } catch (err) {
@@ -115,39 +114,27 @@ export function useMenu(
           if (!showedCachedMenu) {
             const cached = await loadCachedMenu(ch);
             if (cached?.items?.length) {
-              setCategories((cached.categories ?? []) as Category[]);
-              setItems((cached.items ?? []) as Item[]);
-              setUsingCachedMenu(true);
-              setDataError(isReachable
+              applyCachedMenu(cached);
+              setDataError(reachableRef.current
                 ? "Unable to load menu. Check your connection and try again."
                 : "Showing cached menu (offline).");
-              setLastRefreshedAt(Date.parse(cached.cached_at));
               setIsLoading(false);
               return;
             }
           }
-          if (attemptRef.current < MAX_RETRIES) {
+          if (attemptRef.current < MAX_RETRIES && reachableRef.current) {
             const delay = RETRY_BASE_MS * 2 ** (attemptRef.current - 1);
             timerRef.current = setTimeout(() => void load("initial"), delay);
           } else if (!showedCachedMenu) {
             setDataError("Unable to load menu. Check your connection and try again.");
           }
         }
-        // Silent / manual failures are swallowed — keep showing the
-        // existing menu instead of breaking a working POS for a
-        // transient network blip. The cashier will see the
-        // last-refreshed timestamp stop advancing and can hit the
-        // manual refresh button to retry.
         if (mode === "manual") {
           const cached = await loadCachedMenu(ch);
           if (cached?.items?.length) {
-            setCategories((cached.categories ?? []) as Category[]);
-            setItems((cached.items ?? []) as Item[]);
-            setUsingCachedMenu(true);
+            applyCachedMenu(cached);
           }
           setDataError("Couldn't reach server. Showing last known menu.");
-          // Auto-clear the error after a few seconds so it doesn't
-          // hang around once connectivity comes back.
           setTimeout(() => setDataError(""), 4000);
         }
         void err;
@@ -159,15 +146,13 @@ export function useMenu(
         if (mode === "manual") setIsRefreshing(false);
       }
     },
-    [],
+    [applyCachedMenu],
   );
 
-  /** Public refresh handler — for the "↻" button in the menu top bar. */
   const refresh = useCallback(() => {
     void load("manual");
   }, [load]);
 
-  // ── Initial load + channel switches ──────────────────────────────
   useEffect(() => {
     if (!isLoggedIn) return;
     attemptRef.current = 0;
@@ -177,11 +162,6 @@ export function useMenu(
     };
   }, [isLoggedIn, channel, load]);
 
-  // ── Silent background poll ──────────────────────────────────────
-  // Refreshes menu data every AUTO_REFRESH_MS so a new item the owner
-  // added in admin shows up on the POS within a few minutes without
-  // anyone having to think about it. Pauses when the tab is hidden
-  // (visibilitychange handler below picks up the slack).
   useEffect(() => {
     if (!isLoggedIn) return;
     const interval = window.setInterval(() => {
@@ -191,16 +171,10 @@ export function useMenu(
     return () => window.clearInterval(interval);
   }, [isLoggedIn, load]);
 
-  // ── Refetch when the tab regains focus ──────────────────────────
-  // The most reliable refresh signal: cashier puts the iPad to sleep
-  // and comes back. Without this, a menu update made overnight stays
-  // invisible until they manually log out and back in.
   useEffect(() => {
     if (!isLoggedIn) return;
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        // Skip if we polled recently (within 30s) to avoid pile-up on
-        // rapid tab switching.
         if (lastRefreshedAt && Date.now() - lastRefreshedAt < 30_000) return;
         void load("silent");
       }
