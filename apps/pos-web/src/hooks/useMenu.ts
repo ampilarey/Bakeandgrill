@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchCategories, fetchItems } from "../api";
+import { fetchPosMenu } from "../api";
 import type { PosSalesChannel } from "../api";
 import type { Category, Item } from "../types";
 import { loadCachedMenu, saveCachedMenu } from "../offline/db";
@@ -86,7 +86,9 @@ export function useMenu(
       }
 
       try {
-        const [cats, its] = await Promise.all([fetchCategories(), fetchItems(ch)]);
+        const menu = await fetchPosMenu(ch);
+        const cats = menu.categories;
+        const its = menu.items;
         // Defensive: only commit if the channel didn't change mid-flight.
         // Otherwise the cashier flipping order types could see the
         // wrong items pop in for a split second.

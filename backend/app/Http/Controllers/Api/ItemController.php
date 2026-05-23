@@ -39,7 +39,8 @@ class ItemController extends Controller
     {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
-        $isPosView = $isAdmin && $request->query('view') === 'pos';
+        // Public /items route — POS passes view=pos without staff middleware.
+        $isPosView = $request->query('view') === 'pos';
 
         $with = ['category', 'variants', 'modifiers'];
         if ($isAdmin && !$isPosView) {
@@ -168,13 +169,22 @@ class ItemController extends Controller
                     $data['review_count'] = (int) ($item->review_count ?? 0);
                 }
 
-                $result = $availability->check($item, $channel);
-                $data['availability'] = [
-                    'available' => $result->allowed,
-                    'reason_code' => $result->reasonCode,
-                    'reason_message' => $result->message ?: null,
-                    'available_stock' => $result->availableStock,
-                ];
+                if ($isPosView) {
+                    $data['availability'] = [
+                        'available' => $item->is_available && $item->is_active,
+                        'reason_code' => $item->is_available ? null : 'item_unavailable',
+                        'reason_message' => $item->is_available ? null : 'This item is currently unavailable.',
+                        'available_stock' => null,
+                    ];
+                } else {
+                    $result = $availability->check($item, $channel);
+                    $data['availability'] = [
+                        'available' => $result->allowed,
+                        'reason_code' => $result->reasonCode,
+                        'reason_message' => $result->message ?: null,
+                        'available_stock' => $result->availableStock,
+                    ];
+                }
             }
 
             return $data;

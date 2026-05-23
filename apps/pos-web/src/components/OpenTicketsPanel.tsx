@@ -191,7 +191,7 @@ export function OpenTicketsPanel({
    * on tab focus so a cashier who switches away and back gets a
    * fresh list before they tap anything.
    */
-  const POLL_MS = 15_000;
+  const POLL_MS = 30_000;
 
   const loadActiveOrders = useCallback(async () => {
     if (listScope === "mine") {

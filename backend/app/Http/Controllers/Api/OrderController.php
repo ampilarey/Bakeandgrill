@@ -232,9 +232,16 @@ class OrderController extends Controller
         $perPage = min(100, max(10, (int) $request->input('per_page', 30)));
         $orders = $query->paginate($perPage);
 
-        $orders->through(function (Order $order) {
+        // POS active-order feeds only need ticket metadata — skip the
+        // per-row payment_settlement recompute on every poll cycle.
+        $slim = in_array($request->query('slim'), ['1', 'true', 'yes'], true)
+            || ($request->boolean('active_only') && !$request->filled('q'));
+
+        $orders->through(function (Order $order) use ($slim) {
             $data = $order->toArray();
-            $data['payment_settlement'] = OrderSettlement::forOrder($order);
+            if (!$slim) {
+                $data['payment_settlement'] = OrderSettlement::forOrder($order);
+            }
 
             return $data;
         });

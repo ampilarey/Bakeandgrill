@@ -12,8 +12,14 @@ use Illuminate\Support\Facades\Log;
  * Publishes order status changes to Redis pub/sub for real-time SSE clients.
  * Extracted from OrderObserver so the real-time concern is self-contained here.
  */
-class PublishOrderStatusToRedisListener
+class PublishOrderStatusToRedisListener implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    public bool $afterCommit = true;
+
+    public string $queue = 'default';
+
+    public int $tries = 3;
+
     public function __construct(private readonly RedisEventPublisher $redis) {}
 
     public function handle(OrderStatusChanged $event): void

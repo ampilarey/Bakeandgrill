@@ -51,8 +51,10 @@ class EnsureActiveDevice
             if ($user) {
                 $updates['last_user_id'] = $user->id;
             }
-            $device->update($updates);
-            $device->refresh();
+            if ($device->last_seen_at === null || $device->last_seen_at->lt(now()->subMinute())) {
+                $device->update($updates);
+                $device->refresh();
+            }
         }
 
         $request->attributes->set('device', $device);

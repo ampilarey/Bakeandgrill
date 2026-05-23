@@ -12,8 +12,14 @@ use Illuminate\Support\Facades\Log;
  * Sends a Web Push notification to the customer when their order status changes.
  * Extracted from OrderObserver so the notification concern is self-contained here.
  */
-class SendOrderStatusPushListener
+class SendOrderStatusPushListener implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    public bool $afterCommit = true;
+
+    public string $queue = 'default';
+
+    public int $tries = 3;
+
     public function __construct(private readonly PushNotificationService $push) {}
 
     public function handle(OrderStatusChanged $event): void

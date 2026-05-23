@@ -106,6 +106,22 @@ export async function fetchCategories(): Promise<Category[]> {
   return data.categories ?? data.data ?? [];
 }
 
+/** Single round-trip menu load for the POS register. */
+export async function fetchPosMenu(channel?: PosSalesChannel): Promise<{
+  categories: Category[];
+  items: Item[];
+}> {
+  const params = new URLSearchParams();
+  if (channel) params.set("channel", channel);
+  const data = await request<{ categories: Category[]; items: Item[] }>(
+    `/pos/menu?${params.toString()}`,
+  );
+  return {
+    categories: data.categories ?? [],
+    items: data.items ?? [],
+  };
+}
+
 /**
  * Fetch the public POS quick-notes chip library — owner-curated list
  * of one-tap kitchen instructions like "No salt" / "Extra spicy".
@@ -852,6 +868,8 @@ export async function fetchReceipts(params: {
    *  previously cast through `unknown` to bypass the missing prop
    *  on this type — now properly declared. */
   shift_id?: number | string;
+  /** Skip per-row payment_settlement on list polls. */
+  slim?: boolean;
 } = {}): Promise<{
   data: Array<{
     id: number;
@@ -900,8 +918,30 @@ export async function fetchReceipts(params: {
 
 /** Venue-wide active order count — matches OpenTicketsPanel default scope. */
 export async function countActiveOrders(): Promise<number> {
-  const res = await fetchReceipts({ active_only: true, per_page: 1, page: 1 });
+  const res = await fetchReceipts({ active_only: true, slim: true, per_page: 1, page: 1 });
   return res.total ?? res.data?.length ?? 0;
+}
+
+async function fetchActiveOrderPages(
+  baseParams: Record<string, string | number | boolean | undefined>,
+): Promise<{
+  data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
+  total: number;
+}> {
+  const perPage = 100;
+  const first = await fetchReceipts({ ...baseParams, active_only: true, slim: true, per_page: perPage, page: 1 });
+  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [...(first.data ?? [])];
+  const total = first.total ?? out.length;
+  const lastPage = Math.min(first.last_page ?? 1, 20);
+  if (lastPage > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: lastPage - 1 }, (_, i) =>
+        fetchReceipts({ ...baseParams, active_only: true, slim: true, per_page: perPage, page: i + 2 }),
+      ),
+    );
+    for (const res of rest) out.push(...(res.data ?? []));
+  }
+  return { data: out, total };
 }
 
 /** Active orders venue-wide (every station). Manager/owner scope. */
@@ -909,22 +949,7 @@ export async function fetchActiveOrdersVenueWide(): Promise<{
   data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
   total: number;
 }> {
-  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [];
-  const perPage = 100;
-  let total = 0;
-  for (let page = 1; page <= 20; page++) {
-    const res = await fetchReceipts({
-      active_only: true,
-      per_page: perPage,
-      page,
-    });
-    total = res.total ?? out.length + (res.data?.length ?? 0);
-    const batch = res.data ?? [];
-    out.push(...batch);
-    const lastPage = res.last_page ?? page;
-    if (batch.length === 0 || page >= lastPage) break;
-  }
-  return { data: out, total };
+  return fetchActiveOrderPages({});
 }
 
 /** Active orders created by the logged-in cashier only. */
@@ -932,23 +957,7 @@ export async function fetchActiveOrdersMine(): Promise<{
   data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
   total: number;
 }> {
-  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [];
-  const perPage = 100;
-  let total = 0;
-  for (let page = 1; page <= 20; page++) {
-    const res = await fetchReceipts({
-      active_only: true,
-      created_by_me: true,
-      per_page: perPage,
-      page,
-    });
-    total = res.total ?? out.length + (res.data?.length ?? 0);
-    const batch = res.data ?? [];
-    out.push(...batch);
-    const lastPage = res.last_page ?? page;
-    if (batch.length === 0 || page >= lastPage) break;
-  }
-  return { data: out, total };
+  return fetchActiveOrderPages({ created_by_me: true });
 }
 
 /** Active online orders (ordering-app pickup + delivery). */
@@ -956,23 +965,7 @@ export async function fetchActiveOrdersOnline(): Promise<{
   data: Awaited<ReturnType<typeof fetchReceipts>>["data"];
   total: number;
 }> {
-  const out: Awaited<ReturnType<typeof fetchReceipts>>["data"] = [];
-  const perPage = 100;
-  let total = 0;
-  for (let page = 1; page <= 20; page++) {
-    const res = await fetchReceipts({
-      active_only: true,
-      online_only: true,
-      per_page: perPage,
-      page,
-    });
-    total = res.total ?? out.length + (res.data?.length ?? 0);
-    const batch = res.data ?? [];
-    out.push(...batch);
-    const lastPage = res.last_page ?? page;
-    if (batch.length === 0 || page >= lastPage) break;
-  }
-  return { data: out, total };
+  return fetchActiveOrderPages({ online_only: true });
 }
 
 /** Active orders for all in-flight venue tickets (staff default). */
