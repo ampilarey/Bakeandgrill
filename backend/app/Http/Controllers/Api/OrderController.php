@@ -1563,7 +1563,7 @@ class OrderController extends Controller
                 DB::afterCommit(function () use ($order, $printReceipt): void {
                     DeferAfterResponse::run(function () use ($order, $printReceipt): void {
                         OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
-                    });
+                    }, 'OrderPaid');
                 });
             } else {
                 $order->update([

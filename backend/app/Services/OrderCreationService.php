@@ -147,7 +147,7 @@ class OrderCreationService
             DB::afterCommit(function () use ($order, $payload, $printKitchen): void {
                 DeferAfterResponse::run(function () use ($order, $printKitchen): void {
                     OrderCreated::dispatch(OrderCreatedData::fromOrder($order->fresh(), $printKitchen));
-                });
+                }, 'OrderCreated');
 
                 // Unified customer history: update last_order_at regardless of POS vs online.
                 // storeCustomer() does this inline; for POS staff-created orders with a
