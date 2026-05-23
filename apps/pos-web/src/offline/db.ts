@@ -79,7 +79,7 @@ interface PosOfflineDB extends DBSchema {
   cached_shift: { key: string; value: CachedShiftRecord };
   offline_orders: { key: string; value: OfflineOrderRecord; indexes: { status: string; shift_id: number } };
   sync_logs: { key: string; value: SyncLogRecord };
-  meta: { key: string; value: { key: string; value: string | number } };
+  meta: { key: string; value: { value: string | number } };
 }
 
 const DB_NAME = "pos_offline_v1";
@@ -127,12 +127,17 @@ export async function saveCachedMenu(
   data: Omit<CachedMenuRecord, "id" | "channel" | "cached_at">,
 ): Promise<void> {
   const db = await getOfflineDb();
-  await db.put("cached_menu", {
-    id: `channel:${channel}`,
-    channel,
-    ...data,
-    cached_at: new Date().toISOString(),
-  });
+  const id = `channel:${channel}`;
+  await db.put(
+    "cached_menu",
+    {
+      id,
+      channel,
+      ...data,
+      cached_at: new Date().toISOString(),
+    },
+    id,
+  );
 }
 
 export async function loadCachedMenu(channel?: string): Promise<CachedMenuRecord | null> {
@@ -146,11 +151,15 @@ export async function loadCachedMenu(channel?: string): Promise<CachedMenuRecord
 
 export async function saveCachedStaffSession(data: Omit<CachedStaffSession, "id" | "cached_at">): Promise<void> {
   const db = await getOfflineDb();
-  await db.put("cached_staff_session", {
-    id: "current",
-    ...data,
-    cached_at: new Date().toISOString(),
-  });
+  await db.put(
+    "cached_staff_session",
+    {
+      id: "current",
+      ...data,
+      cached_at: new Date().toISOString(),
+    },
+    "current",
+  );
 }
 
 export async function loadCachedStaffSession(): Promise<CachedStaffSession | null> {
@@ -206,11 +215,15 @@ export async function ensureCachedStaffSession(): Promise<CachedStaffSession | n
 
 export async function saveCachedShift(data: Omit<CachedShiftRecord, "id" | "cached_at">): Promise<void> {
   const db = await getOfflineDb();
-  await db.put("cached_shift", {
-    id: "current",
-    ...data,
-    cached_at: new Date().toISOString(),
-  });
+  await db.put(
+    "cached_shift",
+    {
+      id: "current",
+      ...data,
+      cached_at: new Date().toISOString(),
+    },
+    "current",
+  );
 }
 
 export async function loadCachedShift(): Promise<CachedShiftRecord | null> {
@@ -279,12 +292,13 @@ export async function getOfflineOrderSyncCounts(shiftId?: number): Promise<{
 export async function getMetaValue(key: string): Promise<string | number | null> {
   const db = await getOfflineDb();
   const row = await db.get("meta", key);
-  return row?.value ?? null;
+  if (row == null) return null;
+  return row.value ?? null;
 }
 
 export async function setMetaValue(key: string, value: string | number): Promise<void> {
   const db = await getOfflineDb();
-  await db.put("meta", { key, value });
+  await db.put("meta", { value }, key);
 }
 
 export async function updateSyncLog(patch: Partial<SyncLogRecord>): Promise<void> {
@@ -298,7 +312,7 @@ export async function updateSyncLog(patch: Partial<SyncLogRecord>): Promise<void
     synced_count: 0,
     failed_count: 0,
   };
-  await db.put("sync_logs", { ...existing, ...patch });
+  await db.put("sync_logs", { ...existing, ...patch }, "latest");
 }
 
 export async function getSyncLog(): Promise<SyncLogRecord | null> {

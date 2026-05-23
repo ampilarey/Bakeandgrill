@@ -22,6 +22,8 @@ import {
 } from "../offlineQueue";
 import {
   countPendingOfflineOrders,
+  initOfflineDb,
+  loadCachedShift,
   OFFLINE_SYNC_V2,
   saveOfflineOrder,
   type OfflineOrderRecord,
@@ -53,8 +55,15 @@ function mapChargeMethodToOffline(method: string): OfflineOrderRecord["payment"]
   return null;
 }
 
+function newLocalOrderId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `offline-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function lineUnitPrice(item: CartItem): number {
-  return item.price + item.modifiers.reduce((sum, m) => sum + (m.price ?? 0), 0);
+  return item.price + (item.modifiers ?? []).reduce((sum, m) => sum + (m.price ?? 0), 0);
 }
 
 function normalizePayments(rows: PaymentRow[]): { method: string; amount: number }[] {
@@ -548,7 +557,9 @@ export function useOrderCreation(params: Params) {
       }
 
       if (OFFLINE_SYNC_V2) {
-        if (!params.shiftId) {
+        const cachedShift = params.shiftId ? null : await loadCachedShift();
+        const shiftId = params.shiftId ?? cachedShift?.shift_id ?? null;
+        if (!shiftId) {
           flashError("No open shift cached. Open a shift while online first.");
           return false;
         }
@@ -566,14 +577,15 @@ export function useOrderCreation(params: Params) {
         }
 
         try {
-          const localOrderId = crypto.randomUUID();
+          await initOfflineDb();
+          const localOrderId = newLocalOrderId();
           const localOrderNumber = await allocateOfflineOrderNumber(params.deviceId);
           const payload = buildPayload();
           const record: OfflineOrderRecord = {
             local_order_id: localOrderId,
             local_order_number: localOrderNumber,
             device_identifier: params.deviceId,
-            shift_id: params.shiftId,
+            shift_id: shiftId,
             created_at_local: new Date().toISOString(),
             type: String(payload.type),
             items: params.cartItems.map((item) => ({
@@ -582,7 +594,7 @@ export function useOrderCreation(params: Params) {
               ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
               unit_price: lineUnitPrice(item),
               name: item.name,
-              modifiers: item.modifiers.map((m) => ({
+              modifiers: (item.modifiers ?? []).map((m) => ({
                 modifier_id: m.id,
                 name: m.name,
                 price: m.price,
@@ -609,14 +621,24 @@ export function useOrderCreation(params: Params) {
           };
 
           await saveOfflineOrder(record);
-          params.setOfflineQueueCount(await countPendingOfflineOrders(params.shiftId));
-          openLocalReceipt(record);
+          try {
+            params.setOfflineQueueCount(await countPendingOfflineOrders(shiftId));
+          } catch (e) {
+            console.warn("[offline] Could not refresh pending count", e);
+          }
+          try {
+            openLocalReceipt(record);
+          } catch (e) {
+            console.warn("[offline] Could not open local receipt", e);
+          }
           params.clearCart();
           params.setSelectedItem(null);
           flashNotice(`Offline sale saved (${localOrderNumber}). Will sync when online.`);
           return true;
-        } catch {
-          flashError("Unable to save offline order. Please try again.");
+        } catch (e) {
+          console.error("[offline] save failed", e);
+          const detail = e instanceof Error ? e.message : "Unknown error";
+          flashError(`Unable to save offline order: ${detail}`);
           return false;
         }
       }
