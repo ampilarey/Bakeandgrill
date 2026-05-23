@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary } from "./api";
 import { getQueueCount } from "./offlineQueue";
-import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, OFFLINE_SYNC_V2, saveCachedStaffSession } from "./offline/db";
+import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, OFFLINE_SYNC_V2, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
 import { startSyncEnginePolling } from "./offline/syncEngine";
 import { useConnectivity } from "./hooks/useConnectivity";
@@ -262,7 +262,7 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    void initOfflineDb().then(() => refreshOfflineCounts());
+    void initOfflineDb().then(() => ensureCachedStaffSession()).then(() => refreshOfflineCounts());
   }, [isLoggedIn, refreshOfflineCounts]);
 
   useEffect(() => {
@@ -359,8 +359,8 @@ function App() {
         localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
         setStaffPermissions(perms);
         setIdleLockMinutes(resolveIdleLockMinutes(user));
-        void saveCachedStaffSession({
-          staff_user_id: user.id,
+        void cacheStaffSessionFromUser({
+          id: user.id,
           name: user.name,
           permissions: perms,
         });
@@ -570,6 +570,13 @@ function App() {
       setStaffPermissions(loginPerms);
       setIdleLockMinutes(resolveIdleLockMinutes(response.user));
       setAuthToken(response.token);
+      if (response.user?.id) {
+        void cacheStaffSessionFromUser({
+          id: response.user.id,
+          name: response.user.name ?? name,
+          permissions: loginPerms,
+        });
+      }
       setIsLoggedIn(true);
       setPin("");
     } catch {
@@ -583,6 +590,7 @@ function App() {
     localStorage.removeItem("pos_username");
     localStorage.removeItem("pos_staff_role");
     localStorage.removeItem("pos_staff_permissions");
+    localStorage.removeItem("pos_staff_user_id");
     setAuthToken(null);
     setIsLoggedIn(false);
     setCashierName("");
@@ -691,6 +699,13 @@ function App() {
       setStaffRole(res.user?.role ?? "");
       setStaffPermissions(unlockPerms);
       setIdleLockMinutes(resolveIdleLockMinutes(res.user));
+      if (res.user?.id) {
+        void cacheStaffSessionFromUser({
+          id: res.user.id,
+          name: res.user.name ?? localStorage.getItem("pos_cashier_name") ?? "",
+          permissions: unlockPerms,
+        });
+      }
       setIsLocked(false);
       return true;
     } catch { return false; }
@@ -847,6 +862,12 @@ function App() {
   }
 
   if (!isReachable && offlineGate && !offlineGate.allowed) {
+    const activeSessionFallback =
+      !!localStorage.getItem("pos_token")
+      && shift.current != null
+      && menu.items.length > 0;
+
+    if (!activeSessionFallback) {
     return (
       <div style={{
         minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
@@ -860,19 +881,32 @@ function App() {
           <p style={{ margin: 0, color: "#64748B", lineHeight: 1.5 }}>
             {offlineGate.reason ?? "Connect while online once to cache menu, shift, and staff session."}
           </p>
-          <button
-            type="button"
-            onClick={() => void connectivity.ping()}
-            style={{
-              marginTop: 16, minHeight: 44, padding: "0 16px", borderRadius: 8,
-              border: "none", background: "#0F172A", color: "#fff", fontWeight: 700, cursor: "pointer",
-            }}
-          >
-            Retry connection
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => void connectivity.ping().then(() => evaluateOfflineGate().then(setOfflineGate))}
+              style={{
+                minHeight: 44, padding: "0 16px", borderRadius: 8,
+                border: "none", background: "#0F172A", color: "#fff", fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              Retry connection
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                minHeight: 44, padding: "0 16px", borderRadius: 8,
+                border: "1px solid #E2E8F0", background: "#fff", fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              Log out
+            </button>
+          </div>
         </div>
       </div>
     );
+    }
   }
 
   return (

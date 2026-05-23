@@ -1,7 +1,7 @@
 import {
+  ensureCachedStaffSession,
   loadCachedMenu,
   loadCachedShift,
-  loadCachedStaffSession,
   type CachedMenuRecord,
   type CachedShiftRecord,
   type CachedStaffSession,
@@ -17,7 +17,7 @@ export type OfflineGateResult = {
 
 export async function evaluateOfflineGate(): Promise<OfflineGateResult> {
   const token = localStorage.getItem("pos_token");
-  const session = await loadCachedStaffSession();
+  const session = await ensureCachedStaffSession();
   const shift = await loadCachedShift();
   const menu = await loadCachedMenu();
 

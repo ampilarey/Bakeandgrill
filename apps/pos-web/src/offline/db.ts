@@ -158,6 +158,52 @@ export async function loadCachedStaffSession(): Promise<CachedStaffSession | nul
   return (await db.get("cached_staff_session", "current")) ?? null;
 }
 
+/** Persist staff session for offline gate — call on every successful login /auth/me. */
+export async function cacheStaffSessionFromUser(user: {
+  id: number;
+  name: string;
+  permissions?: string[];
+}): Promise<void> {
+  localStorage.setItem("pos_staff_user_id", String(user.id));
+  await saveCachedStaffSession({
+    staff_user_id: user.id,
+    name: user.name,
+    permissions: user.permissions ?? [],
+  });
+}
+
+/**
+ * Return IndexedDB session, or rebuild it from localStorage after login
+ * when /auth/me has not run yet (common right before going offline).
+ */
+export async function ensureCachedStaffSession(): Promise<CachedStaffSession | null> {
+  const existing = await loadCachedStaffSession();
+  if (existing) return existing;
+
+  const token = localStorage.getItem("pos_token");
+  const userIdRaw = localStorage.getItem("pos_staff_user_id");
+  const name = localStorage.getItem("pos_cashier_name");
+  if (!token || !userIdRaw || !name) return null;
+
+  const staffUserId = Number(userIdRaw);
+  if (!Number.isFinite(staffUserId)) return null;
+
+  let permissions: string[] = [];
+  try {
+    const raw = localStorage.getItem("pos_staff_permissions");
+    permissions = raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    permissions = [];
+  }
+
+  await saveCachedStaffSession({
+    staff_user_id: staffUserId,
+    name,
+    permissions,
+  });
+  return loadCachedStaffSession();
+}
+
 export async function saveCachedShift(data: Omit<CachedShiftRecord, "id" | "cached_at">): Promise<void> {
   const db = await getOfflineDb();
   await db.put("cached_shift", {
