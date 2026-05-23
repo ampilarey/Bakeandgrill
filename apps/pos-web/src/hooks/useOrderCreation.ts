@@ -29,7 +29,6 @@ import {
   type OfflineOrderRecord,
 } from "../offline/db";
 import { allocateOfflineOrderNumber } from "../offline/offlineOrderNumber";
-import { openLocalReceipt } from "../offline/localReceipt";
 import { runOfflineSync } from "../offline/syncEngine";
 import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
@@ -625,11 +624,6 @@ export function useOrderCreation(params: Params) {
             params.setOfflineQueueCount(await countPendingOfflineOrders(shiftId));
           } catch (e) {
             console.warn("[offline] Could not refresh pending count", e);
-          }
-          try {
-            openLocalReceipt(record);
-          } catch (e) {
-            console.warn("[offline] Could not open local receipt", e);
           }
           params.clearCart();
           params.setSelectedItem(null);
