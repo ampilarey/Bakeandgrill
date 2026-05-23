@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getApiBaseUrl } from "../api";
 
 type HealthResponse = { status?: string };
 
 /**
  * Tracks browser online state plus periodic API reachability.
+ * Uses the same API base URL as the authenticated client so a
+ * baked-in localhost VITE_API_BASE_URL cannot leave the POS stuck
+ * in "Offline" while menu/orders still work via /api.
  */
 export function useConnectivity(enabled: boolean) {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
@@ -19,11 +23,19 @@ export function useConnectivity(enabled: boolean) {
       return;
     }
     try {
-      const base = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "/api" : "http://localhost:8000/api");
-      const res = await fetch(`${base}/health`, { method: "GET", cache: "no-store" });
+      const res = await fetch(`${getApiBaseUrl()}/health`, {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
       if (res.ok) {
-        const data = (await res.json()) as HealthResponse;
-        const ok = data.status === "ok" || data.status === "healthy" || res.ok;
+        let ok = true;
+        try {
+          const data = (await res.json()) as HealthResponse;
+          ok = data.status === "ok" || data.status === "healthy" || res.ok;
+        } catch {
+          ok = true;
+        }
         setIsReachable(ok);
         if (ok) setLastOnlineAt(Date.now());
       } else {

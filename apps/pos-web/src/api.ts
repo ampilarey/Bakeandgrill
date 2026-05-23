@@ -34,6 +34,11 @@ function resolvePosApiBaseUrl(): string {
 
 const API_BASE_URL = resolvePosApiBaseUrl();
 
+/** Shared base URL for fetch calls outside the authenticated api client. */
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
 if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   // eslint-disable-next-line no-console
   console.warn("[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api");
