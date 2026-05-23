@@ -7,6 +7,7 @@ namespace App\Domains\Inventory\Listeners;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Services\StockReservationService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -14,12 +15,17 @@ use Illuminate\Support\Facades\Log;
  *
  * POS orders (dine_in, takeaway) have stock deducted immediately at order creation
  * and are skipped here. Only online_pickup and delivery orders go through reservation.
- *
- * Runs synchronously — same pattern as DeductInventoryListener.
- * Idempotent: StockMovement unique key blocks double-deduction.
  */
-class DeductPreparedStockListener
+class DeductPreparedStockListener implements ShouldQueue
 {
+    public bool $afterCommit = true;
+
+    public string $queue = 'default';
+
+    public int $tries = 3;
+
+    public int $backoff = 5;
+
     public function __construct(
         private readonly OrderRepositoryInterface $orders,
         private readonly StockReservationService $reservationService,

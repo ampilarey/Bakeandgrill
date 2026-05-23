@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
 use App\Models\Shift;
+use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\DB;
 
 class OrderCreationService
@@ -144,7 +145,9 @@ class OrderCreationService
             $order->load(['items.modifiers']);
 
             DB::afterCommit(function () use ($order, $payload, $printKitchen): void {
-                OrderCreated::dispatch(OrderCreatedData::fromOrder($order->fresh(), $printKitchen));
+                DeferAfterResponse::run(function () use ($order, $printKitchen): void {
+                    OrderCreated::dispatch(OrderCreatedData::fromOrder($order->fresh(), $printKitchen));
+                });
 
                 // Unified customer history: update last_order_at regardless of POS vs online.
                 // storeCustomer() does this inline; for POS staff-created orders with a

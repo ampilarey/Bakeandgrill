@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Shift;
 use App\Models\User;
+use App\Support\DeferAfterResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -111,7 +112,9 @@ class OrderOfflineSettlementService
                 );
 
                 DB::afterCommit(function () use ($order, $printReceipt): void {
-                    OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
+                    DeferAfterResponse::run(function () use ($order, $printReceipt): void {
+                        OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
+                    });
                 });
             } else {
                 $order->update([

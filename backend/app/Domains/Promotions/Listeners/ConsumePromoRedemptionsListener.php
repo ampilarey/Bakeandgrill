@@ -8,6 +8,7 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
 use App\Models\OrderPromotion;
 use App\Models\PromotionRedemption;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -15,12 +16,19 @@ use Illuminate\Support\Facades\Log;
  * Converts draft OrderPromotion records into final PromotionRedemption records
  * when an order is fully paid.
  *
- * Runs synchronously (critical path) — promo redemptions must be committed
- * before the order response so usage limits are enforced in real time.
- * Idempotent: protected by unique constraint on (promotion_id, order_id).
+ * Queued so POS payment responses are not blocked. Idempotent via unique
+ * constraint on (promotion_id, order_id).
  */
-class ConsumePromoRedemptionsListener
+class ConsumePromoRedemptionsListener implements ShouldQueue
 {
+    public bool $afterCommit = true;
+
+    public string $queue = 'default';
+
+    public int $tries = 3;
+
+    public int $backoff = 5;
+
     public function __construct(private PromotionRepositoryInterface $promotions) {}
 
     public function handle(OrderPaid $event): void

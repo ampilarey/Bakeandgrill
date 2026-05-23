@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Referral;
 use App\Models\ReferralCode;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -17,8 +18,16 @@ use Illuminate\Support\Facades\Log;
  * On payment, record referral usage once per order and bump the code's uses_count
  * only for the referee's first completed redemption for that code.
  */
-class RecordReferralRedemptionListener
+class RecordReferralRedemptionListener implements ShouldQueue
 {
+    public bool $afterCommit = true;
+
+    public string $queue = 'default';
+
+    public int $tries = 3;
+
+    public int $backoff = 5;
+
     public function handle(OrderPaid $event): void
     {
         $orderId = $event->data->orderId;

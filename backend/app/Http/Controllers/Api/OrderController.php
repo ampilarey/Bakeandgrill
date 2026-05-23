@@ -30,6 +30,7 @@ use App\Services\OrderStatusMachine;
 use App\Services\PermissionService;
 use App\Services\ShiftAccessService;
 use App\Services\StockManagementService;
+use App\Support\DeferAfterResponse;
 use App\Support\OrderSettlement;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;
@@ -1560,7 +1561,9 @@ class OrderController extends Controller
                 app(AuditLogService::class)->log('order.paid', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'paid'], ['paid_total' => $paidTotal], $request);
 
                 DB::afterCommit(function () use ($order, $printReceipt): void {
-                    OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
+                    DeferAfterResponse::run(function () use ($order, $printReceipt): void {
+                        OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
+                    });
                 });
             } else {
                 $order->update([
