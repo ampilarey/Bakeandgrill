@@ -20,6 +20,7 @@ final class DeferAfterResponse
     public static function run(callable $callback, string $context = 'deferred'): void
     {
         $wrapped = static function () use ($callback, $context): void {
+            static::flushResponse();
             static::invoke($callback, $context);
         };
 
@@ -29,14 +30,14 @@ final class DeferAfterResponse
             return;
         }
 
-        App::terminating(static function () use ($wrapped): void {
-            // Flush the response to the POS/iPad before heavy side-effects
-            // when running under PHP-FPM (terminating can still block otherwise).
-            if (\function_exists('fastcgi_finish_request')) {
-                fastcgi_finish_request();
-            }
-            $wrapped();
-        });
+        App::terminating($wrapped);
+    }
+
+    private static function flushResponse(): void
+    {
+        if (\function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
     }
 
     private static function invoke(callable $callback, string $context): void

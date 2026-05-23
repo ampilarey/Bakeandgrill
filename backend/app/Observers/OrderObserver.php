@@ -9,6 +9,7 @@ use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\OrderStatusMachine;
+use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -80,12 +81,21 @@ class OrderObserver
             }
         }
 
-        OrderStatusChanged::dispatch(new OrderStatusChangedData(
+        $data = new OrderStatusChangedData(
             orderId: $order->id,
             status: $order->status,
             customerId: $order->customer_id,
             orderNumber: $order->order_number ?? "#{$order->id}",
             updatedAt: $order->updated_at?->toIso8601String() ?? now()->toIso8601String(),
-        ));
+        );
+
+        // POS payment flips status → paid inside addPayments. Dispatching
+        // OrderStatusChanged synchronously here forced Laravel to push
+        // several queued listeners to Redis before the JSON response
+        // left PHP — slow when Redis is reachable, 500 when it is not.
+        DeferAfterResponse::run(
+            static fn () => OrderStatusChanged::dispatch($data),
+            'OrderStatusChanged',
+        );
     }
 }

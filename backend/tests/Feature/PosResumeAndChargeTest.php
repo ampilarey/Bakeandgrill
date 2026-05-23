@@ -137,4 +137,42 @@ class PosResumeAndChargeTest extends TestCase
         $this->assertSame('held', Order::find($orderId)->status);
         $this->assertSame(1, Order::count(), 'cancel-resume must not duplicate the order');
     }
+
+    /**
+     * Regression: switching QUEUE_CONNECTION to redis must not turn a
+     * successful payment into a 500 when Redis is slow or unreachable.
+     * OrderStatusChanged (status → paid) used to dispatch synchronously
+     * from OrderObserver and block on queue pushes before the JSON
+     * response was sent.
+     */
+    public function test_add_payments_succeeds_when_redis_queue_is_unreachable(): void
+    {
+        Sanctum::actingAs($this->staffUser, ['staff']);
+        config(['queue.default' => 'sync']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $orderId = $this->withHeader('X-Device-Identifier', 'RES-POS')
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'print' => false,
+                'items' => [['item_id' => $this->item->id, 'quantity' => 2]],
+            ])
+            ->assertCreated()
+            ->json('order.id');
+
+        config([
+            'queue.default' => 'redis',
+            'database.redis.default.host' => '127.0.0.1',
+            'database.redis.default.port' => 6399,
+        ]);
+        $this->app->forgetInstance('redis');
+        $this->app->forgetInstance(\Illuminate\Redis\RedisManager::class);
+
+        $this->postJson("/api/orders/{$orderId}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => 50.00]],
+            'print_receipt' => false,
+        ])->assertOk();
+
+        $this->assertSame('paid', Order::find($orderId)->status);
+    }
 }

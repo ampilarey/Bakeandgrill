@@ -39,9 +39,10 @@ class ItemController extends Controller
     {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
+        $isPosView = $isAdmin && $request->query('view') === 'pos';
 
         $with = ['category', 'variants', 'modifiers'];
-        if ($isAdmin) {
+        if ($isAdmin && !$isPosView) {
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
         }
@@ -55,6 +56,11 @@ class ItemController extends Controller
         $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
 
         if (!$isAdmin) {
+            $query->where('is_active', true);
+            $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
+        } elseif ($isPosView) {
+            // POS register only needs sellable items for the active order
+            // type — skip the admin payload (channel grid, cost, stock).
             $query->where('is_active', true);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
         }
@@ -79,13 +85,17 @@ class ItemController extends Controller
             $query->where('is_available', true);
         }
 
-        $perPage = $isAdmin
-            ? min(100, max(10, (int) $request->input('per_page', 25)))
-            : 100; // public menu always gets all items
+        $perPage = $isPosView
+            ? min(100, max(10, (int) $request->input('per_page', 100)))
+            : ($isAdmin
+                ? min(100, max(10, (int) $request->input('per_page', 25)))
+                : 100); // public menu always gets all items
         $items = $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
 
-        // Admin gets full data; public gets stripped response + availability metadata
-        $transformed = $items->through(function ($item) use ($isAdmin, $availability, $channel) {
+        // Admin gets full data; public / POS get stripped response + availability metadata
+        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel) {
+            $includeAvailability = !$isAdmin || $isPosView;
+            $includeAdminExtras = $isAdmin && !$isPosView;
             $data = [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -104,12 +114,12 @@ class ItemController extends Controller
                     'id' => $item->category->id,
                     'name' => $item->category->name,
                 ] : null,
-                'menu_group' => $item->menuGroup ? [
+                'menu_group' => $includeAdminExtras && $item->menuGroup ? [
                     'id' => $item->menuGroup->id,
                     'name' => $item->menuGroup->name,
                     'slug' => $item->menuGroup->slug,
                 ] : null,
-                'channel_availabilities' => $isAdmin
+                'channel_availabilities' => $includeAdminExtras
                     ? $item->channelAvailabilities->map(fn ($r) => [
                         'channel' => $r->channel,
                         'is_enabled' => $r->is_enabled,
@@ -120,7 +130,7 @@ class ItemController extends Controller
                 'has_variants' => $item->has_variants,
                 'variants' => $item->variants
                     ->sortBy('sort_order')
-                    ->map(fn ($v) => $isAdmin ? [
+                    ->map(fn ($v) => $includeAdminExtras ? [
                         'id' => $v->id,
                         'name' => $v->name,
                         'name_dv' => $v->name_dv,
@@ -147,14 +157,16 @@ class ItemController extends Controller
                 ]),
             ];
 
-            // Public callers receive extra customer-facing fields
-            if (!$isAdmin) {
-                $data['spice_level'] = $item->spice_level ?? null;
-                $data['is_combo'] = (bool) ($item->is_combo ?? false);
-                $data['dietary_tags'] = $item->dietary_tags ?? [];
-                $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
-                $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
-                $data['review_count'] = (int) ($item->review_count ?? 0);
+            // Public / POS callers receive availability metadata
+            if ($includeAvailability) {
+                if (!$isAdmin) {
+                    $data['spice_level'] = $item->spice_level ?? null;
+                    $data['is_combo'] = (bool) ($item->is_combo ?? false);
+                    $data['dietary_tags'] = $item->dietary_tags ?? [];
+                    $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
+                    $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
+                    $data['review_count'] = (int) ($item->review_count ?? 0);
+                }
 
                 $result = $availability->check($item, $channel);
                 $data['availability'] = [

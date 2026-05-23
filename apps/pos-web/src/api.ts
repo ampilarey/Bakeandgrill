@@ -172,6 +172,7 @@ export async function fetchItems(channel?: PosSalesChannel): Promise<Item[]> {
   const fetchPage = async (page: number) => {
     const params = new URLSearchParams();
     if (channel) params.set("channel", channel);
+    params.set("view", "pos");
     params.set("per_page", "100");
     params.set("page", String(page));
     const res = await request<{

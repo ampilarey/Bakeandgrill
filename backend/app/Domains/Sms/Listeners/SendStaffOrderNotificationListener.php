@@ -12,6 +12,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 
 class SendStaffOrderNotificationListener implements ShouldQueue
 {
+    public bool $afterCommit = true;
+
     public string $queue = 'default';
 
     public int $tries = 3;
