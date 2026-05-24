@@ -51,12 +51,14 @@ class OnlineOrderingGateService
         $schedule = $this->parseSchedule();
         $overrideUntil = SiteSetting::get('online_ordering_override_until');
 
-        // Determine human-readable reason code for the frontend
+        // Reason reflects why the gate is in its current state (not layer order).
         $reason = null;
-        if (!$masterOn) {
+        if ($result->allowed) {
+            if ($overrideActive) {
+                $reason = 'override_active';
+            }
+        } elseif (!$masterOn && !$overrideActive) {
             $reason = 'master_switch_off';
-        } elseif ($overrideActive) {
-            $reason = 'override_active';
         } elseif ($schedule && !$this->withinSchedule($schedule, $at ?? now())) {
             $reason = 'schedule';
         }
@@ -64,7 +66,7 @@ class OnlineOrderingGateService
         return [
             // 'open' is the canonical key read by both the order app and admin UI
             'open' => $result->allowed,
-            'message' => $result->message ?: $this->closedMessage(),
+            'message' => $result->allowed ? '' : ($result->message ?: $this->closedMessage()),
             'reason' => $reason,
             'master_switch' => $masterOn,
             'override_until' => $overrideUntil,

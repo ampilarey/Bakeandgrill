@@ -42,13 +42,21 @@ export type PosVersionInfo = {
   built_at: string;
 };
 
+const PLACEHOLDER_COMMITS = new Set(["abc1234", "dev", "placeholder"]);
+
+function isPlaceholderBuild(info: PosVersionInfo): boolean {
+  return PLACEHOLDER_COMMITS.has(info.commit) || info.build.includes("-abc1234");
+}
+
 /** True when the server reports a different deploy than this bundle. */
 export function isNewerPosBuild(
   server: PosVersionInfo,
   local: PosVersionInfo,
 ): boolean {
+  // Stale placeholder pos-version.json on server must not nag staff every session.
+  if (isPlaceholderBuild(server)) return false;
   if (server.build !== local.build) return true;
-  if (server.commit !== local.commit && server.commit !== "dev") return true;
+  if (server.commit !== local.commit && !PLACEHOLDER_COMMITS.has(server.commit)) return true;
   if (server.version !== local.version) return true;
   return false;
 }

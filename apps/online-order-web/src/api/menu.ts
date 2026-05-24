@@ -72,17 +72,43 @@ export async function fetchCategories(): Promise<{ data: Category[] }> {
   return request<{ data: Category[] }>(ENDPOINTS.CATEGORIES);
 }
 
-export async function fetchItems(channel?: SalesChannel): Promise<{ data: MenuItem[] }> {
-  const ch = channel ?? getSalesChannel();
+export type FetchItemsResult = {
+  data: MenuItem[];
+  /** Channel actually used after any pickup fallback. */
+  channelUsed: SalesChannel;
+  /** True when delivery was requested but no delivery items exist — switched to pickup. */
+  deliveryFallback: boolean;
+};
+
+async function fetchItemsForChannel(ch: SalesChannel): Promise<MenuItem[]> {
   const qs = new URLSearchParams({ available_only: '1', channel: ch });
   const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?${qs}`);
-  // Coerce prices to numbers at the API boundary so consumers never need parseFloat()
-  res.data = (res.data ?? []).map((item) => ({
+  return (res.data ?? []).map((item) => ({
     ...item,
     base_price: Number(item.base_price),
     modifiers: item.modifiers?.map((m) => ({ ...m, price: Number(m.price) })),
   }));
-  return res;
+}
+
+export async function fetchItems(channel?: SalesChannel): Promise<FetchItemsResult> {
+  const requested = channel ?? getSalesChannel();
+  let channelUsed = requested;
+  let deliveryFallback = false;
+
+  let data = await fetchItemsForChannel(requested);
+
+  // Delivery with zero channel-enabled items used to show categories but an empty grid.
+  if (requested === 'delivery' && data.length === 0) {
+    const pickupItems = await fetchItemsForChannel('online_pickup');
+    if (pickupItems.length > 0) {
+      data = pickupItems;
+      channelUsed = 'online_pickup';
+      deliveryFallback = true;
+      setSalesChannel('online_pickup');
+    }
+  }
+
+  return { data, channelUsed, deliveryFallback };
 }
 
 export interface DailySpecial {

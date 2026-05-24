@@ -76,6 +76,8 @@ export function MenuPage() {
     };
   }, []);
 
+  const [deliveryFallback, setDeliveryFallback] = useState(false);
+
   usePageTitle('Menu');
 
   const loadMenu = () => {
@@ -88,13 +90,18 @@ export function MenuPage() {
       .then(([cats, its, gate]) => {
         setCategories(cats.data ?? []);
         setItems(its.data ?? []);
+        setDeliveryFallback(its.deliveryFallback);
+        if (its.deliveryFallback) {
+          showToast('No delivery items right now — showing pickup menu instead.');
+        }
         // Gate API is the single source of truth for ordering status
         setIsOpen(gate.open);
         setCurrentClose(gate.current_close ?? null);
         setNextOpenWindow(gate.next_open_window ?? null);
         setDeliveryAvailable(gate.delivery_available ?? true);
         setNextDeliveryWindow(gate.next_delivery_window ?? null);
-        setClosedMessage(gate.open ? null : (gate.message ?? 'Online ordering is currently closed.'));
+        const closedMsg = gate.message?.trim();
+        setClosedMessage(gate.open ? null : (closedMsg || 'Online ordering is currently closed.'));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -353,6 +360,23 @@ export function MenuPage() {
                 : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
               }
             </span>
+          </div>
+        )}
+
+        {deliveryFallback && (
+          <div
+            role="status"
+            style={{
+              margin: '0 var(--page-gutter)',
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: 'var(--color-primary-light, #FFF7ED)',
+              border: '1px solid var(--color-primary, #D4813A)',
+              fontSize: '0.875rem',
+              color: 'var(--color-text)',
+            }}
+          >
+            Delivery is unavailable for these items — you&apos;re viewing the <strong>pickup</strong> menu.
           </div>
         )}
 

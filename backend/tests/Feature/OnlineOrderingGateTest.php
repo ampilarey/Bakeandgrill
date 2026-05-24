@@ -289,7 +289,25 @@ class OnlineOrderingGateTest extends TestCase
         $this->setSetting('online_ordering_schedule', null);
 
         $response = $this->getJson('/api/ordering/status');
-        $response->assertOk()->assertJsonPath('open', true);
+        $response->assertOk()
+            ->assertJsonPath('open', true)
+            ->assertJsonPath('message', '');
+    }
+
+    public function test_status_open_via_override_has_empty_message_and_override_reason(): void
+    {
+        $this->setSetting('online_ordering_enabled', '0');
+        $this->setSetting(
+            'online_ordering_override_until',
+            now()->addHour()->toIso8601String(),
+        );
+
+        $response = $this->getJson('/api/ordering/status');
+        $response->assertOk()
+            ->assertJsonPath('open', true)
+            ->assertJsonPath('message', '')
+            ->assertJsonPath('reason', 'override_active')
+            ->assertJsonPath('master_switch', false);
     }
 
     public function test_status_is_closed_when_switch_off(): void

@@ -11,8 +11,17 @@ describe("posUpdateSafety", () => {
 
   it("detects newer server build", () => {
     expect(
-      isNewerPosBuild({ ...local, build: "2026-05-22-130000-def5678" }, local),
+      isNewerPosBuild(
+        { ...local, build: "2026-05-22-130000-def5678", commit: "def5678" },
+        { ...local, commit: "abc1234" },
+      ),
     ).toBe(true);
+  });
+
+  it("ignores placeholder server pos-version.json", () => {
+    expect(
+      isNewerPosBuild({ ...local, build: "2026-05-22-130000-abc1234" }, local),
+    ).toBe(false);
   });
 
   it("treats matching build as up to date", () => {
