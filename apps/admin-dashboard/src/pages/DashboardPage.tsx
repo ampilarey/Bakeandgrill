@@ -667,9 +667,19 @@ export function DashboardPage() {
               </span>
             </div>
           </div>
+          {health.env_mismatch && (
+            <div style={{
+              marginBottom: 12, padding: '10px 14px', borderRadius: 10,
+              background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B',
+              fontSize: 13, fontWeight: 600,
+            }}>
+              Staging host ({health.host}) but APP_ENV is &quot;{health.environment}&quot; — set APP_ENV=staging on this server.
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
             {[
               { label: 'Environment', value: health.environment },
+              { label: 'Host', value: health.host ?? '—' },
               { label: 'Database', value: health.database },
               { label: 'Last Check', value: new Date(health.timestamp).toLocaleTimeString() },
             ].map(({ label, value }) => (

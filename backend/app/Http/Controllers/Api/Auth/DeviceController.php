@@ -74,15 +74,20 @@ class DeviceController extends Controller
         $staffId = $request->user()?->id;
 
         if ($existing) {
-            $existing->update([
+            $patch = [
                 'last_seen_at' => now(),
                 'ip_address' => $request->ip(),
                 'last_user_id' => $staffId ?? $existing->last_user_id,
-            ]);
+            ];
+            if ($existing->status === 'pending') {
+                $patch['status'] = 'approved';
+                $patch['is_active'] = true;
+            }
+            $existing->update($patch);
 
             return response()->json([
                 'device' => $existing->fresh(),
-                'status' => $existing->status ?? 'approved',
+                'status' => $existing->fresh()->status ?? 'approved',
             ]);
         }
 

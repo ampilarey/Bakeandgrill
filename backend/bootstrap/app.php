@@ -43,6 +43,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'staff.token' => App\Http\Middleware\EnsureStaffToken::class,
             'driver.token' => App\Http\Middleware\EnsureDriverToken::class,
         ]);
+
+        // API routes must never redirect to a missing `login` named route (422/500).
+        $middleware->redirectGuestsTo(function (Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                throw new AuthenticationException('Unauthenticated.');
+            }
+
+            return '/admin/';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Sentry captures exceptions automatically via its Laravel integration.

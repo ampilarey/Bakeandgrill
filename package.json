@@ -9,7 +9,9 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "dev": "npm run dev --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e:staging": "playwright test --config playwright.config.ts --project=chromium"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",

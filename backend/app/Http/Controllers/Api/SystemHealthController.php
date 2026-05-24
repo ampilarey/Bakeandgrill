@@ -23,9 +23,18 @@ class SystemHealthController extends Controller
      */
     public function admin(): JsonResponse
     {
+        $host = request()->getHost();
+        $appUrl = (string) config('app.url');
+        $env = (string) config('app.env');
+        $isStagingHost = str_contains($host, 'test.') || str_contains($host, 'staging.');
+
         return response()->json([
             'status' => 'ok',
-            'environment' => config('app.env'),
+            'environment' => $env,
+            'app_url' => $appUrl,
+            'host' => $host,
+            'staging_host' => $isStagingHost,
+            'env_mismatch' => $isStagingHost && $env === 'production',
             'database' => 'connected',
             'timestamp' => now()->toIso8601String(),
         ]);

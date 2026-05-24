@@ -110,4 +110,29 @@ class EnsureActiveDeviceTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('code', 'device_not_approved');
     }
+
+    public function test_pending_pos_device_is_auto_approved_when_strict_mode_off(): void
+    {
+        config(['pos.strict_device_approval' => false]);
+
+        Device::create([
+            'name' => 'Legacy Pending POS',
+            'identifier' => 'LEGACY-PENDING-POS',
+            'type' => 'pos',
+            'is_active' => true,
+            'status' => 'pending',
+        ]);
+
+        $this->withHeader('X-Device-Identifier', 'LEGACY-PENDING-POS')
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('devices', [
+            'identifier' => 'LEGACY-PENDING-POS',
+            'status' => 'approved',
+        ]);
+    }
 }

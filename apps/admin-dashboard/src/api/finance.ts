@@ -712,6 +712,10 @@ export async function getLoyaltyReport(params: { from?: string; to?: string } = 
 export interface SystemHealth {
   status: string;
   environment: string;
+  app_url?: string;
+  host?: string;
+  staging_host?: boolean;
+  env_mismatch?: boolean;
   database: string;
   timestamp: string;
 }

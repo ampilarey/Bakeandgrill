@@ -53,6 +53,15 @@ class EnsureActiveDevice
             if ($user) {
                 $updates['last_user_id'] = $user->id;
             }
+            // Legacy rows from the old approval workflow — auto-approve only when strict mode is off.
+            if (
+                !config('pos.strict_device_approval', false)
+                && $device->status === 'pending'
+                && ($device->type === 'pos' || $device->type === null)
+            ) {
+                $updates['status'] = 'approved';
+                $updates['is_active'] = true;
+            }
             if ($device->last_seen_at === null || $device->last_seen_at->lt(now()->subMinute())) {
                 $device->update($updates);
                 $device->refresh();
