@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Finance;
 
 use App\Models\Order;
+use App\Domains\Permissions\PermissionCatalogSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -30,7 +31,9 @@ class ReportEndpointsTest extends TestCase
     /** Auth header for a plain staff member (no finance permissions by default). */
     private function staffOnlyHeaders(): array
     {
-        return $this->staffHeaders($this->makeStaff('staff'));
+        PermissionCatalogSync::sync();
+
+        return $this->staffHeaders($this->makeStaff('cashier'));
     }
 
     // ── X-report ─────────────────────────────────────────────────────────────

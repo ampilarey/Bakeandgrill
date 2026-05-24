@@ -8,5 +8,6 @@
         "tier": "bronze",
         "preferred_language": "en",
         "last_order_at": null
-    }
+    },
+    "credit": null
 }

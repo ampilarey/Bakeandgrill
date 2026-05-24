@@ -95,8 +95,8 @@ class WebhookIdempotencyTest extends TestCase
             $webhookBody,
         );
 
-        // 200 (idempotent skip) or 400/401/403 (signature rejected) — both mean no duplicate was created
-        $this->assertContains($response->status(), [200, 400, 401, 403, 405, 422]);
+        // 200 (idempotent skip) or 503 (signature rejected for retry) — no duplicate payment
+        $this->assertContains($response->status(), [200, 400, 401, 403, 405, 422, 503]);
 
         // Payment count must not have increased
         $this->assertSame(
@@ -172,10 +172,9 @@ class WebhookIdempotencyTest extends TestCase
         );
     }
 
-    public function test_bml_webhook_with_invalid_signature_returns_200_and_does_not_pay_order(): void
+    public function test_bml_webhook_with_invalid_signature_returns_503_and_does_not_pay_order(): void
     {
-        // Even with a bad signature, BML always gets HTTP 200 (to stop retries).
-        // But the order must NOT be marked paid when enforce_signature is true.
+        // Invalid signatures return 503 so BML can retry with a valid payload.
         config(['bml.enforce_signature' => true, 'app.env' => 'production']);
 
         $webhookBody = json_encode([
@@ -196,8 +195,8 @@ class WebhookIdempotencyTest extends TestCase
             $webhookBody,
         );
 
-        // Controller always returns 200 to prevent BML retry flood
-        $this->assertSame(200, $response->status());
+        // Controller returns 503 for signature failures so BML retries
+        $this->assertSame(503, $response->status());
 
         // Order must NOT have been paid despite the CONFIRMED state in payload
         $this->assertNotContains(
@@ -229,7 +228,7 @@ class WebhookIdempotencyTest extends TestCase
             $webhookBody,
         );
 
-        $this->assertSame(200, $response->status());
+        $this->assertSame(503, $response->status());
         $this->assertNotContains(
             $this->order->fresh()->status,
             ['paid', 'completed'],

@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 
 /**
  * Contract tests for the print proxy payload shape.
@@ -23,6 +24,8 @@ use Laravel\Sanctum\Sanctum;
  */
 class PrintPayloadContractTest extends ContractTestCase
 {
+    use PreparesPosApi;
+
     private User $staff;
 
     private Device $device;
@@ -75,6 +78,8 @@ class PrintPayloadContractTest extends ContractTestCase
             'station' => 'kitchen',
             'is_active' => true,
         ]);
+
+        $this->preparePosApi($this->staff, $this->device);
     }
 
     public function test_kitchen_print_job_payload_shape(): void

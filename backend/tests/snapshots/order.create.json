@@ -13,6 +13,7 @@
         "ticket_name": null,
         "ticket_note": null,
         "offline_id": null,
+        "offline_local_number": null,
         "subtotal": 22,
         "tax_amount": 0,
         "discount_amount": 0,

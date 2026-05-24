@@ -16,13 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust all proxies so that HTTPS is detected correctly behind nginx/Cloudflare.
-        // Without this, CSRF cookie SameSite + Secure attributes mismatch causes 419.
-        $middleware->trustProxies(at: '*', headers: Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
-            Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
-            Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
-            Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
-            Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
+        // Trust reverse proxies for correct HTTPS / client IP behind nginx or Cloudflare.
+        // Override with comma-separated proxy IPs/CIDRs in production (TRUSTED_PROXIES=10.0.0.1).
+        $trusted = env('TRUSTED_PROXIES', '*');
+        if ($trusted !== null && $trusted !== '') {
+            $at = $trusted === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', (string) $trusted))));
+            $middleware->trustProxies(at: $at, headers: Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+                Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
+                Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
+                Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO |
+                Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
+        }
 
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
 

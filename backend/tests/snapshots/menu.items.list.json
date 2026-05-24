@@ -13,17 +13,13 @@
             "is_available": true,
             "is_active": true,
             "sort_order": 0,
-            "category_id": 1,
+            "category_id": "__VOLATILE__",
             "menu_group_id": 1,
             "category": {
                 "id": "__VOLATILE__",
                 "name": "Grills"
             },
-            "menu_group": {
-                "id": "__VOLATILE__",
-                "name": "Default",
-                "slug": "default"
-            },
+            "menu_group": null,
             "channel_availabilities": null,
             "has_variants": false,
             "variants": [],

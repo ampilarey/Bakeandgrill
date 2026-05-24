@@ -12,10 +12,12 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Role;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
 /**
@@ -29,6 +31,7 @@ use Tests\TestCase;
  */
 class RefundCapTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     private User $owner;
@@ -58,7 +61,8 @@ class RefundCapTest extends TestCase
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
-        Device::create(['name' => 'Refund POS', 'identifier' => 'REF-POS', 'type' => 'pos', 'is_active' => true]);
+        $device = Device::create(['name' => 'Refund POS', 'identifier' => 'REF-POS', 'type' => 'pos', 'is_active' => true]);
+        $this->preparePosApi($this->owner, $device);
     }
 
     /**

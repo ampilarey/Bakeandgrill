@@ -38,12 +38,27 @@ class PromotionController extends Controller
 
         $user = $request->user();
         $isCustomerActor = $user?->tokenCan('customer');
+        $isStaffActor = $user instanceof \App\Models\User && $user->tokenCan('staff');
+
+        if ($order && !$user) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Sign in to validate a promo against an order.',
+            ], 401);
+        }
 
         // Prevent cross-order IDOR: customers may only validate against their own orders
         if ($order && $isCustomerActor) {
             if ((int) $order->customer_id !== (int) $user->id) {
                 return response()->json(['valid' => false, 'message' => 'Order not found.'], 404);
             }
+        }
+
+        if ($order && !$isCustomerActor && !$isStaffActor) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Sign in to validate a promo against an order.',
+            ], 401);
         }
 
         // Resolve the customer ID for per-customer usage evaluation:

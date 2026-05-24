@@ -334,7 +334,7 @@ class FinanceReportController extends Controller
 
         $totals = Invoice::where('type', 'sale')
             ->whereIn('status', ['sent', 'overdue'])
-            ->selectRaw('SUM(GREATEST(total_laar - amount_paid_laar, 0)) as total_outstanding, COUNT(CASE WHEN status = ? THEN 1 END) as overdue_count', ['overdue'])
+            ->selectRaw('SUM(CASE WHEN total_laar > amount_paid_laar THEN total_laar - amount_paid_laar ELSE 0 END) as total_outstanding, COUNT(CASE WHEN status = ? THEN 1 END) as overdue_count', ['overdue'])
             ->first();
 
         $unpaid = Invoice::where('type', 'sale')

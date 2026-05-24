@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
 /**
@@ -28,6 +29,7 @@ use Tests\TestCase;
  */
 class CustomerDisplayTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     private User $staff;
@@ -63,6 +65,8 @@ class CustomerDisplayTest extends TestCase
             'is_active' => true,
             'is_available' => true,
         ]);
+
+        $this->preparePosApi($this->staff, $this->device);
     }
 
     private function createOrder(string $status = 'open'): Order

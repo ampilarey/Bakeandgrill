@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
 /**
@@ -28,6 +29,7 @@ use Tests\TestCase;
  */
 class PosCustomerLinkageTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     private Customer $customer;
@@ -82,7 +84,7 @@ class PosCustomerLinkageTest extends TestCase
 
     private function createPosOrder(?int $customerId = null): \Illuminate\Testing\TestResponse
     {
-        Sanctum::actingAs($this->staffUser, ['staff']);
+        $this->ensurePosApiReady($this->staffUser, 'LINK-POS-001');
 
         return $this->withHeader('X-Device-Identifier', 'LINK-POS-001')
             ->postJson('/api/orders', array_filter([

@@ -44,6 +44,15 @@ class DeductInventoryListener implements ShouldQueue
             return;
         }
 
+        if (in_array($order->status, ['cancelled', 'refunded', 'partially_refunded'], true)) {
+            Log::info('DeductInventoryListener: skipping terminal order', [
+                'order_id' => $event->data->orderId,
+                'status' => $order->status,
+            ]);
+
+            return;
+        }
+
         try {
             $this->deductionService->deductForOrder($order);
         } catch (\Throwable $e) {

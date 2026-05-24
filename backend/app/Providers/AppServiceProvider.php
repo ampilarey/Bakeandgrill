@@ -11,7 +11,9 @@ use App\Models\StaffSchedule;
 use App\Observers\OrderObserver;
 use App\Observers\StaffScheduleObserver;
 use App\Support\BmlSignatureGuard;
+use App\Support\DocumentBrandView;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,6 +34,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
+
+        View::composer(['layouts.pdf', 'invoices.pdf'], function ($view): void {
+            $view->with(DocumentBrandView::variables());
+        });
 
         // Force HTTPS scheme in production so generated URLs and redirects are always secure.
         if ($this->app->environment('production')) {

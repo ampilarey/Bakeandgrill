@@ -13,10 +13,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Handles BML Connect payment webhook callbacks.
  *
- * IMPORTANT: This endpoint must:
- *   1. Read raw body BEFORE any middleware transforms it
- *   2. Always return 200 OK to BML, even on errors (BML retries on non-200)
- *   3. Never trust — only record and process
+ * Returns 200 for successfully processed or duplicate (idempotent) webhooks.
+ * Returns 503 for signature verification failures so BML can retry with a valid payload.
  */
 class BmlWebhookController extends Controller
 {
@@ -29,11 +27,19 @@ class BmlWebhookController extends Controller
 
         try {
             $this->paymentService->handleBmlWebhook($rawBody, $headers);
+        } catch (\RuntimeException $e) {
+            if (str_contains($e->getMessage(), 'signature verification failed')) {
+                Log::warning('BML webhook rejected: invalid signature', ['error' => $e->getMessage()]);
+
+                return response()->json(['status' => 'error', 'message' => 'invalid signature'], 503);
+            }
+
+            Log::error('BML webhook error', ['error' => $e->getMessage()]);
+
+            return response()->json(['status' => 'error', 'message' => 'logged'], 200);
         } catch (\Throwable $e) {
             Log::error('BML webhook error', ['error' => $e->getMessage()]);
 
-            // Return 200 to prevent BML retries flooding our server.
-            // The error is logged and can be replayed from webhook_logs.
             return response()->json(['status' => 'error', 'message' => 'logged'], 200);
         }
 

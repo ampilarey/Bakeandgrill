@@ -14,6 +14,7 @@ use App\Models\Refund;
 use App\Services\AuditLogService;
 use App\Services\ShiftAccessService;
 use App\Services\StockManagementService;
+use App\Services\StockReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -150,6 +151,9 @@ class RefundController extends Controller
                     // its own inventory (mirrors the deduction logic in OrderCreationService).
                     $variant = $orderItem->variant;
                     if ($variant && $variant->track_stock) {
+                        if (!$stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
+                            continue;
+                        }
                         $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id
                             . ($isFullRefund ? '' : ':partial:' . $refund->id);
                         $stockService->restoreVariantStock(
@@ -166,6 +170,10 @@ class RefundController extends Controller
                     if (!$item->track_stock || $item->availability_type !== 'stock_based') {
                         continue;
                     }
+
+                    if (!$stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
+                        continue;
+                    }
                     $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id
                         . ($isFullRefund ? '' : ':partial:' . $refund->id);
                     $stockService->restorePreparedStock(
@@ -176,6 +184,10 @@ class RefundController extends Controller
                         $request->user()?->id,
                     );
                 }
+            }
+
+            if (in_array($order->type, ['online_pickup', 'delivery'], true)) {
+                app(StockReservationService::class)->releaseForOrder($order->id);
             }
 
             return [$refund, $order, $thisRefundRatio];

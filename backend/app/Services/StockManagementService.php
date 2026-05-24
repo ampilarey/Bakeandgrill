@@ -120,6 +120,29 @@ class StockManagementService
     }
 
     /**
+     * Sale idempotency keys used for POS and online prepared/variant deductions.
+     *
+     * @return list<string>
+     */
+    public function preparedStockSaleKeys(int $orderId, int $orderItemId): array
+    {
+        $suffix = ':item:' . $orderItemId;
+
+        return [
+            'pos:order:' . $orderId . $suffix,
+            'online:order:' . $orderId . $suffix,
+        ];
+    }
+
+    public function wasPreparedStockDeductedForLine(int $orderId, int $orderItemId): bool
+    {
+        return StockMovement::query()
+            ->whereIn('idempotency_key', $this->preparedStockSaleKeys($orderId, $orderItemId))
+            ->where('type', 'sale')
+            ->exists();
+    }
+
+    /**
      * Idempotent restoration of prepared item stock (for cancellation / refund).
      *
      * Uses the same StockMovement idempotency pattern to prevent double-adds.

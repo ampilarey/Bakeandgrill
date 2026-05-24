@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Refund;
 use App\Models\Role;
+use App\Models\Shift;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -59,6 +61,17 @@ class RefundFlowTest extends TestCase
         $this->staffToken = $this->staff->createToken('test', ['staff'])->plainTextToken;
     }
 
+    private function openOwnerShift(): void
+    {
+        $device = $this->makeDevice('pos', ['identifier' => 'REFUND-POS']);
+        Shift::create([
+            'user_id' => $this->owner->id,
+            'device_id' => $device->id,
+            'opened_at' => now(),
+            'opening_cash' => 100,
+        ]);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function makeRefundableOrder(float $total = 50.00, ?int $totalLaar = null): Order
@@ -83,6 +96,7 @@ class RefundFlowTest extends TestCase
 
     public function test_owner_can_create_refund_on_paid_order(): void
     {
+        $this->openOwnerShift();
         $order = $this->makeRefundableOrder(50.00);
 
         $response = $this->postJson(
@@ -105,6 +119,7 @@ class RefundFlowTest extends TestCase
 
     public function test_refund_requires_positive_amount(): void
     {
+        $this->openOwnerShift();
         $order = $this->makeRefundableOrder(50.00);
 
         $this->postJson(
@@ -118,6 +133,7 @@ class RefundFlowTest extends TestCase
 
     public function test_refund_amount_cannot_exceed_order_total(): void
     {
+        $this->openOwnerShift();
         $order = $this->makeRefundableOrder(50.00);
 
         $this->postJson(
@@ -129,6 +145,7 @@ class RefundFlowTest extends TestCase
 
     public function test_cumulative_refunds_cannot_exceed_order_total(): void
     {
+        $this->openOwnerShift();
         $order = $this->makeRefundableOrder(50.00);
 
         // First partial refund — OK
@@ -150,6 +167,7 @@ class RefundFlowTest extends TestCase
 
     public function test_partial_refund_does_not_mark_order_as_refunded(): void
     {
+        $this->openOwnerShift();
         $order = $this->makeRefundableOrder(100.00);
 
         $this->postJson(
@@ -166,6 +184,7 @@ class RefundFlowTest extends TestCase
 
     public function test_full_refund_marks_order_as_refunded(): void
     {
+        $this->openOwnerShift();
         $order = $this->makeRefundableOrder(50.00);
 
         $this->postJson(
@@ -181,6 +200,7 @@ class RefundFlowTest extends TestCase
 
     public function test_full_refund_restores_stock_for_tracked_items(): void
     {
+        $this->openOwnerShift();
         $category = $this->makeCategory();
         $item = $this->makeItem(trackStock: true, stock: 5);
 
@@ -201,6 +221,18 @@ class RefundFlowTest extends TestCase
             'unit_price' => 7.50,
             'total_price' => 15.00,
         ]);
+
+        $orderItemId = $order->items()->first()->id;
+        StockMovement::create([
+            'inventory_item_id' => null,
+            'item_id' => $item->id,
+            'type' => 'sale',
+            'quantity' => -2,
+            'idempotency_key' => 'pos:order:' . $order->id . ':item:' . $orderItemId,
+            'reference_type' => 'order',
+            'reference_id' => $order->id,
+        ]);
+        $item->decrement('stock_quantity', 2);
 
         $stockBefore = $item->fresh()->stock_quantity;
 

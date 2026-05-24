@@ -240,8 +240,28 @@ const sendToPrinter = (ip: string, port: number, data: string) =>
     client.on('timeout', ()  => { client.destroy(); reject(new Error('Print timeout')); });
   });
 
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+const PRINT_RATE_LIMIT = 60;
+const PRINT_RATE_WINDOW_MS = 60_000;
+
+const rateLimitPrint = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const key = req.ip || 'unknown';
+  const now = Date.now();
+  let bucket = rateBuckets.get(key);
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + PRINT_RATE_WINDOW_MS };
+    rateBuckets.set(key, bucket);
+  }
+  bucket.count += 1;
+  if (bucket.count > PRINT_RATE_LIMIT) {
+    res.status(429).json({ success: false, error: 'Rate limit exceeded' });
+    return;
+  }
+  next();
+};
+
 // ── /print endpoint ───────────────────────────────────────────────────────────
-app.post('/print', requireApiKey, async (req, res) => {
+app.post('/print', requireApiKey, rateLimitPrint, async (req, res) => {
   // Validate payload shape before touching anything
   const validationError = validatePayload(req.body);
   if (validationError) {

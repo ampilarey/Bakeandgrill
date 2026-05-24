@@ -16,10 +16,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
 class PromotionTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     private User $staff;
@@ -34,7 +36,10 @@ class PromotionTest extends TestCase
     {
         parent::setUp();
 
-        $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'description' => '', 'is_active' => true]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'cashier'],
+            ['name' => 'Cashier', 'description' => '', 'is_active' => true],
+        );
         $this->staff = User::create([
             'name' => 'Staff', 'email' => 'staff@test.com',
             'password' => Hash::make('password'), 'role_id' => $role->id,
@@ -59,6 +64,7 @@ class PromotionTest extends TestCase
             ['name' => 'Apply Discounts', 'group' => 'Promotions'],
         );
         $this->staff->grantPermission('promotions.discounts');
+        $this->preparePosApi($this->staff, $this->device);
     }
 
     private function createPromo(array $attrs = []): Promotion
@@ -101,6 +107,8 @@ class PromotionTest extends TestCase
         $this->createPromo();
         $order = $this->createOrder();
 
+        Sanctum::actingAs($this->staff, ['staff']);
+
         $response = $this->postJson('/api/promotions/validate', [
             'code' => 'save10',
             'order_id' => $order->id,
@@ -108,6 +116,25 @@ class PromotionTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('valid', true);
+    }
+
+    public function test_validate_promo_with_order_id_requires_auth(): void
+    {
+        $this->createPromo();
+        $order = Order::factory()->create([
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 25.00,
+            'total' => 25.00,
+            'total_laar' => 2500,
+        ]);
+
+        auth()->forgetGuards();
+
+        $this->postJson('/api/promotions/validate', [
+            'code' => 'SAVE10',
+            'order_id' => $order->id,
+        ])->assertStatus(401);
     }
 
     public function test_validate_promo_case_insensitive(): void
@@ -208,10 +235,16 @@ class PromotionTest extends TestCase
         $this->createPromo();
         $order = $this->createOrder();
 
-        // Ensure the permission is explicitly revoked on this staff user
-        $this->staff->revokePermission('promotions.discounts');
+        $restricted = User::create([
+            'name' => 'Restricted',
+            'email' => 'restricted@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $this->staff->role_id,
+            'pin_hash' => Hash::make('9999'),
+            'is_active' => true,
+        ]);
 
-        Sanctum::actingAs($this->staff, ['staff']);
+        Sanctum::actingAs($restricted, ['staff']);
         $this->postJson("/api/orders/{$order->id}/apply-promo", ['code' => 'SAVE10'])
             ->assertStatus(403);
     }

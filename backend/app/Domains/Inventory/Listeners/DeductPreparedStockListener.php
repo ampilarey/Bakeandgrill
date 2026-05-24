@@ -49,6 +49,15 @@ class DeductPreparedStockListener implements ShouldQueue
             return;
         }
 
+        if (in_array($order->status, ['cancelled', 'refunded', 'partially_refunded'], true)) {
+            Log::info('DeductPreparedStockListener: skipping terminal order', [
+                'order_id' => $event->data->orderId,
+                'status' => $order->status,
+            ]);
+
+            return;
+        }
+
         try {
             $this->reservationService->convertToDeduction($order);
         } catch (\Throwable $e) {

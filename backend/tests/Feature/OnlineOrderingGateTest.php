@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
 /**
@@ -37,6 +38,7 @@ use Tests\TestCase;
  */
 class OnlineOrderingGateTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     private Customer $customer;
@@ -132,7 +134,7 @@ class OnlineOrderingGateTest extends TestCase
 
     private function postPosOrder(): \Illuminate\Testing\TestResponse
     {
-        Sanctum::actingAs($this->staffUser, ['staff']);
+        $this->ensurePosApiReady($this->staffUser, 'GATE-POS-001');
 
         return $this->withHeader('X-Device-Identifier', 'GATE-POS-001')
             ->postJson('/api/orders', [

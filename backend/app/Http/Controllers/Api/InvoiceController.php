@@ -274,22 +274,37 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::with(['items.item', 'items.inventoryItem', 'customer', 'supplier', 'order', 'createdBy'])->findOrFail($id);
 
-        $html = view('invoices.pdf', ['invoice' => $invoice])->render();
+        try {
+            $html = view('invoices.pdf', ['invoice' => $invoice])->render();
 
-        // Try dompdf if available, otherwise return HTML download
-        if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-            $path = "invoices/{$invoice->invoice_number}.pdf";
-            Storage::put($path, $pdf->output());
-            $invoice->update(['pdf_path' => $path]);
+            // Try dompdf if available; fall back to HTML when rendering fails (e.g. missing fonts in CI).
+            if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+                try {
+                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+                    $path = "invoices/{$invoice->invoice_number}.pdf";
+                    Storage::put($path, $pdf->output());
+                    $invoice->update(['pdf_path' => $path]);
 
-            return $pdf->download("{$invoice->invoice_number}.pdf");
+                    return $pdf->download("{$invoice->invoice_number}.pdf");
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+
+            return response($html, 200, [
+                'Content-Type' => 'text/html',
+                'Content-Disposition' => "attachment; filename=\"{$invoice->invoice_number}.html\"",
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            $payload = ['message' => 'Unable to generate invoice PDF.'];
+            if (app()->environment('testing')) {
+                $payload['error'] = $e->getMessage();
+            }
+
+            return response()->json($payload, 500);
         }
-
-        return response($html, 200, [
-            'Content-Type' => 'text/html',
-            'Content-Disposition' => "attachment; filename=\"{$invoice->invoice_number}.html\"",
-        ]);
     }
 
     public function createFromOrder(Request $request, int $orderId): JsonResponse

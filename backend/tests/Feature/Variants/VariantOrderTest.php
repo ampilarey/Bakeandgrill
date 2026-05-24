@@ -14,10 +14,12 @@ use App\Models\Variant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
 class VariantOrderTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     private User $staff;
@@ -88,7 +90,7 @@ class VariantOrderTest extends TestCase
 
     private function postOrder(array $payload): \Illuminate\Testing\TestResponse
     {
-        Sanctum::actingAs($this->staff, ['*']);
+        $this->ensurePosApiReady($this->staff, $this->device);
 
         return $this->withHeader('X-Device-Identifier', $this->device->identifier)
             ->postJson('/api/orders', $payload);

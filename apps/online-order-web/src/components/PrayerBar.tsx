@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { API_BASE_URL } from '../api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ function getMVT() { return new Date(Date.now() + timeSkew + 5 * 3600 * 1000); }
 // Sync server clock once: eliminates drift when device clock is wrong
 let timeSkew = 0;
 (function syncClock() {
-  fetch('/api/health', { method: 'HEAD' }).then(r => {
+  fetch(`${API_BASE_URL}/health`, { method: 'HEAD' }).then(r => {
     try {
       const d = r.headers.get('Date');
       if (d) { const s = new Date(d).getTime(); if (!isNaN(s)) timeSkew = s - Date.now(); }
@@ -204,10 +205,10 @@ export function PrayerBar() {
 
     // Fetch today and tomorrow in parallel
     Promise.all([
-      fetch(`/api/prayer-times?island_id=${islandId}&date=${today}`).then(r => r.json()),
+      fetch(`${API_BASE_URL}/prayer-times?island_id=${islandId}&date=${today}`).then(r => r.json()),
       tomorrowPrayersRef.current
         ? Promise.resolve(null)
-        : fetch(`/api/prayer-times?island_id=${islandId}&date=${tomorrow}`).then(r => r.json()),
+        : fetch(`${API_BASE_URL}/prayer-times?island_id=${islandId}&date=${tomorrow}`).then(r => r.json()),
     ])
       .then(([todayData, tomorrowData]) => {
         if (todayData?.prayers) {
@@ -226,7 +227,7 @@ export function PrayerBar() {
   const prefetchTomorrow = useCallback((islandId: number, tKey: string) => {
     if (tomorrowPrayersRef.current) return; // already cached
     const tomorrow = mvtDateStr(1);
-    fetch(`/api/prayer-times?island_id=${islandId}&date=${tomorrow}`)
+    fetch(`${API_BASE_URL}/prayer-times?island_id=${islandId}&date=${tomorrow}`)
       .then(r => r.json())
       .then(d => {
         if (d.prayers) {
@@ -304,7 +305,7 @@ export function PrayerBar() {
       });
     };
     const fallbackTimer = setTimeout(() => useIsland(MALE_FALLBACK), 3000);
-    fetch('/api/prayer-times/islands')
+    fetch(`${API_BASE_URL}/prayer-times/islands`)
       .then(r => r.json())
       .then(d => {
         clearTimeout(fallbackTimer);
@@ -334,7 +335,7 @@ export function PrayerBar() {
     setGeoSpinning(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        fetch(`/api/prayer-times/nearest?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`)
+        fetch(`${API_BASE_URL}/prayer-times/nearest?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`)
           .then(r => r.json())
           .then(d => {
             setGeoSpinning(false);
@@ -373,7 +374,7 @@ export function PrayerBar() {
       const c = localStorage.getItem('pt_islands_list');
       if (c) { openPanel(JSON.parse(c)); return; }
     } catch { /* ignore */ }
-    fetch('/api/prayer-times/islands')
+    fetch(`${API_BASE_URL}/prayer-times/islands`)
       .then(r => r.json())
       .then(d => {
         const islands: Island[] = d.islands || [];

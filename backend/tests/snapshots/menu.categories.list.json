@@ -15,7 +15,7 @@
             "items": [
                 {
                     "id": "__VOLATILE__",
-                    "category_id": 1,
+                    "category_id": "__VOLATILE__",
                     "name": "Beef Burger",
                     "name_dv": null,
                     "description": null,

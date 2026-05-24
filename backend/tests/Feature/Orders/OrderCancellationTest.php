@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\StockMovement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
 /**
@@ -24,6 +25,7 @@ use Tests\TestCase;
  */
 class OrderCancellationTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -120,6 +122,8 @@ class OrderCancellationTest extends TestCase
     public function test_full_cancel_of_paid_order_does_not_auto_refund_but_allows_manual_refund(): void
     {
         $owner = $this->makeOwner();
+        $device = $this->makeDevice('pos', ['identifier' => 'CANCEL-POS']);
+        $this->preparePosApi($owner, $device);
         $customer = $this->makeCustomer();
         $order = Order::factory()->paid()->create([
             'customer_id' => $customer->id,

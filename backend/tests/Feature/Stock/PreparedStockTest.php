@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Role;
+use App\Models\Shift;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\StockReservationService;
@@ -24,25 +25,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
 
-/**
- * Wave A — Prepared stock truth tests.
- *
- * Covers all 10 scenarios from the Wave A plan:
- *  1. POS deducts immediately on order creation
- *  2. Online reserves (does not deduct) on creation
- *  3. Payment success converts reservation → deduction
- *  4. Payment failure cancels order + releases reservation
- *  5. CancelStaleOrders releases reservation on stale payment_pending
- *  6. Double-release is idempotent (no double-add)
- *  7. Full refund restores stock_quantity
- *  8. Two concurrent online orders for the last unit — only one wins
- *  9. Idempotent deduction — OrderPaid fired twice does not double-deduct
- * 10. POS and online share the same stock_quantity column
- */
 class PreparedStockTest extends TestCase
 {
+    use PreparesPosApi;
     use RefreshDatabase;
 
     private const DEVICE_ID = 'TEST-POS-001';
@@ -178,6 +166,8 @@ class PreparedStockTest extends TestCase
     /** POST to the POS orders endpoint with the required device header */
     private function postPosOrder(array $payload): \Illuminate\Testing\TestResponse
     {
+        $this->ensurePosApiReady($this->staffUser, self::DEVICE_ID);
+
         return $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson('/api/orders', $payload);
     }
@@ -477,8 +467,35 @@ class PreparedStockTest extends TestCase
 
         // Stock is already deducted (simulate state after POS sale)
         $item->update(['stock_quantity' => 3]);
+        $orderItem = OrderItem::where('order_id', $order->id)->first();
+        StockMovement::create([
+            'idempotency_key' => 'pos:order:' . $order->id . ':item:' . $orderItem->id,
+            'inventory_item_id' => null,
+            'type' => 'sale',
+            'quantity' => -2,
+            'balance_after' => 3,
+            'unit_cost' => 10.0,
+            'reference_type' => 'menu_item',
+            'reference_id' => $item->id,
+        ]);
 
-        Sanctum::actingAs($this->managerUser, ['staff']);
+        $ownerRole = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => '', 'is_active' => true],
+        );
+        $owner = User::factory()->create([
+            'role_id' => $ownerRole->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        Shift::create([
+            'user_id' => $owner->id,
+            'device_id' => $this->device->id,
+            'opened_at' => now(),
+            'opening_cash' => 100,
+        ]);
+
+        Sanctum::actingAs($owner, ['staff']);
 
         $response = $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 100.0,
@@ -757,6 +774,12 @@ class PreparedStockTest extends TestCase
             'is_active' => true,
         ]);
         Sanctum::actingAs($owner, ['staff']);
+        Shift::create([
+            'user_id' => $owner->id,
+            'device_id' => $this->device->id,
+            'opened_at' => now(),
+            'opening_cash' => 100,
+        ]);
 
         $r1 = $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $total,

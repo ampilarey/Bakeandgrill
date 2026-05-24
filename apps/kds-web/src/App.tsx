@@ -368,7 +368,7 @@ function App() {
         </div>
       </header>
 
-      <main className="grid grid-cols-3 gap-4 p-6">
+      <main className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:p-6 lg:grid-cols-3">
         <section className="space-y-3">
           <h2 className="text-sm font-semibold" style={{ color: '#8B7355' }}>Pending</h2>
           {pendingOrders.length === 0 && (
