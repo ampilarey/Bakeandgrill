@@ -3,6 +3,7 @@ import { ApiRequestError } from "@shared/api";
 import {
   applyGiftCardToOrder,
   applyPromoToOrder,
+  createDeliveryOrder,
   createOrder,
   createOrderPayments,
   fireOrderToKitchen,
@@ -33,12 +34,15 @@ import { runOfflineSync } from "../offline/syncEngine";
 import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
+import type { PosDeliveryDetails, PosOrderType } from "../orderTypes";
+import { normalizeMvPhone, validateDeliveryDetails } from "../orderTypes";
 
-type OrderType = "Dine-in" | "Takeaway" | "Pickup";
+type OrderType = PosOrderType;
 
-const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup" => {
-  if (type === "Dine-in")       return "dine_in";
+const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup" | "delivery" => {
+  if (type === "Dine-in") return "dine_in";
   if (type === "Pickup") return "online_pickup";
+  if (type === "Delivery") return "delivery";
   return "takeaway";
 };
 
@@ -117,6 +121,8 @@ type Params = {
   shiftId: number | null;
   orderType: OrderType;
   selectedTableId: number | null;
+  deliveryDetails?: PosDeliveryDetails;
+  setDeliveryDetails?: (d: PosDeliveryDetails) => void;
   cartItems: CartItem[];
   cartTotal: number;
   cartSubtotal: number;
@@ -294,15 +300,9 @@ export function useOrderCreation(params: Params) {
 
   const buildPayload = (overrides: Partial<{ ticket_name: string; ticket_note: string }> = {}) => {
     const discount = Math.max(0, Number.parseFloat(params.discountAmount) || 0);
-    return {
-      type: mapOrderType(params.orderType),
+    const base = {
       print: true,
       device_identifier: params.deviceId,
-      restaurant_table_id:
-        params.orderType === "Dine-in" ? params.selectedTableId ?? undefined : undefined,
-      // Attach the cart's customer so the order belongs to them. Server-side
-      // PaymentConfirmationNotifier picks this up automatically and SMS's
-      // the receipt link to customer.phone once the order is fully paid.
       ...(params.customerId ? { customer_id: params.customerId } : {}),
       discount_amount: discount,
       ...(overrides.ticket_name ? { ticket_name: overrides.ticket_name } : {}),
@@ -314,16 +314,47 @@ export function useOrderCreation(params: Params) {
         unit_price: lineUnitPrice(item),
         ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
         modifiers: item.modifiers.map((m) => ({ modifier_id: m.id, name: m.name, price: m.price })),
-        // Free-form kitchen note string. We join the cashier's chip
-        // selections with " · " (middle dot + spaces) so the receipt
-        // and kitchen ticket render multiple notes legibly without
-        // looking like a sentence. Empty notes are omitted so the
-        // backend stores NULL (existing behaviour) instead of "".
         ...(item.notes && item.notes.length > 0
           ? { notes: item.notes.join(" · ") }
           : {}),
       })),
     };
+
+    if (params.orderType === "Delivery") {
+      const d = params.deliveryDetails ?? {
+        addressLine1: "",
+        addressLine2: "",
+        island: "Male",
+        contactName: "",
+        contactPhone: "",
+        notes: "",
+      };
+      return {
+        ...base,
+        delivery_address_line1: d.addressLine1.trim(),
+        delivery_address_line2: d.addressLine2.trim() || undefined,
+        delivery_island: d.island.trim(),
+        delivery_contact_name: d.contactName.trim(),
+        delivery_contact_phone: normalizeMvPhone(d.contactPhone),
+        delivery_notes: d.notes.trim() || undefined,
+      };
+    }
+
+    return {
+      ...base,
+      type: mapOrderType(params.orderType),
+      restaurant_table_id:
+        params.orderType === "Dine-in" ? params.selectedTableId ?? undefined : undefined,
+    };
+  };
+
+  const submitCreatedOrder = async (
+    payload: ReturnType<typeof buildPayload>,
+  ): Promise<{ order: { id: number; total: number } }> => {
+    if (params.orderType === "Delivery") {
+      return createDeliveryOrder(payload as Parameters<typeof createDeliveryOrder>[0]);
+    }
+    return createOrder(payload as Parameters<typeof createOrder>[0]);
   };
 
   /**
@@ -451,7 +482,7 @@ export function useOrderCreation(params: Params) {
         device_identifier: params.deviceId,
         shift_id: shiftId,
         created_at_local: new Date().toISOString(),
-        type: String(orderPayload.type),
+        type: mapOrderType(params.orderType),
         items: params.cartItems.map((item) => ({
           item_id: item.id,
           quantity: item.quantity,
@@ -637,6 +668,25 @@ export function useOrderCreation(params: Params) {
       }
     }
 
+    if (params.orderType === "Delivery") {
+      if (!params.isReachable) {
+        flashError("Delivery orders require an internet connection.");
+        return false;
+      }
+      const deliveryErr = validateDeliveryDetails(params.deliveryDetails ?? {
+        addressLine1: "",
+        addressLine2: "",
+        island: "",
+        contactName: "",
+        contactPhone: "",
+        notes: "",
+      });
+      if (deliveryErr) {
+        flashError(deliveryErr);
+        return false;
+      }
+    }
+
     const payload = buildPayload();
     // Bug-013: snapshot the staged customer rewards into the offline
     // payload so handleSyncQueue can re-apply them when the orders
@@ -654,6 +704,10 @@ export function useOrderCreation(params: Params) {
     };
 
     if (!params.isReachable) {
+      if (params.orderType === "Delivery") {
+        flashError("Delivery orders cannot be saved offline.");
+        return false;
+      }
       if (OFFLINE_SYNC_V2) {
         return tryPersistOfflineV2(paymentSnapshot);
       }
@@ -696,7 +750,7 @@ export function useOrderCreation(params: Params) {
     setIsSubmitting(true);
     let orderCreated = false;
     try {
-      const response = await createOrder(payload);
+      const response = await submitCreatedOrder(payload);
       orderCreated = true;
       setLastCreatedOrderId(response.order.id);
       // Apply any customer-rewards the cashier staged in the cart. Each
@@ -725,7 +779,7 @@ export function useOrderCreation(params: Params) {
           response.order.id,
           cid,
           cphone,
-          payload.type ?? mapOrderType(params.orderType),
+          mapOrderType(params.orderType),
           paidOnCreditFromRows(paymentSnapshot),
         );
       }
@@ -852,10 +906,23 @@ export function useOrderCreation(params: Params) {
     if (!params.isOnline) throw new Error("Go online to save tickets.");
     if (params.cartItems.length === 0) throw new Error("Add items first.");
 
+    if (params.orderType === "Delivery") {
+      if (!params.isReachable) throw new Error("Delivery orders require an internet connection.");
+      const deliveryErr = validateDeliveryDetails(params.deliveryDetails ?? {
+        addressLine1: "",
+        addressLine2: "",
+        island: "",
+        contactName: "",
+        contactPhone: "",
+        notes: "",
+      });
+      if (deliveryErr) throw new Error(deliveryErr);
+    }
+
     try {
       if (fireToKitchen) {
         const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
-        const response = await createOrder(payload);
+        const response = await submitCreatedOrder(payload);
         await applyStagedRewards(response.order.id, response.order.total);
         await fireOrderToKitchen(response.order.id);
         params.clearCart();
@@ -864,7 +931,7 @@ export function useOrderCreation(params: Params) {
       }
 
       const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
-      const response = await createOrder(payload);
+      const response = await submitCreatedOrder(payload);
       await applyStagedRewards(response.order.id, response.order.total);
       await holdOrder(response.order.id, { ticket_name: name, ticket_note: note });
 
@@ -893,9 +960,28 @@ export function useOrderCreation(params: Params) {
         dine_in: "Dine-in",
         takeaway: "Takeaway",
         online_pickup: "Pickup",
+        delivery: "Delivery",
       };
       const mapped = typeMap[response.order.type ?? ""];
       if (mapped) params.setOrderType(mapped);
+    }
+    if (response.order.type === "delivery" && params.setDeliveryDetails) {
+      const o = response.order as {
+        delivery_address_line1?: string | null;
+        delivery_address_line2?: string | null;
+        delivery_island?: string | null;
+        delivery_contact_name?: string | null;
+        delivery_contact_phone?: string | null;
+        delivery_notes?: string | null;
+      };
+      params.setDeliveryDetails({
+        addressLine1: o.delivery_address_line1 ?? "",
+        addressLine2: o.delivery_address_line2 ?? "",
+        island: o.delivery_island ?? "Male",
+        contactName: o.delivery_contact_name ?? "",
+        contactPhone: o.delivery_contact_phone ?? "",
+        notes: o.delivery_notes ?? "",
+      });
     }
     if (params.setSelectedTableId) {
       params.setSelectedTableId(response.order.restaurant_table_id ?? null);

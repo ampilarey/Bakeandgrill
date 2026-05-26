@@ -21,6 +21,8 @@ type Props = {
   creditAvailableMvr?: number;
   /** When true, only cash / card / transfer are offered. */
   isOffline?: boolean;
+  /** Optional delivery fee line (POS phone-in delivery). */
+  deliveryFee?: number;
   onClose: () => void;
   onConfirm: (rows: Array<{ method: ChargeMethod; amount: number }>) => Promise<void>;
   submitting: boolean;
@@ -52,6 +54,7 @@ export function ChargeOverlay({
   subtotal,
   discount,
   tax,
+  deliveryFee,
   creditEligible = false,
   creditAvailableMvr = 0,
   isOffline = false,
@@ -61,7 +64,12 @@ export function ChargeOverlay({
   errorMessage,
 }: Props) {
   const showBreakdown =
-    (typeof subtotal === "number" && (subtotal !== total || (tax ?? 0) > 0 || (discount ?? 0) > 0));
+    (typeof subtotal === "number" && (
+      subtotal !== total
+      || (tax ?? 0) > 0
+      || (discount ?? 0) > 0
+      || (deliveryFee ?? 0) > 0
+    ));
   const [method, setMethod] = useState<ChargeMethod>("cash");
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
   /**
@@ -269,6 +277,9 @@ export function ChargeOverlay({
                 <Line label="Subtotal" value={subtotal ?? 0} />
                 {(discount ?? 0) > 0 && (
                   <Line label="Discount" value={-(discount ?? 0)} accent="#FCD34D" />
+                )}
+                {(deliveryFee ?? 0) > 0 && (
+                  <Line label="Delivery fee" value={deliveryFee ?? 0} />
                 )}
                 {(tax ?? 0) > 0 && (
                   <Line label="GST" value={tax ?? 0} />

@@ -7,17 +7,25 @@ import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { palette } from "../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder } from "../orderTypeLabels";
+import {
+  POS_ORDER_TYPES,
+  type PosDeliveryDetails,
+  type PosOrderType,
+  estimateDeliveryFeeMvr,
+} from "../orderTypes";
+
+type OrderType = PosOrderType;
+const ORDER_TYPES = POS_ORDER_TYPES;
 
 type AppliedPromo = { code: string; promotionId: number | null; discount: number };
 type AppliedLoyalty = { points: number; discount: number };
 type AppliedGiftCard = { code: string; discount: number; cardBalance: number };
 
-type OrderType = "Dine-in" | "Takeaway" | "Pickup";
-const ORDER_TYPES: OrderType[] = ["Dine-in", "Takeaway", "Pickup"];
-
 type Props = {
   orderType: OrderType;
   setOrderType: (t: OrderType) => void;
+  deliveryDetails: PosDeliveryDetails;
+  setDeliveryDetails: (d: PosDeliveryDetails) => void;
   tables: RestaurantTable[];
   selectedTableId: number | null;
   setSelectedTableId: (id: number | null) => void;
@@ -126,6 +134,8 @@ export function OrderCart(p: Props) {
   const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting || p.canRingSales === false
     || !!p.resumedIsPaid;
   const dineIn = p.orderType === "Dine-in";
+  const isDelivery = p.orderType === "Delivery";
+  const deliveryFeeEst = isDelivery ? estimateDeliveryFeeMvr(p.deliveryDetails.island, p.cartSubtotal) : 0;
   const isResumed = p.resumedOrderId !== null;
   const orderLabel = p.resumedOrderLabel ?? `#${p.resumedOrderId}`;
   // When the cashier opened a ticket via "Edit" we relax the resumed
@@ -378,7 +388,7 @@ export function OrderCart(p: Props) {
           </button>
         </div>
 
-        <div style={{ display: 'flex', background: C.bg, borderRadius: 8, padding: 3, gap: 3 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', background: C.bg, borderRadius: 8, padding: 3, gap: 3 }}>
           {onlineFulfillment && isResumed ? (
             <div style={{
               flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 700,
@@ -401,7 +411,11 @@ export function OrderCart(p: Props) {
               }}
               disabled={lockedReadOnly}
               style={{
-                flex: 1, padding: '8px 6px', fontSize: 12, fontWeight: 700,
+                flex: '1 1 22%',
+                minWidth: 62,
+                padding: '8px 4px',
+                fontSize: 11,
+                fontWeight: 700,
                 borderRadius: 6, border: 'none', cursor: lockedReadOnly ? 'not-allowed' : 'pointer',
                 background: p.orderType === t ? '#FFFFFF' : 'transparent',
                 color: p.orderType === t ? C.text : C.muted,
@@ -430,6 +444,73 @@ export function OrderCart(p: Props) {
               <option key={t.id} value={t.id}>{t.name} ({t.status})</option>
             ))}
           </select>
+        )}
+
+        {isDelivery && !onlineFulfillment && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input
+              type="text"
+              placeholder="Delivery address *"
+              value={p.deliveryDetails.addressLine1}
+              disabled={lockedReadOnly}
+              onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, addressLine1: e.target.value })}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8,
+                border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                placeholder="Island / area *"
+                value={p.deliveryDetails.island}
+                disabled={lockedReadOnly}
+                onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, island: e.target.value })}
+                style={{
+                  flex: 1, padding: '10px 12px', borderRadius: 8,
+                  border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
+                }}
+              />
+              <input
+                type="tel"
+                placeholder="Phone *"
+                value={p.deliveryDetails.contactPhone}
+                disabled={lockedReadOnly}
+                onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, contactPhone: e.target.value })}
+                style={{
+                  flex: 1, padding: '10px 12px', borderRadius: 8,
+                  border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
+                }}
+              />
+            </div>
+            <input
+              type="text"
+              placeholder="Contact name *"
+              value={p.deliveryDetails.contactName}
+              disabled={lockedReadOnly}
+              onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, contactName: e.target.value })}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8,
+                border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Delivery notes (optional)"
+              value={p.deliveryDetails.notes}
+              disabled={lockedReadOnly}
+              onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, notes: e.target.value })}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8,
+                border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
+              }}
+            />
+            {p.cartItems.length > 0 && deliveryFeeEst > 0 && (
+              <div style={{ fontSize: 12, color: C.muted }}>
+                Est. delivery fee: MVR {deliveryFeeEst.toFixed(2)} (added at checkout)
+              </div>
+            )}
+          </div>
         )}
 
         <div style={{ marginTop: 10 }}>

@@ -3,7 +3,9 @@ import { Card, Field, Overlay } from "./OpenShiftModal";
 import type { PosCustomer } from "../api";
 import type { RestaurantTable } from "../types";
 
-type OrderType = "Dine-in" | "Takeaway" | "Pickup";
+import type { PosOrderType } from "../orderTypes";
+
+type OrderType = PosOrderType;
 
 type Props = {
   /** Customer currently attached to the cart (via CustomerPicker). Used
@@ -96,11 +98,13 @@ export function SaveTicketModal({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  // Pickup tickets default to "Fire now" — the customer called and
-  // expects food cooking. Dine-in / Takeaway tickets default to
+  // Pickup / Delivery tickets default to "Fire now" — the customer called
+  // and expects food cooking. Dine-in / Takeaway tickets default to
   // "Later" — those are usually parked because the cashier is
   // adding more items or waiting on something.
-  const [fireToKitchen, setFireToKitchen] = useState(orderType === "Pickup");
+  const [fireToKitchen, setFireToKitchen] = useState(
+    orderType === "Pickup" || orderType === "Delivery",
+  );
 
   const submit = async () => {
     const n = name.trim();

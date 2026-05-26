@@ -190,7 +190,7 @@ test.describe('POS — authenticated sales screen', () => {
     }
   });
 
-  test('order type selector is visible (dine-in / takeaway / pickup)', async ({ page }) => {
+  test('order type selector is visible (dine-in / takeaway / pickup / delivery)', async ({ page }) => {
     const ok = await injectPosToken(page);
     if (!ok) {
       test.skip(true, 'Could not get staff token');
@@ -207,6 +207,7 @@ test.describe('POS — authenticated sales screen', () => {
     await expect(page.getByRole('button', { name: 'Takeaway', exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('button', { name: 'Dine-in', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Pickup', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Delivery', exact: true })).toBeVisible();
   });
 
   test('POS can create a takeaway order via API (backend contract)', async ({ page }) => {

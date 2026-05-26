@@ -42,15 +42,22 @@ class DeliveryOrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         // Global gate first (master switch + schedule + override)
-        app(OnlineOrderingGateService::class)->assertOpen();
+        // Staff POS phone orders bypass online + delivery gates.
+        $authUser = $request->user();
+        $isCustomer = $authUser instanceof \App\Models\Customer;
+        $isStaff = $authUser instanceof \App\Models\User;
 
-        // Validate delivery_island early so we can pass it to the delivery gate
-        $earlyIsland = $request->input('delivery_island');
+        if (!$isStaff) {
+            app(OnlineOrderingGateService::class)->assertOpen();
 
-        // Delivery-specific gate: accepting flag + delivery schedule + zone check
-        $this->deliveryGate->assertDeliveryOpen(
-            is_string($earlyIsland) ? $earlyIsland : null,
-        );
+            // Validate delivery_island early so we can pass it to the delivery gate
+            $earlyIsland = $request->input('delivery_island');
+
+            // Delivery-specific gate: accepting flag + delivery schedule + zone check
+            $this->deliveryGate->assertDeliveryOpen(
+                is_string($earlyIsland) ? $earlyIsland : null,
+            );
+        }
 
         $validated = $request->validate([
             'items' => 'required|array|min:1',
@@ -60,6 +67,7 @@ class DeliveryOrderController extends Controller
             'items.*.modifiers' => 'nullable|array',
             'items.*.modifiers.*.modifier_id' => 'required|integer|exists:modifiers,id',
             'items.*.modifiers.*.quantity' => 'nullable|integer|min:1',
+            'items.*.notes' => 'nullable|string|max:255',
 
             // Delivery-specific
             'delivery_address_line1' => 'required|string|max:255',
@@ -71,15 +79,18 @@ class DeliveryOrderController extends Controller
             'desired_eta' => 'nullable|date|after:now',
             'branch_id' => 'nullable|integer',
             'customer_notes' => 'nullable|string|max:500',
+            'customer_id' => 'nullable|integer|exists:customers,id',
+            'device_identifier' => 'nullable|string|max:255',
+            'print' => 'sometimes|boolean',
+            'discount_amount' => 'nullable|numeric|min:0',
+            'ticket_name' => 'nullable|string|max:80',
+            'ticket_note' => 'nullable|string|max:255',
         ]);
 
         $delivery = DeliveryDetails::fromArray($validated);
 
         // Distinguish customer vs staff user:
         // Customers authenticate via customer tokens; staff via User models.
-        $authUser = $request->user();
-        $isCustomer = $authUser instanceof \App\Models\Customer;
-
         $payload = array_merge($validated, [
             'type' => 'delivery',
             'customer_id' => $isCustomer ? $authUser->id : ($validated['customer_id'] ?? null),

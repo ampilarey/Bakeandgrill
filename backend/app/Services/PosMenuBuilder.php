@@ -38,7 +38,7 @@ class PosMenuBuilder
         $query = Item::query()
             ->with(['category:id,name', 'variants', 'modifiers'])
             ->where('is_active', true);
-        $this->kitchenMenuResolver->scopeItemsForChannel($query, $channel);
+        $this->kitchenMenuResolver->scopeItemsForChannel($query, $channel, null, true);
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Item> $items */
         $items = $query->orderBy('sort_order')->orderBy('name')->get();

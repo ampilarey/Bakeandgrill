@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchPosBootstrap, fetchPosMenu } from "../api";
 import type { PosBootstrapShift, PosSalesChannel } from "../api";
+import type { PosOrderType } from "../orderTypes";
 import type { Category, Item } from "../types";
 import { loadCachedMenu, saveCachedMenu } from "../offline/db";
 import { markOfflineBootstrap } from "../offline/offlineGate";
@@ -22,15 +23,16 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000;
  * the admin marked "Online pickup only" actually disappears when the
  * cashier switches to Dine-in.
  */
-function channelForOrderType(orderType: "Dine-in" | "Takeaway" | "Pickup"): PosSalesChannel {
+function channelForOrderType(orderType: PosOrderType): PosSalesChannel {
   if (orderType === "Dine-in") return "dine_in";
   if (orderType === "Pickup") return "online_pickup";
+  if (orderType === "Delivery") return "delivery";
   return "takeaway";
 }
 
 export function useMenu(
   isLoggedIn: boolean,
-  orderType: "Dine-in" | "Takeaway" | "Pickup",
+  orderType: PosOrderType,
   isReachable = true,
   onBootstrapShift?: (shift: PosBootstrapShift | null) => void,
 ) {

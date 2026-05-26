@@ -317,6 +317,8 @@ export async function createOrder(payload: {
   restaurant_table_id?: number | null;
   customer_id?: number | null;
   discount_amount?: number;
+  ticket_name?: string;
+  ticket_note?: string;
   items: Array<{
     item_id?: number | null;
     name: string;
@@ -327,9 +329,39 @@ export async function createOrder(payload: {
       name: string;
       price: number;
     }>;
+    notes?: string;
   }>;
 }): Promise<{ order: { id: number; total: number } }> {
   return request("/orders", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function createDeliveryOrder(payload: {
+  print?: boolean;
+  device_identifier?: string;
+  customer_id?: number | null;
+  discount_amount?: number;
+  ticket_name?: string;
+  ticket_note?: string;
+  delivery_address_line1: string;
+  delivery_address_line2?: string;
+  delivery_island: string;
+  delivery_contact_name: string;
+  delivery_contact_phone: string;
+  delivery_notes?: string;
+  items: Array<{
+    item_id?: number | null;
+    name: string;
+    quantity: number;
+    variant_id?: number | null;
+    modifiers?: Array<{
+      modifier_id?: number | null;
+      name: string;
+      price: number;
+    }>;
+    notes?: string;
+  }>;
+}): Promise<{ order: { id: number; total: number; delivery_fee?: number } }> {
+  return request("/orders/delivery", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function searchCustomers(q: string): Promise<{ data: PosCustomer[] }> {

@@ -329,6 +329,7 @@ class OrderCreationService
             $itemMap->all(),
             $items,
             $order->type,
+            $user !== null && $order->type === 'delivery',
         );
 
         foreach ($items as $itemPayload) {

@@ -63,7 +63,7 @@ final class KitchenMenuResolver
         return array_values(array_map('intval', $state->active_menu_group_ids));
     }
 
-    public function isItemVisibleForChannel(Item $item, string $channel, ?Carbon $at = null): bool
+    public function isItemVisibleForChannel(Item $item, string $channel, ?Carbon $at = null, bool $ignoreDeliveryGate = false): bool
     {
         $at ??= now();
 
@@ -98,7 +98,7 @@ final class KitchenMenuResolver
             return false;
         }
 
-        if ($channel === 'delivery' && !$this->isDeliveryServiceAccepting()) {
+        if ($channel === 'delivery' && !$ignoreDeliveryGate && !$this->isDeliveryServiceAccepting()) {
             return false;
         }
 
@@ -125,11 +125,15 @@ final class KitchenMenuResolver
      * @param array<int, Item> $itemMap keyed by id
      * @param list<array{item_id: int}> $lineItems
      */
-    public function assertLineItemsAllowedForOrderType(array $itemMap, array $lineItems, string $orderType): void
-    {
+    public function assertLineItemsAllowedForOrderType(
+        array $itemMap,
+        array $lineItems,
+        string $orderType,
+        bool $ignoreDeliveryGate = false,
+    ): void {
         $channel = $this->channelForOrderType($orderType);
 
-        if ($channel === 'delivery' && !$this->isDeliveryServiceAccepting()) {
+        if ($channel === 'delivery' && !$ignoreDeliveryGate && !$this->isDeliveryServiceAccepting()) {
             abort(422, $this->deliveryUnavailableMessage());
         }
 
@@ -140,7 +144,7 @@ final class KitchenMenuResolver
             if (!$item) {
                 continue;
             }
-            if (!$this->isItemVisibleForChannel($item, $channel)) {
+            if (!$this->isItemVisibleForChannel($item, $channel, null, $ignoreDeliveryGate)) {
                 $bad[] = $item->name;
             }
         }
@@ -153,8 +157,12 @@ final class KitchenMenuResolver
     /**
      * Apply channel + kitchen rules to a public items query builder.
      */
-    public function scopeItemsForChannel(\Illuminate\Database\Eloquent\Builder $query, string $channel, ?Carbon $at = null): void
-    {
+    public function scopeItemsForChannel(
+        \Illuminate\Database\Eloquent\Builder $query,
+        string $channel,
+        ?Carbon $at = null,
+        bool $ignoreDeliveryGate = false,
+    ): void {
         $at ??= now();
 
         $activeIds = $this->activeMenuGroupIds();
@@ -180,7 +188,7 @@ final class KitchenMenuResolver
                 });
         });
 
-        if ($channel === 'delivery' && !$this->isDeliveryServiceAccepting()) {
+        if ($channel === 'delivery' && !$ignoreDeliveryGate && !$this->isDeliveryServiceAccepting()) {
             $query->whereRaw('1 = 0');
         }
     }

@@ -44,8 +44,13 @@ import { POS_BUILD_INFO } from "./posBuildInfo";
 
 import { palette } from "./theme";
 
-const orderTypes = ["Dine-in", "Takeaway", "Pickup"] as const;
-type OrderType = (typeof orderTypes)[number];
+import {
+  type PosDeliveryDetails,
+  type PosOrderType,
+  EMPTY_DELIVERY_DETAILS,
+  estimateDeliveryFeeMvr,
+  validateDeliveryDetails,
+} from "./orderTypes";
 
 type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | "ops";
 
@@ -193,7 +198,8 @@ function App() {
   // (someone walks up, picks a table, orders), so we default there.
   // Cashiers can flip to Takeaway / Pickup with the segmented control
   // at the top of the cart.
-  const [orderType, setOrderType] = useState<OrderType>("Dine-in");
+  const [orderType, setOrderType] = useState<PosOrderType>("Dine-in");
+  const [deliveryDetails, setDeliveryDetails] = useState<PosDeliveryDetails>(EMPTY_DELIVERY_DETAILS);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   // Owner-curated quick-note chip library (e.g. "No salt", "Extra
@@ -240,6 +246,17 @@ function App() {
   const shift = useShift(isLoggedIn, isLoggedIn, deviceId);
   const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap);
   const cart = useCart();
+
+  const handleClearCart = useCallback(() => {
+    cart.clearCart();
+    setDeliveryDetails(EMPTY_DELIVERY_DETAILS);
+  }, [cart]);
+
+  const deliveryFeeEst = useMemo(() => {
+    if (orderType !== "Delivery") return 0;
+    return estimateDeliveryFeeMvr(deliveryDetails.island, cart.cartSubtotal);
+  }, [orderType, deliveryDetails.island, cart.cartSubtotal]);
+
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
 
   const refreshOfflineCounts = useCallback(async () => {
@@ -390,6 +407,8 @@ function App() {
     shiftId: shift.current?.id ?? null,
     orderType,
     selectedTableId,
+    deliveryDetails,
+    setDeliveryDetails,
     cartItems:     cart.cartItems,
     cartTotal:     cart.cartTotal,
     cartSubtotal:  cart.cartSubtotal,
@@ -401,7 +420,7 @@ function App() {
     appliedPromoCode:     cart.appliedPromo?.code ?? null,
     appliedLoyaltyPoints: cart.appliedLoyalty?.points ?? null,
     appliedGiftCardCode:  cart.appliedGiftCard?.code ?? null,
-    clearCart:        cart.clearCart,
+    clearCart:        handleClearCart,
     setCartItems:     cart.setCartItems,
     setSelectedItem:  cart.setSelectedItem,
     setOfflineQueueCount: (n) => {
@@ -435,15 +454,38 @@ function App() {
     },
   });
 
+  const chargeTotal = useMemo(() => {
+    if (order.resumedOrderId !== null) {
+      return order.resumedOrderTotal ?? cart.cartTotal;
+    }
+    if (orderType === "Delivery" && deliveryFeeEst > 0) {
+      return Math.round((cart.cartTotal + deliveryFeeEst) * 100) / 100;
+    }
+    return cart.cartTotal;
+  }, [
+    order.resumedOrderId,
+    order.resumedOrderTotal,
+    orderType,
+    deliveryFeeEst,
+    cart.cartTotal,
+  ]);
+
   const handleAttachCustomer = useCallback(async (customer: PosCustomer) => {
     cart.setAttachedCustomer(customer);
+    if (orderType === "Delivery") {
+      setDeliveryDetails((prev) => ({
+        ...prev,
+        contactName: prev.contactName.trim() || customer.name || "",
+        contactPhone: prev.contactPhone.trim() || customer.phone || "",
+      }));
+    }
     if (!order.resumedIsPaid || order.resumedOrderId == null) return;
     try {
       await updateOrderCustomer(order.resumedOrderId, customer.id);
     } catch (e) {
       order.flashError((e as Error).message || "Couldn't save customer on this order.");
     }
-  }, [cart, order]);
+  }, [cart, order, orderType]);
 
   const handleDetachCustomer = useCallback(async () => {
     cart.detachCustomer();
@@ -1133,6 +1175,8 @@ function App() {
             <OrderCart
               orderType={orderType}
               setOrderType={setOrderType}
+              deliveryDetails={deliveryDetails}
+              setDeliveryDetails={setDeliveryDetails}
               tables={tables}
               selectedTableId={selectedTableId}
               setSelectedTableId={setSelectedTableId}
@@ -1169,7 +1213,7 @@ function App() {
               onUnlockEdit={() => order.setIsEditingActive(true)}
               onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
-              onClearCart={cart.clearCart}
+              onClearCart={handleClearCart}
               onSaveTicket={() => setShowSaveTicket(true)}
               onOpenTickets={() => setPane("open_tickets")}
               canRingSales={canRingSales}
@@ -1182,6 +1226,17 @@ function App() {
                 // the most common ones inline so the cashier sees them.
                 if (cart.cartItems.length === 0) return;
                 if (order.resumedIsPaid) return;
+                if (orderType === "Delivery") {
+                  if (!isReachable) {
+                    order.flashError("Delivery orders require an internet connection.");
+                    return;
+                  }
+                  const deliveryErr = validateDeliveryDetails(deliveryDetails);
+                  if (deliveryErr) {
+                    order.flashError(deliveryErr);
+                    return;
+                  }
+                }
                 // Table is OPTIONAL on Dine-in tickets — some venues
                 // ring up at the counter before seating, so we don't
                 // gate Charge on it. The cashier can still pick a
@@ -1363,6 +1418,11 @@ function App() {
           // money went.
           discount={cart.discountValue + cart.rewardsDiscount}
           tax={cart.cartTax}
+          deliveryFee={
+            orderType === "Delivery" && order.resumedOrderId === null
+              ? deliveryFeeEst
+              : undefined
+          }
           // Use the SERVER total for resumed tickets so the cashier
           // confirms the same number that handleCharge will settle
           // against. Without this, a ticket resumed with server-side
@@ -1371,9 +1431,7 @@ function App() {
           // settle a different one — wrong change handed back, customer
           // disputes. Falls back to cart.cartTotal for fresh tickets
           // (no resumed total available yet).
-          total={order.resumedOrderId !== null
-            ? (order.resumedOrderTotal ?? cart.cartTotal)
-            : cart.cartTotal}
+          total={chargeTotal}
           creditEligible={canUseCredit && chargeCreditEligible && isReachable}
           creditAvailableMvr={chargeCreditAvailable}
           isOffline={!isReachable}
