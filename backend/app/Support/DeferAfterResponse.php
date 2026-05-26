@@ -20,8 +20,8 @@ final class DeferAfterResponse
     public static function run(callable $callback, string $context = 'deferred'): void
     {
         $wrapped = static function () use ($callback, $context): void {
-            static::flushResponse();
-            static::invoke($callback, $context);
+            self::flushResponse();
+            self::invoke($callback, $context);
         };
 
         if (\function_exists('defer')) {

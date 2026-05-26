@@ -137,9 +137,9 @@ class PosMenuBuilder
     }
 
     /**
-     * @param  array<int, int>  $activeGroupIds
-     * @param  \Illuminate\Support\Collection<int, ItemChannelAvailability>  $channelRows
-     * @param  array<int, int>  $reservedByItem
+     * @param array<int, int> $activeGroupIds
+     * @param \Illuminate\Support\Collection<int, ItemChannelAvailability> $channelRows
+     * @param array<int, int> $reservedByItem
      * @return array{available: bool, reason_code: ?string, reason_message: ?string, available_stock: ?int}
      */
     private function isPosItemAvailable(

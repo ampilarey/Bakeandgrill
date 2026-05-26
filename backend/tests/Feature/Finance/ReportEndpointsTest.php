@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Finance;
 
-use App\Models\Order;
 use App\Domains\Permissions\PermissionCatalogSync;
+use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
