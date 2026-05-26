@@ -4,38 +4,16 @@
  * Token injection tests fall back to PIN API when ADMIN_PASSWORD is unset.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PHONE, ADMIN_PASSWORD, staffPinLoginBody } from '../fixtures/auth';
+import { ADMIN_PHONE, ADMIN_PASSWORD, clearStaffTokenCache, obtainStaffToken } from '../fixtures/auth';
 import { gotoAdminWithToken } from '../helpers/injectAuth';
 
 test.describe.configure({ mode: 'serial' });
 
 let sharedAdminToken = '';
 test.beforeAll(async ({ request }) => {
-  if (ADMIN_PHONE && ADMIN_PASSWORD) {
-    const res = await request.post('/api/auth/staff/login', {
-      data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD },
-    });
-    if (res.status() === 429) {
-      console.warn('Admin login rate-limited in beforeAll — token-based tests will skip');
-      return;
-    }
-    if (res.ok()) {
-      const data = await res.json() as { token?: string };
-      sharedAdminToken = data.token ?? '';
-      return;
-    }
-  }
-
-  const res = await request.post('/api/auth/staff/pin-login', {
-    data: staffPinLoginBody(),
-  });
-  if (res.status() === 429) {
-    console.warn('Admin PIN login rate-limited in beforeAll — token-based tests will skip');
-    return;
-  }
-  if (res.ok()) {
-    const data = await res.json() as { token?: string };
-    sharedAdminToken = data.token ?? '';
+  sharedAdminToken = await obtainStaffToken(request);
+  if (!sharedAdminToken) {
+    console.warn('Admin login failed in beforeAll — token-based tests will skip');
   }
 });
 
@@ -107,5 +85,7 @@ test.describe('Admin login', () => {
 
     const token = await page.evaluate(() => localStorage.getItem('admin_token'));
     expect(token).toBeNull();
+    clearStaffTokenCache();
+    sharedAdminToken = '';
   });
 });

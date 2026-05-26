@@ -281,9 +281,9 @@ test.describe('Finance pages', () => {
     if (!sharedAdminToken) return;
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/invoice/);
-    // Filter dropdowns should render
-    const selects = page.locator('select');
-    expect(await selects.count()).toBeGreaterThanOrEqual(1);
+    // Filter dropdowns render after auth/me + invoice list load
+    await expect(page.locator('select').first()).toBeVisible({ timeout: 15_000 });
+    expect(await page.locator('select').count()).toBeGreaterThanOrEqual(1);
   });
 
   test('/admin/expenses shows category and form', async ({ page }) => {
@@ -296,10 +296,8 @@ test.describe('Finance pages', () => {
   test('/admin/profit-loss date pickers present', async ({ page }) => {
     await gotoAdmin(page, '/admin/profit-loss');
     if (!sharedAdminToken) return;
-    // Date inputs should render
-    const dateInputs = page.locator('input[type="date"]');
-    const count = await dateInputs.count();
-    expect(count).toBeGreaterThanOrEqual(2);
+    await expect(page.locator('input[type="date"]').first()).toBeVisible({ timeout: 15_000 });
+    expect(await page.locator('input[type="date"]').count()).toBeGreaterThanOrEqual(2);
   });
 });
 

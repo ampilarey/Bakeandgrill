@@ -15,9 +15,10 @@
  *   - ADMIN_PIN env var (default: '1121') is a valid staff PIN
  */
 import { test, expect, type Page } from '@playwright/test';
-import { staffPinLoginBody } from '../fixtures/auth';
+import { obtainStaffToken } from '../fixtures/auth';
 import {
   assertPosAuthenticated,
+  ensurePosSalesScreen,
   isPosWaitingForApproval,
   posEnterPin,
   posUsernameLocator,
@@ -25,29 +26,42 @@ import {
 
 const POS_URL    = '/pos/';
 const TOKEN_KEY  = 'pos_token';
-const API_LOGIN  = '/api/auth/staff/pin-login';
 
 // ── Helper: inject a real staff token into the POS app ───────────────────
 
 async function injectPosToken(page: Page): Promise<boolean> {
-  const res = await page.request.post(API_LOGIN, { data: staffPinLoginBody() });
-  if (!res.ok()) return false;
-
-  const { token } = (await res.json()) as { token: string };
+  const token = await obtainStaffToken(page.request);
   if (!token) return false;
 
-  await page.goto(POS_URL);
-  await page.waitForLoadState('networkidle');
+  const meRes = await page.request.get('/api/auth/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!meRes.ok()) return false;
 
-  // POS reads pos_token from localStorage at module level — inject before reload
-  await page.evaluate((t: string) => {
-    localStorage.setItem('pos_token', t);
-  }, token);
+  const meData = (await meRes.json()) as {
+    user?: { permissions?: string[]; role?: string };
+  };
+  const permissions = meData.user?.permissions ?? [];
+  const role = meData.user?.role ?? '';
 
-  // Also wire the internal API module cache
-  await page.reload();
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1500);
+  await page.goto(POS_URL, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(
+    ({ t, perms, role: r }: { t: string; perms: string[]; role: string }) => {
+      localStorage.setItem('pos_token', t);
+      localStorage.setItem('pos_staff_permissions', JSON.stringify(perms));
+      localStorage.setItem('pos_staff_role', r);
+    },
+    { t: token, perms: permissions, role },
+  );
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('domcontentloaded');
+
+  try {
+    await ensurePosSalesScreen(page);
+  } catch {
+    // Sales nav unavailable — caller may skip.
+  }
 
   return true;
 }
@@ -152,27 +166,28 @@ test.describe('POS — authenticated sales screen', () => {
       return;
     }
 
-    // Find an item button that's not a category selector or nav button
-    await page.waitForTimeout(1000);
-    const items = page.locator('button').filter({ hasText: /\w{3,}/ });
-    const count = await items.count();
-    if (count === 0) {
+    await ensurePosSalesScreen(page);
+
+    const menuGrid = page.locator('.pos-menu-grid');
+    await expect(menuGrid).toBeVisible({ timeout: 15_000 });
+
+    const itemBtn = menuGrid.locator('button:not([disabled])').first();
+    if ((await itemBtn.count()) === 0) {
       test.skip(true, 'No item buttons found — skipping add-to-cart test');
       return;
     }
 
-    // Grab the initial cart total or item count indicator text
-    const cartBefore = await page.textContent('body') ?? '';
+    const emptyCart = page.getByText('No items in ticket');
+    const hadItems = !(await emptyCart.isVisible({ timeout: 1_000 }).catch(() => false));
 
-    // Click the first meaningful item button
-    await items.first().click();
-    await page.waitForTimeout(1000);
+    await itemBtn.scrollIntoViewIfNeeded();
+    await itemBtn.click();
 
-    const cartAfter = await page.textContent('body') ?? '';
-    // Body should reflect some change (item count, price, or item name in cart)
-    // This is a broad check — the cart state must differ from before
-    expect(cartAfter).not.toEqual('');
-    expect(cartAfter.length).toBeGreaterThan(0);
+    if (!hadItems) {
+      await expect(emptyCart).toBeHidden({ timeout: 10_000 });
+    } else {
+      await expect(page.locator('.pos-menu-grid button:not([disabled])').first()).toBeVisible();
+    }
   });
 
   test('order type selector is visible (dine-in / takeaway / pickup)', async ({ page }) => {
@@ -188,16 +203,18 @@ test.describe('POS — authenticated sales screen', () => {
       return;
     }
 
-    expect(body.toLowerCase()).toMatch(/takeaway|dine.?in|pickup|delivery/);
+    await ensurePosSalesScreen(page);
+    await expect(page.getByRole('button', { name: 'Takeaway', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: 'Dine-in', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pickup', exact: true })).toBeVisible();
   });
 
   test('POS can create a takeaway order via API (backend contract)', async ({ page }) => {
-    const res = await page.request.post(API_LOGIN, { data: staffPinLoginBody() });
-    if (!res.ok()) {
-      test.skip(true, `Staff login failed (${res.status()}) — skipping order creation test`);
+    const token = await obtainStaffToken(page.request);
+    if (!token) {
+      test.skip(true, 'Staff login failed — skipping order creation test');
       return;
     }
-    const { token } = (await res.json()) as { token: string };
 
     // Fetch available items
     const itemsRes = await page.request.get('/api/items', {

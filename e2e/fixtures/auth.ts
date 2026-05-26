@@ -22,8 +22,10 @@ export function staffPinLoginBody(pin?: string) {
   return { username, pin: pin ?? ADMIN_PIN };
 }
 
-/** Obtain a staff token — prefers phone+password login to avoid PIN rate limits. */
-export async function obtainStaffToken(request: APIRequestContext): Promise<string> {
+let cachedStaffToken = '';
+let staffTokenInFlight: Promise<string> | null = null;
+
+async function fetchStaffToken(request: APIRequestContext): Promise<string> {
   if (ADMIN_PHONE && ADMIN_PASSWORD) {
     const res = await request.post('/api/auth/staff/login', {
       data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD },
@@ -42,6 +44,27 @@ export async function obtainStaffToken(request: APIRequestContext): Promise<stri
     return data.token ?? '';
   }
   return '';
+}
+
+/** Obtain a staff token — prefers phone+password login; dedupes concurrent calls. */
+export async function obtainStaffToken(request: APIRequestContext): Promise<string> {
+  if (cachedStaffToken) return cachedStaffToken;
+  if (!staffTokenInFlight) {
+    staffTokenInFlight = fetchStaffToken(request)
+      .then((token) => {
+        if (token) cachedStaffToken = token;
+        return token;
+      })
+      .finally(() => {
+        staffTokenInFlight = null;
+      });
+  }
+  return staffTokenInFlight;
+}
+
+/** Clear cached staff token (e.g. after logout tests). */
+export function clearStaffTokenCache(): void {
+  cachedStaffToken = '';
 }
 
 /** Sign in to admin via phone + password form. Requires ADMIN_PHONE and ADMIN_PASSWORD in e2e/.env.test */

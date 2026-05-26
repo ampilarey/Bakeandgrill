@@ -19,19 +19,39 @@ const CUSTOMER_API_URL = ADMIN_API_URL;
  * Obtain a staff Sanctum token via the PIN login endpoint and store it in
  * the page's localStorage so subsequent navigations are authenticated.
  */
+async function waitForAdminAuth(page: Page): Promise<boolean> {
+  const resp = await page
+    .waitForResponse(
+      (r) => r.url().includes('/api/auth/me') && r.status() === 200,
+      { timeout: 20_000 },
+    )
+    .catch(() => null);
+  return resp !== null;
+}
+
 export async function gotoAdminWithToken(page: Page, token: string, path = '/admin/dashboard'): Promise<void> {
   await page.addInitScript((t: string) => {
     localStorage.setItem('admin_token', t);
   }, token);
-  await page.goto(path);
-  await page.waitForLoadState('domcontentloaded');
-  await page
-    .waitForResponse(
-      (resp) => resp.url().includes('/api/auth/me') && resp.status() === 200,
-      { timeout: 15_000 },
-    )
-    .catch(() => undefined);
-  await page.waitForTimeout(500);
+  await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+
+  let authed = await waitForAdminAuth(page);
+  if (!authed) {
+    await page.evaluate((t: string) => {
+      localStorage.setItem('admin_token', t);
+    }, token);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    authed = await waitForAdminAuth(page);
+  }
+
+  const body = (await page.textContent('body')) ?? '';
+  if (/admin sign in|sign in →/i.test(body)) {
+    await page.evaluate((t: string) => {
+      localStorage.setItem('admin_token', t);
+    }, token);
+    await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await waitForAdminAuth(page);
+  }
 }
 
 /**

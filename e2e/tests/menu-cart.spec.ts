@@ -2,14 +2,22 @@
  * Menu browsing and cart tests.
  * No auth required for browsing. Auth optional for checkout button.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 test.describe('Menu page', () => {
+  async function waitForMenuCards(page: Page): Promise<void> {
+    await page.goto('/order/menu', { waitUntil: 'domcontentloaded' });
+    const cards = page.locator('article.menu-card-article');
+    try {
+      await expect(cards.first()).toBeVisible({ timeout: 25_000 });
+    } catch {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(cards.first()).toBeVisible({ timeout: 25_000 });
+    }
+  }
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/order/menu');
-    await page.waitForLoadState('networkidle');
-    // Wait until menu item cards load
-    await page.waitForSelector('article.menu-card-article', { timeout: 15_000 });
+    await waitForMenuCards(page);
   });
 
   test('page title contains Menu', async ({ page }) => {

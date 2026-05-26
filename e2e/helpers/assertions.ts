@@ -36,3 +36,33 @@ export function assertPosAuthenticated(body: string): void {
     /category|menu|item|cart|table|order|takeaway|dine.?in|waiting for approval|device id|cashier/,
   );
 }
+
+/**
+ * POS may land on Shift/Receipts after login while permissions load.
+ * Open the drawer and return to Sales so menu + cart are visible.
+ */
+export async function ensurePosSalesScreen(page: import('@playwright/test').Page): Promise<void> {
+  const menuGrid = page.locator('.pos-menu-grid');
+  if (await menuGrid.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    return;
+  }
+
+  await page.keyboard.press('Escape');
+
+  const closePanel = page.getByRole('button', { name: /close panel/i });
+  if (await closePanel.isVisible({ timeout: 1_500 }).catch(() => false)) {
+    await closePanel.click();
+    await expect(menuGrid).toBeVisible({ timeout: 15_000 });
+    return;
+  }
+
+  const openShift = page.getByRole('button', { name: /open shift/i });
+  if (await openShift.isVisible({ timeout: 1_500 }).catch(() => false)) {
+    throw new Error('POS requires an open shift before sales tests can run');
+  }
+
+  const menuBtn = page.getByRole('button', { name: 'Open menu' });
+  await menuBtn.click({ timeout: 5_000 });
+  await page.getByRole('button', { name: /sales/i }).click({ timeout: 5_000 });
+  await expect(menuGrid).toBeVisible({ timeout: 15_000 });
+}

@@ -6,9 +6,10 @@ dotenv.config({ path: path.resolve(__dirname, 'e2e/.env.test') });
 
 export default defineConfig({
   testDir: './e2e/tests',
-  fullyParallel: false,   // sequential — staging has rate limits
+  fullyParallel: false,   // serial within each file
+  workers: 1,             // one file at a time — staging auth is rate-limited
   retries: 1,
-  timeout: 45_000,
+  timeout: 60_000,
   expect: { timeout: 10_000 },
 
   use: {
