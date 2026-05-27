@@ -140,7 +140,7 @@ test.describe('Promotions CRUD', () => {
     skipIfNoToken(sharedAdminToken);
 
     // Create via API
-    const res = await page.request.post('/api/promotions', {
+    const res = await page.request.post('/api/admin/promotions', {
       headers: { Authorization: `Bearer ${sharedAdminToken}` },
       data: {
         name:       '[QA] Test Promotion ' + Date.now(),
@@ -163,7 +163,7 @@ test.describe('Promotions CRUD', () => {
 
       // Clean up
       if (promoId) {
-        await page.request.delete(`/api/promotions/${promoId}`, {
+        await page.request.delete(`/api/admin/promotions/${promoId}`, {
           headers: { Authorization: `Bearer ${sharedAdminToken}` },
         }).catch(() => {});
       }

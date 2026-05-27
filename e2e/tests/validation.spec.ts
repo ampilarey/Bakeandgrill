@@ -100,7 +100,7 @@ test.describe('Admin promotions validation', () => {
       return;
     }
 
-    const res = await page.request.post('/api/promotions', {
+    const res = await page.request.post('/api/admin/promotions', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: {
         name: 'Bad Promo',
@@ -122,7 +122,7 @@ test.describe('Admin promotions validation', () => {
       return;
     }
 
-    const res = await page.request.post('/api/promotions', {
+    const res = await page.request.post('/api/admin/promotions', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: {
         name: 'Over 100 Promo',
