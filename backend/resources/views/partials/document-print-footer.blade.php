@@ -1,4 +1,3 @@
-@include('partials.document-brand-vars')
 <div class="doc-print-footer">
     <strong>{{ $brandSiteName }}</strong>
     @if ($brandAddress)<div>{{ $brandAddress }}</div>@endif

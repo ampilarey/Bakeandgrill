@@ -35,7 +35,12 @@ class AppServiceProvider extends ServiceProvider
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
 
-        View::composer(['layouts.pdf', 'invoices.pdf'], function ($view): void {
+        View::composer([
+            'layouts.pdf',
+            'invoices.pdf',
+            'partials.document-masthead',
+            'partials.document-print-footer',
+        ], function ($view): void {
             $view->with(DocumentBrandView::variables());
         });
 

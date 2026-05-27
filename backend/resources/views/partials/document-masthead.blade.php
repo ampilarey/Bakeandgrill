@@ -1,4 +1,3 @@
-@include('partials.document-brand-vars')
 <div class="doc-masthead">
     <div class="doc-masthead-inner">
         <img src="{{ $brandLogoWeb }}" alt="" width="44" height="44">

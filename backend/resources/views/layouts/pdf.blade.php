@@ -1,4 +1,3 @@
-@include('partials.document-brand-vars')
 <!DOCTYPE html>
 <html lang="en">
 <head>
