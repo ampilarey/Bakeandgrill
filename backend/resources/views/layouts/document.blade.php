@@ -112,7 +112,7 @@
         .doc-link-primary:hover { background: var(--amber-hover); border-color: var(--amber-hover); }
         .doc-main {
             margin: 0 auto;
-            padding: 1.25rem 1rem 2.5rem;
+            padding: 1.25rem 1rem 1.5rem;
         }
         .doc-card {
             background: var(--surface);
@@ -120,9 +120,8 @@
             border-radius: 16px;
             padding: 0;
             box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);
-            overflow: hidden;
         }
-        .doc-card-body { padding: 1.25rem 1.125rem; }
+        .doc-card-body { padding: 1.25rem 1.125rem 1.5rem; }
         .doc-masthead {
             background: linear-gradient(135deg, #1C1408 0%, #2a1a0a 100%);
             color: #fff;
@@ -258,6 +257,7 @@
         }
         .doc-btn-primary { background: var(--amber); border-color: var(--amber); color: #fff; }
         .doc-btn-primary:hover { background: var(--amber-hover); border-color: var(--amber-hover); }
+        .doc-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
         .doc-badge {
             display: inline-block;
             padding: 0.25rem 0.625rem;
@@ -292,7 +292,7 @@
         .doc-footer {
             max-width: 1280px;
             margin: 0 auto;
-            padding: 1.5rem 1.25rem 2rem;
+            padding: 1.25rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
             border-top: 1px solid var(--border);
             text-align: center;
             color: var(--muted);
