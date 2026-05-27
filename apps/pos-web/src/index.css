@@ -298,15 +298,39 @@ html, body, #root {
 /* Charge overlay caps at 760px on big screens; on small ones we let
  * it fill the viewport so the cashier isn't squeezed. */
 @media (max-width: 820px) {
-  .pos-charge { padding: 12px !important; }
+  .pos-charge-overlay {
+    align-items: stretch !important;
+    background: #fff !important;
+  }
+  .pos-charge {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
   .pos-charge-grid { grid-template-columns: 1fr !important; }
-  /* ~36% shorter vs desktop (two 20% passes) on mobile charge summary. */
+  .pos-charge-header {
+    padding: 12px 16px !important;
+    padding-top: max(12px, env(safe-area-inset-top, 0px)) !important;
+    flex-shrink: 0 !important;
+  }
+  .pos-charge-close-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  /* ~10% shorter than prior mobile summary sizing. */
   .pos-charge-summary {
-    padding: 15px 16px !important;
+    padding: 14px 14px !important;
   }
   .pos-charge-breakdown {
-    margin-bottom: 11px !important;
-    padding: 6px 9px !important;
+    margin-bottom: 10px !important;
+    padding: 5px 8px !important;
     font-size: 9px !important;
     row-gap: 2px !important;
   }
@@ -315,16 +339,16 @@ html, body, #root {
     font-size: 9px !important;
   }
   .pos-charge-due-value {
-    margin-top: 5px !important;
-    font-size: 30px !important;
+    margin-top: 4px !important;
+    font-size: 27px !important;
     line-height: 1.05 !important;
   }
   .pos-charge-change-label {
-    margin-top: 18px !important;
+    margin-top: 16px !important;
   }
   .pos-charge-change-value {
-    margin-top: 5px !important;
-    font-size: 26px !important;
+    margin-top: 4px !important;
+    font-size: 23px !important;
     line-height: 1.05 !important;
   }
 }

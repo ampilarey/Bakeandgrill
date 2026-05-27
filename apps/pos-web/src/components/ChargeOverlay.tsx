@@ -229,6 +229,7 @@ export function ChargeOverlay({
   return (
     <div
       ref={trapRef}
+      className="pos-charge-overlay"
       role="dialog"
       aria-modal="true"
       aria-label="Charge"
@@ -243,13 +244,17 @@ export function ChargeOverlay({
         borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column",
       }}>
         {/* Header */}
-        <div style={{
+        <div className="pos-charge-header" style={{
           padding: "14px 18px",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           borderBottom: "1px solid #E2E8F0",
         }}>
           <h2 style={{ margin: 0, fontSize: 18, color: "#0F172A" }}>Charge</h2>
-          <button onClick={onClose} disabled={submitting} style={{
+          <button
+            className="pos-charge-close-btn"
+            onClick={onClose}
+            disabled={submitting}
+            style={{
             background: "none", border: "none", color: "#64748B",
             fontSize: 20, cursor: "pointer", lineHeight: 1,
           }} aria-label="Close charge screen">×</button>
