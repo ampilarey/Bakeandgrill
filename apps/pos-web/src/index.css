@@ -186,6 +186,45 @@ html, body, #root {
 .pos-charge {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+.pos-charge-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.pos-charge-quick-btn {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  max-height: 48px;
+  padding: 0 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1.1;
+  touch-action: manipulation;
+}
+.pos-charge-quick-btn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.pos-charge-quick-exact {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  opacity: 0.85;
+  pointer-events: none;
+}
 .pos-cart-body {
   flex: 1;
   min-height: 0;

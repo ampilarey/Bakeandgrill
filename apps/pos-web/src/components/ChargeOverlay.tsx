@@ -425,34 +425,28 @@ export function ChargeOverlay({
                   />
                 </div>
 
-                <div>
+                <div className="pos-charge-quick-amounts">
                   <p style={tinyLabel}>Quick amounts</p>
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
-                  }}>
+                  <div className="pos-charge-quick-grid">
                     {quick.map((q) => {
                       const isExact = Math.abs(q - total) < 0.005;
                       return (
                         <button
                           key={q}
+                          type="button"
+                          className="pos-charge-quick-btn"
                           onClick={() => setReceived(q.toFixed(2))}
                           style={{
-                            padding: "14px 6px", borderRadius: 8, fontWeight: 700,
+                            fontWeight: 700,
                             background: isExact ? "#0F172A" : "#fff",
                             color: isExact ? "#fff" : "#0F172A",
                             border: `1px solid ${isExact ? "#0F172A" : "#CBD5E1"}`,
-                            cursor: "pointer", fontSize: 13,
-                            minHeight: 48,
-                            display: "flex", flexDirection: "column",
-                            alignItems: "center", justifyContent: "center", gap: 2,
+                            cursor: "pointer",
                           }}
                         >
-                          <span>{fmtChip(q)}</span>
+                          <span className="pos-charge-quick-btn-label">{fmtChip(q)}</span>
                           {isExact && (
-                            <span style={{
-                              fontSize: 10, fontWeight: 600,
-                              opacity: 0.8, letterSpacing: "0.06em",
-                            }}>EXACT</span>
+                            <span className="pos-charge-quick-exact" aria-hidden="true">EXACT</span>
                           )}
                         </button>
                       );
