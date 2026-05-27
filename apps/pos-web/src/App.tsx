@@ -1214,7 +1214,20 @@ function App() {
               onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
               onClearCart={handleClearCart}
-              onSaveTicket={() => setShowSaveTicket(true)}
+              onSaveTicket={() => {
+                if (orderType === "Delivery") {
+                  if (!isReachable) {
+                    order.flashError("Delivery orders require an internet connection.");
+                    return;
+                  }
+                  const deliveryErr = validateDeliveryDetails(deliveryDetails);
+                  if (deliveryErr) {
+                    order.flashError(deliveryErr);
+                    return;
+                  }
+                }
+                setShowSaveTicket(true);
+              }}
               onOpenTickets={() => setPane("open_tickets")}
               canRingSales={canRingSales}
               canHoldResume={canHoldResume}

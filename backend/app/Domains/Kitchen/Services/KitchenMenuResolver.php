@@ -144,6 +144,25 @@ final class KitchenMenuResolver
             if (!$item) {
                 continue;
             }
+
+            // Staff POS phone-in delivery: accept anything the in-store
+            // menu would allow (dine-in / takeaway / pickup), not only
+            // items explicitly flagged for the online delivery channel.
+            if ($channel === 'delivery' && $ignoreDeliveryGate) {
+                $staffChannels = ['dine_in', 'takeaway', 'online_pickup', 'delivery'];
+                $allowed = false;
+                foreach ($staffChannels as $staffChannel) {
+                    if ($this->isItemVisibleForChannel($item, $staffChannel, null, true)) {
+                        $allowed = true;
+                        break;
+                    }
+                }
+                if (!$allowed) {
+                    $bad[] = $item->name;
+                }
+                continue;
+            }
+
             if (!$this->isItemVisibleForChannel($item, $channel, null, $ignoreDeliveryGate)) {
                 $bad[] = $item->name;
             }

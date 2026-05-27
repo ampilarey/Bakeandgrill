@@ -26,7 +26,10 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000;
 function channelForOrderType(orderType: PosOrderType): PosSalesChannel {
   if (orderType === "Dine-in") return "dine_in";
   if (orderType === "Pickup") return "online_pickup";
-  if (orderType === "Delivery") return "delivery";
+  // Staff phone-in delivery uses the in-store menu (takeaway channel),
+  // not the online delivery channel — same items a cashier can ring
+  // at the counter should be orderable for call-in delivery.
+  if (orderType === "Delivery") return "takeaway";
   return "takeaway";
 }
 
