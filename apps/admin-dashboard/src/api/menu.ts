@@ -304,6 +304,10 @@ export async function fetchSpecials(params?: { page?: number }): Promise<{ data:
   return req(`/admin/specials?${qs}`);
 }
 
+export async function getSpecial(id: number): Promise<{ special: DailySpecial }> {
+  return req(`/admin/specials/${id}`);
+}
+
 export async function createSpecial(data: DailySpecialPayload): Promise<{ special: DailySpecial }> {
   return req('/admin/specials', { method: 'POST', body: JSON.stringify(data) });
 }

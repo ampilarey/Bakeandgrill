@@ -722,6 +722,7 @@ Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class,
 // Admin: CRUD
 Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/specials')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
+    Route::get('/{id}', [App\Http\Controllers\Api\DailySpecialController::class, 'show']);
     Route::post('/', [App\Http\Controllers\Api\DailySpecialController::class, 'store']);
     Route::patch('/{id}', [App\Http\Controllers\Api\DailySpecialController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\DailySpecialController::class, 'destroy']);

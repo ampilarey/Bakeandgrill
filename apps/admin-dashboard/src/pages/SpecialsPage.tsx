@@ -3,7 +3,8 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
-import { fetchSpecials, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type MenuItem, type MenuVariant } from '../api';
+import { fetchSpecials, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type MenuItem, type MenuVariant } from '../api';
+import { ApiRequestError } from '@shared/api';
 import { Pencil, Trash2 } from 'lucide-react';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -86,6 +87,7 @@ export default function SpecialsPage() {
   const [form, setForm] = useState<SpecialForm>(BLANK);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [conflictSpecialId, setConflictSpecialId] = useState<number | null>(null);
   const [listFilter, setListFilter] = useState<ListFilter>('all');
 
   const load = async () => {
@@ -98,11 +100,15 @@ export default function SpecialsPage() {
   };
 
   useEffect(() => { void load(); }, [page]);
-  useEffect(() => { fetchAdminItems({ per_page: 200 }).then(r => setItems(r.data)).catch((e: Error) => setError(e.message || 'Failed to load menu items.')); }, []);
+  useEffect(() => {
+    fetchAdminItems({ per_page: 200 })
+      .then(r => setItems(r.data))
+      .catch(() => { /* menu item picker still works with empty list; don't block discounts table */ });
+  }, []);
 
   const openCreate = () => {
     setEditing(null); setForm({ ...BLANK, start_date: today(), end_date: today() });
-    setFormError(''); setModalOpen(true);
+    setFormError(''); setConflictSpecialId(null); setModalOpen(true);
   };
 
   const openEdit = (s: DailySpecial) => {
@@ -123,7 +129,20 @@ export default function SpecialsPage() {
       description: s.description ?? '',
       is_active: s.is_active,
     });
-    setFormError(''); setModalOpen(true);
+    setFormError(''); setConflictSpecialId(null); setModalOpen(true);
+  };
+
+  const openEditFromConflict = async () => {
+    if (!conflictSpecialId) return;
+    setFormError('');
+    try {
+      const res = await getSpecial(conflictSpecialId);
+      setModalOpen(false);
+      setConflictSpecialId(null);
+      openEdit(res.special);
+    } catch (e) {
+      setFormError((e as Error).message);
+    }
   };
 
   const selectedItem = items.find(i => i.id === form.item_id);
@@ -189,7 +208,7 @@ export default function SpecialsPage() {
     if (maxQty !== undefined && (isNaN(maxQty) || maxQty < 1)) {
       setFormError('Max quantity must be a positive whole number.'); return;
     }
-    setSaving(true); setFormError('');
+    setSaving(true); setFormError(''); setConflictSpecialId(null);
     try {
       const payload = {
         item_id: Number(form.item_id),
@@ -213,7 +232,14 @@ export default function SpecialsPage() {
       if (editing) { await updateSpecial(editing.id, payload); }
       else { await createSpecial(payload); }
       setModalOpen(false); void load();
-    } catch (e) { setFormError((e as Error).message); }
+    } catch (e) {
+      if (e instanceof ApiRequestError && e.body && typeof e.body === 'object' && 'errors' in e.body) {
+        const errors = (e.body as { errors?: Record<string, string[]> }).errors;
+        const conflictId = errors?.conflicting_special_id?.[0];
+        if (conflictId) setConflictSpecialId(Number(conflictId));
+      }
+      setFormError((e as Error).message);
+    }
     finally { setSaving(false); }
   };
 
@@ -358,7 +384,16 @@ export default function SpecialsPage() {
 
       {modalOpen && (
         <Modal title={editing ? 'Edit Item Discount' : 'Add Item Discount'} onClose={() => setModalOpen(false)} maxWidth={hasVariants ? 640 : 520}>
-          {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
+          {formError && (
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ color: '#ef4444', margin: 0 }}>{formError}</p>
+              {conflictSpecialId && (
+                <Btn small variant="secondary" onClick={() => void openEditFromConflict()} style={{ marginTop: 8 }}>
+                  Edit existing discount
+                </Btn>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Menu Item *</span>

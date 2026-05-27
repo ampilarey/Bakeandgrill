@@ -450,4 +450,27 @@ class DailySpecialPricingTest extends TestCase
             'discount_pct' => 20,
         ]);
     }
+
+    public function test_create_blocked_when_overlapping_special_exists(): void
+    {
+        $owner = $this->makeOwner();
+        $item = $this->makeItem();
+        $existing = $this->createSpecial([
+            'item_id' => $item->id,
+            'discount_pct' => 10,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->addDays(3)->toDateString(),
+        ]);
+
+        $this->postJson('/api/admin/specials', [
+            'item_id' => $item->id,
+            'discount_pct' => 20,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->addDays(2)->toDateString(),
+            'is_active' => true,
+        ], $this->staffHeaders($owner))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['item_id', 'conflicting_special_id'])
+            ->assertJsonPath('errors.conflicting_special_id.0', (string) $existing->id);
+    }
 }
