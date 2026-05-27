@@ -249,5 +249,6 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     handleOpenShift, handleCloseShift, handleCashMovement, handleLoadReport,
     handleAdjustInventory, handleCreateSupplier, handleCreatePurchase,
     handleCreateRefund, handlePreviewPromotion, handleSendPromotion,
+    setOpsMessage,
   };
 }

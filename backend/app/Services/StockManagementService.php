@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Domains\Inventory\DTOs\LowStockReachedData;
 use App\Domains\Inventory\Events\LowStockReached;
+use App\Domains\Notifications\Services\SmsService;
 use App\Models\Item;
 use App\Models\LowStockAlert;
 use App\Models\StockMovement;
@@ -140,6 +141,108 @@ class StockManagementService
             ->whereIn('idempotency_key', $this->preparedStockSaleKeys($orderId, $orderItemId))
             ->where('type', 'sale')
             ->exists();
+    }
+
+    /**
+     * Manual POS/admin adjustment of prepared item stock (items.stock_quantity).
+     */
+    public function adjustItemPreparedStock(
+        Item $item,
+        int $delta,
+        int $userId,
+        string $idempotencyKey,
+        ?string $notes = null,
+    ): Item {
+        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
+            abort(422, 'This item does not track prepared stock.');
+        }
+
+        if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+            return $item->fresh() ?? $item;
+        }
+
+        $item->refresh();
+        $newQty = (int) $item->stock_quantity + $delta;
+        if ($newQty < 0) {
+            abort(422, sprintf(
+                'Cannot remove %d — only %d on hand.',
+                abs($delta),
+                (int) $item->stock_quantity,
+            ));
+        }
+
+        $item->update(['stock_quantity' => $newQty]);
+        $item->refresh();
+
+        StockMovement::create([
+            'idempotency_key' => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'adjustment',
+            'quantity' => $delta,
+            'balance_after' => $item->stock_quantity,
+            'unit_cost' => (float) ($item->cost ?? 0),
+            'reference_type' => 'menu_item',
+            'reference_id' => $item->id,
+            'notes' => $notes ?? 'Manual prepared stock adjustment',
+        ]);
+
+        if ($delta < 0 && $item->stock_quantity <= ($item->low_stock_threshold ?? 0)) {
+            $this->triggerLowStockAlert($item);
+        }
+
+        return $item;
+    }
+
+    /**
+     * Manual POS/admin adjustment of variant prepared stock (variants.stock_qty).
+     */
+    public function adjustVariantPreparedStock(
+        Variant $variant,
+        int $delta,
+        int $userId,
+        string $idempotencyKey,
+        ?string $notes = null,
+    ): Variant {
+        if (!$variant->track_stock) {
+            abort(422, 'This variant does not track prepared stock.');
+        }
+
+        if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+            return $variant->fresh() ?? $variant;
+        }
+
+        $variant->refresh();
+        $newQty = (int) $variant->stock_qty + $delta;
+        if ($newQty < 0) {
+            abort(422, sprintf(
+                'Cannot remove %d — only %d on hand.',
+                abs($delta),
+                (int) $variant->stock_qty,
+            ));
+        }
+
+        $variant->update(['stock_qty' => $newQty]);
+        $variant->refresh();
+
+        StockMovement::create([
+            'idempotency_key' => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'adjustment',
+            'quantity' => $delta,
+            'balance_after' => $variant->stock_qty,
+            'unit_cost' => (float) ($variant->cost ?? 0),
+            'reference_type' => 'variant',
+            'reference_id' => $variant->id,
+            'notes' => $notes ?? 'Manual prepared stock adjustment',
+        ]);
+
+        if ($delta < 0 && $variant->stock_qty <= ($variant->low_stock_threshold ?? 0)) {
+            $this->triggerVariantLowStockAlert($variant);
+        }
+
+        return $variant;
     }
 
     /**

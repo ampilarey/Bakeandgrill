@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { adjustPreparedStock, fetchPreparedStock, type PreparedStockRow } from "../api";
 import type { useOps } from "../hooks/useOps";
 
 type OpsState = ReturnType<typeof useOps>;
-type Tab = "inventory" | "suppliers" | "reports" | "marketing";
+type Tab = "inventory" | "prepared" | "suppliers" | "reports" | "marketing";
 
 const C = {
   bg: "#F5F6F8",
@@ -22,6 +23,7 @@ const C = {
 
 type OpsPermissions = {
   inventory?: boolean;
+  preparedStock?: boolean;
   suppliers?: boolean;
   reports?: boolean;
   marketing?: boolean;
@@ -55,12 +57,14 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
   );
 
   const showInv = permissions ? !!permissions.inventory : true;
+  const showPrepared = permissions ? !!permissions.preparedStock : false;
   const showSup = permissions ? !!permissions.suppliers : true;
   const showRep = permissions ? !!permissions.reports : true;
   const showMkt = permissions ? !!permissions.marketing : true;
 
   const tabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
     ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
+    ...(showPrepared ? [{ id: "prepared" as Tab, label: "Menu stock", icon: "🥐" }] : []),
     ...(showSup ? [{ id: "suppliers" as Tab, label: "Suppliers", icon: "🏭" }] : []),
     ...(showRep ? [{ id: "reports" as Tab, label: "Reports", icon: "📊" }] : []),
     ...(showMkt ? [{ id: "marketing" as Tab, label: "Marketing", icon: "📣" }] : []),
@@ -122,11 +126,207 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
         display: "flex", flexDirection: "column", gap: 16,
       }}>
         {activeTab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} />}
+        {activeTab === "prepared"   && <PreparedStockTab setOpsMessage={ops.setOpsMessage} />}
         {activeTab === "suppliers"  && <SuppliersTab ops={ops} />}
         {activeTab === "reports"    && <ReportsTab ops={ops} />}
         {activeTab === "marketing"  && <MarketingTab ops={ops} />}
       </div>
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Prepared menu stock tab (croissants, batched items, tracked variants)
+// ────────────────────────────────────────────────────────────────────
+
+function PreparedStockTab({ setOpsMessage }: { setOpsMessage: (msg: string) => void }) {
+  const [rows, setRows] = useState<PreparedStockRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [lowOnly, setLowOnly] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedKey, setSelectedKey] = useState("");
+  const [delta, setDelta] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    fetchPreparedStock()
+      .then((res) => setRows(res.items ?? []))
+      .catch(() => setOpsMessage("Unable to load menu stock."))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const rowKey = (r: PreparedStockRow) => `${r.item_id}:${r.variant_id ?? "base"}`;
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (lowOnly && r.stock > r.low_stock_threshold) return false;
+      if (q && !r.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [rows, search, lowOnly]);
+
+  const selected = rows.find((r) => rowKey(r) === selectedKey) ?? null;
+
+  const handleSubmit = () => {
+    if (!selected) return;
+    const d = Number.parseInt(delta, 10);
+    if (!Number.isFinite(d) || d === 0) {
+      setOpsMessage("Enter a non-zero whole number (+ to add, − to remove).");
+      return;
+    }
+    setSaving(true);
+    adjustPreparedStock(selected.item_id, {
+      delta: d,
+      variant_id: selected.variant_id,
+      notes: notes.trim() || undefined,
+    })
+      .then((res) => {
+        setRows((prev) => prev.map((r) => (
+          rowKey(r) === rowKey(res.item) ? res.item : r
+        )));
+        setDelta("");
+        setNotes("");
+        setShowForm(false);
+        setOpsMessage(`Updated ${res.item.name} — now ${res.item.stock} on hand. Refresh menu to sync register.`);
+      })
+      .catch((e: Error) => setOpsMessage(e.message || "Unable to update menu stock."))
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <>
+      <Header
+        title="Menu stock"
+        subtitle="Add or remove ready-made menu counts (not raw ingredients)."
+        right={(
+          <PrimaryBtn onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "Close" : "Add / remove stock"}
+          </PrimaryBtn>
+        )}
+      />
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search menu items…"
+          style={{
+            flex: 1, padding: "10px 12px", borderRadius: 8,
+            border: `1px solid ${C.border2}`, fontSize: 13, background: "#fff",
+          }}
+        />
+        <button
+          onClick={() => setLowOnly((v) => !v)}
+          style={{
+            padding: "10px 14px", borderRadius: 8, cursor: "pointer",
+            background: lowOnly ? C.warn : "#fff", color: lowOnly ? "#fff" : C.muted,
+            border: `1px solid ${lowOnly ? C.warn : C.border2}`,
+            fontWeight: 700, fontSize: 12,
+          }}
+        >
+          Low only
+        </button>
+        <SecondaryBtn onClick={load}>Refresh</SecondaryBtn>
+      </div>
+
+      {showForm && (
+        <FormCard
+          title="Adjust menu stock"
+          help="Positive adds (e.g. baked 12 croissants). Negative removes. Applies to items with Track quantity enabled in Admin."
+          onCancel={() => setShowForm(false)}
+        >
+          <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+            <select
+              value={selectedKey}
+              onChange={(e) => setSelectedKey(e.target.value)}
+              style={fieldStyle}
+            >
+              <option value="">Select item…</option>
+              {rows.map((r) => (
+                <option key={rowKey(r)} value={rowKey(r)}>
+                  {r.name} ({r.stock} on hand)
+                </option>
+              ))}
+            </select>
+            <input
+              value={delta}
+              onChange={(e) => setDelta(e.target.value.replace(/[^\d-]/g, ""))}
+              placeholder="Change (+/-)"
+              inputMode="numeric"
+              style={fieldStyle}
+            />
+          </div>
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Notes (optional)"
+            style={{ ...fieldStyle, marginTop: 10 }}
+          />
+          <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+            <SecondaryBtn onClick={() => setShowForm(false)}>Cancel</SecondaryBtn>
+            <button
+              onClick={handleSubmit}
+              disabled={!selectedKey || saving}
+              style={{
+                padding: "10px 18px", borderRadius: 8, border: "none",
+                background: !selectedKey || saving ? "#CBD5E1" : C.success,
+                color: "#fff", fontWeight: 700, fontSize: 13,
+                cursor: !selectedKey || saving ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </FormCard>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {loading ? (
+          <p style={{ color: C.muted, fontSize: 13 }}>Loading…</p>
+        ) : filtered.length === 0 ? (
+          <p style={{ color: C.muted, fontSize: 13 }}>
+            {rows.length === 0
+              ? "No menu items track prepared quantity. Enable Track in Admin → Menu."
+              : "No matches."}
+          </p>
+        ) : (
+          filtered.map((r) => {
+            const low = r.stock <= r.low_stock_threshold;
+            const empty = r.stock <= 0;
+            return (
+              <div
+                key={rowKey(r)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 14px", borderRadius: 8,
+                  border: `1px solid ${empty ? C.danger : low ? C.warn : C.border}`,
+                  background: empty ? "#FEF2F2" : low ? "#FFFBEB" : "#fff",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{r.name}</div>
+                  {low && !empty && (
+                    <div style={{ fontSize: 11, color: C.warn, marginTop: 2 }}>Low stock</div>
+                  )}
+                  {empty && (
+                    <div style={{ fontSize: 11, color: C.danger, marginTop: 2 }}>Sold out</div>
+                  )}
+                </div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: C.text }}>
+                  {r.stock}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </>
   );
 }
 

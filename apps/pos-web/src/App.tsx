@@ -90,11 +90,12 @@ function App() {
   const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
   const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
   const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");
+  const canOpsPreparedStock = hasPosPermission(staffPermissions, "menu.prepared_stock");
   const canOpsSuppliers = hasPosPermission(staffPermissions, "suppliers.manage");
   const canOpsReports = hasPosPermission(staffPermissions, "reports.view");
   const canOpsMarketing = hasPosPermission(staffPermissions, "integrations.sms");
   const canUseCredit = hasPosPermission(staffPermissions, "payments.credit");
-  const canAccessOps = canOpsInventory || canOpsSuppliers || canOpsReports || canOpsMarketing;
+  const canAccessOps = canOpsInventory || canOpsPreparedStock || canOpsSuppliers || canOpsReports || canOpsMarketing;
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
@@ -1350,6 +1351,7 @@ function App() {
             {...ops}
             permissions={{
               inventory: canOpsInventory,
+              preparedStock: canOpsPreparedStock,
               suppliers: canOpsSuppliers,
               reports: canOpsReports,
               marketing: canOpsMarketing,

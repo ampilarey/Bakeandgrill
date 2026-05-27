@@ -156,6 +156,7 @@ final class PermissionCatalog
             ['group' => 'System', 'slug' => 'integrations.xero', 'name' => 'Xero (legacy)'],
             ['group' => 'Menu', 'slug' => 'menu.view', 'name' => 'View menu'],
             ['group' => 'Menu', 'slug' => 'menu.manage', 'name' => 'Manage menu'],
+            ['group' => 'Menu', 'slug' => 'menu.prepared_stock', 'name' => 'Adjust prepared menu stock at POS', 'description' => 'Add or remove ready-made menu item counts from the POS Operations panel'],
 
             // Finance & other admin (retained)
             ['group' => 'Finance', 'slug' => 'finance.view', 'name' => 'View finances'],

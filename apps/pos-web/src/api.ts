@@ -1226,6 +1226,28 @@ export async function adjustInventory(
   });
 }
 
+export type PreparedStockRow = {
+  item_id: number;
+  variant_id: number | null;
+  name: string;
+  stock: number;
+  low_stock_threshold: number;
+};
+
+export async function fetchPreparedStock(): Promise<{ items: PreparedStockRow[] }> {
+  return request("/prepared-stock");
+}
+
+export async function adjustPreparedStock(
+  itemId: number,
+  payload: { delta: number; variant_id?: number | null; notes?: string },
+): Promise<{ message: string; item: PreparedStockRow }> {
+  return request(`/items/${itemId}/prepared-stock/adjust`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchSuppliers(): Promise<{
   suppliers: { data: Array<{ id: number; name: string }> };
 }> {

@@ -261,6 +261,11 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::patch('/inventory/{id}', [InventoryController::class, 'update'])->middleware('permission:inventory.manage');
     Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust'])->middleware('permission:inventory.manage');
 
+    Route::middleware('permission:menu.prepared_stock')->group(function () {
+        Route::get('/prepared-stock', [App\Http\Controllers\Api\PreparedStockController::class, 'index']);
+        Route::post('/items/{id}/prepared-stock/adjust', [App\Http\Controllers\Api\PreparedStockController::class, 'adjust']);
+    });
+
     // Finance & Inventory Routes (invoices, expenses, reports, supplier intelligence,
     // purchase workflow, forecasting) — required HERE so static paths like
     // /suppliers/performance and /purchases/suggest are registered BEFORE the
