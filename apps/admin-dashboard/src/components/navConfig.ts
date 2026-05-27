@@ -44,7 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'KITCHEN',
     items: [
       { to: '/menu',                  icon: UtensilsCrossed, label: 'Menu Items',      permission: 'menu.view'            },
-      { to: '/specials',              icon: Tag,             label: 'Daily Specials',  permission: 'menu.manage'          },
+      { to: '/specials',              icon: Tag,             label: 'Item Discounts',  permission: 'menu.manage'          },
       { to: '/inventory',             icon: Boxes,           label: 'Inventory',       permission: 'inventory.manage'     },
       { to: '/purchase-orders',       icon: Package,         label: 'Purchase Orders', permission: 'suppliers.purchases'  },
       { to: '/supplier-intelligence', icon: Factory,         label: 'Suppliers',       permission: 'suppliers.view'       },

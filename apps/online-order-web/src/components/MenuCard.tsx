@@ -51,10 +51,16 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
       : null)
     : (special?.original_price != null ? Number(special.original_price) : null);
   const hasSale = originalPrice != null && originalPrice > displayPrice;
+  const onSale = hasSale || !!special;
+  const saleBadgeLabel = special?.badge_label
+    ?? (special?.discount_pct ? `${special.discount_pct}% OFF` : null)
+    ?? (hasSale && originalPrice && originalPrice > 0
+      ? `${Math.round((1 - displayPrice / originalPrice) * 100)}% OFF`
+      : null);
 
   return (
     <article
-      className={`menu-card-article${isUnavailable ? ' unavailable' : ''}`}
+      className={`menu-card-article${isUnavailable ? ' unavailable' : ''}${onSale ? ' menu-card-on-sale' : ''}`}
       style={{
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
@@ -83,6 +89,9 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         }}
         aria-label={isUnavailable ? undefined : `View details for ${item.name}`}
       >
+        {onSale && saleBadgeLabel && (
+          <div className="menu-card-sale-ribbon" aria-hidden="true">{saleBadgeLabel}</div>
+        )}
         {imgSrc ? (
           <img
             src={imgSrc}
@@ -122,11 +131,9 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
 
         {/* Badges */}
         {!isUnavailable && (
-          <div style={{ position: 'absolute', top: '0.625rem', left: '0.625rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-            {special && (
-              <span className="badge badge-combo" style={{ background: 'var(--color-primary)', color: '#fff' }}>
-                {special.badge_label ?? (special.discount_pct ? `${special.discount_pct}% OFF` : 'Special')}
-              </span>
+          <div style={{ position: 'absolute', top: '0.625rem', left: '0.625rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem', zIndex: 3 }}>
+            {onSale && saleBadgeLabel && (
+              <span className="badge badge-sale">{saleBadgeLabel}</span>
             )}
             {isCombo && <span className="badge badge-combo">Bundle</span>}
             {spice && <span className="badge badge-spicy">{spice.icon} {spice.label}</span>}
@@ -200,25 +207,21 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
             {showFromPrice ? (
               <>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>From MVR</span>
-                <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
+                <span className={onSale ? 'menu-card-price-sale' : undefined} style={onSale ? undefined : { fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
                   {displayPrice.toFixed(2)}
                 </span>
                 {hasSale && originalPrice != null && (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
-                    MVR {originalPrice.toFixed(2)}
-                  </span>
+                  <span className="menu-card-price-was">MVR {originalPrice.toFixed(2)}</span>
                 )}
               </>
             ) : (
               <>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>MVR</span>
-                <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
+                <span className={onSale ? 'menu-card-price-sale' : undefined} style={onSale ? undefined : { fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
                   {displayPrice.toFixed(2)}
                 </span>
                 {hasSale && originalPrice != null && (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
-                    MVR {originalPrice.toFixed(2)}
-                  </span>
+                  <span className="menu-card-price-was">MVR {originalPrice.toFixed(2)}</span>
                 )}
               </>
             )}

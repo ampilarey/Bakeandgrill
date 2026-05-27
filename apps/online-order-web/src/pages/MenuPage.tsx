@@ -22,6 +22,13 @@ import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 
+function isItemOnSale(item: Item): boolean {
+  if (item.special?.effective_price != null) return true;
+  return (item.variants ?? []).some(
+    (v) => v.is_active && v.effective_price != null && Number(v.effective_price) < Number(v.price),
+  );
+}
+
 export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
@@ -40,6 +47,7 @@ export function MenuPage() {
   const [activeSubId, setActiveSubId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
+  const [onSaleOnly, setOnSaleOnly] = useState(false);
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedQty, setSelectedQty] = useState(1);
@@ -206,10 +214,15 @@ export function MenuPage() {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
     }
+    if (onSaleOnly) {
+      list = list.filter(isItemOnSale);
+    }
     if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
     if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
-  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy]);
+  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy, onSaleOnly]);
+
+  const onSaleCount = useMemo(() => items.filter(isItemOnSale).length, [items]);
 
   // Item counts per category (for bottom sheet badges)
   const catItemCounts = useMemo(() => {
@@ -543,6 +556,28 @@ export function MenuPage() {
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
           </select>
+          {onSaleCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setOnSaleOnly((v) => !v)}
+              style={{
+                height: 'var(--input-height)',
+                padding: '0 1rem',
+                border: onSaleOnly ? '2px solid #dc2626' : '1.5px solid var(--color-border)',
+                borderRadius: 'var(--radius-lg)',
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                background: onSaleOnly ? 'linear-gradient(135deg, #dc2626, #ea580c)' : 'var(--color-surface)',
+                color: onSaleOnly ? '#fff' : '#dc2626',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+              aria-pressed={onSaleOnly}
+            >
+              {onSaleOnly ? 'Showing deals' : `Deals (${onSaleCount})`}
+            </button>
+          )}
         </div>
 
         {/* Category heading on desktop */}

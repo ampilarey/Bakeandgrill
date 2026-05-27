@@ -32,7 +32,7 @@ const BLANK: SpecialForm = {
 };
 
 export default function SpecialsPage() {
-  usePageTitle('Daily Specials');
+  usePageTitle('Item Discounts');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
 
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
@@ -87,6 +87,11 @@ export default function SpecialsPage() {
   const handleSave = async () => {
     if (!form.item_id) { setFormError('Select a menu item.'); return; }
     if (!form.start_date || !form.end_date) { setFormError('Start and end dates are required.'); return; }
+    const hasPctInput = form.discount_pct.trim() !== '';
+    const hasPriceInput = form.special_price.trim() !== '';
+    if (!hasPctInput && !hasPriceInput) {
+      setFormError('Enter a discount % or a special price.'); return;
+    }
     if (form.end_date < form.start_date) { setFormError('End date must be on or after start date.'); return; }
     const discountPct = form.discount_pct ? parseInt(form.discount_pct, 10) : undefined;
     if (discountPct !== undefined && (isNaN(discountPct) || discountPct < 0 || discountPct > 100)) {
@@ -151,7 +156,11 @@ export default function SpecialsPage() {
   return (
     <div>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader title="Daily Specials" action={<Btn onClick={openCreate}>+ Add Special</Btn>} />
+      <PageHeader title="Item Discounts" action={<Btn onClick={openCreate}>+ Add Discount</Btn>} />
+      <p style={{ margin: '-8px 0 20px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.55, maxWidth: 720 }}>
+        Schedule a <strong>discount %</strong> or fixed sale price on specific menu items for any date range.
+        Active discounts show on the order app menu (badge + sale price), POS, and optionally in Today&apos;s Specials on the homepage.
+      </p>
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -215,7 +224,7 @@ export default function SpecialsPage() {
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
 
       {modalOpen && (
-        <Modal title={editing ? 'Edit Special' : 'Add Special'} onClose={() => setModalOpen(false)} maxWidth={520}>
+        <Modal title={editing ? 'Edit Item Discount' : 'Add Item Discount'} onClose={() => setModalOpen(false)} maxWidth={520}>
           {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>

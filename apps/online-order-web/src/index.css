@@ -713,6 +713,54 @@ a { text-decoration: none; color: inherit; }
 .badge-spicy      { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
 .badge-mto        { background: rgba(22,163,74,0.1); color: #15803d; border: 1px solid rgba(22,163,74,0.2); }
 .badge-combo      { background: rgba(79,70,229,0.1); color: #4338ca; border: 1px solid rgba(79,70,229,0.2); }
+.badge-sale       {
+  background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+  color: #fff;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.55rem;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+}
+.menu-card-on-sale {
+  border-color: rgba(220,38,38,0.45) !important;
+  box-shadow: 0 4px 18px rgba(220,38,38,0.12);
+}
+.menu-card-on-sale:hover {
+  border-color: rgba(220,38,38,0.65) !important;
+  box-shadow: 0 12px 28px rgba(220,38,38,0.18);
+}
+.menu-card-sale-ribbon {
+  position: absolute;
+  top: 12px;
+  left: -32px;
+  width: 120px;
+  transform: rotate(-36deg);
+  background: linear-gradient(135deg, #dc2626, #ea580c);
+  color: #fff;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.menu-card-price-was {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  font-weight: 600;
+}
+.menu-card-price-sale {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #dc2626;
+}
 [data-theme="dark"] .badge-bestseller {
   background: rgba(251,191,36,0.14); color: #fcd34d; border-color: rgba(251,191,36,0.35);
 }

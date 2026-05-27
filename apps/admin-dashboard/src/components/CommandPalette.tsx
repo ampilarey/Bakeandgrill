@@ -42,7 +42,7 @@ const STATIC_LINKS: StaticLink[] = [
   { id: 's-purchases',   label: 'Purchase Orders',     icon: '🛒', sub: 'Supplier orders',       permission: 'suppliers.purchases' },
   { id: 's-tables',      label: 'Tables',              icon: '🪑', sub: 'Table management',      permission: 'orders.view' },
   { id: 's-reservations',label: 'Reservations',        icon: '📅', sub: 'Bookings',              permission: 'reservations.view' },
-  { id: 's-specials',    label: 'Daily Specials',      icon: '✨', sub: "Today's specials",      permission: 'menu.manage' },
+  { id: 's-specials',    label: 'Item Discounts',      icon: '✨', sub: 'Scheduled % off by item', permission: 'menu.manage' },
   { id: 's-refunds',     label: 'Refunds',             icon: '↩️', sub: 'Process refunds',       permission: 'orders.refund' },
   { id: 's-reviews',     label: 'Reviews',             icon: '⭐', sub: 'Customer reviews',      permission: 'customers.manage' },
   { id: 's-analytics',   label: 'Analytics',           icon: '📉', sub: 'Advanced analytics',    permission: 'customers.analytics' },
