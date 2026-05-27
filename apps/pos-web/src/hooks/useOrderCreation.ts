@@ -35,7 +35,7 @@ import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
 import type { PosDeliveryDetails, PosOrderType } from "../orderTypes";
-import { normalizeMvPhone, validateDeliveryDetails } from "../orderTypes";
+import { normalizeMvPhone, resolveDeliveryDetails, validateDeliveryDetails } from "../orderTypes";
 
 type OrderType = PosOrderType;
 
@@ -130,6 +130,8 @@ type Params = {
   payments: PaymentRow[];
   discountAmount: string;
   customerId: number | null;
+  /** Attached customer — used to prefill delivery contact when fields are blank. */
+  customerName: string | null;
   /** Captured at charge time so the post-charge banner can show
    *  "SMS sent to {phone}" / Resend without re-fetching the customer
    *  (the cart's attachedCustomer gets cleared right after settle). */
@@ -321,14 +323,17 @@ export function useOrderCreation(params: Params) {
     };
 
     if (params.orderType === "Delivery") {
-      const d = params.deliveryDetails ?? {
-        addressLine1: "",
-        addressLine2: "",
-        island: "Male",
-        contactName: "",
-        contactPhone: "",
-        notes: "",
-      };
+      const d = resolveDeliveryDetails(
+        params.deliveryDetails ?? {
+          addressLine1: "",
+          addressLine2: "",
+          island: "Male",
+          contactName: "",
+          contactPhone: "",
+          notes: "",
+        },
+        { name: params.customerName, phone: params.customerPhone },
+      );
       return {
         ...base,
         delivery_address_line1: d.addressLine1.trim(),
@@ -673,14 +678,17 @@ export function useOrderCreation(params: Params) {
         flashError("Delivery orders require an internet connection.");
         return false;
       }
-      const deliveryErr = validateDeliveryDetails(params.deliveryDetails ?? {
-        addressLine1: "",
-        addressLine2: "",
-        island: "",
-        contactName: "",
-        contactPhone: "",
-        notes: "",
-      });
+      const deliveryErr = validateDeliveryDetails(
+        params.deliveryDetails ?? {
+          addressLine1: "",
+          addressLine2: "",
+          island: "",
+          contactName: "",
+          contactPhone: "",
+          notes: "",
+        },
+        { name: params.customerName, phone: params.customerPhone },
+      );
       if (deliveryErr) {
         flashError(deliveryErr);
         return false;
@@ -908,14 +916,17 @@ export function useOrderCreation(params: Params) {
 
     if (params.orderType === "Delivery") {
       if (!params.isReachable) throw new Error("Delivery orders require an internet connection.");
-      const deliveryErr = validateDeliveryDetails(params.deliveryDetails ?? {
-        addressLine1: "",
-        addressLine2: "",
-        island: "",
-        contactName: "",
-        contactPhone: "",
-        notes: "",
-      });
+      const deliveryErr = validateDeliveryDetails(
+        params.deliveryDetails ?? {
+          addressLine1: "",
+          addressLine2: "",
+          island: "",
+          contactName: "",
+          contactPhone: "",
+          notes: "",
+        },
+        { name: params.customerName, phone: params.customerPhone },
+      );
       if (deliveryErr) throw new Error(deliveryErr);
     }
 

@@ -35,12 +35,34 @@ export function normalizeMvPhone(phone: string): string {
   return phone.trim();
 }
 
-export function validateDeliveryDetails(d: PosDeliveryDetails): string | null {
-  if (!d.addressLine1.trim()) return "Enter the delivery address.";
-  if (!d.island.trim()) return "Enter the delivery island/area.";
-  if (!d.contactName.trim()) return "Enter the contact name.";
-  if (!d.contactPhone.trim()) return "Enter the contact phone.";
-  const normalized = normalizeMvPhone(d.contactPhone);
+type DeliveryContactFallback = {
+  name?: string | null;
+  phone?: string | null;
+};
+
+/** Fill empty delivery contact fields from the attached customer record. */
+export function resolveDeliveryDetails(
+  d: PosDeliveryDetails,
+  customer?: DeliveryContactFallback | null,
+): PosDeliveryDetails {
+  if (!customer) return d;
+  return {
+    ...d,
+    contactName: d.contactName.trim() || customer.name?.trim() || "",
+    contactPhone: d.contactPhone.trim() || customer.phone?.trim() || "",
+  };
+}
+
+export function validateDeliveryDetails(
+  d: PosDeliveryDetails,
+  customer?: DeliveryContactFallback | null,
+): string | null {
+  const resolved = resolveDeliveryDetails(d, customer);
+  if (!resolved.addressLine1.trim()) return "Enter the delivery address.";
+  if (!resolved.island.trim()) return "Enter the delivery island/area.";
+  if (!resolved.contactName.trim()) return "Enter the contact name.";
+  if (!resolved.contactPhone.trim()) return "Enter the contact phone.";
+  const normalized = normalizeMvPhone(resolved.contactPhone);
   if (!/^(\+?960)?[379]\d{6}$/.test(normalized.replace(/\s/g, ""))) {
     return "Enter a valid 7-digit Maldivian mobile number.";
   }

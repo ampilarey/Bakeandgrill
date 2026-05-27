@@ -49,6 +49,7 @@ import {
   type PosOrderType,
   EMPTY_DELIVERY_DETAILS,
   estimateDeliveryFeeMvr,
+  resolveDeliveryDetails,
   validateDeliveryDetails,
 } from "./orderTypes";
 
@@ -247,6 +248,13 @@ function App() {
   const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap);
   const cart = useCart();
 
+  // When switching to Delivery (or attaching a customer mid-ticket),
+  // copy name/phone into the delivery contact fields if still blank.
+  useEffect(() => {
+    if (orderType !== "Delivery" || !cart.attachedCustomer) return;
+    setDeliveryDetails((prev) => resolveDeliveryDetails(prev, cart.attachedCustomer));
+  }, [orderType, cart.attachedCustomer?.id, cart.attachedCustomer?.name, cart.attachedCustomer?.phone]);
+
   const handleClearCart = useCallback(() => {
     cart.clearCart();
     setDeliveryDetails(EMPTY_DELIVERY_DETAILS);
@@ -416,6 +424,7 @@ function App() {
     payments:      cart.payments,
     discountAmount: cart.discountAmount,
     customerId:    cart.attachedCustomer?.id ?? null,
+    customerName:  cart.attachedCustomer?.name ?? null,
     customerPhone: cart.attachedCustomer?.phone ?? null,
     appliedPromoCode:     cart.appliedPromo?.code ?? null,
     appliedLoyaltyPoints: cart.appliedLoyalty?.points ?? null,
@@ -473,11 +482,7 @@ function App() {
   const handleAttachCustomer = useCallback(async (customer: PosCustomer) => {
     cart.setAttachedCustomer(customer);
     if (orderType === "Delivery") {
-      setDeliveryDetails((prev) => ({
-        ...prev,
-        contactName: prev.contactName.trim() || customer.name || "",
-        contactPhone: prev.contactPhone.trim() || customer.phone || "",
-      }));
+      setDeliveryDetails((prev) => resolveDeliveryDetails(prev, customer));
     }
     if (!order.resumedIsPaid || order.resumedOrderId == null) return;
     try {
@@ -1220,7 +1225,7 @@ function App() {
                     order.flashError("Delivery orders require an internet connection.");
                     return;
                   }
-                  const deliveryErr = validateDeliveryDetails(deliveryDetails);
+                  const deliveryErr = validateDeliveryDetails(deliveryDetails, cart.attachedCustomer);
                   if (deliveryErr) {
                     order.flashError(deliveryErr);
                     return;
@@ -1244,7 +1249,7 @@ function App() {
                     order.flashError("Delivery orders require an internet connection.");
                     return;
                   }
-                  const deliveryErr = validateDeliveryDetails(deliveryDetails);
+                  const deliveryErr = validateDeliveryDetails(deliveryDetails, cart.attachedCustomer);
                   if (deliveryErr) {
                     order.flashError(deliveryErr);
                     return;
