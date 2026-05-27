@@ -271,19 +271,13 @@ export function MenuGrid({
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       {/* Top bar: search + barcode form */}
-      <div style={{
-        background: C.panel, borderRadius: 12,
-        border: `1px solid ${C.border}`, padding: 10,
-        display: 'flex', alignItems: 'center', gap: 8,
-        boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
-        flexShrink: 0,
-      }}>
+      <div className="pos-menu-toolbar">
         <form
+          className="pos-menu-search-form"
           onSubmit={(e) => {
             if (barcode.trim()) { onBarcodeSubmit(e); return; }
             e.preventDefault();
           }}
-          style={{ flex: 1, display: 'flex', gap: 8 }}
         >
           <div style={{ position: 'relative', flex: 1 }}>
             <span style={{
@@ -336,6 +330,7 @@ export function MenuGrid({
         {onRefreshMenu && (
           <button
             type="button"
+            className="pos-menu-refresh-btn"
             onClick={() => onRefreshMenu()}
             disabled={isRefreshingMenu}
             title={lastRefreshedAt ? `Tap to refresh the menu` : 'Refresh menu now'}

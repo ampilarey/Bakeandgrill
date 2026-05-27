@@ -1017,33 +1017,25 @@ function App() {
       display: 'flex', flexDirection: 'column',
     }}>
       {/* ── Top bar ────────────────────────────────────────────────── */}
-      <header className="pos-topbar" style={{
-        background: '#FFFFFF', borderBottom: '1px solid #E2E8F0',
-        padding: '10px 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', gap: 12, flexShrink: 0,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <header className="pos-topbar">
+        <div className="pos-topbar-left">
           <button
             className="pos-header-btn"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-            style={{
-              width: 44, height: 44, borderRadius: 10,
-              background: '#F1F5F9', border: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', fontSize: 18,
-            }}>☰</button>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.1 }}>
+            style={{ fontSize: 18 }}
+          >☰</button>
+          <div className="pos-topbar-title-wrap">
+            <div className="pos-topbar-title">
               {paneTitle(pane)}
             </div>
-            <div className="pos-topbar-subtitle" style={{ fontSize: 11, color: '#64748B', lineHeight: 1.1, marginTop: 2 }}>
+            <div className="pos-topbar-subtitle">
               {cashierName || 'Cashier'} · {deviceId}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="pos-topbar-right">
           {/* Sales chip — quick at-a-glance shift KPI */}
           {shift.summary && (
             <span className="pos-topbar-chip" style={{
@@ -1054,12 +1046,13 @@ function App() {
             </span>
           )}
 
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-            background: isReachable ? '#DCFCE7' : '#FEE2E2',
-            color: isReachable ? '#15803D' : '#B91C1C',
-          }}>
+          <span
+            className="pos-status-pill"
+            style={{
+              background: isReachable ? '#DCFCE7' : '#FEE2E2',
+              color: isReachable ? '#15803D' : '#B91C1C',
+            }}
+          >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: isReachable ? '#22C55E' : '#EF4444' }} />
             {isReachable ? 'Online' : 'Offline'}
           </span>
@@ -1075,16 +1068,11 @@ function App() {
               re-open. Cmd/Ctrl+L also triggers this. */}
           {canLockScreen && (
           <button
-            className="pos-header-btn"
+            className="pos-header-btn pos-header-btn--lock"
             onClick={lockScreen}
             aria-label="Lock screen"
             title="Lock screen (Ctrl/Cmd+L)"
-            style={{
-              width: 44, height: 44, borderRadius: 10,
-              background: '#F1F5F9', border: '1px solid #E2E8F0',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', fontSize: 15,
-            }}
+            style={{ fontSize: 15 }}
           >🔒</button>
           )}
 
@@ -1107,10 +1095,7 @@ function App() {
       </header>
 
       {!isReachable && (
-        <div style={{
-          padding: "10px 16px", background: "#FEF3C7", color: "#92400E",
-          borderBottom: "1px solid #FDE68A", fontSize: 13, fontWeight: 600,
-        }}>
+        <div className="pos-offline-banner">
           Offline mode — cash, card, and transfer only (manual). Orders sync when internet returns.
           {menu.usingCachedMenu ? " Showing cached menu." : ""}
         </div>
@@ -1133,10 +1118,7 @@ function App() {
       />
 
       {deviceBlockedMessage && (
-        <div style={{
-          padding: "10px 16px", background: "#FEF2F2", color: "#991B1B",
-          borderBottom: "1px solid #FECACA", fontSize: 13, fontWeight: 600,
-        }}>
+        <div className="pos-device-blocked-banner">
           {deviceBlockedMessage}
         </div>
       )}

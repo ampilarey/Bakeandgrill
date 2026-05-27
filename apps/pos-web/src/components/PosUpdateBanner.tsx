@@ -27,20 +27,9 @@ export function PosUpdateBanner({
 
   return (
     <div
+      className="pos-update-banner"
       role="status"
       aria-live="polite"
-      style={{
-        margin: "0 12px",
-        padding: "10px 14px",
-        borderRadius: 10,
-        background: "#EFF6FF",
-        border: "1px solid #BFDBFE",
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: 10,
-        flexShrink: 0,
-      }}
     >
       <div style={{ flex: "1 1 200px", minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: 13, color: "#1E3A8A" }}>
