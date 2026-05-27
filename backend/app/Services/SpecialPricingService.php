@@ -35,25 +35,39 @@ class SpecialPricingService
         }
 
         /** @var Collection<int, DailySpecial> $map */
-        $map = Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, function () {
-            $with = ['item:id,name,base_price,has_variants,image_url'];
-            if (Schema::hasTable('daily_special_variants')) {
-                $with[] = 'variantOverrides';
-            }
-
-            return DailySpecial::query()
-                ->where('is_active', true)
-                ->where('start_date', '<=', today())
-                ->where('end_date', '>=', today())
-                ->with($with)
-                ->get()
-                ->filter(fn (DailySpecial $s) => $s->isCurrentlyActive())
-                ->keyBy('item_id');
-        });
+        try {
+            $map = Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, fn () => $this->loadActiveSpecialsMap());
+        } catch (\Throwable) {
+            $map = $this->loadActiveSpecialsMap();
+        }
 
         $this->activeByItemId = $map;
 
         return $map;
+    }
+
+    /** @return Collection<int, DailySpecial> */
+    private function loadActiveSpecialsMap(): Collection
+    {
+        $with = ['item:id,name,base_price,has_variants,image_url'];
+        if (Schema::hasTable('daily_special_variants')) {
+            $with[] = 'variantOverrides';
+        }
+
+        return DailySpecial::query()
+            ->where('is_active', true)
+            ->where('start_date', '<=', today())
+            ->where('end_date', '>=', today())
+            ->with($with)
+            ->get()
+            ->filter(function (DailySpecial $s) {
+                try {
+                    return $s->isCurrentlyActive();
+                } catch (\Throwable) {
+                    return false;
+                }
+            })
+            ->keyBy('item_id');
     }
 
     public function resolveUnitPrice(int $itemId, float $catalogPrice, ?Item $item = null, ?int $variantId = null): SpecialPriceResult

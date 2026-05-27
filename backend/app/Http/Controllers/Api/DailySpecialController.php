@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -24,7 +25,8 @@ class DailySpecialController extends Controller
     public function active(): JsonResponse
     {
         $specials = collect($this->pricing->activeSpecialsList())
-            ->map(fn (DailySpecial $s) => $this->format($s))
+            ->map(fn (DailySpecial $s) => $this->safeFormat($s))
+            ->filter()
             ->values();
 
         return response()->json(['specials' => $specials]);
@@ -39,7 +41,10 @@ class DailySpecialController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'data' => collect($specials->items())->map(fn ($s) => $this->format($s)),
+            'data' => collect($specials->items())
+                ->map(fn (DailySpecial $s) => $this->safeFormat($s))
+                ->filter()
+                ->values(),
             'meta' => ['current_page' => $specials->currentPage(), 'last_page' => $specials->lastPage(), 'total' => $specials->total()],
         ]);
     }
@@ -48,7 +53,7 @@ class DailySpecialController extends Controller
     {
         $special = DailySpecial::with($this->adminRelations())->findOrFail($id);
 
-        return response()->json(['special' => $this->format($special)]);
+        return response()->json(['special' => $this->safeFormat($special)]);
     }
 
     public function store(Request $request): JsonResponse
@@ -327,13 +332,27 @@ class DailySpecialController extends Controller
         }
     }
 
+    private function safeFormat(DailySpecial $s): ?array
+    {
+        try {
+            return $this->format($s);
+        } catch (\Throwable $e) {
+            Log::error('Failed to format daily special', [
+                'daily_special_id' => $s->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     private function format(DailySpecial $s): array
     {
         $item = $s->item;
         $basePrice = $item ? (float) $item->base_price : null;
         $effective = $basePrice !== null ? $s->getEffectivePriceFor($basePrice) : null;
         $variantOverrides = $s->relationLoaded('variantOverrides')
-            ? $s->variantOverrides->map(function (DailySpecialVariant $vo) use ($s, $item) {
+            ? $s->variantOverrides->map(function ($vo) use ($s, $item) {
                 $variant = $vo->variant;
                 $catalog = $variant ? (float) $variant->price : null;
 
@@ -342,9 +361,9 @@ class DailySpecialController extends Controller
                     'variant_name' => $variant?->name,
                     'catalog_price' => $catalog,
                     'discount_pct' => $vo->discount_pct,
-                    'special_price' => $vo->special_price,
+                    'special_price' => $vo->special_price !== null ? (float) $vo->special_price : null,
                     'effective_price' => $catalog !== null
-                        ? $this->pricing->effectivePriceForSpecial($s, $catalog, $item, $vo->variant_id)
+                        ? $this->pricing->effectivePriceForSpecial($s, $catalog, $item, (int) $vo->variant_id)
                         : null,
                 ];
             })->values()->all()
@@ -373,14 +392,35 @@ class DailySpecialController extends Controller
             'original_price' => $basePrice,
             'variant_overrides' => $variantOverrides,
             'description' => $s->description,
-            'start_date' => $s->start_date->toDateString(),
-            'end_date' => $s->end_date->toDateString(),
+            'start_date' => $s->start_date?->toDateString() ?? (string) $s->getRawOriginal('start_date'),
+            'end_date' => $s->end_date?->toDateString() ?? (string) $s->getRawOriginal('end_date'),
             'start_time' => $s->start_time,
             'end_time' => $s->end_time,
-            'days_of_week' => $s->days_of_week,
-            'is_active' => $s->is_active,
+            'days_of_week' => $this->safeDaysOfWeek($s),
+            'is_active' => (bool) $s->is_active,
             'sold_count' => $s->sold_count,
             'max_quantity' => $s->max_quantity,
         ];
+    }
+
+    /** @return list<int>|null */
+    private function safeDaysOfWeek(DailySpecial $s): ?array
+    {
+        $raw = $s->getRawOriginal('days_of_week');
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        if (is_array($raw)) {
+            return $raw;
+        }
+
+        if (!is_string($raw)) {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? array_values(array_map('intval', $decoded)) : null;
     }
 }

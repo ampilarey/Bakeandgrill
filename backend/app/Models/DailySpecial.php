@@ -40,6 +40,10 @@ class DailySpecial extends Model
 
     public function isCurrentlyActive(): bool
     {
+        if (!$this->start_date || !$this->end_date) {
+            return false;
+        }
+
         $now = Carbon::now();
         $date = $now->toDateString();
         $time = $now->format('H:i:s');
