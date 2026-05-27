@@ -720,7 +720,7 @@ Route::middleware(['auth:sanctum', 'permission:menu.manage'])->group(function ()
 Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class, 'active']);
 
 // Admin: CRUD
-Route::middleware(['auth:sanctum', 'permission:menu.manage'])->prefix('admin/specials')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->prefix('admin/specials')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\DailySpecialController::class, 'index']);
     Route::get('/{id}', [App\Http\Controllers\Api\DailySpecialController::class, 'show']);
     Route::post('/', [App\Http\Controllers\Api\DailySpecialController::class, 'store']);

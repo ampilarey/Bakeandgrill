@@ -9,6 +9,7 @@ use App\Models\DailySpecialVariant;
 use App\Models\Item;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class SpecialPricingService
 {
@@ -35,14 +36,16 @@ class SpecialPricingService
 
         /** @var Collection<int, DailySpecial> $map */
         $map = Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, function () {
+            $with = ['item:id,name,base_price,has_variants,image_url'];
+            if (Schema::hasTable('daily_special_variants')) {
+                $with[] = 'variantOverrides';
+            }
+
             return DailySpecial::query()
                 ->where('is_active', true)
                 ->where('start_date', '<=', today())
                 ->where('end_date', '>=', today())
-                ->with([
-                    'item:id,name,base_price,has_variants,image_url',
-                    'variantOverrides',
-                ])
+                ->with($with)
                 ->get()
                 ->filter(fn (DailySpecial $s) => $s->isCurrentlyActive())
                 ->keyBy('item_id');
@@ -115,6 +118,10 @@ class SpecialPricingService
 
     private function findVariantOverride(DailySpecial $special, int $variantId): ?DailySpecialVariant
     {
+        if (!Schema::hasTable('daily_special_variants')) {
+            return null;
+        }
+
         if ($special->relationLoaded('variantOverrides')) {
             return $special->variantOverrides->firstWhere('variant_id', $variantId);
         }

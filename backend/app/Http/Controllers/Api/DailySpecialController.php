@@ -113,9 +113,7 @@ class DailySpecialController extends Controller
     /** @return list<string> */
     private function adminRelations(): array
     {
-        $with = ['item:id,name,base_price,has_variants,image_url'];
-
-        return array_merge($with, $this->variantOverrideRelations());
+        return array_merge(['item'], $this->variantOverrideRelations());
     }
 
     /** @return list<string> */

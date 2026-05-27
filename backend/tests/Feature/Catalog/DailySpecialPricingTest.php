@@ -11,6 +11,7 @@ use App\Models\DailySpecialVariant;
 use App\Models\Variant;
 use App\Services\SpecialPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -472,5 +473,46 @@ class DailySpecialPricingTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['item_id', 'conflicting_special_id'])
             ->assertJsonPath('errors.conflicting_special_id.0', (string) $existing->id);
+    }
+
+    public function test_admin_index_lists_specials(): void
+    {
+        $owner = $this->makeOwner();
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00, 'has_variants' => true]);
+        $variant = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Large',
+            'price' => 10.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $special = $this->createSpecial(['item_id' => $item->id, 'discount_pct' => 15]);
+        DailySpecialVariant::create([
+            'daily_special_id' => $special->id,
+            'variant_id' => $variant->id,
+            'discount_pct' => 50,
+        ]);
+
+        $this->getJson('/api/admin/specials', $this->staffHeaders($owner))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.item_id', $item->id)
+            ->assertJsonPath('data.0.variant_overrides.0.discount_pct', 50);
+    }
+
+    public function test_admin_index_works_without_variant_table(): void
+    {
+        Schema::dropIfExists('daily_special_variants');
+
+        $owner = $this->makeOwner();
+        $item = $this->makeItem();
+        $this->createSpecial(['item_id' => $item->id, 'discount_pct' => 10]);
+
+        $this->getJson('/api/admin/specials', $this->staffHeaders($owner))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+
+        $this->getJson('/api/specials')
+            ->assertOk();
     }
 }
