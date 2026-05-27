@@ -169,6 +169,16 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
     else nameRef.current?.focus();
   }, [open, mode]);
 
+  // On phones the cart panel is height-capped — scroll the picker into
+  // view when it opens so the numpad and Save button aren't clipped.
+  useEffect(() => {
+    if (!open) return;
+    const id = window.requestAnimationFrame(() => {
+      wrapRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [open]);
+
   // ── Handlers ───────────────────────────────────────────────────────
   const reset = () => {
     setPhone("");
@@ -258,6 +268,7 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
   return (
     <div
       ref={wrapRef}
+      className="pos-customer-picker pos-customer-picker-open"
       style={{
         marginBottom: 10,
         background: "#FFFFFF",
@@ -379,7 +390,9 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
             • Phone looks valid but no match → "Save as new" CTA
        */}
       {(loading || loadingRecents || results.length > 0 || recents.length > 0 || showCreate || (query.length >= 2 && !loading)) && (
-        <div style={{
+        <div
+          className="pos-customer-picker-results"
+          style={{
           borderTop: `1px solid ${C.border}`,
           background: C.bg,
           // Doubled from 260 → 420 so the 50-row customer list is

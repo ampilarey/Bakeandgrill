@@ -186,6 +186,16 @@ html, body, #root {
 .pos-charge {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+.pos-cart-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.pos-cart-footer {
+  flex-shrink: 0;
+}
 
 /* Buttons / inputs get a brand focus ring instead of the default ugly
  * blue outline. Cashiers on touch don't see this, but admin users
@@ -233,8 +243,15 @@ html, body, #root {
   .pos-cart {
     order: 2 !important;
     width: 100% !important;
-    max-height: 42vh;
+    max-height: 48vh;
     flex-shrink: 0 !important;
+  }
+  /* Customer picker needs numpad + list — give the cart more room. */
+  .pos-cart:has(.pos-customer-picker-open) {
+    max-height: min(72vh, calc(100dvh - 112px));
+  }
+  .pos-customer-picker-results {
+    max-height: min(200px, 30vh) !important;
   }
   /* Larger tap targets on the highest-frequency phone controls. */
   .pos-category-pill {

@@ -363,8 +363,9 @@ export function OrderCart(p: Props) {
         </div>
       )}
 
+      <div className="pos-cart-body">
       {/* ── Top: ticket header + order type pills ─────────────────── */}
-      <div style={{ padding: 14, borderBottom: `1px solid ${C.border}` }}>
+      <div className="pos-cart-header" style={{ padding: 14, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>
             {isResumed ? `Order ${orderLabel}` : 'New Order'}
@@ -545,12 +546,12 @@ export function OrderCart(p: Props) {
       </div>
 
       {/* ── Cart lines ───────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '2px 0' }}>
+      <div className="pos-cart-lines" style={{ padding: '2px 0' }}>
         {p.cartItems.length === 0 ? (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', padding: '40px 20px', color: C.subtle,
-            textAlign: 'center', height: '100%',
+            textAlign: 'center', minHeight: 120,
           }}>
             <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.5 }}>🛒</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.muted }}>No items in ticket</div>
@@ -570,6 +571,7 @@ export function OrderCart(p: Props) {
             />
           ))
         )}
+      </div>
       </div>
 
       {recentlyRemoved && (
@@ -612,7 +614,7 @@ export function OrderCart(p: Props) {
       )}
 
       {/* ── Totals + payments + actions ──────────────────────────── */}
-      <div style={{ borderTop: `1px solid ${C.border}`, padding: 14, background: C.bg }}>
+      <div className="pos-cart-footer" style={{ borderTop: `1px solid ${C.border}`, padding: 14, background: C.bg }}>
         {/* Subtotal / discount / tax breakdown.
             We render this whenever there's a discount OR tax (the most
             common case is GST/TGST on every item, so 99% of tickets land
