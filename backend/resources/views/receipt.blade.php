@@ -31,6 +31,7 @@
     $typeLabel = $typeLabels[$order->type ?? ''] ?? str_replace('_', ' ', (string) ($order->type ?? ''));
     $statusLabel = $statusLabels[$order->status ?? ''] ?? str_replace('_', ' ', (string) ($order->status ?? ''));
     $discount = (float) ($order->discount_amount ?? 0);
+    $deliveryFee = (float) ($order->delivery_fee ?? 0);
     $refunds = $order->refunds ?? collect();
     $refundedTotal = (float) $refunds->sum('amount');
     $isFullyRefunded = $refundedTotal > 0.0001 && in_array($order->status ?? '', ['refunded'], true);
@@ -82,6 +83,7 @@
             <div class="doc-meta-row"><span>Placed</span><span>{{ optional($order->created_at)->timezone($tz)->format('D, j M Y g:i A') }}</span></div>
         </div>
 
+        <div class="doc-table-scroll">
         <table class="doc-table">
             <thead>
                 <tr>
@@ -111,9 +113,13 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
 
         <div class="doc-totals">
             <p><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></p>
+            @if ($deliveryFee > 0.0001)
+                <p><span>Delivery fee</span><span>MVR {{ number_format($deliveryFee, 2) }}</span></p>
+            @endif
             @if ((float) $order->tax_amount > 0.0001)
                 <p><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></p>
             @endif

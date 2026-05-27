@@ -46,7 +46,7 @@
             <div class="doc-meta-row"><span>Placed</span><span>{{ optional($order->created_at)->timezone(config('app.timezone', 'Indian/Maldives'))->format('D, j M Y g:i A') }}</span></div>
         </div>
 
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div class="doc-table-scroll">
             <table class="doc-table">
                 <thead>
                     <tr>
@@ -139,6 +139,10 @@
     .doc-terms-label a {
         color: var(--amber);
         text-decoration: underline;
+    }
+    .doc-terms-label span {
+        min-width: 0;
+        overflow-wrap: anywhere;
     }
     .doc-pay-btn {
         width: 100%;

@@ -58,6 +58,7 @@
         @endif
     </div>
 
+    <div class="doc-table-scroll">
     <table class="doc-table">
         <thead>
             <tr><th>Item</th><th class="qty">Qty</th><th class="amount">MVR</th></tr>
@@ -72,6 +73,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 
     <div class="doc-meta" style="margin-top:1rem;">
         @if ($order->subtotal !== null)

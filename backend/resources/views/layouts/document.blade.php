@@ -63,6 +63,8 @@
             line-height: 1.6;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            max-width: 100%;
         }
         a { color: inherit; text-decoration: none; }
         .doc-header {
@@ -92,6 +94,13 @@
             font-weight: 800;
             color: var(--dark);
             letter-spacing: -0.02em;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .doc-brand span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .doc-brand img { width: 38px; height: 38px; border-radius: 9px; object-fit: cover; }
         .doc-header-links { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
@@ -113,6 +122,8 @@
         .doc-main {
             margin: 0 auto;
             padding: 1.25rem 1rem 1.5rem;
+            width: 100%;
+            min-width: 0;
         }
         .doc-card {
             background: var(--surface);
@@ -120,8 +131,10 @@
             border-radius: 16px;
             padding: 0;
             box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);
+            max-width: 100%;
+            min-width: 0;
         }
-        .doc-card-body { padding: 1.25rem 1.125rem 1.5rem; }
+        .doc-card-body { padding: 1.25rem 1.125rem 1.5rem; min-width: 0; }
         .doc-masthead {
             background: linear-gradient(135deg, #1C1408 0%, #2a1a0a 100%);
             color: #fff;
@@ -210,11 +223,18 @@
         .doc-banner--warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
         .doc-banner--ok { background: var(--success-bg); border: 1px solid #86efac; color: var(--success-text); }
         .doc-meta { display: grid; gap: 0.5rem; margin-bottom: 1.125rem; font-size: 0.9rem; }
-        .doc-meta-row { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
-        .doc-meta-row span:first-child { color: var(--muted); font-weight: 600; }
+        .doc-meta-row { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: baseline; }
+        .doc-meta-row span:first-child { color: var(--muted); font-weight: 600; flex-shrink: 0; }
+        .doc-meta-row span:last-child { text-align: right; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
         .doc-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; margin: 1rem 0; font-size: 0.9rem; }
         @media (max-width: 540px) { .doc-meta-grid { grid-template-columns: 1fr; } }
-        .doc-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
+        .doc-table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
+            margin-top: 0.5rem;
+        }
+        .doc-table { width: 100%; min-width: 260px; border-collapse: collapse; font-size: 0.9rem; margin-top: 0; }
         .doc-table th {
             text-align: left;
             color: var(--amber);
@@ -228,18 +248,22 @@
         }
         .doc-table th:first-child { padding-left: 0; border-radius: 6px 0 0 0; }
         .doc-table th:last-child { padding-right: 0; border-radius: 0 6px 0 0; }
-        .doc-table td { padding: 0.625rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .doc-table td { padding: 0.625rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-word; }
         .doc-table tbody tr:nth-child(even) td { background: rgba(254, 243, 232, 0.35); }
         .doc-table .qty { text-align: center; width: 2.5rem; color: var(--muted); font-weight: 600; }
         .doc-table .amount { text-align: right; font-weight: 700; white-space: nowrap; }
-        .doc-mods { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+        .doc-mods { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; overflow-wrap: anywhere; }
         .doc-totals { margin-top: 1rem; padding-top: 0.75rem; border-top: 2px solid var(--border); }
-        .doc-totals p { display: flex; justify-content: space-between; margin: 0.35rem 0; font-size: 0.95rem; }
+        .doc-totals p { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; margin: 0.35rem 0; font-size: 0.95rem; }
+        .doc-totals p span:first-child { min-width: 0; flex: 1 1 auto; }
+        .doc-totals p span:last-child { flex-shrink: 0; white-space: nowrap; text-align: right; }
         .doc-totals .grand { font-size: 1.15rem; font-weight: 800; color: var(--amber); margin-top: 0.625rem; }
         .doc-payments { margin-top: 0.875rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); }
         .doc-payments h3 { margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-        .doc-pay-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.25rem 0; }
+        .doc-pay-row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.9rem; padding: 0.25rem 0; }
+        .doc-pay-row span:last-child { flex-shrink: 0; white-space: nowrap; }
         .doc-actions { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 1.25rem; }
+        .doc-actions .doc-btn { flex: 1 1 8rem; min-width: 0; }
         .doc-btn {
             display: inline-flex;
             align-items: center;
@@ -299,6 +323,18 @@
             font-size: 0.85rem;
         }
         .doc-footer strong { color: var(--text); }
+        @media (max-width: 540px) {
+            .doc-header-inner { padding: 0.625rem 0.875rem; gap: 0.625rem; }
+            .doc-brand { font-size: 1rem; }
+            .doc-brand img { width: 32px; height: 32px; }
+            .doc-header-links { flex-shrink: 0; }
+            .doc-link { padding: 0.4rem 0.65rem; font-size: 0.8125rem; }
+            .doc-main { padding: 0.875rem 0.75rem 1.25rem; }
+            .doc-card-body { padding: 1rem 0.875rem 1.25rem; }
+            .doc-title { font-size: 1.2rem; }
+            .doc-masthead { padding: 1rem; }
+            .doc-masthead-number { font-size: 0.95rem; overflow-wrap: anywhere; }
+        }
         @media print {
             .doc-header, .doc-footer, .doc-header-links, .doc-actions, .doc-feedback, .doc-alert { display: none !important; }
             body { background: #fff; }
@@ -326,7 +362,7 @@
         }
     </style>
     @endverbatim
-    <style>.doc-main { max-width: {{ $docWidth }}; }</style>
+    <style>.doc-main { max-width: min({{ $docWidth }}, calc(100vw - 1.5rem)); }</style>
     @stack('head')
 </head>
 <body>

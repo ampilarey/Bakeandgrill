@@ -938,7 +938,10 @@ textarea.field-input {
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-xl);
   font-size: 0.9375rem;
+  min-width: 0;
+  max-width: 100%;
 }
+.banner > div { min-width: 0; flex: 1 1 auto; }
 .banner-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid rgba(22,163,74,0.2); }
 .banner-error   { background: var(--color-error-bg);   color: var(--color-error); border: 1px solid rgba(220,38,38,0.2); }
 .banner-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid rgba(202,138,4,0.2); }
@@ -946,8 +949,8 @@ textarea.field-input {
 [data-theme="dark"] .banner-error   { border-color: rgba(248,113,113,0.25); }
 [data-theme="dark"] .banner-warning { border-color: rgba(250,204,21,0.25); }
 .banner-icon    { font-size: 1.375rem; flex-shrink: 0; line-height: 1; margin-top: 2px; }
-.banner-title   { font-weight: 700; margin-bottom: 2px; }
-.banner-sub     { opacity: 0.85; font-size: 0.875rem; }
+.banner-title   { font-weight: 700; margin-bottom: 2px; overflow-wrap: anywhere; }
+.banner-sub     { opacity: 0.85; font-size: 0.875rem; overflow-wrap: anywhere; }
 
 /* ════════════════════════════════════════════════════════════
    CATEGORY PILLS (MENU)
