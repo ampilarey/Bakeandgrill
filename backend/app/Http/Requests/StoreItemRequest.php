@@ -70,6 +70,7 @@ class StoreItemRequest extends FormRequest
             'variants.*.sku' => 'nullable|string|max:100',
             'variants.*.track_stock' => 'nullable|boolean',
             'variants.*.stock_qty' => 'nullable|integer|min:0',
+            'variants.*.low_stock_threshold' => 'nullable|integer|min:0',
             'variants.*.is_active' => 'nullable|boolean',
             'variants.*.sort_order' => 'nullable|integer',
         ];

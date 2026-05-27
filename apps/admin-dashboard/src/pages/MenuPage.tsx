@@ -225,7 +225,7 @@ type ItemForm = {
 };
 
 function emptyVariantRow(): VariantRow {
-  return { _key: String(Date.now() + Math.random()), name: '', price: 0, cost: null, sku: null, track_stock: false, stock_qty: 0, is_active: true, sort_order: 0 };
+  return { _key: String(Date.now() + Math.random()), name: '', price: 0, cost: null, sku: null, track_stock: false, stock_qty: 0, low_stock_threshold: 5, is_active: true, sort_order: 0 };
 }
 
 function channelsFromItem(item: MenuItem): Record<string, boolean> {
@@ -570,6 +570,7 @@ function VariantsEditor({
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Cost</th>
                 <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 90 }}>SKU</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Stock</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Alert at</th>
                 <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Track</th>
                 <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Active</th>
                 <th style={{ paddingBottom: 6, minWidth: 30 }} />
@@ -617,6 +618,16 @@ function VariantsEditor({
                       value={row.stock_qty ?? 0}
                       onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
                       disabled={!row.track_stock}
+                      style={{ width: 52, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="1"
+                      value={row.low_stock_threshold ?? 5}
+                      onChange={(e) => update(row._key, 'low_stock_threshold', parseInt(e.target.value) || 0)}
+                      disabled={!row.track_stock}
+                      title="Low-stock alert threshold"
                       style={{ width: 52, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
                     />
                   </td>

@@ -39,6 +39,7 @@ class VariantSyncService
                 'barcode' => $data['barcode'] ?? null,
                 'track_stock' => (bool) ($data['track_stock'] ?? false),
                 'stock_qty' => (int) ($data['stock_qty'] ?? 0),
+                'low_stock_threshold' => (int) ($data['low_stock_threshold'] ?? 5),
                 'is_active' => isset($data['is_active']) ? (bool) $data['is_active'] : true,
                 'sort_order' => $data['sort_order'] ?? $i,
             ];

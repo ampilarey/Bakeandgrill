@@ -144,6 +144,7 @@ class ItemController extends Controller
                         'sku' => $v->sku,
                         'track_stock' => $v->track_stock,
                         'stock_qty' => $v->stock_qty,
+                        'low_stock_threshold' => $v->low_stock_threshold,
                         'is_active' => $v->is_active,
                         'sort_order' => $v->sort_order,
                     ] : [

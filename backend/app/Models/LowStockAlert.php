@@ -11,6 +11,7 @@ class LowStockAlert extends Model
 {
     protected $fillable = [
         'item_id',
+        'variant_id',
         'stock_level',
         'threshold',
         'alert_type',
@@ -22,6 +23,7 @@ class LowStockAlert extends Model
 
     protected $casts = [
         'item_id' => 'integer',
+        'variant_id' => 'integer',
         'stock_level' => 'integer',
         'threshold' => 'integer',
         'recipients' => 'array',
@@ -32,6 +34,11 @@ class LowStockAlert extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(Variant::class);
     }
 
     /**

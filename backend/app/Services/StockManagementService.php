@@ -314,6 +314,82 @@ class StockManagementService
             'reference_id' => $variant->id,
             'notes' => "Order #{$orderId} — variant stock deduction",
         ]);
+
+        if ($variant->stock_qty <= ($variant->low_stock_threshold ?? 0)) {
+            $this->triggerVariantLowStockAlert($variant);
+        }
+    }
+
+    /**
+     * Trigger low stock alert for a menu variant.
+     */
+    public function triggerVariantLowStockAlert(Variant $variant): void
+    {
+        $variant->loadMissing('item');
+        $item = $variant->item;
+        if ($item === null) {
+            return;
+        }
+
+        $label = $item->name . ' — ' . $variant->name;
+
+        event(new LowStockReached(new LowStockReachedData(
+            itemId: $item->id,
+            itemName: $label,
+            currentStock: (float) $variant->stock_qty,
+            threshold: (float) ($variant->low_stock_threshold ?? 0),
+        )));
+
+        $recentAlert = LowStockAlert::where('item_id', $item->id)
+            ->where('variant_id', $variant->id)
+            ->where('sent', true)
+            ->where('created_at', '>=', now()->subHours(24))
+            ->first();
+
+        if ($recentAlert) {
+            return;
+        }
+
+        $recipients = User::whereHas('role', function ($q) {
+            $q->whereIn('slug', ['owner', 'manager']);
+        })->where('is_active', true)->get();
+
+        $message = "LOW STOCK ALERT: {$label} is running low. Current stock: {$variant->stock_qty}. Threshold: {$variant->low_stock_threshold}.";
+
+        $alert = LowStockAlert::create([
+            'item_id' => $item->id,
+            'variant_id' => $variant->id,
+            'stock_level' => $variant->stock_qty,
+            'threshold' => $variant->low_stock_threshold ?? 0,
+            'alert_type' => 'sms',
+            'recipients' => $recipients->pluck('id')->toArray(),
+            'message' => $message,
+            'sent' => false,
+        ]);
+
+        $smsService = app(SmsService::class);
+        foreach ($recipients as $user) {
+            if ($user->phone) {
+                try {
+                    $smsService->send(new \App\Domains\Notifications\DTOs\SmsMessage(
+                        to: $user->phone,
+                        message: $message,
+                        type: 'transactional',
+                    ));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send variant low stock SMS', [
+                        'user' => $user->id,
+                        'variant' => $variant->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        $alert->update([
+            'sent' => true,
+            'sent_at' => now(),
+        ]);
     }
 
     /**

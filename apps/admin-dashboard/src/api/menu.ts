@@ -36,6 +36,7 @@ export type MenuVariant = {
   sku?: string | null;
   track_stock?: boolean;
   stock_qty?: number;
+  low_stock_threshold?: number;
   is_active: boolean;
   sort_order?: number;
 };

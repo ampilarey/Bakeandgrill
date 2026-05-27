@@ -17,6 +17,7 @@ class Variant extends Model
         'cost',
         'track_stock',
         'stock_qty',
+        'low_stock_threshold',
         'sku',
         'barcode',
         'is_active',
@@ -30,6 +31,7 @@ class Variant extends Model
         'cost' => 'decimal:2',
         'track_stock' => 'boolean',
         'stock_qty' => 'integer',
+        'low_stock_threshold' => 'integer',
         'is_active' => 'boolean',
     ];
 
