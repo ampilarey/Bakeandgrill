@@ -162,7 +162,7 @@ class ItemController extends Controller
                         ];
 
                         if ($includeAvailability) {
-                            $variantPricing = $specialPricing->resolveUnitPrice($item->id, (float) $v->price, $item);
+                            $variantPricing = $specialPricing->resolveUnitPrice($item->id, (float) $v->price, $item, $v->id);
                             if ($variantPricing->hasDiscount()) {
                                 $variantRow['original_price'] = $variantPricing->originalPrice;
                                 $variantRow['effective_price'] = $variantPricing->unitPrice;

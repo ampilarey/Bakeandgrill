@@ -7,7 +7,9 @@ namespace Tests\Feature\Catalog;
 use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\DailySpecial;
+use App\Models\DailySpecialVariant;
 use App\Models\Variant;
+use App\Services\SpecialPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -307,5 +309,99 @@ class DailySpecialPricingTest extends TestCase
         $this->assertNotNull($found);
         $this->assertArrayHasKey('special', $found);
         $this->assertEqualsWithDelta(30.00, (float) $found['special']['effective_price'], 0.01);
+    }
+
+    public function test_per_variant_discount_pct_on_order(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00, 'has_variants' => true]);
+        $small = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Small',
+            'price' => 40.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $large = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Large',
+            'price' => 60.00,
+            'is_active' => true,
+            'sort_order' => 2,
+        ]);
+        $special = $this->createSpecial(['item_id' => $item->id]);
+        DailySpecialVariant::create([
+            'daily_special_id' => $special->id,
+            'variant_id' => $small->id,
+            'discount_pct' => 20,
+        ]);
+        DailySpecialVariant::create([
+            'daily_special_id' => $special->id,
+            'variant_id' => $large->id,
+            'discount_pct' => 10,
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+
+        $smallResponse = $this->createCustomerOrder($item->id, $small->id)->assertCreated();
+        $this->assertEqualsWithDelta(32.00, (float) $smallResponse->json('order.items.0.unit_price'), 0.01);
+
+        $largeResponse = $this->createCustomerOrder($item->id, $large->id)->assertCreated();
+        $this->assertEqualsWithDelta(54.00, (float) $largeResponse->json('order.items.0.unit_price'), 0.01);
+    }
+
+    public function test_admin_can_create_special_with_variant_overrides(): void
+    {
+        $owner = $this->makeOwner();
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00, 'has_variants' => true]);
+        $variant = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Regular',
+            'price' => 50.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->postJson('/api/admin/specials', [
+            'item_id' => $item->id,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->addDays(7)->toDateString(),
+            'is_active' => true,
+            'variant_overrides' => [
+                ['variant_id' => $variant->id, 'discount_pct' => 15],
+            ],
+        ], $this->staffHeaders($owner))
+            ->assertStatus(201)
+            ->assertJsonPath('special.variant_overrides.0.variant_id', $variant->id)
+            ->assertJsonPath('special.variant_overrides.0.discount_pct', 15);
+
+        $this->assertDatabaseHas('daily_special_variants', [
+            'variant_id' => $variant->id,
+            'discount_pct' => 15,
+        ]);
+    }
+
+    public function test_items_api_applies_per_variant_effective_price(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00, 'has_variants' => true]);
+        $variant = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Large',
+            'price' => 50.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $special = $this->createSpecial(['item_id' => $item->id, 'discount_pct' => 10]);
+        DailySpecialVariant::create([
+            'daily_special_id' => $special->id,
+            'variant_id' => $variant->id,
+            'discount_pct' => 25,
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+
+        $response = $this->getJson('/api/items?available_only=1')->assertOk();
+        $found = collect($response->json('data'))->firstWhere('id', $item->id);
+        $variantRow = collect($found['variants'])->firstWhere('id', $variant->id);
+
+        $this->assertEqualsWithDelta(37.50, (float) $variantRow['effective_price'], 0.01);
+        $this->assertEqualsWithDelta(50.00, (float) $variantRow['original_price'], 0.01);
     }
 }

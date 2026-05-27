@@ -259,6 +259,15 @@ export async function deleteItemPhoto(itemId: number, photoId: number): Promise<
 
 // ── Daily Specials ─────────────────────────────────────────────────────────────
 
+export interface DailySpecialVariantOverride {
+  variant_id: number;
+  variant_name: string | null;
+  catalog_price: number | null;
+  discount_pct: number | null;
+  special_price: number | null;
+  effective_price: number | null;
+}
+
 export interface DailySpecial {
   id: number;
   item_id: number;
@@ -269,6 +278,7 @@ export interface DailySpecial {
   discount_pct: number | null;
   effective_price: number | null;
   original_price: number | null;
+  variant_overrides?: DailySpecialVariantOverride[];
   description: string | null;
   start_date: string;
   end_date: string;
@@ -280,17 +290,25 @@ export interface DailySpecial {
   max_quantity: number | null;
 }
 
+export type DailySpecialPayload = Partial<Omit<DailySpecial, 'id' | 'variant_overrides' | 'item_name' | 'item_image' | 'effective_price' | 'original_price'>> & {
+  variant_overrides?: Array<{
+    variant_id: number;
+    discount_pct?: number;
+    special_price?: number;
+  }>;
+};
+
 export async function fetchSpecials(params?: { page?: number }): Promise<{ data: DailySpecial[]; meta: { current_page: number; last_page: number; total: number } }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
   return req(`/admin/specials?${qs}`);
 }
 
-export async function createSpecial(data: Partial<DailySpecial>): Promise<{ special: DailySpecial }> {
+export async function createSpecial(data: DailySpecialPayload): Promise<{ special: DailySpecial }> {
   return req('/admin/specials', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updateSpecial(id: number, data: Partial<DailySpecial>): Promise<{ special: DailySpecial }> {
+export async function updateSpecial(id: number, data: DailySpecialPayload): Promise<{ special: DailySpecial }> {
   return req(`/admin/specials/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 

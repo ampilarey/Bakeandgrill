@@ -375,7 +375,7 @@ class OrderCreationService
             $clientUnitPrice = isset($itemPayload['unit_price']) ? (float) $itemPayload['unit_price'] : null;
 
             if ($isOnlineOrder || $clientUnitPrice === null) {
-                $pricing = $this->specialPricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel);
+                $pricing = $this->specialPricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel, $variantId);
                 $unitPrice = $pricing->unitPrice;
                 $originalUnitPrice = $pricing->hasDiscount() ? $pricing->originalPrice : null;
                 $dailySpecialId = $pricing->dailySpecialId;

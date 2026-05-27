@@ -7,6 +7,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DailySpecial extends Model
 {
@@ -30,6 +31,11 @@ class DailySpecial extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function variantOverrides(): HasMany
+    {
+        return $this->hasMany(DailySpecialVariant::class);
     }
 
     public function isCurrentlyActive(): bool

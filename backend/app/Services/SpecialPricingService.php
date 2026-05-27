@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\DailySpecial;
+use App\Models\DailySpecialVariant;
 use App\Models\Item;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -38,7 +39,10 @@ class SpecialPricingService
                 ->where('is_active', true)
                 ->where('start_date', '<=', today())
                 ->where('end_date', '>=', today())
-                ->with('item:id,name,base_price,has_variants,image_url')
+                ->with([
+                    'item:id,name,base_price,has_variants,image_url',
+                    'variantOverrides',
+                ])
                 ->get()
                 ->filter(fn (DailySpecial $s) => $s->isCurrentlyActive())
                 ->keyBy('item_id');
@@ -49,7 +53,7 @@ class SpecialPricingService
         return $map;
     }
 
-    public function resolveUnitPrice(int $itemId, float $catalogPrice, ?Item $item = null): SpecialPriceResult
+    public function resolveUnitPrice(int $itemId, float $catalogPrice, ?Item $item = null, ?int $variantId = null): SpecialPriceResult
     {
         $special = $this->activeSpecialsByItemId()->get($itemId);
 
@@ -58,12 +62,13 @@ class SpecialPricingService
         }
 
         $original = $catalogPrice;
-        $effective = $this->effectivePriceForSpecial($special, $catalogPrice, $item);
+        $effective = $this->effectivePriceForSpecial($special, $catalogPrice, $item, $variantId);
 
-        $pct = $special->discount_pct;
-        if ($pct === null && $original > 0 && $effective < $original) {
-            $pct = (int) round((1 - ($effective / $original)) * 100);
+        if ($effective >= $original) {
+            return new SpecialPriceResult($catalogPrice, $catalogPrice);
         }
+
+        $pct = $this->resolveDiscountPct($special, $original, $effective, $variantId);
 
         return new SpecialPriceResult(
             unitPrice: $effective,
@@ -74,8 +79,20 @@ class SpecialPricingService
         );
     }
 
-    public function effectivePriceForSpecial(DailySpecial $special, float $catalogPrice, ?Item $item = null): float
+    public function effectivePriceForSpecial(DailySpecial $special, float $catalogPrice, ?Item $item = null, ?int $variantId = null): float
     {
+        if ($variantId !== null) {
+            $override = $this->findVariantOverride($special, $variantId);
+            if ($override) {
+                if ($override->discount_pct) {
+                    return round($catalogPrice * (1 - $override->discount_pct / 100), 2);
+                }
+                if ($override->special_price !== null) {
+                    return (float) $override->special_price;
+                }
+            }
+        }
+
         if ($special->discount_pct) {
             return round($catalogPrice * (1 - $special->discount_pct / 100), 2);
         }
@@ -94,5 +111,34 @@ class SpecialPricingService
     public function activeSpecialsList(): array
     {
         return $this->activeSpecialsByItemId()->values()->all();
+    }
+
+    private function findVariantOverride(DailySpecial $special, int $variantId): ?DailySpecialVariant
+    {
+        if ($special->relationLoaded('variantOverrides')) {
+            return $special->variantOverrides->firstWhere('variant_id', $variantId);
+        }
+
+        return $special->variantOverrides()->where('variant_id', $variantId)->first();
+    }
+
+    private function resolveDiscountPct(DailySpecial $special, float $original, float $effective, ?int $variantId): ?int
+    {
+        if ($variantId !== null) {
+            $override = $this->findVariantOverride($special, $variantId);
+            if ($override?->discount_pct) {
+                return $override->discount_pct;
+            }
+        }
+
+        if ($special->discount_pct) {
+            return $special->discount_pct;
+        }
+
+        if ($original > 0 && $effective < $original) {
+            return (int) round((1 - ($effective / $original)) * 100);
+        }
+
+        return null;
     }
 }

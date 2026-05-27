@@ -3,16 +3,19 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
-import { fetchSpecials, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type MenuItem } from '../api';
+import { fetchSpecials, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type MenuItem, type MenuVariant } from '../api';
 import { Pencil, Trash2 } from 'lucide-react';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+type VariantOverrideForm = Record<number, { discount_pct: string; special_price: string }>;
 
 type SpecialForm = {
   item_id: number | '';
   badge_label: string;
   special_price: string;
   discount_pct: string;
+  variant_overrides: VariantOverrideForm;
   start_date: string;
   end_date: string;
   start_time: string;
@@ -32,7 +35,29 @@ function isPctDiscount(s: DailySpecial): boolean {
 }
 
 function isFixedSpecial(s: DailySpecial): boolean {
-  return s.special_price != null && !isPctDiscount(s);
+  return s.special_price != null && !isPctDiscount(s) && !(s.variant_overrides?.length);
+}
+
+function hasVariantOverrides(s: DailySpecial): boolean {
+  return (s.variant_overrides?.length ?? 0) > 0;
+}
+
+function blankVariantOverrides(item: MenuItem | undefined): VariantOverrideForm {
+  if (!item?.variants?.length) return {};
+  return Object.fromEntries(
+    item.variants.filter((v): v is MenuVariant & { id: number } => v.id != null).map(v => [v.id, { discount_pct: '', special_price: '' }]),
+  );
+}
+
+function variantOverridesFromSpecial(s: DailySpecial, item: MenuItem | undefined): VariantOverrideForm {
+  const base = blankVariantOverrides(item);
+  for (const vo of s.variant_overrides ?? []) {
+    base[vo.variant_id] = {
+      discount_pct: vo.discount_pct != null ? String(vo.discount_pct) : '',
+      special_price: vo.special_price != null ? String(vo.special_price) : '',
+    };
+  }
+  return base;
 }
 
 function isActiveNow(s: DailySpecial, todayStr: string): boolean {
@@ -40,7 +65,7 @@ function isActiveNow(s: DailySpecial, todayStr: string): boolean {
 }
 
 const BLANK: SpecialForm = {
-  item_id: '', badge_label: '', special_price: '', discount_pct: '',
+  item_id: '', badge_label: '', special_price: '', discount_pct: '', variant_overrides: {},
   start_date: today(), end_date: today(), start_time: '', end_time: '',
   days_of_week: [], max_quantity: '', description: '', is_active: true,
 };
@@ -81,12 +106,14 @@ export default function SpecialsPage() {
   };
 
   const openEdit = (s: DailySpecial) => {
+    const item = items.find(i => i.id === s.item_id);
     setEditing(s);
     setForm({
       item_id: s.item_id,
       badge_label: s.badge_label ?? '',
       special_price: s.special_price != null ? String(s.special_price) : '',
       discount_pct: s.discount_pct != null ? String(s.discount_pct) : '',
+      variant_overrides: variantOverridesFromSpecial(s, item),
       start_date: s.start_date,
       end_date: s.end_date,
       start_time: s.start_time ?? '',
@@ -99,13 +126,55 @@ export default function SpecialsPage() {
     setFormError(''); setModalOpen(true);
   };
 
+  const selectedItem = items.find(i => i.id === form.item_id);
+  const hasVariants = Boolean(selectedItem?.has_variants && selectedItem.variants?.length);
+
+  const setItemId = (itemId: number | '') => {
+    const item = items.find(i => i.id === itemId);
+    setForm(f => ({
+      ...f,
+      item_id: itemId,
+      variant_overrides: blankVariantOverrides(item),
+      special_price: item?.has_variants ? '' : f.special_price,
+    }));
+  };
+
+  const setVariantField = (variantId: number, field: 'discount_pct' | 'special_price', value: string) => {
+    setForm(f => ({
+      ...f,
+      variant_overrides: {
+        ...f.variant_overrides,
+        [variantId]: {
+          discount_pct: field === 'discount_pct' ? value : (f.variant_overrides[variantId]?.discount_pct ?? ''),
+          special_price: field === 'special_price' ? value : (f.variant_overrides[variantId]?.special_price ?? ''),
+        },
+      },
+    }));
+  };
+
   const handleSave = async () => {
     if (!form.item_id) { setFormError('Select a menu item.'); return; }
     if (!form.start_date || !form.end_date) { setFormError('Start and end dates are required.'); return; }
     const hasPctInput = form.discount_pct.trim() !== '';
     const hasPriceInput = form.special_price.trim() !== '';
-    if (!hasPctInput && !hasPriceInput) {
-      setFormError('Enter a discount % or a special price.'); return;
+    const variantRows = Object.entries(form.variant_overrides)
+      .map(([variantId, row]) => ({ variant_id: Number(variantId), ...row }))
+      .filter(row => row.discount_pct.trim() !== '' || row.special_price.trim() !== '');
+    if (!hasPctInput && !hasPriceInput && variantRows.length === 0) {
+      setFormError('Enter an item-level discount, or set pricing on at least one variant.'); return;
+    }
+    for (const row of variantRows) {
+      if (row.discount_pct.trim() !== '' && row.special_price.trim() !== '') {
+        setFormError('Each variant can use either discount % or special price, not both.'); return;
+      }
+      const pct = row.discount_pct ? parseInt(row.discount_pct, 10) : undefined;
+      if (pct !== undefined && (isNaN(pct) || pct < 1 || pct > 100)) {
+        setFormError('Variant discount % must be between 1 and 100.'); return;
+      }
+      const price = row.special_price ? parseFloat(row.special_price) : undefined;
+      if (price !== undefined && (isNaN(price) || price < 0)) {
+        setFormError('Variant special price must be a valid positive number.'); return;
+      }
     }
     if (form.end_date < form.start_date) { setFormError('End date must be on or after start date.'); return; }
     const discountPct = form.discount_pct ? parseInt(form.discount_pct, 10) : undefined;
@@ -125,8 +194,13 @@ export default function SpecialsPage() {
       const payload = {
         item_id: Number(form.item_id),
         badge_label: form.badge_label || undefined,
-        special_price: specialPrice,
+        special_price: hasVariants ? undefined : specialPrice,
         discount_pct: discountPct,
+        variant_overrides: variantRows.map(row => ({
+          variant_id: row.variant_id,
+          discount_pct: row.discount_pct ? parseInt(row.discount_pct, 10) : undefined,
+          special_price: row.special_price ? parseFloat(row.special_price) : undefined,
+        })),
         start_date: form.start_date,
         end_date: form.end_date,
         start_time: form.start_time || undefined,
@@ -249,8 +323,8 @@ export default function SpecialsPage() {
                   {s.item_name}
                 </td>
                 <td style={TD}>
-                  <Badge color={isPctDiscount(s) ? 'orange' : 'blue'}>
-                    {isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
+                  <Badge color={hasVariantOverrides(s) ? 'purple' : isPctDiscount(s) ? 'orange' : 'blue'}>
+                    {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
                   </Badge>
                 </td>
                 <td style={TD}><Badge color="orange">{s.badge_label}</Badge></td>
@@ -283,17 +357,18 @@ export default function SpecialsPage() {
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
 
       {modalOpen && (
-        <Modal title={editing ? 'Edit Item Discount' : 'Add Item Discount'} onClose={() => setModalOpen(false)} maxWidth={520}>
+        <Modal title={editing ? 'Edit Item Discount' : 'Add Item Discount'} onClose={() => setModalOpen(false)} maxWidth={hasVariants ? 640 : 520}>
           {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Menu Item *</span>
-              <select value={form.item_id} onChange={e => setForm(f => ({ ...f, item_id: Number(e.target.value) }))}
+              <select value={form.item_id} onChange={e => setItemId(e.target.value ? Number(e.target.value) : '')}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}>
                 <option value="">Select item…</option>
                 {items.map(item => <option key={item.id} value={item.id}>{item.name} (MVR {parseFloat(String(item.base_price)).toFixed(2)})</option>)}
               </select>
             </label>
+            {!hasVariants ? (
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Special Price (MVR)</span>
@@ -304,8 +379,50 @@ export default function SpecialsPage() {
                 <Input type="number" min="1" max="100" placeholder="e.g. 20" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
               </label>
             </div>
+            ) : (
+            <>
+              <label>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Default discount % (all variants)</span>
+                <Input type="number" min="1" max="100" placeholder="Optional — applies to variants without their own %" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
+              </label>
+              <div style={{ border: '1px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid #E8E0D8' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Per-variant pricing</span>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>Set a different discount % or fixed price for each size/option.</p>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Variant', 'Catalog', 'Discount %', 'Special price'].map(h => (
+                        <th key={h} style={{ ...TH, fontSize: 11, padding: '8px 10px' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(selectedItem?.variants ?? []).filter((v): v is MenuVariant & { id: number } => v.id != null).map(v => {
+                      const row = form.variant_overrides[v.id] ?? { discount_pct: '', special_price: '' };
+                      return (
+                        <tr key={v.id}>
+                          <td style={{ ...TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
+                          <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
+                          <td style={{ ...TD, padding: '6px 8px' }}>
+                            <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val)} />
+                          </td>
+                          <td style={{ ...TD, padding: '6px 8px' }}>
+                            <Input type="number" min="0" step="0.01" placeholder="MVR" value={row.special_price} onChange={val => setVariantField(v.id, 'special_price', val)} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+            )}
             <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
-              Use either a fixed special price or a discount %. For items with sizes, prefer % off — the discount applies to each variant price.
+              {hasVariants
+                ? 'Use the default % for all variants, or set per-variant pricing below. Variant rows override the default.'
+                : 'Use either a fixed special price or a discount %.'}
             </p>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Badge Label</span>
