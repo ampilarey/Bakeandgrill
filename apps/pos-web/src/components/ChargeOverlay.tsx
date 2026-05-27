@@ -261,13 +261,13 @@ export function ChargeOverlay({
           gap: 0,
         }}>
           {/* LEFT: total + change */}
-          <div style={{
+          <div className="pos-charge-summary" style={{
             padding: 24, display: "flex", flexDirection: "column",
             justifyContent: "center", alignItems: "stretch", background: "#0F172A",
             color: "#fff",
           }}>
             {showBreakdown && (
-              <div style={{
+              <div className="pos-charge-breakdown" style={{
                 marginBottom: 18, padding: "10px 14px", borderRadius: 10,
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.08)",
@@ -286,21 +286,21 @@ export function ChargeOverlay({
                 )}
               </div>
             )}
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 600,
+            <p className="pos-charge-due-label" style={{ margin: 0, fontSize: 12, fontWeight: 600,
               textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
               Amount due
             </p>
-            <p style={{ margin: "8px 0 0", fontSize: 48, fontWeight: 800, letterSpacing: "-0.02em" }}>
+            <p className="pos-charge-due-value" style={{ margin: "8px 0 0", fontSize: 48, fontWeight: 800, letterSpacing: "-0.02em" }}>
               MVR {total.toFixed(2)}
             </p>
 
             {method === "cash" && (
               <>
-                <p style={{ margin: "28px 0 0", fontSize: 12, fontWeight: 600,
+                <p className="pos-charge-change-label" style={{ margin: "28px 0 0", fontSize: 12, fontWeight: 600,
                   textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
                   Change due
                 </p>
-                <p style={{
+                <p className="pos-charge-change-value" style={{
                   margin: "8px 0 0", fontSize: 40, fontWeight: 800,
                   color: change > 0 ? "#FCD34D" : "#fff",
                 }}>
