@@ -404,4 +404,50 @@ class DailySpecialPricingTest extends TestCase
         $this->assertEqualsWithDelta(37.50, (float) $variantRow['effective_price'], 0.01);
         $this->assertEqualsWithDelta(50.00, (float) $variantRow['original_price'], 0.01);
     }
+
+    public function test_admin_can_update_special_with_variant_overrides(): void
+    {
+        $owner = $this->makeOwner();
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00, 'has_variants' => true]);
+        $small = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Small',
+            'price' => 40.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $large = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Large',
+            'price' => 60.00,
+            'is_active' => true,
+            'sort_order' => 2,
+        ]);
+        $special = DailySpecial::create([
+            'item_id' => $item->id,
+            'discount_pct' => 10,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->addDays(7)->toDateString(),
+            'is_active' => true,
+        ]);
+
+        $this->patchJson("/api/admin/specials/{$special->id}", [
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->addDays(7)->toDateString(),
+            'is_active' => true,
+            'variant_overrides' => [
+                ['variant_id' => $small->id, 'discount_pct' => 20],
+                ['variant_id' => $large->id, 'discount_pct' => 5],
+            ],
+        ], $this->staffHeaders($owner))
+            ->assertOk()
+            ->assertJsonPath('special.variant_overrides.0.discount_pct', 20)
+            ->assertJsonPath('special.discount_pct', null);
+
+        $this->assertDatabaseHas('daily_special_variants', [
+            'daily_special_id' => $special->id,
+            'variant_id' => $small->id,
+            'discount_pct' => 20,
+        ]);
+    }
 }

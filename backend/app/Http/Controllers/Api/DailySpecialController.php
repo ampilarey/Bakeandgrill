@@ -11,6 +11,7 @@ use App\Services\SpecialPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class DailySpecialController extends Controller
@@ -32,7 +33,12 @@ class DailySpecialController extends Controller
 
     public function index(): JsonResponse
     {
-        $specials = DailySpecial::with(['item:id,name,base_price', 'variantOverrides.variant:id,name,price'])
+        $with = ['item:id,name,base_price'];
+        if (Schema::hasTable('daily_special_variants')) {
+            $with[] = 'variantOverrides.variant:id,name,price';
+        }
+
+        $specials = DailySpecial::with($with)
             ->orderByDesc('start_date')
             ->paginate(20);
 
@@ -44,7 +50,9 @@ class DailySpecialController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->assertVariantOverridesTableExists();
         [$validated, $variantOverrides] = $this->validateSpecialPayload($request, true);
+        $this->applyVariantItemPricingDefaults($request, $validated, $variantOverrides);
         $this->assertNoPricingConflict($validated, $variantOverrides);
         $this->assertNoOverlappingSpecial($validated);
 
@@ -57,8 +65,12 @@ class DailySpecialController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
-        $special = DailySpecial::findOrFail($id);
+        $this->assertVariantOverridesTableExists();
+        $special = DailySpecial::with('variantOverrides')->findOrFail($id);
         [$validated, $variantOverrides] = $this->validateSpecialPayload($request, false, $request->has('variant_overrides'));
+        if ($request->has('variant_overrides')) {
+            $this->applyVariantItemPricingDefaults($request, $validated, $variantOverrides);
+        }
         $merged = array_merge($special->only([
             'item_id', 'special_price', 'discount_pct', 'start_date', 'end_date', 'is_active',
         ]), $validated);
@@ -188,6 +200,39 @@ class DailySpecialController extends Controller
                 ]);
             }
         }
+    }
+
+    /** @param array<string, mixed> $validated @param list<array{variant_id: int, discount_pct: int|null, special_price: float|null}> $variantOverrides */
+    private function applyVariantItemPricingDefaults(Request $request, array &$validated, array $variantOverrides): void
+    {
+        $itemId = (int) ($validated['item_id'] ?? DailySpecial::find($request->route('id'))?->item_id ?? 0);
+        if (!$itemId) {
+            return;
+        }
+
+        $item = Item::query()->find($itemId);
+        if (!$item?->has_variants) {
+            return;
+        }
+
+        if (!$request->has('special_price')) {
+            $validated['special_price'] = null;
+        }
+
+        if ($variantOverrides !== [] && !$request->has('discount_pct')) {
+            $validated['discount_pct'] = null;
+        }
+    }
+
+    private function assertVariantOverridesTableExists(): void
+    {
+        if (Schema::hasTable('daily_special_variants')) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'variant_overrides' => ['Variant discounts require a database update. Run php artisan migrate on the server, then try again.'],
+        ]);
     }
 
     /** @param array<string, mixed> $data @param list<array{variant_id: int, discount_pct: int|null, special_price: float|null}> $variantOverrides */
