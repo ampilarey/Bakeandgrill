@@ -25,6 +25,20 @@ type SpecialForm = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+type ListFilter = 'all' | 'active' | 'discount' | 'special' | 'inactive';
+
+function isPctDiscount(s: DailySpecial): boolean {
+  return s.discount_pct != null && s.discount_pct > 0;
+}
+
+function isFixedSpecial(s: DailySpecial): boolean {
+  return s.special_price != null && !isPctDiscount(s);
+}
+
+function isActiveNow(s: DailySpecial, todayStr: string): boolean {
+  return s.is_active && s.start_date <= todayStr && s.end_date >= todayStr;
+}
+
 const BLANK: SpecialForm = {
   item_id: '', badge_label: '', special_price: '', discount_pct: '',
   start_date: today(), end_date: today(), start_time: '', end_time: '',
@@ -47,6 +61,7 @@ export default function SpecialsPage() {
   const [form, setForm] = useState<SpecialForm>(BLANK);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [listFilter, setListFilter] = useState<ListFilter>('all');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -151,7 +166,23 @@ export default function SpecialsPage() {
   };
 
   const todayStr = today();
-  const activeCount = specials.filter(s => s.is_active && s.start_date <= todayStr && s.end_date >= todayStr).length;
+  const activeCount = specials.filter(s => isActiveNow(s, todayStr)).length;
+
+  const filteredSpecials = specials.filter((s) => {
+    if (listFilter === 'active') return isActiveNow(s, todayStr);
+    if (listFilter === 'discount') return isPctDiscount(s);
+    if (listFilter === 'special') return isFixedSpecial(s);
+    if (listFilter === 'inactive') return !s.is_active;
+    return true;
+  });
+
+  const filterPills: { id: ListFilter; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'active', label: 'Active now' },
+    { id: 'discount', label: '% Discount' },
+    { id: 'special', label: 'Fixed price' },
+    { id: 'inactive', label: 'Inactive' },
+  ];
 
   return (
     <div>
@@ -174,25 +205,53 @@ export default function SpecialsPage() {
         </div>
       </div>
 
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {filterPills.map((pill) => (
+          <button
+            key={pill.id}
+            type="button"
+            onClick={() => setListFilter(pill.id)}
+            style={{
+              padding: '8px 14px',
+              borderRadius: 999,
+              border: listFilter === pill.id ? '2px solid #D4813A' : '1px solid #E8E0D8',
+              background: listFilter === pill.id ? '#FEF3E8' : '#fff',
+              color: listFilter === pill.id ? '#9A3412' : '#6B5D4F',
+              fontSize: 13,
+              fontWeight: listFilter === pill.id ? 700 : 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {pill.label}
+          </button>
+        ))}
+      </div>
+
       <TableCard>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Item', 'Badge', 'Price', 'Dates', 'Days', 'Status', 'Sold', 'Actions'].map(h => (
+              {['Item', 'Type', 'Badge', 'Price', 'Dates', 'Days', 'Status', 'Sold', 'Actions'].map(h => (
                 <th key={h} style={TH}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
-            ) : specials.length === 0 ? (
-              <tr><td colSpan={8}><EmptyState message="No specials yet. Add one to get started." /></td></tr>
-            ) : specials.map(s => (
+              <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+            ) : filteredSpecials.length === 0 ? (
+              <tr><td colSpan={9}><EmptyState message={specials.length === 0 ? 'No discounts yet. Add one to get started.' : 'No discounts match this filter.'} /></td></tr>
+            ) : filteredSpecials.map(s => (
               <tr key={s.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>
                   {s.item_image && <img src={s.item_image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}
                   {s.item_name}
+                </td>
+                <td style={TD}>
+                  <Badge color={isPctDiscount(s) ? 'orange' : 'blue'}>
+                    {isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
+                  </Badge>
                 </td>
                 <td style={TD}><Badge color="orange">{s.badge_label}</Badge></td>
                 <td style={{ ...TD, fontSize: 13 }}>

@@ -29,6 +29,16 @@ function isItemOnSale(item: Item): boolean {
   );
 }
 
+function isPercentDiscountItem(item: Item): boolean {
+  return item.special?.discount_pct != null && item.special.discount_pct > 0;
+}
+
+function isFixedSpecialItem(item: Item): boolean {
+  return isItemOnSale(item) && !isPercentDiscountItem(item);
+}
+
+type SaleFilter = 'all' | 'discount' | 'special';
+
 export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
@@ -47,7 +57,7 @@ export function MenuPage() {
   const [activeSubId, setActiveSubId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
-  const [onSaleOnly, setOnSaleOnly] = useState(false);
+  const [saleFilter, setSaleFilter] = useState<SaleFilter>('all');
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedQty, setSelectedQty] = useState(1);
@@ -214,15 +224,18 @@ export function MenuPage() {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
     }
-    if (onSaleOnly) {
-      list = list.filter(isItemOnSale);
+    if (saleFilter === 'discount') {
+      list = list.filter(isPercentDiscountItem);
+    } else if (saleFilter === 'special') {
+      list = list.filter(isFixedSpecialItem);
     }
     if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
     if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
-  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy, onSaleOnly]);
+  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy, saleFilter]);
 
-  const onSaleCount = useMemo(() => items.filter(isItemOnSale).length, [items]);
+  const discountCount = useMemo(() => items.filter(isPercentDiscountItem).length, [items]);
+  const specialCount = useMemo(() => items.filter(isFixedSpecialItem).length, [items]);
 
   // Item counts per category (for bottom sheet badges)
   const catItemCounts = useMemo(() => {
@@ -556,27 +569,40 @@ export function MenuPage() {
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
           </select>
-          {onSaleCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setOnSaleOnly((v) => !v)}
-              style={{
-                height: 'var(--input-height)',
-                padding: '0 1rem',
-                border: onSaleOnly ? '2px solid #dc2626' : '1.5px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                background: onSaleOnly ? 'linear-gradient(135deg, #dc2626, #ea580c)' : 'var(--color-surface)',
-                color: onSaleOnly ? '#fff' : '#dc2626',
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-              aria-pressed={onSaleOnly}
-            >
-              {onSaleOnly ? 'Showing deals' : `Deals (${onSaleCount})`}
-            </button>
+          {(discountCount > 0 || specialCount > 0) && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {([
+                { id: 'all' as SaleFilter, label: 'All items' },
+                ...(discountCount > 0 ? [{ id: 'discount' as SaleFilter, label: `% Off (${discountCount})` }] : []),
+                ...(specialCount > 0 ? [{ id: 'special' as SaleFilter, label: `Specials (${specialCount})` }] : []),
+              ]).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSaleFilter(opt.id)}
+                  style={{
+                    height: 'var(--input-height)',
+                    padding: '0 1rem',
+                    border: saleFilter === opt.id ? '2px solid #dc2626' : '1.5px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    background: saleFilter === opt.id && opt.id !== 'all'
+                      ? 'linear-gradient(135deg, #dc2626, #ea580c)'
+                      : saleFilter === opt.id
+                        ? 'var(--color-primary-light)'
+                        : 'var(--color-surface)',
+                    color: saleFilter === opt.id && opt.id !== 'all' ? '#fff' : saleFilter === opt.id ? 'var(--color-primary)' : 'var(--color-text)',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                  aria-pressed={saleFilter === opt.id}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 

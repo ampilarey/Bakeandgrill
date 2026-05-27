@@ -66,6 +66,16 @@ function tileColor(categoryId: number | null | undefined) {
   return TILE_PALETTE[Math.abs(categoryId) % TILE_PALETTE.length];
 }
 
+type SaleFilter = 'all' | 'discount' | 'special';
+
+function isPercentDiscountItem(item: Item): boolean {
+  return item.special?.discount_pct != null && item.special.discount_pct > 0;
+}
+
+function isFixedSpecialItem(item: Item): boolean {
+  return !!item.special && !isPercentDiscountItem(item);
+}
+
 const pillRowStyle: React.CSSProperties = {
   display: 'flex',
   gap: 6,
@@ -188,6 +198,7 @@ export function MenuGrid({
   // to advance a "2m ago" string was visible jank on iPad. The label
   // self-rotates without involving the rest of the grid.
   const [search, setSearch] = useState("");
+  const [saleFilter, setSaleFilter] = useState<SaleFilter>("all");
 
   // ── Category hierarchy ─────────────────────────────────────────────────────
   // The DB supports `parent_id` on categories (one level of nesting). The old
@@ -254,16 +265,31 @@ export function MenuGrid({
     return childrenByParent.get(activeTopLevelId) ?? [];
   }, [activeTopLevelId, childrenByParent]);
 
+  const discountCount = useMemo(
+    () => filteredItems.filter(isPercentDiscountItem).length,
+    [filteredItems],
+  );
+  const specialCount = useMemo(
+    () => filteredItems.filter(isFixedSpecialItem).length,
+    [filteredItems],
+  );
+
+  const saleScopedItems = useMemo(() => {
+    if (saleFilter === 'discount') return filteredItems.filter(isPercentDiscountItem);
+    if (saleFilter === 'special') return filteredItems.filter(isFixedSpecialItem);
+    return filteredItems;
+  }, [filteredItems, saleFilter]);
+
   // Cross-category text search: when the cashier types in the search box we
   // ignore the category filter so common items can be reached quickly. The
   // search box doubles as the barcode input — form submit looks up the SKU.
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return filteredItems;
-    // Fall back to filteredItems when nothing matches — that's the right
+    if (!q) return saleScopedItems;
+    // Fall back to saleScopedItems when nothing matches — that's the right
     // behaviour when the search field is being used as a barcode buffer.
-    return filteredItems.filter((it) => it.name.toLowerCase().includes(q));
-  }, [filteredItems, search]);
+    return saleScopedItems.filter((it) => it.name.toLowerCase().includes(q));
+  }, [saleScopedItems, search]);
 
   return (
     <section className="pos-menu" style={{
@@ -403,6 +429,30 @@ export function MenuGrid({
               caret={(childrenByParent.get(cat.id)?.length ?? 0) > 0}
             />
           ))}
+        </div>
+      )}
+
+      {(discountCount > 0 || specialCount > 0) && (
+        <div style={pillRowStyle}>
+          <CategoryPill
+            label="All items"
+            active={saleFilter === 'all'}
+            onClick={() => setSaleFilter('all')}
+          />
+          {discountCount > 0 && (
+            <CategoryPill
+              label={`% Off (${discountCount})`}
+              active={saleFilter === 'discount'}
+              onClick={() => setSaleFilter('discount')}
+            />
+          )}
+          {specialCount > 0 && (
+            <CategoryPill
+              label={`Specials (${specialCount})`}
+              active={saleFilter === 'special'}
+              onClick={() => setSaleFilter('special')}
+            />
+          )}
         </div>
       )}
 
