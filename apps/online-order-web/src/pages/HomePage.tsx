@@ -257,16 +257,17 @@ export function HomePage() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
               {specials.map((sp) => {
-                if (!sp.item) return null;
-                const imgSrc = sp.item.image_url
-                  ? sp.item.image_url.startsWith('http') ? sp.item.image_url : `${API_ORIGIN}${sp.item.image_url.startsWith('/') ? '' : '/'}${sp.item.image_url}`
+                const imgSrc = sp.item_image
+                  ? sp.item_image.startsWith('http') ? sp.item_image : `${API_ORIGIN}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
                   : null;
-                const price = Number(sp.special_price ?? sp.item.base_price);
-                const wasPrice = sp.special_price ? Number(sp.item.base_price) : null;
+                const price = Number(sp.effective_price ?? 0);
+                const wasPrice = sp.original_price != null && Number(sp.original_price) > price
+                  ? Number(sp.original_price)
+                  : null;
                 return (
                   <Link
                     key={sp.id}
-                    to={`/menu?item=${sp.item.id}`}
+                    to={`/menu?item=${sp.item_id}`}
                     style={{
                       flexShrink: 0, width: 180, borderRadius: 'var(--radius-2xl)',
                       background: 'var(--color-surface)', border: '1px solid var(--color-border)',
@@ -275,7 +276,7 @@ export function HomePage() {
                   >
                     <div style={{ height: 110, background: 'var(--color-surface-alt)', position: 'relative', overflow: 'hidden' }}>
                       {imgSrc
-                        ? <img src={imgSrc} alt={sp.item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ? <img src={imgSrc} alt={sp.item_name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.3 }}>🍽️</div>
                       }
                       {(sp.badge_label ?? sp.discount_pct) && (
@@ -285,7 +286,7 @@ export function HomePage() {
                       )}
                     </div>
                     <div style={{ padding: '0.75rem', flex: 1 }}>
-                      <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item.name}</p>
+                      <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item_name}</p>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                         <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
                         {wasPrice && <span style={{ fontSize: 11, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}

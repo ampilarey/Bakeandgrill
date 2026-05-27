@@ -21,6 +21,8 @@ class OrderItem extends Model
         'variant_name',
         'quantity',
         'unit_price',
+        'original_unit_price',
+        'daily_special_id',
         'total_price',
         'tax_rate',
         'notes',
@@ -33,6 +35,8 @@ class OrderItem extends Model
         'variant_id' => 'integer',
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
+        'original_unit_price' => 'decimal:2',
+        'daily_special_id' => 'integer',
         'total_price' => 'decimal:2',
         'tax_rate' => 'decimal:2',
     ];
@@ -50,6 +54,11 @@ class OrderItem extends Model
     public function variant(): BelongsTo
     {
         return $this->belongsTo(Variant::class);
+    }
+
+    public function dailySpecial(): BelongsTo
+    {
+        return $this->belongsTo(DailySpecial::class);
     }
 
     public function modifiers(): HasMany

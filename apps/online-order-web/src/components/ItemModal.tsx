@@ -23,8 +23,15 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
   });
 
   const modifierTotal = selectedModifiers.reduce((s, m) => s + Number(m.price), 0);
-  const basePrice = selectedVariant ? Number(selectedVariant.price) : Number(item.base_price);
-  const totalPrice = basePrice + modifierTotal;
+  const catalogPrice = selectedVariant
+    ? Number(selectedVariant.effective_price ?? selectedVariant.price)
+    : Number(item.special?.effective_price ?? item.base_price);
+  const originalCatalog = selectedVariant
+    ? (selectedVariant.effective_price != null && selectedVariant.original_price != null
+      ? Number(selectedVariant.original_price)
+      : null)
+    : (item.special?.original_price != null ? Number(item.special.original_price) : null);
+  const totalPrice = catalogPrice + modifierTotal;
   const canAdd = !item.has_variants || selectedVariant !== null;
 
   const [reviews, setReviews] = useState<ItemReview[]>([]);
@@ -97,8 +104,17 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
             </h3>
             <p style={{ fontSize: '1.1rem', color: 'var(--color-primary)', fontWeight: 700 }}>
               {item.has_variants && !selectedVariant && activeVariants.length > 0
-                ? `From MVR ${Math.min(...activeVariants.map((v) => Number(v.price))).toFixed(2)}`
-                : `MVR ${totalPrice.toFixed(2)}`
+                ? `From MVR ${Math.min(...activeVariants.map((v) => Number(v.effective_price ?? v.price))).toFixed(2)}`
+                : (
+                  <>
+                    MVR {totalPrice.toFixed(2)}
+                    {originalCatalog != null && originalCatalog > catalogPrice && (
+                      <span style={{ marginLeft: '0.4rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', textDecoration: 'line-through', fontWeight: 500 }}>
+                        MVR {originalCatalog.toFixed(2)}
+                      </span>
+                    )}
+                  </>
+                )
               }
             </p>
           </div>
@@ -183,7 +199,12 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
                   >
                     {v.name}
                     <span style={{ marginLeft: '0.35rem', fontSize: '0.8rem', fontWeight: 600, color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-                      MVR {Number(v.price).toFixed(2)}
+                      MVR {Number(v.effective_price ?? v.price).toFixed(2)}
+                      {v.effective_price != null && v.original_price != null && (
+                        <span style={{ marginLeft: '0.25rem', textDecoration: 'line-through', opacity: 0.7 }}>
+                          {Number(v.original_price).toFixed(2)}
+                        </span>
+                      )}
                     </span>
                   </button>
                 );

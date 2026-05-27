@@ -9,14 +9,9 @@ export type PaymentRow = {
 };
 
 /** First active variant, or first listed — matches server expectation when item.has_variants. */
-function defaultVariantForItem(item: Item): { id: number; name: string; price: number } | null {
+function defaultVariantForItem(item: Item): Variant | null {
   if (!item.has_variants || !item.variants?.length) return null;
-  const v = item.variants.find((x) => x.is_active) ?? item.variants[0];
-  return {
-    id: v.id,
-    name: v.name,
-    price: parseFloat(String(v.price ?? 0)),
-  };
+  return item.variants.find((x) => x.is_active) ?? item.variants[0];
 }
 
 /**
@@ -24,10 +19,21 @@ function defaultVariantForItem(item: Item): { id: number; name: string; price: n
  * default variant into account when the item has variants. The MenuGrid
  * uses this to show the same number cashiers will see ringing up.
  */
-export function effectiveItemPrice(item: Item): number {
-  const v = defaultVariantForItem(item);
-  if (v) return v.price;
-  return parseFloat(String(item.base_price ?? 0));
+export function effectiveItemPrice(item: Item, variant?: Variant | null): number {
+  const v = variant ?? defaultVariantForItem(item);
+  if (v) return Number(v.effective_price ?? v.price ?? 0);
+  return Number(item.special?.effective_price ?? item.base_price ?? 0);
+}
+
+export function originalItemPrice(item: Item, variant?: Variant | null): number | null {
+  const v = variant ?? defaultVariantForItem(item);
+  if (v?.effective_price != null && v.original_price != null) {
+    return Number(v.original_price);
+  }
+  if (item.special?.original_price != null && item.special?.effective_price != null) {
+    return Number(item.special.original_price);
+  }
+  return null;
 }
 
 /**
@@ -210,14 +216,8 @@ export function useCart() {
     ) => {
       // Variant precedence: explicit override > what the cashier picked
       // in the Configure modal > the item's default.
-      const chosenVariant: { id: number; name: string; price: number } | null =
-        opts?.variant
-          ? {
-              id: opts.variant.id,
-              name: opts.variant.name,
-              price: parseFloat(String(opts.variant.price ?? 0)),
-            }
-          : defaultVariantForItem(item);
+      const chosenVariant: Variant | null =
+        opts?.variant ?? defaultVariantForItem(item);
 
       // Modifiers precedence: explicit override > Configure modal state >
       // empty. Keeps direct add-to-cart from modifier-less tiles working
@@ -241,8 +241,8 @@ export function useCart() {
           );
         }
         const parsedPrice = chosenVariant
-          ? chosenVariant.price
-          : parseFloat(String(item.base_price ?? 0));
+          ? Number(chosenVariant.effective_price ?? chosenVariant.price ?? 0)
+          : Number(item.special?.effective_price ?? item.base_price ?? 0);
         const parsedModifiers = modifiers.map((m) => ({
           ...m,
           price: parseFloat(String(m.price ?? 0)),

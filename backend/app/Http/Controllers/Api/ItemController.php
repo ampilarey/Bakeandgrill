@@ -11,6 +11,7 @@ use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
 use App\Services\ItemAvailabilityService;
+use App\Services\SpecialPricingService;
 use App\Services\VariantSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -35,7 +36,7 @@ class ItemController extends Controller
     /**
      * Display a listing of items
      */
-    public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver, ItemAvailabilityService $availability)
+    public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver, ItemAvailabilityService $availability, SpecialPricingService $specialPricing)
     {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
@@ -94,9 +95,12 @@ class ItemController extends Controller
         $items = $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
 
         // Admin gets full data; public / POS get stripped response + availability metadata
-        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel) {
+        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
+            $baseSpecial = $includeAvailability
+                ? $specialPricing->resolveUnitPrice($item->id, (float) $item->base_price, $item)
+                : null;
             $data = [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -135,26 +139,38 @@ class ItemController extends Controller
                 'availability_type' => $includeAdminExtras ? $item->availability_type : null,
                 'variants' => $item->variants
                     ->sortBy('sort_order')
-                    ->map(fn ($v) => $includeAdminExtras ? [
-                        'id' => $v->id,
-                        'name' => $v->name,
-                        'name_dv' => $v->name_dv,
-                        'price' => $v->price,
-                        'cost' => $v->cost,
-                        'sku' => $v->sku,
-                        'track_stock' => $v->track_stock,
-                        'stock_qty' => $v->stock_qty,
-                        'low_stock_threshold' => $v->low_stock_threshold,
-                        'is_active' => $v->is_active,
-                        'sort_order' => $v->sort_order,
-                    ] : [
-                        'id' => $v->id,
-                        'name' => $v->name,
-                        'name_dv' => $v->name_dv,
-                        'price' => $v->price,
-                        'is_active' => $v->is_active,
-                        'sort_order' => $v->sort_order,
-                    ])
+                    ->map(function ($v) use ($includeAdminExtras, $includeAvailability, $item, $specialPricing) {
+                        $variantRow = $includeAdminExtras ? [
+                            'id' => $v->id,
+                            'name' => $v->name,
+                            'name_dv' => $v->name_dv,
+                            'price' => $v->price,
+                            'cost' => $v->cost,
+                            'sku' => $v->sku,
+                            'track_stock' => $v->track_stock,
+                            'stock_qty' => $v->stock_qty,
+                            'low_stock_threshold' => $v->low_stock_threshold,
+                            'is_active' => $v->is_active,
+                            'sort_order' => $v->sort_order,
+                        ] : [
+                            'id' => $v->id,
+                            'name' => $v->name,
+                            'name_dv' => $v->name_dv,
+                            'price' => $v->price,
+                            'is_active' => $v->is_active,
+                            'sort_order' => $v->sort_order,
+                        ];
+
+                        if ($includeAvailability) {
+                            $variantPricing = $specialPricing->resolveUnitPrice($item->id, (float) $v->price, $item);
+                            if ($variantPricing->hasDiscount()) {
+                                $variantRow['original_price'] = $variantPricing->originalPrice;
+                                $variantRow['effective_price'] = $variantPricing->unitPrice;
+                            }
+                        }
+
+                        return $variantRow;
+                    })
                     ->values(),
                 'modifiers' => $item->modifiers->map(fn ($m) => [
                     'id' => $m->id,
@@ -165,6 +181,10 @@ class ItemController extends Controller
 
             // Public / POS callers receive availability metadata
             if ($includeAvailability) {
+                if ($baseSpecial?->toApiBlock()) {
+                    $data['special'] = $baseSpecial->toApiBlock();
+                }
+
                 if (!$isAdmin) {
                     $data['spice_level'] = $item->spice_level ?? null;
                     $data['is_combo'] = (bool) ($item->is_combo ?? false);

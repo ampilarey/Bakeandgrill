@@ -414,7 +414,6 @@
     font-size: 3.5rem;
 }
 
-/* Copper badge accent */
 .product-badge {
     position: absolute; top: 0.75rem; left: 0.75rem;
     display: inline-flex; align-items: center; gap: 0.3rem;
@@ -427,6 +426,55 @@
 .badge-fresh      { background: rgba(20,90,50,0.88); color: #BBF7D0; }
 .badge-mto        { background: rgba(45,122,79,0.9); color: white; }
 .badge-new        { background: rgba(79,70,229,0.88); color: #E0E7FF; }
+
+/* Today's Specials */
+.specials-scroll {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: x mandatory;
+}
+.special-card {
+    flex: 0 0 220px;
+    scroll-snap-align: start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.25s;
+}
+.special-card:hover {
+    border-color: rgba(212,129,58,0.35);
+    box-shadow: 0 10px 32px rgba(28,20,8,0.08);
+    transform: translateY(-3px);
+}
+.special-badge {
+    position: absolute;
+    top: 0.625rem;
+    left: 0.625rem;
+    background: var(--amber);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.price-was {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-decoration: line-through;
+    margin-left: 0.35rem;
+}
+.price-sale {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--amber);
+}
 
 .product-body { padding: 1.25rem 1.375rem 1.5rem; }
 .product-cat {
@@ -865,6 +913,52 @@
         @endforeach
     </div>
 </div>
+
+
+{{-- ══════════════════════════════════════════════════════════
+     TODAY'S SPECIALS
+══════════════════════════════════════════════════════════ --}}
+@if($todaysSpecials->count() > 0)
+@php
+    $homeSpecialsEyebrow = \App\Models\SiteSetting::get('home_specials_eyebrow', 'Limited time');
+    $homeSpecialsTitle = \App\Models\SiteSetting::get('home_specials_title', "Today's Specials");
+@endphp
+<section class="section">
+    <div class="section-inner">
+        <div class="section-header">
+            <span class="section-eyebrow">{{ $homeSpecialsEyebrow }}</span>
+            <h2 class="section-title">{{ $homeSpecialsTitle }}</h2>
+            <p class="section-sub">Deals running right now — order before they're gone.</p>
+        </div>
+        <div class="specials-scroll">
+            @foreach($todaysSpecials as $sp)
+            <a href="/order/menu" class="special-card">
+                <div class="product-img" style="height: 140px;">
+                    @if(!empty($sp['item_image']))
+                        <img src="{{ $sp['item_image'] }}" alt="{{ $sp['item_name'] ?? '' }}">
+                    @else
+                        <div class="product-img-placeholder">🍽️</div>
+                    @endif
+                    @if(!empty($sp['badge_label']))
+                        <span class="special-badge">{{ $sp['badge_label'] }}</span>
+                    @endif
+                </div>
+                <div class="product-body" style="padding: 1rem 1.125rem 1.25rem;">
+                    <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">{{ $sp['item_name'] ?? '' }}</div>
+                    <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem;">
+                        <span class="price-sale">MVR {{ number_format((float) $sp['effective_price'], 2) }}</span>
+                        @if(isset($sp['original_price']) && (float) $sp['original_price'] > (float) $sp['effective_price'])
+                            <span class="price-was">MVR {{ number_format((float) $sp['original_price'], 2) }}</span>
+                        @endif
+                    </div>
+                    <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">Order now →</span>
+                </div>
+            </a>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
 
 
 {{-- ══════════════════════════════════════════════════════════

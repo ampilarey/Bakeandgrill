@@ -313,7 +313,6 @@ export function useOrderCreation(params: Params) {
         item_id: item.id,
         name: item.name,
         quantity: item.quantity,
-        unit_price: lineUnitPrice(item),
         ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
         modifiers: item.modifiers.map((m) => ({ modifier_id: m.id, name: m.name, price: m.price })),
         ...(item.notes && item.notes.length > 0

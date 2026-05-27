@@ -87,6 +87,19 @@ async function fetchItemsForChannel(ch: SalesChannel): Promise<MenuItem[]> {
     ...item,
     base_price: Number(item.base_price),
     modifiers: item.modifiers?.map((m) => ({ ...m, price: Number(m.price) })),
+    variants: item.variants?.map((v) => ({
+      ...v,
+      price: Number(v.price),
+      original_price: v.original_price != null ? Number(v.original_price) : undefined,
+      effective_price: v.effective_price != null ? Number(v.effective_price) : undefined,
+    })),
+    special: item.special
+      ? {
+          ...item.special,
+          original_price: Number(item.special.original_price),
+          effective_price: Number(item.special.effective_price),
+        }
+      : undefined,
   }));
 }
 
@@ -113,10 +126,14 @@ export async function fetchItems(channel?: SalesChannel): Promise<FetchItemsResu
 
 export interface DailySpecial {
   id: number;
-  item: { id: number; name: string; description: string | null; image_url: string | null; base_price: number } | null;
+  item_id: number;
+  item_name: string | null;
+  item_image: string | null;
   badge_label: string | null;
   special_price: number | null;
   discount_pct: number | null;
+  effective_price: number | null;
+  original_price: number | null;
   start_time: string | null;
   end_time: string | null;
 }

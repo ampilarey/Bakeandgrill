@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Item, Modifier, Variant } from "../types";
-import { effectiveItemPrice } from "../hooks/useCart";
+import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
 
 type Props = {
   categories: Category[];
@@ -474,6 +474,7 @@ export function MenuGrid({
             {visibleItems.map((item) => {
               const c = tileColor(item.category_id);
               const price = effectiveItemPrice(item);
+              const wasPrice = originalItemPrice(item);
               const hasMods = (item.modifiers?.length ?? 0) > 0;
               const hasVariants = item.has_variants;
               // For items without modifiers OR variants, tap = direct add to cart.
@@ -521,6 +522,16 @@ export function MenuGrid({
                     background: c.fg,
                     opacity: 0.85,
                   }} />
+                  {item.special && (
+                    <span style={{
+                      position: 'absolute', top: 8, right: 8,
+                      background: '#B45309', color: '#fff',
+                      fontSize: 9, fontWeight: 800, padding: '2px 6px',
+                      borderRadius: 999, letterSpacing: '0.02em',
+                    }}>
+                      {item.special.badge_label ?? `${item.special.discount_pct ?? ''}% OFF`}
+                    </span>
+                  )}
                   <span style={{
                     fontSize: 14, fontWeight: 700, lineHeight: 1.2,
                     color: '#0F172A',
@@ -532,10 +543,15 @@ export function MenuGrid({
                   <span style={{
                     fontSize: 13, fontWeight: 800,
                     color: c.fg,
-                    display: 'flex', alignItems: 'baseline', gap: 4,
+                    display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap',
                   }}>
                     {hasVariants && <span style={{ fontSize: 10, opacity: 0.75, fontWeight: 600 }}>from</span>}
                     MVR {price.toFixed(2)}
+                    {wasPrice != null && wasPrice > price && (
+                      <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.65, textDecoration: 'line-through' }}>
+                        {wasPrice.toFixed(2)}
+                      </span>
+                    )}
                   </span>
                 </button>
               );
@@ -611,10 +627,15 @@ function ConfigurePanel({
   // "from X" using the cheapest variant so the cashier sees the price
   // range up-front.
   const headlinePrice = chosenVariant
-    ? Number(chosenVariant.price)
+    ? Number(chosenVariant.effective_price ?? chosenVariant.price)
     : oneTapMode && variants.length > 0
-      ? Math.min(...variants.map((v) => Number(v.price)))
+      ? Math.min(...variants.map((v) => Number(v.effective_price ?? v.price)))
       : effectiveItemPrice(item);
+  const headlineOriginal = chosenVariant
+    ? (chosenVariant.effective_price != null && chosenVariant.original_price != null
+      ? Number(chosenVariant.original_price)
+      : null)
+    : originalItemPrice(item);
 
   const needsVariant = item.has_variants && variants.length > 0 && chosenVariantId == null;
   const canAdd = !needsVariant;
@@ -647,6 +668,11 @@ function ConfigurePanel({
             <div style={{ fontSize: 16, fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
               {oneTapMode && !chosenVariant ? 'from ' : ''}MVR {headlinePrice.toFixed(2)}
+              {headlineOriginal != null && headlineOriginal > headlinePrice && (
+                <span style={{ marginLeft: 6, textDecoration: 'line-through', opacity: 0.75, fontSize: 12 }}>
+                  {headlineOriginal.toFixed(2)}
+                </span>
+              )}
               {chosenVariant && (
                 <span style={{ marginLeft: 8, opacity: 0.85 }}>· {chosenVariant.name}</span>
               )}

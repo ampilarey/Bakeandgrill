@@ -236,6 +236,9 @@ export default function SpecialsPage() {
                 <Input type="number" min="1" max="100" placeholder="e.g. 20" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
               </label>
             </div>
+            <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
+              Use either a fixed special price or a discount %. For items with sizes, prefer % off — the discount applies to each variant price.
+            </p>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Badge Label</span>
               <Input placeholder="e.g. Chef's Special" value={form.badge_label} onChange={v => setForm(f => ({ ...f, badge_label: v }))} />

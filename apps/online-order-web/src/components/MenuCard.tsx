@@ -36,6 +36,21 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
   // Primary badge — prefer bestseller heuristic (top items from API are often bestsellers)
   // Use spice, combo, or MTO as secondary
   const isCombo = item.is_combo;
+  const special = item.special;
+  const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
+  const lowestVariantPrice = activeVariants.length > 0
+    ? Math.min(...activeVariants.map((v) => Number(v.effective_price ?? v.price)))
+    : null;
+  const showFromPrice = item.has_variants && lowestVariantPrice != null;
+  const displayPrice = showFromPrice
+    ? lowestVariantPrice
+    : Number(special?.effective_price ?? item.base_price);
+  const originalPrice = showFromPrice
+    ? (activeVariants.some((v) => v.effective_price != null)
+      ? Math.min(...activeVariants.map((v) => Number(v.original_price ?? v.price)))
+      : null)
+    : (special?.original_price != null ? Number(special.original_price) : null);
+  const hasSale = originalPrice != null && originalPrice > displayPrice;
 
   return (
     <article
@@ -108,6 +123,11 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         {/* Badges */}
         {!isUnavailable && (
           <div style={{ position: 'absolute', top: '0.625rem', left: '0.625rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+            {special && (
+              <span className="badge badge-combo" style={{ background: 'var(--color-primary)', color: '#fff' }}>
+                {special.badge_label ?? (special.discount_pct ? `${special.discount_pct}% OFF` : 'Special')}
+              </span>
+            )}
             {isCombo && <span className="badge badge-combo">Bundle</span>}
             {spice && <span className="badge badge-spicy">{spice.icon} {spice.label}</span>}
           </div>
@@ -176,20 +196,30 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
 
         {/* Price — visually dominant */}
         <div style={{ marginTop: 'auto', paddingTop: '0.375rem' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', marginBottom: '0.75rem' }}>
-            {item.has_variants && item.variants && item.variants.filter((v) => v.is_active).length > 0 ? (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            {showFromPrice ? (
               <>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>From MVR</span>
                 <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
-                  {Math.min(...item.variants.filter((v) => v.is_active).map((v) => Number(v.price))).toFixed(2)}
+                  {displayPrice.toFixed(2)}
                 </span>
+                {hasSale && originalPrice != null && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
+                    MVR {originalPrice.toFixed(2)}
+                  </span>
+                )}
               </>
             ) : (
               <>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>MVR</span>
                 <span style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--color-primary)' }}>
-                  {Number(item.base_price).toFixed(2)}
+                  {displayPrice.toFixed(2)}
                 </span>
+                {hasSale && originalPrice != null && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
+                    MVR {originalPrice.toFixed(2)}
+                  </span>
+                )}
               </>
             )}
           </div>

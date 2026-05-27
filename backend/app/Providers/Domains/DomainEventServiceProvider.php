@@ -13,6 +13,7 @@ use App\Domains\Inventory\Listeners\RestoreInventoryOnRefundListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
+use App\Domains\Marketing\Listeners\IncrementDailySpecialSoldCountListener;
 use App\Domains\Marketing\Listeners\RecordReferralRedemptionListener;
 use App\Domains\Notifications\Events\CustomerCreated;
 use App\Domains\Notifications\Listeners\SendCustomerOrderStatusSmsListener;
@@ -68,6 +69,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             DispatchKitchenPrintListener::class, // online orders: kitchen print fires here after payment confirmed
             ConsumePromoRedemptionsListener::class,
             ConsumeLoyaltyHoldListener::class,
+            IncrementDailySpecialSoldCountListener::class,
             RecordReferralRedemptionListener::class,
             SendPaymentConfirmationListener::class,
             DispatchWebhookOnDomainEvent::class,

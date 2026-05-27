@@ -8,8 +8,10 @@ export type CartEntry = {
   modifiers: Modifier[];
   variantId?: number | null;
   variantName?: string | null;
-  /** Price snapshot captured at add-time (variant price or item base_price). */
+  /** Price snapshot captured at add-time (variant or item effective price). */
   variantPrice?: number | null;
+  /** Original catalog price before special, for strikethrough display. */
+  originalPrice?: number | null;
 };
 
 interface CartContextValue {
@@ -22,7 +24,7 @@ interface CartContextValue {
   pruneCartToAllowedItemIds: (allowedIds: Set<number>) => void;
 }
 
-const CART_VERSION = 3;
+const CART_VERSION = 4;
 const CART_KEY = 'bakegrill_cart';
 
 type StoredCart = {
@@ -34,6 +36,7 @@ type StoredCart = {
     variantId?: number | null;
     variantName?: string | null;
     variantPrice?: number | null;
+    originalPrice?: number | null;
   }>;
 };
 
@@ -56,6 +59,7 @@ function loadCart(): CartEntry[] {
       variantId: e.variantId ?? null,
       variantName: e.variantName ?? null,
       variantPrice: e.variantPrice ?? null,
+      originalPrice: e.originalPrice ?? null,
     }));
   } catch {
     return [];
@@ -72,6 +76,7 @@ function saveCart(cart: CartEntry[]): void {
       variantId: e.variantId ?? null,
       variantName: e.variantName ?? null,
       variantPrice: e.variantPrice ?? null,
+      originalPrice: e.originalPrice ?? null,
     })),
   };
   try {
@@ -112,6 +117,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return next;
       }
 
+      const unitPrice = variant
+        ? Number(variant.effective_price ?? variant.price)
+        : Number(item.special?.effective_price ?? item.base_price);
+      const originalPrice = variant
+        ? (variant.effective_price != null && variant.original_price != null ? Number(variant.original_price) : null)
+        : (item.special?.original_price != null ? Number(item.special.original_price) : null);
+
       return [
         ...prev,
         {
@@ -120,7 +132,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           modifiers,
           variantId,
           variantName: variant?.name ?? null,
-          variantPrice: variant ? Number(variant.price) : null,
+          variantPrice: unitPrice,
+          originalPrice,
         },
       ];
     });

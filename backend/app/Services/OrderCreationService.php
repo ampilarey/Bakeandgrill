@@ -23,6 +23,7 @@ class OrderCreationService
     public function __construct(
         private OrderTotalsCalculator $calculator,
         private KitchenMenuResolver $kitchenMenuResolver,
+        private SpecialPricingService $specialPricing,
     ) {}
 
     public function createFromPayload(array $payload, ?object $user): Order
@@ -370,9 +371,20 @@ class OrderCreationService
                 }
             }
 
-            $basePrice = isset($itemPayload['unit_price'])
-                ? (float) $itemPayload['unit_price']
-                : ($variant ? (float) $variant->price : (float) $itemModel->base_price);
+            $catalogPrice = $variant ? (float) $variant->price : (float) $itemModel->base_price;
+            $clientUnitPrice = isset($itemPayload['unit_price']) ? (float) $itemPayload['unit_price'] : null;
+
+            if ($isOnlineOrder || $clientUnitPrice === null) {
+                $pricing = $this->specialPricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel);
+                $unitPrice = $pricing->unitPrice;
+                $originalUnitPrice = $pricing->hasDiscount() ? $pricing->originalPrice : null;
+                $dailySpecialId = $pricing->dailySpecialId;
+            } else {
+                $unitPrice = $clientUnitPrice;
+                $originalUnitPrice = null;
+                $dailySpecialId = null;
+            }
+
             $variantName = $variant?->name;
 
             // ── Stock check ───────────────────────────────────────────────────
@@ -419,7 +431,9 @@ class OrderCreationService
                 'item_name' => $itemModel->name,
                 'variant_name' => $variantName,
                 'quantity' => $quantity,
-                'unit_price' => $basePrice,
+                'unit_price' => $unitPrice,
+                'original_unit_price' => $originalUnitPrice,
+                'daily_special_id' => $dailySpecialId,
                 'total_price' => 0,
                 'tax_rate' => (float) $itemModel->tax_rate,
                 'notes' => $notes,
@@ -473,7 +487,7 @@ class OrderCreationService
                 }
             }
 
-            $lineTotal = ($basePrice + $modifierTotal) * $quantity;
+            $lineTotal = ($unitPrice + $modifierTotal) * $quantity;
 
             if ($lineTotal < 0) {
                 abort(422, "Negative line total calculated for item {$itemId}");

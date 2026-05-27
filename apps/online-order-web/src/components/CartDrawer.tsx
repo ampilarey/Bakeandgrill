@@ -104,6 +104,11 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                   </p>
                 )}
                 <p style={{ marginTop: '0.375rem', fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                  {entry.originalPrice != null && entry.originalPrice > (entry.variantPrice ?? Number(entry.item.base_price)) && (
+                    <span style={{ color: 'var(--color-text-muted)', textDecoration: 'line-through', marginRight: '0.35rem', fontWeight: 500 }}>
+                      MVR {(((entry.originalPrice) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
+                    </span>
+                  )}
                   MVR {(((entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
                 </p>
               </div>

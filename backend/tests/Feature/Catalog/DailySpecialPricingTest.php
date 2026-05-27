@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Catalog;
 
+use App\Domains\Orders\DTOs\OrderPaidData;
+use App\Domains\Orders\Events\OrderPaid;
 use App\Models\DailySpecial;
+use App\Models\Variant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -13,7 +17,7 @@ use Tests\TestCase;
  *
  * Verifies that the public /api/specials endpoint returns only currently-active
  * specials with correct effective prices, and that inactive/expired specials
- * are excluded.
+ * are excluded. Also verifies server-side auto-apply at order creation.
  */
 class DailySpecialPricingTest extends TestCase
 {
@@ -36,6 +40,22 @@ class DailySpecialPricingTest extends TestCase
             'start_time' => null,
             'end_time' => null,
         ], $attrs));
+    }
+
+    private function createCustomerOrder(int $itemId, ?int $variantId = null, int $qty = 1): \Illuminate\Testing\TestResponse
+    {
+        $customer = $this->makeCustomer();
+        Sanctum::actingAs($customer, ['customer']);
+
+        $line = ['item_id' => $itemId, 'quantity' => $qty];
+        if ($variantId !== null) {
+            $line['variant_id'] = $variantId;
+        }
+
+        return $this->postJson('/api/customer/orders', [
+            'type' => 'online_pickup',
+            'items' => [$line],
+        ]);
     }
 
     // ── Active special appears in API ─────────────────────────────────────────
@@ -179,5 +199,113 @@ class DailySpecialPricingTest extends TestCase
             ->assertStatus(201);
 
         $this->assertDatabaseHas('daily_specials', ['item_id' => $item->id, 'special_price' => 5.00]);
+    }
+
+    // ── Order auto-apply ──────────────────────────────────────────────────────
+
+    public function test_order_applies_active_special_price(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 20.00]);
+        $special = $this->createSpecial([
+            'item_id' => $item->id,
+            'special_price' => 12.50,
+        ]);
+
+        $response = $this->createCustomerOrder($item->id)->assertCreated();
+        $line = $response->json('order.items.0');
+
+        $this->assertEqualsWithDelta(12.50, (float) $line['unit_price'], 0.01);
+        $this->assertEqualsWithDelta(20.00, (float) $line['original_unit_price'], 0.01);
+        $this->assertSame($special->id, $line['daily_special_id']);
+    }
+
+    public function test_variant_item_gets_pct_discount_on_order(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00, 'has_variants' => true]);
+        $variant = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Large',
+            'price' => 50.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $this->createSpecial([
+            'item_id' => $item->id,
+            'discount_pct' => 20,
+        ]);
+
+        $response = $this->createCustomerOrder($item->id, $variant->id)->assertCreated();
+        $line = $response->json('order.items.0');
+
+        $this->assertEqualsWithDelta(40.00, (float) $line['unit_price'], 0.01);
+        $this->assertEqualsWithDelta(50.00, (float) $line['original_unit_price'], 0.01);
+    }
+
+    public function test_expired_special_charges_full_price_on_order(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 30.00]);
+        $this->createSpecial([
+            'item_id' => $item->id,
+            'special_price' => 15.00,
+            'start_date' => today()->subDays(5)->toDateString(),
+            'end_date' => today()->subDay()->toDateString(),
+        ]);
+
+        $response = $this->createCustomerOrder($item->id)->assertCreated();
+        $line = $response->json('order.items.0');
+
+        $this->assertEqualsWithDelta(30.00, (float) $line['unit_price'], 0.01);
+        $this->assertNull($line['daily_special_id'] ?? null);
+    }
+
+    public function test_max_quantity_exhausted_charges_full_price_on_order(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 25.00]);
+        $this->createSpecial([
+            'item_id' => $item->id,
+            'discount_pct' => 50,
+            'max_quantity' => 5,
+            'sold_count' => 5,
+        ]);
+
+        $response = $this->createCustomerOrder($item->id)->assertCreated();
+        $line = $response->json('order.items.0');
+
+        $this->assertEqualsWithDelta(25.00, (float) $line['unit_price'], 0.01);
+        $this->assertNull($line['daily_special_id'] ?? null);
+    }
+
+    public function test_sold_count_increments_on_order_paid(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00]);
+        $special = $this->createSpecial([
+            'item_id' => $item->id,
+            'discount_pct' => 10,
+        ]);
+
+        $response = $this->createCustomerOrder($item->id, null, 2)->assertCreated();
+        $orderId = $response->json('order.id');
+
+        $order = \App\Models\Order::with('items')->findOrFail($orderId);
+        OrderPaid::dispatch(OrderPaidData::fromOrder($order, false));
+
+        $special->refresh();
+        $this->assertSame(2, $special->sold_count);
+    }
+
+    public function test_items_api_includes_special_block(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 40.00]);
+        $this->createSpecial([
+            'item_id' => $item->id,
+            'discount_pct' => 25,
+        ]);
+
+        $response = $this->getJson('/api/items?available_only=1')->assertOk();
+        $found = collect($response->json('data'))->firstWhere('id', $item->id);
+
+        $this->assertNotNull($found);
+        $this->assertArrayHasKey('special', $found);
+        $this->assertEqualsWithDelta(30.00, (float) $found['special']['effective_price'], 0.01);
     }
 }

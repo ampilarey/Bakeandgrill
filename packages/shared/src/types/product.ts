@@ -12,8 +12,18 @@ export type Variant = {
   name: string;
   name_dv?: string | null;
   price: number;
+  original_price?: number;
+  effective_price?: number;
   is_active: boolean;
   sort_order?: number;
+};
+
+export type ItemSpecialPricing = {
+  id: number;
+  badge_label?: string | null;
+  discount_pct?: number | null;
+  original_price: number;
+  effective_price: number;
 };
 
 export type Category = {
@@ -57,6 +67,7 @@ export type MenuItem = {
   combo_discount_pct?: number | null;
   combo_items?: ComboItemEntry[];
   tax_rate?: number | null;
+  special?: ItemSpecialPricing;
   // Review aggregates (public API only)
   avg_rating?: number | null;
   review_count?: number;
