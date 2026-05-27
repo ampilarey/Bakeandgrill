@@ -225,8 +225,13 @@ test.describe('POS — authenticated sales screen', () => {
       test.skip(true, 'Could not fetch items — skipping');
       return;
     }
-    const itemsData = (await itemsRes.json()) as { items?: Array<{ id: number }> } | Array<{ id: number }>;
-    const items = Array.isArray(itemsData) ? itemsData : (itemsData.items ?? []);
+    const itemsData = (await itemsRes.json()) as {
+      data?: Array<{ id: number }>;
+      items?: Array<{ id: number }>;
+    } | Array<{ id: number }>;
+    const items = Array.isArray(itemsData)
+      ? itemsData
+      : (itemsData.data ?? itemsData.items ?? []);
     if (items.length === 0) {
       test.skip(true, 'No items in DB — skipping order creation test');
       return;
