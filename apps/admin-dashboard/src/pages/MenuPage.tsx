@@ -218,6 +218,9 @@ type ItemForm = {
   menu_group_id: string;
   channels: Record<string, boolean>;
   has_variants: boolean;
+  track_stock: boolean;
+  stock_quantity: string;
+  low_stock_threshold: string;
   variants: VariantRow[];
 };
 
@@ -252,6 +255,9 @@ function itemToForm(item: MenuItem): ItemForm {
     menu_group_id: item.menu_group_id != null ? String(item.menu_group_id) : '1',
     channels: channelsFromItem(item),
     has_variants: item.has_variants ?? false,
+    track_stock: item.track_stock ?? false,
+    stock_quantity: item.stock_quantity != null ? String(item.stock_quantity) : '0',
+    low_stock_threshold: item.low_stock_threshold != null ? String(item.low_stock_threshold) : '5',
     variants: (item.variants ?? []).map((v) => ({ ...v, _key: String(v.id ?? Math.random()) })),
   };
 }
@@ -276,6 +282,16 @@ function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayloa
       ? form.variants.map(({ _key, ...v }, i) => ({ ...v, sort_order: i }))
       : undefined,
   };
+  if (!form.has_variants) {
+    payload.track_stock = form.track_stock;
+    payload.stock_quantity = form.track_stock
+      ? Math.max(0, parseInt(form.stock_quantity, 10) || 0)
+      : 0;
+    payload.low_stock_threshold = form.track_stock
+      ? Math.max(0, parseInt(form.low_stock_threshold, 10) || 0)
+      : 0;
+    payload.availability_type = form.track_stock ? 'stock_based' : 'made_to_order';
+  }
   if (includeChannels) {
     payload.channel_availability = SALES_CHANNELS.map(({ id }) => ({
       channel: id,
@@ -310,6 +326,10 @@ function ItemFormModal({
     }
     if (form.has_variants && form.variants.length === 0) { setError('Add at least one variant, or turn off "This product has variants".'); return; }
     if (form.has_variants && form.variants.some((v) => !v.name.trim())) { setError('All variants must have a name.'); return; }
+    if (!form.has_variants && form.track_stock) {
+      const qty = parseInt(form.stock_quantity, 10);
+      if (!Number.isFinite(qty) || qty < 0) { setError('Quantity on hand must be 0 or more.'); return; }
+    }
     setError(''); setLoading(true);
     try { await onSave(form); }
     catch (e) { setError((e as Error).message); }
@@ -450,6 +470,39 @@ function ItemFormModal({
             <Field label="Image">
               <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
             </Field>
+            {!form.has_variants && (
+              <div style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: '14px 16px', background: '#FAFAF8' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: form.track_stock ? 12 : 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.track_stock}
+                    onChange={(e) => set('track_stock', e.target.checked)}
+                  />
+                  Track prepared quantity
+                </label>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '6px 0 0 24px' }}>
+                  Turn on for pre-made batches (e.g. 12 croissants ready). Leave off for made-to-order items.
+                </p>
+                {form.track_stock && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 14, paddingLeft: 24 }}>
+                    <Field label="Quantity on hand">
+                      <Input
+                        value={form.stock_quantity}
+                        onChange={(v) => set('stock_quantity', v.replace(/[^\d]/g, ''))}
+                        placeholder="0"
+                      />
+                    </Field>
+                    <Field label="Low-stock alert at">
+                      <Input
+                        value={form.low_stock_threshold}
+                        onChange={(v) => set('low_stock_threshold', v.replace(/[^\d]/g, ''))}
+                        placeholder="5"
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 20 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
@@ -785,6 +838,7 @@ export function MenuPage() {
     menu_group_id: '1',
     channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true },
     has_variants: false, variants: [],
+    track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
   };
 
   return (

@@ -54,6 +54,10 @@ export type MenuItem = {
   is_available: boolean;
   is_active: boolean;
   sort_order?: number | null;
+  track_stock?: boolean;
+  stock_quantity?: number | null;
+  low_stock_threshold?: number | null;
+  availability_type?: 'always' | 'stock_based' | 'made_to_order' | 'pre_order_only' | null;
   category_id?: number | null;
   menu_group_id?: number | null;
   category?: { id: number; name: string } | null;
@@ -76,6 +80,10 @@ export type MenuItemPayload = {
   sort_order?: number | null;
   is_active?: boolean;
   is_available?: boolean;
+  track_stock?: boolean;
+  stock_quantity?: number | null;
+  low_stock_threshold?: number | null;
+  availability_type?: 'always' | 'stock_based' | 'made_to_order' | 'pre_order_only';
   channel_availability?: Array<{
     channel: string;
     is_enabled: boolean;

@@ -129,6 +129,10 @@ class ItemController extends Controller
                     ])->values()->all()
                     : null,
                 'has_variants' => $item->has_variants,
+                'track_stock' => $includeAdminExtras ? (bool) $item->track_stock : null,
+                'stock_quantity' => $includeAdminExtras ? (int) $item->stock_quantity : null,
+                'low_stock_threshold' => $includeAdminExtras ? (int) $item->low_stock_threshold : null,
+                'availability_type' => $includeAdminExtras ? $item->availability_type : null,
                 'variants' => $item->variants
                     ->sortBy('sort_order')
                     ->map(fn ($v) => $includeAdminExtras ? [
