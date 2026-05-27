@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/generate-version.mjs && vite",
     "build": "node scripts/generate-version.mjs && tsc && vite build",
+    "verify-deploy": "node scripts/verify-pos-deploy.mjs",
     "preview": "vite preview",
     "test": "vitest"
   },

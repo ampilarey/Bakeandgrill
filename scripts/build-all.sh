@@ -75,6 +75,10 @@ for target in "${TARGETS[@]}"; do
     rm -rf "${DEST_DIR:?}"/*
     cp -R dist/. "$DEST_DIR/"
 
+    if [[ "$target" == "pos" ]]; then
+        node scripts/verify-pos-deploy.mjs
+    fi
+
     echo "✓ ${APP_DEST[$target]} deployed to backend/public/${APP_PUBLIC[$target]}/"
     echo ""
 done
