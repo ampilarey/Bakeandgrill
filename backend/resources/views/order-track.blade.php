@@ -21,79 +21,89 @@
     };
 @endphp
 
-@section('doc_width', '520px')
 @section('title', $siteName . ' — Order #' . ($order->order_number ?? ''))
 
 @section('content')
 <div class="doc-card">
-    <p class="doc-eyebrow">Order tracking</p>
-    <h1 class="doc-title">#{{ $order->order_number }}</h1>
-    <p class="doc-subtitle">{{ $statusLabel }}</p>
+    @include('partials.document-masthead', [
+        'docType' => 'Order tracking',
+        'docNumber' => $order->order_number ?? '',
+        'docBadge' => $statusLabel ?? null,
+        'docBadgeClass' => 'doc-badge--sent',
+    ])
 
-    @if ($paidOnCredit)
-        <div class="doc-banner doc-banner--ok">Charged to your credit account — balance due on your monthly statement</div>
-    @elseif ($order->payment_status === 'paid' || $order->paid_at)
-        <div class="doc-banner doc-banner--ok">Payment confirmed</div>
-    @elseif ($order->status === 'payment_pending')
-        <div class="doc-banner doc-banner--warn">Awaiting payment</div>
-    @endif
+    <div class="doc-card-body">
+        <p class="doc-subtitle">{{ $statusLabel }}</p>
 
-    <div style="display:flex;justify-content:space-between;gap:8px;margin:1.25rem 0 1rem;text-align:center;font-size:0.75rem;font-weight:600;color:var(--muted);">
-        @foreach (['Received', 'Preparing', 'Ready', 'Done'] as $i => $label)
-            @php $n = $i + 1; $done = $step > $n; $active = $step === $n; @endphp
-            <div style="flex:1;">
-                <div style="width:1.75rem;height:1.75rem;border-radius:999px;margin:0 auto 0.35rem;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:{{ ($done || $active) ? '#fff' : 'var(--muted)' }};background:{{ ($done || $active) ? 'var(--amber)' : 'var(--surface)' }};border:2px solid {{ ($done || $active) ? 'var(--amber)' : 'var(--border)' }};">
-                    {{ $done ? '✓' : $n }}
+        @if ($paidOnCredit)
+            <div class="doc-banner doc-banner--ok">Charged to your credit account — balance due on your monthly statement</div>
+        @elseif ($order->payment_status === 'paid' || $order->paid_at)
+            <div class="doc-banner doc-banner--ok">Payment confirmed</div>
+        @elseif ($order->status === 'payment_pending')
+            <div class="doc-banner doc-banner--warn">Awaiting payment</div>
+        @endif
+
+        <div class="doc-progress">
+            @foreach (['Received', 'Preparing', 'Ready', 'Done'] as $i => $label)
+                @php
+                    $n = $i + 1;
+                    $done = $step > $n;
+                    $active = $step === $n;
+                @endphp
+                <div class="doc-progress-step">
+                    <div class="doc-progress-dot {{ $done ? 'is-done' : ($active ? 'is-active' : '') }}">
+                        {{ $done ? '✓' : $n }}
+                    </div>
+                    <span class="doc-progress-label">{{ $label }}</span>
                 </div>
-                {{ $label }}
-            </div>
-        @endforeach
-    </div>
-
-    <div class="doc-meta">
-        <div class="doc-meta-row"><span>Type</span><span>{{ $typeLabel }}</span></div>
-        <div class="doc-meta-row"><span>Status</span><span>{{ $statusLabel }}</span></div>
-        @if ($order->paid_at)
-            <div class="doc-meta-row"><span>{{ $paidOnCredit ? 'Charged' : 'Paid' }}</span><span>{{ $order->paid_at->timezone(config('app.timezone', 'Indian/Maldives'))->format('j M Y, g:i A') }}</span></div>
-        @endif
-    </div>
-
-    <div class="doc-table-scroll">
-    <table class="doc-table">
-        <thead>
-            <tr><th>Item</th><th class="qty">Qty</th><th class="amount">MVR</th></tr>
-        </thead>
-        <tbody>
-            @foreach ($order->items as $item)
-                <tr>
-                    <td>{{ $item->item_name }}</td>
-                    <td class="qty">{{ $item->quantity }}</td>
-                    <td class="amount">{{ number_format((float) $item->total_price, 2) }}</td>
-                </tr>
             @endforeach
-        </tbody>
-    </table>
-    </div>
+        </div>
 
-    <div class="doc-meta" style="margin-top:1rem;">
-        @if ($order->subtotal !== null)
-            <div class="doc-meta-row"><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></div>
+        <div class="doc-meta">
+            <div class="doc-meta-row"><span>Type</span><span>{{ $typeLabel }}</span></div>
+            <div class="doc-meta-row"><span>Status</span><span>{{ $statusLabel }}</span></div>
+            @if ($order->paid_at)
+                <div class="doc-meta-row"><span>{{ $paidOnCredit ? 'Charged' : 'Paid' }}</span><span>{{ $order->paid_at->timezone(config('app.timezone', 'Indian/Maldives'))->format('j M Y, g:i A') }}</span></div>
+            @endif
+        </div>
+
+        <div class="doc-table-scroll">
+            <table class="doc-table">
+                <thead>
+                    <tr><th>Item</th><th class="qty">Qty</th><th class="amount">MVR</th></tr>
+                </thead>
+                <tbody>
+                    @foreach ($order->items as $item)
+                        <tr>
+                            <td>{{ $item->item_name }}</td>
+                            <td class="qty">{{ $item->quantity }}</td>
+                            <td class="amount">{{ number_format((float) $item->total_price, 2) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="doc-totals">
+            @if ($order->subtotal !== null)
+                <p><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></p>
+            @endif
+            @if ($order->tax_amount !== null)
+                <p><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></p>
+            @endif
+            <p class="grand"><span>Total</span><span>MVR {{ number_format((float) $order->total, 2) }}</span></p>
+        </div>
+
+        @if ($isActive)
+            <p class="doc-pay-note">
+                This page refreshes automatically every 30 seconds.
+            </p>
         @endif
-        @if ($order->tax_amount !== null)
-            <div class="doc-meta-row"><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></div>
-        @endif
-        <div class="doc-meta-row" style="font-weight:800;color:var(--text);"><span>Total</span><span>MVR {{ number_format((float) $order->total, 2) }}</span></div>
-    </div>
 
-    @if ($isActive)
-        <p style="margin-top:1rem;font-size:0.8125rem;color:var(--muted);text-align:center;">
-            This page refreshes automatically every 30 seconds.
-        </p>
-    @endif
-
-    <div style="margin-top:1.25rem;display:flex;gap:0.625rem;flex-wrap:wrap;">
-        <a class="doc-btn doc-btn-primary" href="{{ $waLink }}?text={{ rawurlencode('Hi, I need help with order #' . $order->order_number) }}" target="_blank" rel="noopener">WhatsApp us</a>
-        <a class="doc-btn" href="/order/menu">Order again</a>
+        <div class="doc-actions">
+            <a class="doc-btn doc-btn-primary" href="{{ $waLink }}?text={{ rawurlencode('Hi, I need help with order #' . $order->order_number) }}" target="_blank" rel="noopener">WhatsApp us</a>
+            <a class="doc-btn" href="/order/menu">Order again</a>
+        </div>
     </div>
 </div>
 @endsection

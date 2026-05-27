@@ -14,7 +14,6 @@
     };
 @endphp
 
-@section('doc_width', '640px')
 @section('title', 'Invoice ' . $invoice->invoice_number . ' — ' . $siteName)
 
 @section('content')
@@ -51,7 +50,8 @@
             </div>
         </div>
 
-        <table class="doc-table">
+        <div class="doc-table-scroll">
+        <table class="doc-table doc-table--wide">
             <thead>
                 <tr>
                     <th>Description</th>
@@ -82,6 +82,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
 
         <div class="doc-totals">
             <p><span>Subtotal</span><span>MVR {{ number_format((float) $invoice->subtotal, 2) }}</span></p>
@@ -93,7 +94,7 @@
             @endif
             <p class="grand"><span>Total</span><span>MVR {{ number_format((float) $invoice->total, 2) }}</span></p>
             @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
-                <p style="display:flex; justify-content:space-between; margin:0.35rem 0 0; font-weight:700; color:#92400E;">
+                <p class="grand" style="color:#92400E;">
                     <span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span>
                 </p>
             @endif

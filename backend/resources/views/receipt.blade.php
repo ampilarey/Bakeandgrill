@@ -40,7 +40,6 @@
     $tz = config('app.timezone', 'Indian/Maldives');
 @endphp
 
-@section('doc_width', '520px')
 @section('title', $siteName . ' — ' . $docTitle . ' ' . ($order->order_number ?? ''))
 
 @section('content')

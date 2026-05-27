@@ -83,7 +83,24 @@ class ReceiptPageTest extends TestCase
 
         $this->get('/pay/' . $receipt->token)
             ->assertOk()
-            ->assertSee('Secure payment')
-            ->assertSee('Delivery fee');
+            ->assertSee('Payment')
+            ->assertSee('Pay now')
+            ->assertSee('Delivery fee')
+            ->assertSee('doc-card-body', false)
+            ->assertSee('doc-table-scroll', false);
+    }
+
+    public function test_paid_receipt_page_shows_payment_confirmed_banner(): void
+    {
+        $receipt = $this->seedOrder([
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $this->get('/receipts/' . $receipt->token)
+            ->assertOk()
+            ->assertSee('Payment confirmed')
+            ->assertSee('doc-card-body', false)
+            ->assertSee('doc-masthead', false);
     }
 }

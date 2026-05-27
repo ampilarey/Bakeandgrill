@@ -4,7 +4,7 @@
     $phone    = \App\Models\SiteSetting::get('business_phone', '+960 912 0011');
     $address  = \App\Models\SiteSetting::get('business_address', 'Kalaafaanu Hingun, Malé, Maldives');
     $favicon  = \App\Models\SiteSetting::get('favicon', $logoUrl);
-    $docWidth = trim($__env->yieldContent('doc_width')) ?: '720px';
+    $docWidth = trim($__env->yieldContent('doc_width')) ?: '560px';
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -55,6 +55,10 @@
             --warn-border: rgba(250,204,21,0.25);
             --danger-bg: #2d0f0a;
             --danger-text: #f87171;
+        }
+        html {
+            overflow-x: hidden;
+            -webkit-text-size-adjust: 100%;
         }
         body {
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -121,8 +125,9 @@
         .doc-link-primary:hover { background: var(--amber-hover); border-color: var(--amber-hover); }
         .doc-main {
             margin: 0 auto;
-            padding: 1.25rem 1rem 1.5rem;
+            padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
             width: 100%;
+            max-width: var(--doc-max-width, 560px);
             min-width: 0;
         }
         .doc-card {
@@ -131,10 +136,17 @@
             border-radius: 16px;
             padding: 0;
             box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);
+            width: 100%;
             max-width: 100%;
             min-width: 0;
+            overflow: hidden;
         }
-        .doc-card-body { padding: 1.25rem 1.125rem 1.5rem; min-width: 0; }
+        .doc-card-body {
+            padding: 1.25rem 1.125rem 1.5rem;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         .doc-masthead {
             background: linear-gradient(135deg, #1C1408 0%, #2a1a0a 100%);
             color: #fff;
@@ -146,6 +158,7 @@
             align-items: center;
             gap: 0.75rem;
             margin-bottom: 0.875rem;
+            min-width: 0;
         }
         .doc-masthead-inner img {
             width: 44px;
@@ -154,12 +167,13 @@
             object-fit: cover;
             flex-shrink: 0;
         }
-        .doc-masthead-text { display: flex; flex-direction: column; gap: 0.15rem; }
+        .doc-masthead-text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
         .doc-masthead-name {
             font-size: 1.2rem;
             font-weight: 800;
             letter-spacing: -0.02em;
             line-height: 1.2;
+            overflow-wrap: anywhere;
         }
         .doc-masthead-tagline {
             font-size: 0.7rem;
@@ -173,6 +187,7 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 0.5rem 0.75rem;
+            min-width: 0;
         }
         .doc-masthead-type {
             font-size: 0.7rem;
@@ -185,6 +200,8 @@
             font-size: 1.05rem;
             font-weight: 800;
             letter-spacing: -0.01em;
+            overflow-wrap: anywhere;
+            min-width: 0;
         }
         .doc-print-footer {
             display: none;
@@ -211,7 +228,7 @@
             letter-spacing: -0.02em;
             margin-bottom: 0.25rem;
         }
-        .doc-subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; }
+        .doc-subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; overflow-wrap: anywhere; }
         .doc-banner {
             border-radius: 12px;
             padding: 0.75rem 0.875rem;
@@ -219,6 +236,8 @@
             font-weight: 600;
             margin-bottom: 1.125rem;
             line-height: 1.45;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         .doc-banner--warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
         .doc-banner--ok { background: var(--success-bg); border: 1px solid #86efac; color: var(--success-text); }
@@ -231,10 +250,11 @@
         .doc-table-scroll {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            width: 100%;
             max-width: 100%;
             margin-top: 0.5rem;
         }
-        .doc-table { width: 100%; min-width: 260px; border-collapse: collapse; font-size: 0.9rem; margin-top: 0; }
+        .doc-table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 0.9rem; margin-top: 0; table-layout: fixed; }
         .doc-table th {
             text-align: left;
             color: var(--amber);
@@ -245,25 +265,86 @@
             padding: 0.625rem 0.5rem;
             border-bottom: 2px solid var(--amber);
             background: var(--amber-light);
+            vertical-align: top;
         }
-        .doc-table th:first-child { padding-left: 0; border-radius: 6px 0 0 0; }
-        .doc-table th:last-child { padding-right: 0; border-radius: 0 6px 0 0; }
-        .doc-table td { padding: 0.625rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-word; }
+        .doc-table th:first-child { border-radius: 6px 0 0 0; }
+        .doc-table th:last-child { border-radius: 0 6px 0 0; }
+        .doc-table td { padding: 0.625rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-word; overflow-wrap: anywhere; }
         .doc-table tbody tr:nth-child(even) td { background: rgba(254, 243, 232, 0.35); }
-        .doc-table .qty { text-align: center; width: 2.5rem; color: var(--muted); font-weight: 600; }
-        .doc-table .amount { text-align: right; font-weight: 700; white-space: nowrap; }
+        .doc-table .qty { text-align: center; width: 3rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
+        .doc-table .amount { text-align: right; font-weight: 700; white-space: nowrap; width: 5.5rem; }
+        .doc-table--wide { min-width: 520px; table-layout: auto; }
         .doc-mods { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; overflow-wrap: anywhere; }
         .doc-totals { margin-top: 1rem; padding-top: 0.75rem; border-top: 2px solid var(--border); }
         .doc-totals p { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; margin: 0.35rem 0; font-size: 0.95rem; }
         .doc-totals p span:first-child { min-width: 0; flex: 1 1 auto; }
         .doc-totals p span:last-child { flex-shrink: 0; white-space: nowrap; text-align: right; }
-        .doc-totals .grand { font-size: 1.15rem; font-weight: 800; color: var(--amber); margin-top: 0.625rem; }
+        .doc-totals .grand { font-size: 1.15rem; font-weight: 800; color: var(--amber); margin-top: 0.625rem; flex-wrap: wrap; }
         .doc-payments { margin-top: 0.875rem; padding-top: 0.75rem; border-top: 1px dashed var(--border); }
         .doc-payments h3 { margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-        .doc-pay-row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.9rem; padding: 0.25rem 0; }
+        .doc-pay-row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.9rem; padding: 0.25rem 0; align-items: baseline; }
+        .doc-pay-row span:first-child { min-width: 0; overflow-wrap: anywhere; }
         .doc-pay-row span:last-child { flex-shrink: 0; white-space: nowrap; }
         .doc-actions { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 1.25rem; }
-        .doc-actions .doc-btn { flex: 1 1 8rem; min-width: 0; }
+        .doc-actions .doc-btn { flex: 1 1 calc(50% - 0.35rem); min-width: 0; }
+        .doc-progress {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin: 1.25rem 0 1rem;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted);
+        }
+        .doc-progress-step { flex: 1 1 0; min-width: 0; }
+        .doc-progress-dot {
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 999px;
+            margin: 0 auto 0.35rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+        }
+        .doc-progress-dot.is-active,
+        .doc-progress-dot.is-done {
+            background: var(--amber);
+            border-color: var(--amber);
+            color: #fff;
+        }
+        .doc-progress-label { display: block; overflow-wrap: anywhere; line-height: 1.2; }
+        .doc-terms-label {
+            display: flex;
+            gap: 0.625rem;
+            align-items: flex-start;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        .doc-terms-label input {
+            margin-top: 0.2rem;
+            width: 1.1rem;
+            height: 1.1rem;
+            flex-shrink: 0;
+            accent-color: var(--amber);
+        }
+        .doc-terms-label span { min-width: 0; overflow-wrap: anywhere; }
+        .doc-terms-label a { color: var(--amber); text-decoration: underline; }
+        .doc-pay-btn { width: 100%; }
+        .doc-pay-note {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.45;
+        }
         .doc-btn {
             display: inline-flex;
             align-items: center;
@@ -329,11 +410,13 @@
             .doc-brand img { width: 32px; height: 32px; }
             .doc-header-links { flex-shrink: 0; }
             .doc-link { padding: 0.4rem 0.65rem; font-size: 0.8125rem; }
-            .doc-main { padding: 0.875rem 0.75rem 1.25rem; }
-            .doc-card-body { padding: 1rem 0.875rem 1.25rem; }
-            .doc-title { font-size: 1.2rem; }
+            .doc-main { padding: 0.75rem 0.75rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
+            .doc-card-body { padding: 1rem 1rem 1.25rem; }
             .doc-masthead { padding: 1rem; }
-            .doc-masthead-number { font-size: 0.95rem; overflow-wrap: anywhere; }
+            .doc-title { font-size: 1.15rem; }
+            .doc-table { font-size: 0.85rem; }
+            .doc-table th, .doc-table td { padding: 0.5rem 0.4rem; }
+            .doc-actions .doc-btn { flex: 1 1 100%; }
         }
         @media print {
             .doc-header, .doc-footer, .doc-header-links, .doc-actions, .doc-feedback, .doc-alert { display: none !important; }
@@ -362,7 +445,7 @@
         }
     </style>
     @endverbatim
-    <style>.doc-main { max-width: min({{ $docWidth }}, calc(100vw - 1.5rem)); }</style>
+    <style>:root { --doc-max-width: {{ $docWidth }}; }</style>
     @stack('head')
 </head>
 <body>

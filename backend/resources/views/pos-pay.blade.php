@@ -18,14 +18,18 @@
     $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
 @endphp
 
-@section('doc_width', '480px')
 @section('title', $siteName . ' — Pay Order ' . ($order->order_number ?? ''))
 
 @section('content')
 <div class="doc-card">
+    @include('partials.document-masthead', [
+        'docType' => 'Payment',
+        'docNumber' => $order->order_number ?? '',
+        'docBadge' => 'Pay now',
+        'docBadgeClass' => 'doc-badge--unpaid',
+    ])
+
     <div class="doc-card-body">
-        <p class="doc-eyebrow">Secure payment</p>
-        <h1 class="doc-title">Order {{ $order->order_number ?? '' }}</h1>
         <p class="doc-subtitle">Review your order below, agree to our terms, then pay securely with BML.</p>
 
         @if (session('error'))
@@ -117,45 +121,6 @@
         </p>
     </div>
 </div>
-
-@push('head')
-<style>
-    .doc-terms-label {
-        display: flex;
-        gap: 0.625rem;
-        align-items: flex-start;
-        font-size: 0.9rem;
-        line-height: 1.5;
-        cursor: pointer;
-        margin-bottom: 1rem;
-    }
-    .doc-terms-label input {
-        margin-top: 0.2rem;
-        width: 1.1rem;
-        height: 1.1rem;
-        flex-shrink: 0;
-        accent-color: var(--amber);
-    }
-    .doc-terms-label a {
-        color: var(--amber);
-        text-decoration: underline;
-    }
-    .doc-terms-label span {
-        min-width: 0;
-        overflow-wrap: anywhere;
-    }
-    .doc-pay-btn {
-        width: 100%;
-    }
-    .doc-pay-note {
-        margin-top: 1rem;
-        font-size: 0.8rem;
-        color: var(--muted);
-        text-align: center;
-        line-height: 1.45;
-    }
-</style>
-@endpush
 
 @push('scripts')
 <script>
