@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Customers\Services\CustomerCreditService;
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderCancelled;
@@ -543,6 +545,9 @@ class OrderController extends Controller
             if ($order->type !== 'online_pickup') {
                 return;
             }
+            if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_FIRE_TO_KITCHEN)) {
+                return;
+            }
             $phone = $order->customer?->phone;
             if (!$phone) {
                 return;
@@ -574,23 +579,33 @@ class OrderController extends Controller
                     ]);
                 }
 
-                // Multi-line SMS layout requested by the cashier so each
-                // datum (number, total, link, expectation) reads on its
-                // own line on a phone screen. Pushes the message into a
-                // second GSM-7 segment (~180 chars with link) — fine,
-                // 2 segments costs basically nothing.
-                $lines = [
+                if ($link !== null) {
+                    $invoiceLine = "View invoice: {$link}";
+                } else {
+                    $invoiceLine = '';
+                }
+
+                $fallback = implode("\n", array_filter([
                     "{$greeting} {$orderNum} received.",
                     "Order total: MVR {$total}",
-                ];
-                if ($link !== null) {
-                    $lines[] = "View invoice: {$link}";
-                }
-                $lines[] = "We'll text you when it's ready.";
+                    $invoiceLine !== '' ? $invoiceLine : null,
+                    "We'll text you when it's ready.",
+                ]));
+
+                $message = app(CustomerSmsMessageBuilder::class)->build(
+                    CustomerSmsMessageBuilder::SLUG_FIRE_TO_KITCHEN,
+                    [
+                        'greeting' => $greeting,
+                        'order_number' => (string) $orderNum,
+                        'total' => $total,
+                        'invoice_line' => $invoiceLine,
+                    ],
+                    $fallback,
+                );
 
                 app(SmsService::class)->send(new SmsMessage(
                     to: $phone,
-                    message: implode("\n", $lines),
+                    message: $message,
                     type: 'transactional',
                     customerId: $order->customer_id,
                     referenceType: 'order',
@@ -646,6 +661,10 @@ class OrderController extends Controller
             return response()->json(['message' => 'Attach a customer phone before sending a pay link.'], 422);
         }
 
+        if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_PAY_LINK)) {
+            return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
+        }
+
         // Compute remaining balance via the same helper the rest of the
         // payment stack uses (COALESCE-safe for legacy POS payments).
         $paymentService = app(\App\Domains\Payments\Services\PaymentService::class);
@@ -669,16 +688,26 @@ class OrderController extends Controller
             $rawName = trim((string) ($order->customer?->name ?? ''));
             $firstName = $rawName !== '' ? trim(strtok($rawName, ' ')) : '';
             $greeting = $firstName !== '' ? "Hi {$firstName}!" : 'Hi!';
-            $lines = [
+            $fallback = implode("\n", [
                 "{$greeting} Your Bake & Grill bill is ready to pay.",
                 "Amount: MVR {$amount}",
                 "Order: {$orderNum}",
                 "View your order & pay: {$payPageUrl}",
                 'Thanks — see you soon!',
-            ];
+            ]);
+            $message = app(CustomerSmsMessageBuilder::class)->build(
+                CustomerSmsMessageBuilder::SLUG_SEND_PAY_LINK,
+                [
+                    'greeting' => $greeting,
+                    'amount' => $amount,
+                    'order_number' => (string) $orderNum,
+                    'pay_url' => $payPageUrl,
+                ],
+                $fallback,
+            );
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
-                message: implode("\n", $lines),
+                message: $message,
                 type: 'transactional',
                 customerId: $order->customer_id,
                 referenceType: 'order',
@@ -1779,9 +1808,24 @@ class OrderController extends Controller
         // the "Print bill" silent and prevents accidental double-SMS when
         // the cashier prints first and sends later.
         if (!empty($request->input('phone'))) {
+            if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_BILL)) {
+                return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
+            }
+
+            $fallback = 'Bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link;
+            $message = app(CustomerSmsMessageBuilder::class)->build(
+                CustomerSmsMessageBuilder::SLUG_SEND_BILL,
+                [
+                    'invoice_number' => (string) $invoice->invoice_number,
+                    'total' => number_format((float) $invoice->total, 2),
+                    'invoice_url' => $link,
+                ],
+                $fallback,
+            );
+
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
-                message: 'Bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
+                message: $message,
                 type: 'transactional',
                 referenceType: 'invoice',
                 referenceId: (string) $invoice->id,

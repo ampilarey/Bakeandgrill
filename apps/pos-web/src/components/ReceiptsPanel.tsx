@@ -10,6 +10,7 @@ type Props = {
   defaultScope?: "today" | "shift";
   /** Select this order when the list loads (post-charge redirect). */
   initialOrderId?: number | null;
+  receiptResendEnabled?: boolean;
 };
 
 /**
@@ -18,7 +19,13 @@ type Props = {
  * send via SMS, refund, or copy the public receipt link. Replaces the
  * old "no way to find past sales from the POS" gap.
  */
-export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today", initialOrderId = null }: Props) {
+export function ReceiptsPanel({
+  onClose,
+  shiftId,
+  defaultScope = "today",
+  initialOrderId = null,
+  receiptResendEnabled = true,
+}: Props) {
   const [scope, setScope] = useState<"today" | "shift" | "all">(defaultScope);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -145,7 +152,7 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today", initia
           display: "flex", flexDirection: "column", minHeight: 0,
         }}>
           {selected ? (
-            <ReceiptDetail receipt={selected} />
+            <ReceiptDetail receipt={selected} receiptResendEnabled={receiptResendEnabled} />
           ) : (
             <EmptyState emoji="📄" title="Pick a receipt" body="Select one from the list to see details, send it, or refund it." />
           )}
@@ -156,7 +163,7 @@ export function ReceiptsPanel({ onClose, shiftId, defaultScope = "today", initia
   );
 }
 
-function ReceiptDetail({ receipt }: { receipt: Receipt }) {
+function ReceiptDetail({ receipt, receiptResendEnabled = true }: { receipt: Receipt; receiptResendEnabled?: boolean }) {
   const [link, setLink] = useState<string | null>(null);
   const [phone, setPhone] = useState(receipt.customer?.phone ?? "");
   const [busy, setBusy] = useState<"" | "send" | "refund" | "link" | "print">("");
@@ -302,6 +309,7 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
             {busy === "link" ? "…" : "Copy link"}
           </button>
         </div>
+        {receiptResendEnabled && (
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={phone}
@@ -313,6 +321,7 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
             {busy === "send" ? "Sending…" : "Send SMS"}
           </button>
         </div>
+        )}
 
         <details>
           <summary style={{ cursor: "pointer", fontSize: 12, color: "#475569", fontWeight: 600 }}>

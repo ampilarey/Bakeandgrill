@@ -116,11 +116,34 @@ export type PosBootstrapShift = {
   variance: number | null;
 };
 
+export type PosSmsNotifications = {
+  send_bill: boolean;
+  send_pay_link: boolean;
+  receipt_resend: boolean;
+};
+
+export const DEFAULT_POS_SMS_NOTIFICATIONS: PosSmsNotifications = {
+  send_bill: true,
+  send_pay_link: true,
+  receipt_resend: true,
+};
+
+function normalizePosSmsNotifications(raw: unknown): PosSmsNotifications {
+  if (!raw || typeof raw !== "object") return DEFAULT_POS_SMS_NOTIFICATIONS;
+  const o = raw as Record<string, unknown>;
+  return {
+    send_bill: o.send_bill !== false,
+    send_pay_link: o.send_pay_link !== false,
+    receipt_resend: o.receipt_resend !== false,
+  };
+}
+
 /** Login bootstrap — menu + current shift in one request. */
 export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
   categories: Category[];
   items: Item[];
   shift: PosBootstrapShift | null;
+  smsNotifications: PosSmsNotifications;
 }> {
   const params = new URLSearchParams();
   if (channel) params.set("channel", channel);
@@ -128,11 +151,13 @@ export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
     categories: Category[];
     items: Item[];
     shift: PosBootstrapShift | null;
+    sms_notifications?: PosSmsNotifications;
   }>(`/pos/bootstrap?${params.toString()}`);
   return {
     categories: data.categories ?? [],
     items: data.items ?? [],
     shift: data.shift ?? null,
+    smsNotifications: normalizePosSmsNotifications(data.sms_notifications),
   };
 }
 

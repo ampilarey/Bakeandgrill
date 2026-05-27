@@ -92,6 +92,7 @@ type Props = {
   onCheckout: () => void;
   onRetryPayment: () => void;
   onOpenSendBill: () => void;
+  smsNotifications?: { send_bill: boolean };
 
   canRingSales?: boolean;
   canHoldResume?: boolean;
@@ -732,7 +733,7 @@ export function OrderCart(p: Props) {
             attempted yet — once a charge is recorded the bug fix in
             useOrderCreation clears lastCreatedOrderId so this button
             stops appearing for already-paid tickets. */}
-        {p.lastCreatedOrderId && p.pendingPaymentForOrderId === null && (
+        {p.smsNotifications?.send_bill !== false && p.lastCreatedOrderId && p.pendingPaymentForOrderId === null && (
           <button
             onClick={p.onOpenSendBill}
             style={{

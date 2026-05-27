@@ -34,7 +34,7 @@ export type SmsTemplate = {
   name: string;
   slug: string;
   body: string;
-  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom';
+  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom' | 'customer_notification';
   description: string | null;
   is_system: boolean;
   variables: { name: string; description: string }[];
@@ -164,7 +164,7 @@ export async function fetchSmsTemplates(): Promise<{ templates: SmsTemplate[] }>
 
 export async function createSmsTemplate(data: {
   name: string; body: string;
-  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom';
+  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom' | 'customer_notification';
   description?: string;
 }): Promise<{ template: SmsTemplate }> {
   return req('/admin/sms/templates', { method: 'POST', body: JSON.stringify(data) });
@@ -172,7 +172,7 @@ export async function createSmsTemplate(data: {
 
 export async function updateSmsTemplate(id: number, data: Partial<{
   name: string; body: string;
-  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom';
+  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom' | 'customer_notification';
   description: string;
 }>): Promise<{ template: SmsTemplate }> {
   return req(`/admin/sms/templates/${id}`, { method: 'PATCH', body: JSON.stringify(data) });

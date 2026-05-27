@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Enums\OrderType;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
@@ -31,10 +32,21 @@ class PaymentConfirmationNotifier
         OrderType::Delivery->value,
     ];
 
-    public function __construct(private readonly SmsService $sms) {}
+    public function __construct(
+        private readonly SmsService $sms,
+        private readonly CustomerSmsMessageBuilder $messages,
+    ) {}
 
     public function notify(Order $order): void
     {
+        if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::PAYMENT_CONFIRMED)) {
+            Log::info('PaymentConfirmationNotifier: payment confirmation SMS disabled', [
+                'order_id' => $order->id,
+            ]);
+
+            return;
+        }
+
         $order->loadMissing(['customer', 'payments']);
 
         $phone = $this->resolveRecipientPhone($order);
@@ -82,18 +94,36 @@ class PaymentConfirmationNotifier
             $readyHint = (string) $order->type === OrderType::Delivery->value
                 ? "We'll text when we're on the way."
                 : "We'll text when it's ready.";
-            $message = 'Paid'
+            $fallback = 'Paid'
                 . ($method ? ' via ' . $method : '')
                 . '. #' . $order->order_number . ' confirmed. '
                 . $readyHint . ' '
                 . $url;
+            $message = $this->messages->build(
+                CustomerSmsMessageBuilder::SLUG_PAYMENT_CONFIRMED_ONLINE,
+                [
+                    'payment_method_suffix' => $method ? ' via ' . $method : '',
+                    'order_number' => (string) $order->order_number,
+                    'ready_hint' => $readyHint,
+                    'tracking_url' => $url,
+                ],
+                $fallback,
+            );
         } else {
             // POS dine-in / takeaway: customer is at the counter. The
             // receipt link is the only useful SMS — no order-confirmed
             // / preparing / ready noise (those listeners now skip
             // POS types).
             $url = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
-            $message = 'Receipt for #' . $order->order_number . ': ' . $url;
+            $fallback = 'Receipt for #' . $order->order_number . ': ' . $url;
+            $message = $this->messages->build(
+                CustomerSmsMessageBuilder::SLUG_PAYMENT_CONFIRMED_POS,
+                [
+                    'order_number' => (string) $order->order_number,
+                    'receipt_url' => $url,
+                ],
+                $fallback,
+            );
         }
 
         try {

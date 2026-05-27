@@ -29,7 +29,7 @@ class SmsTemplateController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'body' => 'required|string',
-            'type' => 'required|in:order_notification,schedule_reminder,duty_reminder,custom',
+            'type' => 'required|in:order_notification,schedule_reminder,duty_reminder,custom,customer_notification',
             'description' => 'nullable|string|max:500',
         ]);
 
@@ -49,7 +49,7 @@ class SmsTemplateController extends Controller
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'body' => 'sometimes|string',
-            'type' => 'sometimes|in:order_notification,schedule_reminder,duty_reminder,custom',
+            'type' => 'sometimes|in:order_notification,schedule_reminder,duty_reminder,custom,customer_notification',
             'description' => 'nullable|string|max:500',
         ]);
 

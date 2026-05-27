@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchPosBootstrap, fetchPosMenu } from "../api";
+import { fetchPosBootstrap, fetchPosMenu, type PosSmsNotifications } from "../api";
 import type { PosBootstrapShift, PosSalesChannel } from "../api";
 import type { PosOrderType } from "../orderTypes";
 import type { Category, Item } from "../types";
@@ -38,6 +38,7 @@ export function useMenu(
   orderType: PosOrderType,
   isReachable = true,
   onBootstrapShift?: (shift: PosBootstrapShift | null) => void,
+  onBootstrapSmsNotifications?: (settings: PosSmsNotifications) => void,
 ) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -57,10 +58,12 @@ export function useMenu(
   const loggedInRef = useRef(isLoggedIn);
   const reachableRef = useRef(isReachable);
   const onBootstrapShiftRef = useRef(onBootstrapShift);
+  const onBootstrapSmsNotificationsRef = useRef(onBootstrapSmsNotifications);
   useEffect(() => { channelRef.current = channel; }, [channel]);
   useEffect(() => { loggedInRef.current = isLoggedIn; }, [isLoggedIn]);
   useEffect(() => { reachableRef.current = isReachable; }, [isReachable]);
   useEffect(() => { onBootstrapShiftRef.current = onBootstrapShift; }, [onBootstrapShift]);
+  useEffect(() => { onBootstrapSmsNotificationsRef.current = onBootstrapSmsNotifications; }, [onBootstrapSmsNotifications]);
 
   const applyCachedMenu = useCallback((cached: NonNullable<Awaited<ReturnType<typeof loadCachedMenu>>>) => {
     setCategories((cached.categories ?? []) as Category[]);
@@ -118,6 +121,7 @@ export function useMenu(
           attemptRef.current = 0;
           bootstrapDoneRef.current = true;
           onBootstrapShiftRef.current?.(boot.shift ?? null);
+          onBootstrapSmsNotificationsRef.current?.(boot.smsNotifications);
           setSelectedCategoryId(null);
         } else {
           const menu = await fetchPosMenu(ch);

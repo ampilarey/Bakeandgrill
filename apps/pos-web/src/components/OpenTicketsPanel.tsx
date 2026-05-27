@@ -71,6 +71,7 @@ type Props = {
    *  prefill the "Send Bill" prompt so cashiers don't retype the same
    *  number they already entered in the cart. */
   cartCustomerPhone?: string | null;
+  smsNotifications?: { send_bill: boolean; send_pay_link: boolean };
 };
 
 /**
@@ -98,6 +99,7 @@ export function OpenTicketsPanel({
   onResume,
   onClose,
   cartCustomerPhone,
+  smsNotifications = { send_bill: true, send_pay_link: true },
 }: Props) {
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
   /** Server total for the current list scope (may exceed loaded rows). */
@@ -1133,7 +1135,7 @@ export function OpenTicketsPanel({
                         💳 Charge
                       </button>
                     )}
-                    {isUnpaid && hasPhone && (
+                    {isUnpaid && hasPhone && smsNotifications.send_pay_link && (
                       <ActionButton
                         onClick={() => handleSendPayLink(t)}
                         busy={busy}
@@ -1144,6 +1146,7 @@ export function OpenTicketsPanel({
                         💳 Send pay link
                       </ActionButton>
                     )}
+                    {smsNotifications.send_bill && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1154,6 +1157,7 @@ export function OpenTicketsPanel({
                     >
                       📱 {busy ? "…" : "Send Bill SMS"}
                     </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

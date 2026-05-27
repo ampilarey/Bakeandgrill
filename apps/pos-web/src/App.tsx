@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, type PosCustomer } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosSmsNotifications } from "./api";
 import { getQueueCount } from "./offlineQueue";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, OFFLINE_SYNC_V2, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
@@ -207,6 +207,7 @@ function App() {
   // spicy"). Loaded once after login from the public site-settings
   // endpoint. Empty array hides the per-line Note button.
   const [quickNotes, setQuickNotes] = useState<string[]>([]);
+  const [smsNotifications, setSmsNotifications] = useState<PosSmsNotifications>(DEFAULT_POS_SMS_NOTIFICATIONS);
   // When non-null, the NotePickerModal is open for this cart line key.
   // Stored at the app level (vs in OrderCart) so the modal sits above
   // the cart's overflow:auto clip and survives cart state churn.
@@ -245,7 +246,7 @@ function App() {
   // automatically, so the cashier can't accidentally ring something
   // that doesn't belong on that channel.
   const shift = useShift(isLoggedIn, isLoggedIn, deviceId);
-  const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap);
+  const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap, setSmsNotifications);
   const cart = useCart();
 
   // When switching to Delivery (or attaching a customer mid-ticket),
@@ -1129,6 +1130,7 @@ function App() {
             orderId={receiptBanner.orderId}
             customerPhone={receiptBanner.customerPhone}
             paidOnCredit={receiptBanner.paidOnCredit}
+            receiptResendEnabled={smsNotifications.receipt_resend}
             onDismiss={() => setReceiptBanner(null)}
           />
         </div>
@@ -1253,6 +1255,7 @@ function App() {
               }}
               onRetryPayment={order.handleRetryPayment}
               onOpenSendBill={() => setShowSendBill(true)}
+              smsNotifications={smsNotifications}
               quickNotes={quickNotes}
               onOpenNotePicker={setNotePickerKey}
             />
@@ -1294,6 +1297,7 @@ function App() {
             }}
             shiftId={shift.current?.id ?? null}
             initialOrderId={receiptsFocusOrderId}
+            receiptResendEnabled={smsNotifications.receipt_resend}
           />
         )}
 
@@ -1301,6 +1305,7 @@ function App() {
           <OpenTicketsPanel
             canVoidOrders={canVoidOrders}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
+            smsNotifications={smsNotifications}
             onClose={() => setPane("sales")}
             onResume={(t) => {
               // Tap-to-open active ticket: load the order into the main

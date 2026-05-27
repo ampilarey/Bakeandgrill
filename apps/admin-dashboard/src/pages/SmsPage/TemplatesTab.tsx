@@ -9,7 +9,7 @@ import { Badge, Btn, Card, EmptyState, Input, Modal, ModalActions, Spinner } fro
 type TemplateForm = {
   name: string;
   body: string;
-  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom';
+  type: 'order_notification' | 'schedule_reminder' | 'duty_reminder' | 'custom' | 'customer_notification';
   description: string;
 };
 
@@ -20,6 +20,7 @@ const TYPE_COLORS: Record<string, string> = {
   schedule_reminder: 'green',
   duty_reminder: 'orange',
   custom: 'gray',
+  customer_notification: 'purple',
 };
 
 // Mirrors backend SmsService::detectEncoding / calculateSegments so the

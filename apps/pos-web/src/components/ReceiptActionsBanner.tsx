@@ -28,6 +28,7 @@ type Props = {
   /** Customer's phone for the Resend button. If undefined, Resend is hidden. */
   customerPhone?: string | null;
   paidOnCredit?: boolean;
+  receiptResendEnabled?: boolean;
   onDismiss: () => void;
 };
 
@@ -40,7 +41,7 @@ const C = {
   btn: "#FFFFFF",
 };
 
-export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = false, onDismiss }: Props) {
+export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = false, receiptResendEnabled = true, onDismiss }: Props) {
   const [link, setLink] = useState<string | null>(null);
   const [linkErr, setLinkErr] = useState(false);
   const [sending, setSending] = useState(false);
@@ -148,9 +149,11 @@ export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = fa
         </div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
           {customerPhone
-            ? sent
+            ? sent && receiptResendEnabled
               ? `Receipt re-sent to ${customerPhone}.`
-              : `Receipt SMS sent to ${customerPhone}.`
+              : receiptResendEnabled
+                ? `Receipt SMS sent to ${customerPhone}.`
+                : `Customer: ${customerPhone}`
             : "No customer attached — receipt not sent by SMS."}
           {sendErr && <span style={{ color: "#B91C1C", marginLeft: 8 }}>· {sendErr}</span>}
         </div>
@@ -163,7 +166,7 @@ export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = fa
         <button onClick={handleOpen} disabled={!link} style={btn(!link)}>
           {linkErr ? "Open ✕" : "Open"}
         </button>
-        {customerPhone && (
+        {customerPhone && receiptResendEnabled && (
           <button onClick={handleResend} disabled={sending || sent} style={btn(sending || sent)}>
             {sending ? "Sending…" : sent ? "Sent ✓" : "Resend SMS"}
           </button>

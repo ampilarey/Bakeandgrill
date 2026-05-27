@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Notifications\Listeners;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
@@ -28,7 +29,10 @@ final class SendCustomerOrderStatusSmsListener
 {
     public bool $afterCommit = true;
 
-    public function __construct(private readonly SmsService $sms) {}
+    public function __construct(
+        private readonly SmsService $sms,
+        private readonly CustomerSmsMessageBuilder $messages,
+    ) {}
 
     /**
      * Lifecycle SMSes (preparing / ready / on-the-way) only make sense
@@ -80,25 +84,38 @@ final class SendCustomerOrderStatusSmsListener
 
         $orderNum = $order->order_number ?? "#{$order->id}";
 
-        [$message, $idempotencyKey] = match ($status) {
+        [$slug, $fallback, $idempotencyKey] = match ($status) {
             'in_progress' => [
+                CustomerSmsMessageBuilder::SLUG_ORDER_PREPARING,
                 "#{$orderNum} is being prepared. We'll text when ready. {$trackingUrl}",
                 "order:preparing:{$order->id}",
             ],
             'ready' => $order->type === 'delivery'
                 ? [
+                    CustomerSmsMessageBuilder::SLUG_ORDER_READY_DELIVERY,
                     "#{$orderNum} is packed. Rider will pick up soon. {$trackingUrl}",
                     "order:ready:{$order->id}",
                 ]
                 : [
+                    CustomerSmsMessageBuilder::SLUG_ORDER_READY_PICKUP,
                     "#{$orderNum} is ready for pickup. {$trackingUrl}",
                     "order:ready:{$order->id}",
                 ],
             'on_the_way' => [
+                CustomerSmsMessageBuilder::SLUG_ORDER_ON_THE_WAY,
                 "#{$orderNum} is on the way. {$trackingUrl}",
                 "order:on_the_way:{$order->id}",
             ],
         };
+
+        $message = $this->messages->build(
+            $slug,
+            [
+                'order_number' => (string) $orderNum,
+                'tracking_url' => $trackingUrl,
+            ],
+            $fallback,
+        );
 
         try {
             $this->sms->send(new SmsMessage(

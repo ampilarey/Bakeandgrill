@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Notifications\Listeners;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\Receipt;
@@ -22,10 +24,17 @@ final class SendOnlineOrderCompletionReceiptSmsListener
 
     private const ONLINE_TYPES = ['online_pickup', 'delivery'];
 
-    public function __construct(private readonly SmsService $sms) {}
+    public function __construct(
+        private readonly SmsService $sms,
+        private readonly CustomerSmsMessageBuilder $messages,
+    ) {}
 
     public function handle(OrderStatusChanged $event): void
     {
+        if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::COMPLETION_RECEIPT)) {
+            return;
+        }
+
         $status = $event->data->status;
         if (!in_array($status, ['completed', 'delivered'], true)) {
             return;
@@ -57,7 +66,15 @@ final class SendOnlineOrderCompletionReceiptSmsListener
         $receipt->save();
 
         $link = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
-        $message = 'Order #' . $order->order_number . ' complete. Receipt: ' . $link;
+        $fallback = 'Order #' . $order->order_number . ' complete. Receipt: ' . $link;
+        $message = $this->messages->build(
+            CustomerSmsMessageBuilder::SLUG_COMPLETION_RECEIPT,
+            [
+                'order_number' => (string) $order->order_number,
+                'receipt_url' => $link,
+            ],
+            $fallback,
+        );
 
         try {
             $this->sms->send(new SmsMessage(

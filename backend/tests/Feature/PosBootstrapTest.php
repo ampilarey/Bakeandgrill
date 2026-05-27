@@ -11,6 +11,7 @@ use App\Models\ItemChannelAvailability;
 use App\Models\MenuGroup;
 use App\Models\Role;
 use App\Models\Shift;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -70,6 +71,36 @@ class PosBootstrapTest extends TestCase
             'categories' => [['id', 'name']],
             'items' => [['id', 'name', 'availability' => ['available']]],
             'shift' => ['id', 'opened_at', 'opening_cash'],
+            'sms_notifications' => ['send_bill', 'send_pay_link', 'receipt_resend'],
         ]);
+    }
+
+    public function test_pos_bootstrap_reflects_disabled_sms_notification_toggles(): void
+    {
+        MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
+        SiteSetting::set('sms_pos_send_bill_enabled', 'false');
+        SiteSetting::set('sms_pos_send_pay_link_enabled', 'false');
+
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => '', 'is_active' => true],
+        );
+        PermissionCatalogSync::sync();
+        $staff = User::create([
+            'name' => 'POS SMS Cashier',
+            'email' => 'pos-sms-bootstrap@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($staff, ['staff']);
+
+        $this->getJson('/api/pos/bootstrap?channel=dine_in')
+            ->assertOk()
+            ->assertJsonPath('sms_notifications.send_bill', false)
+            ->assertJsonPath('sms_notifications.send_pay_link', false)
+            ->assertJsonPath('sms_notifications.receipt_resend', true);
     }
 }

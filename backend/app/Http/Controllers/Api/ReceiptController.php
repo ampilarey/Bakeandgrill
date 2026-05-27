@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReceiptFeedbackRequest;
 use App\Http\Requests\StoreReceiptRequest;
@@ -67,6 +69,10 @@ class ReceiptController extends Controller
 
         if (!$recipient) {
             return response()->json(['message' => 'Recipient not available.'], 422);
+        }
+
+        if ($channel === 'sms' && !SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_RECEIPT_RESEND)) {
+            return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
         }
 
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
@@ -219,7 +225,13 @@ class ReceiptController extends Controller
         $link = $this->receiptLink($receipt);
 
         if ($this->orderIsPaidForReceipt($order)) {
-            return 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
+            $fallback = 'Thanks for visiting Bake & Grill! View your receipt: ' . $link;
+
+            return app(CustomerSmsMessageBuilder::class)->build(
+                CustomerSmsMessageBuilder::SLUG_RECEIPT_RESEND,
+                ['receipt_url' => $link],
+                $fallback,
+            );
         }
 
         return 'Invoice for order #' . ($order->order_number ?? $order->id) . ': ' . $link;

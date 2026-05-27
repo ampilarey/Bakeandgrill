@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
+use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Shift;
 use App\Services\PosMenuBuilder;
@@ -42,6 +43,11 @@ class PosBootstrapController extends Controller
             'categories' => $menu['categories'],
             'items' => $menu['items'],
             'shift' => $shift,
+            'sms_notifications' => [
+                'send_bill' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_BILL),
+                'send_pay_link' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_PAY_LINK),
+                'receipt_resend' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_RECEIPT_RESEND),
+            ],
         ]);
     }
 }
