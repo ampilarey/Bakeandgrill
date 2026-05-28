@@ -7,6 +7,7 @@ import {
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Menu, Zap,
+  ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -17,92 +18,126 @@ export interface NavItem {
   icon: React.ElementType;
   label: string;
   permission?: string;
+  /** Short hint for command palette / search */
+  description?: string;
 }
 
 export interface NavGroup {
   id: string;
   label: string;
+  icon: React.ElementType;
   items: NavItem[];
 }
 
+/** Always visible at top of sidebar — highest-traffic pages */
+export const PINNED_NAV_ITEMS: NavItem[] = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard.view', description: 'Overview & KPIs' },
+  { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view',    description: 'Live order queue' },
+];
+
 export const NAV_GROUPS: NavGroup[] = [
   {
-    id: 'service',
-    label: 'SERVICE',
+    id: 'operations',
+    label: 'Operations',
+    icon: ConciergeBell,
     items: [
-      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard.view' },
-      { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view'    },
-      { to: '/activity',  icon: Zap,             label: 'POS Activity', permission: 'reports.view' },
-      { to: '/kds',       icon: ChefHat,         label: 'Kitchen',   permission: 'orders.view'    },
-      { to: '/tables',    icon: LayoutGrid,      label: 'Tables',    permission: 'orders.view'    },
-      { to: '/delivery',  icon: Truck,           label: 'Delivery',  permission: 'delivery.view'  },
-      { to: '/shifts',    icon: Wallet,          label: 'Shifts',    permission: 'shifts.view_own_history'    },
+      { to: '/activity', icon: Zap,           label: 'POS Activity',   permission: 'reports.view',        description: 'Audit log & POS events' },
+      { to: '/kds',      icon: ChefHat,         label: 'Kitchen Display', permission: 'orders.view',        description: 'KDS screen' },
+      { to: '/tables',   icon: LayoutGrid,      label: 'Tables',         permission: 'orders.view',        description: 'Floor plan & seating' },
+      { to: '/delivery', icon: Truck,           label: 'Delivery',       permission: 'delivery.view',      description: 'Delivery orders' },
+      { to: '/shifts',   icon: Wallet,          label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
     ],
   },
   {
-    id: 'kitchen',
-    label: 'KITCHEN',
+    id: 'menu-stock',
+    label: 'Menu & Stock',
+    icon: UtensilsCrossed,
     items: [
-      { to: '/menu',                  icon: UtensilsCrossed, label: 'Menu Items',      permission: 'menu.view'            },
-      { to: '/specials',              icon: Tag,             label: 'Item Discounts',  permission: 'menu.manage'          },
-      { to: '/inventory',             icon: Boxes,           label: 'Inventory',       permission: 'inventory.manage'     },
-      { to: '/purchase-orders',       icon: Package,         label: 'Purchase Orders', permission: 'suppliers.purchases'  },
-      { to: '/supplier-intelligence', icon: Factory,         label: 'Suppliers',       permission: 'suppliers.view'       },
-      { to: '/waste-logs',            icon: Trash2,          label: 'Waste Tracking',  permission: 'menu.manage'          },
+      { to: '/menu',                  icon: UtensilsCrossed, label: 'Menu Items',      permission: 'menu.view',           description: 'Categories & items' },
+      { to: '/specials',              icon: Tag,             label: 'Daily Specials',  permission: 'menu.manage',         description: 'Scheduled item discounts' },
+      { to: '/inventory',             icon: Boxes,           label: 'Inventory',       permission: 'inventory.manage',    description: 'Stock levels' },
+      { to: '/purchase-orders',       icon: Package,         label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
+      { to: '/supplier-intelligence', icon: Factory,         label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
+      { to: '/waste-logs',            icon: Trash2,          label: 'Waste Tracking',  permission: 'menu.manage',         description: 'Log waste & shrinkage' },
     ],
   },
   {
-    id: 'guests',
-    label: 'GUESTS',
+    id: 'customers',
+    label: 'Customers & Marketing',
+    icon: Heart,
     items: [
-      { to: '/customers',    icon: Users,         label: 'Customers',    permission: 'customers.manage'  },
-      { to: '/reservations', icon: CalendarDays,  label: 'Reservations', permission: 'reservations.view' },
-      { to: '/reviews',      icon: Star,          label: 'Reviews',      permission: 'customers.manage'  },
-      { to: '/loyalty',      icon: Heart,         label: 'Loyalty',      permission: 'loyalty.manage'    },
-      { to: '/gift-cards',   icon: Gift,          label: 'Gift Cards',   permission: 'promotions.manage' },
-      { to: '/referrals',    icon: Share2,        label: 'Referrals',    permission: 'customers.manage'  },
-      { to: '/promotions',   icon: Target,        label: 'Promotions',   permission: 'promotions.manage' },
-      { to: '/sms',          icon: MessageSquare, label: 'SMS',          permission: 'sms_marketing.view'  },
+      { to: '/customers',    icon: Users,         label: 'Customers',    permission: 'customers.manage',  description: 'Customer database' },
+      { to: '/reservations', icon: CalendarDays,  label: 'Reservations', permission: 'reservations.view', description: 'Table bookings' },
+      { to: '/reviews',      icon: Star,          label: 'Reviews',      permission: 'customers.manage',  description: 'Moderate ratings' },
+      { to: '/loyalty',      icon: Heart,         label: 'Loyalty',      permission: 'loyalty.manage',    description: 'Points & rewards' },
+      { to: '/gift-cards',   icon: Gift,          label: 'Gift Cards',   permission: 'promotions.manage', description: 'Issue & manage cards' },
+      { to: '/referrals',    icon: Share2,        label: 'Referrals',    permission: 'customers.manage',  description: 'Referral program' },
+      { to: '/promotions',   icon: Target,        label: 'Promotions',   permission: 'promotions.manage', description: 'Discounts & offers' },
+      { to: '/sms',          icon: MessageSquare, label: 'SMS Campaigns', permission: 'sms_marketing.view', description: 'Bulk messaging' },
     ],
   },
   {
-    id: 'money',
-    label: 'MONEY',
+    id: 'finance',
+    label: 'Finance',
+    icon: CircleDollarSign,
     items: [
-      { to: '/reports',     icon: BarChart3,    label: 'Reports',       permission: 'reports.view'        },
-      { to: '/profit-loss', icon: PieChart,     label: 'Profit & Loss', permission: 'finance.profit_loss' },
-      { to: '/invoices',    icon: DollarSign,   label: 'Invoices',      permission: 'finance.invoices'    },
-      { to: '/expenses',    icon: Receipt,      label: 'Expenses',      permission: 'finance.expenses'    },
-      { to: '/refunds',     icon: RotateCcw,    label: 'Refunds',       permission: 'orders.refund'       },
-      { to: '/forecasts',   icon: TrendingDown, label: 'Forecasts',     permission: 'reports.financial'   },
-      { to: '/analytics',   icon: BarChart2,    label: 'Analytics',     permission: 'customers.analytics' },
+      { to: '/reports',     icon: BarChart3,    label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
+      { to: '/analytics',   icon: BarChart2,    label: 'Analytics',     permission: 'customers.analytics', description: 'Advanced insights' },
+      { to: '/profit-loss', icon: PieChart,     label: 'Profit & Loss', permission: 'finance.profit_loss', description: 'P&L statement' },
+      { to: '/invoices',    icon: DollarSign,   label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
+      { to: '/expenses',    icon: Receipt,      label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
+      { to: '/refunds',     icon: RotateCcw,    label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
+      { to: '/forecasts',   icon: TrendingDown, label: 'Forecasts',     permission: 'reports.financial',   description: 'Demand forecasting' },
     ],
   },
   {
-    id: 'admin',
-    label: 'ADMIN',
+    id: 'team-system',
+    label: 'Team & System',
+    icon: Wrench,
     items: [
-      { to: '/staff',           icon: Users,       label: 'Staff',           permission: 'staff.view'            },
-      { to: '/time-clock',      icon: Clock,       label: 'Time Clock',      permission: 'staff.view'            },
-      { to: '/settings',        icon: Settings,    label: 'Settings',           permission: 'website.manage'        },
-      { to: '/online-ordering', icon: ShoppingBag, label: 'Online Ordering',    permission: 'settings.update'       },
-      { to: '/delivery-settings', icon: Truck,     label: 'Delivery Settings',  permission: 'settings.update'       },
-      { to: '/devices',         icon: Monitor,     label: 'Devices',         permission: 'devices.view'        },
-      { to: '/print-jobs',      icon: Printer,     label: 'Print Queue',     permission: 'devices.view'        },
-      { to: '/webhooks',        icon: Webhook,     label: 'Webhooks',        permission: 'webhooks.manage' },
-      { to: '/xero',            icon: Link,        label: 'Xero',            permission: 'xero.manage'     },
+      { to: '/staff',              icon: Users,       label: 'Staff',              permission: 'staff.view',          description: 'Team management' },
+      { to: '/time-clock',         icon: Clock,       label: 'Time Clock',         permission: 'staff.view',          description: 'Clock in / out' },
+      { to: '/settings',           icon: Settings,    label: 'Settings',           permission: 'website.manage',      description: 'System configuration' },
+      { to: '/online-ordering',    icon: ShoppingBag, label: 'Online Ordering',    permission: 'settings.update',     description: 'Web ordering settings' },
+      { to: '/delivery-settings',  icon: Truck,       label: 'Delivery Settings',  permission: 'settings.update',     description: 'Zones & fees' },
+      { to: '/devices',            icon: Monitor,     label: 'Devices',            permission: 'devices.view',        description: 'POS & KDS devices' },
+      { to: '/print-jobs',         icon: Printer,     label: 'Print Queue',        permission: 'devices.view',        description: 'Receipt print jobs' },
+      { to: '/webhooks',           icon: Webhook,     label: 'Webhooks',           permission: 'webhooks.manage',     description: 'Outbound integrations' },
+      { to: '/xero',               icon: Link,        label: 'Xero',               permission: 'xero.manage',         description: 'Accounting sync' },
     ],
   },
 ];
 
-export const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
+const DEV_NAV_ITEM: NavItem = {
+  to: '/checklist',
+  icon: ClipboardCheck,
+  label: 'Test Checklist',
+  permission: 'website.manage',
+  description: 'UAT checklist (dev only)',
+};
+
+export function getNavGroups(includeDevItems = !import.meta.env.PROD): NavGroup[] {
+  if (!includeDevItems) return NAV_GROUPS;
+  return NAV_GROUPS.map((g) =>
+    g.id === 'team-system'
+      ? { ...g, items: [...g.items, DEV_NAV_ITEM] }
+      : g,
+  );
+}
+
+export function getAllNavItems(includeDevItems = !import.meta.env.PROD): NavItem[] {
+  return [...PINNED_NAV_ITEMS, ...getNavGroups(includeDevItems).flatMap((g) => g.items)];
+}
+
+/** @deprecated Use getAllNavItems() — kept for gradual migration */
+export const ALL_NAV_ITEMS = getAllNavItems();
 
 export const BOTTOM_TABS: NavItem[] = [
-  { to: '/orders',   icon: ClipboardList,   label: 'Orders',  permission: 'orders.view'  },
-  { to: '/kds',      icon: ChefHat,         label: 'Kitchen', permission: 'orders.view'  },
-  { to: '/tables',   icon: LayoutGrid,      label: 'Tables',  permission: 'orders.view'  },
-  { to: '/reports',  icon: BarChart3,       label: 'Money',   permission: 'reports.view' },
-  { to: '#more',     icon: Menu,            label: 'More'                                },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Home',    permission: 'dashboard.view' },
+  { to: '/orders',    icon: ClipboardList,   label: 'Orders',  permission: 'orders.view'  },
+  { to: '/kds',       icon: ChefHat,         label: 'Kitchen', permission: 'orders.view'  },
+  { to: '/reports',   icon: BarChart3,       label: 'Finance', permission: 'reports.view' },
+  { to: '#more',      icon: Menu,            label: 'More'                                },
 ];
 
 /** Returns true if the given user has the specified permission (with legacy alias support). */
@@ -142,4 +177,14 @@ export function can(user: StaffUser, permission?: string): boolean {
     if (perms.includes(alias)) return true;
   }
   return false;
+}
+
+/** Map route → group label for search palette subtitles */
+export function getNavItemGroupLabel(to: string): string {
+  if (PINNED_NAV_ITEMS.some((i) => i.to === to)) return 'Quick access';
+  if (to === DEV_NAV_ITEM.to) return 'Team & System';
+  for (const g of NAV_GROUPS) {
+    if (g.items.some((i) => i.to === to)) return g.label;
+  }
+  return 'Navigate';
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { fetchOrders, fetchStaff } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { getAllNavItems, getNavItemGroupLabel } from './navConfig';
 
 type Result = {
   id: string;
@@ -10,55 +11,6 @@ type Result = {
   sub?: string;
   icon: string;
   action: () => void;
-};
-
-type StaticLink = Omit<Result, 'action'> & {
-  /** Permission required to see this link in the palette. Same gate
-   *  as the sidebar nav — if the user can't navigate there from the
-   *  sidebar, they shouldn't be able to jump there from Cmd-K either. */
-  permission?: string;
-};
-
-const STATIC_LINKS: StaticLink[] = [
-  { id: 's-dashboard',   label: 'Dashboard',           icon: '🏠', sub: 'Overview',              permission: 'dashboard.view' },
-  { id: 's-orders',      label: 'Orders',              icon: '📋', sub: 'Manage orders',         permission: 'orders.view' },
-  { id: 's-activity',    label: 'POS Activity',        icon: '⚡', sub: 'Audit log & POS events', permission: 'reports.view' },
-  { id: 's-kds',         label: 'Kitchen Display',     icon: '👨‍🍳', sub: 'KDS screen',           permission: 'orders.view' },
-  { id: 's-menu',        label: 'Menu',                icon: '🍽️', sub: 'Manage menu items',     permission: 'menu.view' },
-  { id: 's-staff',       label: 'Staff',               icon: '👥', sub: 'Manage team',           permission: 'staff.view' },
-  { id: 's-inventory',   label: 'Inventory',           icon: '📦', sub: 'Stock levels',          permission: 'inventory.manage' },
-  { id: 's-reports',     label: 'Reports',             icon: '📊', sub: 'Sales & analytics',     permission: 'reports.view' },
-  { id: 's-invoices',    label: 'Invoices',            icon: '🧾', sub: 'Billing',               permission: 'finance.invoices' },
-  { id: 's-expenses',    label: 'Expenses',            icon: '💸', sub: 'Operating costs',       permission: 'finance.expenses' },
-  { id: 's-customers',   label: 'Customers',           icon: '🙋', sub: 'Customer database',     permission: 'customers.manage' },
-  { id: 's-loyalty',     label: 'Loyalty',             icon: '⭐', sub: 'Points & rewards',      permission: 'loyalty.manage' },
-  { id: 's-promotions',  label: 'Promotions',          icon: '🏷️', sub: 'Discounts & offers',   permission: 'promotions.manage' },
-  { id: 's-giftcards',   label: 'Gift Cards',          icon: '🎁', sub: 'Issue & manage cards',  permission: 'promotions.manage' },
-  { id: 's-settings',    label: 'Settings',            icon: '⚙️', sub: 'System configuration', permission: 'website.manage' },
-  { id: 's-shifts',      label: 'Shifts & Cash',       icon: '💰', sub: 'Cash drawer',           permission: 'orders.view' },
-  { id: 's-delivery',    label: 'Delivery',            icon: '🛵', sub: 'Delivery orders',       permission: 'delivery.view' },
-  { id: 's-waste',       label: 'Waste Tracking',      icon: '🗑️', sub: 'Log waste',            permission: 'menu.manage' },
-  { id: 's-pnl',         label: 'Profit & Loss',       icon: '📈', sub: 'Financial summary',     permission: 'finance.profit_loss' },
-  { id: 's-purchases',   label: 'Purchase Orders',     icon: '🛒', sub: 'Supplier orders',       permission: 'suppliers.purchases' },
-  { id: 's-tables',      label: 'Tables',              icon: '🪑', sub: 'Table management',      permission: 'orders.view' },
-  { id: 's-reservations',label: 'Reservations',        icon: '📅', sub: 'Bookings',              permission: 'reservations.view' },
-  { id: 's-specials',    label: 'Item Discounts',      icon: '✨', sub: 'Scheduled % off by item', permission: 'menu.manage' },
-  { id: 's-refunds',     label: 'Refunds',             icon: '↩️', sub: 'Process refunds',       permission: 'orders.refund' },
-  { id: 's-reviews',     label: 'Reviews',             icon: '⭐', sub: 'Customer reviews',      permission: 'customers.manage' },
-  { id: 's-analytics',   label: 'Analytics',           icon: '📉', sub: 'Advanced analytics',    permission: 'customers.analytics' },
-  { id: 's-sms',         label: 'SMS Campaigns',       icon: '📱', sub: 'Messaging',             permission: 'integrations.sms' },
-];
-
-const PAGE_ROUTES: Record<string, string> = {
-  's-dashboard': '/dashboard', 's-orders': '/orders', 's-activity': '/activity', 's-kds': '/kds',
-  's-menu': '/menu', 's-staff': '/staff', 's-inventory': '/inventory',
-  's-reports': '/reports', 's-invoices': '/invoices', 's-expenses': '/expenses',
-  's-customers': '/customers', 's-loyalty': '/loyalty', 's-promotions': '/promotions',
-  's-giftcards': '/gift-cards', 's-settings': '/settings', 's-shifts': '/shifts',
-  's-delivery': '/delivery', 's-waste': '/waste-logs', 's-pnl': '/profit-loss',
-  's-purchases': '/purchase-orders', 's-tables': '/tables', 's-reservations': '/reservations',
-  's-specials': '/specials', 's-refunds': '/refunds', 's-reviews': '/reviews',
-  's-analytics': '/analytics', 's-sms': '/sms',
 };
 
 interface Props {
@@ -77,7 +29,6 @@ export function CommandPalette({ open, onClose }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Focus input when opened; reset dynamic cache on close
   useEffect(() => {
     if (open) {
       setQuery('');
@@ -89,7 +40,6 @@ export function CommandPalette({ open, onClose }: Props) {
     }
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -97,29 +47,33 @@ export function CommandPalette({ open, onClose }: Props) {
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  // Build static results with navigation actions, filtered by what
-  // the user can actually access. Without this filter the palette
-  // happily lets a staff cashier jump to /finance/profit-loss, only
-  // for the route guard to reject them mid-navigation — confusing
-  // and exposes feature names they shouldn't be aware of.
   const buildStatic = (q: string): Result[] => {
     const lower = q.toLowerCase();
-    return STATIC_LINKS
-      .filter((l) => can(l.permission))
-      .filter((l) => !q || l.label.toLowerCase().includes(lower) || (l.sub ?? '').toLowerCase().includes(lower))
-      .slice(0, q ? 6 : 8)
-      .map((l) => ({
-        ...l,
-        action: () => { navigate(PAGE_ROUTES[l.id] ?? '/dashboard'); onClose(); },
+    return getAllNavItems()
+      .filter((item) => can(item.permission))
+      .filter((item) => {
+        if (!q) return true;
+        const group = getNavItemGroupLabel(item.to);
+        return (
+          item.label.toLowerCase().includes(lower)
+          || (item.description ?? '').toLowerCase().includes(lower)
+          || group.toLowerCase().includes(lower)
+        );
+      })
+      .slice(0, q ? 10 : 12)
+      .map((item) => ({
+        id: `nav-${item.to}`,
+        label: item.label,
+        sub: item.description ?? getNavItemGroupLabel(item.to),
+        icon: '→',
+        action: () => { navigate(item.to); onClose(); },
       }));
   };
 
-  // Cache for dynamic data so we don't refetch on every keystroke
   const cachedOrders = useRef<Array<{ id: number; order_number: string; status: string; total: number }>>([]);
   const cachedStaff  = useRef<Array<{ id: number; name: string; email?: string; role?: string; role_name?: string }>>([]);
   const dynamicLoaded = useRef(false);
 
-  // Search orders + staff dynamically
   const runSearch = async (q: string) => {
     if (q.length < 2) {
       setResults(buildStatic(q));
@@ -129,7 +83,6 @@ export function CommandPalette({ open, onClose }: Props) {
     const staticR = buildStatic(q);
     setResults(staticR);
     try {
-      // Load dynamic data once per palette open
       if (!dynamicLoaded.current) {
         const [ordersRes, staffRes] = await Promise.allSettled([
           fetchOrders({ per_page: 30 }),
@@ -143,7 +96,6 @@ export function CommandPalette({ open, onClose }: Props) {
       const qLower = q.toLowerCase();
       const dynResults: Result[] = [];
 
-      // Filter orders by order number
       cachedOrders.current
         .filter((o) => String(o.order_number).toLowerCase().includes(qLower))
         .slice(0, 4)
@@ -157,7 +109,6 @@ export function CommandPalette({ open, onClose }: Props) {
           });
         });
 
-      // Filter staff by name/email
       cachedStaff.current
         .filter((s) => s.name.toLowerCase().includes(qLower) || (s.email ?? '').toLowerCase().includes(qLower))
         .slice(0, 3)
@@ -185,7 +136,6 @@ export function CommandPalette({ open, onClose }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, open]);
 
-  // Initial empty state
   useEffect(() => {
     if (open && !query) setResults(buildStatic(''));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -197,7 +147,6 @@ export function CommandPalette({ open, onClose }: Props) {
     if (e.key === 'Enter' && results[selected]) { results[selected].action(); }
   };
 
-  // Scroll selected into view
   useEffect(() => {
     const el = listRef.current?.children[selected] as HTMLElement | undefined;
     el?.scrollIntoView({ block: 'nearest' });
@@ -225,7 +174,6 @@ export function CommandPalette({ open, onClose }: Props) {
           border: '1px solid #E8E0D8',
         }}
       >
-        {/* Search input */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: '1px solid #F0EBE5' }}>
           <Search size={18} style={{ color: '#9C8E7E', flexShrink: 0 }} />
           <input
@@ -249,7 +197,6 @@ export function CommandPalette({ open, onClose }: Props) {
           </button>
         </div>
 
-        {/* Results */}
         <div ref={listRef} style={{ maxHeight: 380, overflowY: 'auto' }}>
           {results.length === 0 ? (
             <div style={{ padding: '32px 18px', textAlign: 'center', color: '#9C8E7E', fontSize: 13 }}>
@@ -271,7 +218,7 @@ export function CommandPalette({ open, onClose }: Props) {
                   transition: 'background 0.1s',
                 }}
               >
-                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{r.icon}</span>
+                <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1, color: '#D4813A', fontWeight: 700 }}>{r.icon}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: i === selected ? '#D4813A' : '#1C1408' }}>
                     {r.label}

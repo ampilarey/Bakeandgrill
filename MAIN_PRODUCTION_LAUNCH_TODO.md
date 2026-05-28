@@ -228,7 +228,7 @@ deploy-production:
 Run these manually after first deploy to production:
 
 - [ ] `GET https://bakeandgrill.mv/api/health` returns 200
-- [ ] Admin login works (PIN)
+- [ ] Admin login works (phone + password)
 - [ ] Customer can browse menu and add to cart
 - [ ] Checkout with **real BML production card** (small test amount)
 - [ ] Order appears in admin
