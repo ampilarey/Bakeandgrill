@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
   getUserPermissions, updateUserPermissions,
@@ -497,14 +497,14 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
 export function StaffPage() {
     usePageTitle('Staff');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { can } = useCurrentUserPermissions();
-  // Schedules tab calls /admin/schedules which is gated on staff.manage
-  // server-side. Surfacing the tab to viewers who only have staff.view
-  // led to a confusing UI where every action returned a 403; now the
-  // tab is hidden entirely from users who can't actually use it.
   const canManageStaff = can('staff.manage');
+  const canSchedule = can('staff.schedule');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
-  const [activeTab, setActiveTab] = useState<'staff' | 'schedules'>('staff');
+  const [activeTab, setActiveTab] = useState<'staff' | 'schedules'>(() => (
+    searchParams.get('tab') === 'schedules' ? 'schedules' : 'staff'
+  ));
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -590,15 +590,15 @@ export function StaffPage() {
         action={activeTab === 'staff' && canManageStaff ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
       />
 
-      {/* Tab switcher — schedules tab hidden when user can't manage staff */}
+      {/* Tab switcher — schedules tab requires staff.schedule permission */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         <button style={tabStyle(activeTab === 'staff')} onClick={() => setActiveTab('staff')}>Staff</button>
-        {canManageStaff && (
+        {canSchedule && (
           <button style={tabStyle(activeTab === 'schedules')} onClick={() => setActiveTab('schedules')}>Schedules</button>
         )}
       </div>
 
-      {activeTab === 'schedules' && canManageStaff && <SchedulesTab staff={staff} />}
+      {activeTab === 'schedules' && canSchedule && <SchedulesTab staff={staff} />}
 
       {activeTab === 'staff' && (
         <>

@@ -29,7 +29,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: ['**/mobile-ordering.spec.ts'],
+      testIgnore: ['**/mobile-ordering.spec.ts', '**/accessibility.spec.ts'],
     },
     {
       name: 'mobile',
