@@ -11,6 +11,7 @@
  *   2. Ensure e2e/.env.test has all BML_TEST_CARD_* values filled
  */
 import { test, expect, type Page } from '@playwright/test';
+import { injectCustomerTokenAndWait, waitForCheckoutReady } from '../helpers/wait';
 
 const TEST_PHONE     = process.env.TEST_PHONE     ?? '7972434';
 const TEST_PASSWORD  = process.env.TEST_PASSWORD  ?? '';
@@ -55,16 +56,7 @@ test.beforeAll(async ({ request }) => {
 });
 
 async function injectCustomerAuth(page: Page, token: string) {
-  await page.goto('/order/');
-  await page.waitForLoadState('networkidle');
-  await page.evaluate(({ t, phone }: { t: string; phone: string }) => {
-    localStorage.setItem('online_token', t);
-    localStorage.setItem('online_customer_name', phone);
-    window.dispatchEvent(new Event('auth_change'));
-  }, { t: token, phone: TEST_PHONE });
-  await page.reload();
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1500);
+  await injectCustomerTokenAndWait(page, token, TEST_PHONE);
 }
 
 test.describe('Checkout flow', () => {
@@ -80,22 +72,24 @@ test.describe('Checkout flow', () => {
   // ── Promo code validation ──────────────────────────────────────────────
   test('invalid promo code shows error message', async ({ page }) => {
     await injectCartItem(page);
-    await page.goto('/order/checkout');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/order/checkout', { waitUntil: 'domcontentloaded' });
+    await waitForCheckoutReady(page);
 
-    // Fill promo code with garbage
     const promoInput = page.locator('input[aria-label="Promo code"], input[placeholder*="promo" i]').first();
-    await expect(promoInput).toBeVisible({ timeout: 8_000 });
+    await expect(promoInput).toBeVisible({ timeout: 10_000 });
     await promoInput.fill('INVALIDXXX999');
 
     const applyBtn = page.locator('button').filter({ hasText: /^apply$/i }).first();
     await applyBtn.click();
 
-    // Error should appear
-    const error = page.locator('.field-error, [class*="error"]').first();
-    await expect(error).toBeVisible({ timeout: 5_000 });
-    const errText = await error.textContent() ?? '';
-    expect(errText.toLowerCase()).toMatch(/invalid|expired|not found/);
+    await expect
+      .poll(async () => {
+        const err = page.locator('.field-error, [class*="error"]').first();
+        if (!(await err.isVisible().catch(() => false))) return '';
+        const text = (await err.textContent()) ?? '';
+        return /invalid|expired|not found/i.test(text) ? text : '';
+      }, { timeout: 10_000 })
+      .not.toBe('');
   });
 
   // ── Delivery address required ──────────────────────────────────────────

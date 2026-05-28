@@ -12,6 +12,7 @@ import { test, expect, type Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 import { STORAGE_STATE_PATH } from '../fixtures/auth';
+import { injectCustomerTokenAndWait, waitForCustomerSession } from '../helpers/wait';
 
 const TEST_PHONE    = process.env.TEST_PHONE    ?? '7972434';
 const TEST_PASSWORD = process.env.TEST_PASSWORD ?? '';
@@ -73,19 +74,7 @@ test('save customer auth storage state', async ({ page }) => {
 
 // ── Helper to inject shared token (no API call) ───────────────────────────
 async function injectCustomerToken(page: Page, token: string) {
-  const currentUrl = page.url();
-  if (!currentUrl.includes('bakeandgrill.mv/order')) {
-    await page.goto('/order/');
-    await page.waitForLoadState('networkidle');
-  }
-  await page.evaluate(({ t, phone }: { t: string; phone: string }) => {
-    localStorage.setItem('online_token', t);
-    localStorage.setItem('online_customer_name', phone);
-    window.dispatchEvent(new Event('auth_change'));
-  }, { t: token, phone: TEST_PHONE });
-  await page.reload();
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(2000);
+  await injectCustomerTokenAndWait(page, token, TEST_PHONE);
 }
 
 // ── Authenticated tests ───────────────────────────────────────────────────
@@ -120,17 +109,12 @@ test.describe('authenticated customer', () => {
   });
 
   test('order app header shows 7-digit phone number when logged in', async ({ page }) => {
-    await page.goto('/order/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
-    // The header should show the phone number OR the customer name
-    const header = page.locator('header');
-    const headerText = await header.textContent() ?? '';
+    await page.goto('/order/', { waitUntil: 'domcontentloaded' });
+    await waitForCustomerSession(page, TEST_PHONE);
+
     const tokenInStorage = await page.evaluate(() => localStorage.getItem('online_token'));
-    // If token is not there, the auth restoration silently failed
     expect(tokenInStorage, 'online_token missing from localStorage — auth not restored').toBeTruthy();
-    // Check header contains phone number
-    await expect(header).toContainText(TEST_PHONE, { timeout: 12_000 });
+    await expect(page.locator('header')).toContainText(TEST_PHONE, { timeout: 5_000 });
   });
 
   test('account page loads with profile information', async ({ page }) => {

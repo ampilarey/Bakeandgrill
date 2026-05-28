@@ -8,6 +8,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { obtainStaffToken } from '../fixtures/auth';
 import { gotoAdminWithToken } from '../helpers/injectAuth';
+import { waitForAdminPageReady } from '../helpers/wait';
 
 // Run all tests serially so we share one token and don't exhaust rate limit
 test.describe.configure({ mode: 'serial' });
@@ -51,9 +52,9 @@ test.describe('Admin dashboard pages load', () => {
       await gotoAdmin(page, url);
       if (!sharedAdminToken) return; // already skipped inside gotoAdmin
 
+      await waitForAdminPageReady(page, keyword);
       const body = await page.textContent('body') ?? '';
       expect(body).not.toContain('Cannot GET');
-      expect(body.toLowerCase()).toMatch(new RegExp(keyword));
       expect(body).not.toContain('Something went wrong');
     });
   }

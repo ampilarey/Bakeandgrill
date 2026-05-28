@@ -7,6 +7,7 @@
 import { type Page, expect } from '@playwright/test';
 
 import { ADMIN_PIN, staffPinLoginBody, TEST_PHONE, TEST_PASSWORD } from '../fixtures/auth';
+import { waitForCustomerSession } from './wait';
 
 export { ADMIN_PIN, TEST_PHONE, TEST_PASSWORD };
 
@@ -118,18 +119,17 @@ export async function injectCustomerToken(
     return ''; // Caller may choose to skip instead of throw
   }
 
-  await page.goto('/order/');
-  await page.waitForLoadState('networkidle');
+  await page.goto('/order/', { waitUntil: 'domcontentloaded' });
   await page.evaluate(
     ({ t, ph }: { t: string; ph: string }) => {
       localStorage.setItem('online_token', t);
       localStorage.setItem('online_customer_name', ph);
       window.dispatchEvent(new Event('auth_change'));
     },
-    { t: token, ph: usedPhone },
+    { t: token, ph: usedPhone.replace(/^\+960/, '') },
   );
-  await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForCustomerSession(page, usedPhone.replace(/^\+960/, ''));
 
   return token;
 }
