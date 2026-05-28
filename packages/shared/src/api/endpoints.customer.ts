@@ -18,6 +18,11 @@ export const CUSTOMER_ENDPOINTS = {
   CUSTOMER_COMPLETE_PROFILE:  '/customer/complete-profile',
   CUSTOMER_CHANGE_PASSWORD:   '/customer/change-password',
 
+  // Saved delivery addresses
+  CUSTOMER_ADDRESSES:         '/customer/addresses',
+  CUSTOMER_ADDRESS_BY_ID:     (id: number) => `/customer/addresses/${id}`,
+  CUSTOMER_ADDRESS_DEFAULT:   (id: number) => `/customer/addresses/${id}/default`,
+
   // Order history
   CUSTOMER_ORDERS:            '/customer/orders',
   CUSTOMER_ORDER_BY_ID:       (id: number) => `/customer/orders/${id}`,

@@ -307,6 +307,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // when the cashier attaches a customer to a ticket.
     Route::get('/customers/{id}/pos-summary', [CustomerController::class, 'posSummary'])
         ->middleware('throttle:60,1');
+    Route::get('/customers/{id}/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'indexForCustomer'])
+        ->middleware('throttle:60,1');
 
     // ── POS rewards on an in-progress ticket ─────────────────────────────────
     // Staff-only twins of the customer-facing loyalty + gift-card endpoints.
@@ -408,6 +410,11 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'storeCustomer']);
     Route::patch('/profile', [CustomerController::class, 'update']);
+    Route::get('/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'index']);
+    Route::post('/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'store']);
+    Route::patch('/addresses/{id}', [App\Http\Controllers\Api\CustomerAddressController::class, 'update']);
+    Route::delete('/addresses/{id}', [App\Http\Controllers\Api\CustomerAddressController::class, 'destroy']);
+    Route::post('/addresses/{id}/default', [App\Http\Controllers\Api\CustomerAddressController::class, 'setDefault']);
 
     // Profile completion and password management
     Route::post('/complete-profile', [App\Http\Controllers\Api\CustomerProfileController::class, 'completeProfile']);

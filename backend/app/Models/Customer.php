@@ -124,6 +124,11 @@ class Customer extends Model implements AuthenticatableContract
         return $this->hasMany(CustomerCreditLedger::class);
     }
 
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(CustomerAddress::class);
+    }
+
     public function smsLogs(): HasMany
     {
         return $this->hasMany(SmsLog::class);

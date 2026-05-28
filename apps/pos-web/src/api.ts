@@ -373,6 +373,7 @@ export async function createDeliveryOrder(payload: {
   delivery_contact_name: string;
   delivery_contact_phone: string;
   delivery_notes?: string;
+  delivery_location_link?: string;
   items: Array<{
     item_id?: number | null;
     name: string;
@@ -391,6 +392,23 @@ export async function createDeliveryOrder(payload: {
 
 export async function searchCustomers(q: string): Promise<{ data: PosCustomer[] }> {
   return request<{ data: PosCustomer[] }>(`/customers/search?q=${encodeURIComponent(q)}`);
+}
+
+export type PosCustomerAddress = {
+  id: number;
+  label: string | null;
+  address_line1: string;
+  address_line2: string | null;
+  island: string;
+  contact_name: string;
+  contact_phone: string;
+  notes: string | null;
+  location_link: string | null;
+  is_default: boolean;
+};
+
+export async function fetchCustomerAddresses(customerId: number): Promise<{ addresses: PosCustomerAddress[] }> {
+  return request<{ addresses: PosCustomerAddress[] }>(`/customers/${customerId}/addresses`);
 }
 
 /**

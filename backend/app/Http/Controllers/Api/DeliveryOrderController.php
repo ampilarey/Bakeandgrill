@@ -10,6 +10,7 @@ use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\CustomerAddressService;
 use App\Services\DeliveryGateService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
@@ -76,7 +77,10 @@ class DeliveryOrderController extends Controller
             'delivery_contact_name' => 'required|string|max:100',
             'delivery_contact_phone' => ['required', 'string', 'max:30', 'regex:/^(\+?960)?[379]\d{6}$/'],
             'delivery_notes' => 'nullable|string|max:500',
+            'delivery_location_link' => 'nullable|url|max:2048',
             'desired_eta' => 'nullable|date|after:now',
+            'save_address' => 'sometimes|boolean',
+            'address_label' => 'nullable|string|max:60',
             'branch_id' => 'nullable|integer',
             'customer_notes' => 'nullable|string|max:500',
             'customer_id' => 'nullable|integer|exists:customers,id',
@@ -124,6 +128,23 @@ class DeliveryOrderController extends Controller
             return $order->load(['items.modifiers']);
         });
 
+        $customerId = $order->customer_id;
+        if ($customerId && ($validated['save_address'] ?? false)) {
+            $customer = \App\Models\Customer::find($customerId);
+            if ($customer) {
+                app(CustomerAddressService::class)->upsertFromDeliveryOrder($customer, [
+                    'label' => $validated['address_label'] ?? null,
+                    'address_line1' => $delivery->addressLine1,
+                    'address_line2' => $delivery->addressLine2,
+                    'island' => $delivery->island,
+                    'contact_name' => $delivery->contactName,
+                    'contact_phone' => $delivery->contactPhone,
+                    'notes' => $delivery->notes,
+                    'location_link' => $delivery->locationLink,
+                ]);
+            }
+        }
+
         return response()->json(['order' => $order], 201);
     }
 
@@ -154,6 +175,7 @@ class DeliveryOrderController extends Controller
             'delivery_contact_name' => 'sometimes|string|max:100',
             'delivery_contact_phone' => ['sometimes', 'string', 'max:30', 'regex:/^(\+?960)?[379]\d{6}$/'],
             'delivery_notes' => 'nullable|string|max:500',
+            'delivery_location_link' => 'nullable|url|max:2048',
             'delivery_eta_at' => 'nullable|date|after:now',
         ]);
 

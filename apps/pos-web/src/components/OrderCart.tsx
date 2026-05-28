@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CartItem, RestaurantTable } from "../types";
 import type { PaymentRow } from "../hooks/useCart";
 import { makeCartKey } from "../hooks/useCart";
-import type { PosCustomer } from "../api";
+import type { PosCustomer, PosCustomerAddress } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { palette } from "../theme";
@@ -26,6 +26,10 @@ type Props = {
   setOrderType: (t: OrderType) => void;
   deliveryDetails: PosDeliveryDetails;
   setDeliveryDetails: (d: PosDeliveryDetails) => void;
+  customerAddresses?: PosCustomerAddress[];
+  selectedDeliveryAddressId?: number | "manual";
+  onSelectDeliveryAddress?: (id: number | "manual") => void;
+  onDeliveryManualEdit?: () => void;
   tables: RestaurantTable[];
   selectedTableId: number | null;
   setSelectedTableId: (id: number | null) => void;
@@ -450,12 +454,36 @@ export function OrderCart(p: Props) {
 
         {isDelivery && !onlineFulfillment && (
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {p.customerAddresses && p.customerAddresses.length > 0 && p.onSelectDeliveryAddress && (
+              <select
+                value={p.selectedDeliveryAddressId ?? "manual"}
+                disabled={lockedReadOnly}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  p.onSelectDeliveryAddress?.(v === "manual" ? "manual" : Number(v));
+                }}
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 8,
+                  border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
+                }}
+              >
+                {p.customerAddresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {(a.label ? `${a.label} — ` : "") + a.address_line1}{a.is_default ? " (default)" : ""}
+                  </option>
+                ))}
+                <option value="manual">Enter manually</option>
+              </select>
+            )}
             <input
               type="text"
               placeholder="Delivery address *"
               value={p.deliveryDetails.addressLine1}
               disabled={lockedReadOnly}
-              onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, addressLine1: e.target.value })}
+              onChange={(e) => {
+                p.onDeliveryManualEdit?.();
+                p.setDeliveryDetails({ ...p.deliveryDetails, addressLine1: e.target.value });
+              }}
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 8,
                 border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
@@ -490,7 +518,24 @@ export function OrderCart(p: Props) {
               placeholder="Contact name *"
               value={p.deliveryDetails.contactName}
               disabled={lockedReadOnly}
-              onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, contactName: e.target.value })}
+              onChange={(e) => {
+                p.onDeliveryManualEdit?.();
+                p.setDeliveryDetails({ ...p.deliveryDetails, contactName: e.target.value });
+              }}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8,
+                border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
+              }}
+            />
+            <input
+              type="url"
+              placeholder="Google Maps / location link (optional)"
+              value={p.deliveryDetails.locationLink}
+              disabled={lockedReadOnly}
+              onChange={(e) => {
+                p.onDeliveryManualEdit?.();
+                p.setDeliveryDetails({ ...p.deliveryDetails, locationLink: e.target.value });
+              }}
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 8,
                 border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',

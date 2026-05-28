@@ -8,6 +8,7 @@ export type PosDeliveryDetails = {
   contactName: string;
   contactPhone: string;
   notes: string;
+  locationLink: string;
 };
 
 export const EMPTY_DELIVERY_DETAILS: PosDeliveryDetails = {
@@ -17,6 +18,7 @@ export const EMPTY_DELIVERY_DETAILS: PosDeliveryDetails = {
   contactName: "",
   contactPhone: "",
   notes: "",
+  locationLink: "",
 };
 
 /** Rough estimate for Charge screen — server calculates the authoritative fee. */
@@ -51,6 +53,31 @@ export function resolveDeliveryDetails(
     contactName: d.contactName.trim() || customer.name?.trim() || "",
     contactPhone: d.contactPhone.trim() || customer.phone?.trim() || "",
   };
+}
+
+type SavedAddressShape = {
+  address_line1: string;
+  address_line2?: string | null;
+  island: string;
+  contact_name: string;
+  contact_phone: string;
+  notes?: string | null;
+  location_link?: string | null;
+};
+
+export function savedAddressToDeliveryDetails(
+  address: SavedAddressShape,
+  customer?: DeliveryContactFallback | null,
+): PosDeliveryDetails {
+  return resolveDeliveryDetails({
+    addressLine1: address.address_line1,
+    addressLine2: address.address_line2 ?? "",
+    island: address.island,
+    contactName: address.contact_name,
+    contactPhone: address.contact_phone,
+    notes: address.notes ?? "",
+    locationLink: address.location_link ?? "",
+  }, customer);
 }
 
 export function validateDeliveryDetails(

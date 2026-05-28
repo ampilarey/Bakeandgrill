@@ -323,6 +323,7 @@ export function useOrderCreation(params: Params) {
           contactName: "",
           contactPhone: "",
           notes: "",
+          locationLink: "",
         },
         { name: params.customerName, phone: params.customerPhone },
       );
@@ -334,6 +335,7 @@ export function useOrderCreation(params: Params) {
         delivery_contact_name: d.contactName.trim(),
         delivery_contact_phone: normalizeMvPhone(d.contactPhone),
         delivery_notes: d.notes.trim() || undefined,
+        delivery_location_link: d.locationLink.trim() || undefined,
       };
     }
 
@@ -689,6 +691,7 @@ export function useOrderCreation(params: Params) {
           contactName: "",
           contactPhone: "",
           notes: "",
+          locationLink: "",
         },
         { name: params.customerName, phone: params.customerPhone },
       );
@@ -876,6 +879,7 @@ export function useOrderCreation(params: Params) {
           contactName: "",
           contactPhone: "",
           notes: "",
+          locationLink: "",
         },
         { name: params.customerName, phone: params.customerPhone },
       );
@@ -936,6 +940,7 @@ export function useOrderCreation(params: Params) {
         delivery_contact_name?: string | null;
         delivery_contact_phone?: string | null;
         delivery_notes?: string | null;
+        delivery_location_link?: string | null;
       };
       params.setDeliveryDetails({
         addressLine1: o.delivery_address_line1 ?? "",
@@ -944,6 +949,7 @@ export function useOrderCreation(params: Params) {
         contactName: o.delivery_contact_name ?? "",
         contactPhone: o.delivery_contact_phone ?? "",
         notes: o.delivery_notes ?? "",
+        locationLink: o.delivery_location_link ?? "",
       });
     }
     if (params.setSelectedTableId) {

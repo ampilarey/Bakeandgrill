@@ -21,6 +21,9 @@ export type DeliveryOrderPayload = {
   delivery_contact_name: string;
   delivery_contact_phone: string;
   delivery_notes?: string;
+  delivery_location_link?: string;
+  save_address?: boolean;
+  address_label?: string;
   desired_eta?: string;
   customer_notes?: string;
 };

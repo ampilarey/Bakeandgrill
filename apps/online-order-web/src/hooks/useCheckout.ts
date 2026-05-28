@@ -21,6 +21,8 @@ import {
   getMyReferralCode,
   applyReferralToOrder,
   removeReferralFromOrder,
+  fetchCustomerAddresses,
+  type CustomerAddress,
 } from "../api";
 import type { LoyaltyAccount } from "../api";
 
@@ -42,11 +44,12 @@ export type DeliveryForm = {
   contact_name: string;
   contact_phone: string;
   notes: string;
+  location_link: string;
 };
 
 export const EMPTY_DELIVERY: DeliveryForm = {
   address_line1: "", address_line2: "", island: "",
-  contact_name: "", contact_phone: "", notes: "",
+  contact_name: "", contact_phone: "", notes: "", location_link: "",
 };
 
 const PENDING_ORDER_KEY = 'checkout_pending_order_id';
@@ -74,6 +77,18 @@ function writePendingOrderId(id: number | null): void {
  */
 function localPhone(phone: string): string {
   return phone.trim().replace(/^(?:00960|\+?960)/, "");
+}
+
+function addressToDelivery(a: CustomerAddress): DeliveryForm {
+  return {
+    address_line1: a.address_line1,
+    address_line2: a.address_line2 ?? "",
+    island: a.island,
+    contact_name: a.contact_name,
+    contact_phone: localPhone(a.contact_phone),
+    notes: a.notes ?? "",
+    location_link: a.location_link ?? "",
+  };
 }
 
 function readCart(): (CartItem & { variantId?: number | null })[] {
@@ -172,6 +187,11 @@ export function useCheckout() {
   const [friendReferralError, setFriendReferralError] = useState("");
   const [friendReferralLoading, setFriendReferralLoading] = useState(false);
 
+  const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | "new">("new");
+  const [saveAddress, setSaveAddress] = useState(false);
+  const [addressLabel, setAddressLabel] = useState("");
+
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [isPlacing, setIsPlacing]     = useState(false);
@@ -239,6 +259,22 @@ export function useCheckout() {
           }
         }
       });
+
+    fetchCustomerAddresses(token)
+      .then((res) => {
+        if (cancelled) return;
+        const list = res.addresses ?? [];
+        setSavedAddresses(list);
+        const defaultAddr = list.find((a) => a.is_default) ?? list[0];
+        if (defaultAddr) {
+          setSelectedAddressId(defaultAddr.id);
+          setDelivery((prev) => ({
+            ...addressToDelivery(defaultAddr),
+            contact_phone: prev.contact_phone || localPhone(defaultAddr.contact_phone),
+          }));
+        }
+      })
+      .catch(() => { /* optional — manual entry still works */ });
 
     getLoyaltyAccount(token).then((r) => {
       if (!cancelled && r.account && r.account.points_balance > 0) {
@@ -449,6 +485,20 @@ export function useCheckout() {
     setPromoCode("");
   };
 
+  const applySavedAddress = (id: number | "new") => {
+    setSelectedAddressId(id);
+    if (id === "new") {
+      setSaveAddress(true);
+      return;
+    }
+    const addr = savedAddresses.find((a) => a.id === id);
+    if (addr) {
+      setDelivery(addressToDelivery(addr));
+      setSaveAddress(false);
+      setAddressLabel(addr.label ?? "");
+    }
+  };
+
   // ── Validation ─────────────────────────────────────────────────────────────
   const validateDelivery = (): boolean => {
     const errs: Record<string, string> = {};
@@ -490,6 +540,9 @@ export function useCheckout() {
           delivery_contact_name: delivery.contact_name,
           delivery_contact_phone: localPhone(delivery.contact_phone),
           delivery_notes: delivery.notes || undefined,
+          delivery_location_link: delivery.location_link.trim() || undefined,
+          save_address: saveAddress || undefined,
+          address_label: saveAddress ? (addressLabel.trim() || undefined) : undefined,
           customer_notes: notes || undefined,
         });
         orderId = res.order.id;
@@ -644,6 +697,8 @@ export function useCheckout() {
   return {
     cart, token, customerName, loyaltyAccount, loyaltyPoints, setLoyaltyPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
+    savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
+    saveAddress, setSaveAddress, addressLabel, setAddressLabel,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,

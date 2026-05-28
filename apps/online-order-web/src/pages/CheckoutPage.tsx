@@ -204,6 +204,8 @@ export function CheckoutPage() {
   const {
     cart, token, customerName, loyaltyAccount, loyaltyPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
+    savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
+    saveAddress, setSaveAddress, addressLabel, setAddressLabel,
     promoCode, setPromoCode, promoApplied,
     promoError, promoLoading,
     useLoyalty, setUseLoyalty,
@@ -285,8 +287,31 @@ export function CheckoutPage() {
       <div style={S.infoNote}>
         <span>🛵</span> Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong> · Estimated {deliveryEta}
       </div>
+      {token && savedAddresses.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Saved address
+          </label>
+          <select
+            className="field-input"
+            value={selectedAddressId}
+            onChange={(e) => {
+              const v = e.target.value;
+              applySavedAddress(v === 'new' ? 'new' : Number(v));
+            }}
+            style={{ width: '100%' }}
+          >
+            {savedAddresses.map((a) => (
+              <option key={a.id} value={a.id}>
+                {(a.label ? `${a.label} — ` : '') + a.address_line1 + (a.is_default ? ' (default)' : '')}
+              </option>
+            ))}
+            <option value="new">Use a new address</option>
+          </select>
+        </div>
+      )}
       <Field label="Address *" placeholder="House / Flat number, Street"
-        value={delivery.address_line1} onChange={(v) => setDelivery({ ...delivery, address_line1: v })} error={errors.address_line1} />
+        value={delivery.address_line1} onChange={(v) => { setDelivery({ ...delivery, address_line1: v }); setSelectedAddressId('new'); }} error={errors.address_line1} />
       <Field label="Address line 2" placeholder="Building name (optional)"
         value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
       <Field label="Island *" placeholder="Malé"
@@ -294,6 +319,8 @@ export function CheckoutPage() {
         onChange={(v) => { setDelivery({ ...delivery, island: v }); setZoneError(null); }}
         onBlur={() => void handleIslandBlur(delivery.island)}
         error={zoneError ?? errors.island} />
+      <Field label="Google Maps / location link" placeholder="https://maps.google.com/..."
+        value={delivery.location_link} onChange={(v) => setDelivery({ ...delivery, location_link: v })} />
       <div style={S.fieldRow}>
         <Field label="Contact name *" placeholder="Full name"
           value={delivery.contact_name} onChange={(v) => setDelivery({ ...delivery, contact_name: v })} error={errors.contact_name} />
@@ -302,6 +329,22 @@ export function CheckoutPage() {
       </div>
       <Field label="Delivery notes" placeholder="Any special instructions for the rider"
         value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
+      {token && (selectedAddressId === 'new' || saveAddress) && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={saveAddress}
+              onChange={(e) => setSaveAddress(e.target.checked)}
+            />
+            Save this address to my account
+          </label>
+          {saveAddress && (
+            <Field label="Address label" placeholder="Home, Office, etc."
+              value={addressLabel} onChange={setAddressLabel} />
+          )}
+        </div>
+      )}
     </SectionCard>
   );
 

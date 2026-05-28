@@ -10,11 +10,17 @@ import {
   getMyReferralCode,
   getCustomerCredit,
   updateCustomerCreditPreferences,
+  fetchCustomerAddresses,
+  createCustomerAddress,
+  updateCustomerAddress,
+  deleteCustomerAddress,
+  setDefaultCustomerAddress,
 } from '../api';
 import type {
   AuthCustomer, CustomerReservation, FavouriteItem,
   CustomerPreOrder, CustomerReview, Order,
   CustomerCreditSummary, CustomerCreditInvoice,
+  CustomerAddress,
 } from '../api';
 import type { LoyaltyAccount } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
@@ -87,7 +93,7 @@ export function AccountPage() {
   const navigate = useNavigate();
   const { token, authReady, setAuth, clearAuth, customerName } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals' | 'credit'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals' | 'credit'>('profile');
 
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -151,6 +157,20 @@ export function AccountPage() {
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [savingPw, setSavingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+
+  // Saved addresses
+  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [addressesError, setAddressesError] = useState('');
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
+  const [addressForm, setAddressForm] = useState({
+    label: '', address_line1: '', address_line2: '', island: 'Male',
+    contact_name: '', contact_phone: '', notes: '', location_link: '', is_default: false,
+  });
+  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressMsg, setAddressMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   useEffect(() => {
     if (!authReady || !token) return;
@@ -231,6 +251,118 @@ export function AccountPage() {
       .catch((e: Error) => setCreditError(e.message || 'Failed to load credit account.'))
       .finally(() => setCreditLoading(false));
   }, [token, authReady, activeTab, creditLoaded]);
+
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'addresses' || addressesLoaded) return;
+    setAddressesLoading(true);
+    fetchCustomerAddresses(token)
+      .then((res) => setAddresses(res.addresses ?? []))
+      .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
+      .finally(() => {
+        setAddressesLoading(false);
+        setAddressesLoaded(true);
+      });
+  }, [token, authReady, activeTab, addressesLoaded]);
+
+  const reloadAddresses = () => {
+    if (!token) return;
+    setAddressesLoading(true);
+    fetchCustomerAddresses(token)
+      .then((res) => setAddresses(res.addresses ?? []))
+      .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
+      .finally(() => setAddressesLoading(false));
+  };
+
+  const startAddAddress = () => {
+    setEditingAddressId(null);
+    setAddressForm({
+      label: customer?.name ? 'Home' : '',
+      address_line1: '',
+      address_line2: '',
+      island: 'Male',
+      contact_name: customer?.name ?? customerName ?? '',
+      contact_phone: (customer?.phone ?? '').replace(/^(\+?960)/, ''),
+      notes: '',
+      location_link: '',
+      is_default: addresses.length === 0,
+    });
+    setAddressMsg(null);
+    setShowAddressForm(true);
+  };
+
+  const startEditAddress = (a: CustomerAddress) => {
+    setEditingAddressId(a.id);
+    setAddressForm({
+      label: a.label ?? '',
+      address_line1: a.address_line1,
+      address_line2: a.address_line2 ?? '',
+      island: a.island,
+      contact_name: a.contact_name,
+      contact_phone: a.contact_phone.replace(/^(\+?960)/, ''),
+      notes: a.notes ?? '',
+      location_link: a.location_link ?? '',
+      is_default: a.is_default,
+    });
+    setAddressMsg(null);
+    setShowAddressForm(true);
+  };
+
+  const handleSaveAddress = async () => {
+    if (!token) return;
+    if (!addressForm.address_line1.trim() || !addressForm.island.trim()
+      || !addressForm.contact_name.trim() || !addressForm.contact_phone.trim()) {
+      setAddressMsg({ type: 'error', text: 'Please fill in address, island, contact name, and phone.' });
+      return;
+    }
+    setAddressSaving(true);
+    setAddressMsg(null);
+    try {
+      const payload = {
+        label: addressForm.label.trim() || undefined,
+        address_line1: addressForm.address_line1.trim(),
+        address_line2: addressForm.address_line2.trim() || undefined,
+        island: addressForm.island.trim(),
+        contact_name: addressForm.contact_name.trim(),
+        contact_phone: addressForm.contact_phone.trim(),
+        notes: addressForm.notes.trim() || undefined,
+        location_link: addressForm.location_link.trim() || undefined,
+        is_default: addressForm.is_default,
+      };
+      if (editingAddressId) {
+        await updateCustomerAddress(token, editingAddressId, payload);
+      } else {
+        await createCustomerAddress(token, payload);
+      }
+      setShowAddressForm(false);
+      setEditingAddressId(null);
+      reloadAddresses();
+      setAddressMsg({ type: 'success', text: editingAddressId ? 'Address updated.' : 'Address saved.' });
+    } catch (e) {
+      setAddressMsg({ type: 'error', text: (e as Error).message || 'Could not save address.' });
+    } finally {
+      setAddressSaving(false);
+    }
+  };
+
+  const handleDeleteAddress = async (id: number) => {
+    if (!token || !window.confirm('Delete this address?')) return;
+    try {
+      await deleteCustomerAddress(token, id);
+      reloadAddresses();
+    } catch (e) {
+      setAddressesError((e as Error).message || 'Could not delete address.');
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: number) => {
+    if (!token) return;
+    try {
+      await setDefaultCustomerAddress(token, id);
+      reloadAddresses();
+    } catch (e) {
+      setAddressesError((e as Error).message || 'Could not set default address.');
+    }
+  };
 
   const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
 
@@ -365,6 +497,7 @@ export function AccountPage() {
       <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
         {([
           { id: 'profile',      label: '👤 Profile'       },
+          { id: 'addresses',    label: '📍 Addresses'     },
           { id: 'loyalty',      label: '⭐ Loyalty'       },
           { id: 'credit',       label: '💳 Credit'        },
           { id: 'referrals',    label: '🎁 Referrals'     },
@@ -538,6 +671,88 @@ export function AccountPage() {
         </button>
       </div>
       </>)}
+
+      {activeTab === 'addresses' && (
+        <SectionCard title="Saved Delivery Addresses">
+          {addressMsg && <div style={{ ...alertStyle(addressMsg.type), marginBottom: 14 }}>{addressMsg.text}</div>}
+          {addressesError && <div style={{ ...alertStyle('error'), marginBottom: 14 }}>{addressesError}</div>}
+          {addressesLoading && addresses.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+          ) : (
+            <>
+              {addresses.length === 0 && !showAddressForm && (
+                <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
+                  No saved addresses yet. Add one for faster checkout.
+                </p>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+                {addresses.map((a) => (
+                  <div key={a.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>
+                          {a.label || 'Address'}{a.is_default ? ' · Default' : ''}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                          {a.address_line1}{a.address_line2 ? `, ${a.address_line2}` : ''} · {a.island}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          {a.contact_name} · {a.contact_phone}
+                        </div>
+                        {a.location_link && (
+                          <a href={a.location_link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--color-primary)', marginTop: 4, display: 'inline-block' }}>
+                            Open map →
+                          </a>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {!a.is_default && (
+                          <button type="button" onClick={() => void handleSetDefaultAddress(a.id)} style={{ ...btnStyle, height: 32, padding: '0 12px', fontSize: 12 }}>
+                            Set default
+                          </button>
+                        )}
+                        <button type="button" onClick={() => startEditAddress(a)} style={{ ...btnStyle, height: 32, padding: '0 12px', fontSize: 12, background: 'var(--color-surface)', color: 'var(--color-dark)', border: '1px solid var(--color-border)' }}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => void handleDeleteAddress(a.id)} style={{ height: 32, padding: '0 12px', fontSize: 12, background: 'transparent', border: '1px solid var(--color-error, #dc2626)', color: 'var(--color-error, #dc2626)', borderRadius: 10, cursor: 'pointer' }}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {!showAddressForm ? (
+                <button type="button" style={btnStyle} onClick={startAddAddress}>Add address</button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{editingAddressId ? 'Edit address' : 'New address'}</h3>
+                  <FieldRow label="Label"><input style={inputStyle} value={addressForm.label} onChange={(e) => setAddressForm((f) => ({ ...f, label: e.target.value }))} placeholder="Home, Office…" /></FieldRow>
+                  <FieldRow label="Address *"><input style={inputStyle} value={addressForm.address_line1} onChange={(e) => setAddressForm((f) => ({ ...f, address_line1: e.target.value }))} /></FieldRow>
+                  <FieldRow label="Address line 2"><input style={inputStyle} value={addressForm.address_line2} onChange={(e) => setAddressForm((f) => ({ ...f, address_line2: e.target.value }))} /></FieldRow>
+                  <FieldRow label="Island *"><input style={inputStyle} value={addressForm.island} onChange={(e) => setAddressForm((f) => ({ ...f, island: e.target.value }))} /></FieldRow>
+                  <FieldRow label="Location link"><input style={inputStyle} value={addressForm.location_link} onChange={(e) => setAddressForm((f) => ({ ...f, location_link: e.target.value }))} placeholder="https://maps.google.com/…" /></FieldRow>
+                  <FieldRow label="Contact name *"><input style={inputStyle} value={addressForm.contact_name} onChange={(e) => setAddressForm((f) => ({ ...f, contact_name: e.target.value }))} /></FieldRow>
+                  <FieldRow label="Contact phone *"><input style={inputStyle} value={addressForm.contact_phone} onChange={(e) => setAddressForm((f) => ({ ...f, contact_phone: e.target.value }))} /></FieldRow>
+                  <FieldRow label="Notes"><textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} value={addressForm.notes} onChange={(e) => setAddressForm((f) => ({ ...f, notes: e.target.value }))} /></FieldRow>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                    <input type="checkbox" checked={addressForm.is_default} onChange={(e) => setAddressForm((f) => ({ ...f, is_default: e.target.checked }))} />
+                    Set as default address
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" style={{ ...btnStyle, opacity: addressSaving ? 0.6 : 1 }} disabled={addressSaving} onClick={() => void handleSaveAddress()}>
+                      {addressSaving ? 'Saving…' : 'Save address'}
+                    </button>
+                    <button type="button" style={{ ...btnStyle, background: 'var(--color-surface)', color: 'var(--color-dark)', border: '1px solid var(--color-border)' }} onClick={() => { setShowAddressForm(false); setEditingAddressId(null); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </SectionCard>
+      )}
 
       {/* ── Reservations tab ── */}
       {activeTab === 'reservations' && (

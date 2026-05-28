@@ -66,6 +66,7 @@ class Order extends Model
         'delivery_contact_name',
         'delivery_contact_phone',
         'delivery_notes',
+        'delivery_location_link',
         'delivery_fee',
         'delivery_fee_laar',
         'delivery_eta_at',

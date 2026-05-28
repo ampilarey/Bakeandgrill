@@ -14,6 +14,7 @@ final readonly class DeliveryDetails
         public string $contactPhone,
         public ?string $notes,
         public ?string $desiredEta,
+        public ?string $locationLink = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -26,6 +27,7 @@ final readonly class DeliveryDetails
             contactPhone: $data['delivery_contact_phone'],
             notes: $data['delivery_notes'] ?? null,
             desiredEta: $data['desired_eta'] ?? null,
+            locationLink: $data['delivery_location_link'] ?? null,
         );
     }
 
@@ -38,6 +40,7 @@ final readonly class DeliveryDetails
             'delivery_contact_name' => $this->contactName,
             'delivery_contact_phone' => $this->contactPhone,
             'delivery_notes' => $this->notes,
+            'delivery_location_link' => $this->locationLink,
             'delivery_eta_at' => $this->desiredEta ? now()->parse($this->desiredEta) : null,
         ];
     }

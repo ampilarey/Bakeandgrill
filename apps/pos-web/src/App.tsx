@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosSmsNotifications } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications } from "./api";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
 import { startSyncEnginePolling } from "./offline/syncEngine";
@@ -49,6 +49,7 @@ import {
   EMPTY_DELIVERY_DETAILS,
   estimateDeliveryFeeMvr,
   resolveDeliveryDetails,
+  savedAddressToDeliveryDetails,
   validateDeliveryDetails,
 } from "./orderTypes";
 
@@ -199,6 +200,8 @@ function App() {
   // at the top of the cart.
   const [orderType, setOrderType] = useState<PosOrderType>("Dine-in");
   const [deliveryDetails, setDeliveryDetails] = useState<PosDeliveryDetails>(EMPTY_DELIVERY_DETAILS);
+  const [customerAddresses, setCustomerAddresses] = useState<PosCustomerAddress[]>([]);
+  const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<number | "manual">("manual");
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   // Owner-curated quick-note chip library (e.g. "No salt", "Extra
@@ -254,9 +257,51 @@ function App() {
     setDeliveryDetails((prev) => resolveDeliveryDetails(prev, cart.attachedCustomer));
   }, [orderType, cart.attachedCustomer?.id, cart.attachedCustomer?.name, cart.attachedCustomer?.phone]);
 
+  useEffect(() => {
+    const customerId = cart.attachedCustomer?.id;
+    if (orderType !== "Delivery" || !customerId) {
+      setCustomerAddresses([]);
+      setSelectedDeliveryAddressId("manual");
+      return;
+    }
+    let cancelled = false;
+    fetchCustomerAddresses(customerId)
+      .then((res) => {
+        if (cancelled) return;
+        const list = res.addresses ?? [];
+        setCustomerAddresses(list);
+        const defaultAddr = list.find((a) => a.is_default) ?? list[0];
+        if (defaultAddr) {
+          setSelectedDeliveryAddressId(defaultAddr.id);
+          setDeliveryDetails((prev) => (
+            prev.addressLine1.trim()
+              ? resolveDeliveryDetails(prev, cart.attachedCustomer)
+              : savedAddressToDeliveryDetails(defaultAddr, cart.attachedCustomer)
+          ));
+        } else {
+          setSelectedDeliveryAddressId("manual");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerAddresses([]);
+      });
+    return () => { cancelled = true; };
+  }, [orderType, cart.attachedCustomer?.id]);
+
+  const applyPosDeliveryAddress = useCallback((id: number | "manual") => {
+    setSelectedDeliveryAddressId(id);
+    if (id === "manual") return;
+    const addr = customerAddresses.find((a) => a.id === id);
+    if (addr) {
+      setDeliveryDetails(savedAddressToDeliveryDetails(addr, cart.attachedCustomer));
+    }
+  }, [customerAddresses, cart.attachedCustomer]);
+
   const handleClearCart = useCallback(() => {
     cart.clearCart();
     setDeliveryDetails(EMPTY_DELIVERY_DETAILS);
+    setCustomerAddresses([]);
+    setSelectedDeliveryAddressId("manual");
   }, [cart]);
 
   const deliveryFeeEst = useMemo(() => {
@@ -1156,6 +1201,10 @@ function App() {
               setOrderType={setOrderType}
               deliveryDetails={deliveryDetails}
               setDeliveryDetails={setDeliveryDetails}
+              customerAddresses={customerAddresses}
+              selectedDeliveryAddressId={selectedDeliveryAddressId}
+              onSelectDeliveryAddress={applyPosDeliveryAddress}
+              onDeliveryManualEdit={() => setSelectedDeliveryAddressId("manual")}
               tables={tables}
               selectedTableId={selectedTableId}
               setSelectedTableId={setSelectedTableId}
