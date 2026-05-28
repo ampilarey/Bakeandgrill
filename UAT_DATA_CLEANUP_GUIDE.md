@@ -26,7 +26,18 @@
 
 ## 3. Cleanup Steps
 
-### Step 3a — Verify stale order count before touching anything
+### Step 3a — Admin UI (recommended for owners)
+
+After deploying the latest `main` to test:
+
+1. Log in to **Admin → Dashboard** as owner
+2. Scroll to **POS maintenance**
+3. Preview stale open tickets, then **Void stale ticket(s)** (skips paid orders automatically)
+4. Go to **Shifts → Live** and **force-close** any shift open more than 24 hours
+
+This uses `POST /api/admin/pos/cleanup-stale-tickets` under the hood and is safer than raw SQL because it skips orders with confirmed payments.
+
+### Step 3b — Verify stale order count before touching anything (SSH)
 
 ```bash
 cd /home/bakeandgrill/test.bakeandgrill.mv/backend
@@ -42,9 +53,9 @@ echo 'Stale in_progress/preparing: ' . App\Models\Order::whereIn('status', ['in_
 "
 ```
 
-### Step 3b — Cancel stale pending orders (safe for UAT)
+### Step 3c — Cancel stale pending orders (safe for UAT)
 
-Only do this after Step 3a confirms the counts make sense.
+Only do this after Step 3b confirms the counts make sense.
 
 ```bash
 php artisan tinker --execute="
@@ -64,7 +75,7 @@ echo \"Cancelled payment_pending: \$pp\n\";
 "
 ```
 
-### Step 3c — Cancel stale in-progress/preparing orders (optional, if any)
+### Step 3d — Cancel stale in-progress/preparing orders (optional, if any)
 
 ```bash
 php artisan tinker --execute="
@@ -76,7 +87,7 @@ echo \"Cancelled in_progress/preparing: \$ip\n\";
 "
 ```
 
-### Step 3d — Clear stale test customer accounts (optional, use carefully)
+### Step 3e — Clear stale test customer accounts (optional, use carefully)
 
 > ⚠️ Only do this if you want a completely clean UAT customer slate.  
 > This deletes customer records, loyalty accounts, and order associations via soft-delete.  
@@ -100,7 +111,7 @@ echo 'All customers soft-deleted';
 "
 ```
 
-### Step 3e — Verify KDS is clean after cleanup
+### Step 3f — Verify KDS is clean after cleanup
 
 After running the above, check the KDS page at https://test.bakeandgrill.mv/admin/kds  
 The Pending column should show 0 or only recent (today's) test orders.

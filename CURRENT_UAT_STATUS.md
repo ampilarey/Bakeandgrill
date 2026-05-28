@@ -1,6 +1,6 @@
 # Current UAT Status — Bake & Grill
 **Environment:** https://test.bakeandgrill.mv  
-**Last updated:** April 2026  
+**Last updated:** May 2026  
 **Verdict:** ✅ **UAT READY WITH MINOR CAVEATS**
 
 ---
@@ -10,6 +10,19 @@
 The test server is ready for full end-to-end User Acceptance Testing.  
 Core payment, ordering, admin, and KDS flows are verified and working.  
 Minor caveats: some secondary flows (delivery, promo+gift card+loyalty in one checkout, order-completion SMS) have not yet been exercised in a live session.
+
+---
+
+## Recently Fixed (May 2026)
+
+| Area | Fix |
+|---|---|
+| Admin reports | Payment breakdown uses completed orders only |
+| Admin dashboard | Clearer KPI labels, stale shift warning, POS maintenance tools |
+| Checkout | Referral discount shown on Pay button before order creation |
+| E2E tests | Condition-based waits replace flaky fixed delays |
+| Mobile nav | 4-item bottom bar + More sheet (public site + order app) |
+| Payments | `PaymentService` always prefers `total_laar` over float `total` |
 
 ---
 
@@ -95,13 +108,16 @@ These flows are implemented and code is verified, but have not yet been exercise
 
 | Issue | Impact | Notes |
 |---|---|---|
-| ~67 stale test orders in KDS (from March 2026) | Cosmetic — KDS looks cluttered | See UAT_DATA_CLEANUP_GUIDE.md for cleanup steps |
-| Referral discount not visible in checkout button label | UX confusion only | Actual charge is correct; label uses pre-server-side value |
-| `PROGRESS.md` (root) shows "14% complete" | Stale doc confusion | Historical scaffold log, not current state |
-| `docs/BUG_AUDIT_REPORT.md` shows unchecked items | Stale doc confusion | Feb 2026 — superseded by later audits |
-| Mobile nav cramped at 390px (public site) | Minor UX | Functional but dense |
-| 3 flaky Playwright tests (pass on retry) | Minor CI noise | Timing issues, not real failures |
-| `PaymentService.php:43` uses float multiply instead of `total_laar` | Precision risk (theoretical) | Safe for 2-decimal MVR; deferred fix |
+| Stale test orders / open shifts on test DB | Cosmetic — inflated KPIs, cluttered KDS | **Owner:** Admin → Dashboard → **POS maintenance** (bulk void unpaid stale tickets) + Shifts → force-close stale shifts. See `UAT_DATA_CLEANUP_GUIDE.md` for SSH/tinker fallback. |
+
+---
+
+## Historical Docs (Do Not Use as Current Reference)
+
+| File | Status |
+|---|---|
+| `PROGRESS.md` | Archived — Jan 2026 scaffold log only |
+| `docs/BUG_AUDIT_REPORT.md` | Archived — Feb 2026 audit, many items since fixed |
 
 ---
 
@@ -111,13 +127,6 @@ These flows are implemented and code is verified, but have not yet been exercise
 
 ---
 
-## UAT Test Credentials (as of last session)
+## UAT Test Credentials
 
-| Role | Credential |
-|---|---|
-| Admin PIN | 1121 |
-| BML UAT test card | 5506900140100107, Expiry 01/39, CVV 100 |
-| BML UAT gateway | https://api.uat.merchants.bankofmaldives.com.mv |
-| SMS (Dhiraagu) | Live — use real phone numbers |
-
-> ⚠️ Never share actual credentials in documentation committed to the repo. The above reflects what was used in the April 22, 2026 session. Rotate if exposed.
+Store test credentials in `e2e/.env.test` and your team's password manager — not in this file.

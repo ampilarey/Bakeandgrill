@@ -46,7 +46,7 @@ class PaymentService
         ?string $idempotencyKey = null,
         ?string $returnUrl = null,
     ): array {
-        $amountLaar = $amountLaar ?? ($order->total_laar ?? (int) round($order->total * 100));
+        $amountLaar = $amountLaar ?? $this->orderTotalLaar($order);
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
         $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
@@ -154,7 +154,7 @@ class PaymentService
             ['confirmed', 'paid', 'completed'],
         );
 
-        $orderTotalLaar = $order->total_laar ?? (int) round($order->total * 100);
+        $orderTotalLaar = $this->orderTotalLaar($order);
 
         return max(0, $orderTotalLaar - $paidLaar);
     }
@@ -422,7 +422,7 @@ class PaymentService
             // C-2: Compare in laari (integer) to avoid float precision errors where
             // e.g. 100.00 (float) >= 100.00 (float) could fail with 99.9999... representation.
             $paidLaar = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
-            $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+            $orderLaar = $this->orderTotalLaar($order);
 
             Log::info('BML: Payment confirmed', [
                 'payment_id' => $locked->id,
@@ -593,7 +593,7 @@ class PaymentService
                 throw new \InvalidArgumentException('Not your order.');
             }
 
-            $orderLaar = (int) ($locked->total_laar ?? round((float) $locked->total * 100));
+            $orderLaar = $this->orderTotalLaar($locked);
             if ($orderLaar > 0) {
                 throw new \InvalidArgumentException('Order still has an amount due. Pay with card.');
             }
@@ -635,5 +635,15 @@ class PaymentService
 
             return $this->orders->findById($locked->id) ?? $locked;
         });
+    }
+
+    /** Prefer persisted laari total; fall back to decimal MVR only for legacy rows. */
+    private function orderTotalLaar(Order $order): int
+    {
+        if ($order->total_laar !== null) {
+            return (int) $order->total_laar;
+        }
+
+        return (int) round((float) $order->total * 100);
     }
 }
