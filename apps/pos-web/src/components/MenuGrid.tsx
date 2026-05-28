@@ -578,16 +578,6 @@ export function MenuGrid({
                     background: c.fg,
                     opacity: 0.85,
                   }} />
-                  {item.special && (
-                    <span style={{
-                      position: 'absolute', top: 8, right: 8,
-                      background: '#B45309', color: '#fff',
-                      fontSize: 9, fontWeight: 800, padding: '2px 6px',
-                      borderRadius: 999, letterSpacing: '0.02em',
-                    }}>
-                      {item.special.badge_label ?? `${item.special.discount_pct ?? ''}% OFF`}
-                    </span>
-                  )}
                   <span style={{
                     fontSize: 14, fontWeight: 700, lineHeight: 1.2,
                     color: '#0F172A',
