@@ -15,12 +15,10 @@ _None._ No **FAIL** statuses were recorded for executed cases; invalid login and
 
 These are **product / UX observations** aligned with test matrix expectations. No code was changed in this UAT task per user instruction (no business-logic edits unless a proven defect).
 
-### 1. Cart “Total” vs discount (Area H / J) — **Low**
+### 1. Cart “Total” vs discount (Area H / J) — **Resolved (May 2026)**
 
-- **Expected (test intent):** Discount changes the amount the customer pays; testers may expect the cart “Total” line to reflect discount.
-- **Actual (code):** `OrderCart.tsx` displays `MVR {cartTotal.toFixed(2)}` where `cartTotal` in `useCart.ts` is the sum of line items **only**; `discountAmount` is submitted in `useOrderCreation.buildPayload()` but **not** subtracted in the displayed total.
-- **Affected files:** `apps/pos-web/src/components/OrderCart.tsx`, `apps/pos-web/src/hooks/useCart.ts`, `apps/pos-web/src/hooks/useOrderCreation.ts`
-- **Recommendation:** Confirm with product owner; if POS should show payable total, adjust display (minimal UI change) without altering server contract.
+- **Was:** Cart total did not subtract manual/rewards discounts.
+- **Now:** `useCart.ts` computes `discountedSubtotal`, proportional tax, and `cartTotal`; `OrderCart.tsx` Charge button shows the payable total with a subtotal/discount/GST breakdown.
 
 ### 2. Purchase UI: single line item only (Area S — S007) — **Low / coverage gap**
 

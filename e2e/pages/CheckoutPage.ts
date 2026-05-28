@@ -3,7 +3,8 @@
  *
  * Encapsulates all selectors so spec files stay selector-free.
  */
-import { type Page, type Locator, expect } from '@playwright/test';
+import { type Page, expect } from '@playwright/test';
+import { waitForCheckoutReady } from '../helpers/wait';
 
 export interface DeliveryAddress {
   island: string;
@@ -21,120 +22,83 @@ export class CheckoutPage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/order/checkout');
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(800);
+    await this.page.goto('/order/checkout', { waitUntil: 'domcontentloaded' });
+    await waitForCheckoutReady(this.page).catch(() => {});
   }
 
   /** Wait until the checkout form is fully rendered. */
   async waitForForm(): Promise<void> {
-    // The page renders an order type selector (takeaway/delivery buttons) or a login gate
-    await this.page.waitForSelector(
-      'button[aria-pressed], [class*="order-type"], [class*="checkout-form"], h1',
-      { timeout: 12_000 },
-    );
+    await waitForCheckoutReady(this.page);
   }
 
   /** Select the order type (takeaway or delivery). */
-  async selectOrderType(type: 'takeaway' | 'delivery'): Promise<void> {
-    const btn = this.page
-      .locator('button[aria-pressed]')
-      .filter({ hasText: new RegExp(type, 'i') })
-      .first();
+  async selectOrderType(type: 'takeaway' | 'delivery' | 'pickup'): Promise<void> {
+    const pattern = type === 'pickup' ? /takeaway|pickup/i : new RegExp(type, 'i');
+    const btn = this.page.locator('button[aria-pressed]').filter({ hasText: pattern }).first();
 
-    if (await btn.isVisible({ timeout: 4_000 }).catch(() => false)) {
-      await btn.click();
-      await this.page.waitForTimeout(400);
-    }
+    await expect(btn).toBeVisible({ timeout: 8_000 });
+    await btn.click();
+    await expect(btn).toHaveAttribute('aria-pressed', 'true');
   }
 
   /** Fill in the delivery address form fields. */
   async fillDeliveryAddress(addr: DeliveryAddress): Promise<void> {
-    await this.fillIfVisible('input[placeholder*="island" i], select[name*="island" i]', addr.island);
-    await this.fillIfVisible(
-      'input[placeholder*="address" i], input[name*="address" i]',
-      addr.addressLine1,
-    );
-    await this.fillIfVisible(
-      'input[placeholder*="name" i], input[name*="contact_name" i]',
-      addr.contactName,
-    );
-    await this.fillIfVisible(
-      'input[placeholder*="phone" i], input[name*="contact_phone" i]',
-      addr.contactPhone,
-    );
+    await this.page.getByLabel(/^Address \*$/i).fill(addr.addressLine1);
+    await this.page.getByLabel(/^Island \*$/i).fill(addr.island);
+    await this.page.getByLabel(/^Contact name \*$/i).fill(addr.contactName);
+    await this.page.getByLabel(/^Contact phone \*$/i).fill(addr.contactPhone);
     if (addr.notes) {
-      await this.fillIfVisible('textarea[placeholder*="note" i]', addr.notes);
+      await this.page.getByLabel(/^Delivery notes$/i).fill(addr.notes);
     }
   }
 
   /** Apply a promo code. */
   async applyPromo(code: string): Promise<void> {
-    const input = this.page
-      .locator('input[placeholder*="promo" i], input[placeholder*="coupon" i]')
-      .first();
-    if (await input.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await input.fill(code);
-      const applyBtn = this.page
-        .locator('button')
-        .filter({ hasText: /apply|use|ok/i })
-        .first();
-      if (await applyBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await applyBtn.click();
-        await this.page.waitForTimeout(600);
-      }
-    }
+    const input = this.page.getByLabel(/^Promo code$/i);
+    await expect(input).toBeVisible({ timeout: 6_000 });
+    await input.fill(code);
+
+    const applyBtn = this.page.locator('button').filter({ hasText: /^apply$/i }).first();
+    await applyBtn.click();
   }
 
-  /** Read the displayed order total. */
+  /** Read the displayed order total from the Order Summary card. */
   async getTotal(): Promise<string> {
-    const totalEl = this.page
-      .locator('[class*="total"], [data-testid="total"]')
-      .filter({ hasText: /mvr|\d/i })
-      .last();
-    return (await totalEl.textContent({ timeout: 4_000 }).catch(() => '')) ?? '';
+    const summary = this.page.locator('text=Order Summary').locator('xpath=ancestor::div[1]');
+    const row = summary.locator('div').filter({ has: this.page.getByText(/^Total$/) }).last();
+    return (await row.textContent({ timeout: 4_000 }).catch(() => '')) ?? '';
   }
 
   /** Get the delivery fee row text (if shown). */
   async getDeliveryFeeText(): Promise<string> {
-    const row = this.page
-      .locator('[class*="summary"] [class*="row"], li, tr')
-      .filter({ hasText: /delivery fee|shipping/i })
-      .first();
-    return (await row.textContent({ timeout: 3_000 }).catch(() => '')) ?? '';
+    const summary = this.page.locator('text=Order Summary').locator('xpath=ancestor::div[1]');
+    const row = summary.getByText(/^Delivery fee$/i).locator('xpath=ancestor::div[1]');
+    return (await row.textContent({ timeout: 4_000 }).catch(() => '')) ?? '';
   }
 
   /** Click the confirm / place order / pay button. */
   async submitOrder(): Promise<void> {
     const btn = this.page
       .locator('button')
-      .filter({ hasText: /place order|confirm|pay now|checkout/i })
+      .filter({ hasText: /place order|confirm|pay.*bml|checkout/i })
       .first();
-    await expect(btn).toBeVisible({ timeout: 6_000 });
+    await expect(btn).toBeVisible({ timeout: 8_000 });
     await btn.click();
   }
 
   /** Whether the checkout form is visible (as opposed to auth gate). */
   async isFormVisible(): Promise<boolean> {
     return this.page
-      .locator('button[aria-pressed], [class*="checkout-form"]')
+      .locator('button[aria-pressed]')
+      .first()
       .isVisible({ timeout: 4_000 })
       .catch(() => false);
   }
 
-  // ── Private helpers ──────────────────────────────────────────────────────
-
-  private async fillIfVisible(selector: string, value: string): Promise<void> {
-    const el = this.page.locator(selector).first();
-    if (await el.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      const tag = await el.evaluate((e) => (e as HTMLElement).tagName.toLowerCase());
-      if (tag === 'select') {
-        await el.selectOption({ label: value }).catch(async () => {
-          await el.selectOption({ value }).catch(() => {});
-        });
-      } else {
-        await el.fill(value);
-      }
-    }
+  /** True when delivery is disabled (outside hours / not accepting). */
+  async isDeliveryBlocked(): Promise<boolean> {
+    const deliveryBtn = this.page.locator('button[aria-pressed]').filter({ hasText: /delivery/i }).first();
+    if (!(await deliveryBtn.isVisible({ timeout: 2_000 }).catch(() => false))) return true;
+    return deliveryBtn.isDisabled();
   }
 }

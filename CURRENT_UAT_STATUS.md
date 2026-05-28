@@ -21,6 +21,7 @@ Minor caveats: some secondary flows (delivery, promo+gift card+loyalty in one ch
 | Admin dashboard | Clearer KPI labels, stale shift warning, POS maintenance tools |
 | Checkout | Referral discount shown on Pay button before order creation |
 | E2E tests | Condition-based waits replace flaky fixed delays |
+| Delivery checkout | Authenticated E2E verifies address form + delivery fee in summary |
 | Mobile nav | 4-item bottom bar + More sheet (public site + order app) |
 | Payments | `PaymentService` always prefers `total_laar` over float `total` |
 
@@ -92,7 +93,7 @@ These flows are implemented and code is verified, but have not yet been exercise
 
 | Flow | Priority | Notes |
 |---|---|---|
-| Delivery order checkout (address form, delivery fee) | MEDIUM | UI confirmed, end-to-end not tested |
+| Delivery order checkout (address form, delivery fee) | MEDIUM | E2E coverage added in `delivery-order.spec.ts`; live BML payment not tested |
 | Promo code applied in real checkout | MEDIUM | API tested; live checkout not done |
 | Gift card redemption in checkout | MEDIUM | API tested; live checkout not done |
 | Loyalty point redemption in checkout | MEDIUM | Needs points balance to test |
