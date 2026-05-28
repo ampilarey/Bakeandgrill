@@ -6,7 +6,7 @@ import { useSiteSettings } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { OrderStatusBar } from './OrderStatusBar';
-import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PreOrderIcon, ClockIcon, PhoneIcon } from './icons';
+import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PreOrderIcon, ClockIcon, PhoneIcon, MoreIcon } from './icons';
 import { getCustomerMe } from '../api';
 
 
@@ -36,6 +36,7 @@ export function Layout() {
 
   const { token, customerName, clearAuth } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [mobMoreOpen, setMobMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
@@ -82,6 +83,19 @@ export function Layout() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!mobMoreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobMoreOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobMoreOpen]);
+
+  const mobMoreActive = ['/pre-order', '/hours', '/contact'].some(
+    (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+  );
 
   // Announcement banner — reads from public site settings
   const annEnabled = s.announcement_enabled === 'true';
@@ -374,6 +388,35 @@ export function Layout() {
       </footer>
 
       {/* ── Mobile Bottom Navigation (visible ≤768 px) ─────────── */}
+      {mobMoreOpen && (
+        <div
+          className="order-mob-more-backdrop open"
+          aria-hidden="true"
+          onClick={() => setMobMoreOpen(false)}
+        />
+      )}
+      <div
+        className={`order-mob-more-sheet${mobMoreOpen ? ' open' : ''}`}
+        role="menu"
+        aria-label="More links"
+      >
+        {[
+          { to: '/pre-order', label: 'Pre-order', icon: <PreOrderIcon size={20} /> },
+          { to: '/hours', label: 'Hours', icon: <ClockIcon size={20} /> },
+          { to: '/contact', label: 'Contact', icon: <PhoneIcon size={20} /> },
+        ].map(({ to, label, icon }) => (
+          <Link
+            key={to}
+            to={to}
+            role="menuitem"
+            className={location.pathname === to ? 'order-mob-active' : undefined}
+            onClick={() => setMobMoreOpen(false)}
+          >
+            {icon}
+            {label}
+          </Link>
+        ))}
+      </div>
       <nav className="order-mobile-nav" aria-label="Mobile navigation">
         <div className="order-mob-grid">
           <Link
@@ -405,27 +448,16 @@ export function Layout() {
             </span>
             {cartCount > 0 ? 'Cart' : 'Order'}
           </Link>
-          <Link
-            to="/pre-order"
-            className={`order-mob-item order-mob-preorder${location.pathname === '/pre-order' ? ' order-mob-active' : ''}`}
+          <button
+            type="button"
+            className={`order-mob-item order-mob-more-btn${mobMoreActive || mobMoreOpen ? ' order-mob-active' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={mobMoreOpen}
+            onClick={() => setMobMoreOpen((o) => !o)}
           >
-            <span className="order-mob-icon"><PreOrderIcon size={20} /></span>
-            Pre-order
-          </Link>
-          <Link
-            to="/hours"
-            className={`order-mob-item${location.pathname === '/hours' ? ' order-mob-active' : ''}`}
-          >
-            <span className="order-mob-icon"><ClockIcon size={20} /></span>
-            Hours
-          </Link>
-          <Link
-            to="/contact"
-            className={`order-mob-item${location.pathname === '/contact' ? ' order-mob-active' : ''}`}
-          >
-            <span className="order-mob-icon"><PhoneIcon size={20} /></span>
-            Contact
-          </Link>
+            <span className="order-mob-icon"><MoreIcon size={20} /></span>
+            More
+          </button>
         </div>
       </nav>
     </div>

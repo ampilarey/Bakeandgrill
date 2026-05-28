@@ -64,6 +64,16 @@ export function PhoneIcon({ size = 22, className }: IconProps) {
   );
 }
 
+export function MoreIcon({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+      <circle cx="5" cy="12" r="1.75" />
+      <circle cx="12" cy="12" r="1.75" />
+      <circle cx="19" cy="12" r="1.75" />
+    </svg>
+  );
+}
+
 /** Order history / receipts (clipboard list) */
 export function OrdersIcon({ size = 22, className }: IconProps) {
   return (

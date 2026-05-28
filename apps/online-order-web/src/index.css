@@ -189,6 +189,10 @@
   }
 }
 
+@media (max-width: 390px) {
+  .order-header-brand-name { display: none !important; }
+}
+
 /* ════════════════════════════════════════════════════════════
    LAYOUT UTILITIES (mirrors Blade .container / .header-inner)
 ════════════════════════════════════════════════════════════ */
@@ -1411,17 +1415,68 @@ textarea.field-input {
 [data-theme="dark"] .order-mobile-nav {
   box-shadow: 0 -2px 16px rgba(0,0,0,0.35);
 }
-/* 6 columns — Home, Menu, Order, Pre-order, Hours/Contact, Contact/Log out */
+/* 4 columns — Home, Menu, Order/Cart, More */
 .order-mob-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.08rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.25rem;
 }
 .order-mob-grid .order-mob-item {
-  font-size: 0.52rem;
-  padding: 0.35rem 0.04rem;
-  letter-spacing: 0.01em;
+  font-size: 0.62rem;
+  padding: 0.45rem 0.15rem;
+  letter-spacing: 0.03em;
   min-height: 44px;
+}
+.order-mob-more-btn {
+  border: none;
+  background: none;
+  font-family: inherit;
+  width: 100%;
+}
+.order-mob-more-btn.order-mob-active {
+  color: var(--color-primary) !important;
+  background: var(--color-primary-light);
+}
+.order-mob-more-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-bottom-nav) + 5);
+  background: rgba(15, 10, 5, 0.35);
+}
+.order-mob-more-backdrop.open { display: block; }
+.order-mob-more-sheet {
+  display: none;
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  z-index: calc(var(--z-bottom-nav) + 10);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.14);
+  padding: 0.375rem;
+}
+.order-mob-more-sheet.open { display: block; }
+.order-mob-more-sheet a {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 10px;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.order-mob-more-sheet a:hover,
+.order-mob-more-sheet a.order-mob-active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+[data-theme="dark"] .order-mob-more-sheet {
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45);
 }
 .order-mob-grid .order-mob-icon svg {
   width: 20px;

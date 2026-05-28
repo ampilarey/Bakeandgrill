@@ -164,6 +164,12 @@
             background: rgba(224, 146, 66, 0.32);
             border-color: var(--amber);
         }
+        [data-theme="dark"] .mob-more-sheet {
+            background: var(--surface);
+            border-color: var(--border);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+        }
+        [data-theme="dark"] .mob-nav-more-btn.active { background: rgba(224, 146, 66, 0.18); }
 
         .dark-toggle {
             background: var(--surface);
@@ -408,34 +414,33 @@
         }
         .mob-nav-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 0.12rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.25rem;
         }
         .mob-nav-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 0.2rem;
-            padding: 0.4rem 0.2rem;
+            padding: 0.45rem 0.25rem;
             border-radius: 10px;
             color: var(--muted);
-            font-size: 0.6rem;
+            font-size: 0.62rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
             text-decoration: none;
             cursor: pointer;
             transition: all 0.15s;
             -webkit-tap-highlight-color: transparent;
+            min-height: 44px;
+            border: none;
+            background: none;
+            font-family: inherit;
         }
         .mob-nav-item:hover,
         .mob-nav-item.active { color: var(--amber); }
-        .mob-nav-grid .mob-nav-item {
-            font-size: 0.52rem;
-            padding: 0.35rem 0.05rem;
-            letter-spacing: 0.02em;
-            min-height: 44px;
-        }
+        .mob-nav-more-btn.active { color: var(--amber); background: var(--amber-light); }
         /* Outline SVGs — same paths as order app (apps/online-order-web icons) */
         .mob-nav-icon-svg {
             width: 20px;
@@ -463,6 +468,44 @@
             background: #fde5d4;
             border-color: var(--amber);
         }
+
+        /* Mobile "More" sheet — Pre-order, Hours, Contact */
+        .mob-more-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 310;
+            background: rgba(15, 10, 5, 0.35);
+        }
+        .mob-more-backdrop.open { display: block; }
+        .mob-more-sheet {
+            display: none;
+            position: fixed;
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: calc(4.25rem + env(safe-area-inset-bottom));
+            z-index: 320;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.14);
+            padding: 0.375rem;
+        }
+        .mob-more-sheet.open { display: block; }
+        .mob-more-sheet a {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.75rem 0.875rem;
+            border-radius: 10px;
+            font-size: 0.925rem;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+        }
+        .mob-more-sheet a:hover,
+        .mob-more-sheet a.active { background: var(--amber-light); color: var(--amber); }
+        .mob-more-sheet a svg { width: 20px; height: 20px; flex-shrink: 0; color: inherit; }
 
         /* ─── Footer ────────────────────────────────────────────── */
         .site-footer {
@@ -740,6 +783,12 @@
         }
         @media (max-width: 480px) {
             .footer-grid { grid-template-columns: 1fr; }
+            .mob-logo span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        }
+        @media (max-width: 390px) {
+            .mob-logo span { display: none; }
+            .mob-order-btn { padding: 0.45rem 0.65rem; font-size: 0.75rem; }
+            .mob-hdr-btns a[href="/customer/login"] { padding: 0.35rem 0.5rem; font-size: 0.75rem; }
         }
 
         /* ─── Shared Utility ─────────────────────────────────────── */
@@ -758,6 +807,10 @@
             document.querySelectorAll('.header-nav a, .mob-nav-item[href]').forEach(a => {
                 const h = a.getAttribute('href');
                 if (h === path || (h && h !== '/' && path.startsWith(h))) a.classList.add('active');
+            });
+            document.querySelectorAll('#mobMoreSheet a').forEach(a => {
+                const h = a.getAttribute('href');
+                if (h === path || (h && path.startsWith(h))) a.classList.add('active');
             });
 
             // ── "More" dropdown toggle ──────────────────────────────────
@@ -784,6 +837,35 @@
                     }
                 });
             }
+
+            // ── Mobile bottom "More" sheet ─────────────────────────────
+            const mobMoreBtn      = document.getElementById('mobMoreBtn');
+            const mobMoreSheet    = document.getElementById('mobMoreSheet');
+            const mobMoreBackdrop = document.getElementById('mobMoreBackdrop');
+            const closeMobMore = () => {
+                mobMoreSheet?.classList.remove('open');
+                mobMoreBackdrop?.classList.remove('open');
+                mobMoreBtn?.classList.remove('open');
+                mobMoreBtn?.setAttribute('aria-expanded', 'false');
+            };
+            if (mobMoreBtn && mobMoreSheet && mobMoreBackdrop) {
+                mobMoreBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const open = !mobMoreSheet.classList.contains('open');
+                    mobMoreSheet.classList.toggle('open', open);
+                    mobMoreBackdrop.classList.toggle('open', open);
+                    mobMoreBtn.classList.toggle('open', open);
+                    mobMoreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                });
+                mobMoreBackdrop.addEventListener('click', closeMobMore);
+                mobMoreSheet.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMobMore));
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeMobMore();
+                });
+            }
+            ['/order/pre-order', '/hours', '/contact'].forEach((p) => {
+                if (path === p || path.startsWith(p + '/')) mobMoreBtn?.classList.add('active');
+            });
         });
     </script>
 </head>
@@ -1014,8 +1096,21 @@
     <symbol id="mob-nav-preorder" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="mob-nav-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="12 6 12 12 16 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="mob-nav-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="mob-nav-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></symbol>
     <symbol id="mob-nav-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 17 21 12 16 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
+<div id="mobMoreBackdrop" class="mob-more-backdrop" aria-hidden="true"></div>
+<div id="mobMoreSheet" class="mob-more-sheet" role="menu" aria-label="More links">
+    <a href="/order/pre-order" role="menuitem">
+        <svg aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Pre-order
+    </a>
+    <a href="/hours" role="menuitem">
+        <svg aria-hidden="true"><use href="#mob-nav-clock"/></svg>Hours
+    </a>
+    <a href="/contact" role="menuitem">
+        <svg aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
+    </a>
+</div>
 <nav class="mobile-bottom-nav">
     <div class="mob-nav-grid">
         <a href="/" class="mob-nav-item">
@@ -1027,15 +1122,9 @@
         <a href="/order/" class="mob-nav-item mob-nav-order">
             <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-cart"/></svg>Order
         </a>
-        <a href="/order/pre-order" class="mob-nav-item mob-nav-preorder">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Pre-order
-        </a>
-        <a href="/hours" class="mob-nav-item">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-clock"/></svg>Hours
-        </a>
-        <a href="/contact" class="mob-nav-item">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
-        </a>
+        <button type="button" id="mobMoreBtn" class="mob-nav-item mob-nav-more-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="mobMoreSheet">
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-more"/></svg>More
+        </button>
     </div>
 </nav>
 
