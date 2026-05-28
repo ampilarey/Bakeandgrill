@@ -134,6 +134,23 @@ export async function deleteAdminCustomer(id: number): Promise<void> {
   await req(`/admin/customers/${id}`, { method: 'DELETE' });
 }
 
+export async function changeAdminCustomerPhone(
+  id: number,
+  phone: string,
+): Promise<{ customer: AdminCustomer; revoked_tokens: number; message: string }> {
+  return req(`/admin/customers/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phone }) });
+}
+
+export async function mergeAdminCustomers(
+  primaryId: number,
+  sourceCustomerIds: number[],
+): Promise<{ customer: AdminCustomer; merged: Array<{ id: number; phone: string }>; message: string }> {
+  return req(`/admin/customers/${primaryId}/merge`, {
+    method: 'POST',
+    body: JSON.stringify({ source_customer_ids: sourceCustomerIds }),
+  });
+}
+
 // ── Loyalty ──────────────────────────────────────────────────────────────────
 
 export type LoyaltyAccountAdmin = {

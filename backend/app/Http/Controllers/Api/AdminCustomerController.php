@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Models\Customer;
+use App\Rules\MaldivesPhone;
+use App\Services\CustomerAccountService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -84,6 +86,51 @@ class AdminCustomerController extends Controller
         $customer->update($validated);
 
         return response()->json(['customer' => $this->format($customer->fresh())]);
+    }
+
+    /**
+     * PATCH /admin/customers/{id}/phone
+     * Change account phone (login identity). Revokes active customer sessions.
+     */
+    public function changePhone(Request $request, int $id, CustomerAccountService $accounts): JsonResponse
+    {
+        $customer = Customer::findOrFail($id);
+
+        $validated = $request->validate([
+            'phone' => ['required', 'string', new MaldivesPhone],
+        ]);
+
+        $result = $accounts->changePhone($customer, $validated['phone'], $request);
+
+        return response()->json([
+            'message' => 'Phone number updated. The customer must log in again with the new number.',
+            'customer' => $this->format($result['customer']),
+            'revoked_tokens' => $result['revoked_tokens'],
+        ]);
+    }
+
+    /**
+     * POST /admin/customers/{id}/merge
+     * Merge duplicate accounts into this (primary) customer.
+     */
+    public function merge(Request $request, int $id, CustomerAccountService $accounts): JsonResponse
+    {
+        $primary = Customer::findOrFail($id);
+
+        $validated = $request->validate([
+            'source_customer_ids' => ['required', 'array', 'min:1'],
+            'source_customer_ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $result = $accounts->mergeAccounts($primary, $validated['source_customer_ids'], $request);
+
+        return response()->json([
+            'message' => count($result['merged']) === 1
+                ? '1 account merged successfully.'
+                : count($result['merged']) . ' accounts merged successfully.',
+            'customer' => $this->format($result['customer']->loadCount('orders')),
+            'merged' => $result['merged'],
+        ]);
     }
 
     /**

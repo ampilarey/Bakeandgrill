@@ -784,6 +784,8 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admi
     Route::get('/', [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
     Route::get('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
     Route::patch('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
+    Route::patch('/{id}/phone', [App\Http\Controllers\Api\AdminCustomerController::class, 'changePhone']);
+    Route::post('/{id}/merge', [App\Http\Controllers\Api\AdminCustomerController::class, 'merge']);
     Route::delete('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'destroy']);
 
     Route::middleware('permission:customers.credit.manage')->group(function () {

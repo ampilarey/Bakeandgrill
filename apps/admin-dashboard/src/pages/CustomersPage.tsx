@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   fetchAdminCustomers, getAdminCustomer, updateAdminCustomer, deleteAdminCustomer,
+  changeAdminCustomerPhone, mergeAdminCustomers,
   type AdminCustomer, type Order,
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
-  PageHeader, Spinner, TableCard, TD, TH,
+  PageHeader, Spinner, TableCard, TD, TH, Modal, ModalActions, Input,
   ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
@@ -39,6 +40,19 @@ export function CustomersPage() {
   const [form, setForm] = useState({
     name: '', email: '', internal_notes: '', is_active: true, sms_opt_out: false,
   });
+
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [mergeSearch, setMergeSearch] = useState('');
+  const [mergeResults, setMergeResults] = useState<AdminCustomer[]>([]);
+  const [mergeSelected, setMergeSelected] = useState<AdminCustomer[]>([]);
+  const [mergeSearching, setMergeSearching] = useState(false);
+  const [mergeSaving, setMergeSaving] = useState(false);
+  const [mergeError, setMergeError] = useState('');
 
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,7 +96,102 @@ export function CustomersPage() {
     finally { setDetailLoading(false); }
   };
 
-  const closeDetail = () => { setSelected(null); setDetail(null); setEditing(false); };
+  const closeDetail = () => {
+    setSelected(null);
+    setDetail(null);
+    setEditing(false);
+    setPhoneModalOpen(false);
+    setMergeModalOpen(false);
+    setMergeSelected([]);
+    setMergeSearch('');
+    setMergeResults([]);
+  };
+
+  const openPhoneModal = () => {
+    setNewPhone('');
+    setPhoneError('');
+    setPhoneModalOpen(true);
+  };
+
+  const handleChangePhone = async () => {
+    if (!detail || !newPhone.trim()) {
+      setPhoneError('Enter the new phone number.');
+      return;
+    }
+    setPhoneSaving(true);
+    setPhoneError('');
+    try {
+      const res = await changeAdminCustomerPhone(detail.customer.id, newPhone.trim());
+      setDetail({ ...detail, customer: res.customer });
+      setCustomers((prev) => prev.map((c) => c.id === res.customer.id ? res.customer : c));
+      if (selected) setSelected(res.customer);
+      setPhoneModalOpen(false);
+    } catch (e) {
+      setPhoneError((e as Error).message);
+    } finally {
+      setPhoneSaving(false);
+    }
+  };
+
+  const searchMergeCandidates = async (q: string) => {
+    setMergeSearch(q);
+    if (q.trim().length < 2) {
+      setMergeResults([]);
+      return;
+    }
+    setMergeSearching(true);
+    try {
+      const res = await fetchAdminCustomers({ search: q.trim(), page: 1 });
+      const primaryId = detail?.customer.id;
+      setMergeResults((res.data ?? []).filter((c) => c.id !== primaryId));
+    } catch (e) {
+      setMergeError((e as Error).message);
+    } finally {
+      setMergeSearching(false);
+    }
+  };
+
+  const toggleMergeCandidate = (c: AdminCustomer) => {
+    setMergeSelected((prev) =>
+      prev.some((x) => x.id === c.id) ? prev.filter((x) => x.id !== c.id) : [...prev, c],
+    );
+  };
+
+  const handleMerge = () => {
+    if (!detail || mergeSelected.length === 0) return;
+    const names = mergeSelected.map((c) => `#${c.id} ${c.phone}`).join(', ');
+    ask({
+      title: 'Merge Accounts',
+      message: `Merge ${names} into ${detail.customer.name ?? detail.customer.phone}? Orders, loyalty, and history move to this account. Source accounts are deactivated.`,
+      confirmLabel: 'Merge Accounts',
+      danger: true,
+      onConfirm: async () => {
+        setMergeSaving(true);
+        setMergeError('');
+        try {
+          const res = await mergeAdminCustomers(
+            detail.customer.id,
+            mergeSelected.map((c) => c.id),
+          );
+          const refreshed = await getAdminCustomer(res.customer.id);
+          setDetail(refreshed);
+          setCustomers((prev) => prev.map((c) => c.id === res.customer.id ? res.customer : c).filter(
+            (c) => !mergeSelected.some((m) => m.id === c.id),
+          ));
+          if (selected) setSelected(res.customer);
+          setMergeModalOpen(false);
+          setMergeSelected([]);
+          setMergeSearch('');
+          setMergeResults([]);
+          void load(search, page);
+        } catch (e) {
+          setMergeError((e as Error).message);
+        } finally {
+          setMergeSaving(false);
+        }
+      },
+    });
+  };
 
   const handleSave = async () => {
     if (!detail) return;
@@ -313,6 +422,21 @@ export function CustomersPage() {
                   <CustomerCreditSection customerId={detail.customer.id} />
                 )}
 
+                {!editing && detail && (
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 12, padding: '14px 16px' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Account Identity
+                    </p>
+                    <p style={{ margin: '0 0 12px', fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>
+                      Phone is the login identity. Change it here if the customer got a new SIM, or merge duplicate accounts into this one.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Btn small variant="secondary" onClick={openPhoneModal}>Change Phone</Btn>
+                      <Btn small variant="secondary" onClick={() => { setMergeError(''); setMergeModalOpen(true); }}>Merge Accounts</Btn>
+                    </div>
+                  </div>
+                )}
+
                 {/* Order history */}
                 {(detail.orders ?? []).length > 0 && (
                   <div>
@@ -351,6 +475,76 @@ export function CustomersPage() {
             </div>
           </div>
         </>
+      )}
+
+      {phoneModalOpen && (
+      <Modal onClose={() => setPhoneModalOpen(false)} title="Change Phone Number">
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+          Current: <strong>{detail?.customer.phone}</strong>. The customer will need to log in again with the new number.
+        </p>
+        {phoneError && <ErrorMsg message={phoneError} />}
+        <Input label="New phone number" placeholder="e.g. 7972434 or +9607972434" value={newPhone} onChange={setNewPhone} />
+        <ModalActions>
+          <Btn variant="secondary" onClick={() => setPhoneModalOpen(false)}>Cancel</Btn>
+          <Btn onClick={() => void handleChangePhone()} disabled={phoneSaving || !newPhone.trim()}>
+            {phoneSaving ? 'Saving…' : 'Update Phone'}
+          </Btn>
+        </ModalActions>
+      </Modal>
+      )}
+
+      {mergeModalOpen && (
+      <Modal onClose={() => setMergeModalOpen(false)} title="Merge Accounts Into This Customer">
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+          Primary account: <strong>{detail?.customer.name ?? detail?.customer.phone}</strong> (#{detail?.customer.id}).
+          Search for duplicate accounts to absorb their orders, loyalty, and history.
+        </p>
+        {mergeError && <ErrorMsg message={mergeError} />}
+        <Input
+          label="Search duplicate accounts"
+          placeholder="Name, phone, or email…"
+          value={mergeSearch}
+          onChange={(v) => void searchMergeCandidates(v)}
+        />
+        {mergeSearching && <p style={{ fontSize: 12, color: '#9C8E7E', margin: '8px 0' }}>Searching…</p>}
+        {mergeResults.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto', marginTop: 8 }}>
+            {mergeResults.map((c) => {
+              const picked = mergeSelected.some((x) => x.id === c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleMergeCandidate(c)}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    border: picked ? '2px solid #D4813A' : '1px solid #F0EAE3',
+                    background: picked ? '#FFF7ED' : '#FAF7F3',
+                  }}
+                >
+                  <span>
+                    <strong>{c.name ?? '—'}</strong>
+                    <span style={{ display: 'block', fontSize: 12, color: '#8B7355' }}>{c.phone}</span>
+                  </span>
+                  <span style={{ fontSize: 12, color: '#9C8E7E' }}>{c.orders_count} orders</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {mergeSelected.length > 0 && (
+          <p style={{ margin: '12px 0 0', fontSize: 12, color: '#92400E' }}>
+            Selected: {mergeSelected.map((c) => `#${c.id}`).join(', ')}
+          </p>
+        )}
+        <ModalActions>
+          <Btn variant="secondary" onClick={() => setMergeModalOpen(false)}>Cancel</Btn>
+          <Btn variant="danger" onClick={handleMerge} disabled={mergeSaving || mergeSelected.length === 0}>
+            {mergeSaving ? 'Merging…' : `Merge ${mergeSelected.length || ''} Account${mergeSelected.length === 1 ? '' : 's'}`}
+          </Btn>
+        </ModalActions>
+      </Modal>
       )}
     </div>
   );
