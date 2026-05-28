@@ -3,7 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
-import { fetchSpecials, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type MenuItem, type MenuVariant } from '../api';
+import { fetchSpecials, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant } from '../api';
 import { ApiRequestError } from '@shared/api';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -37,6 +37,39 @@ function isPctDiscount(s: DailySpecial): boolean {
 
 function hasVariantOverrides(s: DailySpecial): boolean {
   return (s.variant_overrides?.length ?? 0) > 0;
+}
+
+function variantPriceLabel(vo: DailySpecialVariantOverride): string {
+  if (vo.discount_pct) {
+    const effective = vo.effective_price != null ? ` → MVR ${vo.effective_price.toFixed(2)}` : '';
+    return `${vo.discount_pct}% off${effective}`;
+  }
+  if (vo.special_price != null) return `MVR ${vo.special_price.toFixed(2)}`;
+  if (vo.effective_price != null) return `MVR ${vo.effective_price.toFixed(2)}`;
+  return '—';
+}
+
+function VariantOverrideLines({ overrides, mode }: { overrides: DailySpecialVariantOverride[]; mode: 'names' | 'prices' }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+      {overrides.map(vo => (
+        <div key={vo.variant_id} style={{ fontSize: 12, lineHeight: 1.4 }}>
+          {mode === 'names' ? (
+            <span style={{ color: '#6B5D4F', fontWeight: 600 }}>{vo.variant_name ?? `Variant #${vo.variant_id}`}</span>
+          ) : (
+            <>
+              <span style={{ fontWeight: 700, color: '#D4813A' }}>{variantPriceLabel(vo)}</span>
+              {vo.catalog_price != null && vo.effective_price != null && vo.effective_price < vo.catalog_price && (
+                <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
+                  MVR {vo.catalog_price.toFixed(2)}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function blankVariantOverrides(item: MenuItem | undefined): VariantOverrideForm {
@@ -339,6 +372,9 @@ export default function SpecialsPage() {
                 <td style={{ ...TD, fontWeight: 600 }}>
                   {s.item_image && <img src={s.item_image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}
                   {s.item_name}
+                  {hasVariantOverrides(s) && s.variant_overrides && (
+                    <VariantOverrideLines overrides={s.variant_overrides} mode="names" />
+                  )}
                 </td>
                 <td style={TD}>
                   <Badge color={hasVariantOverrides(s) ? 'purple' : isPctDiscount(s) ? 'orange' : 'blue'}>
@@ -347,7 +383,9 @@ export default function SpecialsPage() {
                 </td>
                 <td style={TD}><Badge color="orange">{s.badge_label}</Badge></td>
                 <td style={{ ...TD, fontSize: 13 }}>
-                  {s.effective_price != null ? (
+                  {hasVariantOverrides(s) && s.variant_overrides ? (
+                    <VariantOverrideLines overrides={s.variant_overrides} mode="prices" />
+                  ) : s.effective_price != null ? (
                     <>
                       <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {s.effective_price.toFixed(2)}</span>
                       {s.original_price != null && s.effective_price < s.original_price && (

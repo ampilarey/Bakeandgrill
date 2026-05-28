@@ -127,7 +127,9 @@ export async function fetchItems(channel?: SalesChannel): Promise<FetchItemsResu
 export interface DailySpecial {
   id: number;
   item_id: number;
+  variant_id?: number | null;
   item_name: string | null;
+  variant_name?: string | null;
   item_image: string | null;
   badge_label: string | null;
   special_price: number | null;

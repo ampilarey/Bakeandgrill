@@ -944,7 +944,12 @@
                     @endif
                 </div>
                 <div class="product-body" style="padding: 1rem 1.125rem 1.25rem;">
-                    <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">{{ $sp['item_name'] ?? '' }}</div>
+                    <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">
+                        {{ $sp['item_name'] ?? '' }}
+                        @if(!empty($sp['variant_name']))
+                            <span style="display: block; font-size: 0.82rem; font-weight: 600; color: #6B5D4F; margin-top: 0.15rem;">{{ $sp['variant_name'] }}</span>
+                        @endif
+                    </div>
                     <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem;">
                         <span class="price-sale">MVR {{ number_format((float) $sp['effective_price'], 2) }}</span>
                         @if(isset($sp['original_price']) && (float) $sp['original_price'] > (float) $sp['effective_price'])

@@ -70,5 +70,15 @@ Homestead.yaml
 e2e/.env.test
 e2e/.auth/
 e2e/test-results/
+e2e/e2e/
 e2e/report/
 playwright-report/
+/test-results/
+
+# Local tool / agent artifacts
+/.cursor/reports/
+/.claude/
+/apps/backend/
+
+# print-proxy build output (built in Docker)
+/print-proxy/dist/

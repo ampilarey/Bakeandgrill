@@ -39,28 +39,7 @@ class HomeController extends Controller
             ->get();
 
         $pricing = app(SpecialPricingService::class);
-        $todaysSpecials = collect($pricing->activeSpecialsList())
-            ->map(function ($special) use ($pricing) {
-                $item = $special->item;
-                if (!$item) {
-                    return null;
-                }
-                $original = (float) $item->base_price;
-                $effective = $pricing->effectivePriceForSpecial($special, $original, $item);
-
-                return [
-                    'id' => $special->id,
-                    'item_id' => $item->id,
-                    'item_name' => $item->name,
-                    'item_image' => $item->display_image_url ?? $item->image_url,
-                    'badge_label' => $special->badge_label ?? ($special->discount_pct ? "{$special->discount_pct}% OFF" : 'Special'),
-                    'discount_pct' => $special->discount_pct,
-                    'original_price' => $original,
-                    'effective_price' => $effective,
-                ];
-            })
-            ->filter()
-            ->values();
+        $todaysSpecials = collect($pricing->activeSpecialsForDisplay());
 
         return view('home', compact('isOpen', 'todayHours', 'featuredItems', 'bestSellers', 'todaysSpecials'));
     }

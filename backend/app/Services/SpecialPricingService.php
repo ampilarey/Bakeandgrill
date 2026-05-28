@@ -19,6 +19,8 @@ class SpecialPricingService
 
     private const CACHE_TTL_SECONDS = 60;
 
+    public const DEFAULT_BADGE_LABEL = 'Special Offer';
+
     /** @var Collection<int, DailySpecial>|null */
     private ?Collection $activeByItemId = null;
 
@@ -51,7 +53,10 @@ class SpecialPricingService
     /** @return Collection<int, DailySpecial> */
     private function loadActiveSpecialsMap(): Collection
     {
-        $with = ['item:id,name,base_price,has_variants,image_url'];
+        $with = [
+            'item:id,name,base_price,has_variants,image_url',
+            'item.variants:id,item_id,name,price,is_active,sort_order',
+        ];
         if (Schema::hasTable('daily_special_variants')) {
             $with[] = 'variantOverrides';
         }
@@ -94,7 +99,7 @@ class SpecialPricingService
             originalPrice: $original,
             dailySpecialId: $special->id,
             discountPct: $pct,
-            badgeLabel: $special->badge_label ?? ($pct ? "{$pct}% OFF" : 'Special'),
+            badgeLabel: $special->badge_label ?? ($pct ? "{$pct}% OFF" : self::DEFAULT_BADGE_LABEL),
         );
     }
 
@@ -130,6 +135,97 @@ class SpecialPricingService
     public function activeSpecialsList(): array
     {
         return $this->activeSpecialsByItemId()->values()->all();
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function activeSpecialsForDisplay(): array
+    {
+        $rows = [];
+        foreach ($this->activeSpecialsList() as $special) {
+            foreach ($this->expandSpecialForDisplay($special) as $row) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Flatten a special into one or more homepage/menu cards.
+     * Variant items produce one card per discounted variant.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function expandSpecialForDisplay(DailySpecial $special): array
+    {
+        $item = $special->item;
+        if (!$item) {
+            return [];
+        }
+
+        if ($item->has_variants) {
+            $variants = $item->relationLoaded('variants')
+                ? $item->variants->where('is_active', true)->sortBy('sort_order')
+                : $item->variants()->where('is_active', true)->orderBy('sort_order')->get();
+
+            $rows = [];
+            foreach ($variants as $variant) {
+                $catalog = (float) $variant->price;
+                $effective = $this->effectivePriceForSpecial($special, $catalog, $item, (int) $variant->id);
+                if ($effective >= $catalog) {
+                    continue;
+                }
+                $rows[] = $this->buildDisplayRow($special, $item, (int) $variant->id, $variant->name, $catalog, $effective);
+            }
+
+            if ($rows !== []) {
+                return $rows;
+            }
+        }
+
+        $catalog = (float) $item->base_price;
+        $effective = $this->effectivePriceForSpecial($special, $catalog, $item);
+        if ($effective >= $catalog && $special->special_price === null && !$special->discount_pct) {
+            return [];
+        }
+
+        return [$this->buildDisplayRow($special, $item, null, null, $catalog, $effective)];
+    }
+
+    /** @return array<string, mixed> */
+    private function buildDisplayRow(
+        DailySpecial $special,
+        Item $item,
+        ?int $variantId,
+        ?string $variantName,
+        float $catalogPrice,
+        float $effectivePrice,
+    ): array {
+        $pct = $this->resolveDiscountPct($special, $catalogPrice, $effectivePrice, $variantId);
+
+        return [
+            'id' => $special->id,
+            'item_id' => $item->id,
+            'variant_id' => $variantId,
+            'item_name' => $item->name,
+            'variant_name' => $variantName,
+            'item_image' => $item->display_image_url ?? $item->image_url,
+            'badge_label' => $this->resolveBadgeLabel($special, $pct),
+            'discount_pct' => $pct,
+            'original_price' => $catalogPrice,
+            'effective_price' => $effectivePrice,
+        ];
+    }
+
+    private function resolveBadgeLabel(DailySpecial $special, ?int $discountPct): string
+    {
+        if ($special->badge_label) {
+            return $special->badge_label === 'Special' ? self::DEFAULT_BADGE_LABEL : $special->badge_label;
+        }
+
+        $pct = $discountPct ?? $special->discount_pct;
+
+        return $pct ? "{$pct}% OFF" : self::DEFAULT_BADGE_LABEL;
     }
 
     /**

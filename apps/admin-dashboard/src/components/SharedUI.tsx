@@ -220,14 +220,23 @@ export function Modal({
   const uid = useId();
   const titleId = `modal-title-${uid}`;
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
     const els = () => Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SEL));
-    els()[0]?.focus();
+    const initial =
+      panel.querySelector<HTMLElement>('select, input:not([type="checkbox"]), textarea')
+      ?? els()[0];
+    const active = document.activeElement;
+    if (!active || !panel.contains(active)) {
+      initial?.focus();
+    }
+
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'Escape') { onCloseRef.current(); return; }
       if (e.key !== 'Tab') return;
       const focusable = els();
       if (!focusable.length) { e.preventDefault(); return; }
@@ -237,7 +246,7 @@ export function Modal({
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+  }, []);
 
   return (
     <div

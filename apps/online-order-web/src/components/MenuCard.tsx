@@ -38,6 +38,9 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
   const isCombo = item.is_combo;
   const special = item.special;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
+  const discountedVariants = activeVariants.filter(
+    (v) => v.effective_price != null && Number(v.effective_price) < Number(v.price),
+  );
   const lowestVariantPrice = activeVariants.length > 0
     ? Math.min(...activeVariants.map((v) => Number(v.effective_price ?? v.price)))
     : null;
@@ -46,17 +49,18 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
     ? lowestVariantPrice
     : Number(special?.effective_price ?? item.base_price);
   const originalPrice = showFromPrice
-    ? (activeVariants.some((v) => v.effective_price != null)
-      ? Math.min(...activeVariants.map((v) => Number(v.original_price ?? v.price)))
+    ? (discountedVariants.length > 0
+      ? Math.min(...discountedVariants.map((v) => Number(v.original_price ?? v.price)))
       : null)
     : (special?.original_price != null ? Number(special.original_price) : null);
   const hasSale = originalPrice != null && originalPrice > displayPrice;
-  const onSale = hasSale || !!special;
+  const onSale = hasSale || !!special || discountedVariants.length > 0;
   const saleBadgeLabel = special?.badge_label
     ?? (special?.discount_pct ? `${special.discount_pct}% OFF` : null)
     ?? (hasSale && originalPrice && originalPrice > 0
       ? `${Math.round((1 - displayPrice / originalPrice) * 100)}% OFF`
-      : null);
+      : null)
+    ?? (discountedVariants.length > 0 ? 'Special Offer' : null);
 
   return (
     <article
@@ -165,6 +169,23 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         }}>
           {item.name}
         </h3>
+        {discountedVariants.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {discountedVariants.map((v) => (
+              <p key={v.id} style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.35 }}>
+                {v.name}:{' '}
+                <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
+                  MVR {Number(v.effective_price).toFixed(2)}
+                </span>
+                {v.original_price != null && Number(v.original_price) > Number(v.effective_price) && (
+                  <span style={{ marginLeft: 4, textDecoration: 'line-through', fontSize: '0.7rem' }}>
+                    MVR {Number(v.original_price).toFixed(2)}
+                  </span>
+                )}
+              </p>
+            ))}
+          </div>
+        )}
 
         {/* Description */}
         {item.description && (

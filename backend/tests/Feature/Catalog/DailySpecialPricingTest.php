@@ -441,6 +441,61 @@ class DailySpecialPricingTest extends TestCase
         $this->assertEqualsWithDelta(50.00, (float) $variantRow['original_price'], 0.01);
     }
 
+    public function test_public_specials_api_expands_variant_discounts_for_display(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 0, 'has_variants' => true]);
+        $variant = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Small',
+            'price' => 20.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $special = $this->createSpecial(['item_id' => $item->id, 'discount_pct' => 10]);
+        DailySpecialVariant::create([
+            'daily_special_id' => $special->id,
+            'variant_id' => $variant->id,
+            'discount_pct' => 25,
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+
+        $response = $this->getJson('/api/specials')->assertOk();
+        $found = collect($response->json('specials'))->firstWhere('variant_id', $variant->id);
+
+        $this->assertNotNull($found);
+        $this->assertSame('Small', $found['variant_name']);
+        $this->assertSame('25% OFF', $found['badge_label']);
+        $this->assertEqualsWithDelta(15.00, (float) $found['effective_price'], 0.01);
+        $this->assertEqualsWithDelta(20.00, (float) $found['original_price'], 0.01);
+    }
+
+    public function test_items_api_includes_special_badge_for_variant_only_discount(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 0, 'has_variants' => true]);
+        $variant = Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Small',
+            'price' => 20.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $special = $this->createSpecial(['item_id' => $item->id, 'discount_pct' => 10]);
+        DailySpecialVariant::create([
+            'daily_special_id' => $special->id,
+            'variant_id' => $variant->id,
+            'discount_pct' => 25,
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+
+        $response = $this->getJson('/api/items?available_only=1')->assertOk();
+        $found = collect($response->json('data'))->firstWhere('id', $item->id);
+
+        $this->assertNotNull($found);
+        $this->assertArrayHasKey('special', $found);
+        $this->assertSame('Special Offer', $found['special']['badge_label']);
+        $this->assertNull($found['special']['effective_price']);
+    }
+
     public function test_admin_can_update_special_with_variant_overrides(): void
     {
         $owner = $this->makeOwner();

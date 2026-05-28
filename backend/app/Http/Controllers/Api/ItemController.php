@@ -98,6 +98,9 @@ class ItemController extends Controller
         $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
+            $activeSpecial = $includeAvailability
+                ? $specialPricing->activeSpecialsByItemId()->get($item->id)
+                : null;
             $baseSpecial = $includeAvailability
                 ? $specialPricing->resolveUnitPrice($item->id, (float) $item->base_price, $item)
                 : null;
@@ -181,8 +184,27 @@ class ItemController extends Controller
 
             // Public / POS callers receive availability metadata
             if ($includeAvailability) {
-                if ($baseSpecial?->toApiBlock()) {
-                    $data['special'] = $baseSpecial->toApiBlock();
+                $specialBlock = $baseSpecial?->toApiBlock();
+                if (!$specialBlock && $activeSpecial) {
+                    $hasVariantDiscount = $item->has_variants
+                        && collect($data['variants'])->contains(fn ($v) => isset($v['effective_price']));
+                    if ($hasVariantDiscount) {
+                        $specialBlock = [
+                            'id' => $activeSpecial->id,
+                            'badge_label' => match (true) {
+                                (bool) $activeSpecial->badge_label => $activeSpecial->badge_label === 'Special'
+                                    ? SpecialPricingService::DEFAULT_BADGE_LABEL
+                                    : $activeSpecial->badge_label,
+                                default => SpecialPricingService::DEFAULT_BADGE_LABEL,
+                            },
+                            'discount_pct' => $activeSpecial->discount_pct,
+                            'original_price' => null,
+                            'effective_price' => null,
+                        ];
+                    }
+                }
+                if ($specialBlock) {
+                    $data['special'] = $specialBlock;
                 }
 
                 if (!$isAdmin) {

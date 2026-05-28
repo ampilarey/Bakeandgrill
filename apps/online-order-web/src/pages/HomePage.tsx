@@ -257,6 +257,7 @@ export function HomePage() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
               {specials.map((sp) => {
+                const cardKey = sp.variant_id ? `${sp.id}-${sp.variant_id}` : String(sp.id);
                 const imgSrc = sp.item_image
                   ? sp.item_image.startsWith('http') ? sp.item_image : `${API_ORIGIN}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
                   : null;
@@ -264,9 +265,10 @@ export function HomePage() {
                 const wasPrice = sp.original_price != null && Number(sp.original_price) > price
                   ? Number(sp.original_price)
                   : null;
+                const badge = sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special Offer');
                 return (
                   <Link
-                    key={sp.id}
+                    key={cardKey}
                     to={`/menu?item=${sp.item_id}`}
                     style={{
                       flexShrink: 0, width: 180, borderRadius: 'var(--radius-2xl)',
@@ -279,14 +281,17 @@ export function HomePage() {
                         ? <img src={imgSrc} alt={sp.item_name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.3 }}>🍽️</div>
                       }
-                      {(sp.badge_label ?? sp.discount_pct) && (
+                      {(badge || sp.discount_pct) && (
                         <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--color-primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99 }}>
-                          {sp.badge_label ?? `${sp.discount_pct}% OFF`}
+                          {badge}
                         </div>
                       )}
                     </div>
                     <div style={{ padding: '0.75rem', flex: 1 }}>
                       <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item_name}</p>
+                      {sp.variant_name && (
+                        <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{sp.variant_name}</p>
+                      )}
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                         <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
                         {wasPrice && <span style={{ fontSize: 11, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}

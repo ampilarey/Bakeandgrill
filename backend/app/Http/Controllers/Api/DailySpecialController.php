@@ -24,10 +24,7 @@ class DailySpecialController extends Controller
 
     public function active(): JsonResponse
     {
-        $specials = collect($this->pricing->activeSpecialsList())
-            ->map(fn (DailySpecial $s) => $this->safeFormat($s))
-            ->filter()
-            ->values();
+        $specials = $this->pricing->activeSpecialsForDisplay();
 
         return response()->json(['specials' => $specials]);
     }
@@ -420,13 +417,13 @@ class DailySpecialController extends Controller
             : [];
 
         $badgeLabel = $s->badge_label;
-        if (!$badgeLabel) {
+        if ($badgeLabel === 'Special') {
+            $badgeLabel = SpecialPricingService::DEFAULT_BADGE_LABEL;
+        } elseif (!$badgeLabel) {
             if ($s->discount_pct) {
                 $badgeLabel = "{$s->discount_pct}% OFF";
-            } elseif ($variantOverrides !== []) {
-                $badgeLabel = 'Special';
             } else {
-                $badgeLabel = 'Special';
+                $badgeLabel = SpecialPricingService::DEFAULT_BADGE_LABEL;
             }
         }
 
