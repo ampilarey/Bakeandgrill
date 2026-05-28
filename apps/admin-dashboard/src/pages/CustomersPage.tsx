@@ -4,7 +4,7 @@ import {
   type AdminCustomer, type Order,
 } from '../api';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg,
+  Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
   PageHeader, Spinner, TableCard, TD, TH,
   ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
@@ -131,7 +131,7 @@ export function CustomersPage() {
 
       <PageHeader title="Customers" subtitle={`${meta.total} registered customers`} />
 
-      {error && <ErrorMsg message={error} />}
+      <TableStateBar error={error} onRetry={() => void load(search, page)} />
 
       {/* Search bar */}
       <Card style={{ padding: '12px 16px' }}>
@@ -147,7 +147,12 @@ export function CustomersPage() {
       </Card>
 
       {/* Table */}
-      <TableCard>
+      <TableCard stickyHead>
+        {loading ? (
+          <TableSkeleton rows={8} cols={7} />
+        ) : customers.length === 0 ? (
+          <EmptyState message="No customers found" />
+        ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -161,11 +166,7 @@ export function CustomersPage() {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center' }}><Spinner /></td></tr>
-            ) : customers.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: 40 }}><EmptyState message="No customers found" /></td></tr>
-            ) : customers.map((c) => (
+            {customers.map((c) => (
               <tr
                 key={c.id}
                 tabIndex={0}
@@ -196,8 +197,9 @@ export function CustomersPage() {
             ))}
           </tbody>
         </table>
+        )}
 
-        {meta.last_page > 1 && (
+        {!loading && meta.last_page > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0', borderTop: '1px solid #F0EBE3' }}>
             <Btn small variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>← Prev</Btn>
             <span style={{ fontSize: 13, color: '#6B5D4F', alignSelf: 'center' }}>Page {page} of {meta.last_page}</span>

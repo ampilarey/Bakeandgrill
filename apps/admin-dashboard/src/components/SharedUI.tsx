@@ -92,6 +92,58 @@ export function EmptyState({ message, children }: { message?: string; children?:
   );
 }
 
+// ─── TableSkeleton ────────────────────────────────────────────────────────────
+export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div style={{ padding: '8px 0' }}>
+      {Array.from({ length: rows }).map((_, ri) => (
+        <div key={ri} className="table-skeleton-row">
+          {Array.from({ length: cols }).map((__, ci) => (
+            <div key={ci} className="table-skeleton-cell skeleton" style={{ flex: ci === 0 ? 2 : 1 }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── TableStateBar ────────────────────────────────────────────────────────────
+export function TableStateBar({
+  loading, error, onRetry, isEmpty, emptyMessage, filterActive, onClearFilters,
+}: {
+  loading?: boolean;
+  error?: string;
+  onRetry?: () => void;
+  isEmpty?: boolean;
+  emptyMessage?: string;
+  filterActive?: boolean;
+  onClearFilters?: () => void;
+}) {
+  if (loading) return null;
+  if (error) {
+    return (
+      <div className="table-state-bar">
+        <ErrorMsg message={error} />
+        {onRetry && (
+          <Btn variant="secondary" onClick={onRetry}>Retry</Btn>
+        )}
+      </div>
+    );
+  }
+  if (isEmpty) {
+    return <EmptyState message={emptyMessage ?? 'No records found.'} />;
+  }
+  if (filterActive && onClearFilters) {
+    return (
+      <div className="table-state-bar">
+        <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Filters applied</span>
+        <Btn variant="ghost" onClick={onClearFilters}>Clear filters</Btn>
+      </div>
+    );
+  }
+  return null;
+}
+
 // ─── PageHeader ───────────────────────────────────────────────────────────────
 export function PageHeader({
   title, subtitle, action, children,
@@ -355,14 +407,14 @@ export function StatCard({
 }
 
 // ─── TableCard ────────────────────────────────────────────────────────────────
-export function TableCard({ children }: { children: ReactNode }) {
+export function TableCard({ children, stickyHead }: { children: ReactNode; stickyHead?: boolean }) {
   return (
     <div style={{
       background: '#fff', border: '1px solid #E8E0D8',
       borderRadius: 14, overflow: 'hidden',
       boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
     }}>
-      <div className="table-scroll" style={{ overflowX: 'auto' }}>
+      <div className={`table-scroll${stickyHead ? ' admin-table-sticky-head' : ''}`} style={{ overflowX: 'auto' }}>
         {children}
       </div>
     </div>

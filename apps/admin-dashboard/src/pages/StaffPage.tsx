@@ -354,6 +354,7 @@ function groupPermissions(perms: PermissionItem[]): Record<string, PermissionIte
 
 function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
   const toast = useToast();
+  const { state: permDlg, ask: askPermConfirm, close: closePermDlg } = useConfirmDialog();
   const [perms, setPerms] = useState<PermissionItem[]>([]);
   const [overrides, setOverrides] = useState<Record<string, boolean | null>>({});
   const [loading, setLoading] = useState(true);
@@ -393,6 +394,21 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
   const resetAll = () => setOverrides({});
 
   const save = async () => {
+    const changedCount = Object.keys(overrides).length;
+    if (changedCount === 0) {
+      onClose();
+      return;
+    }
+    askPermConfirm({
+      title: 'Save permission changes',
+      message: `Apply ${changedCount} permission override(s) for ${member.name}? They take effect immediately.`,
+      confirmLabel: 'Save changes',
+      danger: true,
+      onConfirm: () => void doSave(),
+    });
+  };
+
+  const doSave = async () => {
     setSaving(true);
     try {
       await updateUserPermissions(member.id, overrides);
@@ -420,6 +436,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
   const hasChanges = Object.values(overrides).some((v) => v !== null && v !== undefined);
 
   return (
+    <>
     <Modal title={`Permissions — ${member.name}`} onClose={onClose}>
       {loading ? (
         <Spinner />
@@ -489,6 +506,8 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
         </Btn>
       </ModalActions>
     </Modal>
+    <ConfirmDialog state={permDlg} close={closePermDlg} />
+    </>
   );
 }
 

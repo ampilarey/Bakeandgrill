@@ -6,7 +6,7 @@ import { Bell, BellOff, ChevronDown, ChevronLeft, ChevronRight, Menu, Moon, Sear
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
 import {
-  PINNED_NAV_ITEMS, getNavGroups, getAllNavItems, BOTTOM_TABS, can, LogOut,
+  PINNED_NAV_ITEMS, getNavGroups, getAllNavItems, resolveNavItemForPath, BOTTOM_TABS, can, LogOut,
   type NavItem,
 } from './navConfig';
 
@@ -166,6 +166,13 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   useEffect(() => { setMoreOpen(false); }, [location.pathname]);
 
   useEffect(() => {
+    if (!moreOpen || !isMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [moreOpen, isMobile]);
+
+  useEffect(() => {
     if (!moreOpen) return;
     const handler = (e: MouseEvent) => {
       if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) {
@@ -216,25 +223,14 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
     });
   };
 
-  const currentPage = allNavItems.find((i) => location.pathname.startsWith(i.to))?.label ?? 'Admin';
+  const currentPage = resolveNavItemForPath(location.pathname, allNavItems)?.label ?? 'Admin';
+  const closeDrawer = () => setMoreOpen(false);
   const sidebarW = collapsed ? 68 : 260;
 
   const renderMobileDrawer = () => (
     <>
-      <div
-        className="overlay-enter"
-        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 40 }}
-        onClick={() => setMoreOpen(false)}
-      />
-      <div
-        ref={drawerRef}
-        style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 41,
-          background: 'var(--color-surface)', borderRadius: '20px 20px 0 0',
-          maxHeight: '85vh', overflowY: 'auto',
-          animation: 'fade-in-up 0.2s ease both',
-        }}
-      >
+      <div className="admin-mobile-drawer-backdrop overlay-enter" onClick={closeDrawer} />
+      <div ref={drawerRef} className="admin-mobile-drawer-panel">
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 20px', borderBottom: '1px solid var(--color-border)',
@@ -270,7 +266,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                 {PINNED_NAV_ITEMS.filter((item) => can(user, item.permission)).map(({ to, icon: Icon, label }) => {
                   const isActive = location.pathname.startsWith(to);
                   return (
-                    <NavLink key={to} to={to} className={`admin-mobile-drawer-tile${isActive ? ' admin-mobile-drawer-tile--active' : ''}`}>
+                    <NavLink key={to} to={to} onClick={closeDrawer} className={`admin-mobile-drawer-tile${isActive ? ' admin-mobile-drawer-tile--active' : ''}`}>
                       <Icon size={22} />
                       <span>{label}</span>
                     </NavLink>
@@ -294,7 +290,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                   {visibleItems.map(({ to, icon: Icon, label }) => {
                     const isActive = location.pathname.startsWith(to);
                     return (
-                      <NavLink key={to} to={to} className={`admin-mobile-drawer-tile${isActive ? ' admin-mobile-drawer-tile--active' : ''}`}>
+                      <NavLink key={to} to={to} onClick={closeDrawer} className={`admin-mobile-drawer-tile${isActive ? ' admin-mobile-drawer-tile--active' : ''}`}>
                         <Icon size={22} />
                         <span>{label}</span>
                       </NavLink>
@@ -371,11 +367,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           {children}
         </main>
 
-        <nav style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-          height: 56, background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)',
-          display: 'flex', alignItems: 'stretch',
-        }}>
+        <nav className="admin-mobile-bottom-nav">
           {BOTTOM_TABS.filter((item) => can(user, item.permission)).map(({ to, icon: Icon, label }) => {
             if (to === '#more') {
               return (
@@ -414,7 +406,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         </nav>
 
         {moreOpen && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }}>
+          <div className="admin-mobile-drawer-overlay">
             {renderMobileDrawer()}
           </div>
         )}
@@ -710,5 +702,5 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
 export {
   Spinner, Card, Badge, ErrorMsg, EmptyState, PageHeader, Btn, Input, Select, statColor,
   Modal, ModalActions, StatCard, TableCard, TH, TD, DateInput, SectionLabel, Pagination,
-  ConfirmDialog, useConfirmDialog,
+  ConfirmDialog, useConfirmDialog, TableSkeleton, TableStateBar,
 } from './SharedUI';

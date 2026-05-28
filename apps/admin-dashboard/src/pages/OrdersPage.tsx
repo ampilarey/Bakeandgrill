@@ -12,7 +12,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg,
+  Badge, Btn, Card, EmptyState, TableStateBar,
   PageHeader, Select, Spinner, statColor,
 } from '../components/Layout';
 import { downloadCSV } from '../utils/csvExport';
@@ -583,7 +583,7 @@ export function OrdersPage() {
         }
       />
 
-      {error && <ErrorMsg message={error} />}
+      <TableStateBar error={error} onRetry={load} />
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>

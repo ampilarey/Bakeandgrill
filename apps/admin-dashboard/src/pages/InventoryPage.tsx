@@ -3,7 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
-  EmptyState, StatCard, useConfirmDialog, ConfirmDialog,
+  EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
 import {
@@ -298,7 +298,7 @@ export default function InventoryPage() {
         ) : undefined}
       />
 
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      <TableStateBar error={error} onRetry={() => void loadItems()} />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
@@ -335,7 +335,12 @@ export default function InventoryPage() {
             />
           </div>
 
-          <TableCard>
+          <TableCard stickyHead>
+            {loading ? (
+              <TableSkeleton rows={8} cols={7} />
+            ) : items.length === 0 ? (
+              <EmptyState message="No inventory items found." />
+            ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -345,11 +350,7 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
-                ) : items.length === 0 ? (
-                  <tr><td colSpan={7}><EmptyState message="No inventory items found." /></td></tr>
-                ) : items.map(item => {
+                {items.map(item => {
                   const isLow = item.reorder_level != null && item.quantity_on_hand <= item.reorder_level;
                   return (
                     <tr key={item.id}>
@@ -399,6 +400,7 @@ export default function InventoryPage() {
                 })}
               </tbody>
             </table>
+            )}
           </TableCard>
         </>
       )}

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard,
+  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
+  StatCard, TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
+import { useToast } from '../components/ui';
 import { fetchAdminRefunds, issueRefund, type AdminRefund } from '../api';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -19,6 +21,8 @@ const STATUS_OPTIONS = [
 
 export default function RefundsPage() {
   usePageTitle('Refunds');
+  const toast = useToast();
+  const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const [refunds, setRefunds] = useState<AdminRefund[]>([]);
   const [total, setTotal] = useState(0);
@@ -50,18 +54,37 @@ export default function RefundsPage() {
 
   useEffect(() => { void load(); }, [page, statusFilter]);
 
-  const handleIssue = async () => {
+  const submitIssue = async () => {
+    const oId = parseInt(orderId, 10);
+    const amt = parseFloat(amount);
+    setIssuing(true); setIssueError('');
+    try {
+      await issueRefund(oId, { amount: amt, reason: reason.trim() });
+      setIssueOpen(false); setOrderId(''); setAmount(''); setReason('');
+      toast.success(`Refund of MVR ${amt.toFixed(2)} issued for order #${oId}.`);
+      void load();
+    } catch (e) {
+      const msg = (e as Error).message;
+      setIssueError(msg);
+      toast.error(msg);
+    }
+    finally { setIssuing(false); }
+  };
+
+  const handleIssueClick = () => {
     const oId = parseInt(orderId, 10);
     const amt = parseFloat(amount);
     if (!orderId || isNaN(oId) || oId <= 0) { setIssueError('Enter a valid order ID.'); return; }
     if (!amount || isNaN(amt) || amt <= 0) { setIssueError('Enter a valid amount.'); return; }
-    setIssuing(true); setIssueError('');
-    try {
-      await issueRefund(oId, { amount: amt, reason: reason || undefined });
-      setIssueOpen(false); setOrderId(''); setAmount(''); setReason('');
-      void load();
-    } catch (e) { setIssueError((e as Error).message); }
-    finally { setIssuing(false); }
+    if (!reason.trim()) { setIssueError('A reason is required before issuing a refund.'); return; }
+    setIssueError('');
+    ask({
+      title: 'Confirm refund',
+      message: `Issue MVR ${amt.toFixed(2)} refund for order #${oId}?\n\nReason: ${reason.trim()}`,
+      confirmLabel: 'Issue refund',
+      danger: true,
+      onConfirm: () => void submitIssue(),
+    });
   };
 
   return (
@@ -70,14 +93,15 @@ export default function RefundsPage() {
         title="Refunds"
         action={<Btn onClick={() => { setIssueOpen(true); setIssueError(''); }}>+ Process Refund</Btn>}
       />
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+
+      <TableStateBar error={error} onRetry={() => void load()} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Refunds" value={String(total)} accent="#D4813A" />
         <StatCard label="Total Refunded" value={`MVR ${approvedTotal.toFixed(2)}`} accent="#ef4444" />
       </div>
 
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
@@ -85,39 +109,44 @@ export default function RefundsPage() {
         >
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        {statusFilter && (
+          <Btn variant="ghost" onClick={() => { setStatusFilter(''); setPage(1); }}>Clear filters</Btn>
+        )}
       </div>
 
-      <TableCard>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['#', 'Order', 'Amount', 'Reason', 'Status', 'Processed By', 'Date'].map(h => (
-                <th key={h} style={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
-            ) : refunds.length === 0 ? (
-              <tr><td colSpan={7}><EmptyState message="No refunds found." /></td></tr>
-            ) : refunds.map(r => (
-              <tr key={r.id}>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.id}</td>
-                <td style={TD}>
-                  {r.order
-                    ? <span style={{ fontWeight: 600 }}>#{r.order.order_number}</span>
-                    : <span style={{ color: '#9C8E7E' }}>Order #{r.order_id}</span>}
-                </td>
-                <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>MVR {parseFloat(String(r.amount ?? 0)).toFixed(2)}</td>
-                <td style={{ ...TD, color: '#6B5D4F', fontSize: 13 }}>{r.reason ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                <td style={TD}><Badge color={STATUS_COLOR[r.status] ?? 'gray'}>{r.status}</Badge></td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.user?.name ?? '—'}</td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(r.created_at).toLocaleDateString()}</td>
+      <TableCard stickyHead>
+        {loading ? (
+          <TableSkeleton rows={6} cols={7} />
+        ) : refunds.length === 0 ? (
+          <TableStateBar isEmpty emptyMessage="No refunds found." filterActive={!!statusFilter} onClearFilters={() => { setStatusFilter(''); setPage(1); }} />
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['#', 'Order', 'Amount', 'Reason', 'Status', 'Processed By', 'Date'].map(h => (
+                  <th key={h} style={TH}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {refunds.map(r => (
+                <tr key={r.id}>
+                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.id}</td>
+                  <td style={TD}>
+                    {r.order
+                      ? <span style={{ fontWeight: 600 }}>#{r.order.order_number}</span>
+                      : <span style={{ color: '#9C8E7E' }}>Order #{r.order_id}</span>}
+                  </td>
+                  <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>MVR {parseFloat(String(r.amount ?? 0)).toFixed(2)}</td>
+                  <td style={{ ...TD, color: '#6B5D4F', fontSize: 13 }}>{r.reason ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
+                  <td style={TD}><Badge color={STATUS_COLOR[r.status] ?? 'gray'}>{r.status}</Badge></td>
+                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.user?.name ?? '—'}</td>
+                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(r.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </TableCard>
 
       <Pagination page={page} totalPages={lastPage} onChange={setPage} />
@@ -135,16 +164,18 @@ export default function RefundsPage() {
               <input type="number" min="0.01" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </label>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Reason</span>
-              <textarea placeholder="Describe the reason…" value={reason} onChange={e => setReason(e.target.value)} rows={3} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Reason *</span>
+              <textarea placeholder="Describe the reason (required)…" value={reason} onChange={e => setReason(e.target.value)} rows={3} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
             </label>
           </div>
           <ModalActions>
             <Btn variant="secondary" onClick={() => setIssueOpen(false)}>Cancel</Btn>
-            <Btn variant="danger" onClick={handleIssue} disabled={issuing}>{issuing ? 'Processing…' : 'Issue Refund'}</Btn>
+            <Btn variant="danger" onClick={handleIssueClick} disabled={issuing}>{issuing ? 'Processing…' : 'Issue Refund'}</Btn>
           </ModalActions>
         </Modal>
       )}
+
+      <ConfirmDialog state={dlg} close={closeDlg} />
     </div>
   );
 }

@@ -29,11 +29,18 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-/** Always visible at top of sidebar — highest-traffic pages */
+/** Daily operations — pinned at top of sidebar when user has permission */
 export const PINNED_NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard.view', description: 'Overview & KPIs' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view',    description: 'Live order queue' },
+  { to: '/kds',       icon: ChefHat,         label: 'Kitchen Display', permission: 'orders.view', description: 'KDS screen' },
+  { to: '/inventory', icon: Boxes,           label: 'Inventory', permission: 'inventory.view', description: 'Stock levels' },
+  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.view',      description: 'Categories & items' },
+  { to: '/customers', icon: Users,           label: 'Customers',  permission: 'customers.manage', description: 'Customer database' },
+  { to: '/reports',   icon: BarChart3,       label: 'Reports',    permission: 'reports.view',     description: 'Sales & daily summaries' },
 ];
+
+const PINNED_PATHS = new Set(PINNED_NAV_ITEMS.map((i) => i.to));
 
 export const NAV_GROUPS: NavGroup[] = [
   {
@@ -42,7 +49,6 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: ConciergeBell,
     items: [
       { to: '/activity', icon: Zap,           label: 'POS Activity',   permission: 'reports.view',        description: 'Audit log & POS events' },
-      { to: '/kds',      icon: ChefHat,         label: 'Kitchen Display', permission: 'orders.view',        description: 'KDS screen' },
       { to: '/tables',   icon: LayoutGrid,      label: 'Tables',         permission: 'orders.view',        description: 'Floor plan & seating' },
       { to: '/delivery', icon: Truck,           label: 'Delivery',       permission: 'delivery.view',      description: 'Delivery orders' },
       { to: '/shifts',   icon: Wallet,          label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
@@ -53,9 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Menu & Stock',
     icon: UtensilsCrossed,
     items: [
-      { to: '/menu',                  icon: UtensilsCrossed, label: 'Menu Items',      permission: 'menu.view',           description: 'Categories & items' },
       { to: '/specials',              icon: Tag,             label: 'Daily Specials',  permission: 'menu.manage',         description: 'Scheduled item discounts' },
-      { to: '/inventory',             icon: Boxes,           label: 'Inventory',       permission: 'inventory.manage',    description: 'Stock levels' },
       { to: '/purchase-orders',       icon: Package,         label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
       { to: '/supplier-intelligence', icon: Factory,         label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
       { to: '/waste-logs',            icon: Trash2,          label: 'Waste Tracking',  permission: 'menu.manage',         description: 'Log waste & shrinkage' },
@@ -66,7 +70,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Customers & Marketing',
     icon: Heart,
     items: [
-      { to: '/customers',    icon: Users,         label: 'Customers',    permission: 'customers.manage',  description: 'Customer database' },
       { to: '/reservations', icon: CalendarDays,  label: 'Reservations', permission: 'reservations.view', description: 'Table bookings' },
       { to: '/reviews',      icon: Star,          label: 'Reviews',      permission: 'customers.manage',  description: 'Moderate ratings' },
       { to: '/loyalty',      icon: Heart,         label: 'Loyalty',      permission: 'loyalty.manage',    description: 'Points & rewards' },
@@ -81,7 +84,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Finance',
     icon: CircleDollarSign,
     items: [
-      { to: '/reports',     icon: BarChart3,    label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
       { to: '/analytics',   icon: BarChart2,    label: 'Analytics',     permission: 'customers.analytics', description: 'Advanced insights' },
       { to: '/profit-loss', icon: PieChart,     label: 'Profit & Loss', permission: 'finance.profit_loss', description: 'P&L statement' },
       { to: '/invoices',    icon: DollarSign,   label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
@@ -116,17 +118,32 @@ const DEV_NAV_ITEM: NavItem = {
   description: 'UAT checklist (dev only)',
 };
 
+function withoutPinnedItems(items: NavItem[]): NavItem[] {
+  return items.filter((i) => !PINNED_PATHS.has(i.to));
+}
+
 export function getNavGroups(includeDevItems = !import.meta.env.PROD): NavGroup[] {
-  if (!includeDevItems) return NAV_GROUPS;
-  return NAV_GROUPS.map((g) =>
-    g.id === 'team-system'
-      ? { ...g, items: [...g.items, DEV_NAV_ITEM] }
-      : g,
-  );
+  let groups = NAV_GROUPS.map((g) => ({ ...g, items: withoutPinnedItems(g.items) }));
+  if (includeDevItems) {
+    groups = groups.map((g) =>
+      g.id === 'team-system'
+        ? { ...g, items: [...g.items, DEV_NAV_ITEM] }
+        : g,
+    );
+  }
+  return groups;
 }
 
 export function getAllNavItems(includeDevItems = !import.meta.env.PROD): NavItem[] {
   return [...PINNED_NAV_ITEMS, ...getNavGroups(includeDevItems).flatMap((g) => g.items)];
+}
+
+/** Longest-prefix match so /delivery-settings does not match /delivery */
+export function resolveNavItemForPath(pathname: string, items: NavItem[]): NavItem | undefined {
+  const path = pathname.replace(/\/$/, '') || '/';
+  return [...items]
+    .sort((a, b) => b.to.length - a.to.length)
+    .find((item) => path === item.to || path.startsWith(item.to + '/'));
 }
 
 /** @deprecated Use getAllNavItems() — kept for gradual migration */
@@ -166,6 +183,8 @@ const PERM_ALIASES: Record<string, string[]> = {
   'finance.cash_manage': ['payments.cash_manage', 'pos.open_shift', 'pos.close_shift'],
   'payments.cash_manage': ['finance.cash_manage', 'pos.open_shift', 'pos.close_shift'],
   'staff.schedule': ['staff.manage'],
+  'inventory.view': ['inventory.manage'],
+  'inventory.manage': ['inventory.view'],
 };
 
 export function can(user: StaffUser, permission?: string): boolean {

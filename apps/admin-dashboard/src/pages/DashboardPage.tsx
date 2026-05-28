@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, Monitor, Package, Play, Receipt, ShoppingBag, Trash2, TrendingUp, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, MessageSquare, Monitor, Package, Play, Printer, Receipt, ShoppingBag, Trash2, TrendingUp, Truck, Users } from 'lucide-react';
 import { playChime } from '../utils/audio';
 import { pushNotification } from '../utils/notifications';
 import {
@@ -14,6 +14,8 @@ import {
   formatAuditAction,
   fetchMaintenancePreview,
   cleanupStaleTickets,
+  fetchPrintJobs,
+  fetchSmsLogStats,
   type MaintenancePreview,
   type InventoryItem,
   type Order,
@@ -333,6 +335,13 @@ export function DashboardPage() {
   const { can } = useCurrentUserPermissions();
   const showPosOverview = can('reports.view');
   const showMaintenance = can('website.manage');
+  const canFinancialSummary = can('reports.financial');
+  const canOrders = can('orders.view');
+  const canInventory = can('inventory.view');
+  const canShift = can('pos.open_shift') || can('shifts.view_own_history');
+  const canSms = can('sms_marketing.view');
+  const canPrintJobs = can('devices.view');
+  const canDelivery = can('delivery.view');
   const [summaryDate, setSummaryDate] = useState(localToday);
 
   const [summary, setSummary]       = useState<DailySummary | null>(null);
@@ -349,6 +358,11 @@ export function DashboardPage() {
   const [shift, setShift]     = useState<Shift | null>(null);
   const [shiftErr, setShiftErr] = useState('');
 
+  const [lowStockTotal, setLowStockTotal] = useState(0);
+  const [printPending, setPrintPending] = useState(0);
+  const [smsFailed, setSmsFailed] = useState(0);
+  const [smsSent, setSmsSent] = useState(0);
+
   // Tracks orders that changed status since the last poll — drives the "recent changes" panel
   const [liveEvents, setLiveEvents] = useState<{ id: number; order_number: string; status: string; ts: number }[]>([]);
   const prevOrdersRef  = useRef<Record<number, string>>({});
@@ -356,15 +370,21 @@ export function DashboardPage() {
 
   // ── load daily summary ──
   useEffect(() => {
+    if (!canFinancialSummary) {
+      setSummary(null);
+      setSummaryLoading(false);
+      return;
+    }
     setSummaryLoading(true); setSummaryErr('');
     getDailySummary(summaryDate)
       .then(setSummary)
       .catch((e: Error) => setSummaryErr(e.message))
       .finally(() => setSummaryLoading(false));
-  }, [summaryDate]);
+  }, [summaryDate, canFinancialSummary]);
 
   // ── load active orders (poll every 10s) — diff drives the live feed ──
   const loadOrders = () => {
+    if (!canOrders) return;
     fetchOrders({ status: 'pending,paid,confirmed,preparing,in_progress,ready', per_page: 50 })
       .then((r) => {
         setActiveOrders(r.data ?? []);
@@ -398,18 +418,25 @@ export function DashboardPage() {
       .finally(() => setOrdersLoading(false));
   };
   useEffect(() => {
+    if (!canOrders) {
+      setActiveOrders([]);
+      setOrdersLoading(false);
+      return;
+    }
     loadOrders();
     const t = setInterval(loadOrders, 10_000);
     return () => clearInterval(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canOrders]);
 
   // ── load low stock ──
   useEffect(() => {
+    if (!canInventory) return;
     fetchLowStockItems()
       .then((r) => {
         const items = r.data ?? [];
         setLowStock(items.slice(0, 8));
+        setLowStockTotal(items.length);
         if (items.length > 0) {
           const key = 'admin_low_stock_notified_count';
           const prev = sessionStorage.getItem(key);
@@ -420,14 +447,29 @@ export function DashboardPage() {
         }
       })
       .catch((e: Error) => setLowStockErr(e.message));
-  }, []);
+  }, [canInventory]);
 
   // ── load shift ──
   useEffect(() => {
+    if (!canShift) return;
     getCurrentShift()
       .then((r) => setShift(r.shift))
       .catch((e: Error) => setShiftErr(e.message));
-  }, []);
+  }, [canShift]);
+
+  useEffect(() => {
+    if (!canPrintJobs) return;
+    fetchPrintJobs({ status: 'pending' })
+      .then((r) => setPrintPending(r.meta?.total ?? r.data?.length ?? 0))
+      .catch(() => setPrintPending(0));
+  }, [canPrintJobs]);
+
+  useEffect(() => {
+    if (!canSms) return;
+    fetchSmsLogStats()
+      .then((s) => { setSmsSent(s.sent); setSmsFailed(s.failed); })
+      .catch(() => { setSmsSent(0); setSmsFailed(0); });
+  }, [canSms]);
 
   const [health, setHealth] = useState<SystemHealth | null>(null);
   useEffect(() => {
@@ -459,6 +501,82 @@ export function DashboardPage() {
   const pendingCount   = activeOrders.filter((o) => o.status === 'pending').length;
   const preparingCount = activeOrders.filter((o) => ['confirmed', 'preparing'].includes(o.status)).length;
   const readyCount     = activeOrders.filter((o) => o.status === 'ready').length;
+  const onlinePending  = activeOrders.filter((o) =>
+    o.status === 'pending' && (o.type === 'online_pickup' || o.type.startsWith('online')),
+  ).length;
+  const deliveryPending = activeOrders.filter((o) =>
+    o.type === 'delivery' && !['completed', 'cancelled', 'delivered'].includes(o.status),
+  ).length;
+  const pickupPending = activeOrders.filter((o) =>
+    (o.type === 'pickup' || o.type === 'takeaway' || o.type === 'online_pickup')
+    && !['completed', 'cancelled', 'delivered'].includes(o.status),
+  ).length;
+
+  const opsCards: { key: string; label: string; value: string; sub?: string; accent: string; icon: React.ElementType; onClick: () => void }[] = [];
+  if (canFinancialSummary && summary) {
+    opsCards.push({
+      key: 'sales', label: "Today's Sales", value: fmt(summary.revenue),
+      sub: `${summary.orders} completed orders`, accent: '#D4813A', icon: DollarSign,
+      onClick: () => navigate('/reports'),
+    });
+  }
+  if (canOrders) {
+    opsCards.push({
+      key: 'active', label: 'Active Orders', value: String(activeOrders.length),
+      sub: `${pendingCount} pending · ${readyCount} ready`, accent: '#8b5cf6', icon: ShoppingBag,
+      onClick: () => navigate('/orders'),
+    });
+    if (onlinePending > 0) {
+      opsCards.push({
+        key: 'online', label: 'Online Pending', value: String(onlinePending),
+        sub: 'Awaiting confirmation', accent: '#3b82f6', icon: Monitor,
+        onClick: () => navigate('/orders'),
+      });
+    }
+  }
+  if (canInventory && lowStockTotal > 0) {
+    opsCards.push({
+      key: 'stock', label: 'Low Stock', value: String(lowStockTotal),
+      sub: 'Below reorder level', accent: '#ef4444', icon: Package,
+      onClick: () => navigate('/inventory'),
+    });
+  }
+  if (canShift) {
+    opsCards.push({
+      key: 'shift', label: shift ? 'Shift Open' : 'No Open Shift',
+      value: shift ? fmt(shift.expected_cash ?? shift.opening_cash) : '—',
+      sub: shift ? `Since ${elapsed(shift.opened_at)}` : 'Open from Shifts',
+      accent: shift ? '#22c55e' : '#9C8E7E', icon: CreditCard,
+      onClick: () => navigate('/shifts'),
+    });
+  }
+  if (canSms) {
+    opsCards.push({
+      key: 'sms', label: 'SMS Today', value: String(smsSent),
+      sub: smsFailed > 0 ? `${smsFailed} failed` : 'Messages sent', accent: '#0ea5e9', icon: MessageSquare,
+      onClick: () => navigate('/sms'),
+    });
+  }
+  if (canPrintJobs && printPending > 0) {
+    opsCards.push({
+      key: 'print', label: 'Print Queue', value: String(printPending),
+      sub: 'Pending jobs', accent: '#f59e0b', icon: Printer,
+      onClick: () => navigate('/print-jobs'),
+    });
+  }
+  if (canDelivery && deliveryPending > 0) {
+    opsCards.push({
+      key: 'delivery', label: 'Delivery Active', value: String(deliveryPending),
+      sub: 'In progress', accent: '#D4813A', icon: Truck,
+      onClick: () => navigate('/delivery'),
+    });
+  } else if (canOrders && pickupPending > 0) {
+    opsCards.push({
+      key: 'pickup', label: 'Pickup Waiting', value: String(pickupPending),
+      sub: 'Ready or in queue', accent: '#22c55e', icon: CheckCircle2,
+      onClick: () => navigate('/orders'),
+    });
+  }
 
   return (
     <>
@@ -486,8 +604,29 @@ export function DashboardPage() {
         }
       />
 
+      {opsCards.length > 0 && (
+        <>
+          <SectionLabel>Operations</SectionLabel>
+          <div className="stat-grid" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
+            {opsCards.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={c.onClick}
+                style={{
+                  border: 'none', background: 'transparent', padding: 0, cursor: 'pointer',
+                  textAlign: 'left', fontFamily: 'inherit', width: '100%',
+                }}
+              >
+                <StatCard label={c.label} value={c.value} sub={c.sub} accent={c.accent} icon={c.icon} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* ── Shift banner ── */}
-      {shiftErr ? <ErrorMsg message={shiftErr} /> : <ShiftBanner shift={shift} />}
+      {canShift && (shiftErr ? <ErrorMsg message={shiftErr} /> : <ShiftBanner shift={shift} />)}
 
       {showPosOverview && (
         <>
@@ -576,6 +715,8 @@ export function DashboardPage() {
       <div style={{ height: 20 }} />
 
       {/* ── Today KPIs ── */}
+      {canFinancialSummary && (
+      <>
       <SectionLabel>Today at a glance</SectionLabel>
       <p style={{ margin: '-8px 0 12px', fontSize: 12, color: '#9C8E7E' }}>
         Completed sales for {summaryDate === localToday() ? 'today' : summaryDate}. Open tickets below are not included until the order is completed.
@@ -598,7 +739,11 @@ export function DashboardPage() {
         </div>
       )}
 
+      </>
+      )}
+
       {/* ── Two-column grid: active orders + live feed ── */}
+      {canOrders && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20, marginBottom: 24 }}>
 
         {/* Active orders */}
@@ -682,6 +827,7 @@ export function DashboardPage() {
           </Card>
         </div>
       </div>
+      )}
 
       {/* ── Bottom row: top items + low stock ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>

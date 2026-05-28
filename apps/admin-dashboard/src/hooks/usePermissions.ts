@@ -57,6 +57,20 @@ let _meCache: StaffUser | null = null;
 let _mePromise: Promise<StaffUser> | null = null;
 const _meListeners = new Set<(u: StaffUser | null) => void>();
 
+/** Clears cached /auth/me data — call on logout, auth expiry, and before login as another user. */
+export function clearCurrentUserPermissionCache(): void {
+  _meCache = null;
+  _mePromise = null;
+  _meListeners.forEach((l) => l(null));
+}
+
+/** Seeds cache with a known user (e.g. fresh login response) so nav/palette don't see stale permissions. */
+export function primeCurrentUserPermissionCache(user: StaffUser): void {
+  _meCache = user;
+  _mePromise = null;
+  _meListeners.forEach((l) => l(user));
+}
+
 function ensureMe(): Promise<StaffUser> {
   if (_meCache) return Promise.resolve(_meCache);
   if (_mePromise) return _mePromise;

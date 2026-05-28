@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { CommandPalette } from './components/CommandPalette';
 import { can as userCan } from './components/navConfig';
+import { clearCurrentUserPermissionCache, primeCurrentUserPermissionCache } from './hooks/usePermissions';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 const OrdersPage              = lazyWithRetry(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
@@ -114,8 +115,12 @@ export default function App() {
     const token = localStorage.getItem('admin_token');
     if (!token) { setChecking(false); return; }
     getMe()
-      .then((r) => setUser(r.user))
+      .then((r) => {
+        primeCurrentUserPermissionCache(r.user);
+        setUser(r.user);
+      })
       .catch(() => {
+        clearCurrentUserPermissionCache();
         localStorage.removeItem('admin_token');
         navigate('/login');
       })
@@ -127,6 +132,7 @@ export default function App() {
   // redirected to the login page instead of being left on a broken screen.
   useEffect(() => {
     const onExpired = () => {
+      clearCurrentUserPermissionCache();
       localStorage.removeItem('admin_token');
       setUser(null);
       navigate('/login');
@@ -136,12 +142,15 @@ export default function App() {
   }, [navigate]);
 
   const handleLogin = (_token: string, staffUser: StaffUser, returnTo?: string) => {
+    clearCurrentUserPermissionCache();
+    primeCurrentUserPermissionCache(staffUser);
     setUser(staffUser);
     navigate(returnTo ?? '/dashboard');
   };
 
   const handleLogout = async () => {
     try { await apiLogout(); } catch (_) { /* token already expired — still clear locally */ }
+    clearCurrentUserPermissionCache();
     localStorage.removeItem('admin_token');
     setUser(null);
     navigate('/login');
