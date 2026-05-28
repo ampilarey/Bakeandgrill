@@ -415,48 +415,41 @@ export function MenuGrid({
         )}
       </div>
 
-      {/* Primary pill row: "All" + every top-level category. Horizontally
-          scrollable so 30+ categories degrade gracefully on a tablet. */}
-      {topLevelCategories.length > 0 && (
+      {/* Category + sale filters in one row (avoids duplicate "All items"). */}
+      {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0) && (
         <div style={pillRowStyle}>
           <CategoryPill
             label="All items"
-            active={selectedCategoryId == null}
-            onClick={() => setSelectedCategoryId(null)}
+            active={selectedCategoryId == null && saleFilter === 'all'}
+            onClick={() => {
+              setSelectedCategoryId(null);
+              setSaleFilter('all');
+            }}
           />
           {topLevelCategories.map((cat) => (
             <CategoryPill
               key={cat.id}
               label={cat.name}
-              active={activeTopLevelId === cat.id}
-              onClick={() => setSelectedCategoryId(cat.id)}
-              // Visual hint when the parent has sub-categories so the
-              // cashier knows tapping it reveals a secondary row.
+              active={activeTopLevelId === cat.id && saleFilter === 'all'}
+              onClick={() => {
+                setSelectedCategoryId(cat.id);
+                setSaleFilter('all');
+              }}
               caret={(childrenByParent.get(cat.id)?.length ?? 0) > 0}
             />
           ))}
-        </div>
-      )}
-
-      {(discountCount > 0 || specialCount > 0) && (
-        <div style={pillRowStyle}>
-          <CategoryPill
-            label="All items"
-            active={saleFilter === 'all'}
-            onClick={() => setSaleFilter('all')}
-          />
           {discountCount > 0 && (
             <CategoryPill
               label={`% Off (${discountCount})`}
               active={saleFilter === 'discount'}
-              onClick={() => setSaleFilter('discount')}
+              onClick={() => setSaleFilter((f) => (f === 'discount' ? 'all' : 'discount'))}
             />
           )}
           {specialCount > 0 && (
             <CategoryPill
               label={`Specials (${specialCount})`}
               active={saleFilter === 'special'}
-              onClick={() => setSaleFilter('special')}
+              onClick={() => setSaleFilter((f) => (f === 'special' ? 'all' : 'special'))}
             />
           )}
         </div>
