@@ -328,6 +328,9 @@ jobs:
             && pgrep -af "artisan queue:work" | grep public_html || echo "WARN: production queue worker not running" \
             && echo "Production deploy complete."
 
+      - name: Post-deploy smoke (production)
+        run: ./scripts/post-deploy-smoke.sh production
+
   contract:
     name: API contract tests (snapshot)
     runs-on: ubuntu-latest
