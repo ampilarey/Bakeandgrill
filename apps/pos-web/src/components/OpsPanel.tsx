@@ -533,7 +533,7 @@ function InventoryActionForm({
 
 function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => void }) {
   return (
-    <FormCard title="Receive stock" help="Logs a purchase from a supplier and increases on-hand inventory accordingly." onCancel={onDone}>
+    <FormCard title="Receive stock" help="Add one or more lines — flour, oil, packaging, etc. — in a single purchase receipt." onCancel={onDone}>
       <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 10 }}>
         <select
           value={ops.purchaseSupplierId ?? ""}
@@ -550,31 +550,62 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
           style={fieldStyle}
         />
       </div>
-      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginTop: 10 }}>
-        <input
-          value={ops.purchaseItemName}
-          onChange={(e) => ops.setPurchaseItemName(e.target.value)}
-          placeholder="Item name"
-          style={fieldStyle}
-        />
-        <input
-          value={ops.purchaseQuantity}
-          onChange={(e) => ops.setPurchaseQuantity(e.target.value)}
-          placeholder="Qty received"
-          inputMode="none"
-          style={fieldStyle}
-        />
-        <input
-          value={ops.purchaseUnitCost}
-          onChange={(e) => ops.setPurchaseUnitCost(e.target.value)}
-          placeholder="Unit cost MVR"
-          inputMode="none"
-          style={fieldStyle}
-        />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+        {ops.purchaseLines.map((line, index) => (
+          <div
+            key={line.key}
+            className="pos-ops-grid"
+            style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 8, alignItems: "center" }}
+          >
+            <input
+              value={line.name}
+              onChange={(e) => ops.updatePurchaseLine(line.key, { name: e.target.value })}
+              placeholder={index === 0 ? "Item name" : "Another item"}
+              style={fieldStyle}
+            />
+            <input
+              value={line.quantity}
+              onChange={(e) => ops.updatePurchaseLine(line.key, { quantity: e.target.value })}
+              placeholder="Qty"
+              inputMode="decimal"
+              style={fieldStyle}
+            />
+            <input
+              value={line.unitCost}
+              onChange={(e) => ops.updatePurchaseLine(line.key, { unitCost: e.target.value })}
+              placeholder="Unit MVR"
+              inputMode="decimal"
+              style={fieldStyle}
+            />
+            <button
+              type="button"
+              onClick={() => ops.removePurchaseLine(line.key)}
+              disabled={ops.purchaseLines.length === 1}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: `1px solid ${C.border2}`,
+                background: "#fff",
+                color: ops.purchaseLines.length === 1 ? C.subtle : C.danger,
+                cursor: ops.purchaseLines.length === 1 ? "not-allowed" : "pointer",
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+              title="Remove line"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
-        <SecondaryBtn onClick={onDone}>Cancel</SecondaryBtn>
-        <PrimaryBtn onClick={() => { ops.handleCreatePurchase(); onDone(); }}>Record purchase</PrimaryBtn>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "space-between", flexWrap: "wrap" }}>
+        <SecondaryBtn onClick={ops.addPurchaseLine}>+ Add line</SecondaryBtn>
+        <div style={{ display: "flex", gap: 8 }}>
+          <SecondaryBtn onClick={onDone}>Cancel</SecondaryBtn>
+          <PrimaryBtn onClick={() => { ops.handleCreatePurchase(); onDone(); }}>Record purchase</PrimaryBtn>
+        </div>
       </div>
     </FormCard>
   );

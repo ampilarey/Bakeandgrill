@@ -38,9 +38,19 @@ Crontab keepalive (one line per env) — see `.cursor/rules/deploy-commands.mdc`
 
 Manual production deploy is **workflow_dispatch only** in CI. After deploy:
 
-1. `curl https://bakeandgrill.mv/api/health`
-2. Smoke-test POS, admin login, online checkout
-3. Confirm queue worker is running
+1. `./scripts/post-deploy-smoke.sh production` (or `test`)
+2. Smoke-test POS, admin login, online checkout in browser
+3. Confirm queue worker is running (`pgrep -af "artisan queue:work"`)
+
+Root `index.php` + `.htaccess` in the repo bootstrap Laravel from cPanel `public_html` without changing the document root. SPA assets live under `backend/public/{admin,order,pos,kds,driver}/` and are served via rewrite rules.
+
+Quick pull on the server:
+
+```bash
+./scripts/uat-quick-pull.sh test
+# or
+./scripts/uat-quick-pull.sh production
+```
 
 ## Security headers
 

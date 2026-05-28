@@ -1,7 +1,9 @@
 # Current UAT Status — Bake & Grill
 **Environment:** https://test.bakeandgrill.mv  
 **Last updated:** May 2026  
-**Verdict:** ✅ **UAT READY WITH MINOR CAVEATS**
+**Verdict:** ✅ **CODE COMPLETE — READY FOR UAT SIGN-OFF**
+
+All known code gaps from the audit/UAT backlog are fixed. Remaining work is **operational**: deploy test, clean stale DB, run one manual smoke session, then production go-live per `MAIN_PRODUCTION_LAUNCH_TODO.md`.
 
 ---
 
@@ -26,6 +28,7 @@ Minor caveats: some secondary flows (delivery, promo+gift card+loyalty in one ch
 | Loyalty checkout | E2E verifies points discount preview |
 | Mark-ready → SSE pipeline | PHPUnit verifies `OrderStatusChanged` dispatch |
 | POS Ops refunds tab | Status filter + refund history in Operations → Refunds |
+| POS multi-line purchase | Operations → Inventory → Receive stock supports multiple lines per receipt |
 | Mobile nav | 4-item bottom bar + More sheet (public site + order app) |
 | Payments | `PaymentService` always prefers `total_laar` over float `total` |
 

@@ -39,7 +39,7 @@
 | ID | Gap |
 |----|-----|
 | T002 | Refund **status filter** — not exposed in `OpsPanel`; API supports query param only from code path `fetchRefunds(status?)`. |
-| S007 | **Multiple purchase lines** in one purchase from OPS — UI submits one line per “Record Purchase”; multi-item would require multiple submissions or UI enhancement. |
+| S007 | **Multiple purchase lines** in one purchase from OPS — use **+ Add line** on Receive stock (Operations → Inventory). |
 
 ---
 

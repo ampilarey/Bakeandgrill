@@ -27,6 +27,20 @@ type Shift = {
   variance: number | null;
 };
 
+export type PurchaseLine = {
+  key: string;
+  name: string;
+  quantity: string;
+  unitCost: string;
+};
+
+const emptyPurchaseLine = (): PurchaseLine => ({
+  key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  name: "",
+  quantity: "",
+  unitCost: "",
+});
+
 export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -80,9 +94,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
   const [purchaseSupplierId, setPurchaseSupplierId] = useState<number | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(today);
-  const [purchaseItemName, setPurchaseItemName] = useState("");
-  const [purchaseQuantity, setPurchaseQuantity] = useState("");
-  const [purchaseUnitCost, setPurchaseUnitCost] = useState("");
+  const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([emptyPurchaseLine()]);
   const [refundOrderId, setRefundOrderId] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
@@ -195,18 +207,54 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   };
 
   const handleCreatePurchase = () => {
-    if (!purchaseItemName.trim()) return;
-    const quantity = Number.parseFloat(purchaseQuantity);
-    const unitCost = Number.parseFloat(purchaseUnitCost);
-    if (!Number.isFinite(quantity) || !Number.isFinite(unitCost)) { setOpsMessage("Enter valid purchase quantity and unit cost."); return; }
+    const items = purchaseLines
+      .map((line) => ({
+        name: line.name.trim(),
+        quantity: Number.parseFloat(line.quantity),
+        unit_cost: Number.parseFloat(line.unitCost),
+      }))
+      .filter(
+        (line) =>
+          line.name !== ""
+          && Number.isFinite(line.quantity)
+          && line.quantity > 0
+          && Number.isFinite(line.unit_cost)
+          && line.unit_cost >= 0,
+      );
+
+    if (items.length === 0) {
+      setOpsMessage("Add at least one purchase line with name, quantity, and unit cost.");
+      return;
+    }
+
     createPurchase({
       supplier_id: purchaseSupplierId ?? undefined,
       purchase_date: purchaseDate,
-      items: [{ name: purchaseItemName.trim(), quantity, unit_cost: unitCost }],
+      items,
     })
-      .then(() => { setPurchaseItemName(""); setPurchaseQuantity(""); setPurchaseUnitCost(""); return fetchInventory(); })
+      .then(() => {
+        setPurchaseLines([emptyPurchaseLine()]);
+        return fetchInventory();
+      })
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to record purchase."));
+  };
+
+  const addPurchaseLine = () => {
+    setPurchaseLines((lines) => [...lines, emptyPurchaseLine()]);
+  };
+
+  const removePurchaseLine = (key: string) => {
+    setPurchaseLines((lines) => {
+      const next = lines.filter((line) => line.key !== key);
+      return next.length > 0 ? next : [emptyPurchaseLine()];
+    });
+  };
+
+  const updatePurchaseLine = (key: string, patch: Partial<Omit<PurchaseLine, "key">>) => {
+    setPurchaseLines((lines) =>
+      lines.map((line) => (line.key === key ? { ...line, ...patch } : line)),
+    );
   };
 
   const handleCreateRefund = () => {
@@ -245,8 +293,8 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     adjustQuantity, setAdjustQuantity, adjustNotes, setAdjustNotes,
     suppliers, newSupplierName, setNewSupplierName, newSupplierPhone, setNewSupplierPhone,
     purchaseSupplierId, setPurchaseSupplierId, purchaseDate, setPurchaseDate,
-    purchaseItemName, setPurchaseItemName, purchaseQuantity, setPurchaseQuantity,
-    purchaseUnitCost, setPurchaseUnitCost, refundOrderId, setRefundOrderId,
+    purchaseLines, addPurchaseLine, removePurchaseLine, updatePurchaseLine,
+    refundOrderId, setRefundOrderId,
     refundAmount, setRefundAmount, refundReason, setRefundReason,
     refundStatusFilter, setRefundStatusFilter, refunds,
     promoMessage, setPromoMessage, promoLastOrderDays, setPromoLastOrderDays, promoEstimate,

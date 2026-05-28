@@ -20,11 +20,10 @@ These are **product / UX observations** aligned with test matrix expectations. N
 - **Was:** Cart total did not subtract manual/rewards discounts.
 - **Now:** `useCart.ts` computes `discountedSubtotal`, proportional tax, and `cartTotal`; `OrderCart.tsx` Charge button shows the payable total with a subtotal/discount/GST breakdown.
 
-### 2. Purchase UI: single line item only (Area S — S007) — **Low / coverage gap**
+### 2. Purchase UI: multi-line receipt (Area S — S007) — **Resolved (May 2026)**
 
-- **Expected (matrix):** “Add multiple purchase items”.
-- **Actual (code):** `OpsPanel` / `handleCreatePurchase` sends a **single** `items: [{ name, quantity, unit_cost }]` row per submit.
-- **Status:** Documented as **NOT AVAILABLE** for multi-line in one purchase from POS UI; API may still support arrays for other clients.
+- **Was:** One item per purchase submit from POS Operations.
+- **Now:** Receive stock form supports **+ Add line** with multiple `{ name, quantity, unit_cost }` rows sent in one API call.
 
 ### 3. Refunds filter (Area T — T002) — **Resolved (May 2026)**
 
