@@ -124,30 +124,36 @@ SENTRY_TRACES_SAMPLE_RATE=0.1
 
 ## C. First Deploy Sequence (Manual — Do Not Auto-Deploy First Time)
 
-Run these in order manually on the production server:
+Run these in order manually on the production server (`/home/bakeandgrill/public_html`):
 
 ```bash
-cd /home/bakeandgrill/bakeandgrill.mv
+cd /home/bakeandgrill/public_html
 
-# 1. Pull code
-git clone https://github.com/ampilarey/Bakeandgrill.git . \
-  || git pull origin main
+# 1. Pull code (first time: git clone https://github.com/ampilarey/Bakeandgrill.git .)
+git pull origin main
 
-# 2. Backend setup
+# 2. Backend setup (first time only: cp .env.example .env && edit values)
 cd backend
 composer install --no-dev --optimize-autoloader
-cp .env.example .env
-# Edit .env with all production values above
-php artisan key:generate
+php artisan key:generate   # first time only
 php artisan migrate --force
-php artisan db:seed --class=PermissionSeeder
+php artisan db:seed --class=PermissionSeeder   # first time only
 php artisan storage:link --force
+./scripts/prod-preflight.sh backend/.env
 php artisan config:cache
 php artisan route:cache
 php artisan view:clear
 
-# 3. Verify health
-curl https://bakeandgrill.mv/api/health
+# 3. Verify health + apps
+cd ..
+./scripts/post-deploy-smoke.sh production
+```
+
+Or use the all-in-one script after `.env` is configured:
+
+```bash
+./scripts/full-deploy.sh production
+./scripts/prod-preflight.sh
 ```
 
 ---

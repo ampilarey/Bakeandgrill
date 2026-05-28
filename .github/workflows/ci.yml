@@ -297,6 +297,9 @@ jobs:
             && pgrep -af "artisan queue:work" | grep test.bakeandgrill || echo "WARN: test queue worker not running" \
             && echo "Test deploy complete."
 
+      - name: Post-deploy smoke (test)
+        run: ./scripts/post-deploy-smoke.sh test
+
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)
     runs-on: ubuntu-latest
