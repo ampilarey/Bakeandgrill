@@ -3,7 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
-import { fetchSpecials, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant } from '../api';
+import { fetchSpecials, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant } from '../api';
 import { ApiRequestError } from '@shared/api';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -90,6 +90,47 @@ function variantOverridesFromSpecial(s: DailySpecial, item: MenuItem | undefined
   return base;
 }
 
+function formFromSpecial(s: DailySpecial, item: MenuItem | undefined): SpecialForm {
+  return {
+    item_id: s.item_id,
+    badge_label: s.badge_label ?? '',
+    special_price: s.special_price != null ? String(s.special_price) : '',
+    discount_pct: s.discount_pct != null ? String(s.discount_pct) : '',
+    variant_overrides: variantOverridesFromSpecial(s, item),
+    start_date: s.start_date,
+    end_date: s.end_date,
+    start_time: s.start_time ?? '',
+    end_time: s.end_time ?? '',
+    days_of_week: s.days_of_week ?? [],
+    max_quantity: s.max_quantity != null ? String(s.max_quantity) : '',
+    description: s.description ?? '',
+    is_active: s.is_active,
+  };
+}
+
+async function resolveItemForSpecial(special: DailySpecial, items: MenuItem[]): Promise<MenuItem | undefined> {
+  let item = items.find(i => i.id === special.item_id);
+  const needsVariants = Boolean(item?.has_variants || (special.variant_overrides?.length ?? 0) > 0);
+  if (!needsVariants) return item;
+
+  if (item?.variants?.length) return item;
+
+  const { variants } = await fetchItemVariants(special.item_id);
+  if (item) {
+    return { ...item, has_variants: true, variants };
+  }
+
+  return {
+    id: special.item_id,
+    name: special.item_name ?? 'Item',
+    base_price: special.original_price ?? 0,
+    has_variants: true,
+    variants,
+    is_available: true,
+    is_active: true,
+  };
+}
+
 const BLANK: SpecialForm = {
   item_id: '', badge_label: '', special_price: '', discount_pct: '', variant_overrides: {},
   start_date: today(), end_date: today(), start_time: '', end_time: '',
@@ -103,6 +144,7 @@ export default function SpecialsPage() {
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, active_today_count: 0 });
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -138,29 +180,23 @@ export default function SpecialsPage() {
   }, []);
 
   const openCreate = () => {
-    setEditing(null); setForm({ ...BLANK, start_date: today(), end_date: today() });
+    setEditing(null); setEditItem(null);
+    setForm({ ...BLANK, start_date: today(), end_date: today() });
     setFormError(''); setConflictSpecialId(null); setModalOpen(true);
   };
 
-  const openEdit = (s: DailySpecial) => {
-    const item = items.find(i => i.id === s.item_id);
-    setEditing(s);
-    setForm({
-      item_id: s.item_id,
-      badge_label: s.badge_label ?? '',
-      special_price: s.special_price != null ? String(s.special_price) : '',
-      discount_pct: s.discount_pct != null ? String(s.discount_pct) : '',
-      variant_overrides: variantOverridesFromSpecial(s, item),
-      start_date: s.start_date,
-      end_date: s.end_date,
-      start_time: s.start_time ?? '',
-      end_time: s.end_time ?? '',
-      days_of_week: s.days_of_week ?? [],
-      max_quantity: s.max_quantity != null ? String(s.max_quantity) : '',
-      description: s.description ?? '',
-      is_active: s.is_active,
-    });
-    setFormError(''); setConflictSpecialId(null); setModalOpen(true);
+  const openEdit = async (s: DailySpecial) => {
+    setFormError(''); setConflictSpecialId(null);
+    try {
+      const { special } = await getSpecial(s.id);
+      const item = await resolveItemForSpecial(special, items);
+      setEditItem(item ?? null);
+      setEditing(special);
+      setForm(formFromSpecial(special, item));
+      setModalOpen(true);
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   const openEditFromConflict = async () => {
@@ -176,17 +212,38 @@ export default function SpecialsPage() {
     }
   };
 
-  const selectedItem = items.find(i => i.id === form.item_id);
-  const hasVariants = Boolean(selectedItem?.has_variants && selectedItem.variants?.length);
+  const selectedItem = editItem ?? items.find(i => i.id === form.item_id);
+  const hasVariants = Boolean(selectedItem?.has_variants && (selectedItem.variants?.length ?? 0) > 0);
 
   const setItemId = (itemId: number | '') => {
+    if (!itemId) {
+      setEditItem(null);
+      setForm(f => ({ ...f, item_id: '', variant_overrides: {} }));
+      return;
+    }
     const item = items.find(i => i.id === itemId);
+    setEditItem(item ?? null);
     setForm(f => ({
       ...f,
       item_id: itemId,
       variant_overrides: blankVariantOverrides(item),
       special_price: item?.has_variants ? '' : f.special_price,
     }));
+    if (item?.has_variants && !item.variants?.length) {
+      void fetchItemVariants(itemId).then(({ variants }) => {
+        const withVariants = { ...(item as MenuItem), has_variants: true, variants };
+        setEditItem(prev => (prev?.id === itemId ? withVariants : prev));
+        setForm(f => {
+          if (f.item_id !== itemId) return f;
+          const blanks = blankVariantOverrides(withVariants);
+          const merged = { ...blanks };
+          for (const [vid, row] of Object.entries(f.variant_overrides)) {
+            if (row.discount_pct || row.special_price) merged[Number(vid)] = row;
+          }
+          return { ...f, variant_overrides: merged };
+        });
+      }).catch(() => { /* variant table stays empty until retry */ });
+    }
   };
 
   const setVariantField = (variantId: number, field: 'discount_pct' | 'special_price', value: string) => {
@@ -401,7 +458,7 @@ export default function SpecialsPage() {
                 <td style={TD}><Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge></td>
                 <td style={TD}>{s.sold_count}</td>
                 <td style={TD}>
-                  <Btn small variant="secondary" onClick={() => openEdit(s)} style={{ marginRight: 6 }}><Pencil size={12} /></Btn>
+                  <Btn small variant="secondary" onClick={() => void openEdit(s)} style={{ marginRight: 6 }}><Pencil size={12} /></Btn>
                   <Btn small variant="danger" onClick={() => handleDelete(s.id)}><Trash2 size={12} /></Btn>
                 </td>
               </tr>
