@@ -177,6 +177,38 @@ async function resolveItemForSpecial(special: DailySpecial, items: MenuItem[]): 
   };
 }
 
+function findOverlappingSpecial(specials: DailySpecial[], itemId: number, start: string, end: string): DailySpecial | undefined {
+  return specials.find(s =>
+    s.item_id === itemId &&
+    s.is_active &&
+    s.start_date <= end &&
+    s.end_date >= start,
+  );
+}
+
+function mergeSpecialForms(base: SpecialForm, pending: SpecialForm): SpecialForm {
+  const variant_overrides = { ...base.variant_overrides };
+  for (const [vid, row] of Object.entries(pending.variant_overrides)) {
+    if (row.discount_pct.trim() || row.special_price.trim()) {
+      variant_overrides[Number(vid)] = row;
+    }
+  }
+
+  return {
+    ...base,
+    badge_label: pending.badge_label.trim() || base.badge_label,
+    description: pending.description.trim() || base.description,
+    variant_overrides,
+    discount_pct: pending.discount_pct.trim() || base.discount_pct,
+    start_date: base.start_date,
+    end_date: base.end_date,
+    start_time: base.start_time || pending.start_time,
+    end_time: base.end_time || pending.end_time,
+    max_quantity: pending.max_quantity.trim() || base.max_quantity,
+    is_active: base.is_active,
+  };
+}
+
 const BLANK: SpecialForm = {
   item_id: '', badge_label: '', special_price: '', discount_pct: '', variant_overrides: {},
   start_date: today(), end_date: today(), start_time: '', end_time: '',
@@ -225,6 +257,16 @@ export default function SpecialsPage() {
       .catch(() => { /* menu item picker still works with empty list; don't block discounts table */ });
   }, []);
 
+  useEffect(() => {
+    if (editing || !modalOpen) return;
+    if (!form.item_id) {
+      setConflictSpecialId(null);
+      return;
+    }
+    const overlap = findOverlappingSpecial(specials, Number(form.item_id), form.start_date, form.end_date);
+    setConflictSpecialId(overlap?.id ?? null);
+  }, [editing, modalOpen, form.item_id, form.start_date, form.end_date, specials]);
+
   const openCreate = () => {
     setEditing(null); setEditItem(null);
     setForm({ ...BLANK, start_date: today(), end_date: today() });
@@ -247,12 +289,15 @@ export default function SpecialsPage() {
 
   const openEditFromConflict = async () => {
     if (!conflictSpecialId) return;
+    const pendingForm = form;
     setFormError('');
     try {
-      const res = await getSpecial(conflictSpecialId);
-      setModalOpen(false);
+      const { special } = await getSpecial(conflictSpecialId);
+      const item = await resolveItemForSpecial(special, items);
+      setEditItem(item ?? null);
+      setEditing(special);
+      setForm(mergeSpecialForms(formFromSpecial(special, item), pendingForm));
       setConflictSpecialId(null);
-      openEdit(res.special);
     } catch (e) {
       setFormError((e as Error).message);
     }
@@ -530,12 +575,22 @@ export default function SpecialsPage() {
 
       {modalOpen && (
         <Modal title={editing ? 'Edit Item Discount' : 'Add Item Discount'} onClose={() => setModalOpen(false)} maxWidth={hasVariants ? 640 : 520}>
+          {conflictSpecialId && !editing && !formError && (
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(212,129,58,0.35)' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
+                This item already has a discount for these dates. Set pricing for each variant in the table below, then add it to the existing discount — you do not need a separate discount per variant.
+              </p>
+              <Btn small onClick={() => void openEditFromConflict()}>
+                Add variant to existing discount
+              </Btn>
+            </div>
+          )}
           {formError && (
             <div style={{ marginBottom: 12 }}>
               <p style={{ color: '#ef4444', margin: 0 }}>{formError}</p>
               {conflictSpecialId && (
                 <Btn small variant="secondary" onClick={() => void openEditFromConflict()} style={{ marginTop: 8 }}>
-                  Edit existing discount
+                  Add variant to existing discount
                 </Btn>
               )}
             </div>
@@ -569,7 +624,9 @@ export default function SpecialsPage() {
               <div style={{ border: '1px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid #E8E0D8' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Per-variant pricing</span>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>Set a different discount % or fixed price for each size/option.</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+                    Set a discount on one or more variants. Leave a row blank if that size should stay full price.
+                  </p>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -602,7 +659,7 @@ export default function SpecialsPage() {
             )}
             <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
               {hasVariants
-                ? 'Use the default % for all variants, or set per-variant pricing below. Price and % stay in sync with each variant catalog price.'
+                ? 'One discount per item per date range. Add each variant separately in the table — they all save on the same discount.'
                 : catalogPrice > 0
                   ? `Special price and discount % stay in sync (catalog price MVR ${catalogPrice.toFixed(2)}).`
                   : 'Select a menu item to link special price and discount %.'}

@@ -345,7 +345,7 @@ class DailySpecialController extends Controller
         if ($existing) {
             throw ValidationException::withMessages([
                 'item_id' => [
-                    "This item already has an active discount ({$existing->start_date->toDateString()} to {$existing->end_date->toDateString()}). Edit the existing discount instead of creating a new one.",
+                    "This item already has an active discount ({$existing->start_date->toDateString()} to {$existing->end_date->toDateString()}). Add each variant to that existing discount instead of creating a new one.",
                 ],
                 'conflicting_special_id' => [(string) $existing->id],
             ]);
