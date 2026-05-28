@@ -54,12 +54,48 @@ export class CheckoutPage {
 
   /** Apply a promo code. */
   async applyPromo(code: string): Promise<void> {
-    const input = this.page.getByLabel(/^Promo code$/i);
+    const section = this.page.getByText(/^Promo Code$/i).locator('xpath=ancestor::div[1]');
+    const input = section.getByLabel(/^Promo code$/i);
     await expect(input).toBeVisible({ timeout: 6_000 });
     await input.fill(code);
+    await section.locator('button').filter({ hasText: /^apply$/i }).click();
+  }
 
-    const applyBtn = this.page.locator('button').filter({ hasText: /^apply$/i }).first();
-    await applyBtn.click();
+  /** Wait for promo success banner or summary row. */
+  async expectPromoApplied(code: string): Promise<void> {
+    const summary = this.page.locator('text=Order Summary').locator('xpath=ancestor::div[1]');
+    await expect
+      .poll(async () => {
+        const appliedBanner = this.page.getByText(new RegExp(code, 'i'));
+        const summaryRow = summary.getByText(new RegExp(`Promo \\(${code}\\)`, 'i'));
+        const bannerVisible = await appliedBanner.isVisible().catch(() => false);
+        const rowVisible = await summaryRow.isVisible().catch(() => false);
+        return bannerVisible || rowVisible;
+      }, { timeout: 10_000 })
+      .toBe(true);
+  }
+
+  /** Check gift card balance (first step before Apply). */
+  async checkGiftCard(code: string): Promise<void> {
+    const section = this.page.getByText(/^Gift Card$/i).locator('xpath=ancestor::div[1]');
+    const input = section.getByLabel(/^Gift card code$/i);
+    await expect(input).toBeVisible({ timeout: 6_000 });
+    await input.fill(code);
+    await section.locator('button').filter({ hasText: /^check$/i }).click();
+    await expect(section.getByText(/^Balance: MVR/i)).toBeVisible({ timeout: 10_000 });
+  }
+
+  /** Apply gift card after balance check. */
+  async applyGiftCard(): Promise<void> {
+    const section = this.page.getByText(/^Gift Card$/i).locator('xpath=ancestor::div[1]');
+    await section.locator('button').filter({ hasText: /^apply$/i }).click();
+  }
+
+  /** Wait for gift-card discount in order summary. */
+  async expectGiftCardDiscount(): Promise<void> {
+    const summary = this.page.locator('text=Order Summary').locator('xpath=ancestor::div[1]');
+    await expect(summary.getByText(/^Gift Card/i)).toBeVisible({ timeout: 10_000 });
+    await expect(summary.getByText(/− MVR/i)).toBeVisible();
   }
 
   /** Read the displayed order total from the Order Summary card. */
