@@ -344,7 +344,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="devices" element={
-                  <PermissionGuard user={user} permission="devices.manage">
+                  <PermissionGuard user={user} permission="devices.view">
                     <DevicesPage />
                   </PermissionGuard>
                 } />
@@ -354,7 +354,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="print-jobs" element={
-                  <PermissionGuard user={user} permission="devices.manage">
+                  <PermissionGuard user={user} permission="devices.view">
                     <PrintJobsPage />
                   </PermissionGuard>
                 } />
@@ -373,7 +373,7 @@ export default function App() {
                     <DeliverySettingsPage />
                   </PermissionGuard>
                 } />
-                <Route path="*"                     element={<Navigate to="/orders" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
               </Suspense>
             </Layout>

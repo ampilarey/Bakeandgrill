@@ -107,7 +107,7 @@ function readToken(): string | null {
 
 export function useCheckout() {
   const navigate = useNavigate();
-  const { pruneCartToAllowedItemIds } = useCart();
+  const { pruneCartToAllowedItemIds, refreshPricesFromMenu } = useCart();
 
   const [cartTick, bumpCart] = useReducer((n: number) => n + 1, 0);
   const cart = useMemo(() => readCart(), [cartTick]);
@@ -188,6 +188,7 @@ export function useCheckout() {
         if (cancelled) return;
         const ids = new Set((res.data ?? []).map((i) => i.id));
         pruneCartToAllowedItemIds(ids);
+        refreshPricesFromMenu(res.data ?? []);
         bumpCart();
       })
       .catch(() => { /* menu load failed — leave cart as-is rather than wiping items */ });

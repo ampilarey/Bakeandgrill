@@ -6,14 +6,14 @@ import {
 import { fetchAdminRefunds, issueRefund, type AdminRefund } from '../api';
 
 const STATUS_COLOR: Record<string, string> = {
-  pending: 'orange', approved: 'green', completed: 'green', rejected: 'red', cancelled: 'gray',
+  pending: 'orange', approved: 'green', processed: 'green', rejected: 'red', cancelled: 'gray',
 };
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'pending', label: 'Pending' },
   { value: 'approved', label: 'Approved' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'processed', label: 'Processed' },
   { value: 'rejected', label: 'Rejected' },
 ];
 
@@ -23,6 +23,7 @@ export default function RefundsPage() {
   const [refunds, setRefunds] = useState<AdminRefund[]>([]);
   const [total, setTotal] = useState(0);
   const [lastPage, setLastPage] = useState(1);
+  const [approvedTotal, setApprovedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -42,6 +43,7 @@ export default function RefundsPage() {
       setRefunds(res.refunds?.data ?? []);
       setTotal(res.refunds?.total ?? 0);
       setLastPage(res.refunds?.last_page ?? 1);
+      setApprovedTotal(res.meta?.approved_amount_total ?? 0);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -62,10 +64,6 @@ export default function RefundsPage() {
     finally { setIssuing(false); }
   };
 
-  const approvedTotal = refunds
-    .filter(r => ['approved', 'completed'].includes(r.status))
-    .reduce((s, r) => s + parseFloat(String(r.amount ?? 0)), 0);
-
   return (
     <div>
       <PageHeader
@@ -76,7 +74,7 @@ export default function RefundsPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Refunds" value={String(total)} accent="#D4813A" />
-        <StatCard label="Amount This Page" value={`MVR ${approvedTotal.toFixed(2)}`} accent="#ef4444" />
+        <StatCard label="Total Refunded" value={`MVR ${approvedTotal.toFixed(2)}`} accent="#ef4444" />
       </div>
 
       <div style={{ marginBottom: 20 }}>

@@ -23,6 +23,7 @@ class OfflineOrderSyncService
         private OrderOfflineSettlementService $settlement,
         private InventoryDeductionService $inventory,
         private AuditLogService $audit,
+        private OfflineOrderRewardsService $rewards,
     ) {}
 
     /**
@@ -173,6 +174,11 @@ class OfflineOrderSyncService
                 }
 
                 $order = $this->creator->createFromPayload($createPayload, $user);
+
+                $rewardsPayload = $payload['rewards'] ?? null;
+                if (is_array($rewardsPayload) && $rewardsPayload !== []) {
+                    $order = $this->rewards->apply($order, $rewardsPayload);
+                }
 
                 if (!$this->totalsMatch($order, $clientTotals)) {
                     throw new \RuntimeException('Client totals do not match server calculation.');

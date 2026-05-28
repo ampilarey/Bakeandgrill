@@ -27,6 +27,11 @@ export type OfflineOrderRecord = {
   };
   discount_amount?: number;
   customer_id?: number;
+  rewards?: {
+    promo_code?: string | null;
+    loyalty_points?: number;
+    gift_card_code?: string | null;
+  };
   ticket_name?: string;
   ticket_note?: string;
   restaurant_table_id?: number;

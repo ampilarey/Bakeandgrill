@@ -13,6 +13,7 @@ use App\Domains\Inventory\Listeners\RestoreInventoryOnRefundListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
+use App\Domains\Marketing\Listeners\DecrementDailySpecialSoldCountListener;
 use App\Domains\Marketing\Listeners\IncrementDailySpecialSoldCountListener;
 use App\Domains\Marketing\Listeners\RecordReferralRedemptionListener;
 use App\Domains\Notifications\Events\CustomerCreated;
@@ -99,6 +100,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         OrderRefunded::class => [
             RestoreInventoryOnRefundListener::class,
             ReverseCreditOnRefundListener::class,
+            DecrementDailySpecialSoldCountListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],
 

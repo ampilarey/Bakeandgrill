@@ -251,7 +251,13 @@ class GiftCardController extends Controller
 
         return response()->json([
             'data' => collect($cards->items())->map(fn ($c) => $this->format($c)),
-            'meta' => ['current_page' => $cards->currentPage(), 'last_page' => $cards->lastPage(), 'total' => $cards->total()],
+            'meta' => [
+                'current_page' => $cards->currentPage(),
+                'last_page' => $cards->lastPage(),
+                'total' => $cards->total(),
+                'active_count' => GiftCard::where('status', 'active')->count(),
+                'active_balance' => (float) GiftCard::where('status', 'active')->sum('current_balance'),
+            ],
         ]);
     }
 

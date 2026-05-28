@@ -48,6 +48,7 @@ function toApiPayload(orders: OfflineOrderRecord[]): PosOfflineSyncPayload["orde
     ...(o.ticket_name ? { ticket_name: o.ticket_name } : {}),
     ...(o.ticket_note ? { ticket_note: o.ticket_note } : {}),
     ...(o.restaurant_table_id != null ? { restaurant_table_id: o.restaurant_table_id } : {}),
+    ...(o.rewards ? { rewards: o.rewards } : {}),
     prepared_locally: true,
   }));
 }

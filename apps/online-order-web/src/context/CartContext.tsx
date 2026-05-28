@@ -20,8 +20,8 @@ interface CartContextValue {
   addItem: (item: Item, quantity: number, modifiers?: Modifier[], variant?: Variant | null) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
-  /** Remove lines whose item id is not in the allowed set (e.g. after switching pickup ↔ delivery). */
   pruneCartToAllowedItemIds: (allowedIds: Set<number>) => void;
+  refreshPricesFromMenu: (items: Item[]) => void;
 }
 
 const CART_VERSION = 4;
@@ -154,6 +154,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart((prev) => prev.filter((e) => allowedIds.has(e.item.id)));
   }, []);
 
+  const refreshPricesFromMenu = useCallback((items: Item[]) => {
+    const byId = new Map(items.map((i) => [i.id, i]));
+    setCart((prev) =>
+      prev.map((entry) => {
+        const fresh = byId.get(entry.item.id);
+        if (!fresh) return entry;
+        const variant = entry.variantId
+          ? fresh.variants?.find((v) => v.id === entry.variantId)
+          : null;
+        const unitPrice = variant
+          ? Number(variant.effective_price ?? variant.price)
+          : Number(fresh.special?.effective_price ?? fresh.base_price);
+        const originalPrice = variant
+          ? (variant.effective_price != null && variant.original_price != null
+            ? Number(variant.original_price)
+            : null)
+          : (fresh.special?.original_price != null ? Number(fresh.special.original_price) : null);
+        return {
+          ...entry,
+          item: fresh,
+          variantPrice: unitPrice,
+          originalPrice,
+        };
+      }),
+    );
+  }, []);
+
   const cartTotal = useMemo(
     () =>
       cart.reduce((total, e) => {
@@ -166,7 +193,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, clearCart, pruneCartToAllowedItemIds }}>
+    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, clearCart, pruneCartToAllowedItemIds, refreshPricesFromMenu }}>
       {children}
     </CartContext.Provider>
   );

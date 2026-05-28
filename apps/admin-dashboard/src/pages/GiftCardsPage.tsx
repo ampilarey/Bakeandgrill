@@ -15,7 +15,7 @@ export default function GiftCardsPage() {
   usePageTitle('Gift Cards');
 
   const [cards, setCards] = useState<GiftCard[]>([]);
-  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, active_count: 0, active_balance: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -42,7 +42,13 @@ export default function GiftCardsPage() {
     try {
       const res = await fetchGiftCards({ page, status: statusFilter || undefined });
       setCards(res.data ?? []);
-      setMeta(res.meta ?? { current_page: 1, last_page: 1, total: 0 });
+      setMeta({
+        current_page: res.meta?.current_page ?? 1,
+        last_page: res.meta?.last_page ?? 1,
+        total: res.meta?.total ?? 0,
+        active_count: res.meta?.active_count ?? 0,
+        active_balance: res.meta?.active_balance ?? 0,
+      });
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -81,9 +87,6 @@ export default function GiftCardsPage() {
     void navigator.clipboard.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };
 
-  const activeCards = cards.filter(c => c.status === 'active');
-  const totalValue = activeCards.reduce((s, c) => s + Number(c.current_balance ?? 0), 0);
-
   return (
     <div>
       {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
@@ -110,8 +113,8 @@ export default function GiftCardsPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Issued" value={String(meta.total)} accent="#D4813A" />
-        <StatCard label="Active Cards" value={String(activeCards.length)} accent="#22c55e" />
-        <StatCard label="Active Balance" value={`MVR ${totalValue.toFixed(2)}`} accent="#8b5cf6" />
+        <StatCard label="Active Cards" value={String(meta.active_count ?? 0)} accent="#22c55e" />
+        <StatCard label="Active Balance" value={`MVR ${Number(meta.active_balance ?? 0).toFixed(2)}`} accent="#8b5cf6" />
       </div>
 
       {/* Balance checker */}

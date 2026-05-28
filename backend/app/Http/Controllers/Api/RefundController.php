@@ -36,8 +36,15 @@ class RefundController extends Controller
             $query->where('status', $request->query('status'));
         }
 
+        $paginator = $query->paginate(50);
+
+        $approvedStatuses = ['approved', 'processed'];
+
         return response()->json([
-            'refunds' => $query->paginate(50),
+            'refunds' => $paginator,
+            'meta' => [
+                'approved_amount_total' => (float) Refund::whereIn('status', $approvedStatuses)->sum('amount'),
+            ],
         ]);
     }
 

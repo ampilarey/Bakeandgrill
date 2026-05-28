@@ -150,7 +150,10 @@ export interface AdminRefund {
   user?: { name: string };
 }
 
-export async function fetchAdminRefunds(params?: { page?: number; status?: string }): Promise<{ refunds: { data: AdminRefund[]; current_page: number; last_page: number; total: number } }> {
+export async function fetchAdminRefunds(params?: { page?: number; status?: string }): Promise<{
+  refunds: { data: AdminRefund[]; current_page: number; last_page: number; total: number };
+  meta?: { approved_amount_total?: number };
+}> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
   if (params?.status) qs.set('status', params.status);

@@ -41,6 +41,9 @@ class SiteSettingsController extends Controller
         ]);
 
         foreach ($validated['settings'] as $key => $value) {
+            if (!SiteSetting::where('key', $key)->exists()) {
+                continue;
+            }
             SiteSetting::set($key, $value);
         }
 

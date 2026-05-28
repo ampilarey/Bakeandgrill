@@ -35,12 +35,13 @@ class EnsureActiveDevice
         $device = Device::where('identifier', $identifier)->first();
 
         if (!$device) {
+            $autoApprove = config('app.env') !== 'production' && !config('pos.strict_device_approval', false);
             $device = Device::create([
                 'name' => 'POS ' . $identifier,
                 'identifier' => $identifier,
                 'type' => 'pos',
-                'is_active' => true,
-                'status' => 'approved',
+                'is_active' => $autoApprove,
+                'status' => $autoApprove ? 'approved' : 'pending',
                 'last_seen_at' => now(),
                 'ip_address' => $request->ip(),
                 'last_user_id' => $user?->id,

@@ -353,7 +353,7 @@ class OrderCreationService
                     abort(422, "Please select a size/option for \"{$itemModel->name}\".");
                 }
 
-                $variant = $itemModel->variants()->where('id', $variantId)->first();
+                $variant = $itemModel->variants->firstWhere('id', $variantId);
                 if (!$variant) {
                     abort(422, "Variant {$variantId} does not belong to item {$itemId}.");
                 }
@@ -362,7 +362,7 @@ class OrderCreationService
                 }
             } elseif ($variantId) {
                 // Non-variant product: validate if a variant was still passed
-                $variant = $itemModel->variants()->where('id', $variantId)->first();
+                $variant = $itemModel->variants->firstWhere('id', $variantId);
                 if (!$variant) {
                     abort(422, "Variant {$variantId} not found for item {$itemId}.");
                 }

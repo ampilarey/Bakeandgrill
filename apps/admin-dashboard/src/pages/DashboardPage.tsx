@@ -288,7 +288,12 @@ export function DashboardPage() {
         const items = r.data ?? [];
         setLowStock(items.slice(0, 8));
         if (items.length > 0) {
-          pushNotification({ type: 'stock', title: 'Low Stock', body: `${items.length} item${items.length !== 1 ? 's' : ''} below reorder level` });
+          const key = 'admin_low_stock_notified_count';
+          const prev = sessionStorage.getItem(key);
+          if (prev !== String(items.length)) {
+            pushNotification({ type: 'stock', title: 'Low Stock', body: `${items.length} item${items.length !== 1 ? 's' : ''} below reorder level` });
+            sessionStorage.setItem(key, String(items.length));
+          }
         }
       })
       .catch((e: Error) => setLowStockErr(e.message));

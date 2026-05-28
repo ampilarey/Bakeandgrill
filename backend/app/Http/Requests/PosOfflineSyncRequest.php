@@ -47,6 +47,10 @@ class PosOfflineSyncRequest extends FormRequest
             'orders.*.ticket_name' => ['nullable', 'string', 'max:255'],
             'orders.*.ticket_note' => ['nullable', 'string', 'max:500'],
             'orders.*.prepared_locally' => ['nullable', 'boolean'],
+            'orders.*.rewards' => ['nullable', 'array'],
+            'orders.*.rewards.promo_code' => ['nullable', 'string', 'max:50'],
+            'orders.*.rewards.loyalty_points' => ['nullable', 'integer', 'min:0'],
+            'orders.*.rewards.gift_card_code' => ['nullable', 'string', 'max:20'],
         ];
     }
 }

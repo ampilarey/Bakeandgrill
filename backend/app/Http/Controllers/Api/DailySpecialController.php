@@ -398,7 +398,9 @@ class DailySpecialController extends Controller
     {
         $item = $s->item;
         $basePrice = $item ? (float) $item->base_price : null;
-        $effective = $basePrice !== null ? $s->getEffectivePriceFor($basePrice) : null;
+        $effective = $basePrice !== null && $item
+            ? $this->pricing->effectivePriceForSpecial($s, $basePrice, $item)
+            : null;
         $variantOverrides = $s->relationLoaded('variantOverrides')
             ? $s->variantOverrides->map(function ($vo) use ($s, $item) {
                 $variant = $vo->variant;

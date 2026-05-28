@@ -245,8 +245,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall'])->middleware('device.active');
 
     // Print jobs
-    Route::get('/print-jobs', [PrintJobController::class, 'index']);
-    Route::post('/print-jobs/{id}/retry', [PrintJobController::class, 'retry']);
+    Route::get('/print-jobs', [PrintJobController::class, 'index'])->middleware('permission:devices.view');
+    Route::post('/print-jobs/{id}/retry', [PrintJobController::class, 'retry'])->middleware('permission:devices.manage');
 
     // Inventory — static paths MUST come before {id} wildcard to avoid shadowing
     Route::middleware('permission:inventory.view')->group(function () {
@@ -359,16 +359,16 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     });
 
     // Tables
-    Route::get('/tables', [TableController::class, 'index']);
-    Route::post('/tables', [TableController::class, 'store']);
-    Route::patch('/tables/{id}', [TableController::class, 'update']);
+    Route::get('/tables', [TableController::class, 'index'])->middleware('permission:orders.view');
+    Route::post('/tables', [TableController::class, 'store'])->middleware('permission:orders.manage');
+    Route::patch('/tables/{id}', [TableController::class, 'update'])->middleware('permission:orders.manage');
     Route::post('/tables/{id}/open', [TableController::class, 'open'])
-        ->middleware('device.active');
+        ->middleware(['permission:orders.manage', 'device.active']);
     Route::post('/tables/{tableId}/orders/{orderId}/items', [TableController::class, 'addItems'])
-        ->middleware('device.active');
-    Route::post('/tables/{id}/close', [TableController::class, 'close']);
-    Route::post('/tables/merge', [TableController::class, 'merge']);
-    Route::post('/tables/{id}/split', [TableController::class, 'split']);
+        ->middleware(['permission:orders.manage', 'device.active']);
+    Route::post('/tables/{id}/close', [TableController::class, 'close'])->middleware('permission:orders.manage');
+    Route::post('/tables/merge', [TableController::class, 'merge'])->middleware('permission:orders.manage');
+    Route::post('/tables/{id}/split', [TableController::class, 'split'])->middleware('permission:orders.manage');
 
     // Receipts (staff)
     Route::get('/orders/{orderId}/receipt-link', [ReceiptController::class, 'linkForOrder']);
@@ -499,7 +499,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Admin — full CRUD (requires promotions.manage permission)
-Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.manage'])->prefix('admin')->group(function () {
     Route::get('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminIndex']);
     Route::post('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminStore']);
     Route::patch('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminUpdate']);
@@ -526,7 +526,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('loyalty')->group(
     Route::delete('/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'releaseHold']);
 });
 
-Route::middleware(['auth:sanctum', 'permission:loyalty.manage'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:loyalty.manage'])->prefix('admin')->group(function () {
     Route::get('/loyalty/accounts', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAccountIndex']);
     Route::get('/loyalty/accounts/{customerId}/ledger', [App\Http\Controllers\Api\LoyaltyController::class, 'adminLedger']);
     Route::post('/loyalty/accounts/{customerId}/adjust', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAdjust']);
@@ -620,13 +620,13 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.sms']
 });
 
 // ─── Staff Notification Preferences ──────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:staff.update'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:staff.update'])->group(function () {
     Route::get('/admin/staff/{userId}/notification-prefs', [App\Http\Controllers\Api\StaffNotificationPrefController::class, 'show']);
     Route::put('/admin/staff/{userId}/notification-prefs', [App\Http\Controllers\Api\StaffNotificationPrefController::class, 'update']);
 });
 
 // ─── Image Upload (Admin) ──────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:menu.manage'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
 
 // ─── Staff Management — per-action permissions ──────────────────────────────
 Route::prefix('admin/staff')->middleware(['auth:sanctum', 'staff.token'])->group(function () {
@@ -639,7 +639,7 @@ Route::prefix('admin/staff')->middleware(['auth:sanctum', 'staff.token'])->group
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
-Route::middleware(['auth:sanctum', 'permission:customers.analytics'])->prefix('admin/analytics')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.analytics'])->prefix('admin/analytics')->group(function () {
     Route::get('/peak-hours', [App\Http\Controllers\Api\AnalyticsController::class, 'peakHours']);
     Route::get('/retention', [App\Http\Controllers\Api\AnalyticsController::class, 'retention']);
     Route::get('/profitability', [App\Http\Controllers\Api\AnalyticsController::class, 'profitability']);
@@ -807,7 +807,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Staff: manage reservation status + settings
-Route::middleware(['auth:sanctum', 'permission:reservations.manage'])->prefix('admin/reservations')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:reservations.manage'])->prefix('admin/reservations')->group(function () {
     Route::get('/', [ReservationController::class, 'index']);
     Route::patch('/{id}/status', [ReservationController::class, 'updateStatus']);
     Route::get('/settings', [ReservationController::class, 'getSettings']);
@@ -817,10 +817,10 @@ Route::middleware(['auth:sanctum', 'permission:reservations.manage'])->prefix('a
 // ─── Time Clock ────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/time-clock/status', [App\Http\Controllers\Api\TimeClockController::class, 'status']);
-    Route::post('/time-clock/in', [App\Http\Controllers\Api\TimeClockController::class, 'clockIn']);
-    Route::post('/time-clock/out', [App\Http\Controllers\Api\TimeClockController::class, 'clockOut']);
-    Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history']);
-    Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary']);
+    Route::post('/time-clock/in', [App\Http\Controllers\Api\TimeClockController::class, 'clockIn'])->middleware('permission:staff.view');
+    Route::post('/time-clock/out', [App\Http\Controllers\Api\TimeClockController::class, 'clockOut'])->middleware('permission:staff.view');
+    Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history'])->middleware('permission:staff.view');
+    Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary'])->middleware('permission:staff.view');
 });
 
 // ─── Barcode Label Data ──────────────────────────────────────────────────────
@@ -849,7 +849,7 @@ Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class
     ->middleware('throttle:100,1');
 
 // ─── Xero OAuth ─────────────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:integrations.xero'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.xero'])->group(function () {
     Route::get('/xero/connect', [App\Http\Controllers\Api\XeroController::class, 'connect']);
     Route::get('/xero/callback', [App\Http\Controllers\Api\XeroController::class, 'callback']);
     Route::get('/xero/status', [App\Http\Controllers\Api\XeroController::class, 'status']);
@@ -860,7 +860,7 @@ Route::middleware(['auth:sanctum', 'permission:integrations.xero'])->group(funct
 });
 
 // ─── Webhook Subscriptions (admin-only) ────────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:integrations.webhooks'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.webhooks'])->group(function () {
     Route::get('/webhooks/events', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'supportedEvents']);
     Route::get('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'index']);
     Route::post('/webhooks', [App\Http\Controllers\Api\WebhookSubscriptionController::class, 'store']);

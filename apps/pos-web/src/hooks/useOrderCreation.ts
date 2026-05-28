@@ -437,13 +437,18 @@ export function useOrderCreation(params: Params) {
     rows.some((r) => r.method === 'house_account');
 
   /** Persist sale to IndexedDB V2 queue (offline or network-failure fallback). */
-  const tryPersistOfflineV2 = async (paymentSnapshot: PaymentRow[]): Promise<boolean> => {
-    if (
-      params.appliedPromoCode
-      || (params.appliedLoyaltyPoints ?? 0) > 0
-      || params.appliedGiftCardCode
-    ) {
-      flashError("Promo, loyalty, and gift cards cannot be used offline.");
+  const tryPersistOfflineV2 = async (
+    paymentSnapshot: PaymentRow[],
+    stagedRewards?: { promo_code: string | null; loyalty_points: number; gift_card_code: string | null },
+  ): Promise<boolean> => {
+    const rewards = stagedRewards ?? {
+      promo_code: params.appliedPromoCode ?? null,
+      loyalty_points: params.appliedLoyaltyPoints ?? 0,
+      gift_card_code: params.appliedGiftCardCode ?? null,
+    };
+
+    if ((rewards.loyalty_points ?? 0) > 0 && !params.customerId) {
+      flashError("Attach a customer before redeeming loyalty points offline.");
       return false;
     }
 
@@ -511,6 +516,9 @@ export function useOrderCreation(params: Params) {
         },
         discount_amount: Math.max(0, Number.parseFloat(params.discountAmount) || 0),
         ...(params.customerId ? { customer_id: params.customerId } : {}),
+        ...(rewards.promo_code || rewards.loyalty_points || rewards.gift_card_code
+          ? { rewards }
+          : {}),
         ...(orderPayload.ticket_name ? { ticket_name: String(orderPayload.ticket_name) } : {}),
         ...(orderPayload.ticket_note ? { ticket_note: String(orderPayload.ticket_note) } : {}),
         ...(params.orderType === "Dine-in" && params.selectedTableId
@@ -713,13 +721,13 @@ export function useOrderCreation(params: Params) {
         return false;
       }
       if (OFFLINE_SYNC_V2) {
-        return tryPersistOfflineV2(paymentSnapshot);
+        return tryPersistOfflineV2(paymentSnapshot, stagedRewards);
       }
 
       if (
-        params.appliedPromoCode
-        || (params.appliedLoyaltyPoints ?? 0) > 0
-        || params.appliedGiftCardCode
+        stagedRewards.promo_code
+        || (stagedRewards.loyalty_points ?? 0) > 0
+        || stagedRewards.gift_card_code
       ) {
         flashError("Promo, loyalty, and gift cards cannot be used offline.");
         return false;
@@ -810,7 +818,7 @@ export function useOrderCreation(params: Params) {
       }
 
       if (OFFLINE_SYNC_V2) {
-        return tryPersistOfflineV2(paymentSnapshot);
+        return tryPersistOfflineV2(paymentSnapshot, stagedRewards);
       }
 
       try {
