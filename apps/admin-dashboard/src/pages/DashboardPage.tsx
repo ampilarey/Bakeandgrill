@@ -12,6 +12,9 @@ import {
   kdsStart,
   fetchPosOverview,
   formatAuditAction,
+  fetchMaintenancePreview,
+  cleanupStaleTickets,
+  type MaintenancePreview,
   type InventoryItem,
   type Order,
   type Shift,
@@ -207,6 +210,115 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
   );
 }
 
+function MaintenancePanel({ onDone }: { onDone: () => void }) {
+  const navigate = useNavigate();
+  const [preview, setPreview] = useState<MaintenancePreview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [days, setDays] = useState(1);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState('');
+
+  const load = (olderThanDays: number) => {
+    setLoading(true);
+    setError('');
+    fetchMaintenancePreview(olderThanDays)
+      .then(setPreview)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(days); }, [days]);
+
+  const handleCleanup = async () => {
+    if (!preview || preview.eligible_count === 0) return;
+    const ok = window.confirm(
+      `Cancel ${preview.eligible_count} unpaid open ticket(s) older than ${days} day(s)? Paid orders are skipped automatically.`,
+    );
+    if (!ok) return;
+
+    setRunning(true);
+    setError('');
+    setResult('');
+    try {
+      const res = await cleanupStaleTickets(days);
+      setResult(res.message);
+      load(days);
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Card style={{ marginTop: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#1C1408' }}>POS maintenance</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 12, color: '#6B5D4F' }}>Older than</label>
+          <select
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 12, fontFamily: 'inherit' }}
+          >
+            {[1, 2, 3, 7, 14].map((d) => (
+              <option key={d} value={d}>{d} day{d !== 1 ? 's' : ''}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {error && <ErrorMsg message={error} />}
+      {loading ? <Spinner /> : preview && (
+        <>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+            {preview.open_tickets_total} open ticket(s) before {new Date(preview.cutoff).toLocaleString()} —
+            {' '}{preview.eligible_count} can be voided safely, {preview.skipped_count} skipped (paid or settled).
+          </p>
+
+          {preview.stale_shifts_count > 0 && (
+            <div style={{
+              marginBottom: 12, padding: '10px 14px', borderRadius: 10,
+              background: '#FEF3C7', border: '1px solid #fbbf24', fontSize: 13, color: '#92400e',
+            }}>
+              <strong>{preview.stale_shifts_count} shift(s)</strong> open more than 24 hours.
+              {' '}
+              <button
+                type="button"
+                onClick={() => navigate('/shifts')}
+                style={{ background: 'none', border: 'none', color: '#D4813A', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+              >
+                Force close from Shifts →
+              </button>
+            </div>
+          )}
+
+          {result && (
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#15803d', fontWeight: 600 }}>{result}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void handleCleanup()}
+            disabled={running || preview.eligible_count === 0}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: 'none',
+              background: running || preview.eligible_count === 0 ? '#E8E0D8' : '#D4813A',
+              color: running || preview.eligible_count === 0 ? '#9C8E7E' : '#fff',
+              fontWeight: 700, fontSize: 13, cursor: running || preview.eligible_count === 0 ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {running ? 'Cleaning up…' : `Void ${preview.eligible_count} stale ticket(s)`}
+          </button>
+        </>
+      )}
+    </Card>
+  );
+}
+
 // ── main component ────────────────────────────────────────────────────────────
 
 function localToday() {
@@ -220,6 +332,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { can } = useCurrentUserPermissions();
   const showPosOverview = can('reports.view');
+  const showMaintenance = can('website.manage');
   const [summaryDate, setSummaryDate] = useState(localToday);
 
   const [summary, setSummary]       = useState<DailySummary | null>(null);
@@ -325,18 +438,21 @@ export function DashboardPage() {
 
   const [posOverview, setPosOverview] = useState<PosOverview | null>(null);
   const [posOverviewErr, setPosOverviewErr] = useState('');
+  const [maintenanceTick, setMaintenanceTick] = useState(0);
+
+  const reloadPosOverview = () => {
+    if (!showPosOverview) return;
+    fetchPosOverview()
+      .then(setPosOverview)
+      .catch((e: Error) => setPosOverviewErr(e.message));
+  };
 
   useEffect(() => {
     if (!showPosOverview) return;
-    const load = () => {
-      fetchPosOverview()
-        .then(setPosOverview)
-        .catch((e: Error) => setPosOverviewErr(e.message));
-    };
-    load();
-    const t = setInterval(load, 30_000);
+    reloadPosOverview();
+    const t = setInterval(reloadPosOverview, 30_000);
     return () => clearInterval(t);
-  }, [showPosOverview]);
+  }, [showPosOverview, maintenanceTick]);
 
 
   // ── derived ──
@@ -405,12 +521,24 @@ export function DashboardPage() {
                     <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>No open shifts.</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {posOverview.open_shifts.slice(0, 5).map((s) => (
-                        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ fontWeight: 600, color: '#1C1408' }}>{s.user_name ?? 'Unknown'}</span>
-                          <span style={{ color: '#9C8E7E' }}>{s.device_name ?? 'No device'} · {elapsed(s.opened_at)}</span>
-                        </div>
-                      ))}
+                      {posOverview.open_shifts.slice(0, 5).map((s) => {
+                        const hrsOpen = (Date.now() - new Date(s.opened_at).getTime()) / 3_600_000;
+                        const stale = hrsOpen >= 24;
+                        return (
+                          <div key={s.id} style={{
+                            display: 'flex', justifyContent: 'space-between', fontSize: 13,
+                            color: stale ? '#92400e' : undefined,
+                          }}>
+                            <span style={{ fontWeight: 600, color: stale ? '#92400e' : '#1C1408' }}>
+                              {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
+                              {s.user_name ?? 'Unknown'}
+                            </span>
+                            <span style={{ color: stale ? '#92400e' : '#9C8E7E' }}>
+                              {s.device_name ?? 'No device'} · {elapsed(s.opened_at)}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </Card>
@@ -708,6 +836,10 @@ export function DashboardPage() {
             ))}
           </div>
         </Card>
+      )}
+
+      {showMaintenance && (
+        <MaintenancePanel onDone={() => setMaintenanceTick((t) => t + 1)} />
       )}
     </>
   );

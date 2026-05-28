@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -214,6 +215,11 @@ function MyShiftPanel({
   );
 }
 
+function isStaleOpenShift(openedAt: string, closedAt: string | null): boolean {
+  if (closedAt) return false;
+  return (Date.now() - new Date(openedAt).getTime()) >= 24 * 60 * 60 * 1000;
+}
+
 function AdminShiftTable({
   rows,
   showForceClose,
@@ -236,13 +242,18 @@ function AdminShiftTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((s) => (
-            <tr key={s.id}>
-              <td style={{ ...TD, fontWeight: 600 }}>{s.user?.name ?? `#${s.user_id}`}</td>
+          {rows.map((s) => {
+            const stale = isStaleOpenShift(s.opened_at, s.closed_at);
+            return (
+            <tr key={s.id} style={stale ? { background: '#FEF3C7' } : undefined}>
+              <td style={{ ...TD, fontWeight: 600, color: stale ? '#92400e' : undefined }}>
+                {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
+                {s.user?.name ?? `#${s.user_id}`}
+              </td>
               <td style={TD}>{s.device?.name ?? '—'}</td>
-              <td style={{ ...TD, fontSize: 12, color: '#9C8E7E' }}>{new Date(s.opened_at).toLocaleString()}</td>
+              <td style={{ ...TD, fontSize: 12, color: stale ? '#92400e' : '#9C8E7E' }}>{new Date(s.opened_at).toLocaleString()}</td>
               <td style={{ ...TD, fontSize: 12, color: '#9C8E7E' }}>
-                {s.closed_at ? new Date(s.closed_at).toLocaleString() : '—'}
+                {s.closed_at ? new Date(s.closed_at).toLocaleString() : stale ? 'Still open — close shift' : '—'}
               </td>
               <td style={TD}>{formatMVR(s.opening_cash)}</td>
               <td style={TD}>{formatMVR(s.closing_cash)}</td>
@@ -257,7 +268,8 @@ function AdminShiftTable({
                 </td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </TableCard>

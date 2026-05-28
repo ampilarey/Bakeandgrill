@@ -12,13 +12,17 @@ use App\Models\Refund;
 use App\Models\Shift;
 use App\Models\TimePunch;
 use App\Models\User;
+use App\Services\AdminMaintenanceService;
 use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PosAdminController extends Controller
 {
-    public function __construct(private readonly PermissionService $permissions) {}
+    public function __construct(
+        private readonly PermissionService $permissions,
+        private readonly AdminMaintenanceService $maintenance,
+    ) {}
 
     /** GET /api/admin/pos/overview — live POS control-room snapshot */
     public function overview(Request $request): JsonResponse
@@ -111,5 +115,37 @@ class PosAdminController extends Controller
             ->get(['id', 'name']);
 
         return response()->json(['staff' => $staff]);
+    }
+
+    /** GET /api/admin/pos/maintenance-preview — stale tickets/shifts snapshot (owner) */
+    public function maintenancePreview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'older_than_days' => 'sometimes|integer|min:1|max:90',
+        ]);
+
+        $days = (int) ($validated['older_than_days'] ?? 1);
+
+        return response()->json($this->maintenance->preview($days));
+    }
+
+    /** POST /api/admin/pos/cleanup-stale-tickets — bulk void unpaid stale open tickets (owner) */
+    public function cleanupStaleTickets(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'older_than_days' => 'required|integer|min:1|max:90',
+            'confirm' => 'required|accepted',
+        ]);
+
+        $result = $this->maintenance->cleanupStaleOpenTickets(
+            (int) $validated['older_than_days'],
+            (int) $request->user()->id,
+            $request,
+        );
+
+        return response()->json([
+            'message' => "Cancelled {$result['cancelled_count']} stale ticket(s).",
+            ...$result,
+        ]);
     }
 }

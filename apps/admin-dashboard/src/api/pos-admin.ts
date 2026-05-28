@@ -124,6 +124,38 @@ export async function forceCloseShift(id: number, notes?: string): Promise<{ mes
   });
 }
 
+export type MaintenancePreview = {
+  older_than_days: number;
+  cutoff: string;
+  open_tickets_total: number;
+  eligible_count: number;
+  skipped_count: number;
+  eligible_sample: Array<{ id: number; order_number: string; status: string; created_at: string }>;
+  skipped_sample: Array<{ id: number; order_number: string; status: string; reason: string }>;
+  stale_shifts_count: number;
+  stale_shifts: Array<{ id: number; user_name: string | null; opened_at: string }>;
+};
+
+export type CleanupStaleTicketsResult = {
+  message: string;
+  older_than_days: number;
+  cancelled_count: number;
+  skipped_count: number;
+  cancelled_ids: number[];
+  skipped_sample: Array<{ id: number; reason: string }>;
+};
+
+export async function fetchMaintenancePreview(olderThanDays = 1): Promise<MaintenancePreview> {
+  return req(`/admin/pos/maintenance-preview?older_than_days=${olderThanDays}`);
+}
+
+export async function cleanupStaleTickets(olderThanDays: number): Promise<CleanupStaleTicketsResult> {
+  return req('/admin/pos/cleanup-stale-tickets', {
+    method: 'POST',
+    body: JSON.stringify({ older_than_days: olderThanDays, confirm: true }),
+  });
+}
+
 /** Human-readable labels for audit action slugs */
 export function formatAuditAction(action: string): string {
   const map: Record<string, string> = {
