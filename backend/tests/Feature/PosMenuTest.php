@@ -63,4 +63,70 @@ class PosMenuTest extends TestCase
             'items' => [['id', 'name', 'availability' => ['available']]],
         ]);
     }
+
+    public function test_pos_menu_includes_variant_special_pricing(): void
+    {
+        MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
+        $category = Category::create(['name' => 'POS Drinks', 'slug' => 'pos-drinks', 'is_active' => true]);
+        $item = Item::create([
+            'category_id' => $category->id,
+            'name' => 'POS Water',
+            'base_price' => 0,
+            'has_variants' => true,
+            'sku' => 'POS-WATER',
+            'is_active' => true,
+            'is_available' => true,
+        ]);
+        $variant = \App\Models\Variant::create([
+            'item_id' => $item->id,
+            'name' => 'Small',
+            'price' => 5.00,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        ItemChannelAvailability::query()->updateOrCreate(
+            ['item_id' => $item->id, 'channel' => 'dine_in'],
+            ['is_enabled' => true],
+        );
+
+        $special = \App\Models\DailySpecial::create([
+            'item_id' => $item->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'discount_pct' => null,
+            'special_price' => null,
+        ]);
+        \App\Models\DailySpecialVariant::create([
+            'daily_special_id' => $special->id,
+            'variant_id' => $variant->id,
+            'discount_pct' => 20,
+        ]);
+        app(\App\Services\SpecialPricingService::class)->bustCache();
+
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => '', 'is_active' => true],
+        );
+        PermissionCatalogSync::sync();
+        $staff = User::create([
+            'name' => 'POS Special Cashier',
+            'email' => 'pos-special@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($staff, ['staff']);
+
+        $response = $this->getJson('/api/pos/menu?channel=dine_in')->assertOk();
+        $found = collect($response->json('items'))->firstWhere('id', $item->id);
+        $variantRow = collect($found['variants'])->firstWhere('id', $variant->id);
+
+        $this->assertNotNull($found);
+        $this->assertArrayHasKey('special', $found);
+        $this->assertEqualsWithDelta(4.00, (float) $variantRow['effective_price'], 0.01);
+        $this->assertEqualsWithDelta(5.00, (float) $variantRow['original_price'], 0.01);
+    }
 }

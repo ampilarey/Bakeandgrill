@@ -18,6 +18,7 @@ class PosMenuBuilder
 {
     public function __construct(
         private readonly KitchenMenuResolver $kitchenMenuResolver,
+        private readonly SpecialPricingService $specialPricing,
     ) {}
 
     /**
@@ -91,7 +92,42 @@ class PosMenuBuilder
                 $at,
             );
 
-            return [
+            $variants = $item->variants
+                ->sortBy('sort_order')
+                ->map(function ($v) use ($item) {
+                    $variantRow = [
+                        'id' => $v->id,
+                        'name' => $v->name,
+                        'name_dv' => $v->name_dv,
+                        'price' => $v->price,
+                        'is_active' => $v->is_active,
+                        'sort_order' => $v->sort_order,
+                    ];
+
+                    $variantPricing = $this->specialPricing->resolveUnitPrice(
+                        $item->id,
+                        (float) $v->price,
+                        $item,
+                        $v->id,
+                    );
+                    if ($variantPricing->hasDiscount()) {
+                        $variantRow['original_price'] = $variantPricing->originalPrice;
+                        $variantRow['effective_price'] = $variantPricing->unitPrice;
+                    }
+
+                    return $variantRow;
+                })
+                ->values()
+                ->all();
+
+            $activeSpecial = $this->specialPricing->activeSpecialsByItemId()->get($item->id);
+            $baseSpecial = $this->specialPricing->resolveUnitPrice(
+                $item->id,
+                (float) $item->base_price,
+                $item,
+            );
+
+            $row = [
                 'id' => $item->id,
                 'name' => $item->name,
                 'name_dv' => $item->name_dv,
@@ -110,17 +146,7 @@ class PosMenuBuilder
                     'name' => $item->category->name,
                 ] : null,
                 'has_variants' => $item->has_variants,
-                'variants' => $item->variants
-                    ->sortBy('sort_order')
-                    ->map(fn ($v) => [
-                        'id' => $v->id,
-                        'name' => $v->name,
-                        'name_dv' => $v->name_dv,
-                        'price' => $v->price,
-                        'is_active' => $v->is_active,
-                        'sort_order' => $v->sort_order,
-                    ])
-                    ->values(),
+                'variants' => $variants,
                 'modifiers' => $item->modifiers->map(fn ($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
@@ -128,6 +154,31 @@ class PosMenuBuilder
                 ]),
                 'availability' => $available,
             ];
+
+            $specialBlock = $baseSpecial?->toApiBlock();
+            if (!$specialBlock && $activeSpecial) {
+                $hasVariantDiscount = $item->has_variants
+                    && collect($variants)->contains(fn (array $v) => isset($v['effective_price']));
+                if ($hasVariantDiscount) {
+                    $specialBlock = [
+                        'id' => $activeSpecial->id,
+                        'badge_label' => match (true) {
+                            (bool) $activeSpecial->badge_label => $activeSpecial->badge_label === 'Special'
+                                ? SpecialPricingService::DEFAULT_BADGE_LABEL
+                                : $activeSpecial->badge_label,
+                            default => SpecialPricingService::DEFAULT_BADGE_LABEL,
+                        },
+                        'discount_pct' => $activeSpecial->discount_pct,
+                        'original_price' => null,
+                        'effective_price' => null,
+                    ];
+                }
+            }
+            if ($specialBlock) {
+                $row['special'] = $specialBlock;
+            }
+
+            return $row;
         })->values();
 
         return [

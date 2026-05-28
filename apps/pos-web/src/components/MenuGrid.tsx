@@ -69,10 +69,16 @@ function tileColor(categoryId: number | null | undefined) {
 type SaleFilter = 'all' | 'discount' | 'special';
 
 function isPercentDiscountItem(item: Item): boolean {
-  return item.special?.discount_pct != null && item.special.discount_pct > 0;
+  if (item.special?.discount_pct != null && item.special.discount_pct > 0) return true;
+  return (item.variants ?? []).some(
+    (v) => v.effective_price != null && v.original_price != null && v.effective_price < v.original_price,
+  );
 }
 
 function isFixedSpecialItem(item: Item): boolean {
+  if (item.special?.effective_price != null && (item.special.discount_pct == null || item.special.discount_pct <= 0)) {
+    return true;
+  }
   return !!item.special && !isPercentDiscountItem(item);
 }
 
@@ -817,7 +823,7 @@ function ConfigurePanel({
                           opacity: active ? 0.95 : 0.85,
                           fontVariantNumeric: 'tabular-nums',
                         }}>
-                          MVR {Number(v.price).toFixed(2)}
+                          MVR {Number(v.effective_price ?? v.price).toFixed(2)}
                         </span>
                       </button>
                     );
