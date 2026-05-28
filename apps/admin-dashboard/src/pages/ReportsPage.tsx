@@ -217,14 +217,36 @@ export function ReportsPage() {
       {!loading && tab === 'Summary' && summary && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-            <StatCard label="Total Revenue"    value={mvr(summary.total_revenue)}    accent="#22c55e" />
-            <StatCard label="Orders"           value={summary.order_count.toLocaleString()} accent="#D4813A" />
+            <StatCard label="Completed Revenue" value={mvr(summary.total_revenue)} sub="Finished orders only" accent="#22c55e" />
+            <StatCard label="Completed Orders" value={summary.order_count.toLocaleString()} accent="#D4813A" />
             <StatCard label="Avg Order Value"  value={mvr(summary.average_order_value ?? 0)} accent="#8b5cf6" />
           </div>
           <Card>
-            <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>
+            <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
               Period: <strong style={{ color: '#1C1408' }}>{summary.period}</strong>
+              {' · '}Counts only orders marked <strong>completed</strong> in this date range.
             </p>
+            {summary.payments && Object.keys(summary.payments).length > 0 && (
+              <>
+                <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Payments by method</p>
+                <table style={S.table}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Method</th>
+                      <th style={{ ...S.th, textAlign: 'right' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(summary.payments).map(([method, amount]) => (
+                      <tr key={method}>
+                        <td style={S.td}>{method.replace(/_/g, ' ')}</td>
+                        <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(Number(amount))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
           </Card>
         </>
       )}

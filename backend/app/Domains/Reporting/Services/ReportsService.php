@@ -44,15 +44,19 @@ class ReportsService
             'total' => (float) ($agg->total ?? 0),
         ];
 
-        $payments = Payment::whereBetween('processed_at', [$from, $to])
+        // Always tie payment breakdown to the same completed-order cohort as
+        // $totals above. Pre-fix, with cashier/shift/station = All, this
+        // summed every paid payment in the date window — including orders
+        // still pending/held — so revenue and payment lines disagreed wildly.
+        $payments = Payment::query()
+            ->whereBetween('processed_at', [$from, $to])
             ->whereIn('status', ['paid', 'completed'])
-            ->when($userId || $shiftId || $deviceId, function ($q) use ($userId, $shiftId, $deviceId) {
-                $q->whereHas('order', function ($oq) use ($userId, $shiftId, $deviceId) {
-                    $oq->where('status', 'completed')
-                        ->when($userId, fn ($q2) => $q2->where('user_id', $userId))
-                        ->when($shiftId, fn ($q2) => $q2->where('shift_id', $shiftId))
-                        ->when($deviceId, fn ($q2) => $q2->where('device_id', $deviceId));
-                });
+            ->whereHas('order', function ($oq) use ($from, $to, $userId, $shiftId, $deviceId) {
+                $oq->where('status', 'completed')
+                    ->whereBetween('created_at', [$from, $to])
+                    ->when($userId, fn ($q2) => $q2->where('user_id', $userId))
+                    ->when($shiftId, fn ($q2) => $q2->where('shift_id', $shiftId))
+                    ->when($deviceId, fn ($q2) => $q2->where('device_id', $deviceId));
             })
             ->select('method', DB::raw('SUM(amount) as total'))
             ->groupBy('method')

@@ -168,23 +168,33 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
   const opened = new Date(shift.opened_at);
   const dur = Math.floor((Date.now() - opened.getTime()) / 60000);
   const hrs = Math.floor(dur / 60), mins = dur % 60;
+  const stale = hrs >= 24;
   return (
     <div style={{
-      background: '#F0FDF4', border: '1.5px solid #86efac', borderRadius: 12,
+      background: stale ? '#FEF3C7' : '#F0FDF4',
+      border: `1.5px solid ${stale ? '#fbbf24' : '#86efac'}`,
+      borderRadius: 12,
       padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <CheckCircle2 size={16} color="#22c55e" />
-        <span style={{ fontWeight: 700, fontSize: 13, color: '#166534' }}>Shift Open</span>
-        <span style={{ fontSize: 12, color: '#15803d' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {stale ? <AlertTriangle size={16} color="#d97706" /> : <CheckCircle2 size={16} color="#22c55e" />}
+        <span style={{ fontWeight: 700, fontSize: 13, color: stale ? '#92400e' : '#166534' }}>
+          Shift Open{stale ? ' — close this shift' : ''}
+        </span>
+        <span style={{ fontSize: 12, color: stale ? '#92400e' : '#15803d' }}>
           {hrs > 0 ? `${hrs}h ` : ''}{mins}m · by {shift.opened_by ?? 'Unknown'}
         </span>
+        {stale && (
+          <span style={{ fontSize: 12, color: '#92400e' }}>
+            Left open too long — close from Shifts so cash totals stay accurate.
+          </span>
+        )}
       </div>
       <div style={{ display: 'flex', gap: 16, marginLeft: 'auto', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: '#15803d' }}>
+        <span style={{ fontSize: 12, color: stale ? '#92400e' : '#15803d' }}>
           <strong>Opening: </strong>{fmt(shift.opening_cash)}
         </span>
-        <span style={{ fontSize: 12, color: '#15803d' }}>
+        <span style={{ fontSize: 12, color: stale ? '#92400e' : '#15803d' }}>
           <strong>Expected: </strong>{fmt(shift.expected_cash ?? shift.opening_cash)}
         </span>
         {(shift.cash_movements?.length ?? 0) > 0 && (
@@ -372,7 +382,7 @@ export function DashboardPage() {
             <>
               <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14, marginBottom: 16 }}>
                 <StatCard label="Open Shifts" value={String(posOverview.open_shifts_count)} accent="#22c55e" icon={Users} />
-                <StatCard label="Active Tickets" value={String(posOverview.active_tickets)} accent="#D4813A" icon={ShoppingBag} />
+                <StatCard label="Open Tickets" value={String(posOverview.active_tickets)} sub="Not completed yet" accent="#D4813A" icon={ShoppingBag} />
                 <StatCard label="Clocked In" value={String(posOverview.clocked_in_count)} accent="#8b5cf6" icon={Clock} />
                 <StatCard label="Pending Devices" value={String(posOverview.pending_devices)} accent="#f59e0b" icon={Monitor} />
                 <StatCard label="Voids Today" value={String(posOverview.today_voids)} accent="#ef4444" icon={Trash2} />
@@ -439,10 +449,13 @@ export function DashboardPage() {
 
       {/* ── Today KPIs ── */}
       <SectionLabel>Today at a glance</SectionLabel>
+      <p style={{ margin: '-8px 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+        Completed sales for {summaryDate === localToday() ? 'today' : summaryDate}. Open tickets below are not included until the order is completed.
+      </p>
       {summaryErr && <ErrorMsg message={summaryErr} />}
       {summaryLoading ? <Spinner /> : summary && (
         <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
-          <StatCard label="Revenue"    value={fmt(summary.revenue)}    accent="#D4813A" icon={DollarSign} />
+          <StatCard label="Completed Sales" value={fmt(summary.revenue)} sub="Finished orders only" accent="#D4813A" icon={DollarSign} />
           <StatCard label="Net Profit" value={fmt(summary.net_profit)}
             accent={summary.net_profit >= 0 ? '#22c55e' : '#ef4444'}
             icon={TrendingUp}

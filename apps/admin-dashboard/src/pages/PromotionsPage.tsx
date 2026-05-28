@@ -109,7 +109,10 @@ function PromotionForm({
     : String(form.discount_value);
 
   const handleDiscountChange = (v: string) => {
-    const n = parseFloat(v) || 0;
+    const n = parseFloat(v);
+    if (!Number.isFinite(n)) return;
+    if (n < 0) return;
+    if (form.type === 'percentage' && n > 100) return;
     set('discount_value', form.type === 'fixed' ? Math.round(n * 100) : n);
   };
 
