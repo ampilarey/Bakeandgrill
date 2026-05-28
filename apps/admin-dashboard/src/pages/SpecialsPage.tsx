@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
-import { fetchSpecials, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant } from '../api';
+import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
 import { ApiRequestError } from '@shared/api';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -177,15 +177,6 @@ async function resolveItemForSpecial(special: DailySpecial, items: MenuItem[]): 
   };
 }
 
-function findOverlappingSpecial(specials: DailySpecial[], itemId: number, start: string, end: string): DailySpecial | undefined {
-  return specials.find(s =>
-    s.item_id === itemId &&
-    s.is_active &&
-    s.start_date <= end &&
-    s.end_date >= start,
-  );
-}
-
 function mergeSpecialForms(base: SpecialForm, pending: SpecialForm): SpecialForm {
   const variant_overrides = { ...base.variant_overrides };
   for (const [vid, row] of Object.entries(pending.variant_overrides)) {
@@ -207,6 +198,58 @@ function mergeSpecialForms(base: SpecialForm, pending: SpecialForm): SpecialForm
     max_quantity: pending.max_quantity.trim() || base.max_quantity,
     is_active: base.is_active,
   };
+}
+
+function buildSpecialPayload(form: SpecialForm, item: MenuItem | undefined): DailySpecialPayload {
+  const hasVariants = Boolean(item?.has_variants && (item.variants?.length ?? 0) > 0);
+  const hasPctInput = form.discount_pct.trim() !== '';
+  const variantRows = Object.entries(form.variant_overrides)
+    .map(([variantId, row]) => ({ variant_id: Number(variantId), ...row }))
+    .filter(row => row.discount_pct.trim() !== '' || row.special_price.trim() !== '');
+  const discountPct = form.discount_pct ? parseInt(form.discount_pct, 10) : undefined;
+  const specialPrice = form.special_price ? parseFloat(form.special_price) : undefined;
+  const maxQty = form.max_quantity ? parseInt(form.max_quantity, 10) : undefined;
+
+  return {
+    item_id: Number(form.item_id),
+    badge_label: form.badge_label || undefined,
+    special_price: hasVariants ? undefined : (hasPctInput ? undefined : specialPrice),
+    discount_pct: discountPct,
+    variant_overrides: variantRows.map(row => ({
+      variant_id: row.variant_id,
+      discount_pct: row.discount_pct ? parseInt(row.discount_pct, 10) : undefined,
+      special_price: row.discount_pct.trim() === '' && row.special_price
+        ? parseFloat(row.special_price)
+        : undefined,
+    })),
+    start_date: form.start_date,
+    end_date: form.end_date,
+    start_time: form.start_time || undefined,
+    end_time: form.end_time || undefined,
+    days_of_week: form.days_of_week.length > 0 ? form.days_of_week : undefined,
+    max_quantity: maxQty,
+    description: form.description || undefined,
+    is_active: form.is_active,
+  };
+}
+
+function conflictIdFromError(e: unknown): number | null {
+  if (e instanceof ApiRequestError && e.body && typeof e.body === 'object' && 'errors' in e.body) {
+    const id = (e.body as { errors?: Record<string, string[]> }).errors?.conflicting_special_id?.[0];
+    return id ? Number(id) : null;
+  }
+  return null;
+}
+
+async function saveToExistingSpecial(
+  specialId: number,
+  pendingForm: SpecialForm,
+  items: MenuItem[],
+): Promise<void> {
+  const { special } = await getSpecial(specialId);
+  const item = await resolveItemForSpecial(special, items);
+  const merged = mergeSpecialForms(formFromSpecial(special, item), pendingForm);
+  await updateSpecial(specialId, buildSpecialPayload(merged, item));
 }
 
 const BLANK: SpecialForm = {
@@ -233,7 +276,11 @@ export default function SpecialsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [conflictSpecialId, setConflictSpecialId] = useState<number | null>(null);
+  const [autoLoadedHint, setAutoLoadedHint] = useState(false);
   const [listFilter, setListFilter] = useState<ListFilter>('all');
+  const formRef = useRef(form);
+  formRef.current = form;
+  const autoLoadedKeyRef = useRef<string | null>(null);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -258,23 +305,59 @@ export default function SpecialsPage() {
   }, []);
 
   useEffect(() => {
-    if (editing || !modalOpen) return;
-    if (!form.item_id) {
-      setConflictSpecialId(null);
+    if (editing || !modalOpen || !form.item_id || !form.start_date || !form.end_date) {
+      if (!form.item_id) setConflictSpecialId(null);
       return;
     }
-    const overlap = findOverlappingSpecial(specials, Number(form.item_id), form.start_date, form.end_date);
-    setConflictSpecialId(overlap?.id ?? null);
-  }, [editing, modalOpen, form.item_id, form.start_date, form.end_date, specials]);
+
+    const lookupKey = `${form.item_id}:${form.start_date}:${form.end_date}`;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const overlap = await findOverlappingSpecial(Number(form.item_id), form.start_date, form.end_date);
+          if (!overlap) {
+            setConflictSpecialId(null);
+            autoLoadedKeyRef.current = null;
+            return;
+          }
+
+          setConflictSpecialId(overlap.id);
+
+          const item = editItem ?? items.find(i => i.id === form.item_id);
+          if (!item?.has_variants) return;
+
+          const loadedKey = `${lookupKey}:${overlap.id}`;
+          if (autoLoadedKeyRef.current === loadedKey) return;
+
+          const { special } = await getSpecial(overlap.id);
+          const resolved = await resolveItemForSpecial(special, items);
+          autoLoadedKeyRef.current = loadedKey;
+          setEditItem(resolved ?? null);
+          setEditing(special);
+          setForm(mergeSpecialForms(formFromSpecial(special, resolved), formRef.current));
+          setConflictSpecialId(null);
+          setFormError('');
+          setAutoLoadedHint(true);
+        } catch {
+          // Overlap lookup failed — save still handles conflicts from the API.
+        }
+      })();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [editing, modalOpen, form.item_id, form.start_date, form.end_date, items, editItem]);
 
   const openCreate = () => {
     setEditing(null); setEditItem(null);
     setForm({ ...BLANK, start_date: today(), end_date: today() });
-    setFormError(''); setConflictSpecialId(null); setModalOpen(true);
+    setFormError(''); setConflictSpecialId(null); setAutoLoadedHint(false);
+    autoLoadedKeyRef.current = null;
+    setModalOpen(true);
   };
 
   const openEdit = async (s: DailySpecial) => {
-    setFormError(''); setConflictSpecialId(null);
+    setFormError(''); setConflictSpecialId(null); setAutoLoadedHint(false);
+    autoLoadedKeyRef.current = null;
     try {
       const { special } = await getSpecial(s.id);
       const item = await resolveItemForSpecial(special, items);
@@ -298,6 +381,7 @@ export default function SpecialsPage() {
       setEditing(special);
       setForm(mergeSpecialForms(formFromSpecial(special, item), pendingForm));
       setConflictSpecialId(null);
+      setAutoLoadedHint(true);
     } catch (e) {
       setFormError((e as Error).message);
     }
@@ -401,38 +485,31 @@ export default function SpecialsPage() {
     if (maxQty !== undefined && (isNaN(maxQty) || maxQty < 1)) {
       setFormError('Max quantity must be a positive whole number.'); return;
     }
-    setSaving(true); setFormError(''); setConflictSpecialId(null);
+    setSaving(true); setFormError('');
+    const payload = buildSpecialPayload(form, selectedItem);
     try {
-      const payload = {
-        item_id: Number(form.item_id),
-        badge_label: form.badge_label || undefined,
-        special_price: hasVariants ? undefined : (hasPctInput ? undefined : specialPrice),
-        discount_pct: discountPct,
-        variant_overrides: variantRows.map(row => ({
-          variant_id: row.variant_id,
-          discount_pct: row.discount_pct ? parseInt(row.discount_pct, 10) : undefined,
-          special_price: row.discount_pct.trim() === '' && row.special_price
-            ? parseFloat(row.special_price)
-            : undefined,
-        })),
-        start_date: form.start_date,
-        end_date: form.end_date,
-        start_time: form.start_time || undefined,
-        end_time: form.end_time || undefined,
-        days_of_week: form.days_of_week.length > 0 ? form.days_of_week : undefined,
-        max_quantity: maxQty,
-        description: form.description || undefined,
-        is_active: form.is_active,
-      };
-      if (editing) { await updateSpecial(editing.id, payload); }
-      else { await createSpecial(payload); }
+      if (editing) {
+        await updateSpecial(editing.id, payload);
+      } else if (conflictSpecialId) {
+        await saveToExistingSpecial(conflictSpecialId, form, items);
+      } else {
+        await createSpecial(payload);
+      }
       setModalOpen(false); void load();
     } catch (e) {
-      if (e instanceof ApiRequestError && e.body && typeof e.body === 'object' && 'errors' in e.body) {
-        const errors = (e.body as { errors?: Record<string, string[]> }).errors;
-        const conflictId = errors?.conflicting_special_id?.[0];
-        if (conflictId) setConflictSpecialId(Number(conflictId));
+      const conflictId = conflictIdFromError(e);
+      if (conflictId && !editing) {
+        try {
+          await saveToExistingSpecial(conflictId, form, items);
+          setModalOpen(false); void load();
+          return;
+        } catch (retryError) {
+          setFormError((retryError as Error).message);
+          setConflictSpecialId(conflictId);
+          return;
+        }
       }
+      if (conflictId) setConflictSpecialId(conflictId);
       setFormError((e as Error).message);
     }
     finally { setSaving(false); }
@@ -575,6 +652,13 @@ export default function SpecialsPage() {
 
       {modalOpen && (
         <Modal title={editing ? 'Edit Item Discount' : 'Add Item Discount'} onClose={() => setModalOpen(false)} maxWidth={hasVariants ? 640 : 520}>
+          {autoLoadedHint && editing && (
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid rgba(34,197,94,0.35)' }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#166534', lineHeight: 1.45 }}>
+                Loaded the existing discount for this item. Add or change variant rows below, then click Update.
+              </p>
+            </div>
+          )}
           {conflictSpecialId && !editing && !formError && (
             <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(212,129,58,0.35)' }}>
               <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>

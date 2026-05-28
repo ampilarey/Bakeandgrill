@@ -48,6 +48,31 @@ class DailySpecialController extends Controller
             default => null,
         };
 
+        if ($request->filled('item_id')) {
+            $query->where('item_id', $request->integer('item_id'));
+        }
+
+        if ($request->filled('overlap_start') && $request->filled('overlap_end')) {
+            $query->where('is_active', true)
+                ->where('start_date', '<=', $request->query('overlap_end'))
+                ->where('end_date', '>=', $request->query('overlap_start'));
+        }
+
+        if ($request->filled('item_id') && $request->filled('overlap_start') && $request->filled('overlap_end')) {
+            $special = $query->orderByDesc('start_date')->first();
+            $formatted = $special ? $this->safeFormat($special) : null;
+
+            return response()->json([
+                'data' => $formatted ? [$formatted] : [],
+                'meta' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'total' => $formatted ? 1 : 0,
+                    'active_today_count' => 0,
+                ],
+            ]);
+        }
+
         $specials = $query->paginate(20);
 
         $activeTodayCount = DailySpecial::query()

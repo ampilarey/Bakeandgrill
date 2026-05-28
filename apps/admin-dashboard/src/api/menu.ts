@@ -298,11 +298,33 @@ export type DailySpecialPayload = Partial<Omit<DailySpecial, 'id' | 'variant_ove
   }>;
 };
 
-export async function fetchSpecials(params?: { page?: number; filter?: string }): Promise<{ data: DailySpecial[]; meta: { current_page: number; last_page: number; total: number; active_today_count?: number } }> {
+export async function fetchSpecials(params?: {
+  page?: number;
+  filter?: string;
+  item_id?: number;
+  overlap_start?: string;
+  overlap_end?: string;
+}): Promise<{ data: DailySpecial[]; meta: { current_page: number; last_page: number; total: number; active_today_count?: number } }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
   if (params?.filter && params.filter !== 'all') qs.set('filter', params.filter);
+  if (params?.item_id) qs.set('item_id', String(params.item_id));
+  if (params?.overlap_start) qs.set('overlap_start', params.overlap_start);
+  if (params?.overlap_end) qs.set('overlap_end', params.overlap_end);
   return req(`/admin/specials?${qs}`);
+}
+
+export async function findOverlappingSpecial(
+  itemId: number,
+  startDate: string,
+  endDate: string,
+): Promise<DailySpecial | null> {
+  const res = await fetchSpecials({
+    item_id: itemId,
+    overlap_start: startDate,
+    overlap_end: endDate,
+  });
+  return res.data[0] ?? null;
 }
 
 export async function getSpecial(id: number): Promise<{ special: DailySpecial }> {
