@@ -22,6 +22,11 @@ function useIsMobile() {
 
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { laarToMvr } from '../utils/money';
+import {
+  LOYALTY_MIN_REDEEM,
+  loyaltyAvailablePoints,
+  pointsValueMvr,
+} from '../utils/loyalty';
 
 // ── Field component ────────────────────────────────────────────────────────────
 function Field({
@@ -202,7 +207,7 @@ export function CheckoutPage() {
   }, []);
 
   const {
-    cart, token, customerName, loyaltyAccount, loyaltyPoints,
+    cart, token, customerName, loyaltyAccount, loyaltyRedeemPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
@@ -393,23 +398,46 @@ export function CheckoutPage() {
     </SectionCard>
   );
 
-  const sectionLoyalty = loyaltyAccount && loyaltyAccount.points_balance > 0 && (
+  const sectionLoyalty = loyaltyAccount && loyaltyAccount.points_balance > 0 && (() => {
+    const available = loyaltyAvailablePoints(loyaltyAccount);
+    const held = loyaltyAccount.points_held ?? 0;
+    const canRedeem = available >= LOYALTY_MIN_REDEEM && loyaltyRedeemPoints >= LOYALTY_MIN_REDEEM;
+
+    return (
     <SectionCard title="Loyalty Points">
-      <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 12 }}>
-        You have <strong>{loyaltyAccount.points_balance} pts</strong> available
-        {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {laarToMvr(loyaltyAccount.points_balance)}</span> value).
+      <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 8 }}>
+        You have <strong>{available.toLocaleString()} pts</strong> available to use
+        {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {pointsValueMvr(available)}</span> value).
       </p>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-base)', color: 'var(--color-text)', cursor: 'pointer' }}>
+      {held > 0 && (
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px', lineHeight: 1.45 }}>
+          {held.toLocaleString()} pts are reserved on another order ({loyaltyAccount.points_balance.toLocaleString()} total balance).
+        </p>
+      )}
+      {available < LOYALTY_MIN_REDEEM && (
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+          Minimum {LOYALTY_MIN_REDEEM} available points required to redeem.
+        </p>
+      )}
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-base)',
+        color: canRedeem ? 'var(--color-text)' : 'var(--color-text-muted)',
+        cursor: canRedeem ? 'pointer' : 'not-allowed',
+      }}>
         <input
           type="checkbox"
-          checked={useLoyalty}
+          checked={useLoyalty && canRedeem}
+          disabled={!canRedeem}
           onChange={(e) => setUseLoyalty(e.target.checked)}
           style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
         />
-        Use {loyaltyAccount.points_balance} pts to save MVR {laarToMvr(loyaltyPoints)}
+        {canRedeem
+          ? <>Use {loyaltyRedeemPoints.toLocaleString()} pts to save MVR {pointsValueMvr(loyaltyRedeemPoints)} (max 50% of subtotal)</>
+          : <>Use loyalty points on this order</>}
       </label>
     </SectionCard>
-  );
+    );
+  })();
 
   const sectionFriendReferral = (
     <SectionCard title="Friend's Referral Code">
@@ -625,14 +653,14 @@ export function CheckoutPage() {
         backLabel="← Back"
         rightSlot={
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-            {loyaltyAccount && loyaltyAccount.points_balance > 0 && (
+            {loyaltyAccount && loyaltyAvailablePoints(loyaltyAccount) > 0 && (
               <span style={{
                 display: 'flex', alignItems: 'center', gap: '0.25rem',
                 fontSize: 'var(--text-xs)', fontWeight: 700,
                 color: 'var(--color-warning)', background: 'var(--color-warning-bg)',
                 borderRadius: '999px', padding: '0.2rem 0.6rem',
               }}>
-                ⭐ {loyaltyAccount.points_balance} pts
+                ⭐ {loyaltyAvailablePoints(loyaltyAccount).toLocaleString()} pts
               </span>
             )}
             {customerName && (

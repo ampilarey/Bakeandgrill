@@ -34,6 +34,7 @@ export type LoyaltyAccount = {
   customer_id?: number;
   points_balance: number;
   points_held?: number;
+  available_points?: number;
   lifetime_points?: number;
   tier: string;
 };
