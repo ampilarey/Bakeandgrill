@@ -96,6 +96,20 @@ export async function removeGiftCard(token: string, orderId: number): Promise<vo
 
 // ── Referrals ──────────────────────────────────────────────────────────────────
 
+export async function validateReferralCode(
+  code: string,
+): Promise<{ valid: true; referee_discount_mvr: number } | { valid: false; message?: string }> {
+  try {
+    return await request<{ valid: true; referee_discount_mvr: number }>(ENDPOINTS.REFERRALS_VALIDATE, {
+      method: 'POST',
+      body: JSON.stringify({ code: code.trim().toUpperCase() }),
+    });
+  } catch (e) {
+    const msg = (e as Error).message;
+    return { valid: false, message: msg };
+  }
+}
+
 export async function getMyReferralCode(
   token: string,
 ): Promise<{ code: string; uses_count: number; referee_discount_mvr: number }> {

@@ -51,6 +51,7 @@ export const CUSTOMER_ENDPOINTS = {
 
   // Referrals
   CUSTOMER_REFERRAL_CODE:     '/customer/referral-code',
+  REFERRALS_VALIDATE:         '/referrals/validate',
 
   // Reservations (customer-side)
   RESERVATIONS:               '/reservations',

@@ -19,6 +19,7 @@ import {
   applyGiftCard,
   removeGiftCard,
   getMyReferralCode,
+  validateReferralCode,
   applyReferralToOrder,
   removeReferralFromOrder,
   fetchCustomerAddresses,
@@ -182,7 +183,11 @@ export function useCheckout() {
 
   const [friendReferralCode, setFriendReferralCode] = useState("");
   const [friendReferralApplied, setFriendReferralApplied] = useState<{
-    code: string; discountLaar: number; pending?: boolean;
+    code: string;
+    discountLaar: number;
+    pending?: boolean;
+    /** Fixed MVR discount from referral config — used to re-cap when cart/discounts change */
+    configuredLaar?: number;
   } | null>(null);
   const [friendReferralError, setFriendReferralError] = useState("");
   const [friendReferralLoading, setFriendReferralLoading] = useState(false);
@@ -322,7 +327,13 @@ export function useCheckout() {
   const promoDelta       = promoApplied?.discountLaar ?? 0;
   const loyaltyDelta     = useLoyalty && loyaltyAccount ? loyaltyPoints : 0;
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
-  const referralDelta    = friendReferralApplied?.discountLaar ?? 0;
+
+  const referralRoomLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - giftCardDelta);
+  const referralDelta = friendReferralApplied
+    ? (friendReferralApplied.pending
+      ? Math.min(friendReferralApplied.configuredLaar ?? friendReferralApplied.discountLaar, referralRoomLaar)
+      : friendReferralApplied.discountLaar)
+    : 0;
 
   // GST is on the discounted subtotal (standard Maldivian T-GST — discounts reduce
   // the taxable amount). Scale the effective tax rate proportionally.
@@ -442,7 +453,32 @@ export function useCheckout() {
 
     if (!pendingOrderId) {
       setFriendReferralError("");
-      setFriendReferralApplied({ code: raw, discountLaar: 0, pending: true });
+      setFriendReferralLoading(true);
+      try {
+        const validation = await validateReferralCode(raw);
+        if (!validation.valid) {
+          setFriendReferralError(validation.message ?? "Invalid or expired referral code.");
+          return;
+        }
+        const configuredLaar = Math.round(validation.referee_discount_mvr * 100);
+        const roomLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - giftCardDelta);
+        const estLaar = Math.min(configuredLaar, roomLaar);
+        if (estLaar <= 0) {
+          setFriendReferralError("No referral discount applies — other discounts already cover this order.");
+          return;
+        }
+        setFriendReferralApplied({
+          code: raw,
+          discountLaar: estLaar,
+          configuredLaar,
+          pending: true,
+        });
+        setFriendReferralCode("");
+      } catch (e) {
+        setFriendReferralError((e as Error).message);
+      } finally {
+        setFriendReferralLoading(false);
+      }
       return;
     }
     setFriendReferralError("");

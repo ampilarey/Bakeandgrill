@@ -154,7 +154,7 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
       </button>
       {hasPendingReferral && (
         <p style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-          ⏳ Referral discount will be confirmed and applied after your order is created.
+          ⏳ Referral discount is estimated — final amount confirmed when your order is created.
         </p>
       )}
     </div>
@@ -241,7 +241,7 @@ export function CheckoutPage() {
     );
   }
 
-  const hasPendingReferral = friendReferralApplied?.pending === true && referralDelta === 0;
+  const hasPendingReferral = friendReferralApplied?.pending === true;
   const placeLabel = isPlacing
     ? 'Processing…'
     : orderingGateClosed
@@ -417,7 +417,7 @@ export function CheckoutPage() {
         <div style={S.promoApplied}>
           <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
             {friendReferralApplied.pending
-              ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — applied at checkout</>
+              ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — est. MVR {laarToMvr(referralDelta)} off at checkout</>
               : <><span>🤝</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — MVR {laarToMvr(friendReferralApplied.discountLaar)} off</>}
           </span>
           <button style={S.removeBtn} onClick={() => void handleRemoveFriendReferral()}>Remove</button>
@@ -530,7 +530,11 @@ export function CheckoutPage() {
         <SummaryRow label={`Gift Card (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
       )}
       {friendReferralApplied && referralDelta > 0 && (
-        <SummaryRow label={`Referral (${friendReferralApplied.code})`} value={`− MVR ${laarToMvr(referralDelta)}`} highlight />
+        <SummaryRow
+          label={`Referral (${friendReferralApplied.code})${friendReferralApplied.pending ? ' (est.)' : ''}`}
+          value={`− MVR ${laarToMvr(referralDelta)}`}
+          highlight
+        />
       )}
       <div style={S.totalRow}>
         <span>Total</span>
