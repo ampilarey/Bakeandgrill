@@ -298,9 +298,10 @@ export type DailySpecialPayload = Partial<Omit<DailySpecial, 'id' | 'variant_ove
   }>;
 };
 
-export async function fetchSpecials(params?: { page?: number }): Promise<{ data: DailySpecial[]; meta: { current_page: number; last_page: number; total: number } }> {
+export async function fetchSpecials(params?: { page?: number; filter?: string }): Promise<{ data: DailySpecial[]; meta: { current_page: number; last_page: number; total: number; active_today_count?: number } }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
+  if (params?.filter && params.filter !== 'all') qs.set('filter', params.filter);
   return req(`/admin/specials?${qs}`);
 }
 

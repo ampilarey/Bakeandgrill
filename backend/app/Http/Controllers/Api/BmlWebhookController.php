@@ -36,11 +36,11 @@ class BmlWebhookController extends Controller
 
             Log::error('BML webhook error', ['error' => $e->getMessage()]);
 
-            return response()->json(['status' => 'error', 'message' => 'logged'], 200);
+            return response()->json(['status' => 'error', 'message' => 'processing failed'], 503);
         } catch (\Throwable $e) {
             Log::error('BML webhook error', ['error' => $e->getMessage()]);
 
-            return response()->json(['status' => 'error', 'message' => 'logged'], 200);
+            return response()->json(['status' => 'error', 'message' => 'processing failed'], 503);
         }
 
         return response()->json(['status' => 'ok'], 200);

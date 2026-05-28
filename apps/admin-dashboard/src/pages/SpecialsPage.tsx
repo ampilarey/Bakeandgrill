@@ -35,10 +35,6 @@ function isPctDiscount(s: DailySpecial): boolean {
   return s.discount_pct != null && s.discount_pct > 0;
 }
 
-function isFixedSpecial(s: DailySpecial): boolean {
-  return s.special_price != null && !isPctDiscount(s) && !(s.variant_overrides?.length);
-}
-
 function hasVariantOverrides(s: DailySpecial): boolean {
   return (s.variant_overrides?.length ?? 0) > 0;
 }
@@ -61,10 +57,6 @@ function variantOverridesFromSpecial(s: DailySpecial, item: MenuItem | undefined
   return base;
 }
 
-function isActiveNow(s: DailySpecial, todayStr: string): boolean {
-  return s.is_active && s.start_date <= todayStr && s.end_date >= todayStr;
-}
-
 const BLANK: SpecialForm = {
   item_id: '', badge_label: '', special_price: '', discount_pct: '', variant_overrides: {},
   start_date: today(), end_date: today(), start_time: '', end_time: '',
@@ -76,7 +68,7 @@ export default function SpecialsPage() {
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
 
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
-  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, active_today_count: 0 });
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,13 +85,19 @@ export default function SpecialsPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchSpecials({ page });
-      setSpecials(res.data ?? []); setMeta(res.meta);
+      const res = await fetchSpecials({ page, filter: listFilter });
+      setSpecials(res.data ?? []);
+      setMeta({
+        current_page: res.meta.current_page,
+        last_page: res.meta.last_page,
+        total: res.meta.total,
+        active_today_count: res.meta.active_today_count ?? 0,
+      });
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [page]);
+  useEffect(() => { void load(); }, [page, listFilter]);
   useEffect(() => {
     fetchAdminItems({ per_page: 200 })
       .then(r => setItems(r.data))
@@ -176,6 +174,9 @@ export default function SpecialsPage() {
     if (!form.start_date || !form.end_date) { setFormError('Start and end dates are required.'); return; }
     const hasPctInput = form.discount_pct.trim() !== '';
     const hasPriceInput = form.special_price.trim() !== '';
+    if (hasPctInput && hasPriceInput) {
+      setFormError('Use either item-level discount % or special price, not both.'); return;
+    }
     const variantRows = Object.entries(form.variant_overrides)
       .map(([variantId, row]) => ({ variant_id: Number(variantId), ...row }))
       .filter(row => row.discount_pct.trim() !== '' || row.special_price.trim() !== '');
@@ -197,8 +198,8 @@ export default function SpecialsPage() {
     }
     if (form.end_date < form.start_date) { setFormError('End date must be on or after start date.'); return; }
     const discountPct = form.discount_pct ? parseInt(form.discount_pct, 10) : undefined;
-    if (discountPct !== undefined && (isNaN(discountPct) || discountPct < 0 || discountPct > 100)) {
-      setFormError('Discount % must be between 0 and 100.'); return;
+    if (discountPct !== undefined && (isNaN(discountPct) || discountPct < 1 || discountPct > 100)) {
+      setFormError('Discount % must be between 1 and 100.'); return;
     }
     const specialPrice = form.special_price ? parseFloat(form.special_price) : undefined;
     if (specialPrice !== undefined && (isNaN(specialPrice) || specialPrice < 0)) {
@@ -265,16 +266,7 @@ export default function SpecialsPage() {
     }));
   };
 
-  const todayStr = today();
-  const activeCount = specials.filter(s => isActiveNow(s, todayStr)).length;
-
-  const filteredSpecials = specials.filter((s) => {
-    if (listFilter === 'active') return isActiveNow(s, todayStr);
-    if (listFilter === 'discount') return isPctDiscount(s);
-    if (listFilter === 'special') return isFixedSpecial(s);
-    if (listFilter === 'inactive') return !s.is_active;
-    return true;
-  });
+  const activeCount = meta.active_today_count;
 
   const filterPills: { id: ListFilter; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -310,7 +302,7 @@ export default function SpecialsPage() {
           <button
             key={pill.id}
             type="button"
-            onClick={() => setListFilter(pill.id)}
+            onClick={() => { setListFilter(pill.id); setPage(1); }}
             style={{
               padding: '8px 14px',
               borderRadius: 999,
@@ -340,9 +332,9 @@ export default function SpecialsPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
-            ) : filteredSpecials.length === 0 ? (
-              <tr><td colSpan={9}><EmptyState message={specials.length === 0 ? 'No discounts yet. Add one to get started.' : 'No discounts match this filter.'} /></td></tr>
-            ) : filteredSpecials.map(s => (
+            ) : specials.length === 0 ? (
+              <tr><td colSpan={9}><EmptyState message={listFilter === 'all' ? 'No discounts yet. Add one to get started.' : 'No discounts match this filter.'} /></td></tr>
+            ) : specials.map(s => (
               <tr key={s.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>
                   {s.item_image && <img src={s.item_image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}

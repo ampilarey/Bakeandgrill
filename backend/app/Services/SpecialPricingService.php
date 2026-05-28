@@ -7,8 +7,10 @@ namespace App\Services;
 use App\Models\DailySpecial;
 use App\Models\DailySpecialVariant;
 use App\Models\Item;
+use App\Models\OrderItem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class SpecialPricingService
@@ -128,6 +130,30 @@ class SpecialPricingService
     public function activeSpecialsList(): array
     {
         return $this->activeSpecialsByItemId()->values()->all();
+    }
+
+    /**
+     * Check whether a capped special still has room for this quantity,
+     * counting paid sold_count plus unpaid orders already holding the special.
+     */
+    public function canAllocateSpecialQuantity(int $specialId, int $quantity, int $orderId): bool
+    {
+        return DB::transaction(function () use ($specialId, $quantity, $orderId): bool {
+            $special = DailySpecial::lockForUpdate()->find($specialId);
+            if (!$special || !$special->max_quantity) {
+                return true;
+            }
+
+            $unpaidQty = (int) OrderItem::query()
+                ->where('daily_special_id', $specialId)
+                ->where('order_id', '!=', $orderId)
+                ->whereHas('order', fn ($q) => $q->where('payment_status', '!=', 'paid'))
+                ->sum('quantity');
+
+            $remaining = $special->max_quantity - $special->sold_count - $unpaidQty;
+
+            return $quantity <= $remaining;
+        });
     }
 
     private function findVariantOverride(DailySpecial $special, int $variantId): ?DailySpecialVariant

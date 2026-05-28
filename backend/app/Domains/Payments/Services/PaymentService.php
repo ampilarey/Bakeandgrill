@@ -324,7 +324,7 @@ class PaymentService
                     'idempotency_key' => $idempotencyKey,
                 ]);
 
-                if (config('app.env') === 'production' && config('bml.enforce_signature', true)) {
+                if (config('app.env') === 'production' || config('bml.enforce_signature', true) || filled(config('bml.webhook_secret'))) {
                     throw new \RuntimeException('BML webhook signature verification failed — rejecting payload.');
                 }
             }

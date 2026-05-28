@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog,
@@ -28,6 +29,8 @@ const S = {
 
 export default function InventoryPage() {
   usePageTitle('Inventory');
+  const { can } = useCurrentUserPermissions();
+  const canManage = can('inventory.manage');
   const [tab, setTab] = useState<'stock' | 'categories' | 'conversions' | 'stock-count'>('stock');
 
   // ── Stock tab ──────────────────────────────────────────────────────────────
@@ -36,6 +39,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
 
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
   const [adjForm, setAdjForm] = useState({ type: 'add' as 'add' | 'remove' | 'set', quantity: '', reason: '' });
@@ -75,7 +79,7 @@ export default function InventoryPage() {
   const loadItems = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchInventoryItems({ search: search || undefined });
+      const res = await fetchInventoryItems({ search: searchDebounced || undefined });
       setItems(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
@@ -90,7 +94,12 @@ export default function InventoryPage() {
     }
   };
 
-  useEffect(() => { void loadItems(); }, [search]);
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => { void loadItems(); }, [searchDebounced]);
   useEffect(() => { void loadLowStock(); }, []);
 
   const handleAdjust = async () => {
@@ -294,9 +303,13 @@ export default function InventoryPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
         <button style={S.tab(tab === 'stock')} onClick={() => setTab('stock')}>Stock</button>
+        {canManage && (
+          <>
         <button style={S.tab(tab === 'categories')} onClick={() => setTab('categories')}>Categories</button>
         <button style={S.tab(tab === 'conversions')} onClick={() => setTab('conversions')}>Unit Conversions</button>
         <button style={S.tab(tab === 'stock-count')} onClick={() => setTab('stock-count')}>Stock Count</button>
+          </>
+        )}
       </div>
 
       {/* ── Stock Tab ── */}
@@ -352,7 +365,8 @@ export default function InventoryPage() {
                       </td>
                       <td style={TD}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          {/* Quick ±1 buttons */}
+                          {canManage ? (
+                          <>
                           <button
                             onClick={() => quickAdjust(item, -1)}
                             disabled={quickAdjusting[item.id] || item.quantity_on_hand <= 0}
@@ -373,6 +387,10 @@ export default function InventoryPage() {
                             setAdjForm({ type: 'add', quantity: '', reason: '' });
                             setAdjError('');
                           }} title="Full adjust dialog">⚙</Btn>
+                          </>
+                          ) : (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: isLow ? '#ef4444' : '#1C1408' }}>{item.quantity_on_hand}</span>
+                          )}
                           <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
                         </div>
                       </td>
@@ -388,9 +406,11 @@ export default function InventoryPage() {
       {/* ── Categories Tab ── */}
       {tab === 'categories' && (
         <>
+          {canManage && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
             <Btn onClick={() => openCatModal()}>+ Add Category</Btn>
           </div>
+          )}
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>

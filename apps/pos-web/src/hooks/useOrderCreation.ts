@@ -642,11 +642,8 @@ export function useOrderCreation(params: Params) {
       }
       setIsSubmitting(true);
       try {
-        // Use the server-captured total — not params.cartTotal — so a
-        // resume→charge always settles the exact ticket the server
-        // already has. Safe by construction now that the edit-mode
-        // guard above forces a Save before we get here.
-        const totalDue = resumedOrderTotal ?? params.cartTotal;
+        const baseTotal = resumedOrderTotal ?? params.cartTotal;
+        const totalDue = await applyStagedRewards(resumedOrderId, baseTotal);
         const settled = await settleOrder(resumedOrderId, totalDue, paymentSnapshot);
         if (settled) {
           const cid = params.customerId;

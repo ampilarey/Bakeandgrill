@@ -34,18 +34,49 @@ class DailySpecialController extends Controller
 
     // ── Admin CRUD ────────────────────────────────────────────────────────────
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $specials = DailySpecial::with($this->adminRelations())
-            ->orderByDesc('start_date')
-            ->paginate(20);
+        $today = today()->toDateString();
+        $query = DailySpecial::with($this->adminRelations())
+            ->orderByDesc('start_date');
+
+        $filter = $request->query('filter', 'all');
+        match ($filter) {
+            'active' => $query->where('is_active', true)
+                ->where('start_date', '<=', $today)
+                ->where('end_date', '>=', $today),
+            'discount' => $query->whereNotNull('discount_pct'),
+            'special' => $query->whereNotNull('special_price'),
+            'inactive' => $query->where('is_active', false),
+            default => null,
+        };
+
+        $specials = $query->paginate(20);
+
+        $activeTodayCount = DailySpecial::query()
+            ->where('is_active', true)
+            ->where('start_date', '<=', $today)
+            ->where('end_date', '>=', $today)
+            ->get()
+            ->filter(fn (DailySpecial $s) => $s->isCurrentlyActive())
+            ->count();
+
+        $items = collect($specials->items());
+        if ($filter === 'active') {
+            $items = $items->filter(fn (DailySpecial $s) => $s->isCurrentlyActive());
+        }
 
         return response()->json([
-            'data' => collect($specials->items())
+            'data' => $items
                 ->map(fn (DailySpecial $s) => $this->safeFormat($s))
                 ->filter()
                 ->values(),
-            'meta' => ['current_page' => $specials->currentPage(), 'last_page' => $specials->lastPage(), 'total' => $specials->total()],
+            'meta' => [
+                'current_page' => $specials->currentPage(),
+                'last_page' => $specials->lastPage(),
+                'total' => $specials->total(),
+                'active_today_count' => $activeTodayCount,
+            ],
         ]);
     }
 
@@ -165,6 +196,17 @@ class DailySpecialController extends Controller
 
         $validated = $request->validate($rules);
 
+        if (!$creating) {
+            $existing = DailySpecial::find($request->route('id'));
+            $startDate = $validated['start_date'] ?? $existing?->start_date?->toDateString();
+            $endDate = $validated['end_date'] ?? $existing?->end_date?->toDateString();
+            if ($startDate && $endDate && $endDate < $startDate) {
+                throw ValidationException::withMessages([
+                    'end_date' => ['End date must be on or after start date.'],
+                ]);
+            }
+        }
+
         $itemId = (int) ($validated['item_id'] ?? 0);
         if (!$itemId && !$creating) {
             $existing = DailySpecial::find($request->route('id'));
@@ -264,6 +306,12 @@ class DailySpecialController extends Controller
         if (!$hasPrice && !$hasPct && !$hasVariantPricing) {
             throw ValidationException::withMessages([
                 'special_price' => ['Provide an item-level price or %, or set pricing on at least one variant.'],
+            ]);
+        }
+
+        if ($hasPrice && $hasPct) {
+            throw ValidationException::withMessages([
+                'discount_pct' => ['Use either item-level discount % or special price, not both.'],
             ]);
         }
     }

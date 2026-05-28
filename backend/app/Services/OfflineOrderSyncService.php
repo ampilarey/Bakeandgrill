@@ -301,10 +301,6 @@ class OfflineOrderSyncService
                 $normalized['variant_id'] = (int) $item['variant_id'];
             }
 
-            if (isset($item['unit_price'])) {
-                $normalized['unit_price'] = (float) $item['unit_price'];
-            }
-
             if (!empty($item['modifiers'])) {
                 $normalized['modifiers'] = $item['modifiers'];
             }

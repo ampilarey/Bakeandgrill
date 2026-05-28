@@ -62,6 +62,13 @@ class WasteLogController extends Controller
         $validated['user_id'] = $request->user()->id;
 
         $wasteLog = DB::transaction(function () use ($validated): WasteLog {
+            if (!empty($validated['inventory_item_id'])) {
+                $invItem = InventoryItem::lockForUpdate()->find($validated['inventory_item_id']);
+                if ($invItem) {
+                    $validated['cost_estimate'] = round((float) ($invItem->unit_cost ?? 0) * (float) $validated['quantity'], 2);
+                }
+            }
+
             $wasteLog = WasteLog::create($validated);
 
             // Deduct from inventory stock and record movement

@@ -372,15 +372,15 @@ class OrderCreationService
             }
 
             $catalogPrice = $variant ? (float) $variant->price : (float) $itemModel->base_price;
-            $clientUnitPrice = isset($itemPayload['unit_price']) ? (float) $itemPayload['unit_price'] : null;
 
-            if ($isOnlineOrder || $clientUnitPrice === null) {
-                $pricing = $this->specialPricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel, $variantId);
-                $unitPrice = $pricing->unitPrice;
-                $originalUnitPrice = $pricing->hasDiscount() ? $pricing->originalPrice : null;
-                $dailySpecialId = $pricing->dailySpecialId;
-            } else {
-                $unitPrice = $clientUnitPrice;
+            // Always resolve price server-side — client unit_price is ignored (offline sync totals are validated separately).
+            $pricing = $this->specialPricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel, $variantId);
+            $unitPrice = $pricing->unitPrice;
+            $originalUnitPrice = $pricing->hasDiscount() ? $pricing->originalPrice : null;
+            $dailySpecialId = $pricing->dailySpecialId;
+
+            if ($dailySpecialId !== null && !$this->specialPricing->canAllocateSpecialQuantity($dailySpecialId, $quantity, $order->id)) {
+                $unitPrice = $catalogPrice;
                 $originalUnitPrice = null;
                 $dailySpecialId = null;
             }

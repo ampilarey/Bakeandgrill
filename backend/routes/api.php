@@ -573,7 +573,7 @@ Route::get('/stream/order-status/{orderId}', [App\Http\Controllers\Api\StreamCon
     ->middleware('throttle:30,1');
 
 // ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:integrations.sms'])->prefix('admin/sms')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.sms'])->prefix('admin/sms')->group(function () {
     // Full SMS audit log (OTP + promo + campaign + transactional)
     Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
     Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
@@ -629,7 +629,7 @@ Route::middleware(['auth:sanctum', 'permission:staff.update'])->group(function (
 Route::middleware(['auth:sanctum', 'permission:menu.manage'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
 
 // ─── Staff Management — per-action permissions ──────────────────────────────
-Route::prefix('admin/staff')->middleware('auth:sanctum')->group(function () {
+Route::prefix('admin/staff')->middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/', [App\Http\Controllers\Api\StaffController::class, 'index'])->middleware('permission:staff.view');
     Route::post('/', [App\Http\Controllers\Api\StaffController::class, 'store'])->middleware('permission:staff.create');
     Route::patch('/{id}', [App\Http\Controllers\Api\StaffController::class, 'update'])->middleware('permission:staff.update');
@@ -679,7 +679,7 @@ Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->group(funct
 Route::get('/wait-time', [App\Http\Controllers\Api\WaitTimeController::class, 'estimate']);
 
 // Staff Scheduling (admin)
-Route::middleware(['auth:sanctum', 'permission:staff.schedule'])->prefix('admin/schedules')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:staff.schedule'])->prefix('admin/schedules')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\ScheduleController::class, 'index']);
     Route::post('/', [App\Http\Controllers\Api\ScheduleController::class, 'store']);
     Route::patch('/{id}', [App\Http\Controllers\Api\ScheduleController::class, 'update']);
@@ -687,7 +687,7 @@ Route::middleware(['auth:sanctum', 'permission:staff.schedule'])->prefix('admin/
 });
 
 // Waste Logs (staff)
-Route::middleware(['auth:sanctum', 'staff.token'])->prefix('waste-logs')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:inventory.manage'])->prefix('waste-logs')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\WasteLogController::class, 'index']);
     Route::post('/', [App\Http\Controllers\Api\WasteLogController::class, 'store']);
 });
@@ -708,7 +708,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->gr
 Route::get('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'index']);
 
 // Admin: manage photos
-Route::middleware(['auth:sanctum', 'permission:menu.manage'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
     Route::post('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
     Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
     Route::delete('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);

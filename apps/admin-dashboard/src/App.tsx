@@ -324,7 +324,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="inventory" element={
-                  <PermissionGuard user={user} permission="inventory.manage">
+                  <PermissionGuard user={user} permission="inventory.view">
                     <InventoryPage />
                   </PermissionGuard>
                 } />
@@ -334,7 +334,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="shifts" element={
-                  <PermissionGuard user={user} permission="orders.view">
+                  <PermissionGuard user={user} permission="shifts.view_own_history">
                     <ShiftsPage />
                   </PermissionGuard>
                 } />

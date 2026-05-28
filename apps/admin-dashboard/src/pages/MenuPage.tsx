@@ -9,6 +9,7 @@ import {
 } from '../api';
 import { PhotosTab } from './MenuPage/PhotosTab';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, PageHeader, Spinner, useConfirmDialog,
 } from '../components/Layout';
@@ -673,6 +674,8 @@ type View = 'categories' | 'items';
 
 export function MenuPage() {
     usePageTitle('Menu');
+  const { can } = useCurrentUserPermissions();
+  const canManage = can('menu.manage');
   const [view, setView] = useState<View>('categories');
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -859,9 +862,11 @@ export function MenuPage() {
         title="Menu Management"
         subtitle="Categories, items, prices and availability"
         action={
-          view === 'categories'
-            ? <Btn onClick={() => setCreatingCat(true)}>+ New Category</Btn>
-            : <Btn onClick={() => setCreatingItem(true)}>+ New Item</Btn>
+          canManage
+            ? (view === 'categories'
+              ? <Btn onClick={() => setCreatingCat(true)}>+ New Category</Btn>
+              : <Btn onClick={() => setCreatingItem(true)}>+ New Item</Btn>)
+            : undefined
         }
       />
 
@@ -914,11 +919,15 @@ export function MenuPage() {
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {canManage && (
+                        <>
                       <Btn small variant="ghost" onClick={() => handleToggleCat(cat)}>
                         {cat.is_active ? 'Hide' : 'Show'}
                       </Btn>
                       <Btn small variant="secondary" onClick={() => setEditingCat(cat)}>Edit</Btn>
                       <Btn small variant="danger" onClick={() => handleDeleteCat(cat.id)}>Delete</Btn>
+                        </>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -943,11 +952,15 @@ export function MenuPage() {
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {canManage && (
+                          <>
                         <Btn small variant="ghost" onClick={() => handleToggleCat(sub)}>
                           {sub.is_active ? 'Hide' : 'Show'}
                         </Btn>
                         <Btn small variant="secondary" onClick={() => setEditingCat(sub)}>Edit</Btn>
                         <Btn small variant="danger" onClick={() => handleDeleteCat(sub.id)}>Delete</Btn>
+                          </>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -968,19 +981,22 @@ export function MenuPage() {
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', marginBottom: 12 }}>
               {(menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }]).map((g) => (
-                <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: canManage ? 'pointer' : 'default' }}>
                   <input
                     type="checkbox"
                     checked={activeMenuGroupIds.includes(g.id)}
                     onChange={() => toggleKitchenGroup(g.id)}
+                    disabled={!canManage}
                   />
                   {g.name}
                 </label>
               ))}
             </div>
+            {canManage && (
             <Btn small onClick={() => void saveKitchenDuty()} disabled={kitchenSaving}>
               {kitchenSaving ? 'Saving…' : 'Save active menus'}
             </Btn>
+            )}
           </Card>
 
           {/* Filters */}
@@ -1059,6 +1075,7 @@ export function MenuPage() {
                           MVR {parseFloat(String(item.base_price)).toFixed(2)}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
+                          {canManage ? (
                           <button
                             onClick={() => handleToggleAvail(item)}
                             title={item.is_available ? 'Click to mark sold out' : 'Click to mark available'}
@@ -1076,16 +1093,23 @@ export function MenuPage() {
                               left: item.is_available ? 22 : 2,
                             }} />
                           </button>
+                          ) : (
+                            <Badge label={item.is_available ? 'Available' : 'Sold out'} color={item.is_available ? 'green' : 'gray'} />
+                          )}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           <Badge label={item.is_active ? 'Active' : 'Hidden'} color={item.is_active ? 'green' : 'gray'} />
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           <div style={{ display: 'flex', gap: 6 }}>
+                            {canManage && (
+                              <>
                             <Btn small variant="secondary" onClick={() => setEditingItem(item)}>Edit</Btn>
                             <Btn small variant="secondary" onClick={() => { getBarcodeLabel(item.id).then((res) => setBarcodeLabel(res.label)).catch((e: Error) => setError(e.message)); }} title="Print barcode label">🏷</Btn>
-                            <Btn small variant="secondary" onClick={() => { getItemWithRecipe(item.id).then((res) => setRecipeItem(res.item)).catch((e: Error) => setError(e.message)); }} title="View recipe">📋</Btn>
                             <Btn small variant="danger" onClick={() => handleDeleteItem(item.id)}>Delete</Btn>
+                              </>
+                            )}
+                            <Btn small variant="secondary" onClick={() => { getItemWithRecipe(item.id).then((res) => setRecipeItem(res.item)).catch((e: Error) => setError(e.message)); }} title="View recipe">📋</Btn>
                           </div>
                         </td>
                       </tr>

@@ -49,6 +49,24 @@ export const EMPTY_DELIVERY: DeliveryForm = {
   contact_name: "", contact_phone: "", notes: "",
 };
 
+const PENDING_ORDER_KEY = 'checkout_pending_order_id';
+
+function readPendingOrderId(): number | null {
+  try {
+    const stored = sessionStorage.getItem(PENDING_ORDER_KEY);
+    return stored ? Number(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePendingOrderId(id: number | null): void {
+  try {
+    if (id) sessionStorage.setItem(PENDING_ORDER_KEY, String(id));
+    else sessionStorage.removeItem(PENDING_ORDER_KEY);
+  } catch { /* ignore quota / private mode */ }
+}
+
 /**
  * Strip Maldivian country code — +9607972434 / 009607972434 → 7972434.
  * Used for both display and submission so the backend regex always receives
@@ -128,7 +146,11 @@ export function useCheckout() {
   } | null>(null);
   const [promoError, setPromoError]   = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
-  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
+  const [pendingOrderId, setPendingOrderIdState] = useState<number | null>(() => readPendingOrderId());
+  const setPendingOrderId = (id: number | null) => {
+    setPendingOrderIdState(id);
+    writePendingOrderId(id);
+  };
 
   const [useLoyalty, setUseLoyalty]   = useState(false);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
@@ -538,9 +560,10 @@ export function useCheckout() {
             setFriendReferralApplied({ code: refRes.code, discountLaar: refRes.discount_laar });
             setFriendReferralCode("");
           } catch (e) {
-            if (import.meta.env.DEV) console.warn("Referral application failed:", (e as Error).message);
             setFriendReferralError((e as Error).message);
             setFriendReferralApplied(null);
+            setIsPlacing(false);
+            return;
           }
         }
       }
