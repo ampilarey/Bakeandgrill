@@ -17,6 +17,11 @@ const CATEGORIES = [
   { icon: '🎂', name: 'Special Orders', slug: 'special-orders', hook: 'Cakes made to order. Call ahead.', color: 'var(--color-surface-alt)' },
 ];
 
+function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct: number | null | undefined): boolean {
+  if (!badge || !discountPct || discountPct <= 0) return false;
+  return !badge.includes(`${discountPct}%`);
+}
+
 export function HomePage() {
   const navigate = useNavigate();
   const { addItem, clearCart } = useCart();
@@ -266,6 +271,7 @@ export function HomePage() {
                   ? Number(sp.original_price)
                   : null;
                 const badge = sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special Offer');
+                const pctUnderBadge = showDiscountPctUnderBadge(sp.badge_label, sp.discount_pct);
                 return (
                   <Link
                     key={cardKey}
@@ -282,8 +288,15 @@ export function HomePage() {
                         : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.3 }}>🍽️</div>
                       }
                       {(badge || sp.discount_pct) && (
-                        <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--color-primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99 }}>
-                          {badge}
+                        <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, zIndex: 2 }}>
+                          <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, lineHeight: 1.3 }}>
+                            {badge}
+                          </div>
+                          {pctUnderBadge && (
+                            <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, lineHeight: 1.3 }}>
+                              {sp.discount_pct}% OFF
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

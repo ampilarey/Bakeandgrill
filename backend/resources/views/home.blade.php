@@ -451,6 +451,16 @@
     box-shadow: 0 10px 32px rgba(28,20,8,0.08);
     transform: translateY(-3px);
 }
+.special-badge-stack {
+    position: absolute;
+    top: 0.625rem;
+    left: 0.625rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    z-index: 2;
+}
 .special-badge {
     position: absolute;
     top: 0.625rem;
@@ -463,6 +473,9 @@
     border-radius: 999px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+}
+.special-badge-stack .special-badge {
+    position: static;
 }
 .price-was {
     font-size: 0.8rem;
@@ -939,8 +952,23 @@
                     @else
                         <div class="product-img-placeholder">🍽️</div>
                     @endif
-                    @if(!empty($sp['badge_label']))
-                        <span class="special-badge">{{ $sp['badge_label'] }}</span>
+                    @php
+                        $badgeLabel = $sp['badge_label'] ?? null;
+                        $discountPct = isset($sp['discount_pct']) ? (int) $sp['discount_pct'] : null;
+                        $showPctUnderBadge = $badgeLabel && $discountPct && $discountPct > 0
+                            && !str_contains($badgeLabel, (string) $discountPct . '%');
+                    @endphp
+                    @if($badgeLabel || ($discountPct && $discountPct > 0))
+                    <div class="special-badge-stack">
+                        @if($badgeLabel)
+                            <span class="special-badge">{{ $badgeLabel }}</span>
+                        @endif
+                        @if($showPctUnderBadge)
+                            <span class="special-badge">{{ $discountPct }}% OFF</span>
+                        @elseif(!$badgeLabel && $discountPct && $discountPct > 0)
+                            <span class="special-badge">{{ $discountPct }}% OFF</span>
+                        @endif
+                    </div>
                     @endif
                 </div>
                 <div class="product-body" style="padding: 1rem 1.125rem 1.25rem;">

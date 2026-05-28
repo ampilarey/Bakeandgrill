@@ -49,6 +49,33 @@ function variantPriceLabel(vo: DailySpecialVariantOverride): string {
   return '—';
 }
 
+function pctStringFromPrice(catalog: number, specialPrice: number): string {
+  if (catalog <= 0 || specialPrice < 0) return '';
+  const pct = Math.round((1 - specialPrice / catalog) * 100);
+  if (pct < 1) return '';
+  return String(Math.min(100, pct));
+}
+
+function priceStringFromPct(catalog: number, pct: number): string {
+  if (catalog <= 0 || pct < 1) return '';
+  return (catalog * (1 - pct / 100)).toFixed(2);
+}
+
+function linkedPricePct(value: string, catalog: number, from: 'price' | 'pct'): { price: string; pct: string } {
+  if (value.trim() === '') return { price: '', pct: '' };
+  if (catalog <= 0) return from === 'price' ? { price: value, pct: '' } : { price: '', pct: value };
+
+  if (from === 'price') {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed)) return { price: value, pct: '' };
+    return { price: value, pct: pctStringFromPrice(catalog, parsed) };
+  }
+
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed)) return { price: '', pct: value };
+  return { price: priceStringFromPct(catalog, parsed), pct: value };
+}
+
 function VariantOverrideLines({ overrides, mode }: { overrides: DailySpecialVariantOverride[]; mode: 'names' | 'prices' }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
@@ -82,20 +109,39 @@ function blankVariantOverrides(item: MenuItem | undefined): VariantOverrideForm 
 function variantOverridesFromSpecial(s: DailySpecial, item: MenuItem | undefined): VariantOverrideForm {
   const base = blankVariantOverrides(item);
   for (const vo of s.variant_overrides ?? []) {
-    base[vo.variant_id] = {
-      discount_pct: vo.discount_pct != null ? String(vo.discount_pct) : '',
-      special_price: vo.special_price != null ? String(vo.special_price) : '',
-    };
+    const catalog = vo.catalog_price ?? item?.variants?.find(v => v.id === vo.variant_id)?.price ?? 0;
+    const catalogNum = Number(catalog);
+    let discount_pct = vo.discount_pct != null ? String(vo.discount_pct) : '';
+    let special_price = vo.special_price != null ? String(vo.special_price) : '';
+    if (catalogNum > 0) {
+      if (discount_pct && !special_price) {
+        special_price = priceStringFromPct(catalogNum, parseInt(discount_pct, 10));
+      } else if (special_price && !discount_pct) {
+        discount_pct = pctStringFromPrice(catalogNum, parseFloat(special_price));
+      }
+    }
+    base[vo.variant_id] = { discount_pct, special_price };
   }
   return base;
 }
 
 function formFromSpecial(s: DailySpecial, item: MenuItem | undefined): SpecialForm {
+  const catalog = Number(item?.base_price ?? s.original_price ?? 0);
+  let special_price = s.special_price != null ? String(s.special_price) : '';
+  let discount_pct = s.discount_pct != null ? String(s.discount_pct) : '';
+  if (!item?.has_variants && catalog > 0) {
+    if (discount_pct && !special_price) {
+      special_price = priceStringFromPct(catalog, parseInt(discount_pct, 10));
+    } else if (special_price && !discount_pct) {
+      discount_pct = pctStringFromPrice(catalog, parseFloat(special_price));
+    }
+  }
+
   return {
     item_id: s.item_id,
     badge_label: s.badge_label ?? '',
-    special_price: s.special_price != null ? String(s.special_price) : '',
-    discount_pct: s.discount_pct != null ? String(s.discount_pct) : '',
+    special_price,
+    discount_pct,
     variant_overrides: variantOverridesFromSpecial(s, item),
     start_date: s.start_date,
     end_date: s.end_date,
@@ -214,6 +260,17 @@ export default function SpecialsPage() {
 
   const selectedItem = editItem ?? items.find(i => i.id === form.item_id);
   const hasVariants = Boolean(selectedItem?.has_variants && (selectedItem.variants?.length ?? 0) > 0);
+  const catalogPrice = Number(selectedItem?.base_price ?? 0);
+
+  const setItemSpecialPrice = (value: string) => {
+    const linked = linkedPricePct(value, catalogPrice, 'price');
+    setForm(f => ({ ...f, special_price: linked.price, discount_pct: linked.pct }));
+  };
+
+  const setItemDiscountPct = (value: string) => {
+    const linked = linkedPricePct(value, catalogPrice, 'pct');
+    setForm(f => ({ ...f, discount_pct: linked.pct, special_price: linked.price }));
+  };
 
   const setItemId = (itemId: number | '') => {
     if (!itemId) {
@@ -246,17 +303,23 @@ export default function SpecialsPage() {
     }
   };
 
-  const setVariantField = (variantId: number, field: 'discount_pct' | 'special_price', value: string) => {
-    setForm(f => ({
-      ...f,
-      variant_overrides: {
-        ...f.variant_overrides,
-        [variantId]: {
-          discount_pct: field === 'discount_pct' ? value : (f.variant_overrides[variantId]?.discount_pct ?? ''),
-          special_price: field === 'special_price' ? value : (f.variant_overrides[variantId]?.special_price ?? ''),
+  const setVariantField = (variantId: number, field: 'discount_pct' | 'special_price', value: string, catalog: number) => {
+    setForm(f => {
+      const linked = field === 'discount_pct'
+        ? linkedPricePct(value, catalog, 'pct')
+        : linkedPricePct(value, catalog, 'price');
+
+      return {
+        ...f,
+        variant_overrides: {
+          ...f.variant_overrides,
+          [variantId]: {
+            discount_pct: linked.pct,
+            special_price: linked.price,
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   const handleSave = async () => {
@@ -264,9 +327,6 @@ export default function SpecialsPage() {
     if (!form.start_date || !form.end_date) { setFormError('Start and end dates are required.'); return; }
     const hasPctInput = form.discount_pct.trim() !== '';
     const hasPriceInput = form.special_price.trim() !== '';
-    if (hasPctInput && hasPriceInput) {
-      setFormError('Use either item-level discount % or special price, not both.'); return;
-    }
     const variantRows = Object.entries(form.variant_overrides)
       .map(([variantId, row]) => ({ variant_id: Number(variantId), ...row }))
       .filter(row => row.discount_pct.trim() !== '' || row.special_price.trim() !== '');
@@ -274,9 +334,6 @@ export default function SpecialsPage() {
       setFormError('Enter an item-level discount, or set pricing on at least one variant.'); return;
     }
     for (const row of variantRows) {
-      if (row.discount_pct.trim() !== '' && row.special_price.trim() !== '') {
-        setFormError('Each variant can use either discount % or special price, not both.'); return;
-      }
       const pct = row.discount_pct ? parseInt(row.discount_pct, 10) : undefined;
       if (pct !== undefined && (isNaN(pct) || pct < 1 || pct > 100)) {
         setFormError('Variant discount % must be between 1 and 100.'); return;
@@ -304,12 +361,14 @@ export default function SpecialsPage() {
       const payload = {
         item_id: Number(form.item_id),
         badge_label: form.badge_label || undefined,
-        special_price: hasVariants ? undefined : specialPrice,
+        special_price: hasVariants ? undefined : (hasPctInput ? undefined : specialPrice),
         discount_pct: discountPct,
         variant_overrides: variantRows.map(row => ({
           variant_id: row.variant_id,
           discount_pct: row.discount_pct ? parseInt(row.discount_pct, 10) : undefined,
-          special_price: row.special_price ? parseFloat(row.special_price) : undefined,
+          special_price: row.discount_pct.trim() === '' && row.special_price
+            ? parseFloat(row.special_price)
+            : undefined,
         })),
         start_date: form.start_date,
         end_date: form.end_date,
@@ -494,11 +553,11 @@ export default function SpecialsPage() {
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Special Price (MVR)</span>
-                <Input type="number" min="0" step="0.01" placeholder="e.g. 39.00" value={form.special_price} onChange={v => setForm(f => ({ ...f, special_price: v }))} />
+                <Input type="number" min="0" step="0.01" placeholder="e.g. 39.00" value={form.special_price} onChange={setItemSpecialPrice} />
               </label>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Discount %</span>
-                <Input type="number" min="1" max="100" placeholder="e.g. 20" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
+                <Input type="number" min="1" max="100" placeholder="e.g. 20" value={form.discount_pct} onChange={setItemDiscountPct} />
               </label>
             </div>
             ) : (
@@ -528,10 +587,10 @@ export default function SpecialsPage() {
                           <td style={{ ...TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
                           <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
                           <td style={{ ...TD, padding: '6px 8px' }}>
-                            <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val)} />
+                            <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val, Number(v.price))} />
                           </td>
                           <td style={{ ...TD, padding: '6px 8px' }}>
-                            <Input type="number" min="0" step="0.01" placeholder="MVR" value={row.special_price} onChange={val => setVariantField(v.id, 'special_price', val)} />
+                            <Input type="number" min="0" step="0.01" placeholder="MVR" value={row.special_price} onChange={val => setVariantField(v.id, 'special_price', val, Number(v.price))} />
                           </td>
                         </tr>
                       );
@@ -543,8 +602,10 @@ export default function SpecialsPage() {
             )}
             <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
               {hasVariants
-                ? 'Use the default % for all variants, or set per-variant pricing below. Variant rows override the default.'
-                : 'Use either a fixed special price or a discount %.'}
+                ? 'Use the default % for all variants, or set per-variant pricing below. Price and % stay in sync with each variant catalog price.'
+                : catalogPrice > 0
+                  ? `Special price and discount % stay in sync (catalog price MVR ${catalogPrice.toFixed(2)}).`
+                  : 'Select a menu item to link special price and discount %.'}
             </p>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Badge Label</span>
