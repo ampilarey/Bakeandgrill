@@ -73,6 +73,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         boxShadow: 'var(--shadow-sm)',
         display: 'flex',
         flexDirection: 'column',
+        height: '100%',
         opacity: isUnavailable ? 0.6 : 1,
         position: 'relative',
       }}
@@ -133,12 +134,9 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
           </button>
         )}
 
-        {/* Badges */}
-        {!isUnavailable && (
+        {/* Badges — sale uses corner ribbon only; combo/spice here */}
+        {!isUnavailable && (isCombo || spice) && (
           <div style={{ position: 'absolute', top: '0.625rem', left: '0.625rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem', zIndex: 3 }}>
-            {onSale && saleBadgeLabel && (
-              <span className="badge badge-sale">{saleBadgeLabel}</span>
-            )}
             {isCombo && <span className="badge badge-combo">Bundle</span>}
             {spice && <span className="badge badge-spicy">{spice.icon} {spice.label}</span>}
           </div>
@@ -166,26 +164,9 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
           color: 'var(--color-text)',
           margin: 0,
           lineHeight: 1.3,
-        }}>
+        }}        >
           {item.name}
         </h3>
-        {discountedVariants.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {discountedVariants.map((v) => (
-              <p key={v.id} style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.35 }}>
-                {v.name}:{' '}
-                <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
-                  MVR {Number(v.effective_price).toFixed(2)}
-                </span>
-                {v.original_price != null && Number(v.original_price) > Number(v.effective_price) && (
-                  <span style={{ marginLeft: 4, textDecoration: 'line-through', fontSize: '0.7rem' }}>
-                    MVR {Number(v.original_price).toFixed(2)}
-                  </span>
-                )}
-              </p>
-            ))}
-          </div>
-        )}
 
         {/* Description */}
         {item.description && (
