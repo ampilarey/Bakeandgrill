@@ -3,7 +3,7 @@ import { adjustPreparedStock, fetchPreparedStock, type PreparedStockRow } from "
 import type { useOps } from "../hooks/useOps";
 
 type OpsState = ReturnType<typeof useOps>;
-type Tab = "inventory" | "prepared" | "suppliers" | "reports" | "marketing";
+type Tab = "inventory" | "prepared" | "suppliers" | "refunds" | "reports" | "marketing";
 
 const C = {
   bg: "#F5F6F8",
@@ -66,6 +66,7 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
     ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
     ...(showPrepared ? [{ id: "prepared" as Tab, label: "Menu stock", icon: "🥐" }] : []),
     ...(showSup ? [{ id: "suppliers" as Tab, label: "Suppliers", icon: "🏭" }] : []),
+    { id: "refunds" as Tab, label: "Refunds", icon: "↩️" },
     ...(showRep ? [{ id: "reports" as Tab, label: "Reports", icon: "📊" }] : []),
     ...(showMkt ? [{ id: "marketing" as Tab, label: "Marketing", icon: "📣" }] : []),
   ];
@@ -128,6 +129,7 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
         {activeTab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} />}
         {activeTab === "prepared"   && <PreparedStockTab setOpsMessage={ops.setOpsMessage} />}
         {activeTab === "suppliers"  && <SuppliersTab ops={ops} />}
+        {activeTab === "refunds"    && <RefundsTab ops={ops} />}
         {activeTab === "reports"    && <ReportsTab ops={ops} />}
         {activeTab === "marketing"  && <MarketingTab ops={ops} />}
       </div>
@@ -578,9 +580,102 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
   );
 }
 
-// ────────────────────────────────────────────────────────────────────
-// Suppliers tab
-// ────────────────────────────────────────────────────────────────────
+function RefundsTab({ ops }: { ops: OpsState }) {
+  const statusOptions = [
+    { value: "", label: "All statuses" },
+    { value: "pending", label: "Pending" },
+    { value: "approved", label: "Approved" },
+    { value: "processed", label: "Processed" },
+    { value: "rejected", label: "Rejected" },
+  ];
+
+  return (
+    <>
+      <Header
+        title="Refunds"
+        subtitle="Issue refunds against past orders and review refund history."
+      />
+
+      <FormCard title="Record refund" help="Use the order ID from Receipts or Active orders. Amount is in MVR.">
+        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: 10 }}>
+          <input
+            value={ops.refundOrderId}
+            onChange={(e) => ops.setRefundOrderId(e.target.value)}
+            placeholder="Order ID"
+            inputMode="numeric"
+            style={fieldStyle}
+          />
+          <input
+            value={ops.refundAmount}
+            onChange={(e) => ops.setRefundAmount(e.target.value)}
+            placeholder="Amount MVR"
+            inputMode="decimal"
+            style={fieldStyle}
+          />
+          <input
+            value={ops.refundReason}
+            onChange={(e) => ops.setRefundReason(e.target.value)}
+            placeholder="Reason (optional)"
+            style={fieldStyle}
+          />
+          <PrimaryBtn onClick={ops.handleCreateRefund}>Record refund</PrimaryBtn>
+        </div>
+      </FormCard>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>Filter</span>
+        <select
+          value={ops.refundStatusFilter}
+          onChange={(e) => ops.setRefundStatusFilter(e.target.value)}
+          style={{ ...fieldStyle, width: "auto", minWidth: 160 }}
+        >
+          {statusOptions.map((o) => (
+            <option key={o.value || "all"} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <span style={{ fontSize: 12, color: C.subtle }}>{ops.refunds.length} shown</span>
+      </div>
+
+      {ops.refunds.length === 0 ? (
+        <Empty emoji="↩️" title="No refunds" body="Nothing matches this filter yet." />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {ops.refunds.map((r) => (
+            <div
+              key={r.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "auto 1fr auto auto",
+                gap: 12,
+                alignItems: "center",
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: `1px solid ${C.border}`,
+                background: "#FAFAFA",
+                fontSize: 13,
+              }}
+            >
+              <span style={{ fontWeight: 800, color: C.text }}>#{r.id}</span>
+              <span style={{ color: C.muted }}>
+                Order {r.order_id}
+                {r.reason ? ` · ${r.reason}` : ""}
+              </span>
+              <span style={{ fontWeight: 700, color: C.text }}>MVR {Number(r.amount).toFixed(2)}</span>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                color: r.status === "rejected" ? C.danger : r.status === "pending" ? C.warn : C.success,
+              }}>
+                {r.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
 
 function SuppliersTab({ ops }: { ops: OpsState }) {
   return (

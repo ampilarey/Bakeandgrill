@@ -89,3 +89,37 @@ export async function issueE2EGiftCard(request: APIRequestContext, amountMvr = 2
   const body = await res.json() as { gift_card?: { code?: string } };
   return body.gift_card?.code ?? '';
 }
+
+/** Credit loyalty points to the logged-in test customer (for checkout E2E). */
+export async function ensureCustomerLoyaltyPoints(
+  request: APIRequestContext,
+  customerToken: string,
+  minPoints = 500,
+): Promise<boolean> {
+  const meRes = await request.get('/api/customer/me', {
+    headers: { Authorization: `Bearer ${customerToken}`, Accept: 'application/json' },
+  });
+  if (!meRes.ok()) return false;
+
+  const me = await meRes.json() as {
+    customer?: { id?: number; loyalty_points?: number };
+  };
+  const customerId = me.customer?.id;
+  if (!customerId) return false;
+
+  const balance = me.customer?.loyalty_points ?? 0;
+  if (balance >= minPoints) return true;
+
+  const staff = await obtainStaffToken(request);
+  if (!staff) return false;
+
+  const adjust = await request.post(`/api/admin/loyalty/accounts/${customerId}/adjust`, {
+    headers: staffHeaders(staff),
+    data: {
+      delta: minPoints - balance,
+      reason: 'E2E checkout loyalty seed',
+    },
+  });
+
+  return adjust.ok();
+}

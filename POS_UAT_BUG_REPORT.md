@@ -26,11 +26,10 @@ These are **product / UX observations** aligned with test matrix expectations. N
 - **Actual (code):** `OpsPanel` / `handleCreatePurchase` sends a **single** `items: [{ name, quantity, unit_cost }]` row per submit.
 - **Status:** Documented as **NOT AVAILABLE** for multi-line in one purchase from POS UI; API may still support arrays for other clients.
 
-### 3. Refunds filter (Area T — T002) — **Low / coverage gap**
+### 3. Refunds filter (Area T — T002) — **Resolved (May 2026)**
 
-- **Expected:** “Filter refunds if supported”.
-- **Actual:** `fetchRefunds` supports `?status=` but **OpsPanel** always calls `fetchRefunds()` with no status; no filter UI.
-- **Status:** **NOT AVAILABLE** in POS OPS UI.
+- **Was:** `fetchRefunds` supported `?status=` but no filter UI in POS Operations.
+- **Now:** Operations → **Refunds** tab lists history with status filter (All / Pending / Approved / Processed / Rejected) and a record-refund form.
 
 ---
 

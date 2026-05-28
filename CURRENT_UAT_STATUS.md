@@ -23,6 +23,9 @@ Minor caveats: some secondary flows (delivery, promo+gift card+loyalty in one ch
 | E2E tests | Condition-based waits replace flaky fixed delays |
 | Delivery checkout | Authenticated E2E verifies address form + delivery fee in summary |
 | Promo + gift card checkout | E2E verifies discount preview in order summary (no payment) |
+| Loyalty checkout | E2E verifies points discount preview |
+| Mark-ready → SSE pipeline | PHPUnit verifies `OrderStatusChanged` dispatch |
+| POS Ops refunds tab | Status filter + refund history in Operations → Refunds |
 | Mobile nav | 4-item bottom bar + More sheet (public site + order app) |
 | Payments | `PaymentService` always prefers `total_laar` over float `total` |
 
@@ -97,8 +100,8 @@ These flows are implemented and code is verified, but have not yet been exercise
 | Delivery order checkout (address form, delivery fee) | MEDIUM | E2E coverage added in `delivery-order.spec.ts`; live BML payment not tested |
 | Promo code applied in real checkout | MEDIUM | E2E preview in `checkout-promo-gift.spec.ts`; live BML payment not tested |
 | Gift card redemption in checkout | MEDIUM | E2E preview in `checkout-promo-gift.spec.ts`; live BML payment not tested |
-| Loyalty point redemption in checkout | MEDIUM | Needs points balance to test |
-| Kitchen marks order Ready → customer SSE push | MEDIUM | SSE implemented; not confirmed live |
+| Loyalty point redemption in checkout | MEDIUM | E2E preview in `checkout-loyalty.spec.ts`; live BML payment not tested |
+| Kitchen marks order Ready → customer SSE push | MEDIUM | Backend test verifies `OrderStatusChanged` on mark-ready; live SSE not traced |
 | `sms:dispatch-scheduled` job execution trace | LOW | Worker running; not traced |
 | `orders:cancel-stale` execution | LOW | Scheduler confirmed; not traced |
 | POS web app order flow | LOW | App built; minimal UAT focus |

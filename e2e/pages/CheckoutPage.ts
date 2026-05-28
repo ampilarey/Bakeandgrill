@@ -98,6 +98,20 @@ export class CheckoutPage {
     await expect(summary.getByText(/− MVR/i)).toBeVisible();
   }
 
+  /** Enable loyalty points redemption when the section is visible. */
+  async applyLoyaltyPoints(): Promise<void> {
+    const section = this.page.getByText(/^Loyalty Points$/i).locator('xpath=ancestor::div[1]');
+    await expect(section).toBeVisible({ timeout: 8_000 });
+    await section.getByRole('checkbox').check();
+  }
+
+  /** Wait for loyalty discount row in order summary. */
+  async expectLoyaltyDiscount(): Promise<void> {
+    const summary = this.page.locator('text=Order Summary').locator('xpath=ancestor::div[1]');
+    await expect(summary.getByText(/^Loyalty discount$/i)).toBeVisible({ timeout: 10_000 });
+    await expect(summary.getByText(/− MVR/i)).toBeVisible();
+  }
+
   /** Read the displayed order total from the Order Summary card. */
   async getTotal(): Promise<string> {
     const summary = this.page.locator('text=Order Summary').locator('xpath=ancestor::div[1]');

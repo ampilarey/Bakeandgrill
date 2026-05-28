@@ -86,6 +86,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [refundOrderId, setRefundOrderId] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
+  const [refundStatusFilter, setRefundStatusFilter] = useState("");
   const [refunds, setRefunds] = useState<
     Array<{ id: number; amount: number; status: string; reason: string | null; order_id: number }>
   >([]);
@@ -97,11 +98,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     total_cost_mvr: number;
   } | null>(null);
 
-  // Load static ops data (shift, inventory, suppliers, refunds) — only when
-  // entering ops mode. We use Promise.allSettled so that partial failures
-  // don't overwrite each other's error messages (the old code did `setOpsMessage`
-  // in 4 separate catches, so the user only saw the last one to settle —
-  // typically misleading). Instead we surface a single aggregated message.
+  // Load static ops data (shift, inventory, suppliers) when entering ops mode.
   useEffect(() => {
     if (!isLoggedIn || viewMode !== "ops") return;
 
@@ -110,25 +107,31 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
         getCurrentShift(),
         fetchInventory(),
         fetchSuppliers(),
-        fetchRefunds(),
       ]);
-      const labels = ["shift", "inventory", "suppliers", "refunds"] as const;
+      const labels = ["shift", "inventory", "suppliers"] as const;
       const failed: string[] = [];
 
-      const [shiftR, invR, supR, refR] = results;
+      const [shiftR, invR, supR] = results;
       if (shiftR.status === "fulfilled")        setShift(shiftR.value.shift);
       else                                       failed.push(labels[0]);
       if (invR.status === "fulfilled")          setInventoryItems(invR.value.items.data);
       else                                       failed.push(labels[1]);
       if (supR.status === "fulfilled")          setSuppliers(supR.value.suppliers.data);
       else                                       failed.push(labels[2]);
-      if (refR.status === "fulfilled")          setRefunds(refR.value.refunds.data);
-      else                                       failed.push(labels[3]);
 
       if (failed.length === 1)      setOpsMessage(`Unable to load ${failed[0]}.`);
       else if (failed.length > 1)   setOpsMessage(`Unable to load: ${failed.join(", ")}.`);
     })();
   }, [isLoggedIn, viewMode]);
+
+  // Refunds reload when filter changes (or on first ops entry).
+  useEffect(() => {
+    if (!isLoggedIn || viewMode !== "ops") return;
+
+    fetchRefunds(refundStatusFilter || undefined)
+      .then((r) => setRefunds(r.refunds.data))
+      .catch(() => setOpsMessage("Unable to load refunds."));
+  }, [isLoggedIn, viewMode, refundStatusFilter]);
 
   // Sales summary re-fetches when date range changes (separated so only 1 API call fires)
   useEffect(() => {
@@ -212,7 +215,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     if (!Number.isFinite(orderId) || orderId <= 0) { setOpsMessage("Enter a valid order ID."); return; }
     if (!Number.isFinite(amount) || amount <= 0) { setOpsMessage("Enter a valid refund amount."); return; }
     createRefund(orderId, { amount, reason: refundReason || undefined })
-      .then(() => { setRefundOrderId(""); setRefundAmount(""); setRefundReason(""); return fetchRefunds(); })
+      .then(() => { setRefundOrderId(""); setRefundAmount(""); setRefundReason(""); return fetchRefunds(refundStatusFilter || undefined); })
       .then((r) => setRefunds(r.refunds.data))
       .catch(() => setOpsMessage("Unable to record refund."));
   };
@@ -244,7 +247,8 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     purchaseSupplierId, setPurchaseSupplierId, purchaseDate, setPurchaseDate,
     purchaseItemName, setPurchaseItemName, purchaseQuantity, setPurchaseQuantity,
     purchaseUnitCost, setPurchaseUnitCost, refundOrderId, setRefundOrderId,
-    refundAmount, setRefundAmount, refundReason, setRefundReason, refunds,
+    refundAmount, setRefundAmount, refundReason, setRefundReason,
+    refundStatusFilter, setRefundStatusFilter, refunds,
     promoMessage, setPromoMessage, promoLastOrderDays, setPromoLastOrderDays, promoEstimate,
     handleOpenShift, handleCloseShift, handleCashMovement, handleLoadReport,
     handleAdjustInventory, handleCreateSupplier, handleCreatePurchase,
