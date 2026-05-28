@@ -94,9 +94,6 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
         }}
         aria-label={isUnavailable ? undefined : `View details for ${item.name}`}
       >
-        {onSale && saleBadgeLabel && (
-          <div className="menu-card-sale-ribbon" aria-hidden="true">{saleBadgeLabel}</div>
-        )}
         {imgSrc ? (
           <img
             src={imgSrc}
@@ -134,9 +131,12 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
           </button>
         )}
 
-        {/* Badges — sale uses corner ribbon only; combo/spice here */}
-        {!isUnavailable && (isCombo || spice) && (
-          <div style={{ position: 'absolute', top: '0.625rem', left: '0.625rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem', zIndex: 3 }}>
+        {/* Badges — kept inside image bounds (no diagonal ribbon overflow) */}
+        {!isUnavailable && ((onSale && saleBadgeLabel) || isCombo || spice) && (
+          <div className="menu-card-image-badges">
+            {onSale && saleBadgeLabel && (
+              <span className="badge badge-sale">{saleBadgeLabel}</span>
+            )}
             {isCombo && <span className="badge badge-combo">Bundle</span>}
             {spice && <span className="badge badge-spicy">{spice.icon} {spice.label}</span>}
           </div>
@@ -164,7 +164,7 @@ export function MenuCard({ item, onSelectItem, onAddToCart, isFavourite = false,
           color: 'var(--color-text)',
           margin: 0,
           lineHeight: 1.3,
-        }}        >
+        }}>
           {item.name}
         </h3>
 
