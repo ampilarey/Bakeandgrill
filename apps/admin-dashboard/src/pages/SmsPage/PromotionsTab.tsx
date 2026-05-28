@@ -3,7 +3,7 @@ import {
   fetchSmsPromotions, previewSmsPromotion, sendSmsPromotion, type SmsPromotion,
 } from '../../api';
 import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
-import { smsSegmentInfo } from '../../utils/smsSegments';
+import { smsCharCount } from '../../utils/smsCharCount';
 
 const SEGMENT_OPTIONS = [
   { value: 'all',       label: 'All customers' },
@@ -54,7 +54,7 @@ export function PromotionsTab() {
 
   useEffect(() => { void load(); }, []);
 
-  const msgInfo = smsSegmentInfo(form.message);
+  const msgInfo = smsCharCount(form.message);
 
   const handlePreview = async () => {
     if (!form.message.trim()) return;

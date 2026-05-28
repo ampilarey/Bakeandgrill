@@ -4,7 +4,7 @@ import {
   sendSmsCampaign, cancelSmsCampaign, type SmsCampaign,
 } from '../../api';
 import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
-import { smsSegmentInfo } from '../../utils/smsSegments';
+import { smsCharCount } from '../../utils/smsCharCount';
 
 export function CampaignsTab() {
   const [campaigns, setCampaigns] = useState<SmsCampaign[]>([]);
@@ -93,7 +93,7 @@ export function CampaignsTab() {
     });
   };
 
-  const segInfo  = smsSegmentInfo(message);
+  const segInfo  = smsCharCount(message);
   const segments = segInfo.segments;
 
   return (
@@ -116,7 +116,7 @@ export function CampaignsTab() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Message</label>
               <span style={{ fontSize: 11, color: segments > 1 ? '#ef4444' : '#9C8E7E' }}>
-                {message.length} chars · {segments} segment{segments > 1 ? 's' : ''}
+                {segInfo.chars} chars · {segments} segment{segments > 1 ? 's' : ''}
                 {segInfo.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
               </span>
             </div>

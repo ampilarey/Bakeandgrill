@@ -122,6 +122,8 @@ export function getOfflineDb(): Promise<IDBPDatabase<PosOfflineDB>> {
   return dbPromise;
 }
 
+export const MAX_OFFLINE_ORDERS = 100;
+
 export async function initOfflineDb(): Promise<void> {
   await getOfflineDb();
   await importLegacyLocalStorageQueue();
@@ -399,7 +401,3 @@ function mapLegacyMethod(method: string): OfflineOrderRecord["payment"]["method"
   if (method === "digital_wallet" || method === "bank_transfer") return "bank_transfer";
   return null;
 }
-
-export const OFFLINE_SYNC_V2 =
-  import.meta.env.VITE_OFFLINE_SYNC_V2 !== "false"
-  && import.meta.env.VITE_OFFLINE_SYNC_V2 !== "0";

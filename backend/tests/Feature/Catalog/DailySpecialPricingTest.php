@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Catalog;
 
+use App\Domains\Marketing\Listeners\DecrementDailySpecialSoldCountListener;
 use App\Domains\Orders\DTOs\OrderPaidData;
+use App\Domains\Orders\DTOs\OrderRefundedData;
 use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\DailySpecial;
 use App\Models\DailySpecialVariant;
 use App\Models\Variant;
@@ -294,6 +297,38 @@ class DailySpecialPricingTest extends TestCase
 
         $special->refresh();
         $this->assertSame(2, $special->sold_count);
+    }
+
+    public function test_sold_count_decrements_on_refund(): void
+    {
+        $item = $this->makeItem(false, 0, ['base_price' => 10.00]);
+        $special = $this->createSpecial([
+            'item_id' => $item->id,
+            'discount_pct' => 10,
+            'sold_count' => 0,
+        ]);
+
+        $response = $this->createCustomerOrder($item->id, null, 2)->assertCreated();
+        $orderId = (int) $response->json('order.id');
+
+        $order = \App\Models\Order::with('items')->findOrFail($orderId);
+        OrderPaid::dispatch(OrderPaidData::fromOrder($order, false));
+
+        $special->refresh();
+        $this->assertSame(2, $special->sold_count);
+
+        $listener = app(DecrementDailySpecialSoldCountListener::class);
+        $listener->handle(new OrderRefunded(new OrderRefundedData(
+            refundId: 1,
+            orderId: $orderId,
+            orderNumber: (string) $order->order_number,
+            amount: 10.0,
+            reason: 'test',
+            refundRatio: 1.0,
+        )));
+
+        $special->refresh();
+        $this->assertSame(0, $special->sold_count);
     }
 
     public function test_items_api_includes_special_block(): void

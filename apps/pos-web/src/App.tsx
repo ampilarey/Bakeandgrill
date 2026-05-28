@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosSmsNotifications } from "./api";
-import { getQueueCount } from "./offlineQueue";
-import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, OFFLINE_SYNC_V2, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
+import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
 import { startSyncEnginePolling } from "./offline/syncEngine";
 import { useConnectivity } from "./hooks/useConnectivity";
@@ -159,9 +158,7 @@ function App() {
   const connectivity = useConnectivity(isLoggedIn);
   const isOnline = connectivity.isOnline;
   const isReachable = connectivity.isReachable;
-  const [offlineQueueCount, setOfflineQueueCount] = useState(() => (
-    OFFLINE_SYNC_V2 ? 0 : getQueueCount()
-  ));
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0);
   const [offlinePendingCount, setOfflinePendingCount] = useState(0);
   const [offlinePendingTotals, setOfflinePendingTotals] = useState({
     cash: 0,
@@ -270,11 +267,6 @@ function App() {
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
 
   const refreshOfflineCounts = useCallback(async () => {
-    if (!OFFLINE_SYNC_V2) {
-      setOfflineQueueCount(getQueueCount());
-      setOfflinePendingCount(0);
-      return;
-    }
     const shiftId = shift.current?.id ?? null;
     const pending = await countPendingOfflineOrders(shiftId ?? undefined);
     const totals = await getOfflineOrderSyncCounts(shiftId ?? undefined);
@@ -296,7 +288,7 @@ function App() {
   }, [isLoggedIn, refreshOfflineCounts]);
 
   useEffect(() => {
-    if (!isLoggedIn || !OFFLINE_SYNC_V2) return;
+    if (!isLoggedIn) return;
     let stop: (() => void) | undefined;
     const handle = window.setTimeout(() => {
       stop = startSyncEnginePolling(() => isReachable);
@@ -1080,10 +1072,7 @@ function App() {
 
           {offlineQueueCount > 0 && (
             <button
-              onClick={() => {
-                if (OFFLINE_SYNC_V2) setShowOfflineSyncPanel(true);
-                else order.handleSyncQueue();
-              }}
+              onClick={() => setShowOfflineSyncPanel(true)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,

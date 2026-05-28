@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Customer;
+use App\Models\User;
 use App\Services\PermissionService;
 use Closure;
 use Illuminate\Http\Request;
@@ -21,8 +23,16 @@ class RequirePermission
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        if ($user instanceof \App\Models\Customer) {
+        if ($user instanceof Customer) {
             return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if (!($user instanceof User)) {
+            return response()->json(['message' => 'Forbidden — staff access only.'], 403);
+        }
+
+        if ($request->bearerToken() && !$user->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 
         foreach ($permissions as $permission) {

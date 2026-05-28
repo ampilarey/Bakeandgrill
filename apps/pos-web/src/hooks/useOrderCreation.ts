@@ -15,17 +15,10 @@ import {
   updateOrderItems,
 } from "../api";
 import {
-  enqueue,
-  getQueue,
-  getQueueCount,
-  setQueue,
-  OfflineQueueFullError,
-} from "../offlineQueue";
-import {
   countPendingOfflineOrders,
   initOfflineDb,
   loadCachedShift,
-  OFFLINE_SYNC_V2,
+  MAX_OFFLINE_ORDERS,
   saveOfflineOrder,
   type OfflineOrderRecord,
 } from "../offline/db";
@@ -482,6 +475,12 @@ export function useOrderCreation(params: Params) {
 
     try {
       await initOfflineDb();
+      const pending = await countPendingOfflineOrders(shiftId);
+      if (pending >= MAX_OFFLINE_ORDERS) {
+        flashError(`⛔ Offline queue full (${pending}). Reconnect and Sync.`);
+        return false;
+      }
+
       const localOrderId = newLocalOrderId();
       const localOrderNumber = await allocateOfflineOrderNumber(params.deviceId);
       const orderPayload = buildPayload();
@@ -720,43 +719,7 @@ export function useOrderCreation(params: Params) {
         flashError("Delivery orders cannot be saved offline.");
         return false;
       }
-      if (OFFLINE_SYNC_V2) {
-        return tryPersistOfflineV2(paymentSnapshot, stagedRewards);
-      }
-
-      if (
-        stagedRewards.promo_code
-        || (stagedRewards.loyalty_points ?? 0) > 0
-        || stagedRewards.gift_card_code
-      ) {
-        flashError("Promo, loyalty, and gift cards cannot be used offline.");
-        return false;
-      }
-
-      const blocked = paymentSnapshot.some((p) => {
-        const method = p.method as string;
-        return method === "house_account" || method === "bml" || method === "online";
-      });
-      if (blocked) {
-        flashError("Only cash, card, and transfer are available offline.");
-        return false;
-      }
-
-      try {
-        await enqueue({ order: payload, payments: paymentSnapshot, rewards: stagedRewards });
-        params.setOfflineQueueCount(getQueueCount());
-        params.clearCart();
-        params.setSelectedItem(null);
-        flashNotice("Offline order queued. Will sync when online.");
-        return true;
-      } catch (err) {
-        if (err instanceof OfflineQueueFullError) {
-          flashError(`⛔ Offline queue full (${err.size}). Reconnect and Sync.`);
-        } else {
-          flashError("Unable to save offline order. Please try again.");
-        }
-        return false;
-      }
+      return tryPersistOfflineV2(paymentSnapshot, stagedRewards);
     }
 
     setIsSubmitting(true);
@@ -817,22 +780,7 @@ export function useOrderCreation(params: Params) {
         return false;
       }
 
-      if (OFFLINE_SYNC_V2) {
-        return tryPersistOfflineV2(paymentSnapshot, stagedRewards);
-      }
-
-      try {
-        await enqueue({ order: payload, payments: paymentSnapshot, rewards: stagedRewards });
-        params.setOfflineQueueCount(getQueueCount());
-        flashNotice("Network error. Order queued for sync (payments included).");
-      } catch (e) {
-        if (e instanceof OfflineQueueFullError) {
-          flashError(`⛔ Offline queue full (${e.size}). Reconnect and Sync.`);
-        } else {
-          flashError("Network error and unable to queue. Try again.");
-        }
-      }
-      return false;
+      return tryPersistOfflineV2(paymentSnapshot, stagedRewards);
     } finally {
       setIsSubmitting(false);
     }
@@ -1273,115 +1221,24 @@ export function useOrderCreation(params: Params) {
     if (!params.isReachable) { flashNotice("You are offline. Sync paused."); return; }
     if (isSyncingQueue) { flashNotice("Sync already in progress…"); return; }
 
-    if (OFFLINE_SYNC_V2) {
-      setIsSyncingQueue(true);
-      void (async () => {
-        try {
-          const result = await runOfflineSync(true);
-          params.setOfflineQueueCount(result.remaining);
-          if (result.remaining === 0 && result.synced > 0) {
-            clearStatus();
-            flashNotice(`Synced ${result.synced} offline order${result.synced === 1 ? "" : "s"}.`);
-          } else if (result.synced > 0) {
-            flashError(`Synced ${result.synced}, ${result.remaining} remaining${result.conflicts ? `, ${result.conflicts} conflicts` : ""}.`);
-          } else if (result.remaining === 0) {
-            flashNotice("No queued orders to sync.");
-          } else {
-            flashError(`Sync incomplete — ${result.remaining} still pending.`);
-          }
-        } finally {
-          setIsSyncingQueue(false);
-        }
-      })();
-      return;
-    }
-
-    const queue = getQueue();
-    if (queue.length === 0) { flashNotice("No queued orders to sync."); return; }
-
     setIsSyncingQueue(true);
     void (async () => {
-      const remaining: typeof queue = [];
-      let processed = 0;
-      let paymentMisses = 0;
-
-      for (const entry of queue) {
-        const payload = entry.payload as {
-          order?: Record<string, unknown>;
-          payments?: PaymentRow[];
-          rewards?: {
-            promo_code?: string | null;
-            loyalty_points?: number;
-            gift_card_code?: string | null;
-          };
-        };
-        // Legacy entries (pre-payment-fix) had the order at the top level.
-        const orderPayload = (payload.order ?? entry.payload) as Parameters<typeof createOrder>[0];
-        const paymentRows = payload.payments ?? [];
-        const rewards = payload.rewards ?? {};
-
-        try {
-          const res = await createOrder(orderPayload);
-          processed += 1;
-          let totalDue = res.order.total ?? 0;
-
-          // Bug-013: re-apply staged rewards in the same order
-          // applyStagedRewards uses (promo → loyalty → gift card)
-          // so the final total matches what the cashier saw on the
-          // POS at offline-ring time. Failures are swallowed —
-          // the order still lands and settle below will at least
-          // book the customer's collected payment, with any
-          // shortfall surfacing as a paymentMiss.
-          if (rewards.promo_code) {
-            try { await applyPromoToOrder(res.order.id, rewards.promo_code); } catch { /* skip */ }
-          }
-          if (rewards.loyalty_points && rewards.loyalty_points > 0) {
-            try {
-              const r = await holdLoyaltyForOrder(res.order.id, rewards.loyalty_points);
-              totalDue = r.order.total;
-            } catch { /* skip */ }
-          }
-          if (rewards.gift_card_code) {
-            try {
-              const r = await applyGiftCardToOrder(res.order.id, rewards.gift_card_code);
-              totalDue = r.order.total;
-            } catch { /* skip */ }
-          }
-          // Final read so settle uses the authoritative total when
-          // any reward was attempted (matches applyStagedRewards).
-          if (rewards.promo_code || (rewards.loyalty_points ?? 0) > 0 || rewards.gift_card_code) {
-            try {
-              const fresh = await getOrder(res.order.id);
-              if (typeof fresh.order.total === "number") totalDue = fresh.order.total;
-            } catch { /* keep last-known */ }
-          }
-
-          // Best-effort payment settlement; if it fails the order still exists
-          // and the cashier sees a count of unpaid orders to handle in admin.
-          const ok = await settleOrder(res.order.id, totalDue, paymentRows);
-          if (!ok) {
-            paymentMisses += 1;
-            setPendingPaymentForOrderId(null); // don't pin one stale id
-          }
-        } catch {
-          // Keep entry for retry.
-          remaining.push(entry);
+      try {
+        const result = await runOfflineSync(true);
+        params.setOfflineQueueCount(result.remaining);
+        if (result.remaining === 0 && result.synced > 0) {
+          clearStatus();
+          flashNotice(`Synced ${result.synced} offline order${result.synced === 1 ? "" : "s"}.`);
+        } else if (result.synced > 0) {
+          flashError(`Synced ${result.synced}, ${result.remaining} remaining${result.conflicts ? `, ${result.conflicts} conflicts` : ""}.`);
+        } else if (result.remaining === 0) {
+          flashNotice("No queued orders to sync.");
+        } else {
+          flashError(`Sync incomplete — ${result.remaining} still pending.`);
         }
+      } finally {
+        setIsSyncingQueue(false);
       }
-
-      setQueue(remaining);
-      params.setOfflineQueueCount(remaining.length);
-
-      if (remaining.length === 0 && paymentMisses === 0) {
-        clearStatus();
-      } else if (remaining.length === 0) {
-        flashError(`Synced ${processed} orders. ${paymentMisses} need payment in admin.`);
-      } else {
-        flashError(
-          `Synced ${processed}, ${remaining.length} failed (kept in queue)${paymentMisses ? `, ${paymentMisses} need payment in admin` : ''}.`,
-        );
-      }
-      setIsSyncingQueue(false);
     })();
   };
 

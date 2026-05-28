@@ -16,15 +16,44 @@ function gsm7Septets(body: string): number {
   return n;
 }
 
-export function smsCharCount(body: string): { chars: number; segments: number; encoding: string } {
+export type SmsCharCount = {
+  chars: number;
+  segments: number;
+  encoding: string;
+  isUnicode: boolean;
+  charsPerSeg: number;
+  remaining: number;
+};
+
+export function smsCharCount(body: string): SmsCharCount {
   const gsm = isAllGsm7(body);
-  const chars = [...body].length;
-  if (chars === 0) return { chars: 0, segments: 0, encoding: gsm ? 'GSM-7' : 'Unicode' };
+  const codePoints = [...body].length;
+  if (codePoints === 0) {
+    return { chars: 0, segments: 0, encoding: 'GSM-7', isUnicode: false, charsPerSeg: 160, remaining: 160 };
+  }
   if (gsm) {
     const septets = gsm7Septets(body);
     const segments = septets <= 160 ? 1 : Math.ceil(septets / 153);
-    return { chars: septets, segments, encoding: 'GSM-7' };
+    const charsPerSeg = segments === 1 ? 160 : 153;
+    const used = septets % charsPerSeg || charsPerSeg;
+    return {
+      chars: septets,
+      segments,
+      encoding: 'GSM-7',
+      isUnicode: false,
+      charsPerSeg,
+      remaining: charsPerSeg - used,
+    };
   }
-  const segments = chars <= 70 ? 1 : Math.ceil(chars / 67);
-  return { chars, segments, encoding: 'Unicode' };
+  const segments = codePoints <= 70 ? 1 : Math.ceil(codePoints / 67);
+  const charsPerSeg = segments === 1 ? 70 : 67;
+  const used = codePoints % charsPerSeg || charsPerSeg;
+  return {
+    chars: codePoints,
+    segments,
+    encoding: 'Unicode',
+    isUnicode: true,
+    charsPerSeg,
+    remaining: charsPerSeg - used,
+  };
 }

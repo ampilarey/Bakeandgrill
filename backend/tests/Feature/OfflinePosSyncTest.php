@@ -11,7 +11,9 @@ use App\Models\Device;
 use App\Models\Item;
 use App\Models\OfflineSyncRecord;
 use App\Models\Order;
+use App\Models\OrderPromotion;
 use App\Models\Payment;
+use App\Models\Promotion;
 use App\Models\Role;
 use App\Models\Shift;
 use App\Models\StockMovement;
@@ -297,6 +299,32 @@ class OfflinePosSyncTest extends TestCase
         $this->assertSame('bank_transfer', $payment->method);
     }
 
+    public function test_sync_applies_promo_from_rewards_payload(): void
+    {
+        Promotion::create([
+            'name' => 'Offline Save',
+            'code' => 'OFF5',
+            'type' => 'fixed',
+            'discount_value' => 500,
+            'is_active' => true,
+            'stackable' => false,
+        ]);
+
+        $payload = $this->buildOrderPayload('cash', 50.0);
+        $payload['rewards'] = ['promo_code' => 'OFF5'];
+        $payload['totals'] = $this->computeTotalsWithPromo('OFF5');
+        $payload['payment']['amount'] = $payload['totals']['total'];
+
+        $response = $this->syncPayload([$payload]);
+        $response->assertOk()->assertJsonPath('results.0.status', 'synced');
+
+        $orderId = (int) $response->json('results.0.server_order_id');
+        $order = Order::findOrFail($orderId);
+
+        $this->assertGreaterThan(0, OrderPromotion::where('order_id', $orderId)->count());
+        $this->assertLessThan(50.0, (float) $order->total);
+    }
+
     /**
      * @param array<int, array<string, mixed>> $orders
      */
@@ -342,6 +370,39 @@ class OfflinePosSyncTest extends TestCase
         }
 
         return $payload;
+    }
+
+    /**
+     * @return array{subtotal: float, tax: float, total: float}
+     */
+    private function computeTotalsWithPromo(string $code): array
+    {
+        $createResponse = $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'device_identifier' => $this->device->identifier,
+                'items' => [
+                    [
+                        'item_id' => $this->item->id,
+                        'quantity' => 1,
+                    ],
+                ],
+            ]);
+
+        $createResponse->assertCreated();
+        $orderId = (int) $createResponse->json('order.id');
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId}/apply-promo", ['code' => $code])
+            ->assertOk();
+
+        $order = Order::findOrFail($orderId)->fresh();
+
+        return [
+            'subtotal' => (float) $order->subtotal,
+            'tax' => (float) $order->tax_amount,
+            'total' => (float) $order->total,
+        ];
     }
 
     /**

@@ -155,7 +155,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::patch('/auth/me/preferences', [StaffAuthController::class, 'updatePreferences']);
 
     // Online ordering gate — toggle (owner/manager) and public status is above
-    Route::prefix('admin/ordering')->middleware('role:owner,manager')->group(function () {
+    Route::prefix('admin/ordering')->middleware('permission:settings.update')->group(function () {
         Route::post('/toggle', [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggle']);
         Route::post('/override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'override']);
         Route::put('/schedule', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateSchedule']);
