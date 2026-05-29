@@ -1,6 +1,22 @@
 # Conversion Growth Audit
 ## Bake & Grill — Think Like a Growth Strategist
 
+> **Superseded for prioritization (2026-05-29):** Use [docs/FEATURE_ROADMAP_AUDIT.md](docs/FEATURE_ROADMAP_AUDIT.md) and [docs/FEATURE_IMPLEMENTATION_WAVES.md](docs/FEATURE_IMPLEMENTATION_WAVES.md) as the source of truth for what to build next. This document remains useful for UX rationale but several items below are **out of date** relative to current code.
+
+### Status corrections (code verified)
+
+| Item | This doc says | Current code |
+|------|---------------|--------------|
+| **QW2** Cart upsell | Missing | **Built** — `apps/online-order-web/src/components/CartDrawer.tsx` “Add to your order” |
+| **QW6** Free delivery progress | Missing / backend not wired | **Built** — `DeliveryFeeCalculator` + cart progress bar (`CartDrawer.tsx`); sync threshold with backend public settings still recommended |
+| **QW7** Menu star ratings | Missing | **Built** — `MenuCard.tsx` |
+| **MT2** Referral reward never pays out | Missing | **Built** — `RecordReferralRedemptionListener.php` credits referrer on paid order (verify on staging) |
+| **MT4** Loyalty tiers invisible | Missing | **Built** — `AccountPage.tsx` tier progress |
+
+Still valid / partial: QW1, QW3, QW5, QW8, MT1, MT3, MT5, MT6, and later sections.
+
+---
+
 > This audit assumes a visitor who arrives on the homepage for the first time and
 > attempts to complete an order. Every friction point and missed opportunity is noted.
 
