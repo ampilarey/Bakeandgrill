@@ -669,6 +669,8 @@ export type CustomerLtvRow = {
 };
 
 export type CustomerLtvReport = {
+  from?: string;
+  to?: string;
   rows: CustomerLtvRow[];
 };
 
@@ -692,10 +694,47 @@ export async function getShiftVariancesReport(params: { from?: string; to?: stri
   return req(`/reports/shift-variances?${q}`);
 }
 
-export async function getCustomerLtvReport(params: { limit?: number } = {}): Promise<CustomerLtvReport> {
-  const q = new URLSearchParams();
-  if (params.limit) q.set('limit', String(params.limit));
+export async function getCustomerLtvReport(params: { from?: string; to?: string; limit?: number } = {}): Promise<CustomerLtvReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
   return req(`/reports/customer-ltv?${q}`);
+}
+
+export type HourlySalesRow = {
+  hour: number;
+  label: string;
+  count: number;
+  revenue: number;
+  avg_total: number;
+};
+
+export type HourlySalesReport = {
+  from: string;
+  to: string;
+  hours: HourlySalesRow[];
+};
+
+export type StationPerformanceRow = {
+  menu_group_id: number | null;
+  station: string;
+  line_count: number;
+  qty: number;
+  revenue: number;
+};
+
+export type StationPerformanceReport = {
+  from: string;
+  to: string;
+  rows: StationPerformanceRow[];
+};
+
+export async function getHourlySalesReport(params: { from?: string; to?: string } = {}): Promise<HourlySalesReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/hourly-sales?${q}`);
+}
+
+export async function getStationPerformanceReport(params: { from?: string; to?: string } = {}): Promise<StationPerformanceReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/station-performance?${q}`);
 }
 
 export type CashierPerformanceRow = {

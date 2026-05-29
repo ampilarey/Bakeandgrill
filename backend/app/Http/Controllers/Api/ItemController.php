@@ -12,6 +12,7 @@ use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
 use App\Services\ItemAvailabilityService;
+use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
 use App\Services\VariantSyncService;
 use Illuminate\Http\Request;
@@ -49,6 +50,7 @@ class ItemController extends Controller
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
             $with[] = 'comboItems.item';
+            $with[] = 'recipe.recipeItems.inventoryItem';
         }
         $query = Item::with($with);
 
@@ -101,6 +103,7 @@ class ItemController extends Controller
         $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
+            $recipeCosts = $includeAdminExtras ? app(RecipeCostCalculator::class) : null;
             $activeSpecial = $includeAvailability
                 ? $specialPricing->activeSpecialsByItemId()->get($item->id)
                 : null;
@@ -257,6 +260,9 @@ class ItemController extends Controller
             if ($includeAdminExtras) {
                 $data['is_combo'] = (bool) ($item->is_combo ?? false);
                 $data['combo_discount_pct'] = $item->combo_discount_pct;
+                $data['cost'] = $item->cost !== null ? (float) $item->cost : null;
+                $data['recipe_cost'] = $recipeCosts?->forItem($item);
+                $data['effective_cost'] = $recipeCosts?->effectiveCost($item);
                 $data['combo_items'] = $item->relationLoaded('comboItems')
                     ? $item->comboItems->map(fn ($row) => [
                         'item_id' => $row->item_id,
@@ -405,12 +411,18 @@ class ItemController extends Controller
     /**
      * Display item with recipe data (STAFF ONLY)
      */
-    public function showWithRecipe($id)
+    public function showWithRecipe($id, RecipeCostCalculator $recipeCosts)
     {
         $item = Item::with(['category', 'variants', 'modifiers', 'recipe.recipeItems.inventoryItem'])
             ->findOrFail($id);
 
-        return response()->json(['item' => $item]);
+        $computedCost = $recipeCosts->forItem($item);
+
+        return response()->json([
+            'item' => $item,
+            'recipe_cost' => $computedCost,
+            'effective_cost' => $recipeCosts->effectiveCost($item),
+        ]);
     }
 
     /**

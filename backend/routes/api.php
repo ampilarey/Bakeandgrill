@@ -73,6 +73,10 @@ Route::get('/ordering/status', [App\Http\Controllers\Api\OnlineOrderingControlle
 Route::get('/ordering/delivery-status', [App\Http\Controllers\Api\DeliveryStatusController::class, 'show'])
     ->middleware('throttle:120,1');
 
+// Delivery fee preview — matches server-side DeliveryFeeCalculator at checkout
+Route::get('/ordering/delivery-fee-preview', [App\Http\Controllers\Api\DeliveryFeePreviewController::class, 'show'])
+    ->middleware('throttle:120,1');
+
 /*
 |--------------------------------------------------------------------------
 | Staff Authentication Routes
@@ -387,6 +391,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/reports/cashier-performance', [ReportsController::class, 'cashierPerformance']);
         Route::get('/reports/product-margins', [ReportsController::class, 'productMargins']);
         Route::get('/reports/stock-discrepancy', [ReportsController::class, 'stockDiscrepancy']);
+        Route::get('/reports/hourly-sales', [ReportsController::class, 'hourlySales']);
+        Route::get('/reports/station-performance', [ReportsController::class, 'stationPerformance']);
         Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
         Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');
         Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');

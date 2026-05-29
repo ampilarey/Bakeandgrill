@@ -50,6 +50,8 @@ export type MenuItem = {
   image_url?: string | null;
   base_price: number;
   cost?: number | null;
+  recipe_cost?: number | null;
+  effective_cost?: number | null;
   has_variants?: boolean;
   variants?: MenuVariant[];
   tax_rate?: number | null;

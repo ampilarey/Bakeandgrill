@@ -411,7 +411,9 @@ export function OrderStatusPage() {
   const isCancelled = order?.status === 'cancelled';
   const isDone = order?.status === 'completed';
   const pointsEarned = order?.loyalty_points_earned ?? 0;
-  const showPointsCelebration = isDone && pointsEarned > 0;
+  const showPointsCelebration =
+    pointsEarned > 0 &&
+    (serverPaymentConfirmed || isDone);
   const activeStep = order ? stepIndex(order.status) : -1;
 
   const handleOrderAgain = async () => {

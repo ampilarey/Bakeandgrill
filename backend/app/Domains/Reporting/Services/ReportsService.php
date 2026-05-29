@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\RecipeCostCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -621,11 +622,11 @@ class ReportsService
     }
 
     /**
-     * Top customers by lifetime spend (for reports tab).
+     * Top customers by spend in a date range (for reports tab).
      *
-     * @return array{rows: list<array{id: int, name: string, phone: string|null, order_count: int, total_spent: float, last_order: string|null}>}
+     * @return array{from: string, to: string, rows: list<array{id: int, name: string, phone: string|null, order_count: int, total_spent: float, last_order: string|null}>}
      */
-    public function customerLtvTop(int $limit = 20): array
+    public function customerLtvTop(Carbon $from, Carbon $to, int $limit = 20): array
     {
         $limit = min(50, max(5, $limit));
 
@@ -633,6 +634,7 @@ class ReportsService
             ->join('customers as c', 'c.id', '=', 'o.customer_id')
             ->whereNotNull('o.customer_id')
             ->whereNotIn('o.status', ['cancelled'])
+            ->whereBetween('o.created_at', [$from, $to])
             ->selectRaw('c.id, c.name, c.phone, COUNT(o.id) as order_count, SUM(o.total) as total_spent, MAX(o.created_at) as last_order')
             ->groupBy('c.id', 'c.name', 'c.phone')
             ->orderByRaw('SUM(o.total) DESC')
@@ -640,6 +642,8 @@ class ReportsService
             ->get();
 
         return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
             'rows' => $rows->map(fn ($r) => [
                 'id' => (int) $r->id,
                 'name' => (string) $r->name,
@@ -704,18 +708,19 @@ class ReportsService
     public function productMargins(int $limit = 100): array
     {
         $limit = min(200, max(10, $limit));
+        $recipeCosts = app(RecipeCostCalculator::class);
 
         $rows = Item::query()
-            ->with('category:id,name')
+            ->with(['category:id,name', 'recipe.recipeItems.inventoryItem'])
             ->where('is_available', true)
             ->orderBy('name')
             ->limit($limit)
             ->get(['id', 'name', 'base_price', 'cost', 'category_id', 'has_variants']);
 
         return [
-            'rows' => $rows->map(function (Item $item) {
+            'rows' => $rows->map(function (Item $item) use ($recipeCosts) {
                 $price = $item->displayPrice();
-                $cost = $item->cost !== null ? (float) $item->cost : null;
+                $cost = $recipeCosts->effectiveCost($item);
                 $marginPct = ($cost !== null && $price > 0)
                     ? round((($price - $cost) / $price) * 100, 1)
                     : null;
@@ -729,6 +734,77 @@ class ReportsService
                     'category' => $item->category?->name,
                 ];
             })->sortByDesc(fn (array $row) => $row['margin_pct'] ?? -999)->values()->all(),
+        ];
+    }
+
+    /**
+     * Orders and revenue by hour-of-day for a date range.
+     *
+     * @return array{from: string, to: string, hours: list<array{hour: int, label: string, count: int, revenue: float, avg_total: float}>}
+     */
+    public function hourlySales(Carbon $from, Carbon $to): array
+    {
+        $hourExpr = match (DB::getDriverName()) {
+            'sqlite' => "CAST(strftime('%H', created_at) AS INTEGER)",
+            'pgsql' => 'EXTRACT(HOUR FROM created_at)::INTEGER',
+            default => 'HOUR(created_at)',
+        };
+
+        $rows = DB::table('orders')
+            ->whereBetween('created_at', [$from, $to])
+            ->whereNotIn('status', ['cancelled'])
+            ->selectRaw("{$hourExpr} as hour, COUNT(*) as count, COALESCE(SUM(total),0) as revenue, COALESCE(AVG(total),0) as avg_total")
+            ->groupByRaw($hourExpr)
+            ->orderBy('hour')
+            ->get();
+
+        $hours = [];
+        for ($h = 0; $h < 24; $h++) {
+            $row = $rows->firstWhere('hour', $h);
+            $hours[] = [
+                'hour' => $h,
+                'label' => sprintf('%02d:00', $h),
+                'count' => $row ? (int) $row->count : 0,
+                'revenue' => $row ? round((float) $row->revenue, 2) : 0,
+                'avg_total' => $row ? round((float) $row->avg_total, 2) : 0,
+            ];
+        }
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'hours' => $hours,
+        ];
+    }
+
+    /**
+     * Kitchen station (menu group) performance from completed order lines.
+     *
+     * @return array{from: string, to: string, rows: list<array{menu_group_id: int|null, station: string, line_count: int, qty: int, revenue: float}>}
+     */
+    public function stationPerformance(Carbon $from, Carbon $to): array
+    {
+        $rows = DB::table('order_items as oi')
+            ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->leftJoin('items as i', 'i.id', '=', 'oi.item_id')
+            ->leftJoin('menu_groups as mg', 'mg.id', '=', 'i.menu_group_id')
+            ->whereBetween('o.created_at', [$from, $to])
+            ->where('o.status', 'completed')
+            ->selectRaw('i.menu_group_id, COALESCE(mg.name, \'Unassigned\') as station, COUNT(oi.id) as line_count, COALESCE(SUM(oi.quantity),0) as qty, COALESCE(SUM(oi.total_price),0) as revenue')
+            ->groupBy('i.menu_group_id', 'mg.name')
+            ->orderByDesc('revenue')
+            ->get();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows->map(fn ($r) => [
+                'menu_group_id' => $r->menu_group_id !== null ? (int) $r->menu_group_id : null,
+                'station' => (string) $r->station,
+                'line_count' => (int) $r->line_count,
+                'qty' => (int) $r->qty,
+                'revenue' => round((float) $r->revenue, 2),
+            ])->values()->all(),
         ];
     }
 

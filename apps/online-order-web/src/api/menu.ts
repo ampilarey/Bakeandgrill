@@ -68,6 +68,24 @@ export async function fetchDeliveryZoneStatus(area: string): Promise<DeliveryZon
   return request<DeliveryZoneStatus>(`${ENDPOINTS.ORDERING_DELIVERY_STATUS}?${qs}`);
 }
 
+export type DeliveryFeePreview = {
+  fee_laar: number;
+  fee_mvr: number;
+  free_threshold_mvr: number;
+  qualifies_free: boolean;
+};
+
+export async function fetchDeliveryFeePreview(
+  island: string,
+  subtotalLaar: number,
+): Promise<DeliveryFeePreview> {
+  const qs = new URLSearchParams({
+    island: island.trim(),
+    subtotal_laar: String(Math.max(0, subtotalLaar)),
+  });
+  return request<DeliveryFeePreview>(`${ENDPOINTS.ORDERING_DELIVERY_FEE_PREVIEW}?${qs}`);
+}
+
 export async function fetchCategories(): Promise<{ data: Category[] }> {
   return request<{ data: Category[] }>(ENDPOINTS.CATEGORIES);
 }

@@ -134,9 +134,27 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
                     }}
                   >
                     <div style={{ fontWeight: 700 }}>{order.local_order_number}</div>
-                    <div style={{ color: "#64748b", marginTop: 2 }}>
-                      MVR {order.payment.amount.toFixed(2)} · {order.items.length} items
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                      {order.inventory_conflict && (
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7",
+                          border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px",
+                        }}>
+                          Inventory conflict
+                        </span>
+                      )}
+                      <span style={{ color: "#64748b", fontSize: 13 }}>
+                        MVR {order.payment.amount.toFixed(2)} · {order.items.length} items
+                      </span>
                     </div>
+                    <ul style={{ margin: "8px 0 0", paddingLeft: 18, color: "#334155", lineHeight: 1.5 }}>
+                      {order.items.map((line, idx) => (
+                        <li key={`${line.item_id}-${idx}`}>
+                          {line.quantity}× {line.name ?? `Item #${line.item_id}`}
+                          {line.modifiers?.length ? ` (+${line.modifiers.length} mods)` : ""}
+                        </li>
+                      ))}
+                    </ul>
                     {order.last_error && (
                       <div style={{ color: "#b91c1c", marginTop: 6, lineHeight: 1.4 }}>{order.last_error}</div>
                     )}

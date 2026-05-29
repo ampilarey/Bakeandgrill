@@ -36,6 +36,7 @@ export const PUBLIC_ENDPOINTS = {
   ORDERING_ELIGIBILITY:      '/ordering/eligibility',
   ORDERING_STATUS:           '/ordering/status',
   ORDERING_DELIVERY_STATUS:  '/ordering/delivery-status',
+  ORDERING_DELIVERY_FEE_PREVIEW: '/ordering/delivery-fee-preview',
   WAIT_TIME:                 '/wait-time',
 
   // Promo / referral validation that doesn't require auth

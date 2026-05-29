@@ -1157,8 +1157,8 @@ export function MenuPage() {
                           {item.sku && <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.sku}</div>}
                           {(() => {
                             const price = parseFloat(String(item.base_price));
-                            const level = menuItemMarginLevel(price, item.cost);
-                            const label = menuItemMarginLabel(price, item.cost);
+                            const level = menuItemMarginLevel(price, item.effective_cost ?? item.cost);
+                            const label = menuItemMarginLabel(price, item.effective_cost ?? item.cost);
                             if (!label || level === 'unknown' || level === 'ok') return null;
                             const style = MENU_MARGIN_COLORS[level];
                             return (

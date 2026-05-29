@@ -6,6 +6,7 @@ import {
   getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
   getCashierPerformanceReport, getProductMarginsReport, getStockDiscrepancyReport,
+  getHourlySalesReport, getStationPerformanceReport,
   fetchPosStaffOptions, fetchShiftHistory, fetchDevices,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
@@ -13,6 +14,7 @@ import {
   type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
   type CashierPerformanceReport, type ProductMarginsReport, type StockDiscrepancyReport,
+  type HourlySalesReport, type StationPerformanceReport,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -40,7 +42,7 @@ const DISCOUNT_TYPE_LABELS: Record<string, string> = {
   gift_card: 'Gift card', referral: 'Referral',
 };
 
-const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV', 'Cashier Performance', 'Product Margins', 'Stock Discrepancy'] as const;
+const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV', 'Cashier Performance', 'Product Margins', 'Stock Discrepancy', 'Hourly Sales', 'Station Performance'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -103,6 +105,8 @@ export function ReportsPage() {
   const [cashierPerf, setCashierPerf] = useState<CashierPerformanceReport | null>(null);
   const [productMargins, setProductMargins] = useState<ProductMarginsReport | null>(null);
   const [stockDiscrepancy, setStockDiscrepancy] = useState<StockDiscrepancyReport | null>(null);
+  const [hourlySales, setHourlySales] = useState<HourlySalesReport | null>(null);
+  const [stationPerf, setStationPerf] = useState<StationPerformanceReport | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -139,10 +143,12 @@ export function ReportsPage() {
       if (tab === 'Overrides')             setOverridesReport(await getManagerOverridesReport({ from, to }));
       if (tab === 'Stock Velocity')       setVelocityReport(await getStockVelocityReport({ from, to }));
       if (tab === 'Shift Variances')       setShiftVariances(await getShiftVariancesReport({ from, to }));
-      if (tab === 'Customer LTV')          setCustomerLtv(await getCustomerLtvReport());
+      if (tab === 'Customer LTV')          setCustomerLtv(await getCustomerLtvReport({ from, to }));
       if (tab === 'Cashier Performance')   setCashierPerf(await getCashierPerformanceReport({ from, to }));
       if (tab === 'Product Margins')       setProductMargins(await getProductMarginsReport());
       if (tab === 'Stock Discrepancy')     setStockDiscrepancy(await getStockDiscrepancyReport());
+      if (tab === 'Hourly Sales')          setHourlySales(await getHourlySalesReport({ from, to }));
+      if (tab === 'Station Performance')   setStationPerf(await getStationPerformanceReport({ from, to }));
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -160,7 +166,7 @@ export function ReportsPage() {
     fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
   }, []);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Hourly Sales' || tab === 'Station Performance';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {
@@ -920,7 +926,9 @@ export function ReportsPage() {
 
       {!loading && tab === 'Customer LTV' && customerLtv && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by lifetime spend</p>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            Top customers by spend{customerLtv.from && customerLtv.to ? ` (${customerLtv.from} – ${customerLtv.to})` : ''}
+          </p>
           {(customerLtv.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No customer orders yet.</p>
           ) : (
@@ -1028,6 +1036,77 @@ export function ReportsPage() {
                     <td style={S.td}>{row.type.replace(/_/g, ' ')}</td>
                     <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
                     <td style={S.td}>{row.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Hourly Sales' && hourlySales && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            Hourly sales ({hourlySales.from} – {hourlySales.to})
+          </p>
+          {(hourlySales.hours ?? []).every((h) => h.count === 0) ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No orders in this period.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Hour</th>
+                <th style={S.th}>Orders</th>
+                <th style={S.th}>Revenue</th>
+                <th style={S.th}>Avg order</th>
+                <th style={S.th}></th>
+              </tr></thead>
+              <tbody>
+                {hourlySales.hours.filter((h) => h.count > 0).map((row) => {
+                  const maxCount = Math.max(...hourlySales.hours.map((h) => h.count), 1);
+                  return (
+                    <tr key={row.hour}>
+                      <td style={S.td}>{row.label}</td>
+                      <td style={S.td}>{row.count}</td>
+                      <td style={S.td}>{mvr(row.revenue)}</td>
+                      <td style={S.td}>{mvr(row.avg_total)}</td>
+                      <td style={{ ...S.td, width: '30%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, background: '#F0EAE3', borderRadius: 4, height: 8 }}>
+                            <div style={S.bar((row.count / maxCount) * 100)} />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Station Performance' && stationPerf && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            Kitchen station performance ({stationPerf.from} – {stationPerf.to})
+          </p>
+          {(stationPerf.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed order lines in this period.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Station</th>
+                <th style={S.th}>Lines</th>
+                <th style={S.th}>Qty sold</th>
+                <th style={S.th}>Revenue</th>
+              </tr></thead>
+              <tbody>
+                {stationPerf.rows.map((row) => (
+                  <tr key={`${row.menu_group_id ?? 'none'}-${row.station}`}>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{row.station}</td>
+                    <td style={S.td}>{row.line_count}</td>
+                    <td style={S.td}>{row.qty}</td>
+                    <td style={S.td}>{mvr(row.revenue)}</td>
                   </tr>
                 ))}
               </tbody>

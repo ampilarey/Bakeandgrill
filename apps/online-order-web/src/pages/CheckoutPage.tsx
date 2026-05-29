@@ -220,7 +220,7 @@ export function CheckoutPage() {
   }, []);
 
   const {
-    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
+    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
@@ -708,7 +708,12 @@ export function CheckoutPage() {
         }}>
           ⭐ You&apos;re close to <strong>{loyaltyTierProgress.next_tier_name}</strong>
           {loyaltyTierProgress.points_to_next != null && loyaltyTierProgress.points_to_next > 0
-            ? <> — just <strong>{loyaltyTierProgress.points_to_next.toLocaleString()} more points</strong> after this order!</>
+            ? (() => {
+                const projected = Math.max(0, loyaltyTierProgress.points_to_next - earnPreviewPoints);
+                return projected > 0
+                  ? <> — about <strong>{projected.toLocaleString()} more points</strong> to reach it after this order!</>
+                  : <> — this order should unlock <strong>{loyaltyTierProgress.next_tier_name}</strong>!</>;
+              })()
             : '!'}
         </div>
       )}

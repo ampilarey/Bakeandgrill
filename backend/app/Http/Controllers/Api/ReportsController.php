@@ -231,9 +231,24 @@ class ReportsController extends Controller
 
     public function customerLtv(Request $request)
     {
+        [$from, $to] = $this->parseRange($request);
         $limit = min(50, max(5, (int) $request->input('limit', 20)));
 
-        return response()->json($this->reports->customerLtvTop($limit));
+        return response()->json($this->reports->customerLtvTop($from, $to, $limit));
+    }
+
+    public function hourlySales(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->hourlySales($from, $to));
+    }
+
+    public function stationPerformance(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->stationPerformance($from, $to));
     }
 
     public function cashierPerformance(Request $request)

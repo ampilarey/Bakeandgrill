@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchItems, setSalesChannel, type SalesChannel } from "../api/menu";
+import { fetchItems, fetchDeliveryFeePreview, setSalesChannel, type SalesChannel } from "../api/menu";
 import { useCart } from "../context/CartContext";
 import {
   applyPromoCode,
@@ -34,6 +34,7 @@ import {
   DEFAULT_LOYALTY_RATES,
   loyaltyAvailablePoints,
   maxRedeemPointsForSubtotalLaar,
+  estimateEarnPointsForSubtotalMvr,
   ratesFromApi,
   type LoyaltyRatesConfig,
 } from '../utils/loyalty';
@@ -154,6 +155,7 @@ export function useCheckout() {
   const [loyaltyAccount, setLoyaltyAccount] = useState<LoyaltyAccount | null>(null);
   const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyRates, setLoyaltyRates] = useState<LoyaltyRatesConfig>(DEFAULT_LOYALTY_RATES);
+  const [earnRatePerMvr, setEarnRatePerMvr] = useState(1);
   const [loyaltyProgramMessage, setLoyaltyProgramMessage] = useState('');
 
   // Sync token when AuthContext recovers session via Blade cookie (e.g. after BML payment
@@ -247,16 +249,6 @@ export function useCheckout() {
   }, [orderType, pruneCartToAllowedItemIds]);
 
   useEffect(() => {
-    const rawFee = parseInt(import.meta.env.VITE_DELIVERY_FEE_MVR ?? '20', 10);
-    if (isNaN(rawFee) || rawFee < 0) {
-      if (import.meta.env.DEV) console.error('VITE_DELIVERY_FEE_MVR must be a non-negative integer — falling back to 20 MVR');
-      setDeliveryFee(20 * 100);
-    } else {
-      setDeliveryFee(rawFee * 100);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!token) return;
     let cancelled = false;
 
@@ -311,6 +303,7 @@ export function useCheckout() {
       }
       if (!cancelled && r.rates) {
         setLoyaltyRates(ratesFromApi(r.rates));
+        setEarnRatePerMvr(r.rates.earn_per_mvr ?? 1);
       }
       if (!cancelled && r.tier_progress) {
         setLoyaltyTierProgress(r.tier_progress);
@@ -344,6 +337,34 @@ export function useCheckout() {
       (item.modifiers ?? []).reduce((ms, m) => ms + Math.round(m.price * 100) * item.quantity, 0),
     0,
   );
+
+  useEffect(() => {
+    if (orderType !== 'delivery') {
+      setDeliveryFee(0);
+      return;
+    }
+    const island = delivery.island.trim();
+    if (!island) {
+      setDeliveryFee(0);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      fetchDeliveryFeePreview(island, subtotalLaar)
+        .then((preview) => {
+          if (!cancelled) setDeliveryFee(preview.fee_laar);
+        })
+        .catch(() => {
+          if (!cancelled) setDeliveryFee(0);
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [orderType, delivery.island, subtotalLaar]);
 
   useEffect(() => {
     if (!token || cart.length === 0) return;
@@ -407,6 +428,11 @@ export function useCheckout() {
   const scTaxLaar = serviceChargeTaxLaar(serviceChargeConfig, serviceChargeLaar, weightedTaxRatePercent);
   const taxLaar = itemTaxLaar + scTaxLaar;
   const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxLaar + deliveryFeeLaar;
+
+  const earnPreviewPoints = useMemo(
+    () => estimateEarnPointsForSubtotalMvr(discountedSubtotalLaar / 100, earnRatePerMvr),
+    [discountedSubtotalLaar, earnRatePerMvr],
+  );
 
   useEffect(() => {
     if (useLoyalty && loyaltyRedeemPoints < loyaltyRates.minRedeemPoints) {
@@ -825,7 +851,7 @@ export function useCheckout() {
   };
 
   return {
-    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
+    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,

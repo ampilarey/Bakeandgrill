@@ -5,7 +5,7 @@ import { fetchMenuGroups, fetchAdminItems, toggleItemAvailability } from '../api
 import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSse } from '../hooks/useSse';
-import { playChime } from '../utils/audio';
+import { playChime, playLateAlert } from '../utils/audio';
 
 function elapsed(iso: string): string {
   const t = Date.parse(iso);
@@ -55,6 +55,7 @@ export function KDSPage() {
   const [itemPrepMap, setItemPrepMap] = useState<Record<number, number>>({});
   const [eightySixing, setEightySixing] = useState<number | null>(null);
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
+  const lateAlertedRef = useRef<Set<number>>(new Set());
   const isFirstKdsLoad    = useRef(true);
   const kdsRef = useRef<HTMLDivElement>(null);
 
@@ -93,12 +94,21 @@ export function KDSPage() {
         setTimeout(() => setNewTicketFlash(false), 2500);
       }
       isFirstKdsLoad.current = false;
+
+      const pendingLike = incoming.filter((t) => ['pending', 'paid', 'partial'].includes(t.status));
+      for (const ticket of pendingLike) {
+        const target = ticketPrepTarget(ticket, itemPrepMap);
+        if (minutesSince(ticket.created_at) >= target && !lateAlertedRef.current.has(ticket.id)) {
+          lateAlertedRef.current.add(ticket.id);
+          playLateAlert();
+        }
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [itemPrepMap]);
 
   // Initial load
   useEffect(() => { void load(); }, [load]);
