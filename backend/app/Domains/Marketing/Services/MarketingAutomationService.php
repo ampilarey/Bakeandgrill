@@ -28,6 +28,12 @@ final class MarketingAutomationService
                 'Bake & Grill: You left items in your cart. Finish your order: {url}',
             ),
             'abandoned_cart_ttl_days' => max(1, $this->int('marketing_abandoned_cart_ttl_days', 7)),
+            'tier_milestone_enabled' => $this->bool('marketing_tier_milestone_enabled', false),
+            'tier_milestone_within' => max(10, $this->int('marketing_tier_milestone_within', 50)),
+            'tier_milestone_sms_template' => $this->string(
+                'marketing_tier_milestone_sms_template',
+                "You're only {points_left} points away from {next_tier} at Bake & Grill! Order today: {url}",
+            ),
         ];
     }
 
@@ -42,6 +48,9 @@ final class MarketingAutomationService
             'abandoned_cart_delay_minutes' => ['marketing_abandoned_cart_delay_minutes', 'int'],
             'abandoned_cart_sms_template' => ['marketing_abandoned_cart_sms_template', 'string'],
             'abandoned_cart_ttl_days' => ['marketing_abandoned_cart_ttl_days', 'int'],
+            'tier_milestone_enabled' => ['marketing_tier_milestone_enabled', 'boolean'],
+            'tier_milestone_within' => ['marketing_tier_milestone_within', 'int'],
+            'tier_milestone_sms_template' => ['marketing_tier_milestone_sms_template', 'string'],
         ];
 
         foreach ($map as $field => [$key, $type]) {

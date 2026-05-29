@@ -26,6 +26,9 @@ class AdminMarketingAutomationController extends Controller
             'abandoned_cart_delay_minutes' => 'sometimes|integer|min:15|max:10080',
             'abandoned_cart_sms_template' => 'sometimes|string|max:500',
             'abandoned_cart_ttl_days' => 'sometimes|integer|min:1|max:90',
+            'tier_milestone_enabled' => 'sometimes|boolean',
+            'tier_milestone_within' => 'sometimes|integer|min:10|max:5000',
+            'tier_milestone_sms_template' => 'sometimes|string|max:500',
         ]);
 
         return response()->json([

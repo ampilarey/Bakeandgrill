@@ -32,7 +32,14 @@ function minutesSince(iso: string): number {
   return Math.floor((Date.now() - t) / 60000);
 }
 
-const PREP_TARGET_MIN = 12;
+const PREP_TARGET_DEFAULT = 12;
+
+function ticketPrepTarget(ticket: KdsTicket, itemPrepMap: Record<number, number>): number {
+  const times = (ticket.items ?? [])
+    .map((line) => (line.item_id != null ? itemPrepMap[line.item_id] : null))
+    .filter((v): v is number => v != null && v > 0);
+  return times.length ? Math.max(...times) : PREP_TARGET_DEFAULT;
+}
 
 export function KDSPage() {
     usePageTitle('Kitchen Display');
@@ -45,6 +52,7 @@ export function KDSPage() {
   const [stationFilter, setStationFilter] = useState<number | 'all'>('all');
   const [menuGroups, setMenuGroups] = useState<{ id: number; name: string }[]>([]);
   const [itemGroupMap, setItemGroupMap] = useState<Record<number, number>>({});
+  const [itemPrepMap, setItemPrepMap] = useState<Record<number, number>>({});
   const [eightySixing, setEightySixing] = useState<number | null>(null);
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstKdsLoad    = useRef(true);
@@ -99,10 +107,13 @@ export function KDSPage() {
     void fetchMenuGroups().then((r) => setMenuGroups(r.data ?? [])).catch(() => undefined);
     void fetchAdminItems({ per_page: 500 }).then((r) => {
       const map: Record<number, number> = {};
+      const prepMap: Record<number, number> = {};
       for (const item of r.data ?? []) {
         if (item.id && item.menu_group_id) map[item.id] = item.menu_group_id;
+        if (item.id && item.prep_time_minutes) prepMap[item.id] = item.prep_time_minutes;
       }
       setItemGroupMap(map);
+      setItemPrepMap(prepMap);
     }).catch(() => undefined);
   }, []);
 
@@ -227,7 +238,7 @@ export function KDSPage() {
         <StatCard label="Pending avg wait" value={`${avgWait(pending)}m`} accent="#f59e0b" />
         <StatCard label="Cooking avg wait" value={`${avgWait(cooking)}m`} accent="#3b82f6" />
         <StatCard label="Ready queue" value={String(ready.length)} accent="#22c55e" />
-        <StatCard label="Over prep target" value={String([...pending, ...cooking].filter((t) => minutesSince(t.created_at) >= PREP_TARGET_MIN).length)} accent="#ef4444" />
+        <StatCard label="Over prep target" value={String([...pending, ...cooking].filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t, itemPrepMap)).length)} accent="#ef4444" />
       </div>
 
       {loading && tickets.length === 0 ? (
@@ -237,7 +248,7 @@ export function KDSPage() {
           <Column title="Pending" items={pending} color="#f59e0b" flash={newTicketFlash}>
             {(t) => (
               <>
-                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} />
+                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
                 <Btn
                   small onClick={() => act(t.id, kdsStart)}
                   disabled={acting === t.id}
@@ -252,7 +263,7 @@ export function KDSPage() {
           <Column title="Cooking" items={cooking} color="#3b82f6">
             {(t) => (
               <>
-                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} />
+                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
                 {/*
                   Marking ready moved to POS — cashier owns the
                   "Ready for pickup!" SMS so the call to notify the
@@ -289,7 +300,7 @@ export function KDSPage() {
           <Column title="Ready" items={ready} color="#22c55e">
             {(t) => (
               <>
-                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} />
+                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <Btn
                     small onClick={() => act(t.id, kdsBump)}
@@ -319,12 +330,14 @@ function TicketHeader({
   ticket,
   on86,
   eightySixing,
+  prepTargetMin = PREP_TARGET_DEFAULT,
 }: {
   ticket: KdsTicket;
   on86?: (itemId: number) => void;
   eightySixing?: number | null;
+  prepTargetMin?: number;
 }) {
-  const overdue = minutesSince(ticket.created_at) >= PREP_TARGET_MIN
+  const overdue = minutesSince(ticket.created_at) >= prepTargetMin
     && !['ready', 'completed'].includes(ticket.status);
 
   return (

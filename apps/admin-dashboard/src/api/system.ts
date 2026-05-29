@@ -35,6 +35,13 @@ export interface SystemHealthDetailed {
     last_run: string | null;
     stale: boolean;
   }>;
+  alert_inbox?: Array<{
+    type: string;
+    severity: 'warning' | 'critical' | string;
+    count: number;
+    message: string;
+    link: string | null;
+  }>;
 }
 
 export async function getSystemHealthDetailed(): Promise<SystemHealthDetailed> {

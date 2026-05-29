@@ -5,12 +5,14 @@ import {
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
   getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
+  getCashierPerformanceReport, getProductMarginsReport, getStockDiscrepancyReport,
   fetchPosStaffOptions, fetchShiftHistory, fetchDevices,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
   type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
+  type CashierPerformanceReport, type ProductMarginsReport, type StockDiscrepancyReport,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -38,7 +40,7 @@ const DISCOUNT_TYPE_LABELS: Record<string, string> = {
   gift_card: 'Gift card', referral: 'Referral',
 };
 
-const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV'] as const;
+const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV', 'Cashier Performance', 'Product Margins', 'Stock Discrepancy'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -98,6 +100,9 @@ export function ReportsPage() {
   const [velocityReport, setVelocityReport] = useState<StockVelocityReport | null>(null);
   const [shiftVariances, setShiftVariances] = useState<ShiftVariancesReport | null>(null);
   const [customerLtv, setCustomerLtv] = useState<CustomerLtvReport | null>(null);
+  const [cashierPerf, setCashierPerf] = useState<CashierPerformanceReport | null>(null);
+  const [productMargins, setProductMargins] = useState<ProductMarginsReport | null>(null);
+  const [stockDiscrepancy, setStockDiscrepancy] = useState<StockDiscrepancyReport | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -135,6 +140,9 @@ export function ReportsPage() {
       if (tab === 'Stock Velocity')       setVelocityReport(await getStockVelocityReport({ from, to }));
       if (tab === 'Shift Variances')       setShiftVariances(await getShiftVariancesReport({ from, to }));
       if (tab === 'Customer LTV')          setCustomerLtv(await getCustomerLtvReport());
+      if (tab === 'Cashier Performance')   setCashierPerf(await getCashierPerformanceReport({ from, to }));
+      if (tab === 'Product Margins')       setProductMargins(await getProductMarginsReport());
+      if (tab === 'Stock Discrepancy')     setStockDiscrepancy(await getStockDiscrepancyReport());
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -152,7 +160,7 @@ export function ReportsPage() {
     fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
   }, []);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {
@@ -930,6 +938,96 @@ export function ReportsPage() {
                     <td style={S.td}>{row.order_count}</td>
                     <td style={{ ...S.td, fontWeight: 700 }}>{mvr(row.total_spent)}</td>
                     <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.last_order ? new Date(row.last_order).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Cashier Performance' && cashierPerf && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            Cashier performance ({cashierPerf.from} – {cashierPerf.to})
+          </p>
+          {(cashierPerf.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed orders in this period.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Cashier</th>
+                <th style={S.th}>Orders</th>
+                <th style={S.th}>Sales</th>
+                <th style={S.th}>Avg order</th>
+                <th style={S.th}>Voids</th>
+              </tr></thead>
+              <tbody>
+                {cashierPerf.rows.map((row) => (
+                  <tr key={row.user_id ?? row.name}>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                    <td style={S.td}>{row.orders_count}</td>
+                    <td style={S.td}>{mvr(row.total)}</td>
+                    <td style={S.td}>{mvr(row.avg_order)}</td>
+                    <td style={{ ...S.td, color: row.voids_count > 0 ? '#ef4444' : '#1C1408' }}>{row.voids_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Product Margins' && productMargins && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Menu item margins</p>
+          {(productMargins.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No menu items found.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Item</th>
+                <th style={S.th}>Category</th>
+                <th style={S.th}>Price</th>
+                <th style={S.th}>Cost</th>
+                <th style={S.th}>Margin</th>
+              </tr></thead>
+              <tbody>
+                {productMargins.rows.map((row) => (
+                  <tr key={row.item_id}>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                    <td style={S.td}>{row.category ?? '—'}</td>
+                    <td style={S.td}>{mvr(row.price)}</td>
+                    <td style={S.td}>{row.cost != null ? mvr(row.cost) : '—'}</td>
+                    <td style={{ ...S.td, fontWeight: 700, color: row.margin_pct != null && row.margin_pct < 30 ? '#ef4444' : '#16a34a' }}>
+                      {row.margin_pct != null ? `${row.margin_pct}%` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Stock Discrepancy' && stockDiscrepancy && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Stock anomalies</p>
+          {(stockDiscrepancy.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No discrepancies detected.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Type</th>
+                <th style={S.th}>Name</th>
+                <th style={S.th}>Detail</th>
+              </tr></thead>
+              <tbody>
+                {stockDiscrepancy.rows.map((row) => (
+                  <tr key={`${row.type}-${row.id}`}>
+                    <td style={S.td}>{row.type.replace(/_/g, ' ')}</td>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                    <td style={S.td}>{row.detail}</td>
                   </tr>
                 ))}
               </tbody>

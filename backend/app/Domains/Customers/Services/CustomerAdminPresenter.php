@@ -15,6 +15,7 @@ final class CustomerAdminPresenter
             'name' => $c->name,
             'phone' => $c->phone,
             'email' => $c->email,
+            'date_of_birth' => $c->date_of_birth?->format('Y-m-d'),
             'tier' => $c->tier,
             'loyalty_points' => $c->loyalty_points,
             'is_active' => (bool) $c->is_active,

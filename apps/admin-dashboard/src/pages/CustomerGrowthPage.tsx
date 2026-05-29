@@ -260,11 +260,19 @@ export function CustomerGrowthPage() {
               <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Abandoned cart SMS template</label>
               <textarea value={automation.abandoned_cart_sms_template} onChange={(e) => setAutomation({ ...automation, abandoned_cart_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
 
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginTop: 8 }}>
+                <input type="checkbox" checked={automation.tier_milestone_enabled} onChange={(e) => setAutomation({ ...automation, tier_milestone_enabled: e.target.checked })} />
+                Tier milestone SMS (near next loyalty tier)
+              </label>
+              <Input label="Points within next tier" type="number" value={String(automation.tier_milestone_within)} onChange={(v) => setAutomation({ ...automation, tier_milestone_within: Number(v) })} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Tier milestone SMS template</label>
+              <textarea value={automation.tier_milestone_sms_template} onChange={(e) => setAutomation({ ...automation, tier_milestone_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
+
               <Btn onClick={() => void saveAutomation()} disabled={automationSaving}>
                 {automationSaving ? 'Saving…' : 'Save automation settings'}
               </Btn>
               <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>
-                Only customers who have not opted out of SMS receive these messages. One SMS per birthday per year and one per cart snapshot.
+                Only customers who have not opted out of SMS receive these messages. One SMS per birthday per year, one per cart snapshot, and one tier milestone SMS per customer per day.
               </p>
             </div>
           )}

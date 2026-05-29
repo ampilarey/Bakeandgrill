@@ -207,6 +207,9 @@ export type MarketingAutomationSettings = {
   abandoned_cart_delay_minutes: number;
   abandoned_cart_sms_template: string;
   abandoned_cart_ttl_days: number;
+  tier_milestone_enabled: boolean;
+  tier_milestone_within: number;
+  tier_milestone_sms_template: string;
 };
 
 export async function fetchMarketingAutomation(): Promise<{ settings: MarketingAutomationSettings }> {

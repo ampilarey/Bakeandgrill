@@ -128,7 +128,7 @@ export async function getAdminCustomer(id: number): Promise<{ customer: AdminCus
 
 export async function updateAdminCustomer(
   id: number,
-  data: Partial<Pick<AdminCustomer, 'name' | 'email' | 'internal_notes' | 'is_active' | 'sms_opt_out'>>,
+  data: Partial<Pick<AdminCustomer, 'name' | 'email' | 'internal_notes' | 'is_active' | 'sms_opt_out'>> & { date_of_birth?: string | null },
 ): Promise<{ customer: AdminCustomer }> {
   return req(`/admin/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }

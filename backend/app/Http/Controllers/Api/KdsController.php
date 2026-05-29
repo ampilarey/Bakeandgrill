@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Orders\DTOs\OrderCompletedData;
 use App\Domains\Orders\Events\OrderCompleted;
 use App\Http\Controllers\Controller;
+use App\Models\Item;
+use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Services\AuditLogService;
 use App\Services\OrderStatusMachine;
@@ -44,12 +46,53 @@ class KdsController extends Controller
             $statuses = $allowed;
         }
 
-        $orders = Order::with(['items.modifiers'])
+        $orders = Order::with(['items.modifiers', 'items.item:id,menu_group_id,prep_time_minutes,is_available'])
             ->whereIn('status', $statuses)
             ->orderBy('created_at')
-            ->get();
+            ->get()
+            ->map(fn (Order $order) => $this->formatOrder($order));
 
         return response()->json(['orders' => $orders]);
+    }
+
+    public function menuGroups(): JsonResponse
+    {
+        $groups = MenuGroup::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json(['data' => $groups]);
+    }
+
+    public function toggleItemAvailability(int $itemId): JsonResponse
+    {
+        $item = Item::findOrFail($itemId);
+        $item->update(['is_available' => !$item->is_available]);
+
+        return response()->json([
+            'message' => 'Item availability updated',
+            'item' => [
+                'id' => $item->id,
+                'is_available' => (bool) $item->is_available,
+            ],
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function formatOrder(Order $order): array
+    {
+        $data = $order->toArray();
+        $data['items'] = $order->items->map(function ($line) {
+            $row = $line->toArray();
+            $row['menu_group_id'] = $line->item?->menu_group_id;
+            $row['prep_time_minutes'] = $line->item?->prep_time_minutes;
+            unset($row['item']);
+
+            return $row;
+        })->values()->all();
+
+        return $data;
     }
 
     public function start(Request $request, int $id): JsonResponse

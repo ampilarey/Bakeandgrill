@@ -169,6 +169,11 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::patch('/settings', [App\Http\Controllers\Api\DeliverySettingsController::class, 'update']);
     });
 
+    Route::prefix('admin/ops')->middleware('permission:settings.update')->group(function () {
+        Route::get('/alerts', [App\Http\Controllers\Api\OpsAlertsController::class, 'show']);
+        Route::patch('/alerts', [App\Http\Controllers\Api\OpsAlertsController::class, 'update']);
+    });
+
     Route::prefix('admin/settings/service-charge')->middleware('permission:settings.update')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'show']);
         Route::put('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'update']);
@@ -254,6 +259,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // staff token alone can't progress the queue from an off-prem
     // browser.
     Route::get('/kds/orders', [KdsController::class, 'index']);
+    Route::get('/kds/menu-groups', [KdsController::class, 'menuGroups']);
+    Route::post('/kds/items/{id}/86', [KdsController::class, 'toggleItemAvailability']);
     Route::post('/kds/orders/{id}/start', [KdsController::class, 'start'])->middleware('device.active');
     Route::post('/kds/orders/{id}/bump', [KdsController::class, 'bump'])->middleware('device.active');
     Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall'])->middleware('device.active');
@@ -377,6 +384,9 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/reports/driver-settlement', [ReportsController::class, 'driverSettlement']);
         Route::get('/reports/shift-variances', [ReportsController::class, 'shiftVariances']);
         Route::get('/reports/customer-ltv', [ReportsController::class, 'customerLtv']);
+        Route::get('/reports/cashier-performance', [ReportsController::class, 'cashierPerformance']);
+        Route::get('/reports/product-margins', [ReportsController::class, 'productMargins']);
+        Route::get('/reports/stock-discrepancy', [ReportsController::class, 'stockDiscrepancy']);
         Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
         Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');
         Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');

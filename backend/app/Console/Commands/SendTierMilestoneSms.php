@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Marketing\Services\MarketingAutomationService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\LoyaltyAccount;
@@ -12,15 +13,26 @@ use Illuminate\Console\Command;
 
 class SendTierMilestoneSms extends Command
 {
-    protected $signature = 'marketing:send-tier-milestones {--within=50 : Points within next tier to notify}';
+    protected $signature = 'marketing:send-tier-milestones {--within= : Override points-within window}';
 
     protected $description = 'SMS customers who are close to their next loyalty tier';
 
-    public function handle(LoyaltySettingsService $settings, SmsService $sms): int
-    {
-        $within = max(10, (int) $this->option('within'));
+    public function handle(
+        LoyaltySettingsService $settings,
+        MarketingAutomationService $marketing,
+        SmsService $sms,
+    ): int {
+        $automation = $marketing->settings();
+        if (!$automation['tier_milestone_enabled']) {
+            $this->info('Tier milestone SMS disabled.');
+
+            return self::SUCCESS;
+        }
+
+        $within = max(10, (int) ($this->option('within') ?: $automation['tier_milestone_within']));
         $sent = 0;
         $today = now()->toDateString();
+        $orderUrl = $marketing->orderUrl();
 
         if (!$settings->tiersEnabled()) {
             $this->info('Loyalty tiers disabled.');
@@ -32,7 +44,7 @@ class SendTierMilestoneSms extends Command
             ->with('customer')
             ->whereHas('customer', fn ($q) => $q->where('sms_opt_out', false)->whereNotNull('phone')->where('phone', '!=', ''))
             ->orderBy('id')
-            ->chunkById(100, function ($accounts) use ($settings, $sms, $within, $today, &$sent): void {
+            ->chunkById(100, function ($accounts) use ($settings, $marketing, $sms, $within, $today, $orderUrl, &$sent): void {
                 foreach ($accounts as $account) {
                     $customer = $account->customer;
                     if ($customer === null) {
@@ -50,7 +62,11 @@ class SendTierMilestoneSms extends Command
                     }
 
                     $nextTier = (string) ($progress['next_tier_name'] ?? 'the next tier');
-                    $message = "You're only {$ptsLeft} points away from {$nextTier} at Bake & Grill! Order today: " . config('app.url');
+                    $message = $marketing->interpolate($marketing->settings()['tier_milestone_sms_template'], [
+                        'points_left' => $ptsLeft,
+                        'next_tier' => $nextTier,
+                        'url' => $orderUrl,
+                    ]);
 
                     $sms->send(new SmsMessage(
                         to: (string) $customer->phone,

@@ -2,14 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bumpOrder,
   fetchKdsOrders,
+  fetchKdsMenuGroups,
+  markItem86,
   recallOrder,
   staffLogin,
   startOrder,
+  type KdsMenuGroup,
   type KdsOrder,
 } from "./api";
 import { useKdsSse } from "./hooks/useKdsSse";
 import { isAudioEnabled, playChime, playLateAlert, setAudioEnabled } from "./utils/audio";
-import { elapsed, isLateTicket, urgencyColor } from "./utils/kdsDisplay";
+import { elapsed, isLateTicket, minutesSince, urgencyColor } from "./utils/kdsDisplay";
+
+const PREP_TARGET_DEFAULT = 12;
+
+function ticketPrepTarget(order: KdsOrder): number {
+  const times = order.items
+    .map((line) => line.prep_time_minutes)
+    .filter((v): v is number => v != null && v > 0);
+  return times.length ? Math.max(...times) : PREP_TARGET_DEFAULT;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -40,6 +52,9 @@ function App() {
   const [newTicketFlash, setNewTicketFlash] = useState(false);
   const [audioOn, setAudioOn] = useState(isAudioEnabled);
   const [clockTick, setClockTick] = useState(0);
+  const [stationFilter, setStationFilter] = useState<number | "all">("all");
+  const [menuGroups, setMenuGroups] = useState<KdsMenuGroup[]>([]);
+  const [eightySixing, setEightySixing] = useState<number | null>(null);
 
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstLoadRef = useRef(true);
@@ -55,8 +70,12 @@ function App() {
 
   const load = useCallback(async (authToken: string) => {
     try {
-      const data = await fetchKdsOrders(authToken);
+      const [data, groups] = await Promise.all([
+        fetchKdsOrders(authToken),
+        fetchKdsMenuGroups(authToken).catch(() => [] as KdsMenuGroup[]),
+      ]);
       setOrders(data);
+      setMenuGroups(groups);
       setErrorMessage("");
 
       const pendingLike = data.filter((o) =>
@@ -75,7 +94,8 @@ function App() {
       isFirstLoadRef.current = false;
 
       for (const order of pendingLike) {
-        if (isLateTicket(order.created_at) && !lateAlertedRef.current.has(order.id)) {
+        const target = ticketPrepTarget(order);
+        if (isLateTicket(order.created_at, target) && !lateAlertedRef.current.has(order.id)) {
           lateAlertedRef.current.add(order.id);
           playLateAlert();
         }
@@ -127,20 +147,41 @@ function App() {
     return () => window.clearInterval(timerId);
   }, [token]);
 
+  const filteredOrders = useMemo(() => {
+    if (stationFilter === "all") return orders;
+    return orders.filter((order) =>
+      order.items.some((line) => line.menu_group_id === stationFilter),
+    );
+  }, [orders, stationFilter]);
+
   const pendingOrders = useMemo(
-    () => orders.filter((o) => ["pending", "paid", "partial"].includes(o.status)),
-    [orders],
+    () => filteredOrders.filter((o) => ["pending", "paid", "partial"].includes(o.status)),
+    [filteredOrders],
   );
   const inProgressOrders = useMemo(
-    () => orders.filter((o) => ["in_progress", "preparing"].includes(o.status)),
-    [orders],
+    () => filteredOrders.filter((o) => ["in_progress", "preparing"].includes(o.status)),
+    [filteredOrders],
   );
   const readyOrders = useMemo(
-    () => orders.filter((o) => o.status === "ready"),
-    [orders],
+    () => filteredOrders.filter((o) => o.status === "ready"),
+    [filteredOrders],
   );
 
+  const avgWait = (items: KdsOrder[]) =>
+    items.length
+      ? Math.round(items.reduce((sum, t) => sum + minutesSince(t.created_at), 0) / items.length)
+      : 0;
+
   void clockTick;
+
+  const handle86 = (itemId: number) => {
+    if (!token) return;
+    setEightySixing(itemId);
+    markItem86(token, itemId)
+      .then(() => void load(token))
+      .catch(() => setErrorMessage("Failed to mark item sold out."))
+      .finally(() => setEightySixing(null));
+  };
 
   const handleLogin = async () => {
     setErrorMessage("");
@@ -325,6 +366,10 @@ function App() {
 
   const renderTicket = (order: KdsOrder) => {
     const urgency = urgencyColor(order.created_at);
+    const prepTarget = ticketPrepTarget(order);
+    const overdue = minutesSince(order.created_at) >= prepTarget
+      && !["ready", "completed"].includes(order.status);
+
     return (
       <div
         key={order.id}
@@ -337,6 +382,11 @@ function App() {
             <p className="text-lg font-semibold" style={{ color: "#2A1E0C" }}>
               #{order.order_number}
             </p>
+            {overdue && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444", background: "#FEE2E2", padding: "2px 6px", borderRadius: 999 }}>
+                OVERDUE
+              </span>
+            )}
             {order.delivery_island && (
               <p className="text-xs" style={{ color: "#D4813A" }}>🛵 {order.delivery_island}</p>
             )}
@@ -353,13 +403,28 @@ function App() {
         </div>
         <div className="space-y-2">
           {order.items.map((item) => (
-            <div key={item.id} className="text-sm" style={{ color: "#2A1E0C" }}>
-              <span className="font-semibold">{item.quantity}x</span> {item.item_name}
-              {item.modifiers && item.modifiers.length > 0 && (
-                <div className="text-xs mt-1" style={{ color: "#8B7355" }}>
-                  {item.modifiers.map((mod) => mod.modifier_name).join(", ")}
-                </div>
-              )}
+            <div key={item.id} className="text-sm flex justify-between gap-2" style={{ color: "#2A1E0C" }}>
+              <div>
+                <span className="font-semibold">{item.quantity}x</span> {item.item_name}
+                {item.modifiers && item.modifiers.length > 0 && (
+                  <div className="text-xs mt-1" style={{ color: "#8B7355" }}>
+                    {item.modifiers.map((mod) => mod.modifier_name).join(", ")}
+                  </div>
+                )}
+              </div>
+              {item.item_id ? (
+                <button
+                  type="button"
+                  onClick={() => handle86(item.item_id!)}
+                  disabled={eightySixing === item.item_id}
+                  style={{
+                    fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6,
+                    border: "1px solid #FECACA", background: "#FEF2F2", color: "#991B1B", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  {eightySixing === item.item_id ? "…" : "86"}
+                </button>
+              ) : null}
             </div>
           ))}
         </div>
@@ -474,6 +539,45 @@ function App() {
           {errorMessage}
         </div>
       )}
+
+      <div style={{ display: "flex", gap: 12, padding: "12px 16px 0", flexWrap: "wrap", alignItems: "center" }}>
+        <label style={{ fontSize: 13, color: "#8B7355", display: "flex", alignItems: "center", gap: 8 }}>
+          Station
+          <select
+            value={stationFilter === "all" ? "all" : String(stationFilter)}
+            onChange={(e) => setStationFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #EDE4D4", fontFamily: "inherit" }}
+          >
+            <option value="all">All stations</option>
+            {menuGroups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 12,
+        padding: "12px 16px",
+      }}>
+        {[
+          { label: "Pending avg wait", value: `${avgWait(pendingOrders)}m`, color: "#f59e0b" },
+          { label: "Cooking avg wait", value: `${avgWait(inProgressOrders)}m`, color: "#3b82f6" },
+          { label: "Ready queue", value: String(readyOrders.length), color: "#22c55e" },
+          {
+            label: "Over prep target",
+            value: String([...pendingOrders, ...inProgressOrders].filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t)).length),
+            color: "#ef4444",
+          },
+        ].map((stat) => (
+          <div key={stat.label} style={{ background: "#fff", border: "1px solid #EDE4D4", borderRadius: 12, padding: "10px 12px" }}>
+            <p style={{ margin: 0, fontSize: 11, color: "#8B7355" }}>{stat.label}</p>
+            <p style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 800, color: stat.color }}>{stat.value}</p>
+          </div>
+        ))}
+      </div>
 
       <main className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:p-6 lg:grid-cols-3">
         <Column title="Pending" items={pendingOrders} flash={newTicketFlash} />

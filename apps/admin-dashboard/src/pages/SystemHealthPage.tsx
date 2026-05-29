@@ -85,6 +85,36 @@ export function SystemHealthPage() {
             </div>
           </div>
 
+          {(data.alert_inbox?.length ?? 0) > 0 && (
+            <>
+              <SectionLabel>Alert inbox</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                {data.alert_inbox!.map((alert) => (
+                  <Card key={alert.type} style={{ padding: '12px 16px', borderLeft: `4px solid ${alert.severity === 'critical' ? '#ef4444' : '#f59e0b'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{alert.message}</p>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>{alert.count} item(s) · {alert.severity}</p>
+                      </div>
+                      {alert.link && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(alert.link!)}
+                          style={{
+                            padding: '6px 12px', borderRadius: 8, border: '1px solid #E8E0D8',
+                            background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#D4813A',
+                          }}
+                        >
+                          Review →
+                        </button>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+
           <SectionLabel>Signals (24h)</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
             <StatCard

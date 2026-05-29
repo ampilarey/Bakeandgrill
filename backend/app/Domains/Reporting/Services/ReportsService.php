@@ -7,6 +7,7 @@ namespace App\Domains\Reporting\Services;
 use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\InventoryItem;
+use App\Models\Item;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -648,5 +649,145 @@ class ReportsService
                 'last_order' => $r->last_order,
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * Cashier / staff sales performance for completed orders.
+     *
+     * @return array{from: string, to: string, rows: list<array<string, mixed>>}
+     */
+    public function cashierPerformance(Carbon $from, Carbon $to): array
+    {
+        $sales = Order::query()
+            ->leftJoin('users', 'users.id', '=', 'orders.user_id')
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->where('orders.status', 'completed')
+            ->selectRaw('orders.user_id, users.name, COUNT(*) as orders_count, COALESCE(SUM(orders.total),0) as total, COALESCE(AVG(orders.total),0) as avg_order')
+            ->groupBy('orders.user_id', 'users.name')
+            ->get()
+            ->keyBy('user_id');
+
+        $voids = AuditLog::query()
+            ->where('action', 'order.cancelled')
+            ->whereBetween('created_at', [$from, $to])
+            ->select('user_id', DB::raw('COUNT(*) as voids_count'))
+            ->groupBy('user_id')
+            ->pluck('voids_count', 'user_id');
+
+        $rows = $sales->map(function ($row) use ($voids) {
+            $userId = $row->user_id !== null ? (int) $row->user_id : null;
+            $ordersCount = (int) $row->orders_count;
+            $total = (float) $row->total;
+
+            return [
+                'user_id' => $userId,
+                'name' => $row->name ?? 'Unassigned',
+                'orders_count' => $ordersCount,
+                'total' => round($total, 2),
+                'avg_order' => round((float) $row->avg_order, 2),
+                'voids_count' => (int) ($voids[$row->user_id] ?? 0),
+            ];
+        })->sortByDesc('total')->values()->all();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * Menu item margin snapshot using configured cost vs base price.
+     *
+     * @return array{rows: list<array{item_id: int, name: string, price: float, cost: float|null, margin_pct: float|null, category: string|null}>}
+     */
+    public function productMargins(int $limit = 100): array
+    {
+        $limit = min(200, max(10, $limit));
+
+        $rows = Item::query()
+            ->with('category:id,name')
+            ->where('is_available', true)
+            ->orderBy('name')
+            ->limit($limit)
+            ->get(['id', 'name', 'base_price', 'cost', 'category_id', 'has_variants']);
+
+        return [
+            'rows' => $rows->map(function (Item $item) {
+                $price = $item->displayPrice();
+                $cost = $item->cost !== null ? (float) $item->cost : null;
+                $marginPct = ($cost !== null && $price > 0)
+                    ? round((($price - $cost) / $price) * 100, 1)
+                    : null;
+
+                return [
+                    'item_id' => $item->id,
+                    'name' => (string) $item->name,
+                    'price' => round($price, 2),
+                    'cost' => $cost !== null ? round($cost, 2) : null,
+                    'margin_pct' => $marginPct,
+                    'category' => $item->category?->name,
+                ];
+            })->sortByDesc(fn (array $row) => $row['margin_pct'] ?? -999)->values()->all(),
+        ];
+    }
+
+    /**
+     * Stock anomalies: negative inventory, sold-out-but-listed, below threshold.
+     *
+     * @return array{rows: list<array{type: string, id: int, name: string, detail: string}>}
+     */
+    public function stockDiscrepancy(): array
+    {
+        $rows = [];
+
+        InventoryItem::query()
+            ->where('is_active', true)
+            ->where('current_stock', '<', 0)
+            ->orderBy('name')
+            ->get(['id', 'name', 'current_stock', 'sku'])
+            ->each(function (InventoryItem $sku) use (&$rows): void {
+                $rows[] = [
+                    'type' => 'inventory_negative',
+                    'id' => $sku->id,
+                    'name' => (string) $sku->name,
+                    'detail' => 'SKU ' . ($sku->sku ?: $sku->id) . ' on hand ' . $sku->current_stock,
+                ];
+            });
+
+        Item::query()
+            ->where('track_stock', true)
+            ->where('availability_type', 'stock_based')
+            ->where('is_available', true)
+            ->where('stock_quantity', '<=', 0)
+            ->orderBy('name')
+            ->get(['id', 'name', 'stock_quantity'])
+            ->each(function (Item $item) use (&$rows): void {
+                $rows[] = [
+                    'type' => 'menu_sold_out_listed',
+                    'id' => $item->id,
+                    'name' => (string) $item->name,
+                    'detail' => 'Listed available but stock is ' . $item->stock_quantity,
+                ];
+            });
+
+        Item::query()
+            ->where('track_stock', true)
+            ->where('availability_type', 'stock_based')
+            ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
+            ->where('stock_quantity', '>', 0)
+            ->orderBy('stock_quantity')
+            ->limit(50)
+            ->get(['id', 'name', 'stock_quantity', 'low_stock_threshold'])
+            ->each(function (Item $item) use (&$rows): void {
+                $rows[] = [
+                    'type' => 'menu_low_stock',
+                    'id' => $item->id,
+                    'name' => (string) $item->name,
+                    'detail' => "Stock {$item->stock_quantity} (threshold {$item->low_stock_threshold})",
+                ];
+            });
+
+        return ['rows' => $rows];
     }
 }

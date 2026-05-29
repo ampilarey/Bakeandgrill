@@ -17,8 +17,14 @@ export function urgencyColor(iso: string): { solid: string; faint: string } {
   return { solid: "#22c55e", faint: "rgba(34,197,94,0.13)" };
 }
 
-export function isLateTicket(iso: string): boolean {
+export function isLateTicket(iso: string, prepTargetMin = 15): boolean {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return false;
-  return Math.floor((Date.now() - t) / 60000) >= 15;
+  return Math.floor((Date.now() - t) / 60000) >= prepTargetMin;
+}
+
+export function minutesSince(iso: string): number {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return 0;
+  return Math.floor((Date.now() - t) / 60000);
 }

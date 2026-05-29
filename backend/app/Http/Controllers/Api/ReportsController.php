@@ -236,6 +236,25 @@ class ReportsController extends Controller
         return response()->json($this->reports->customerLtvTop($limit));
     }
 
+    public function cashierPerformance(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->cashierPerformance($from, $to));
+    }
+
+    public function productMargins(Request $request)
+    {
+        $limit = min(200, max(10, (int) $request->input('limit', 100)));
+
+        return response()->json($this->reports->productMargins($limit));
+    }
+
+    public function stockDiscrepancy()
+    {
+        return response()->json($this->reports->stockDiscrepancy());
+    }
+
     public function inventoryValuationCsv()
     {
         $data = $this->reports->inventoryValuation();

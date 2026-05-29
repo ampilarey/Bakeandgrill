@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\System\Services;
 
+use App\Domains\Operations\Services\OpsAlertsService;
 use App\Models\Order;
 use App\Models\SmsLog;
 use App\Models\WebhookLog;
@@ -14,6 +15,7 @@ class SystemHealthService
 {
     public function __construct(
         private readonly SchedulerRunTracker $schedulerRuns = new SchedulerRunTracker,
+        private readonly OpsAlertsService $opsAlerts = new OpsAlertsService,
     ) {}
 
     /**
@@ -119,6 +121,7 @@ class SystemHealthService
             'recent_webhook_failures' => $recentWebhookFailures,
             'stuck_payment_pending_orders' => $stuckOrders,
             'scheduler_last_runs' => $this->schedulerRuns->getLastRuns(),
+            'alert_inbox' => $this->opsAlerts->inbox(),
         ];
     }
 

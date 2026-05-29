@@ -698,6 +698,60 @@ export async function getCustomerLtvReport(params: { limit?: number } = {}): Pro
   return req(`/reports/customer-ltv?${q}`);
 }
 
+export type CashierPerformanceRow = {
+  user_id: number | null;
+  name: string;
+  orders_count: number;
+  total: number;
+  avg_order: number;
+  voids_count: number;
+};
+
+export type CashierPerformanceReport = {
+  from: string;
+  to: string;
+  rows: CashierPerformanceRow[];
+};
+
+export type ProductMarginRow = {
+  item_id: number;
+  name: string;
+  price: number;
+  cost: number | null;
+  margin_pct: number | null;
+  category: string | null;
+};
+
+export type ProductMarginsReport = {
+  rows: ProductMarginRow[];
+};
+
+export type StockDiscrepancyRow = {
+  type: string;
+  id: number;
+  name: string;
+  detail: string;
+};
+
+export type StockDiscrepancyReport = {
+  rows: StockDiscrepancyRow[];
+};
+
+export async function getCashierPerformanceReport(params: { from?: string; to?: string } = {}): Promise<CashierPerformanceReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/cashier-performance?${q}`);
+}
+
+export async function getProductMarginsReport(params: { limit?: number } = {}): Promise<ProductMarginsReport> {
+  const q = new URLSearchParams();
+  if (params.limit) q.set('limit', String(params.limit));
+  return req(`/reports/product-margins?${q}`);
+}
+
+export async function getStockDiscrepancyReport(): Promise<StockDiscrepancyReport> {
+  return req('/reports/stock-discrepancy');
+}
+
 export interface ItemForecast {
   item_id: number;
   item_name: string;

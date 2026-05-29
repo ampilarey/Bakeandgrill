@@ -10,8 +10,11 @@ import {
   updateDeliverySchedule,
   getDeliveryFeeSettings,
   updateDeliveryFeeSettings,
+  getOpsAlertsSettings,
+  updateOpsAlertsSettings,
   type DeliveryGateStatus,
   type DeliveryFeeSettings,
+  type OpsAlertsSettings,
 } from '../api';
 
 const DAYS = [
@@ -137,6 +140,8 @@ export default function DeliverySettingsPage() {
   const [zoneRows, setZoneRows] = useState<ZoneFeeRow[]>([]);
   const [restrictZones, setRestrictZones] = useState(false);
   const [feeSaving, setFeeSaving] = useState(false);
+  const [opsAlerts, setOpsAlerts] = useState<OpsAlertsSettings | null>(null);
+  const [opsSaving, setOpsSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -145,10 +150,11 @@ export default function DeliverySettingsPage() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([getDeliveryStatus(), getDeliveryFeeSettings()])
-      .then(([s, feeRes]) => {
+    Promise.all([getDeliveryStatus(), getDeliveryFeeSettings(), getOpsAlertsSettings()])
+      .then(([s, feeRes, opsRes]) => {
         setStatus(s);
         setFeeSettings(feeRes.settings);
+        setOpsAlerts(opsRes.settings);
         setDefaultFee(String(feeRes.settings.default_fee));
         setFreeThreshold(String(feeRes.settings.free_threshold));
         setRestrictZones(feeRes.settings.zones_enforced);
@@ -644,6 +650,46 @@ export default function DeliverySettingsPage() {
             </button>
           )}
         </div>
+      </div>
+
+      <div style={{
+        padding: '12px 16px', background: '#FFF7ED',
+        border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10,
+        marginBottom: '1.25rem',
+      }}>
+        <p style={{ ...S.sectionTitle, marginBottom: 8 }}>Operations alerts</p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#3D2B1F' }}>
+          <button
+            type="button"
+            style={S.toggleTrack(opsAlerts?.delivery_delay_alert_sms ?? false)}
+            onClick={() => {
+              if (!opsAlerts || opsSaving) return;
+              void (async () => {
+                setOpsSaving(true);
+                try {
+                  const res = await updateOpsAlertsSettings({
+                    delivery_delay_alert_sms: !opsAlerts.delivery_delay_alert_sms,
+                  });
+                  setOpsAlerts(res.settings);
+                  showToast('Alert settings saved.');
+                } catch {
+                  showToast('Failed to save alert settings.', 'err');
+                } finally {
+                  setOpsSaving(false);
+                }
+              })();
+            }}
+            role="switch"
+            aria-checked={opsAlerts?.delivery_delay_alert_sms ?? false}
+            aria-label="Delivery delay SMS alert"
+          >
+            <span style={S.toggleThumb(opsAlerts?.delivery_delay_alert_sms ?? false)} />
+          </button>
+          SMS business phone when delivery orders pass estimated ready time
+        </label>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9C8575', lineHeight: 1.5 }}>
+          Uses the business phone from Website Settings. Runs hourly via scheduler; also appears in System Health alert inbox.
+        </p>
       </div>
 
       <div style={{

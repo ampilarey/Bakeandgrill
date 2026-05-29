@@ -183,6 +183,20 @@ export async function updatePackagingFeeSettings(
   return req('/admin/settings/packaging-fee', { method: 'PUT', body: JSON.stringify(settings) });
 }
 
+export type OpsAlertsSettings = {
+  delivery_delay_alert_sms: boolean;
+};
+
+export async function getOpsAlertsSettings(): Promise<{ settings: OpsAlertsSettings }> {
+  return req('/admin/ops/alerts');
+}
+
+export async function updateOpsAlertsSettings(
+  data: Partial<OpsAlertsSettings>,
+): Promise<{ settings: OpsAlertsSettings; message: string }> {
+  return req('/admin/ops/alerts', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 // ── Permissions ───────────────────────────────────────────────────────────────
 
 export interface PermissionItem {

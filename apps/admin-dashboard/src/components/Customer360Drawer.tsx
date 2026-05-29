@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   fetchCustomerGrowthSummary, fetchCustomerActivity,
   attachCustomerTag, detachCustomerTag, addCustomerFollowUpNote, sendCustomerSms,
+  updateAdminCustomer,
   type CustomerGrowthSummary, type CustomerActivityEvent,
 } from '../api';
 import { Badge, Btn, ErrorMsg, Input, Spinner } from './SharedUI';
@@ -32,6 +33,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
   const [tagName, setTagName] = useState('');
   const [followNote, setFollowNote] = useState('');
   const [smsMessage, setSmsMessage] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [actionError, setActionError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +47,8 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
       ]);
       setSummary(s.summary);
       setTimeline(a.timeline ?? []);
+      const dob = (s.summary.profile as { date_of_birth?: string | null }).date_of_birth;
+      setDateOfBirth(dob ?? '');
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -54,7 +58,26 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
 
   useEffect(() => { void reload(); }, [customerId]);
 
-  const profile = summary?.profile as { name?: string; phone?: string; email?: string; internal_notes?: string } | undefined;
+  const profile = summary?.profile as {
+    name?: string;
+    phone?: string;
+    email?: string;
+    internal_notes?: string;
+    date_of_birth?: string | null;
+  } | undefined;
+
+  const handleSaveDob = async () => {
+    setSaving(true);
+    setActionError('');
+    try {
+      await updateAdminCustomer(customerId, { date_of_birth: dateOfBirth || null });
+      await reload();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleAddTag = async () => {
     if (!tagName.trim()) return;
@@ -151,6 +174,22 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               {summary.lifetime.days_since_last_order != null && (
                 <div><strong>Last order:</strong> {summary.lifetime.days_since_last_order}d ago</div>
               )}
+            </div>
+
+            <div>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Date of birth</p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={setDateOfBirth}
+                  style={{ flex: 1 }}
+                />
+                <Btn small onClick={() => void handleSaveDob()} disabled={saving}>Save</Btn>
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9C8E7E' }}>
+                Used for birthday loyalty SMS when enabled in Customer Growth → Marketing.
+              </p>
             </div>
 
             {summary.favourite_items.length > 0 && (

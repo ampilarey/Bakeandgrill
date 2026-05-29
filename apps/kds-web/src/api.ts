@@ -1,11 +1,13 @@
 import { createApiClient } from '@shared/api';
 import { ENDPOINTS } from '@shared/api';
 
-// KDS-specific order item shape (modifiers use different field names)
 export type KdsOrderItem = {
   id: number;
+  item_id?: number | null;
   item_name: string;
   quantity: number;
+  menu_group_id?: number | null;
+  prep_time_minutes?: number | null;
   modifiers?: Array<{
     id: number;
     modifier_name: string;
@@ -24,6 +26,11 @@ export type KdsOrder = {
   items: KdsOrderItem[];
 };
 
+export type KdsMenuGroup = {
+  id: number;
+  name: string;
+};
+
 const apiBaseUrl =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
@@ -33,11 +40,14 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   console.warn('[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api');
 }
 
-// Token is stored after login; KDS re-reads it per request
 const { request } = createApiClient({
   baseUrl: apiBaseUrl,
   getToken: () => localStorage.getItem('kds_token'),
 });
+
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
 
 export async function staffLogin(
   pin: string,
@@ -52,28 +62,42 @@ export async function staffLogin(
 
 export async function fetchKdsOrders(token: string): Promise<KdsOrder[]> {
   const data = await request<{ orders: KdsOrder[] }>(ENDPOINTS.KDS_ORDERS, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
   });
   return data.orders ?? [];
+}
+
+export async function fetchKdsMenuGroups(token: string): Promise<KdsMenuGroup[]> {
+  const data = await request<{ data: KdsMenuGroup[] }>('/kds/menu-groups', {
+    headers: authHeaders(token),
+  });
+  return data.data ?? [];
 }
 
 export async function startOrder(token: string, orderId: number): Promise<void> {
   await request<void>(ENDPOINTS.KDS_ORDER_START(orderId), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
   });
 }
 
 export async function bumpOrder(token: string, orderId: number): Promise<void> {
   await request<void>(ENDPOINTS.KDS_ORDER_BUMP(orderId), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
   });
 }
 
 export async function recallOrder(token: string, orderId: number): Promise<void> {
   await request<void>(ENDPOINTS.KDS_ORDER_RECALL(orderId), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
+  });
+}
+
+export async function markItem86(token: string, itemId: number): Promise<void> {
+  await request<void>(`/kds/items/${itemId}/86`, {
+    method: 'POST',
+    headers: authHeaders(token),
   });
 }
