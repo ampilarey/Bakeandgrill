@@ -48,6 +48,7 @@ const PrintJobsPage           = lazyWithRetry(() => import('./pages/PrintJobsPag
 const XeroPage                = lazyWithRetry(() => import('./pages/XeroPage'));
 const OnlineOrderingPage      = lazyWithRetry(() => import('./pages/OnlineOrderingPage'));
 const DeliverySettingsPage    = lazyWithRetry(() => import('./pages/DeliverySettingsPage'));
+const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 
 function PageFallback() {
@@ -387,6 +388,11 @@ export default function App() {
                 <Route path="delivery-settings" element={
                   <PermissionGuard user={user} permission="settings.update">
                     <DeliverySettingsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="system-health" element={
+                  <PermissionGuard user={user} permission="website.manage">
+                    <SystemHealthPage />
                   </PermissionGuard>
                 } />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -257,6 +257,7 @@ export type SalesSummary = {
   average_order_value: number;
   period: string;
   service_charge_total?: number;
+  delivery_fee_total?: number;
   payments?: Record<string, number>;
 };
 
@@ -276,7 +277,7 @@ export async function fetchSalesSummary(params?: {
   const res = await req<{
     from: string;
     to: string;
-    totals: { orders_count: number; total: number; subtotal: number; service_charge_total?: number };
+    totals: { orders_count: number; total: number; subtotal: number; service_charge_total?: number; delivery_fee_total?: number };
     payments: Record<string, number>;
   }>(`/reports/sales-summary?${qs}`);
   const order_count = res.totals?.orders_count ?? 0;
@@ -287,6 +288,7 @@ export async function fetchSalesSummary(params?: {
     average_order_value: order_count > 0 ? total_revenue / order_count : 0,
     period: `${res.from} – ${res.to}`,
     service_charge_total: res.totals?.service_charge_total ?? 0,
+    delivery_fee_total: res.totals?.delivery_fee_total ?? 0,
     payments: res.payments,
   };
 }

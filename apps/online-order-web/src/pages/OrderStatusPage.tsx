@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, getOrderByTrackingToken, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, initiateOnlinePayment, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { WhatsAppIcon, ViberIcon } from "../components/icons";
@@ -13,6 +13,8 @@ type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 function readToken(): string | null {
   return localStorage.getItem("online_token");
 }
+
+const PENDING_ORDER_KEY = "checkout_pending_order_id";
 
 // ─── Driver Tracker ───────────────────────────────────────────────────────────
 
@@ -258,6 +260,8 @@ export function OrderStatusPage() {
   const [liveConnected, setLiveConnected] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
   const [showPaymentBanner, setShowPaymentBanner] = useState(true);
+  const [isPaying, setIsPaying] = useState(false);
+  const [payError, setPayError] = useState("");
 
   const token = readToken();
   const esRef = useRef<EventSource | null>(null);
@@ -309,6 +313,32 @@ export function OrderStatusPage() {
   // visit (cartClearedRef guard).
   const serverPaymentConfirmed =
     !!order && (order.payment_status === 'paid' || order.payment_status === 'partial');
+
+  const needsPaymentRetry =
+    !!order &&
+    order.status === 'payment_pending' &&
+    !serverPaymentConfirmed;
+
+  const handlePayAgain = async () => {
+    if (!order || !token) {
+      setPayError("Please sign in to pay for this order.");
+      navigate("/checkout");
+      return;
+    }
+    setIsPaying(true);
+    setPayError("");
+    try {
+      localStorage.setItem(PENDING_ORDER_KEY, String(order.id));
+      const payment = await initiateOnlinePayment(token, order.id);
+      if (!payment.payment_url) {
+        throw new Error("Payment could not be started. Please try again in a moment.");
+      }
+      window.location.href = payment.payment_url;
+    } catch (e) {
+      setPayError((e as Error).message);
+      setIsPaying(false);
+    }
+  };
 
   useEffect(() => {
     if (serverPaymentConfirmed && !cartClearedRef.current) {
@@ -440,6 +470,32 @@ export function OrderStatusPage() {
                 </a>{' '}
                 and we'll sort it out.
               </p>
+              {payError && (
+                <p style={{ margin: '0.5rem 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-error)' }}>{payError}</p>
+              )}
+              {needsPaymentRetry && (
+                <button
+                  type="button"
+                  onClick={() => void handlePayAgain()}
+                  disabled={isPaying}
+                  style={{
+                    marginTop: '0.75rem',
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0.625rem',
+                    border: 'none',
+                    background: 'var(--color-error)',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: 'var(--text-sm)',
+                    cursor: isPaying ? 'wait' : 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: isPaying ? 0.8 : 1,
+                  }}
+                >
+                  {isPaying ? 'Starting payment…' : 'Pay again'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -512,6 +568,38 @@ export function OrderStatusPage() {
                   )}
                 </div>
               </div>
+
+              {needsPaymentRetry && paymentState !== "FAILED" && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 0.75rem' }}>
+                    Payment is still pending. Complete checkout to send your order to the kitchen.
+                  </p>
+                  {payError && (
+                    <p style={{ margin: '0 0 0.5rem', fontSize: 'var(--text-xs)', color: 'var(--color-error)' }}>{payError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handlePayAgain()}
+                    disabled={isPaying}
+                    style={{
+                      width: '100%',
+                      padding: '0.875rem 1rem',
+                      borderRadius: '0.75rem',
+                      border: 'none',
+                      background: 'var(--color-primary)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: 'var(--text-body)',
+                      cursor: isPaying ? 'wait' : 'pointer',
+                      fontFamily: 'inherit',
+                      boxShadow: '0 4px 14px var(--color-primary-glow)',
+                      opacity: isPaying ? 0.85 : 1,
+                    }}
+                  >
+                    {isPaying ? 'Starting payment…' : 'Pay now'}
+                  </button>
+                </div>
+              )}
 
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 600, margin: '0 0 0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
                 Order #{order.order_number}

@@ -44,11 +44,11 @@ class UpdateServiceChargeSettingsRequest extends FormRequest
             }
 
             if ($type === 'percent' && $value > ServiceChargeCalculator::MAX_PERCENT) {
-                $v->errors()->add('value', 'Percentage cannot exceed '.ServiceChargeCalculator::MAX_PERCENT.'%.');
+                $v->errors()->add('value', 'Percentage cannot exceed ' . ServiceChargeCalculator::MAX_PERCENT . '%.');
             }
 
             if ($type === 'fixed' && $value > ServiceChargeCalculator::MAX_FIXED_MVR) {
-                $v->errors()->add('value', 'Fixed amount cannot exceed MVR '.ServiceChargeCalculator::MAX_FIXED_MVR.'.');
+                $v->errors()->add('value', 'Fixed amount cannot exceed MVR ' . ServiceChargeCalculator::MAX_FIXED_MVR . '.');
             }
 
             if ($enabled) {

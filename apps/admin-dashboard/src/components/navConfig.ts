@@ -7,7 +7,7 @@ import {
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Menu, Zap,
-  ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck,
+  ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck, HeartPulse,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -105,6 +105,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/staff',              icon: Users,       label: 'Staff',              permission: 'staff.view',          description: 'Team management' },
       { to: '/time-clock',         icon: Clock,       label: 'Time Clock',         permission: 'staff.view',          description: 'Clock in / out' },
       { to: '/settings',           icon: Settings,    label: 'Settings',           permission: 'website.manage',      description: 'System configuration' },
+      { to: '/system-health',      icon: HeartPulse,  label: 'System Health',      permission: 'website.manage',      description: 'Queue, webhooks & alerts' },
       { to: '/online-ordering',    icon: ShoppingBag, label: 'Online Ordering',    permission: 'settings.update',     description: 'Web ordering settings' },
       { to: '/delivery-settings',  icon: Truck,       label: 'Delivery Settings',  permission: 'settings.update',     description: 'Zones & fees' },
       { to: '/devices',            icon: Monitor,     label: 'Devices',            permission: 'devices.view',        description: 'POS & KDS devices' },

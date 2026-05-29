@@ -90,7 +90,7 @@ final class CustomerAccountService
     /**
      * Merge one or more source customers into the primary account.
      *
-     * @param  list<int>  $sourceIds
+     * @param list<int> $sourceIds
      * @return array{customer: Customer, merged: list<array{id: int, phone: string|null}>}
      */
     public function mergeAccounts(Customer $primary, array $sourceIds, ?Request $request = null): array
@@ -347,5 +347,4 @@ final class CustomerAccountService
             'last_order_at' => $lastOrderAt ?: $primary->last_order_at,
         ]);
     }
-
 }

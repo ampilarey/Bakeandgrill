@@ -7,7 +7,6 @@ namespace App\Domains\Customers\Services;
 use App\Domains\Customers\Support\CustomerPaidOrderQuery;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 

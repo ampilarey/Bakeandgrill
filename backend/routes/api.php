@@ -941,6 +941,9 @@ Route::get('/system/health', [App\Http\Controllers\Api\SystemHealthController::c
 Route::middleware(['auth:sanctum', 'permission:website.manage'])
     ->get('/admin/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'admin']);
 
+Route::middleware(['auth:sanctum', 'permission:website.manage'])
+    ->get('/admin/system/health/detailed', [App\Http\Controllers\Api\SystemHealthController::class, 'detailed']);
+
 Route::middleware(['auth:sanctum', 'permission:website.manage'])->prefix('admin/pos')->group(function () {
     Route::get('/maintenance-preview', [App\Http\Controllers\Api\PosAdminController::class, 'maintenancePreview']);
     Route::post('/cleanup-stale-tickets', [App\Http\Controllers\Api\PosAdminController::class, 'cleanupStaleTickets']);

@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\System\Services\SystemHealthService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 
 class SystemHealthController extends Controller
 {
+    public function __construct(private readonly SystemHealthService $health) {}
+
     /**
      * Public health probe — used by load balancers and uptime monitors.
      */
@@ -38,5 +41,13 @@ class SystemHealthController extends Controller
             'database' => 'connected',
             'timestamp' => now()->toIso8601String(),
         ]);
+    }
+
+    /**
+     * Detailed operational health for the admin System Health page.
+     */
+    public function detailed(): JsonResponse
+    {
+        return response()->json($this->health->detailed());
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Customers;
 
 use App\Domains\Permissions\PermissionCatalogSync;
-use App\Models\Customer;
 use App\Models\LoyaltyAccount;
 use App\Models\Order;
 use App\Models\Role;

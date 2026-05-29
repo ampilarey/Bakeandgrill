@@ -6,6 +6,7 @@ import { pushNotification } from '../utils/notifications';
 import {
   fetchOrders,
   fetchLowStockItems,
+  fetchSalesSummary,
   getCurrentShift,
   getDailySummary,
   getSystemHealth,
@@ -22,6 +23,7 @@ import {
   type Shift,
   type SystemHealth,
   type PosOverview,
+  type SalesSummary,
 } from '../api';
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -347,6 +349,7 @@ export function DashboardPage() {
   const [summary, setSummary]       = useState<DailySummary | null>(null);
   const [summaryErr, setSummaryErr] = useState('');
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
 
   const [activeOrders, setActiveOrders]   = useState<Order[]>([]);
   const [ordersErr, setOrdersErr]         = useState('');
@@ -380,6 +383,9 @@ export function DashboardPage() {
       .then(setSummary)
       .catch((e: Error) => setSummaryErr(e.message))
       .finally(() => setSummaryLoading(false));
+    fetchSalesSummary({ from: summaryDate, to: summaryDate })
+      .then(setSalesSummary)
+      .catch(() => setSalesSummary(null));
   }, [summaryDate, canFinancialSummary]);
 
   // ── load active orders (poll every 10s) — diff drives the live feed ──
@@ -943,12 +949,60 @@ export function DashboardPage() {
         )}
       </div>
 
+      {canFinancialSummary && salesSummary && (
+        <>
+          <div style={{ height: 20 }} />
+          <SectionLabel>Revenue breakdown</SectionLabel>
+          <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
+            <StatCard
+              label="Service charge"
+              value={fmt(salesSummary.service_charge_total ?? 0)}
+              sub="Completed orders"
+              accent="#0ea5e9"
+              icon={Receipt}
+            />
+            <StatCard
+              label="Delivery fees"
+              value={fmt(salesSummary.delivery_fee_total ?? 0)}
+              sub="Completed orders"
+              accent="#D4813A"
+              icon={Truck}
+            />
+          </div>
+          {salesSummary.payments && Object.keys(salesSummary.payments).length > 0 && (
+            <Card style={{ marginBottom: 24 }}>
+              <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Payment methods</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {Object.entries(salesSummary.payments)
+                  .sort(([, a], [, b]) => Number(b) - Number(a))
+                  .map(([method, amount]) => (
+                    <div key={method} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ textTransform: 'capitalize', fontWeight: 600, color: '#1C1408' }}>{method.replace(/_/g, ' ')}</span>
+                      <span style={{ fontWeight: 700, color: '#D4813A' }}>{fmt(amount)}</span>
+                    </div>
+                  ))}
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
       {/* ── System Health (owner/admin) ── */}
       {health && (
         <Card style={{ marginTop: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: '#1C1408' }}>System Health</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {showMaintenance && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/system-health')}
+                  style={{ fontSize: 12, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Full report →
+                </button>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
                 width: 8, height: 8, borderRadius: '50%',
                 background: health.status === 'ok' ? '#22c55e' : '#ef4444',
@@ -957,6 +1011,7 @@ export function DashboardPage() {
               <span style={{ fontSize: 12, fontWeight: 600, color: health.status === 'ok' ? '#15803D' : '#991B1B', textTransform: 'uppercase' }}>
                 {health.status}
               </span>
+              </div>
             </div>
           </div>
           {health.env_mismatch && (

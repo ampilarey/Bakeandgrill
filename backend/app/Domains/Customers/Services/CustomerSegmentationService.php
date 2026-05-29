@@ -6,8 +6,6 @@ namespace App\Domains\Customers\Services;
 
 use App\Domains\Customers\Support\CustomerPaidOrderQuery;
 use App\Models\Customer;
-use App\Models\Referral;
-use App\Models\Review;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
