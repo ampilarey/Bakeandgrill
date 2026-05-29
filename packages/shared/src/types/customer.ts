@@ -39,6 +39,32 @@ export type LoyaltyAccount = {
   tier: string;
 };
 
+export type LoyaltyProgramPublic = {
+  enabled: boolean;
+  earn_per_mvr: number;
+  redeem_rate_points_per_mvr: number;
+  min_redeem_points: number;
+  max_redeem_points: number;
+  max_redeem_percent: number;
+  points_expiry_days: number;
+  customer_message: string;
+};
+
+export type LoyaltyRates = {
+  earn_per_mvr: number;
+  redeem_rate_points_per_mvr: number;
+  discount_per_point_laar: number;
+  min_redeem_points: number;
+  max_redeem_points: number;
+  max_redeem_percent: number;
+};
+
+export type LoyaltyMeResponse = {
+  account: LoyaltyAccount;
+  program?: LoyaltyProgramPublic;
+  rates?: LoyaltyRates;
+};
+
 export type LoyaltyHoldPreview = {
   points: number;
   discount_laar: number;

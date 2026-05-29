@@ -13,6 +13,7 @@ use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyHold;
 use App\Models\LoyaltyLedger;
 use App\Models\Order;
+use App\Services\LoyaltySettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ class LoyaltyController extends Controller
     public function __construct(
         private LoyaltyLedgerService $service,
         private PointsCalculator $calculator,
+        private LoyaltySettingsService $settings,
     ) {}
 
     /**
@@ -44,9 +46,14 @@ class LoyaltyController extends Controller
                 'lifetime_points' => $account->lifetime_points,
                 'tier' => $account->tier,
             ],
+            'program' => $this->settings->publicRates(),
             'rates' => [
                 'earn_per_mvr' => $this->calculator->earnRatePerMvr(),
+                'redeem_rate_points_per_mvr' => $this->settings->redeemRatePointsPerMvr(),
                 'discount_per_point_laar' => $this->calculator->discountLaarForPoints(1),
+                'min_redeem_points' => $this->calculator->minRedeemPoints(),
+                'max_redeem_points' => $this->calculator->maxRedeemPoints(),
+                'max_redeem_percent' => $this->calculator->maxRedeemPercent(),
             ],
         ]);
     }
@@ -290,6 +297,58 @@ class LoyaltyController extends Controller
 
     // ─── Admin Endpoints ──────────────────────────────────────────────────────
 
+    public function adminSettings(): JsonResponse
+    {
+        return response()->json([
+            'settings' => $this->settings->all(),
+            'tiers' => $this->settings->tiers(),
+        ]);
+    }
+
+    public function adminUpdateSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'enabled' => 'sometimes|boolean',
+            'earn_rate_per_mvr' => 'sometimes|numeric|min:0',
+            'redeem_rate_points_per_mvr' => 'sometimes|integer|min:1',
+            'min_redeem_points' => 'sometimes|integer|min:1',
+            'max_redeem_points' => 'sometimes|integer|min:1',
+            'max_redeem_percent' => 'sometimes|numeric|min:0|max:100',
+            'hold_ttl_minutes' => 'sometimes|integer|min:1|max:1440',
+            'tiers_enabled' => 'sometimes|boolean',
+            'points_expiry_days' => 'sometimes|integer|min:0|max:3650',
+            'earn_on_delivery_fee' => 'sometimes|boolean',
+            'program_starts_at' => 'nullable|date',
+            'program_ends_at' => 'nullable|date|after_or_equal:program_starts_at',
+            'customer_message' => 'nullable|string|max:500',
+        ]);
+
+        return response()->json([
+            'settings' => $this->settings->update($validated),
+            'message' => 'Loyalty settings saved.',
+        ]);
+    }
+
+    public function adminUpdateTiers(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'tiers' => 'required|array|min:1',
+            'tiers.*.id' => 'required|integer|exists:loyalty_tiers,id',
+            'tiers.*.name' => 'required|string|max:50',
+            'tiers.*.slug' => 'required|string|max:30',
+            'tiers.*.min_lifetime_points' => 'required|integer|min:0',
+            'tiers.*.earn_multiplier' => 'required|numeric|min:0|max:10',
+            'tiers.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        $tiers = $this->settings->syncTiers($validated['tiers']);
+
+        return response()->json([
+            'tiers' => $tiers,
+            'message' => 'Tier configuration saved.',
+        ]);
+    }
+
     public function adminAccountIndex(Request $request): JsonResponse
     {
         $query = LoyaltyAccount::with('customer:id,name,phone')
@@ -363,6 +422,8 @@ class LoyaltyController extends Controller
                 'notes' => $request->input('reason'),
                 'idempotency_key' => 'admin-adjust:' . $customer->id . ':' . Str::uuid(),
                 'occurred_at' => now(),
+                'expires_at' => $delta > 0 ? $this->settings->creditExpiresAt() : null,
+                'expiry_processed' => false,
             ]);
 
             $account->update([
@@ -370,6 +431,11 @@ class LoyaltyController extends Controller
                 'lifetime_points' => $delta > 0
                     ? $account->lifetime_points + $delta
                     : $account->lifetime_points,
+                'tier' => $this->settings->tierForLifetimePoints(
+                    $delta > 0
+                        ? $account->lifetime_points + $delta
+                        : $account->lifetime_points,
+                ),
             ]);
 
             return $account->id;

@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Referral;
 use App\Models\ReferralCode;
+use App\Services\LoyaltySettingsService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -71,7 +72,7 @@ class RecordReferralRedemptionListener implements ShouldQueue
                     // Credit referrer with loyalty points equivalent to their reward MVR
                     $referrer = Customer::find($code->customer_id);
                     if ($referrer) {
-                        $redeemRate = (int) config('app.loyalty_redeem_rate', 100);
+                        $redeemRate = app(LoyaltySettingsService::class)->redeemRatePointsPerMvr();
                         $rewardMvr = (float) ($code->referrer_reward_mvr ?? config('loyalty.referral.referrer_reward_mvr', 10.00));
                         $rewardPoints = (int) round($rewardMvr * $redeemRate);
 

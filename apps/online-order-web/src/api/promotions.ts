@@ -1,6 +1,6 @@
 // ── Promotions, Loyalty, Gift Cards, Referrals ────────────────────────────────
 import { ENDPOINTS } from '@shared/api';
-import type { LoyaltyAccount, LoyaltyHoldPreview, PromoValidation } from '@shared/types';
+import type { LoyaltyHoldPreview, LoyaltyMeResponse, PromoValidation } from '@shared/types';
 import { request } from './client';
 
 // ── Promotions ─────────────────────────────────────────────────────────────────
@@ -34,8 +34,8 @@ export async function removePromoCode(token: string, orderId: number, promotionI
 
 // ── Loyalty ────────────────────────────────────────────────────────────────────
 
-export async function getLoyaltyAccount(token: string): Promise<{ account: LoyaltyAccount | null }> {
-  return request<{ account: LoyaltyAccount | null }>(ENDPOINTS.LOYALTY_ME, {
+export async function getLoyaltyAccount(token: string): Promise<LoyaltyMeResponse> {
+  return request<LoyaltyMeResponse>(ENDPOINTS.LOYALTY_ME, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }

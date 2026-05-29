@@ -534,6 +534,9 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('loyalty')->group(
 });
 
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:loyalty.manage'])->prefix('admin')->group(function () {
+    Route::get('/loyalty/settings', [App\Http\Controllers\Api\LoyaltyController::class, 'adminSettings']);
+    Route::put('/loyalty/settings', [App\Http\Controllers\Api\LoyaltyController::class, 'adminUpdateSettings']);
+    Route::put('/loyalty/tiers', [App\Http\Controllers\Api\LoyaltyController::class, 'adminUpdateTiers']);
     Route::get('/loyalty/accounts', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAccountIndex']);
     Route::get('/loyalty/accounts/{customerId}/ledger', [App\Http\Controllers\Api\LoyaltyController::class, 'adminLedger']);
     Route::post('/loyalty/accounts/{customerId}/adjust', [App\Http\Controllers\Api\LoyaltyController::class, 'adminAdjust']);

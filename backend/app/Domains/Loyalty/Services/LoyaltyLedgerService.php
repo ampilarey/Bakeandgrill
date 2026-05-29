@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyHold;
 use App\Models\Order;
+use App\Services\LoyaltySettingsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -28,6 +29,7 @@ class LoyaltyLedgerService
         private LoyaltyAccountRepositoryInterface $accountRepo,
         private LoyaltyHoldRepositoryInterface $holdRepo,
         private LoyaltyLedgerRepositoryInterface $ledgerRepo,
+        private LoyaltySettingsService $settings,
     ) {}
 
     /**
@@ -44,6 +46,10 @@ class LoyaltyLedgerService
      */
     public function createOrRefreshHold(Customer $customer, Order $order, int $pointsToRedeem): LoyaltyHold
     {
+        if (!$this->settings->isProgramActive()) {
+            throw new \InvalidArgumentException('The loyalty program is not active.');
+        }
+
         return DB::transaction(function () use ($customer, $order, $pointsToRedeem): LoyaltyHold {
             // Ensure the account row exists before locking it.
             $this->accountFor($customer);
@@ -93,7 +99,7 @@ class LoyaltyLedgerService
             }
 
             $idempotencyKey = 'hold:' . $customer->id . ':' . $order->id . ':' . $pointsToRedeem;
-            $ttlMinutes = (int) config('app.loyalty_hold_ttl', 30);
+            $ttlMinutes = $this->settings->holdTtlMinutes();
 
             $hold = $this->holdRepo->upsertForOrder($order->id, [
                 'idempotency_key' => $idempotencyKey,
@@ -229,6 +235,8 @@ class LoyaltyLedgerService
                 'balance_after' => $balanceAfter,
                 'notes' => $notes,
                 'occurred_at' => now(),
+                'expires_at' => $this->settings->creditExpiresAt(),
+                'expiry_processed' => false,
             ]);
 
             $this->accountRepo->updateBalance($customer->id, $balanceAfter, $points);
@@ -240,6 +248,10 @@ class LoyaltyLedgerService
      */
     public function earnPointsForOrder(Customer $customer, Order $order): void
     {
+        if (!$this->settings->isProgramActive()) {
+            return;
+        }
+
         $idempotencyKey = 'loyalty:earn:' . $order->id . ':' . $customer->id;
 
         DB::transaction(function () use ($customer, $order, $idempotencyKey): void {
@@ -272,6 +284,8 @@ class LoyaltyLedgerService
                 'balance_after' => $balanceAfter,
                 'notes' => 'Earned from order ' . $order->order_number,
                 'occurred_at' => now(),
+                'expires_at' => $this->settings->creditExpiresAt(),
+                'expiry_processed' => false,
             ]);
 
             $this->accountRepo->updateBalance($customer->id, $balanceAfter, $points);

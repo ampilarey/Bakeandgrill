@@ -24,11 +24,15 @@ class LoyaltyLedger extends Model
         'notes',
         'metadata',
         'occurred_at',
+        'expires_at',
+        'expiry_processed',
     ];
 
     protected $casts = [
         'metadata' => 'array',
         'occurred_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'expiry_processed' => 'boolean',
     ];
 
     public function customer(): BelongsTo

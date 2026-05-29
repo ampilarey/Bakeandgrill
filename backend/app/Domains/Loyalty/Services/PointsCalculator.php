@@ -6,25 +6,26 @@ namespace App\Domains\Loyalty\Services;
 
 use App\Models\LoyaltyAccount;
 use App\Models\Order;
+use App\Services\LoyaltySettingsService;
 
 /**
  * Calculates how many points a customer earns for an order,
  * and how much discount a given number of points translates to.
- *
- * Rates are configurable via env vars:
- *   LOYALTY_EARN_RATE  = points earned per MVR spent (default: 1)
- *   LOYALTY_REDEEM_RATE = how many points = 1 MVR (default: 100)
  */
 class PointsCalculator
 {
+    public function __construct(
+        private readonly LoyaltySettingsService $settings,
+    ) {}
+
     public function earnRatePerMvr(): float
     {
-        return (float) config('app.loyalty_earn_rate', 1);
+        return $this->settings->earnRatePerMvr();
     }
 
     public function redeemRatePerPoint(): float
     {
-        $rate = (float) config('app.loyalty_redeem_rate', 100);
+        $rate = $this->settings->redeemRatePointsPerMvr();
 
         return $rate > 0 ? (1 / $rate) : (1 / 100);
     }
@@ -32,29 +33,30 @@ class PointsCalculator
     /**
      * Calculate points to earn for an order.
      * Uses floor() — always round DOWN.
-     * Applies tier multiplier from LoyaltyAccount.
+     * Applies tier multiplier when enabled.
      */
     public function pointsForOrder(Order $order, ?LoyaltyAccount $account = null): int
     {
-        // Exclude delivery fee — points are earned on food value only.
+        if (!$this->settings->isProgramActive()) {
+            return 0;
+        }
+
         $totalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
-        $deliveryLaar = (int) ($order->delivery_fee_laar ?? 0);
+        $deliveryLaar = $this->settings->earnOnDeliveryFee()
+            ? 0
+            : (int) ($order->delivery_fee_laar ?? 0);
         $foodLaar = max(0, $totalLaar - $deliveryLaar);
         $amountMvr = $foodLaar / 100;
         $basePoints = (int) floor($amountMvr * $this->earnRatePerMvr());
 
-        if ($account && config('app.loyalty_tiers_enabled', false)) {
-            $multiplier = $this->tierMultiplier($account->tier);
+        if ($account && $this->settings->tiersEnabled()) {
+            $multiplier = $this->settings->tierMultiplier($account->tier);
             $basePoints = (int) floor($basePoints * $multiplier);
         }
 
         return max(0, $basePoints);
     }
 
-    /**
-     * Calculate discount in laari for a given number of points.
-     * Uses floor() — always round DOWN.
-     */
     public function discountLaarForPoints(int $points): int
     {
         $discountMvr = $points * $this->redeemRatePerPoint();
@@ -62,9 +64,6 @@ class PointsCalculator
         return (int) floor($discountMvr * 100);
     }
 
-    /**
-     * Calculate how many points are needed to achieve a given discount.
-     */
     public function pointsNeededForDiscountLaar(int $discountLaar): int
     {
         $discountMvr = $discountLaar / 100;
@@ -74,29 +73,16 @@ class PointsCalculator
 
     public function minRedeemPoints(): int
     {
-        return (int) config('app.loyalty_min_redeem', 100);
+        return $this->settings->minRedeemPoints();
     }
 
     public function maxRedeemPoints(): int
     {
-        return (int) config('app.loyalty_max_redeem', 10000);
+        return $this->settings->maxRedeemPoints();
     }
 
-    /**
-     * Max percentage of order total that can be paid with points.
-     */
     public function maxRedeemPercent(): float
     {
-        return (float) config('app.loyalty_max_redeem_percent', 50);
-    }
-
-    private function tierMultiplier(string $tier): float
-    {
-        return match ($tier) {
-            'silver' => 1.5,
-            'gold' => 2.0,
-            'platinum' => 3.0,
-            default => 1.0,
-        };
+        return $this->settings->maxRedeemPercent();
     }
 }

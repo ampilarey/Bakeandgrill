@@ -36,6 +36,7 @@ final class CustomerAccountService
 {
     public function __construct(
         private readonly AuditLogService $audit,
+        private readonly LoyaltySettingsService $loyaltySettings,
     ) {}
 
     /**
@@ -292,7 +293,7 @@ final class CustomerAccountService
                 'points_balance' => $primaryAccount->points_balance + $sourceAccount->points_balance,
                 'points_held' => $primaryAccount->points_held + $sourceAccount->points_held,
                 'lifetime_points' => $primaryAccount->lifetime_points + $sourceAccount->lifetime_points,
-                'tier' => $this->tierForLifetimePoints(
+                'tier' => $this->loyaltySettings->tierForLifetimePoints(
                     $primaryAccount->lifetime_points + $sourceAccount->lifetime_points,
                 ),
             ]);
@@ -347,13 +348,4 @@ final class CustomerAccountService
         ]);
     }
 
-    private function tierForLifetimePoints(int $lifetime): string
-    {
-        return match (true) {
-            $lifetime >= 15000 => 'platinum',
-            $lifetime >= 5000 => 'gold',
-            $lifetime >= 1000 => 'silver',
-            default => 'bronze',
-        };
-    }
 }

@@ -23,7 +23,6 @@ function useIsMobile() {
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { laarToMvr } from '../utils/money';
 import {
-  LOYALTY_MIN_REDEEM,
   loyaltyAvailablePoints,
   pointsValueMvr,
 } from '../utils/loyalty';
@@ -207,7 +206,7 @@ export function CheckoutPage() {
   }, []);
 
   const {
-    cart, token, customerName, loyaltyAccount, loyaltyRedeemPoints,
+    cart, token, customerName, loyaltyAccount, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
@@ -401,22 +400,28 @@ export function CheckoutPage() {
   const sectionLoyalty = loyaltyAccount && loyaltyAccount.points_balance > 0 && (() => {
     const available = loyaltyAvailablePoints(loyaltyAccount);
     const held = loyaltyAccount.points_held ?? 0;
-    const canRedeem = available >= LOYALTY_MIN_REDEEM && loyaltyRedeemPoints >= LOYALTY_MIN_REDEEM;
+    const minRedeem = loyaltyRates.minRedeemPoints;
+    const canRedeem = available >= minRedeem && loyaltyRedeemPoints >= minRedeem;
 
     return (
     <SectionCard title="Loyalty Points">
+      {loyaltyProgramMessage && (
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.45 }}>
+          {loyaltyProgramMessage}
+        </p>
+      )}
       <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 8 }}>
         You have <strong>{available.toLocaleString()} pts</strong> available to use
-        {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {pointsValueMvr(available)}</span> value).
+        {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {pointsValueMvr(available, loyaltyRates)}</span> value).
       </p>
       {held > 0 && (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px', lineHeight: 1.45 }}>
           {held.toLocaleString()} pts are reserved on another order ({loyaltyAccount.points_balance.toLocaleString()} total balance).
         </p>
       )}
-      {available < LOYALTY_MIN_REDEEM && (
+      {available < minRedeem && (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-          Minimum {LOYALTY_MIN_REDEEM} available points required to redeem.
+          Minimum {minRedeem} available points required to redeem.
         </p>
       )}
       <label style={{
@@ -432,7 +437,7 @@ export function CheckoutPage() {
           style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
         />
         {canRedeem
-          ? <>Use {loyaltyRedeemPoints.toLocaleString()} pts to save MVR {pointsValueMvr(loyaltyRedeemPoints)} (max 50% of subtotal)</>
+          ? <>Use {loyaltyRedeemPoints.toLocaleString()} pts to save MVR {pointsValueMvr(loyaltyRedeemPoints, loyaltyRates)} (max {loyaltyRates.maxRedeemPercent}% of subtotal)</>
           : <>Use loyalty points on this order</>}
       </label>
     </SectionCard>

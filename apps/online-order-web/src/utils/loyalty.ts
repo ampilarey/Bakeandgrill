@@ -1,9 +1,30 @@
-import type { LoyaltyAccount } from '@shared/types';
+import type { LoyaltyAccount, LoyaltyRates } from '@shared/types';
 
-/** Match backend defaults in config/app.php */
-export const LOYALTY_MIN_REDEEM = 100;
-export const LOYALTY_REDEEM_RATE = 100; // points per MVR 1
-export const LOYALTY_MAX_REDEEM_PERCENT = 50;
+export type LoyaltyRatesConfig = {
+  redeemRatePointsPerMvr: number;
+  minRedeemPoints: number;
+  maxRedeemPoints: number;
+  maxRedeemPercent: number;
+};
+
+/** Match backend defaults when API rates are unavailable. */
+export const DEFAULT_LOYALTY_RATES: LoyaltyRatesConfig = {
+  redeemRatePointsPerMvr: 100,
+  minRedeemPoints: 100,
+  maxRedeemPoints: 10000,
+  maxRedeemPercent: 50,
+};
+
+export function ratesFromApi(rates?: Partial<LoyaltyRates> | null): LoyaltyRatesConfig {
+  if (!rates) return DEFAULT_LOYALTY_RATES;
+
+  return {
+    redeemRatePointsPerMvr: rates.redeem_rate_points_per_mvr ?? DEFAULT_LOYALTY_RATES.redeemRatePointsPerMvr,
+    minRedeemPoints: rates.min_redeem_points ?? DEFAULT_LOYALTY_RATES.minRedeemPoints,
+    maxRedeemPoints: rates.max_redeem_points ?? DEFAULT_LOYALTY_RATES.maxRedeemPoints,
+    maxRedeemPercent: rates.max_redeem_percent ?? DEFAULT_LOYALTY_RATES.maxRedeemPercent,
+  };
+}
 
 export function loyaltyAvailablePoints(account: LoyaltyAccount): number {
   if (typeof account.available_points === 'number') {
@@ -14,26 +35,30 @@ export function loyaltyAvailablePoints(account: LoyaltyAccount): number {
 }
 
 /** MVR string for a points balance, e.g. 516 → "5.16" */
-export function pointsValueMvr(points: number): string {
-  return (points / LOYALTY_REDEEM_RATE).toFixed(2);
+export function pointsValueMvr(points: number, rates: LoyaltyRatesConfig = DEFAULT_LOYALTY_RATES): string {
+  return (points / rates.redeemRatePointsPerMvr).toFixed(2);
 }
 
-/** Discount laar for redeeming points — mirrors PointsCalculator at default rate. */
-export function discountLaarForRedeemPoints(points: number): number {
-  return Math.floor((points / LOYALTY_REDEEM_RATE) * 100);
+/** Discount laar for redeeming points — mirrors PointsCalculator. */
+export function discountLaarForRedeemPoints(points: number, rates: LoyaltyRatesConfig = DEFAULT_LOYALTY_RATES): number {
+  return Math.floor((points / rates.redeemRatePointsPerMvr) * 100);
 }
 
 /**
- * Max points redeemable on this order before hitting available balance or 50% cap.
+ * Max points redeemable on this order before hitting available balance, percent cap, or max redeem.
  * `subtotalLaar` should be food subtotal after promo (laari).
  */
-export function maxRedeemPointsForSubtotalLaar(subtotalLaar: number, availablePoints: number): number {
-  if (availablePoints < LOYALTY_MIN_REDEEM || subtotalLaar <= 0) {
+export function maxRedeemPointsForSubtotalLaar(
+  subtotalLaar: number,
+  availablePoints: number,
+  rates: LoyaltyRatesConfig = DEFAULT_LOYALTY_RATES,
+): number {
+  if (availablePoints < rates.minRedeemPoints || subtotalLaar <= 0) {
     return 0;
   }
 
-  const maxDiscountLaar = Math.floor(subtotalLaar * LOYALTY_MAX_REDEEM_PERCENT / 100);
-  const capPoints = Math.ceil((maxDiscountLaar / 100) * LOYALTY_REDEEM_RATE);
+  const maxDiscountLaar = Math.floor(subtotalLaar * rates.maxRedeemPercent / 100);
+  const capPointsFromPercent = Math.ceil((maxDiscountLaar / 100) * rates.redeemRatePointsPerMvr);
 
-  return Math.min(availablePoints, capPoints);
+  return Math.min(availablePoints, capPointsFromPercent, rates.maxRedeemPoints);
 }

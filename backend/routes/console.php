@@ -51,6 +51,11 @@ Schedule::command('app:expire-loyalty-holds')
     ->withoutOverlapping()
     ->onFailure($alertOnFailure('app:expire-loyalty-holds'));
 
+Schedule::command('app:expire-loyalty-points')
+    ->dailyAt('02:30')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('app:expire-loyalty-points'));
+
 Schedule::command('app:reconcile-loyalty-balances')
     ->dailyAt('03:00')
     ->withoutOverlapping()

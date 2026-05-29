@@ -6,8 +6,22 @@
         "lifetime_points": "__VOLATILE__",
         "tier": "bronze"
     },
+    "program": {
+        "enabled": true,
+        "earn_per_mvr": 1,
+        "redeem_rate_points_per_mvr": 100,
+        "min_redeem_points": 100,
+        "max_redeem_points": 10000,
+        "max_redeem_percent": 50,
+        "points_expiry_days": 0,
+        "customer_message": ""
+    },
     "rates": {
         "earn_per_mvr": 1,
-        "discount_per_point_laar": 1
+        "redeem_rate_points_per_mvr": 100,
+        "discount_per_point_laar": 1,
+        "min_redeem_points": 100,
+        "max_redeem_points": 10000,
+        "max_redeem_percent": 50
     }
 }

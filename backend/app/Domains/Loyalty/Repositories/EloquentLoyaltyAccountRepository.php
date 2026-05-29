@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Domains\Loyalty\Repositories;
 
 use App\Models\LoyaltyAccount;
+use App\Services\LoyaltySettingsService;
 use Illuminate\Support\Facades\DB;
 
 class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterface
 {
+    public function __construct(
+        private readonly LoyaltySettingsService $settings,
+    ) {}
+
     public function getOrCreateAccount(int $customerId): LoyaltyAccount
     {
         return LoyaltyAccount::firstOrCreate(
@@ -40,7 +45,7 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
                 ->update([
                     'points_balance' => $balance,
                     'lifetime_points' => DB::raw('lifetime_points + ' . (int) $addLifetime),
-                    'tier' => $this->tierForLifetimePoints($newLifetime),
+                    'tier' => $this->settings->tierForLifetimePoints($newLifetime),
                 ]);
 
             return;
@@ -49,20 +54,8 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
         DB::table('loyalty_accounts')->where('customer_id', $customerId)->update(['points_balance' => $balance]);
     }
 
-    private function tierForLifetimePoints(int $lifetime): string
-    {
-        return match (true) {
-            $lifetime >= 15000 => 'platinum',
-            $lifetime >= 5000 => 'gold',
-            $lifetime >= 1000 => 'silver',
-            default => 'bronze',
-        };
-    }
-
     public function decrementPointsHeld(int $customerId, int $points): void
     {
-        // CASE expression is compatible with both MySQL and SQLite (tests).
-        // GREATEST() is MySQL-only and crashes on SQLite.
         DB::table('loyalty_accounts')
             ->where('customer_id', $customerId)
             ->update([

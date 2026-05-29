@@ -29,9 +29,11 @@ import {
 } from "../api";
 import {
   discountLaarForRedeemPoints,
-  LOYALTY_MIN_REDEEM,
+  DEFAULT_LOYALTY_RATES,
   loyaltyAvailablePoints,
   maxRedeemPointsForSubtotalLaar,
+  ratesFromApi,
+  type LoyaltyRatesConfig,
 } from '../utils/loyalty';
 
 export type CartItem = {
@@ -137,6 +139,8 @@ export function useCheckout() {
   const [token, setToken] = useState<string | null>(readToken);
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [loyaltyAccount, setLoyaltyAccount] = useState<LoyaltyAccount | null>(null);
+  const [loyaltyRates, setLoyaltyRates] = useState<LoyaltyRatesConfig>(DEFAULT_LOYALTY_RATES);
+  const [loyaltyProgramMessage, setLoyaltyProgramMessage] = useState('');
 
   // Sync token when AuthContext recovers session via Blade cookie (e.g. after BML payment
   // clears localStorage on mobile Safari, checkSession() restores it asynchronously).
@@ -288,7 +292,13 @@ export function useCheckout() {
       .catch(() => { /* optional — manual entry still works */ });
 
     getLoyaltyAccount(token).then((r) => {
-      if (!cancelled && r.account && r.account.points_balance > 0) {
+      if (!cancelled && r.program) {
+        setLoyaltyProgramMessage(r.program.customer_message ?? '');
+      }
+      if (!cancelled && r.rates) {
+        setLoyaltyRates(ratesFromApi(r.rates));
+      }
+      if (!cancelled && r.account && r.account.points_balance > 0 && (r.program?.enabled ?? true)) {
         setLoyaltyAccount(r.account);
       }
     }).catch((e: Error) => {
@@ -334,11 +344,11 @@ export function useCheckout() {
   const loyaltyRedeemPoints = useMemo(() => {
     if (!useLoyalty || !loyaltyAccount) return 0;
     const roomLaar = Math.max(0, subtotalLaar - promoDelta);
-    return maxRedeemPointsForSubtotalLaar(roomLaar, loyaltyAvailablePoints(loyaltyAccount));
-  }, [useLoyalty, loyaltyAccount, subtotalLaar, promoDelta]);
+    return maxRedeemPointsForSubtotalLaar(roomLaar, loyaltyAvailablePoints(loyaltyAccount), loyaltyRates);
+  }, [useLoyalty, loyaltyAccount, subtotalLaar, promoDelta, loyaltyRates]);
 
   const loyaltyDelta = loyaltyRedeemPoints > 0
-    ? discountLaarForRedeemPoints(loyaltyRedeemPoints)
+    ? discountLaarForRedeemPoints(loyaltyRedeemPoints, loyaltyRates)
     : 0;
 
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
@@ -357,10 +367,10 @@ export function useCheckout() {
   const totalLaar = discountedSubtotalLaar + taxLaar + deliveryFeeLaar;
 
   useEffect(() => {
-    if (useLoyalty && loyaltyRedeemPoints < LOYALTY_MIN_REDEEM) {
+    if (useLoyalty && loyaltyRedeemPoints < loyaltyRates.minRedeemPoints) {
       setUseLoyalty(false);
     }
-  }, [useLoyalty, loyaltyRedeemPoints]);
+  }, [useLoyalty, loyaltyRedeemPoints, loyaltyRates.minRedeemPoints]);
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
@@ -641,12 +651,12 @@ export function useCheckout() {
       if (useLoyalty && loyaltyAccount) {
         const available = loyaltyAvailablePoints(loyaltyAccount);
         const roomLaar = Math.max(0, subtotalLaar - (promoApplied?.discountLaar ?? promoDelta));
-        let pointsToRedeem = maxRedeemPointsForSubtotalLaar(roomLaar, available);
+        let pointsToRedeem = maxRedeemPointsForSubtotalLaar(roomLaar, available, loyaltyRates);
 
-        if (pointsToRedeem < LOYALTY_MIN_REDEEM) {
+        if (pointsToRedeem < loyaltyRates.minRedeemPoints) {
           setGlobalError(
-            available < LOYALTY_MIN_REDEEM
-              ? `You need at least ${LOYALTY_MIN_REDEEM} available loyalty points. ${loyaltyAccount.points_held ? `${loyaltyAccount.points_held} points are reserved on another order.` : ''}`.trim()
+            available < loyaltyRates.minRedeemPoints
+              ? `You need at least ${loyaltyRates.minRedeemPoints} available loyalty points. ${loyaltyAccount.points_held ? `${loyaltyAccount.points_held} points are reserved on another order.` : ''}`.trim()
               : 'Loyalty discount cannot be applied to this order total.',
           );
           setIsPlacing(false);
@@ -656,7 +666,7 @@ export function useCheckout() {
         try {
           const preview = await previewLoyaltyHold(token, orderId, pointsToRedeem);
           pointsToRedeem = preview.points;
-          if (pointsToRedeem < LOYALTY_MIN_REDEEM) {
+          if (pointsToRedeem < loyaltyRates.minRedeemPoints) {
             setGlobalError('Loyalty discount cannot be applied to this order total.');
             setIsPlacing(false);
             return;
@@ -773,7 +783,7 @@ export function useCheckout() {
   };
 
   return {
-    cart, token, customerName, loyaltyAccount, loyaltyRedeemPoints,
+    cart, token, customerName, loyaltyAccount, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,

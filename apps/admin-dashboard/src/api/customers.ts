@@ -192,6 +192,43 @@ export async function fetchLoyaltyLedger(
   return req(`/admin/loyalty/accounts/${customerId}/ledger`);
 }
 
+export type LoyaltySettings = {
+  enabled: boolean;
+  earn_rate_per_mvr: number;
+  redeem_rate_points_per_mvr: number;
+  min_redeem_points: number;
+  max_redeem_points: number;
+  max_redeem_percent: number;
+  hold_ttl_minutes: number;
+  tiers_enabled: boolean;
+  points_expiry_days: number;
+  earn_on_delivery_fee: boolean;
+  program_starts_at: string | null;
+  program_ends_at: string | null;
+  customer_message: string;
+};
+
+export type LoyaltyTierRow = {
+  id: number;
+  name: string;
+  slug: string;
+  min_lifetime_points: number;
+  earn_multiplier: number;
+  sort_order: number;
+};
+
+export async function fetchLoyaltySettings(): Promise<{ settings: LoyaltySettings; tiers: LoyaltyTierRow[] }> {
+  return req('/admin/loyalty/settings');
+}
+
+export async function updateLoyaltySettings(data: Partial<LoyaltySettings>): Promise<{ settings: LoyaltySettings; message: string }> {
+  return req('/admin/loyalty/settings', { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function updateLoyaltyTiers(tiers: LoyaltyTierRow[]): Promise<{ tiers: LoyaltyTierRow[]; message: string }> {
+  return req('/admin/loyalty/tiers', { method: 'PUT', body: JSON.stringify({ tiers }) });
+}
+
 // ── Gift Cards ────────────────────────────────────────────────────────────────
 
 export interface GiftCard {
