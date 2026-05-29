@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchItems, fetchCartRecommendations, getLoyaltyAccount } from '../api';
+import { fetchItems, fetchCartRecommendations, getLoyaltyAccount, getMyFavourites, toggleFavourite } from '../api';
 import type { Item } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -31,7 +31,34 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const freeDeliveryMvr = parseFreeDeliveryThreshold(s.delivery_free_threshold);
   const [upsellItems, setUpsellItems] = useState<Item[]>([]);
   const [earnRatePerMvr, setEarnRatePerMvr] = useState(1);
+  const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
   const hasFetched = useRef(false);
+
+  useEffect(() => {
+    if (!token) {
+      setFavouriteIds(new Set());
+      return;
+    }
+    getMyFavourites(token)
+      .then((res) => setFavouriteIds(new Set((res.data ?? []).map((f) => f.id))))
+      .catch(() => { /* non-fatal */ });
+  }, [token]);
+
+  const handleToggleFavourite = (itemId: number) => {
+    if (!token) return;
+    setFavouriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+      return next;
+    });
+    toggleFavourite(token, itemId).catch(() => {
+      setFavouriteIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+        return next;
+      });
+    });
+  };
 
   useEffect(() => {
     if (!token || cart.length === 0) {
@@ -121,6 +148,16 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                       </span>
                     )}
                   </p>
+                  {token && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFavourite(entry.item.id)}
+                      aria-label={favouriteIds.has(entry.item.id) ? 'Remove from favourites' : 'Save to favourites'}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0.15rem', flexShrink: 0 }}
+                    >
+                      {favouriteIds.has(entry.item.id) ? '❤️' : '🤍'}
+                    </button>
+                  )}
                   {/* Qty controls — 32px minimum touch target */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
                     <button

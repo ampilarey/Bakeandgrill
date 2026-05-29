@@ -44,6 +44,14 @@ function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct
 
 type SaleFilter = 'all' | 'discount' | 'special';
 
+const DIETARY_FILTERS = [
+  { id: 'vegetarian', label: '🥬 Vegetarian' },
+  { id: 'vegan', label: '🌱 Vegan' },
+  { id: 'halal', label: '☪ Halal' },
+  { id: 'gluten-free', label: '🌾 Gluten-free' },
+  { id: 'spicy', label: '🌶 Spicy' },
+] as const;
+
 export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
@@ -64,6 +72,7 @@ export function MenuPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [saleFilter, setSaleFilter] = useState<SaleFilter>('all');
+  const [dietaryFilter, setDietaryFilter] = useState<string | null>(null);
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedQty, setSelectedQty] = useState(1);
@@ -238,10 +247,23 @@ export function MenuPage() {
     } else if (saleFilter === 'special') {
       list = list.filter(isFixedSpecialItem);
     }
+    if (dietaryFilter) {
+      list = list.filter((i) => (i.dietary_tags ?? []).some((t) => t.toLowerCase() === dietaryFilter));
+    }
     if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
     if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
     return [...list].sort((a, b) => a.name.localeCompare(b.name));
-  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy, saleFilter]);
+  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy, saleFilter, dietaryFilter]);
+
+  const availableDietaryFilters = useMemo(() => {
+    const tags = new Set<string>();
+    for (const item of items) {
+      for (const tag of item.dietary_tags ?? []) {
+        tags.add(tag.toLowerCase());
+      }
+    }
+    return DIETARY_FILTERS.filter((f) => tags.has(f.id));
+  }, [items]);
 
   const discountCount = useMemo(() => items.filter(isPercentDiscountItem).length, [items]);
   const specialCount = useMemo(() => items.filter(isFixedSpecialItem).length, [items]);
@@ -673,6 +695,52 @@ export function MenuPage() {
                     whiteSpace: 'nowrap',
                   }}
                   aria-pressed={saleFilter === opt.id}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {availableDietaryFilters.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', width: '100%' }}>
+              <button
+                type="button"
+                onClick={() => setDietaryFilter(null)}
+                style={{
+                  height: 'var(--input-height)',
+                  padding: '0 1rem',
+                  border: dietaryFilter === null ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  background: dietaryFilter === null ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  color: dietaryFilter === null ? 'var(--color-primary)' : 'var(--color-text)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+                aria-pressed={dietaryFilter === null}
+              >
+                All diets
+              </button>
+              {availableDietaryFilters.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setDietaryFilter(dietaryFilter === opt.id ? null : opt.id)}
+                  style={{
+                    height: 'var(--input-height)',
+                    padding: '0 1rem',
+                    border: dietaryFilter === opt.id ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    background: dietaryFilter === opt.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                    color: dietaryFilter === opt.id ? 'var(--color-primary)' : 'var(--color-text)',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                  }}
+                  aria-pressed={dietaryFilter === opt.id}
                 >
                   {opt.label}
                 </button>

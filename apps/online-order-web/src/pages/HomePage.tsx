@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, API_ORIGIN } from '../api';
-import type { Item, DailySpecial, Order } from '../api';
+import { fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, fetchFeaturedReviews, submitCorporateInquiry, API_ORIGIN } from '../api';
+import type { Item, DailySpecial, Order, FeaturedReview } from '../api';
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
@@ -22,6 +22,17 @@ function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct
   return !badge.includes(`${discountPct}%`);
 }
 
+const corpInputStyle = {
+  width: '100%',
+  padding: '0.75rem 1rem',
+  border: '1.5px solid var(--color-border)',
+  borderRadius: '10px',
+  fontSize: '0.9rem',
+  fontFamily: 'inherit',
+  background: 'var(--color-surface)',
+  boxSizing: 'border-box' as const,
+};
+
 export function HomePage() {
   const navigate = useNavigate();
   const { addItem, clearCart } = useCart();
@@ -35,11 +46,19 @@ export function HomePage() {
   const [, setDeliveryAvailable] = useState<boolean>(true);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [featuredReviews, setFeaturedReviews] = useState<FeaturedReview[]>([]);
+  const [corpForm, setCorpForm] = useState({ contact_name: '', phone: '', company: '', headcount: '', notes: '' });
+  const [corpSubmitting, setCorpSubmitting] = useState(false);
+  const [corpMessage, setCorpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const { settings: s, trustItems, heroSlides } = useSiteSettingsContext();
   const reorderFetched = useRef(false);
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
   const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
+  const officeOrdersEnabled = s.office_orders_enabled !== '0' && s.office_orders_enabled !== 'false';
+  const officeHeadline = s.office_orders_headline || 'Office breakfast & team catering';
+  const officeSubtext = s.office_orders_subtext || 'Minimum 10 guests. We deliver across Malé — tell us your date and headcount.';
+  const officeMinGuests = Math.max(1, parseInt(s.office_orders_min_guests ?? '10', 10) || 10);
 
   usePageTitle(null);
 
@@ -66,6 +85,10 @@ export function HomePage() {
 
     fetchActiveSpecials().then(({ specials: sp }) => {
       setSpecials((sp ?? []).slice(0, 6));
+    }).catch(() => { /* non-blocking */ });
+
+    fetchFeaturedReviews(6).then(({ reviews }) => {
+      setFeaturedReviews(reviews ?? []);
     }).catch(() => { /* non-blocking */ });
   }, []);
 
@@ -380,6 +403,116 @@ export function HomePage() {
                 );
               })}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Customer reviews (social proof) ───────────────── */}
+      {featuredReviews.length > 0 && (
+        <section className="home-section" style={{ paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.35rem' }}>
+                Loved by locals
+              </p>
+              <h2 style={{ fontSize: 'clamp(1.3rem, 3.5vw, 1.75rem)', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.03em', margin: 0 }}>
+                What customers say
+              </h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              {featuredReviews.map((review) => (
+                <div
+                  key={review.id}
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-2xl)',
+                    padding: '1.25rem',
+                  }}
+                >
+                  <div style={{ fontSize: '0.95rem', color: '#f59e0b', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+                    {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                  </div>
+                  {review.comment && (
+                    <p style={{ fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: 1.55, margin: '0 0 0.75rem' }}>
+                      &ldquo;{review.comment}&rdquo;
+                    </p>
+                  )}
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                    {review.author}
+                    {review.item?.name ? ` · ${review.item.name}` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Office / corporate catering inquiry ─────────────── */}
+      {officeOrdersEnabled && (
+        <section className="home-section" style={{ background: 'var(--color-surface-alt)', paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+              <p style={{ fontSize: '1.5rem', marginBottom: '0.35rem' }}>🏢</p>
+              <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 800, color: 'var(--color-dark)', margin: '0 0 0.5rem' }}>
+                {officeHeadline}
+              </h2>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.55 }}>
+                {officeSubtext}
+              </p>
+            </div>
+            {corpMessage?.type === 'ok' ? (
+              <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--color-success-bg)', borderRadius: 'var(--radius-xl)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                <p style={{ fontWeight: 700, color: 'var(--color-success)', margin: '0 0 0.35rem' }}>Thanks — we&apos;ll be in touch!</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>{corpMessage.text}</p>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setCorpMessage(null);
+                  if (!corpForm.contact_name.trim() || !corpForm.phone.trim()) {
+                    setCorpMessage({ type: 'err', text: 'Name and phone are required.' });
+                    return;
+                  }
+                  const headcount = corpForm.headcount ? parseInt(corpForm.headcount, 10) : undefined;
+                  if (headcount != null && headcount < officeMinGuests) {
+                    setCorpMessage({ type: 'err', text: `Minimum ${officeMinGuests} guests for office orders.` });
+                    return;
+                  }
+                  setCorpSubmitting(true);
+                  try {
+                    const res = await submitCorporateInquiry({
+                      contact_name: corpForm.contact_name.trim(),
+                      phone: corpForm.phone.trim(),
+                      company: corpForm.company.trim() || undefined,
+                      headcount,
+                      notes: corpForm.notes.trim() || undefined,
+                    });
+                    setCorpMessage({ type: 'ok', text: res.message });
+                    setCorpForm({ contact_name: '', phone: '', company: '', headcount: '', notes: '' });
+                  } catch (err) {
+                    setCorpMessage({ type: 'err', text: (err as Error).message });
+                  } finally {
+                    setCorpSubmitting(false);
+                  }
+                }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
+              >
+                {corpMessage?.type === 'err' && (
+                  <p style={{ color: 'var(--color-error)', fontSize: '0.85rem', margin: 0 }}>{corpMessage.text}</p>
+                )}
+                <input required placeholder="Your name *" value={corpForm.contact_name} onChange={(e) => setCorpForm((f) => ({ ...f, contact_name: e.target.value }))} style={corpInputStyle} />
+                <input required placeholder="Phone *" value={corpForm.phone} onChange={(e) => setCorpForm((f) => ({ ...f, phone: e.target.value }))} style={corpInputStyle} />
+                <input placeholder="Company / organisation" value={corpForm.company} onChange={(e) => setCorpForm((f) => ({ ...f, company: e.target.value }))} style={corpInputStyle} />
+                <input type="number" min={officeMinGuests} placeholder={`Headcount (min ${officeMinGuests})`} value={corpForm.headcount} onChange={(e) => setCorpForm((f) => ({ ...f, headcount: e.target.value }))} style={corpInputStyle} />
+                <textarea placeholder="Event date, dietary needs, delivery address…" value={corpForm.notes} onChange={(e) => setCorpForm((f) => ({ ...f, notes: e.target.value }))} rows={3} style={{ ...corpInputStyle, resize: 'vertical' }} />
+                <button type="submit" disabled={corpSubmitting} style={{ padding: '0.875rem', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', cursor: corpSubmitting ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: corpSubmitting ? 0.7 : 1 }}>
+                  {corpSubmitting ? 'Sending…' : 'Request a quote →'}
+                </button>
+              </form>
+            )}
           </div>
         </section>
       )}

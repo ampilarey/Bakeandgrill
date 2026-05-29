@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerBar } from './PrayerBar';
 import { OrderStatusBar } from './OrderStatusBar';
@@ -15,7 +15,7 @@ export function Layout() {
   const { cart } = useCart();
   useLanguage(); // keep provider active for t() calls in child pages
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
-  const s = useSiteSettings();
+  const { settings: s } = useSiteSettingsContext();
 
   const siteName   = s.site_name        || 'Bake & Grill';
   const siteTagline= s.site_tagline     || 'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.';

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { AnalyticsTracker } from '../components/AnalyticsTracker';
 
 // Use the same base URL resolution as api.ts so the fetch works in both dev
 // (proxied through Vite) and production (same-origin /api).
@@ -144,6 +145,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
 
   return (
     <SiteSettingsContext.Provider value={value}>
+      <AnalyticsTracker settings={settings} />
       {children}
     </SiteSettingsContext.Provider>
   );

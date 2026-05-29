@@ -3,6 +3,7 @@ import {
   fetchOrderingEligibility, type OrderingEligibility,
   fetchOnlineOrderingStatus, type OnlineOrderingStatus,
   fetchDeliveryZoneStatus,
+  getWaitTimeEstimate,
 } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
@@ -200,10 +201,16 @@ export function CheckoutPage() {
   const [orderElig, setOrderElig] = useState<OrderingEligibility | null>(null);
   const [onlineGate, setOnlineGate] = useState<OnlineOrderingStatus | null>(null);
   const [zoneError, setZoneError] = useState<string | null>(null);
+  const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
   useEffect(() => {
     fetchOrderingEligibility().then(setOrderElig).catch(() => setOrderElig(null));
     fetchOnlineOrderingStatus().then(setOnlineGate).catch(() => setOnlineGate(null));
+    getWaitTimeEstimate()
+      .then(({ wait_minutes, queue_depth }) => {
+        if (queue_depth > 0) setWaitMinutes(wait_minutes);
+      })
+      .catch(() => { /* non-blocking */ });
   }, []);
 
   const handleIslandBlur = useCallback(async (island: string) => {
@@ -752,6 +759,7 @@ export function CheckoutPage() {
             </h1>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0, marginTop: '0.125rem' }}>
               Secure payment · Straight to the kitchen
+              {waitMinutes != null && <> · Kitchen wait ~{waitMinutes} min</>}
             </p>
           </div>
         </div>

@@ -142,12 +142,64 @@ class WasteLogController extends Controller
         $totalCost = (float) (clone $base)->sum('cost_estimate');
         $totalEntries = (int) (clone $base)->count();
 
+        $dailyTrend = (clone $base)
+            ->selectRaw('DATE(created_at) as date, COALESCE(SUM(cost_estimate), 0) as cost')
+            ->groupByRaw('DATE(created_at)')
+            ->orderByRaw('DATE(created_at)')
+            ->get()
+            ->map(fn ($row) => [
+                'date' => (string) $row->date,
+                'cost' => round((float) $row->cost, 2),
+            ])
+            ->values()
+            ->all();
+
+        $menuTop = (clone $base)
+            ->whereNotNull('item_id')
+            ->join('items', 'items.id', '=', 'waste_logs.item_id')
+            ->select('items.id', 'items.name', DB::raw('COUNT(*) as entries'), DB::raw('COALESCE(SUM(waste_logs.cost_estimate), 0) as cost'))
+            ->groupBy('items.id', 'items.name')
+            ->orderByDesc('cost')
+            ->limit(10)
+            ->get()
+            ->map(fn ($row) => [
+                'key' => 'menu-' . $row->id,
+                'name' => (string) $row->name,
+                'entries' => (int) $row->entries,
+                'cost' => round((float) $row->cost, 2),
+            ])
+            ->all();
+
+        $invTop = (clone $base)
+            ->whereNotNull('inventory_item_id')
+            ->join('inventory_items', 'inventory_items.id', '=', 'waste_logs.inventory_item_id')
+            ->select('inventory_items.id', 'inventory_items.name', DB::raw('COUNT(*) as entries'), DB::raw('COALESCE(SUM(waste_logs.cost_estimate), 0) as cost'))
+            ->groupBy('inventory_items.id', 'inventory_items.name')
+            ->orderByDesc('cost')
+            ->limit(10)
+            ->get()
+            ->map(fn ($row) => [
+                'key' => 'inv-' . $row->id,
+                'name' => (string) $row->name,
+                'entries' => (int) $row->entries,
+                'cost' => round((float) $row->cost, 2),
+            ])
+            ->all();
+
+        $topItems = collect([...$menuTop, ...$invTop])
+            ->sortByDesc('cost')
+            ->take(10)
+            ->values()
+            ->all();
+
         return response()->json([
             'from' => $from,
             'to' => $to,
             'total_cost' => round($totalCost, 2),
             'total_entries' => $totalEntries,
             'by_reason' => $byReason,
+            'daily_trend' => $dailyTrend,
+            'top_items' => $topItems,
         ]);
     }
 

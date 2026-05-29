@@ -814,6 +814,11 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 
 // Public: item reviews
 Route::get('/items/{itemId}/reviews', [App\Http\Controllers\Api\ReviewController::class, 'itemReviews']);
+Route::get('/reviews/featured', [App\Http\Controllers\Api\ReviewController::class, 'featured'])
+    ->middleware('throttle:60,1');
+
+Route::post('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'store'])
+    ->middleware('throttle:10,1');
 
 // Customer: submit + list own reviews
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
@@ -836,6 +841,7 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admi
     Route::get('/segments', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'listSegments']);
     Route::get('/segments/{segment}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'segmentCustomers']);
     Route::get('/data-quality', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'dataQuality']);
+    Route::get('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'adminIndex']);
 
     Route::get('/', [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
     Route::get('/{id}/growth-summary', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'growthSummary']);

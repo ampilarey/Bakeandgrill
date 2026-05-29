@@ -76,6 +76,8 @@ export type MenuItem = {
     is_optional: boolean;
     item?: { id: number; name: string; base_price: number } | null;
   }>;
+  dietary_tags?: string[] | null;
+  allergens?: string[] | null;
 };
 
 export type MenuItemPayload = {
@@ -106,6 +108,8 @@ export type MenuItemPayload = {
   is_combo?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean }>;
+  dietary_tags?: string[] | null;
+  allergens?: string[] | null;
 };
 
 export async function fetchItemVariants(itemId: number): Promise<{ variants: MenuVariant[] }> {

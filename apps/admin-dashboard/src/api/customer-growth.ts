@@ -161,3 +161,26 @@ export async function sendCustomerSms(
 ): Promise<{ message: string }> {
   return req(`/admin/customers/${customerId}/send-sms`, { method: 'POST', body: JSON.stringify({ message }) });
 }
+
+export type CorporateInquiry = {
+  id: number;
+  company: string | null;
+  contact_name: string;
+  phone: string;
+  email: string | null;
+  event_date: string | null;
+  headcount: number | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+};
+
+export async function fetchCorporateInquiries(params?: { page?: number }): Promise<{
+  data: CorporateInquiry[];
+  meta: { current_page: number; last_page: number; total: number };
+}> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  const suffix = qs.toString() ? `?${qs}` : '';
+  return req(`/admin/customers/corporate-inquiries${suffix}`);
+}

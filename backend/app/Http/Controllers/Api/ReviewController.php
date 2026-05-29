@@ -40,6 +40,26 @@ class ReviewController extends Controller
         ]);
     }
 
+    /** Public featured reviews for homepage social proof. */
+    public function featured(Request $request): JsonResponse
+    {
+        $limit = min(12, max(3, (int) $request->query('limit', 6)));
+
+        $reviews = Review::query()
+            ->where('status', 'approved')
+            ->whereNotNull('comment')
+            ->where('comment', '!=', '')
+            ->with(['customer:id,name', 'item:id,name'])
+            ->orderByDesc('rating')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'reviews' => $reviews->map(fn (Review $r) => $this->format($r)),
+        ]);
+    }
+
     // ── Customer: submit a review ─────────────────────────────────────────────
 
     public function store(Request $request): JsonResponse

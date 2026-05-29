@@ -163,7 +163,36 @@ export async function fetchActiveSpecials(): Promise<{ specials: DailySpecial[] 
 }
 
 export async function getWaitTimeEstimate(): Promise<{ wait_minutes: number; queue_depth: number }> {
-  return request('/wait-time');
+  return request(ENDPOINTS.WAIT_TIME);
+}
+
+export interface FeaturedReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  author: string;
+  item: { id: number; name: string } | null;
+  created_at: string;
+}
+
+export async function fetchFeaturedReviews(limit = 6): Promise<{ reviews: FeaturedReview[] }> {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  return request(`${ENDPOINTS.REVIEWS_FEATURED}?${qs}`);
+}
+
+export async function submitCorporateInquiry(data: {
+  contact_name: string;
+  phone: string;
+  company?: string;
+  email?: string;
+  event_date?: string;
+  headcount?: number;
+  notes?: string;
+}): Promise<{ message: string; inquiry: { id: number; created_at: string } }> {
+  return request(ENDPOINTS.CORPORATE_INQUIRIES, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export interface ItemReview {

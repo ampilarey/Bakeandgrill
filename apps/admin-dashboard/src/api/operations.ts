@@ -366,6 +366,21 @@ export async function createWasteLog(data: { item_id?: number; inventory_item_id
   return req('/waste-logs', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export interface WasteSummary {
+  from: string | null;
+  to: string | null;
+  total_cost: number;
+  total_entries: number;
+  by_reason: Array<{ reason: string; entries: number; cost: number }>;
+  daily_trend: Array<{ date: string; cost: number }>;
+  top_items: Array<{ key: string; name: string; entries: number; cost: number }>;
+}
+
+export async function fetchWasteSummary(params: { from: string; to: string }): Promise<WasteSummary> {
+  const qs = new URLSearchParams({ from: params.from, to: params.to });
+  return req(`/waste-logs/summary?${qs}`);
+}
+
 // ── Print Jobs ────────────────────────────────────────────────────────────────
 
 /**

@@ -3,7 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
-import { fetchWasteLogs, createWasteLog, fetchAdminItems, fetchInventoryItems, type WasteLog, type MenuItem, type InventoryItem } from '../api';
+import { fetchWasteLogs, fetchWasteSummary, createWasteLog, fetchAdminItems, fetchInventoryItems, type WasteLog, type WasteSummary, type MenuItem, type InventoryItem } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 
 const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other'] as const;
@@ -41,7 +41,7 @@ export default function WasteLogsPage() {
   const [page, setPage]           = useState(1);
 
   // summary tab
-  const [allLogs, setAllLogs]         = useState<WasteLog[]>([]);
+  const [summary, setSummary]         = useState<WasteSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   // log form
@@ -69,8 +69,8 @@ export default function WasteLogsPage() {
     if (from > to) return;
     setSummaryLoading(true);
     try {
-      const res = await fetchWasteLogs({ from, to, page: 1, per_page: 500 } as Parameters<typeof fetchWasteLogs>[0]);
-      setAllLogs(res.data ?? []);
+      const res = await fetchWasteSummary({ from, to });
+      setSummary(res);
     } catch (e) { setError((e as Error).message); }
     finally { setSummaryLoading(false); }
   };
@@ -84,45 +84,22 @@ export default function WasteLogsPage() {
 
   // ── Summary aggregations ────────────────────────────────────────────────────
   const byReason = useMemo(() => {
-    const map: Record<string, { count: number; cost: number }> = {};
-    for (const log of allLogs) {
-      if (!map[log.reason]) map[log.reason] = { count: 0, cost: 0 };
-      map[log.reason].count++;
-      map[log.reason].cost += log.cost_estimate ?? 0;
-    }
-    return Object.entries(map)
-      .map(([reason, v]) => ({ reason: reason as Reason, ...v }))
-      .sort((a, b) => b.cost - a.cost);
-  }, [allLogs]);
+    return (summary?.by_reason ?? []).map((row) => ({
+      reason: row.reason as Reason,
+      count: row.entries,
+      cost: row.cost,
+    }));
+  }, [summary]);
 
-  const totalSummaryCost = useMemo(() => allLogs.reduce((s, l) => s + (l.cost_estimate ?? 0), 0), [allLogs]);
+  const totalSummaryCost = summary?.total_cost ?? 0;
+  const summaryEntryCount = summary?.total_entries ?? 0;
 
-  const topItems = useMemo(() => {
-    const map: Record<string, { key: string; name: string; count: number; cost: number }> = {};
-    for (const log of allLogs) {
-      const key = log.item ? `menu-${log.item.id}` : log.inventory_item ? `inv-${log.inventory_item.id}` : 'unknown';
-      const name = log.item?.name ?? log.inventory_item?.name ?? 'Unknown';
-      if (!map[key]) map[key] = { key, name, count: 0, cost: 0 };
-      map[key].count++;
-      map[key].cost += log.cost_estimate ?? 0;
-    }
-    return Object.values(map).sort((a, b) => b.cost - a.cost).slice(0, 10);
-  }, [allLogs]);
+  const topItems = useMemo(() => summary?.top_items ?? [], [summary]);
+
+  const wasteTrend = useMemo(() => summary?.daily_trend ?? [], [summary]);
 
   const maxItemCost = topItems[0]?.cost ?? 1;
   const maxReasonCost = byReason[0]?.cost ?? 1;
-
-  const wasteTrend = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const log of allLogs) {
-      const day = log.created_at?.slice(0, 10);
-      if (!day) continue;
-      map[day] = (map[day] ?? 0) + (log.cost_estimate ?? 0);
-    }
-    return Object.entries(map)
-      .map(([date, cost]) => ({ date, cost }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [allLogs]);
 
   const maxTrendCost = wasteTrend.reduce((m, d) => Math.max(m, d.cost), 0) || 1;
 
@@ -244,20 +221,15 @@ export default function WasteLogsPage() {
       {tab === 'summary' && (
         summaryLoading ? (
           <p style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading summary…</p>
-        ) : allLogs.length === 0 ? (
+        ) : !summary || summaryEntryCount === 0 ? (
           <EmptyState message="No waste logs for this period." />
         ) : (
           <>
-            {allLogs.length >= 500 && (
-              <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400e' }}>
-                Summary shows up to 500 entries. Narrow the date range for complete accuracy.
-              </div>
-            )}
             {/* KPI row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
-              <StatCard label="Total Entries" value={String(allLogs.length)} accent="#D4813A" />
+              <StatCard label="Total Entries" value={String(summaryEntryCount)} accent="#D4813A" />
               <StatCard label="Total Waste Cost" value={mvr(totalSummaryCost)} accent="#ef4444" />
-              <StatCard label="Avg Cost / Entry" value={allLogs.length > 0 ? mvr(totalSummaryCost / allLogs.length) : 'MVR 0.00'} accent="#f59e0b" />
+              <StatCard label="Avg Cost / Entry" value={summaryEntryCount > 0 ? mvr(totalSummaryCost / summaryEntryCount) : 'MVR 0.00'} accent="#f59e0b" />
               <StatCard label="Reason Types" value={String(byReason.length)} accent="#6B5D4F" />
             </div>
 
@@ -350,7 +322,7 @@ export default function WasteLogsPage() {
                             <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {item.name}
                             </span>
-                            <span style={{ fontSize: 12, color: '#9C8E7E' }}>{item.count}×</span>
+                            <span style={{ fontSize: 12, color: '#9C8E7E' }}>{item.entries}×</span>
                           </div>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>{mvr(item.cost)}</span>
                         </div>
@@ -394,11 +366,11 @@ export default function WasteLogsPage() {
                   ))}
                   <tr style={{ background: '#F8F6F3' }}>
                     <td style={{ ...TD, fontWeight: 700 }}>Total</td>
-                    <td style={{ ...TD, fontWeight: 700 }}>{allLogs.length}</td>
+                    <td style={{ ...TD, fontWeight: 700 }}>{summaryEntryCount}</td>
                     <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>{mvr(totalSummaryCost)}</td>
                     <td style={{ ...TD, fontWeight: 700 }}>100%</td>
                     <td style={{ ...TD, fontWeight: 700, color: '#6B5D4F' }}>
-                      {allLogs.length > 0 ? mvr(totalSummaryCost / allLogs.length) : '—'}
+                      {summaryEntryCount > 0 ? mvr(totalSummaryCost / summaryEntryCount) : '—'}
                     </td>
                   </tr>
                 </tbody>

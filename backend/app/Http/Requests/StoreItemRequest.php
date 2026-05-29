@@ -78,6 +78,10 @@ class StoreItemRequest extends FormRequest
             'combo_items' => 'sometimes|array',
             'combo_items.*.item_id' => 'required_with:combo_items|integer|exists:items,id',
             'combo_items.*.quantity' => 'nullable|integer|min:1|max:99',
+            'dietary_tags' => 'sometimes|nullable|array|max:12',
+            'dietary_tags.*' => 'string|max:40',
+            'allergens' => 'sometimes|nullable|array|max:12',
+            'allergens.*' => 'string|max:40',
             'combo_items.*.is_optional' => 'nullable|boolean',
         ];
     }

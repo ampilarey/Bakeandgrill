@@ -229,6 +229,8 @@ type ItemForm = {
   stock_quantity: string;
   low_stock_threshold: string;
   variants: VariantRow[];
+  dietary_tags: string;
+  allergens: string;
 };
 
 function emptyVariantRow(): VariantRow {
@@ -273,6 +275,8 @@ function itemToForm(item: MenuItem): ItemForm {
     stock_quantity: item.stock_quantity != null ? String(item.stock_quantity) : '0',
     low_stock_threshold: item.low_stock_threshold != null ? String(item.low_stock_threshold) : '5',
     variants: (item.variants ?? []).map((v) => ({ ...v, _key: String(v.id ?? Math.random()) })),
+    dietary_tags: (item.dietary_tags ?? []).join(', '),
+    allergens: (item.allergens ?? []).join(', '),
   };
 }
 
@@ -323,6 +327,10 @@ function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayloa
         is_optional: row.is_optional,
       }));
   }
+  const parseTagList = (raw: string) =>
+    raw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 12);
+  payload.dietary_tags = parseTagList(form.dietary_tags);
+  payload.allergens = parseTagList(form.allergens);
   return payload;
 }
 
@@ -398,6 +406,15 @@ function ItemFormModal({
             <Field label="Description">
               <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Describe the item…" />
             </Field>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Dietary tags">
+                <Input value={form.dietary_tags} onChange={(v) => set('dietary_tags', v)} placeholder="vegetarian, halal, spicy" />
+              </Field>
+              <Field label="Allergens">
+                <Input value={form.allergens} onChange={(v) => set('allergens', v)} placeholder="nuts, dairy, gluten" />
+              </Field>
+            </div>
+            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>Comma-separated. Tags appear as menu filters online.</p>
             {/* Variant toggle */}
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#F8F6F3', borderRadius: 8, border: '1px solid #E8E0D8' }}>
               <input
@@ -945,6 +962,7 @@ export function MenuPage() {
     has_variants: false, variants: [],
     is_combo: false, combo_discount_pct: '', combo_items: [],
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
+    dietary_tags: '', allergens: '',
   };
 
   const allMenuItems = items;

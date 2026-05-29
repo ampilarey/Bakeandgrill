@@ -263,6 +263,8 @@ class ItemController extends Controller
                 $data['cost'] = $item->cost !== null ? (float) $item->cost : null;
                 $data['recipe_cost'] = $recipeCosts?->forItem($item);
                 $data['effective_cost'] = $recipeCosts?->effectiveCost($item);
+                $data['dietary_tags'] = $item->dietary_tags ?? [];
+                $data['allergens'] = $item->allergens ?? [];
                 $data['combo_items'] = $item->relationLoaded('comboItems')
                     ? $item->comboItems->map(fn ($row) => [
                         'item_id' => $row->item_id,

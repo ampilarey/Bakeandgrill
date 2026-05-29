@@ -4,8 +4,10 @@ import {
   fetchCustomerGrowthMetrics, fetchCustomerSegments, fetchCustomerSegment,
   fetchCustomerDataQuality,
   fetchMarketingAutomation, updateMarketingAutomation,
+  fetchCorporateInquiries,
   type CustomerGrowthMetrics, type CustomerSegmentMeta, type CustomerSegmentRow,
   type CustomerDataQualityReport, type MarketingAutomationSettings,
+  type CorporateInquiry,
 } from '../api';
 import { Customer360Drawer } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -15,7 +17,7 @@ import {
   StatCard, TableCard, TD, TH,
 } from '../components/SharedUI';
 
-type Tab = 'overview' | 'segments' | 'marketing' | 'quality';
+type Tab = 'overview' | 'segments' | 'marketing' | 'quality' | 'corporate';
 
 const TAB_STYLE = (active: boolean): React.CSSProperties => ({
   padding: '8px 18px', border: 'none', borderRadius: 8, cursor: 'pointer',
@@ -45,6 +47,9 @@ export function CustomerGrowthPage() {
   const [automation, setAutomation] = useState<MarketingAutomationSettings | null>(null);
   const [automationSaving, setAutomationSaving] = useState(false);
   const [automationMsg, setAutomationMsg] = useState('');
+  const [corpInquiries, setCorpInquiries] = useState<CorporateInquiry[]>([]);
+  const [corpMeta, setCorpMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [corpPage, setCorpPage] = useState(1);
 
   useEffect(() => {
     const load = async () => {
@@ -104,6 +109,18 @@ export function CustomerGrowthPage() {
       .catch((e: Error) => setAutomationMsg(e.message));
   }, [tab]);
 
+  useEffect(() => {
+    if (tab !== 'corporate') return;
+    setLoading(true);
+    fetchCorporateInquiries({ page: corpPage })
+      .then((r) => {
+        setCorpInquiries(r.data ?? []);
+        setCorpMeta(r.meta ?? { current_page: 1, last_page: 1, total: 0 });
+      })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [tab, corpPage]);
+
   const saveAutomation = async () => {
     if (!automation) return;
     setAutomationSaving(true);
@@ -131,9 +148,9 @@ export function CustomerGrowthPage() {
       />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        {(['overview', 'segments', 'marketing', 'quality'] as Tab[]).map((t) => (
+        {(['overview', 'segments', 'marketing', 'corporate', 'quality'] as Tab[]).map((t) => (
           <button key={t} type="button" style={TAB_STYLE(tab === t)} onClick={() => setTab(t)}>
-            {t === 'overview' ? 'Overview' : t === 'segments' ? 'Segments' : t === 'marketing' ? 'Marketing' : 'Data Quality'}
+            {t === 'overview' ? 'Overview' : t === 'segments' ? 'Segments' : t === 'marketing' ? 'Marketing' : t === 'corporate' ? 'Corporate' : 'Data Quality'}
           </button>
         ))}
       </div>
@@ -303,6 +320,47 @@ export function CustomerGrowthPage() {
           </p>
         </Card>
         </>
+      )}
+
+      {tab === 'corporate' && (
+        loading && corpInquiries.length === 0 ? <Spinner /> : (
+          <TableCard>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  {['Contact', 'Phone', 'Company', 'Headcount', 'Notes', 'Status', 'Submitted'].map((h) => (
+                    <th key={h} style={TH}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {corpInquiries.length === 0 ? (
+                  <tr><td colSpan={7}><EmptyState message="No corporate inquiries yet." /></td></tr>
+                ) : corpInquiries.map((row) => (
+                  <tr key={row.id}>
+                    <td style={TD}>{row.contact_name}</td>
+                    <td style={TD}>{row.phone}</td>
+                    <td style={TD}>{row.company ?? '—'}</td>
+                    <td style={TD}>{row.headcount ?? '—'}</td>
+                    <td style={{ ...TD, maxWidth: 220, fontSize: 12 }}>{row.notes ?? '—'}</td>
+                    <td style={TD}>{row.status}</td>
+                    <td style={{ ...TD, color: '#9C8E7E' }}>{new Date(row.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ padding: 12, fontSize: 12, color: '#9C8E7E' }}>
+              {corpMeta.total} inquiries
+              {corpMeta.last_page > 1 && (
+                <>
+                  {' · '}
+                  <button type="button" disabled={corpPage <= 1} onClick={() => setCorpPage((p) => p - 1)} style={{ marginRight: 8, fontFamily: 'inherit', cursor: 'pointer' }}>Prev</button>
+                  <button type="button" disabled={corpPage >= corpMeta.last_page} onClick={() => setCorpPage((p) => p + 1)} style={{ fontFamily: 'inherit', cursor: 'pointer' }}>Next</button>
+                </>
+              )}
+            </p>
+          </TableCard>
+        )
       )}
 
       {tab === 'quality' && (

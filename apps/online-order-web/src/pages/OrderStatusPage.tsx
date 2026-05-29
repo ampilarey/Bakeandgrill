@@ -416,6 +416,22 @@ export function OrderStatusPage() {
     (serverPaymentConfirmed || isDone);
   const activeStep = order ? stepIndex(order.status) : -1;
 
+  const handleShareOrder = async () => {
+    if (!order) return;
+    const shareText = `Just ordered from Bake & Grill! Order #${order.order_number}`;
+    const shareUrl = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Bake & Grill', text: shareText, url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+        alert('Link copied to clipboard!');
+      }
+    } catch {
+      /* user cancelled share */
+    }
+  };
+
   const handleOrderAgain = async () => {
     if (!order) return;
     if (!isDone) {
@@ -901,6 +917,23 @@ export function OrderStatusPage() {
             </div>
 
             {/* CTA */}
+            {isDone && (
+              <button
+                type="button"
+                onClick={() => void handleShareOrder()}
+                style={{
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-primary)',
+                  border: '1.5px solid var(--color-primary)',
+                  borderRadius: '0.75rem', padding: '0.75rem 1.5rem',
+                  fontSize: 'var(--text-sm)', fontWeight: 700,
+                  cursor: 'pointer', width: '100%', fontFamily: 'inherit',
+                  marginBottom: '0.625rem',
+                }}
+              >
+                📤 Share your order
+              </button>
+            )}
             <button
               type="button"
               style={{
