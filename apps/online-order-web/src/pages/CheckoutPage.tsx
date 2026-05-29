@@ -10,6 +10,12 @@ import { useSiteSettings } from "../context/SiteSettingsContext";
 import { AuthBlock } from "../components/AuthBlock";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { CartSummary } from "../components/CartSummary";
+import { WhatsAppIcon, ViberIcon } from '../components/icons';
+import { laarToMvr } from '../utils/money';
+import {
+  loyaltyAvailablePoints,
+  pointsValueMvr,
+} from '../utils/loyalty';
 
 // ── Viewport hook ──────────────────────────────────────────────────────────────
 function useIsMobile() {
@@ -20,12 +26,20 @@ function useIsMobile() {
   );
 }
 
-import { WhatsAppIcon, ViberIcon } from '../components/icons';
-import { laarToMvr } from '../utils/money';
-import {
-  loyaltyAvailablePoints,
-  pointsValueMvr,
-} from '../utils/loyalty';
+function parseFreeDeliveryThreshold(raw: string | undefined): number {
+  const n = parseFloat(raw ?? '');
+  return Number.isFinite(n) && n > 0 ? n : 200;
+}
+
+function parseZoneFees(raw: string | undefined): Record<string, number> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 // ── Field component ────────────────────────────────────────────────────────────
 function Field({
@@ -287,11 +301,36 @@ export function CheckoutPage() {
     </SectionCard>
   );
 
-  const sectionDelivery = orderType === 'delivery' && (
+  const sectionDelivery = orderType === 'delivery' && (() => {
+    const freeThreshold = parseFreeDeliveryThreshold(s.delivery_free_threshold);
+    const defaultFee = parseFloat(s.delivery_default_fee ?? '30') || 30;
+    const zoneFees = parseZoneFees(s.delivery_zone_fees);
+    const islandKey = delivery.island.trim();
+    const zoneFee = islandKey
+      ? Object.entries(zoneFees).find(([z]) => z.toLowerCase() === islandKey.toLowerCase())?.[1]
+      : undefined;
+    const explainedFee = zoneFee ?? defaultFee;
+    const cartMvr = subtotalLaar / 100;
+    const qualifiesFree = cartMvr >= freeThreshold;
+
+    return (
     <SectionCard title="Delivery Details">
       <div style={S.infoNote}>
-        <span>🛵</span> Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong> · Estimated {deliveryEta}
+        <span>🛵</span>{' '}
+        Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong>
+        {islandKey && zoneFee != null && zoneFee !== defaultFee && (
+          <> · Zone rate for {islandKey}: MVR {explainedFee.toFixed(2)}</>
+        )}
+        {islandKey && zoneFee == null && (
+          <> · Standard rate: MVR {defaultFee.toFixed(2)}</>
+        )}
+        {' '}· Estimated {deliveryEta}
       </div>
+      <p style={{ margin: '0 0 14px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+        {qualifiesFree
+          ? `Your order qualifies for free delivery (orders over MVR ${freeThreshold.toFixed(0)}).`
+          : `Free delivery on orders over MVR ${freeThreshold.toFixed(0)} — add MVR ${Math.max(0, freeThreshold - cartMvr).toFixed(2)} more to qualify.`}
+      </p>
       {token && savedAddresses.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -351,7 +390,8 @@ export function CheckoutPage() {
         </div>
       )}
     </SectionCard>
-  );
+    );
+  })();
 
   const sectionNotes = (
     <SectionCard title="Special Instructions">

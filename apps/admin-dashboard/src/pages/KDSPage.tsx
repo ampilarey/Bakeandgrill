@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall } from '../api';
 import type { KdsTicket } from '../api';
-import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, statColor } from '../components/Layout';
+import { fetchMenuGroups, fetchAdminItems, toggleItemAvailability } from '../api/menu';
+import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSse } from '../hooks/useSse';
 import { playChime } from '../utils/audio';
@@ -25,6 +26,14 @@ function urgencyColor(iso: string): { solid: string; faint: string } {
   return        { solid: '#22c55e', faint: 'rgba(34,197,94,0.13)' };
 }
 
+function minutesSince(iso: string): number {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return 0;
+  return Math.floor((Date.now() - t) / 60000);
+}
+
+const PREP_TARGET_MIN = 12;
+
 export function KDSPage() {
     usePageTitle('Kitchen Display');
   const [tickets, setTickets] = useState<KdsTicket[]>([]);
@@ -33,6 +42,10 @@ export function KDSPage() {
   const [acting, setActing] = useState<number | null>(null);
   const [newTicketFlash, setNewTicketFlash] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [stationFilter, setStationFilter] = useState<number | 'all'>('all');
+  const [menuGroups, setMenuGroups] = useState<{ id: number; name: string }[]>([]);
+  const [itemGroupMap, setItemGroupMap] = useState<Record<number, number>>({});
+  const [eightySixing, setEightySixing] = useState<number | null>(null);
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstKdsLoad    = useRef(true);
   const kdsRef = useRef<HTMLDivElement>(null);
@@ -82,6 +95,17 @@ export function KDSPage() {
   // Initial load
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    void fetchMenuGroups().then((r) => setMenuGroups(r.data ?? [])).catch(() => undefined);
+    void fetchAdminItems({ per_page: 500 }).then((r) => {
+      const map: Record<number, number> = {};
+      for (const item of r.data ?? []) {
+        if (item.id && item.menu_group_id) map[item.id] = item.menu_group_id;
+      }
+      setItemGroupMap(map);
+    }).catch(() => undefined);
+  }, []);
+
   // SSE: reload whenever the kitchen stream fires any order event
   const handleSseEvent = useCallback(() => { void load(); }, [load]);
   const { connected: sseConnected } = useSse('/stream/kds', { onEvent: handleSseEvent });
@@ -101,10 +125,33 @@ export function KDSPage() {
 
   // Backend statuses: pending → in_progress → ready → completed
   // paid = online order waiting for kitchen
-  const pending = tickets.filter((t) => ['pending', 'paid'].includes(t.status));
-  // 'preparing' is used by POS/online-order flows; treat it the same as in_progress.
-  const cooking = tickets.filter((t) => ['in_progress', 'preparing'].includes(t.status));
-  const ready   = tickets.filter((t) => t.status === 'ready');
+  const filteredTickets = useMemo(() => {
+    if (stationFilter === 'all') return tickets;
+    return tickets.filter((t) => (t.items ?? []).some((line) => {
+      const itemId = line.item_id;
+      return itemId != null && itemGroupMap[itemId] === stationFilter;
+    }));
+  }, [tickets, stationFilter, itemGroupMap]);
+
+  const pending = filteredTickets.filter((t) => ['pending', 'paid'].includes(t.status));
+  const cooking = filteredTickets.filter((t) => ['in_progress', 'preparing'].includes(t.status));
+  const ready   = filteredTickets.filter((t) => t.status === 'ready');
+
+  const avgWait = (items: KdsTicket[]) => items.length
+    ? Math.round(items.reduce((sum, t) => sum + minutesSince(t.created_at), 0) / items.length)
+    : 0;
+
+  const handle86 = async (itemId: number) => {
+    setEightySixing(itemId);
+    try {
+      await toggleItemAvailability(itemId);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setEightySixing(null);
+    }
+  };
 
   const Column = ({ title, items, color, flash, children }: {
     title: string; items: KdsTicket[]; color: string; flash?: boolean;
@@ -162,6 +209,27 @@ export function KDSPage() {
       />
       {error && <ErrorMsg message={error} />}
 
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <label style={{ fontSize: 13, color: '#6B5D4F', display: 'flex', alignItems: 'center', gap: 8 }}>
+          Station
+          <select
+            value={stationFilter === 'all' ? 'all' : String(stationFilter)}
+            onChange={(e) => setStationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+            style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }}
+          >
+            <option value="all">All stations</option>
+            {menuGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <StatCard label="Pending avg wait" value={`${avgWait(pending)}m`} accent="#f59e0b" />
+        <StatCard label="Cooking avg wait" value={`${avgWait(cooking)}m`} accent="#3b82f6" />
+        <StatCard label="Ready queue" value={String(ready.length)} accent="#22c55e" />
+        <StatCard label="Over prep target" value={String([...pending, ...cooking].filter((t) => minutesSince(t.created_at) >= PREP_TARGET_MIN).length)} accent="#ef4444" />
+      </div>
+
       {loading && tickets.length === 0 ? (
         <Card style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></Card>
       ) : (
@@ -169,7 +237,7 @@ export function KDSPage() {
           <Column title="Pending" items={pending} color="#f59e0b" flash={newTicketFlash}>
             {(t) => (
               <>
-                <TicketHeader ticket={t} />
+                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} />
                 <Btn
                   small onClick={() => act(t.id, kdsStart)}
                   disabled={acting === t.id}
@@ -184,7 +252,7 @@ export function KDSPage() {
           <Column title="Cooking" items={cooking} color="#3b82f6">
             {(t) => (
               <>
-                <TicketHeader ticket={t} />
+                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} />
                 {/*
                   Marking ready moved to POS — cashier owns the
                   "Ready for pickup!" SMS so the call to notify the
@@ -221,7 +289,7 @@ export function KDSPage() {
           <Column title="Ready" items={ready} color="#22c55e">
             {(t) => (
               <>
-                <TicketHeader ticket={t} />
+                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} />
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <Btn
                     small onClick={() => act(t.id, kdsBump)}
@@ -247,12 +315,28 @@ export function KDSPage() {
   );
 }
 
-function TicketHeader({ ticket }: { ticket: KdsTicket }) {
+function TicketHeader({
+  ticket,
+  on86,
+  eightySixing,
+}: {
+  ticket: KdsTicket;
+  on86?: (itemId: number) => void;
+  eightySixing?: number | null;
+}) {
+  const overdue = minutesSince(ticket.created_at) >= PREP_TARGET_MIN
+    && !['ready', 'completed'].includes(ticket.status);
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
           <span style={{ fontWeight: 800, fontSize: 16, color: '#1C1408' }}>#{ticket.order_number}</span>
+          {overdue && (
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#FEE2E2', padding: '2px 6px', borderRadius: 999 }}>
+              OVERDUE
+            </span>
+          )}
           {ticket.table_number && (
             <span style={{ marginLeft: 8, fontSize: 12, color: '#9C8E7E' }}>Table {ticket.table_number}</span>
           )}
@@ -269,13 +353,26 @@ function TicketHeader({ ticket }: { ticket: KdsTicket }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {(ticket.items ?? []).map((item, i) => (
-          <div key={i} style={{ fontSize: 13, color: '#6B5D4F' }}>
-            <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
-            {item.modifiers && item.modifiers.length > 0 && (
-              <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
-                + {item.modifiers.map((m) => m.modifier_name).join(', ')}
-              </span>
-            )}
+          <div key={i} style={{ fontSize: 13, color: '#6B5D4F', display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
+              {item.modifiers && item.modifiers.length > 0 && (
+                <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
+                  + {item.modifiers.map((m) => m.modifier_name).join(', ')}
+                </span>
+              )}
+            </div>
+            {on86 && item.item_id ? (
+              <button
+                type="button"
+                onClick={() => on86(item.item_id!)}
+                disabled={eightySixing === item.item_id}
+                title="Mark item sold out (86)"
+                style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, border: '1px solid #FECACA', background: '#FEF2F2', color: '#991B1B', cursor: 'pointer', flexShrink: 0 }}
+              >
+                {eightySixing === item.item_id ? '…' : '86'}
+              </button>
+            ) : null}
           </div>
         ))}
       </div>

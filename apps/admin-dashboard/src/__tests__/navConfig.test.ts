@@ -15,13 +15,16 @@ describe('navConfig', () => {
     expect(inGroup).toBeUndefined();
   });
 
-  it('resolveNavItemForPath prefers delivery-settings over delivery', () => {
+  it('resolveNavItemForPath matches delivery route', () => {
     const all = [...PINNED_NAV_ITEMS, ...NAV_GROUPS.flatMap((g) => g.items)];
-    const deliverySettings = all.find((i) => i.to === '/delivery-settings');
-    expect(deliverySettings?.label).toBe('Delivery Settings');
-    const match = resolveNavItemForPath('/delivery-settings', all);
-    expect(match?.to).toBe('/delivery-settings');
-    expect(match?.label).not.toBe('Delivery');
+    const match = resolveNavItemForPath('/delivery', all);
+    expect(match?.to).toBe('/delivery');
+  });
+
+  it('ordering control nav item points to online-ordering', () => {
+    const all = [...PINNED_NAV_ITEMS, ...NAV_GROUPS.flatMap((g) => g.items)];
+    const ordering = all.find((i) => i.to === '/online-ordering');
+    expect(ordering?.label).toBe('Ordering Control');
   });
 
   it('inventory.view passes for user with inventory.manage only', () => {

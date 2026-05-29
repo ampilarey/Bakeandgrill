@@ -291,13 +291,11 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 {/* Dev/staging only — hidden in production builds */}
-                {!import.meta.env.PROD && (
-                  <Route path="checklist" element={
-                    <PermissionGuard user={user} permission="website.manage">
-                      <TestChecklistPage />
-                    </PermissionGuard>
-                  } />
-                )}
+                <Route path="checklist" element={
+                  <PermissionGuard user={user} permission="website.manage">
+                    <TestChecklistPage />
+                  </PermissionGuard>
+                } />
                 {/* Settings hub */}
                 <Route path="settings/*" element={
                   <PermissionGuard user={user} permission="website.manage">

@@ -13,6 +13,7 @@ import {
   type OnlineOrderingGateStatus,
   type PackagingFeeSettings,
 } from '../api';
+import { OrderingControlTabs } from '../components/OrderingControlTabs';
 
 const DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -156,6 +157,16 @@ const DEFAULT_RAMADAN_BUSINESS_HOURS: Record<string, string> = {
   sun: '4:00 PM – 11:00 PM',
 };
 
+const DEFAULT_EID_BUSINESS_HOURS: Record<string, string> = {
+  mon: '10:00 AM – 11:00 PM',
+  tue: '10:00 AM – 11:00 PM',
+  wed: '10:00 AM – 11:00 PM',
+  thu: '10:00 AM – 11:00 PM',
+  fri: '10:00 AM – 11:00 PM',
+  sat: '10:00 AM – 11:00 PM',
+  sun: '10:00 AM – 11:00 PM',
+};
+
 const REASON_LABELS: Record<string, string> = {
   master_switch_off: 'Master switch is off',
   schedule:          'Outside scheduled hours',
@@ -163,7 +174,7 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 export default function OnlineOrderingPage() {
-  usePageTitle('Online Ordering');
+  usePageTitle('Ordering Control');
 
   const [status, setStatus]       = useState<OnlineOrderingGateStatus | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -250,6 +261,33 @@ export default function OnlineOrderingPage() {
     try {
       await updateSiteSettings({ business_hours: JSON.stringify(businessHours) });
       showToast('Ramadan hours applied to business hours and online schedule — save schedule to persist ordering windows.');
+    } catch {
+      showToast('Schedule updated locally; failed to save business hours.', 'err');
+    }
+  };
+
+  const applyEidPreset = async () => {
+    const preset: Schedule = Object.fromEntries(
+      DAYS.map(({ key }) => [key, {
+        enabled: true,
+        windows: [{ open: '10:00', close: '23:00' }],
+      }]),
+    ) as Schedule;
+    setSchedule(preset);
+
+    let businessHours = DEFAULT_EID_BUSINESS_HOURS;
+    try {
+      const { settings } = await getSiteSettings();
+      const rawPreset = Object.values(settings).flat().find((s: { key: string }) => s.key === 'eid_hours_preset')?.value;
+      if (rawPreset) {
+        const parsed = JSON.parse(rawPreset) as Record<string, string>;
+        if (parsed && typeof parsed === 'object') businessHours = { ...DEFAULT_EID_BUSINESS_HOURS, ...parsed };
+      }
+    } catch { /* use default */ }
+
+    try {
+      await updateSiteSettings({ business_hours: JSON.stringify(businessHours) });
+      showToast('Eid hours applied — save schedule to persist ordering windows.');
     } catch {
       showToast('Schedule updated locally; failed to save business hours.', 'err');
     }
@@ -365,7 +403,8 @@ export default function OnlineOrderingPage() {
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: 680 }}>
-      <PageHeader title="Online Ordering" subtitle="Control whether the store accepts online orders" />
+      <PageHeader title="Ordering Control Center" subtitle="Online ordering gates, schedules, fees, and limits" />
+      <OrderingControlTabs />
 
       {/* Toast */}
       {toast && (
@@ -571,6 +610,9 @@ export default function OnlineOrderingPage() {
           </button>
           <button type="button" style={S.btnSecondary} onClick={() => void applyRamadanPreset()}>
             Apply Ramadan preset (business hours + 5pm–1am online)
+          </button>
+          <button type="button" style={S.btnSecondary} onClick={() => void applyEidPreset()}>
+            Apply Eid preset (10am–11pm)
           </button>
         </div>
       </div>

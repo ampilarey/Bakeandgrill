@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/SharedUI';
+import { OrderingControlTabs } from '../components/OrderingControlTabs';
 import {
   getDeliveryStatus,
   toggleDelivery,
@@ -329,9 +330,10 @@ export default function DeliverySettingsPage() {
   return (
     <div style={{ padding: '1.5rem', maxWidth: 680 }}>
       <PageHeader
-        title="Delivery Settings"
-        subtitle="Control delivery availability — independent of online ordering hours"
+        title="Ordering Control Center"
+        subtitle="Delivery gates, zones, fees, and schedules"
       />
+      <OrderingControlTabs />
 
       {/* Toast */}
       {toast && (

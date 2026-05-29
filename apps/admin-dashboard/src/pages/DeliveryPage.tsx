@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { fetchOrders, type Order, adminRequest } from '../api';
-import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, Spinner, statColor, useConfirmDialog } from '../components/Layout';
+import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
+import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 type Driver = {
@@ -36,9 +36,16 @@ export function DeliveryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<Order | null>(null);
-  const [tab, setTab] = useState<'orders' | 'drivers'>('orders');
+  const [tab, setTab] = useState<'orders' | 'drivers' | 'settlement'>('orders');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [settlementFrom, setSettlementFrom] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
+  });
+  const [settlementTo, setSettlementTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [settlement, setSettlement] = useState<DriverSettlementReport | null>(null);
+  const [settlementLoading, setSettlementLoading] = useState(false);
 
   const loadOrders = async (p = page) => {
     try {
@@ -60,12 +67,27 @@ export function DeliveryPage() {
     } catch (e: unknown) { setError((e as Error).message); }
   };
 
+  const loadSettlement = useCallback(async () => {
+    setSettlementLoading(true);
+    try {
+      setSettlement(await getDriverSettlementReport({ from: settlementFrom, to: settlementTo }));
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setSettlementLoading(false);
+    }
+  }, [settlementFrom, settlementTo]);
+
   useEffect(() => {
     void loadOrders(page);
     void loadDrivers();
     const t = setInterval(() => void loadOrders(page), 30_000);
     return () => clearInterval(t);
   }, [page]);
+
+  useEffect(() => {
+    if (tab === 'settlement') void loadSettlement();
+  }, [tab, loadSettlement]);
 
   const active   = orders.filter((o) => !['completed', 'cancelled'].includes(o.status));
   const finished = orders.filter((o) => ['completed', 'cancelled'].includes(o.status));
@@ -80,7 +102,7 @@ export function DeliveryPage() {
 
       {/* Tab switcher */}
       <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['orders', 'drivers'] as const).map((t) => (
+        {(['orders', 'drivers', 'settlement'] as const).map((t) => (
           <button
             key={t}
             role="tab"
@@ -95,7 +117,7 @@ export function DeliveryPage() {
               fontFamily: 'inherit',
             }}
           >
-            {t === 'orders' ? `Orders (${orders.length})` : `Drivers (${drivers.length})`}
+            {t === 'orders' ? `Orders (${orders.length})` : t === 'drivers' ? `Drivers (${drivers.length})` : 'Driver Settlement'}
           </button>
         ))}
       </div>
@@ -148,6 +170,64 @@ export function DeliveryPage() {
 
       {tab === 'drivers' && (
         <DriversPanel drivers={drivers} onRefresh={loadDrivers} />
+      )}
+
+      {tab === 'settlement' && (
+        <>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap' }}>
+            <label>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>From</span>
+              <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8' }} />
+            </label>
+            <label>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>To</span>
+              <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8' }} />
+            </label>
+            <Btn onClick={() => void loadSettlement()} variant="secondary" disabled={settlementLoading}>
+              {settlementLoading ? 'Loading…' : 'Apply'}
+            </Btn>
+          </div>
+          {settlementLoading && !settlement ? (
+            <Spinner />
+          ) : settlement ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
+                <StatCard label="Delivery Orders" value={String(settlement.totals.orders_count)} accent="#0ea5e9" />
+                <StatCard label="Cash Collected" value={`MVR ${settlement.totals.cash_collected.toFixed(2)}`} accent="#16a34a" />
+                <StatCard label="Delivery Fees" value={`MVR ${settlement.totals.delivery_fees.toFixed(2)}`} accent="#D4813A" />
+              </div>
+              <Card>
+                {(settlement.rows ?? []).length === 0 ? (
+                  <EmptyState message="No driver-assigned deliveries in this period." />
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Driver', 'Orders', 'Completed', 'Revenue', 'Fees', 'Cash', 'Card', 'Prepaid'].map((h) => (
+                          <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {settlement.rows.map((row) => (
+                        <tr key={row.driver_id}>
+                          <td style={{ padding: '10px 12px', fontWeight: 600 }}>{row.driver_name}</td>
+                          <td style={{ padding: '10px 12px' }}>{row.orders_count}</td>
+                          <td style={{ padding: '10px 12px' }}>{row.completed_count}</td>
+                          <td style={{ padding: '10px 12px' }}>MVR {row.order_total.toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px' }}>MVR {row.delivery_fees.toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px', color: '#16a34a', fontWeight: 600 }}>MVR {row.cash_collected.toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px' }}>MVR {row.card_collected.toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px' }}>{row.prepaid_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </Card>
+            </>
+          ) : null}
+        </>
       )}
 
       {/* Order detail modal */}

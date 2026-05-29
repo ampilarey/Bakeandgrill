@@ -199,6 +199,43 @@ class ReportsController extends Controller
         return response()->json($this->reports->creditExposure());
     }
 
+    public function managerOverrides(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        $limit = min(200, max(10, (int) $request->input('limit', 100)));
+
+        return response()->json($this->reports->managerOverrides($from, $to, $limit));
+    }
+
+    public function stockVelocity(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        $limit = min(100, max(10, (int) $request->input('limit', 50)));
+
+        return response()->json($this->reports->stockVelocity($from, $to, $limit));
+    }
+
+    public function driverSettlement(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->driverSettlement($from, $to));
+    }
+
+    public function shiftVariances(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->shiftVariances($from, $to));
+    }
+
+    public function customerLtv(Request $request)
+    {
+        $limit = min(50, max(5, (int) $request->input('limit', 20)));
+
+        return response()->json($this->reports->customerLtvTop($limit));
+    }
+
     public function inventoryValuationCsv()
     {
         $data = $this->reports->inventoryValuation();

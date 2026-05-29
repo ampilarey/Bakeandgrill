@@ -612,21 +612,19 @@ export function DashboardPage() {
         subtitle={new Date(summaryDate + 'T00:00:00').toLocaleDateString('en-MV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         action={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {!import.meta.env.PROD && (
-              <button
-                type="button"
-                onClick={() => navigate('/checklist')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  fontSize: 12, fontWeight: 700, color: '#D4813A',
-                  background: 'rgba(212,129,58,0.1)', border: '1px solid rgba(212,129,58,0.3)',
-                  borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <ClipboardList size={14} />
-                Go-live checklist
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate('/checklist')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 12, fontWeight: 700, color: '#D4813A',
+                background: 'rgba(212,129,58,0.1)', border: '1px solid rgba(212,129,58,0.3)',
+                borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              <ClipboardList size={14} />
+              Go-live checklist
+            </button>
             <input
               type="date"
               value={summaryDate}

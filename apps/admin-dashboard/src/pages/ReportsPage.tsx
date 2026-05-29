@@ -4,11 +4,13 @@ import {
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
   getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport,
+  getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
   fetchPosStaffOptions, fetchShiftHistory, fetchDevices,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
   type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport,
+  type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -36,7 +38,7 @@ const DISCOUNT_TYPE_LABELS: Record<string, string> = {
   gift_card: 'Gift card', referral: 'Referral',
 };
 
-const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure'] as const;
+const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -92,6 +94,10 @@ export function ReportsPage() {
   const [voidsReport, setVoidsReport] = useState<VoidsByStaffReport | null>(null);
   const [refundsReport, setRefundsReport] = useState<RefundsByReasonReport | null>(null);
   const [creditExposure, setCreditExposure] = useState<CreditExposureReport | null>(null);
+  const [overridesReport, setOverridesReport] = useState<ManagerOverridesReport | null>(null);
+  const [velocityReport, setVelocityReport] = useState<StockVelocityReport | null>(null);
+  const [shiftVariances, setShiftVariances] = useState<ShiftVariancesReport | null>(null);
+  const [customerLtv, setCustomerLtv] = useState<CustomerLtvReport | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -125,6 +131,10 @@ export function ReportsPage() {
       if (tab === 'Voids')               setVoidsReport(await getVoidsByStaffReport({ from, to }));
       if (tab === 'Refunds')             setRefundsReport(await getRefundsByReasonReport({ from, to }));
       if (tab === 'Credit Exposure')     setCreditExposure(await getCreditExposureReport());
+      if (tab === 'Overrides')             setOverridesReport(await getManagerOverridesReport({ from, to }));
+      if (tab === 'Stock Velocity')       setVelocityReport(await getStockVelocityReport({ from, to }));
+      if (tab === 'Shift Variances')       setShiftVariances(await getShiftVariancesReport({ from, to }));
+      if (tab === 'Customer LTV')          setCustomerLtv(await getCustomerLtvReport());
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -142,7 +152,7 @@ export function ReportsPage() {
     fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
   }, []);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {
@@ -800,6 +810,132 @@ export function ReportsPage() {
             </Card>
           )}
         </>
+      )}
+
+      {!loading && tab === 'Overrides' && overridesReport && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            Manager overrides ({overridesReport.from} – {overridesReport.to})
+          </p>
+          {(overridesReport.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No override actions in this period.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>When</th>
+                <th style={S.th}>Staff</th>
+                <th style={S.th}>Action</th>
+                <th style={S.th}>Target</th>
+              </tr></thead>
+              <tbody>
+                {overridesReport.rows.map((row) => (
+                  <tr key={row.id}>
+                    <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{new Date(row.created_at).toLocaleString()}</td>
+                    <td style={S.td}>{row.user_name}</td>
+                    <td style={S.td}>{row.action}</td>
+                    <td style={{ ...S.td, color: '#6B5D4F' }}>{row.model_type} #{row.model_id ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Stock Velocity' && velocityReport && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            Menu item velocity ({velocityReport.from} – {velocityReport.to})
+          </p>
+          {(velocityReport.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed sales in this period.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Item</th>
+                <th style={S.th}>Qty sold</th>
+                <th style={S.th}>Velocity</th>
+              </tr></thead>
+              <tbody>
+                {velocityReport.rows.map((row) => (
+                  <tr key={row.item_id}>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{row.item_name}</td>
+                    <td style={S.td}>{row.qty_sold}</td>
+                    <td style={S.td}>
+                      <span style={{
+                        fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                        background: row.velocity === 'fast' ? '#DCFCE7' : row.velocity === 'slow' ? '#FEE2E2' : '#F3F4F6',
+                        color: row.velocity === 'fast' ? '#166534' : row.velocity === 'slow' ? '#991B1B' : '#6B7280',
+                      }}>{row.velocity}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Shift Variances' && shiftVariances && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            Cash drawer variances ({shiftVariances.from} – {shiftVariances.to})
+          </p>
+          {(shiftVariances.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No closed shifts in this period.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Cashier</th>
+                <th style={S.th}>Closed</th>
+                <th style={S.th}>Expected</th>
+                <th style={S.th}>Counted</th>
+                <th style={S.th}>Variance</th>
+              </tr></thead>
+              <tbody>
+                {shiftVariances.rows.map((row) => (
+                  <tr key={row.id}>
+                    <td style={S.td}>{row.user_name}</td>
+                    <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.closed_at ? new Date(row.closed_at).toLocaleString() : '—'}</td>
+                    <td style={S.td}>{row.expected_cash != null ? mvr(row.expected_cash) : '—'}</td>
+                    <td style={S.td}>{row.closing_cash != null ? mvr(row.closing_cash) : '—'}</td>
+                    <td style={{ ...S.td, fontWeight: 700, color: row.variance != null && Math.abs(row.variance) >= 0.01 ? '#ef4444' : '#16a34a' }}>
+                      {row.variance != null ? mvr(row.variance) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Customer LTV' && customerLtv && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by lifetime spend</p>
+          {(customerLtv.rows ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No customer orders yet.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Customer</th>
+                <th style={S.th}>Orders</th>
+                <th style={S.th}>Total spent</th>
+                <th style={S.th}>Last order</th>
+              </tr></thead>
+              <tbody>
+                {customerLtv.rows.map((row) => (
+                  <tr key={row.id}>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                    <td style={S.td}>{row.order_count}</td>
+                    <td style={{ ...S.td, fontWeight: 700 }}>{mvr(row.total_spent)}</td>
+                    <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.last_order ? new Date(row.last_order).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
       )}
     </>
   );

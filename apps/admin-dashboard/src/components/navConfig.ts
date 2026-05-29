@@ -106,8 +106,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/time-clock',         icon: Clock,       label: 'Time Clock',         permission: 'staff.view',          description: 'Clock in / out' },
       { to: '/settings',           icon: Settings,    label: 'Settings',           permission: 'website.manage',      description: 'System configuration' },
       { to: '/system-health',      icon: HeartPulse,  label: 'System Health',      permission: 'website.manage',      description: 'Queue, webhooks & alerts' },
-      { to: '/online-ordering',    icon: ShoppingBag, label: 'Online Ordering',    permission: 'settings.update',     description: 'Web ordering settings' },
-      { to: '/delivery-settings',  icon: Truck,       label: 'Delivery Settings',  permission: 'settings.update',     description: 'Zones & fees' },
+      { to: '/online-ordering',    icon: ShoppingBag, label: 'Ordering Control',   permission: 'settings.update',     description: 'Online + delivery settings' },
       { to: '/devices',            icon: Monitor,     label: 'Devices',            permission: 'devices.view',        description: 'POS & KDS devices' },
       { to: '/print-jobs',         icon: Printer,     label: 'Print Queue',        permission: 'devices.view',        description: 'Receipt print jobs' },
       { to: '/webhooks',           icon: Webhook,     label: 'Webhooks',           permission: 'webhooks.manage',     description: 'Outbound integrations' },
@@ -116,13 +115,16 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const DEV_NAV_ITEM: NavItem = {
+const CHECKLIST_NAV_ITEM: NavItem = {
   to: '/checklist',
   icon: ClipboardCheck,
-  label: 'Test Checklist',
+  label: 'Go-live Checklist',
   permission: 'website.manage',
-  description: 'UAT checklist (dev only)',
+  description: 'UAT checklist before launch',
 };
+
+/** Legacy alias — checklist is always available to owners */
+const DEV_NAV_ITEM = CHECKLIST_NAV_ITEM;
 
 /** Also show in sidebar groups (not only pinned quick-access) */
 const PINNED_GROUP_DUPLICATES = new Set(['/customers/growth']);
@@ -131,19 +133,19 @@ function withoutPinnedItems(items: NavItem[]): NavItem[] {
   return items.filter((i) => !PINNED_PATHS.has(i.to) || PINNED_GROUP_DUPLICATES.has(i.to));
 }
 
-export function getNavGroups(includeDevItems = !import.meta.env.PROD): NavGroup[] {
+export function getNavGroups(includeDevItems = true): NavGroup[] {
   let groups = NAV_GROUPS.map((g) => ({ ...g, items: withoutPinnedItems(g.items) }));
   if (includeDevItems) {
     groups = groups.map((g) =>
       g.id === 'team-system'
-        ? { ...g, items: [...g.items, DEV_NAV_ITEM] }
+        ? { ...g, items: [...g.items, CHECKLIST_NAV_ITEM] }
         : g,
     );
   }
   return groups;
 }
 
-export function getAllNavItems(includeDevItems = !import.meta.env.PROD): NavItem[] {
+export function getAllNavItems(includeDevItems = true): NavItem[] {
   return [...PINNED_NAV_ITEMS, ...getNavGroups(includeDevItems).flatMap((g) => g.items)];
 }
 

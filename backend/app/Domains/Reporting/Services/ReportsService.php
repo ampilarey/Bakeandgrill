@@ -419,4 +419,234 @@ class ReportsService
             'top_customers' => $top,
         ];
     }
+
+    /** @var list<string> */
+    private const MANAGER_OVERRIDE_ACTIONS = [
+        'order.cancelled',
+        'shift.force_closed',
+        'order.recalled',
+        'staff.pin_reset',
+        'device.approved',
+        'device.rejected',
+        'purchase.approved',
+        'purchase.rejected',
+        'invoice.voided',
+    ];
+
+    /**
+     * Sensitive staff actions from audit logs (voids, force-closes, approvals).
+     *
+     * @return array{from: string, to: string, rows: list<array<string, mixed>>}
+     */
+    public function managerOverrides(Carbon $from, Carbon $to, int $limit = 100): array
+    {
+        $limit = min(200, max(10, $limit));
+
+        $logs = AuditLog::query()
+            ->with('user:id,name')
+            ->whereIn('action', self::MANAGER_OVERRIDE_ACTIONS)
+            ->whereBetween('created_at', [$from, $to])
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $logs->map(fn (AuditLog $log) => [
+                'id' => $log->id,
+                'action' => $log->action,
+                'user_id' => $log->user_id,
+                'user_name' => $log->user?->name ?? 'System',
+                'model_type' => $log->model_type,
+                'model_id' => $log->model_id,
+                'meta' => $log->meta,
+                'created_at' => $log->created_at?->toIso8601String(),
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Fast vs slow menu item velocity from completed order lines.
+     *
+     * @return array{from: string, to: string, rows: list<array{item_id: int, item_name: string, qty_sold: int, velocity: string}>}
+     */
+    public function stockVelocity(Carbon $from, Carbon $to, int $limit = 50): array
+    {
+        $limit = min(100, max(10, $limit));
+
+        $rows = OrderItem::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->where('orders.status', 'completed')
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->whereNotNull('order_items.item_id')
+            ->selectRaw('order_items.item_id, order_items.item_name, SUM(order_items.quantity) as qty_sold')
+            ->groupBy('order_items.item_id', 'order_items.item_name')
+            ->orderByDesc('qty_sold')
+            ->limit($limit)
+            ->get();
+
+        $quantities = $rows->pluck('qty_sold')->map(fn ($q) => (int) $q)->sort()->values()->all();
+        $count = count($quantities);
+        $p25 = $count > 0 ? $quantities[(int) floor($count * 0.25)] : 0;
+        $p75 = $count > 0 ? $quantities[(int) floor(min($count - 1, $count * 0.75))] : 0;
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows->map(function ($row) use ($p25, $p75) {
+                $qty = (int) $row->qty_sold;
+                $velocity = $qty >= $p75 && $p75 > 0 ? 'fast' : ($qty <= $p25 ? 'slow' : 'normal');
+
+                return [
+                    'item_id' => (int) $row->item_id,
+                    'item_name' => (string) $row->item_name,
+                    'qty_sold' => $qty,
+                    'velocity' => $velocity,
+                ];
+            })->values()->all(),
+        ];
+    }
+
+    /**
+     * Driver cash reconciliation for assigned delivery orders.
+     *
+     * @return array{from: string, to: string, rows: list<array<string, mixed>>, totals: array<string, mixed>}
+     */
+    public function driverSettlement(Carbon $from, Carbon $to): array
+    {
+        $orders = Order::query()
+            ->where('type', 'delivery')
+            ->whereNotNull('delivery_driver_id')
+            ->whereBetween('created_at', [$from, $to])
+            ->whereNotIn('status', ['cancelled'])
+            ->with(['deliveryDriver:id,name', 'payments'])
+            ->get();
+
+        $byDriver = [];
+        foreach ($orders as $order) {
+            $driverId = (int) $order->delivery_driver_id;
+            if (!isset($byDriver[$driverId])) {
+                $byDriver[$driverId] = [
+                    'driver_id' => $driverId,
+                    'driver_name' => $order->deliveryDriver?->name ?? 'Unknown',
+                    'orders_count' => 0,
+                    'completed_count' => 0,
+                    'order_total' => 0.0,
+                    'delivery_fees' => 0.0,
+                    'cash_collected' => 0.0,
+                    'card_collected' => 0.0,
+                    'prepaid_count' => 0,
+                ];
+            }
+
+            $row = &$byDriver[$driverId];
+            $row['orders_count']++;
+            if ($order->status === 'completed') {
+                $row['completed_count']++;
+            }
+            $row['order_total'] += (float) ($order->total ?? 0);
+            $row['delivery_fees'] += (float) ($order->delivery_fee ?? 0);
+
+            $paidPayments = $order->payments
+                ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                ->where('amount', '>', 0);
+
+            $cash = (float) $paidPayments->where('method', 'cash')->sum('amount');
+            $card = (float) $paidPayments->whereNotIn('method', ['cash'])->sum('amount');
+            $row['cash_collected'] += $cash;
+            $row['card_collected'] += $card;
+
+            if ($order->payment_status === 'paid' && $cash <= 0 && $card <= 0) {
+                $row['prepaid_count']++;
+            }
+            unset($row);
+        }
+
+        $rows = collect($byDriver)
+            ->sortByDesc('orders_count')
+            ->values()
+            ->map(fn (array $row) => [
+                ...$row,
+                'order_total' => round($row['order_total'], 2),
+                'delivery_fees' => round($row['delivery_fees'], 2),
+                'cash_collected' => round($row['cash_collected'], 2),
+                'card_collected' => round($row['card_collected'], 2),
+            ])
+            ->all();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows,
+            'totals' => [
+                'orders_count' => (int) collect($rows)->sum('orders_count'),
+                'cash_collected' => round((float) collect($rows)->sum('cash_collected'), 2),
+                'delivery_fees' => round((float) collect($rows)->sum('delivery_fees'), 2),
+            ],
+        ];
+    }
+
+    /**
+     * Closed shifts with cash variance for reconciliation review.
+     *
+     * @return array{from: string, to: string, rows: list<array<string, mixed>>}
+     */
+    public function shiftVariances(Carbon $from, Carbon $to): array
+    {
+        $shifts = Shift::query()
+            ->whereNotNull('closed_at')
+            ->whereBetween('closed_at', [$from, $to])
+            ->with(['user:id,name', 'device:id,name'])
+            ->orderByDesc('closed_at')
+            ->get();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $shifts->map(fn (Shift $s) => [
+                'id' => $s->id,
+                'user_name' => $s->user?->name ?? '—',
+                'device_name' => $s->device?->name ?? '—',
+                'opened_at' => $s->opened_at?->toIso8601String(),
+                'closed_at' => $s->closed_at?->toIso8601String(),
+                'opening_cash' => (float) ($s->opening_cash ?? 0),
+                'closing_cash' => $s->closing_cash !== null ? (float) $s->closing_cash : null,
+                'expected_cash' => $s->expected_cash !== null ? (float) $s->expected_cash : null,
+                'variance' => $s->variance !== null ? (float) $s->variance : null,
+                'notes' => $s->notes,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Top customers by lifetime spend (for reports tab).
+     *
+     * @return array{rows: list<array{id: int, name: string, phone: string|null, order_count: int, total_spent: float, last_order: string|null}>}
+     */
+    public function customerLtvTop(int $limit = 20): array
+    {
+        $limit = min(50, max(5, $limit));
+
+        $rows = DB::table('orders as o')
+            ->join('customers as c', 'c.id', '=', 'o.customer_id')
+            ->whereNotNull('o.customer_id')
+            ->whereNotIn('o.status', ['cancelled'])
+            ->selectRaw('c.id, c.name, c.phone, COUNT(o.id) as order_count, SUM(o.total) as total_spent, MAX(o.created_at) as last_order')
+            ->groupBy('c.id', 'c.name', 'c.phone')
+            ->orderByRaw('SUM(o.total) DESC')
+            ->limit($limit)
+            ->get();
+
+        return [
+            'rows' => $rows->map(fn ($r) => [
+                'id' => (int) $r->id,
+                'name' => (string) $r->name,
+                'phone' => $r->phone,
+                'order_count' => (int) $r->order_count,
+                'total_spent' => round((float) $r->total_spent, 2),
+                'last_order' => $r->last_order,
+            ])->values()->all(),
+        ];
+    }
 }

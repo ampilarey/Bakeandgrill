@@ -113,6 +113,8 @@ export type KdsTicket = {
   status: string;
   type: string;
   items: Array<{
+    id?: number;
+    item_id?: number | null;
     item_name: string;
     variant_name?: string | null;
     quantity: number;

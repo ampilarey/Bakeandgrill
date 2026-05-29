@@ -11,7 +11,7 @@ import {
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
   getUnitConversions, createUnitConversion, deleteUnitConversion,
   getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
-  fetchPreparedStock, adjustPreparedStock,
+  fetchPreparedStock, adjustPreparedStock, createInventoryItem,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type PreparedStockRow,
 } from '../api';
@@ -47,6 +47,10 @@ export default function InventoryPage() {
   const [adjSaving, setAdjSaving] = useState(false);
   const [adjError, setAdjError] = useState('');
   const [quickAdjusting, setQuickAdjusting] = useState<Record<number, boolean>>({});
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '' });
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState('');
   const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const pendingAdj = useRef<Record<number, number>>({});
 
@@ -368,13 +372,18 @@ export default function InventoryPage() {
             <StatCard label="Low Stock" value={String(lowCount)} accent={lowCount > 0 ? '#ef4444' : '#16a34a'} />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               placeholder="Search items…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ ...S.input, maxWidth: 320 }}
             />
+            {canManage && (
+              <Btn onClick={() => { setCreateOpen(true); setCreateError(''); setCreateForm({ name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '' }); }}>
+                + Add SKU
+              </Btn>
+            )}
           </div>
 
           <TableCard stickyHead>
@@ -399,7 +408,7 @@ export default function InventoryPage() {
                       <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
                       <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{item.sku ?? '—'}</td>
                       <td style={TD}>{item.category?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                      <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{item.unit}</td>
+                      <td style={{ ...TD, fontWeight: 700 }}>{item.quantity_on_hand} {item.unit}</td>
                       <td style={{ ...TD, color: '#9C8E7E' }}>
                         {item.reorder_level != null ? `${item.reorder_level} ${item.unit}` : '—'}
                       </td>
@@ -552,6 +561,53 @@ export default function InventoryPage() {
           <ModalActions>
             <Btn variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Btn>
             <Btn onClick={handleAdjust} disabled={adjSaving}>{adjSaving ? 'Saving…' : 'Save Adjustment'}</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* ── Create SKU Modal ── */}
+      {createOpen && (
+        <Modal title="Add Inventory SKU" onClose={() => setCreateOpen(false)} maxWidth={420}>
+          {createError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{createError}</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label>
+              <span style={S.label}>Name *</span>
+              <input style={S.input} value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>SKU</span>
+              <input style={S.input} value={createForm.sku} onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Unit *</span>
+              <input style={S.input} value={createForm.unit} onChange={(e) => setCreateForm((f) => ({ ...f, unit: e.target.value }))} placeholder="kg, L, pcs…" />
+            </label>
+            <label>
+              <span style={S.label}>Opening stock</span>
+              <input type="number" min="0" step="any" style={S.input} value={createForm.current_stock} onChange={(e) => setCreateForm((f) => ({ ...f, current_stock: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Reorder point</span>
+              <input type="number" min="0" step="any" style={S.input} value={createForm.reorder_point} onChange={(e) => setCreateForm((f) => ({ ...f, reorder_point: e.target.value }))} />
+            </label>
+          </div>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Btn>
+            <Btn disabled={createSaving} onClick={() => {
+              if (!createForm.name.trim() || !createForm.unit.trim()) { setCreateError('Name and unit are required.'); return; }
+              setCreateSaving(true);
+              void createInventoryItem({
+                name: createForm.name.trim(),
+                sku: createForm.sku.trim() || undefined,
+                unit: createForm.unit.trim(),
+                current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
+                reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
+                unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
+              }).then(() => {
+                setCreateOpen(false);
+                void loadItems();
+              }).catch((e: Error) => setCreateError(e.message)).finally(() => setCreateSaving(false));
+            }}>{createSaving ? 'Saving…' : 'Create'}</Btn>
           </ModalActions>
         </Modal>
       )}

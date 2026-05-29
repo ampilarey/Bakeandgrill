@@ -591,6 +591,113 @@ export async function getDeliveryZonesReport(params: { from?: string; to?: strin
   return req(`/reports/delivery-zones?${q}`);
 }
 
+export type ManagerOverrideRow = {
+  id: number;
+  action: string;
+  user_id: number | null;
+  user_name: string;
+  model_type: string;
+  model_id: number | null;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type ManagerOverridesReport = {
+  from: string;
+  to: string;
+  rows: ManagerOverrideRow[];
+};
+
+export type StockVelocityRow = {
+  item_id: number;
+  item_name: string;
+  qty_sold: number;
+  velocity: 'fast' | 'slow' | 'normal';
+};
+
+export type StockVelocityReport = {
+  from: string;
+  to: string;
+  rows: StockVelocityRow[];
+};
+
+export type DriverSettlementRow = {
+  driver_id: number;
+  driver_name: string;
+  orders_count: number;
+  completed_count: number;
+  order_total: number;
+  delivery_fees: number;
+  cash_collected: number;
+  card_collected: number;
+  prepaid_count: number;
+};
+
+export type DriverSettlementReport = {
+  from: string;
+  to: string;
+  rows: DriverSettlementRow[];
+  totals: { orders_count: number; cash_collected: number; delivery_fees: number };
+};
+
+export type ShiftVarianceRow = {
+  id: number;
+  user_name: string;
+  device_name: string;
+  opened_at: string;
+  closed_at: string;
+  opening_cash: number;
+  closing_cash: number | null;
+  expected_cash: number | null;
+  variance: number | null;
+  notes: string | null;
+};
+
+export type ShiftVariancesReport = {
+  from: string;
+  to: string;
+  rows: ShiftVarianceRow[];
+};
+
+export type CustomerLtvRow = {
+  id: number;
+  name: string;
+  phone: string | null;
+  order_count: number;
+  total_spent: number;
+  last_order: string | null;
+};
+
+export type CustomerLtvReport = {
+  rows: CustomerLtvRow[];
+};
+
+export async function getManagerOverridesReport(params: { from?: string; to?: string; limit?: number } = {}): Promise<ManagerOverridesReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/manager-overrides?${q}`);
+}
+
+export async function getStockVelocityReport(params: { from?: string; to?: string; limit?: number } = {}): Promise<StockVelocityReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/stock-velocity?${q}`);
+}
+
+export async function getDriverSettlementReport(params: { from?: string; to?: string } = {}): Promise<DriverSettlementReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/driver-settlement?${q}`);
+}
+
+export async function getShiftVariancesReport(params: { from?: string; to?: string } = {}): Promise<ShiftVariancesReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/shift-variances?${q}`);
+}
+
+export async function getCustomerLtvReport(params: { limit?: number } = {}): Promise<CustomerLtvReport> {
+  const q = new URLSearchParams();
+  if (params.limit) q.set('limit', String(params.limit));
+  return req(`/reports/customer-ltv?${q}`);
+}
+
 export interface ItemForecast {
   item_id: number;
   item_name: string;

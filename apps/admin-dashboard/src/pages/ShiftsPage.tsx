@@ -7,10 +7,10 @@ import {
 } from '../components/SharedUI';
 import {
   getCurrentShift, openShift, closeShift, addCashMovement,
-  fetchLiveShifts, fetchShiftHistory, forceCloseShift,
+  fetchLiveShifts, fetchShiftHistory, forceCloseShift, fetchShiftSummary,
   type Shift, type CashMovement,
 } from '../api';
-import type { ShiftHistoryRow } from '../api/pos-admin';
+import type { ShiftHistoryRow, ShiftSummaryResponse } from '../api/pos-admin';
 
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
@@ -48,6 +48,7 @@ function MyShiftPanel({
   const [openSaving, setOpenSaving] = useState(false);
   const [openError, setOpenError] = useState('');
   const [closeModal, setCloseModal] = useState(false);
+  const [closeSummary, setCloseSummary] = useState<ShiftSummaryResponse | null>(null);
   const [closingCash, setClosingCash] = useState('');
   const [closeNotes, setCloseNotes] = useState('');
   const [closeSaving, setCloseSaving] = useState(false);
@@ -125,7 +126,11 @@ function MyShiftPanel({
           Opened at {new Date(shift.opened_at).toLocaleTimeString()} · Running {elapsed(shift.opened_at)}
         </span>
         <div style={{ marginLeft: 'auto' }}>
-          <Btn variant="secondary" onClick={() => { setCloseModal(true); setCloseError(''); }}>Close Shift</Btn>
+          <Btn variant="secondary" onClick={() => {
+            setCloseModal(true);
+            setCloseError('');
+            void fetchShiftSummary(shift.id).then(setCloseSummary).catch(() => setCloseSummary(null));
+          }}>Close Shift</Btn>
         </div>
       </div>
 
@@ -190,10 +195,31 @@ function MyShiftPanel({
       </TableCard>
 
       {closeModal && (
-        <Modal title="Close Shift" onClose={() => setCloseModal(false)} maxWidth={420}>
+        <Modal title="Close Shift" onClose={() => { setCloseModal(false); setCloseSummary(null); }} maxWidth={420}>
           {closeError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{closeError}</p>}
+          {closeSummary && (
+            <div style={{ background: '#FAF7F4', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 13 }}>
+              <p style={{ margin: '0 0 8px', fontWeight: 700, color: '#1C1408' }}>Expected drawer breakdown</p>
+              {[
+                ['Opening cash', closeSummary.cash_drawer.opening_cash],
+                ['+ Cash sales', closeSummary.cash_drawer.cash_sales],
+                ...(closeSummary.cash_drawer.paid_in > 0 ? [['+ Paid in', closeSummary.cash_drawer.paid_in] as const] : []),
+                ...(closeSummary.cash_drawer.paid_out > 0 ? [['− Paid out', closeSummary.cash_drawer.paid_out] as const] : []),
+                ...(closeSummary.cash_drawer.cash_refunds > 0 ? [['− Refunds', closeSummary.cash_drawer.cash_refunds] as const] : []),
+              ].map(([label, amount]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#6B5D4F' }}>
+                  <span>{label}</span>
+                  <span>{formatMVR(Number(amount))}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid #E8E0D8', fontWeight: 700, color: '#1C1408' }}>
+                <span>Expected in drawer</span>
+                <span>{formatMVR(Number(closeSummary.cash_drawer.expected_cash))}</span>
+              </div>
+            </div>
+          )}
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
-            Enter the actual cash counted in the drawer. The server calculates expected cash including cash sales.
+            Enter the actual cash counted in the drawer. Variance is calculated when you close.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
