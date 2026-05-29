@@ -40,12 +40,12 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
         }
 
         // Re-load campaign fresh; the serialised relation may be stale or deleted.
-        $campaign = SmsCampaign::find($this->recipient->sms_campaign_id);
+        $campaign = SmsCampaign::find($this->recipient->campaign_id);
 
         if (!$campaign) {
             Log::warning('SendSmsCampaignRecipientJob: campaign not found, marking recipient failed', [
                 'recipient_id' => $this->recipient->id,
-                'campaign_id' => $this->recipient->sms_campaign_id,
+                'campaign_id' => $this->recipient->campaign_id,
             ]);
             $this->recipient->markFailed('Campaign no longer exists');
 
@@ -54,9 +54,11 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
         }
 
         try {
+            $body = $campaign->messageForVariant($this->recipient->variant ?? 'a');
+
             $log = $smsService->send(new SmsMessage(
                 to: $this->recipient->phone,
-                message: $campaign->message,
+                message: $body,
                 type: 'campaign',
                 customerId: $this->recipient->customer_id,
                 campaignId: $campaign->id,

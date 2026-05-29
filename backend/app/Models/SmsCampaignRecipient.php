@@ -14,6 +14,7 @@ class SmsCampaignRecipient extends Model
         'customer_id',
         'phone',
         'name',
+        'variant',
         'status',           // pending | sent | failed
         'failure_reason',
         'cost_mvr',

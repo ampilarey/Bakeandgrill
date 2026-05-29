@@ -29,17 +29,43 @@ class BulkSmsService
      * Preview campaign: resolve target audience + estimate cost.
      * Does NOT send. Safe to call before confirming.
      */
-    public function preview(string $message, array $criteria): array
-    {
+    public function preview(
+        string $message,
+        array $criteria,
+        bool $abTestEnabled = false,
+        ?string $messageVariantB = null,
+        int $abSplitPercent = 50,
+    ): array {
         $customers = $this->resolveAudience($criteria);
-        $estimate = $this->sms->estimateBulk($message, $customers->count());
+        $count = $customers->count();
+
+        if ($abTestEnabled && filled($messageVariantB)) {
+            $split = max(1, min(99, $abSplitPercent));
+            $countA = (int) round($count * ($split / 100));
+            $countB = $count - $countA;
+            $estimateA = $this->sms->estimateBulk($message, $countA);
+            $estimateB = $this->sms->estimateBulk($messageVariantB, $countB);
+            $totalCost = (float) $estimateA['total_cost_mvr'] + (float) $estimateB['total_cost_mvr'];
+            $totalSegments = $estimateA['total_segments'] + $estimateB['total_segments'];
+        } else {
+            $estimateA = $this->sms->estimateBulk($message, $count);
+            $totalCost = (float) $estimateA['total_cost_mvr'];
+            $totalSegments = $estimateA['total_segments'];
+            $estimateB = null;
+            $countA = $count;
+            $countB = 0;
+        }
 
         return [
-            'recipient_count' => $customers->count(),
+            'recipient_count' => $count,
             'message_preview' => mb_substr($message, 0, 160),
-            'per_message' => $estimate['per_message'],
-            'total_segments' => $estimate['total_segments'],
-            'total_cost_mvr' => $estimate['total_cost_mvr'],
+            'per_message' => $estimateA['per_message'],
+            'total_segments' => $totalSegments,
+            'total_cost_mvr' => number_format($totalCost, 2, '.', ''),
+            'ab_test_enabled' => $abTestEnabled && filled($messageVariantB),
+            'ab_split' => $abTestEnabled && filled($messageVariantB)
+                ? ['variant_a' => $countA, 'variant_b' => $countB]
+                : null,
             'sample_recipients' => $customers->take(5)->map(fn ($c) => [
                 'name' => $c->name,
                 'phone' => $this->sms->normalizePhone($c->phone),
@@ -65,13 +91,21 @@ class BulkSmsService
         }
 
         DB::transaction(function () use ($campaign, $customers): void {
-            // Populate recipients
-            foreach ($customers as $customer) {
+            $split = $campaign->ab_test_enabled
+                ? max(1, min(99, (int) ($campaign->ab_split_percent ?? 50)))
+                : 100;
+            $abActive = $campaign->ab_test_enabled && filled($campaign->message_variant_b);
+            $countA = $abActive ? (int) round($customers->count() * ($split / 100)) : $customers->count();
+
+            foreach ($customers->values() as $index => $customer) {
+                $variant = $abActive && $index >= $countA ? 'b' : 'a';
+
                 SmsCampaignRecipient::create([
                     'campaign_id' => $campaign->id,
                     'customer_id' => $customer->id,
                     'phone' => $this->sms->normalizePhone($customer->phone),
                     'name' => $customer->name,
+                    'variant' => $variant,
                     'status' => 'pending',
                 ]);
             }

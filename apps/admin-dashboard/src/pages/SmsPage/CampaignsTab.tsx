@@ -6,6 +6,13 @@ import {
 import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
 import { smsCharCount } from '../../utils/smsCharCount';
 
+type PreviewResult = {
+  recipient_count: number;
+  total_cost_mvr: string;
+  ab_test_enabled?: boolean;
+  ab_split?: { variant_a: number; variant_b: number };
+};
+
 export function CampaignsTab() {
   const [campaigns, setCampaigns] = useState<SmsCampaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,9 +23,22 @@ export function CampaignsTab() {
 
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
-  const [preview, setPreview] = useState<{ recipient_count: number; estimated_cost_mvr: string } | null>(null);
+  const [messageB, setMessageB] = useState('');
+  const [abEnabled, setAbEnabled] = useState(false);
+  const [abSplit, setAbSplit] = useState(50);
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const resetForm = () => {
+    setCreating(false);
+    setName('');
+    setMessage('');
+    setMessageB('');
+    setAbEnabled(false);
+    setAbSplit(50);
+    setPreview(null);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -34,11 +54,21 @@ export function CampaignsTab() {
 
   useEffect(() => { void load(); }, []);
 
+  const buildPayload = () => ({
+    message,
+    ...(abEnabled ? {
+      ab_test_enabled: true,
+      message_variant_b: messageB,
+      ab_split_percent: abSplit,
+    } : {}),
+    target_criteria: {},
+  });
+
   const handlePreview = async () => {
-    if (!message) return;
+    if (!message || (abEnabled && !messageB)) return;
     setPreviewing(true);
     try {
-      const res = await previewSmsCampaign({ message, criteria: {} });
+      const res = await previewSmsCampaign(buildPayload());
       setPreview(res);
     } catch (e) {
       setError((e as Error).message);
@@ -48,14 +78,11 @@ export function CampaignsTab() {
   };
 
   const handleCreate = async () => {
-    if (!name || !message) return;
+    if (!name || !message || (abEnabled && !messageB)) return;
     setSaving(true);
     try {
-      await createSmsCampaign({ name, message, criteria: {} });
-      setCreating(false);
-      setName('');
-      setMessage('');
-      setPreview(null);
+      await createSmsCampaign({ name, ...buildPayload() });
+      resetForm();
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -93,8 +120,8 @@ export function CampaignsTab() {
     });
   };
 
-  const segInfo  = smsCharCount(message);
-  const segments = segInfo.segments;
+  const segA = smsCharCount(message);
+  const segB = smsCharCount(messageB);
 
   return (
     <>
@@ -112,12 +139,18 @@ export function CampaignsTab() {
             <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Campaign Name</label>
             <Input value={name} onChange={setName} placeholder="e.g. Eid Special Offer" />
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#1C1408' }}>
+            <input type="checkbox" checked={abEnabled} onChange={(e) => { setAbEnabled(e.target.checked); setPreview(null); }} />
+            A/B test two message variants
+          </label>
+
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Message</label>
-              <span style={{ fontSize: 11, color: segments > 1 ? '#ef4444' : '#9C8E7E' }}>
-                {segInfo.chars} chars · {segments} segment{segments > 1 ? 's' : ''}
-                {segInfo.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>{abEnabled ? 'Variant A' : 'Message'}</label>
+              <span style={{ fontSize: 11, color: segA.segments > 1 ? '#ef4444' : '#9C8E7E' }}>
+                {segA.chars} chars · {segA.segments} segment{segA.segments > 1 ? 's' : ''}
+                {segA.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
               </span>
             </div>
             <textarea
@@ -129,22 +162,61 @@ export function CampaignsTab() {
             />
           </div>
 
+          {abEnabled && (
+            <>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Variant B</label>
+                  <span style={{ fontSize: 11, color: segB.segments > 1 ? '#ef4444' : '#9C8E7E' }}>
+                    {segB.chars} chars · {segB.segments} segment{segB.segments > 1 ? 's' : ''}
+                    {segB.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
+                  </span>
+                </div>
+                <textarea
+                  value={messageB}
+                  onChange={(e) => setMessageB(e.target.value)}
+                  placeholder="Alternative message to test…"
+                  rows={4}
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>
+                  Split: {abSplit}% Variant A / {100 - abSplit}% Variant B
+                </label>
+                <input
+                  type="range"
+                  min={10}
+                  max={90}
+                  value={abSplit}
+                  onChange={(e) => setAbSplit(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </>
+          )}
+
           {preview && (
             <div style={{ background: '#f0f9ff', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#0369a1' }}>
-                Preview: {preview.recipient_count} recipients · Est. MVR {preview.estimated_cost_mvr}
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#0369a1', marginBottom: preview.ab_split ? 6 : 0 }}>
+                Preview: {preview.recipient_count} recipients · Est. MVR {preview.total_cost_mvr}
               </p>
+              {preview.ab_split && (
+                <p style={{ fontSize: 13, color: '#0369a1' }}>
+                  Split → A: {preview.ab_split.variant_a} · B: {preview.ab_split.variant_b}
+                </p>
+              )}
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Btn variant="secondary" onClick={handlePreview} disabled={previewing || !message}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Btn variant="secondary" onClick={handlePreview} disabled={previewing || !message || (abEnabled && !messageB)}>
               {previewing ? 'Checking…' : '👁 Preview Audience'}
             </Btn>
-            <Btn onClick={handleCreate} disabled={saving || !name || !message}>
+            <Btn onClick={handleCreate} disabled={saving || !name || !message || (abEnabled && !messageB)}>
               {saving ? 'Creating…' : 'Create Draft'}
             </Btn>
-            <Btn variant="ghost" onClick={() => { setCreating(false); setPreview(null); setName(''); setMessage(''); }}>Cancel</Btn>
+            <Btn variant="ghost" onClick={resetForm}>Cancel</Btn>
           </div>
         </Card>
       )}
@@ -156,7 +228,7 @@ export function CampaignsTab() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
-                {['Name', 'Status', 'Recipients', 'Sent', 'Cost', 'Created', ''].map((h) => (
+                {['Name', 'A/B', 'Status', 'Recipients', 'Sent', 'A/B Results', 'Cost', 'Created', ''].map((h) => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
@@ -165,11 +237,24 @@ export function CampaignsTab() {
               {campaigns.map((c) => (
                 <tr key={c.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>{c.name}</td>
+                  <td style={TD}>
+                    {c.ab_test_enabled
+                      ? <Badge label={`${c.ab_split_percent ?? 50}/${100 - (c.ab_split_percent ?? 50)}`} color="#8b5cf6" />
+                      : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>}
+                  </td>
                   <td style={TD}><Badge label={c.status} color={statColor(c.status)} /></td>
                   <td style={{ ...TD, color: '#6B5D4F' }}>{c.total_recipients}</td>
                   <td style={TD}>
                     <span style={{ color: '#22c55e', fontWeight: 600 }}>{c.sent_count}</span>
                     {c.failed_count > 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>/ {c.failed_count} failed</span>}
+                  </td>
+                  <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>
+                    {c.ab_test_enabled && c.ab_stats ? (
+                      <div>
+                        <div>A: {c.ab_stats.a.sent} sent ({c.ab_stats.a.delivery_rate}%)</div>
+                        <div>B: {c.ab_stats.b.sent} sent ({c.ab_stats.b.delivery_rate}%)</div>
+                      </div>
+                    ) : '—'}
                   </td>
                   <td style={{ ...TD, color: '#D4813A', fontWeight: 600 }}>MVR {c.total_cost_mvr ?? '—'}</td>
                   <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</td>

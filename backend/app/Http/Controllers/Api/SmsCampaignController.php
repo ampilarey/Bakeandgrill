@@ -89,6 +89,14 @@ class SmsCampaignController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
+        $campaigns->getCollection()->transform(function (SmsCampaign $campaign): SmsCampaign {
+            if ($campaign->ab_test_enabled) {
+                $campaign->setAttribute('ab_stats', $campaign->computeAbStats());
+            }
+
+            return $campaign;
+        });
+
         return response()->json($campaigns);
     }
 
@@ -100,6 +108,9 @@ class SmsCampaignController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string|max:1600',
+            'message_variant_b' => 'nullable|string|max:1600',
+            'ab_test_enabled' => 'nullable|boolean',
+            'ab_split_percent' => 'nullable|integer|min:1|max:99',
             'target_criteria' => 'nullable|array',
             'target_criteria.tier' => 'nullable|array',
             'target_criteria.tier.*' => 'in:bronze,silver,gold',
@@ -108,9 +119,17 @@ class SmsCampaignController extends Controller
             'target_criteria.has_loyalty' => 'nullable|boolean',
         ]);
 
+        $abEnabled = (bool) ($validated['ab_test_enabled'] ?? false);
+        if ($abEnabled && empty($validated['message_variant_b'])) {
+            return response()->json(['message' => 'Variant B message is required when A/B testing is enabled.'], 422);
+        }
+
         $preview = $this->bulkSms->preview(
             $validated['message'],
             $validated['target_criteria'] ?? [],
+            $abEnabled,
+            $validated['message_variant_b'] ?? null,
+            (int) ($validated['ab_split_percent'] ?? 50),
         );
 
         return response()->json($preview);
@@ -125,14 +144,25 @@ class SmsCampaignController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'message' => 'required|string|max:1600',
+            'message_variant_b' => 'nullable|string|max:1600',
+            'ab_test_enabled' => 'nullable|boolean',
+            'ab_split_percent' => 'nullable|integer|min:1|max:99',
             'notes' => 'nullable|string|max:500',
             'target_criteria' => 'nullable|array',
             'scheduled_at' => 'nullable|date|after:now',
         ]);
 
+        $abEnabled = (bool) ($validated['ab_test_enabled'] ?? false);
+        if ($abEnabled && empty($validated['message_variant_b'])) {
+            return response()->json(['message' => 'Variant B message is required when A/B testing is enabled.'], 422);
+        }
+
         $campaign = SmsCampaign::create([
             'name' => $validated['name'],
             'message' => $validated['message'],
+            'ab_test_enabled' => $abEnabled,
+            'message_variant_b' => $abEnabled ? ($validated['message_variant_b'] ?? null) : null,
+            'ab_split_percent' => (int) ($validated['ab_split_percent'] ?? 50),
             'notes' => $validated['notes'] ?? null,
             'target_criteria' => $validated['target_criteria'] ?? [],
             'status' => 'draft',
@@ -149,6 +179,10 @@ class SmsCampaignController extends Controller
     public function show(SmsCampaign $campaign): JsonResponse
     {
         $campaign->load(['creator', 'recipients' => fn ($q) => $q->limit(20)]);
+
+        if ($campaign->ab_test_enabled) {
+            $campaign->setAttribute('ab_stats', $campaign->computeAbStats());
+        }
 
         return response()->json(['campaign' => $campaign]);
     }

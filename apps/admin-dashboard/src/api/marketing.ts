@@ -83,6 +83,10 @@ export type SmsCampaign = {
   id: number;
   name: string;
   message: string;
+  ab_test_enabled?: boolean;
+  message_variant_b?: string | null;
+  ab_split_percent?: number;
+  ab_stats?: Record<'a' | 'b', { sent: number; failed: number; pending: number; delivery_rate: number }>;
   status: string;
   total_recipients: number;
   sent_count: number;
@@ -135,15 +139,27 @@ export async function fetchSmsCampaigns(params?: { page?: number; status?: strin
 
 export async function previewSmsCampaign(data: {
   message: string;
-  criteria: Record<string, unknown>;
-}): Promise<{ recipient_count: number; sample: string[]; estimated_cost_mvr: string }> {
+  message_variant_b?: string;
+  ab_test_enabled?: boolean;
+  ab_split_percent?: number;
+  target_criteria?: Record<string, unknown>;
+}): Promise<{
+  recipient_count: number;
+  total_cost_mvr: string;
+  ab_test_enabled?: boolean;
+  ab_split?: { variant_a: number; variant_b: number };
+  sample_recipients?: Array<{ name: string; phone: string; tier: string }>;
+}> {
   return req('/admin/sms/campaigns/preview', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function createSmsCampaign(data: {
   name: string;
   message: string;
-  criteria?: Record<string, unknown>;
+  message_variant_b?: string;
+  ab_test_enabled?: boolean;
+  ab_split_percent?: number;
+  target_criteria?: Record<string, unknown>;
 }): Promise<{ campaign: SmsCampaign }> {
   return req('/admin/sms/campaigns', { method: 'POST', body: JSON.stringify(data) });
 }

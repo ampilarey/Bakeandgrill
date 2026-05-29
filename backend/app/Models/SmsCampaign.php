@@ -17,6 +17,9 @@ class SmsCampaign extends Model
     protected $fillable = [
         'name',
         'message',
+        'ab_test_enabled',
+        'message_variant_b',
+        'ab_split_percent',
         'notes',
         'status',
         'target_criteria',
@@ -31,6 +34,8 @@ class SmsCampaign extends Model
     ];
 
     protected $casts = [
+        'ab_test_enabled' => 'boolean',
+        'ab_split_percent' => 'integer',
         'target_criteria' => 'array',
         'total_cost_mvr' => 'decimal:2',
         'scheduled_at' => 'datetime',
@@ -71,6 +76,41 @@ class SmsCampaign extends Model
         }
 
         return round(($this->sent_count / $this->total_recipients) * 100, 1);
+    }
+
+    public function messageForVariant(string $variant): string
+    {
+        if ($variant === 'b' && $this->ab_test_enabled && filled($this->message_variant_b)) {
+            return $this->message_variant_b;
+        }
+
+        return $this->message;
+    }
+
+    /** @return array<string, array{sent: int, failed: int, pending: int, delivery_rate: float}> */
+    public function computeAbStats(): array
+    {
+        if (!$this->ab_test_enabled) {
+            return [];
+        }
+
+        $stats = [];
+        foreach (['a', 'b'] as $variant) {
+            $base = $this->recipients()->where('variant', $variant);
+            $sent = (clone $base)->where('status', 'sent')->count();
+            $failed = (clone $base)->where('status', 'failed')->count();
+            $pending = (clone $base)->where('status', 'pending')->count();
+            $done = $sent + $failed;
+
+            $stats[$variant] = [
+                'sent' => $sent,
+                'failed' => $failed,
+                'pending' => $pending,
+                'delivery_rate' => $done > 0 ? round(($sent / $done) * 100, 1) : 0.0,
+            ];
+        }
+
+        return $stats;
     }
 
     // ── State Helpers ─────────────────────────────────────────────────────────
