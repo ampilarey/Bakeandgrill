@@ -356,6 +356,40 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     <span style={{ color: '#D4813A', fontWeight: 600 }}>MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}</span>
                   </div>
                 ))}
+                {(Number(order.subtotal ?? 0) > 0 || Number(order.service_charge_amount ?? 0) > 0 || Number(order.tax_amount ?? 0) > 0 || Number(order.discount_amount ?? 0) > 0) && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #F0EBE5', fontSize: 13, color: '#6B5D4F', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {Number(order.subtotal ?? 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Subtotal</span>
+                        <span>MVR {parseFloat(String(order.subtotal ?? 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {Number(order.discount_amount ?? 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Discount</span>
+                        <span>− MVR {parseFloat(String(order.discount_amount ?? 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {Number(order.service_charge_amount ?? 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{order.service_charge_label ?? 'Service charge'}</span>
+                        <span>MVR {parseFloat(String(order.service_charge_amount ?? 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {Number(order.tax_amount ?? 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>GST</span>
+                        <span>MVR {parseFloat(String(order.tax_amount ?? 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {Number(order.delivery_fee ?? 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Delivery</span>
+                        <span>MVR {parseFloat(String(order.delivery_fee ?? 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, paddingTop: 8 }}>
                   <span>Total</span>
                   <span>MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}</span>

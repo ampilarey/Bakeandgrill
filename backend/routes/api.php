@@ -164,6 +164,11 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::post('/delivery-override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'deliveryOverride']);
     });
 
+    Route::prefix('admin/settings/service-charge')->middleware('permission:settings.update')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'show']);
+        Route::put('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'update']);
+    });
+
     // Device Management (Admin only)
     Route::prefix('devices')->middleware('can:device.manage')->group(function () {
         Route::post('/register', [DeviceController::class, 'register'])

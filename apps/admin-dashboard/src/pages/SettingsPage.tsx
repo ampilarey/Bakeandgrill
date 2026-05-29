@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Globe, Shield, Link2, Bell, Truck, ShoppingBag } from 'lucide-react';
+import { Globe, Shield, Link2, Bell, Truck, ShoppingBag, Receipt } from 'lucide-react';
 import { Button, Card } from '../components/ui';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
+import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import {
   getSiteSettings, updateSiteSettings,
   getDeliveryStatus, toggleDelivery, updateDeliverySchedule,
@@ -25,6 +26,7 @@ const HUB_CARDS = [
   // they expected.
   { id: 'notifications', icon: Bell,         label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
   { id: 'integrations',  icon: Link2,        label: 'Integrations',          desc: 'Xero, Webhooks, SMS provider' },
+  { id: 'ordering-charges', icon: Receipt,      label: 'Ordering & Charges',    desc: 'Service charge percentage/fixed amount and which order types it applies to' },
   { id: 'ordering',      icon: ShoppingBag,  label: 'Online Ordering',       desc: 'Toggle online ordering on/off and set per-day ordering hours schedule' },
   { id: 'delivery',      icon: Truck,        label: 'Delivery Availability', desc: 'Toggle delivery on/off and set delivery hours separately from ordering hours' },
 ];
@@ -649,6 +651,7 @@ export function SettingsPage() {
         {active === 'permissions'    && <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />}
         {active === 'notifications'  && <NotificationsSettings />}
         {active === 'integrations'   && <IntegrationsSettings />}
+        {active === 'ordering-charges' && <ServiceChargeSettings />}
         {active === 'ordering'       && <OnlineOrderingSettings />}
         {active === 'delivery'       && <DeliverySettings />}
       </div>

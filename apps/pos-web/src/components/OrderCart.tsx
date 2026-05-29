@@ -38,6 +38,8 @@ type Props = {
   setCartItems: (items: CartItem[]) => void;
   cartSubtotal: number;
   cartTax: number;
+  cartServiceCharge?: number;
+  serviceChargeLabel?: string;
   cartTotal: number;
   discountValue: number;
   /** Sum of every staged customer-reward discount (promo + loyalty +
@@ -666,7 +668,7 @@ export function OrderCart(p: Props) {
             common case is GST/TGST on every item, so 99% of tickets land
             here). Without it the Charge button shows only the subtotal
             and the cashier under-collects from the customer. */}
-        {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0 || p.rewardsDiscount > 0) && (
+        {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0 || p.rewardsDiscount > 0 || (p.cartServiceCharge ?? 0) > 0) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
             <Row label="Subtotal" value={`MVR ${p.cartSubtotal.toFixed(2)}`} />
             {p.discountValue > 0 && (
@@ -691,6 +693,12 @@ export function OrderCart(p: Props) {
                 label={`Gift card · ${p.appliedGiftCard.code.slice(-6)}`}
                 value={`− MVR ${p.appliedGiftCard.discount.toFixed(2)}`}
                 accent={C.primaryDark}
+              />
+            )}
+            {(p.cartServiceCharge ?? 0) > 0 && (
+              <Row
+                label={p.serviceChargeLabel ?? "Service charge"}
+                value={`MVR ${(p.cartServiceCharge ?? 0).toFixed(2)}`}
               />
             )}
             {p.cartTax > 0 && (

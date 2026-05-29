@@ -16,6 +16,11 @@ export type Order = {
   type: string;
   total: number;
   subtotal?: number;
+  tax_amount?: number;
+  discount_amount?: number;
+  delivery_fee?: number;
+  service_charge_amount?: number;
+  service_charge_label?: string | null;
   table_number?: string | null;
   /** Independent of `status` — 'unpaid' | 'partial' | 'paid'. Lets the
    *  manager spot phone-call pickup orders that are cooking but still

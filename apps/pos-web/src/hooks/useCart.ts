@@ -1,6 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CartItem, Item, Modifier, Variant } from "../types";
 import type { PosCustomer } from "../api";
+import type { PosOrderType } from "../orderTypes";
+import {
+  parseServiceChargePublicSettings,
+  previewServiceCharge,
+  serviceChargeTaxLaar,
+  type ServiceChargePublicConfig,
+} from "@shared/utils/serviceCharge";
+import { fetchPublicSiteSettings } from "../api";
 
 export type PaymentRow = {
   id: string;
@@ -54,7 +62,14 @@ export const makeCartKey = (
   `${itemId}-v${variantId ?? 0}-${modifiers.map((m) => m.id).sort().join(",")}` +
   `-n${(notes ?? []).slice().sort().join("|")}`;
 
-export function useCart() {
+export function mapPosOrderType(type: PosOrderType): "dine_in" | "takeaway" | "online_pickup" | "delivery" {
+  if (type === "Dine-in") return "dine_in";
+  if (type === "Pickup") return "online_pickup";
+  if (type === "Delivery") return "delivery";
+  return "takeaway";
+}
+
+export function useCart(posOrderType: PosOrderType = "Takeaway") {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
@@ -105,6 +120,16 @@ export function useCart() {
     discount: number;
     cardBalance: number;
   } | null>(null);
+
+  const [serviceChargeConfig, setServiceChargeConfig] = useState<ServiceChargePublicConfig | null>(null);
+
+  useEffect(() => {
+    fetchPublicSiteSettings()
+      .then((settings) => setServiceChargeConfig(parseServiceChargePublicSettings(settings)))
+      .catch(() => setServiceChargeConfig(null));
+  }, []);
+
+  const backendOrderType = mapPosOrderType(posOrderType);
 
   /** Per-line gross (price + modifiers, ignoring quantity). */
   const lineUnitPrice = (item: CartItem): number =>
@@ -172,21 +197,45 @@ export function useCart() {
     if (cartSubtotal <= 0) return 0;
     const discountRatio = discountedSubtotal / cartSubtotal;
     let tax = 0;
+    let weightedRateSum = 0;
+    let weightedLaar = 0;
     for (const item of cartItems) {
       const rate = Number(item.tax_rate ?? 0);
       if (!Number.isFinite(rate) || rate <= 0) continue;
       const lineGross = lineUnitPrice(item) * item.quantity;
-      tax += (lineGross * discountRatio * rate) / 100;
+      const effectiveLaar = lineGross * discountRatio;
+      tax += (effectiveLaar * rate) / 100;
+      weightedRateSum += effectiveLaar * rate;
+      weightedLaar += effectiveLaar;
     }
-    // Round to 2dp the same way the server's Money helpers do, so the
-    // cashier never sees a hidden .005 drift between Charge and receipt.
+    if (serviceChargeConfig) {
+      const scPreview = previewServiceCharge(
+        serviceChargeConfig,
+        backendOrderType,
+        Math.round(discountedSubtotal * 100),
+      );
+      const avgRate = weightedLaar > 0 ? weightedRateSum / weightedLaar : 0;
+      tax += serviceChargeTaxLaar(serviceChargeConfig, scPreview.amountLaar, avgRate) / 100;
+    }
     return Math.round(tax * 100) / 100;
-  }, [cartItems, cartSubtotal, discountedSubtotal]);
+  }, [cartItems, cartSubtotal, discountedSubtotal, serviceChargeConfig, backendOrderType]);
 
-  /** Grand total the customer actually owes (matches server `order.total`). */
+  const cartServiceCharge = useMemo(() => {
+    if (!serviceChargeConfig) return 0;
+    const preview = previewServiceCharge(
+      serviceChargeConfig,
+      backendOrderType,
+      Math.round(discountedSubtotal * 100),
+    );
+    return preview.amount;
+  }, [serviceChargeConfig, backendOrderType, discountedSubtotal]);
+
+  const serviceChargeLabel = serviceChargeConfig?.label ?? "Service charge";
+
+  /** Grand total the customer actually owes (matches server `order.total`, excl. delivery). */
   const cartTotal = useMemo(
-    () => Math.round((discountedSubtotal + cartTax) * 100) / 100,
-    [discountedSubtotal, cartTax],
+    () => Math.round((discountedSubtotal + cartServiceCharge + cartTax) * 100) / 100,
+    [discountedSubtotal, cartServiceCharge, cartTax],
   );
 
   const handleSelectItem = useCallback((item: Item) => {
@@ -337,6 +386,8 @@ export function useCart() {
     setPayments,
     cartSubtotal,
     cartTax,
+    cartServiceCharge,
+    serviceChargeLabel,
     cartTotal,
     totalDiscount,
     rewardsDiscount,

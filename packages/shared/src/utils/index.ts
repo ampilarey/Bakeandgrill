@@ -13,3 +13,5 @@ export const formatDate = (date: Date | string): string => {
     day: 'numeric',
   }).format(new Date(date));
 };
+
+export * from './serviceCharge';

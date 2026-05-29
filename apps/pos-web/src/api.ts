@@ -187,12 +187,21 @@ export async function fetchPosMenu(channel?: PosSalesChannel): Promise<{
  * 2026_05_19_000001 migration). Owner edits the JSON in
  * Admin → Settings → Website Settings.
  */
-export async function fetchPosQuickNotes(): Promise<string[]> {
+export async function fetchPublicSiteSettings(): Promise<Record<string, string | null>> {
   try {
     const data = await request<{ settings: Record<string, string | null> }>(
       "/site-settings/public",
     );
-    const raw = data.settings?.pos_quick_notes;
+    return data.settings ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export async function fetchPosQuickNotes(): Promise<string[]> {
+  try {
+    const settings = await fetchPublicSiteSettings();
+    const raw = settings?.pos_quick_notes;
     if (!raw) return [];
     // The site_settings table stores everything as a string; JSON
     // settings are decoded on read here so the rest of the POS can

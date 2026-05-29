@@ -110,6 +110,31 @@ export async function setDeliveryOverride(until: string | null): Promise<{ overr
   return req('/admin/ordering/delivery-override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
 }
 
+// ── Service Charge ────────────────────────────────────────────────────────────
+
+export type ServiceChargeSettings = {
+  enabled: boolean;
+  label: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  apply_dine_in: boolean;
+  apply_takeaway: boolean;
+  apply_online_pickup: boolean;
+  apply_delivery: boolean;
+  taxable: boolean;
+  show_on_receipts: boolean;
+};
+
+export async function getServiceChargeSettings(): Promise<{ settings: ServiceChargeSettings }> {
+  return req('/admin/settings/service-charge');
+}
+
+export async function updateServiceChargeSettings(
+  settings: ServiceChargeSettings,
+): Promise<{ message: string; settings: ServiceChargeSettings }> {
+  return req('/admin/settings/service-charge', { method: 'PUT', body: JSON.stringify(settings) });
+}
+
 // ── Permissions ───────────────────────────────────────────────────────────────
 
 export interface PermissionItem {

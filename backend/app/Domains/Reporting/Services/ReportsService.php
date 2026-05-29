@@ -33,7 +33,7 @@ class ReportsService
             ->when($deviceId, fn ($q) => $q->where('device_id', $deviceId));
 
         $agg = (clone $orderBase)
-            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(total),0) as total')
+            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(service_charge_amount),0) as service_charge_total, COALESCE(SUM(total),0) as total')
             ->first();
 
         $totals = [
@@ -41,6 +41,7 @@ class ReportsService
             'subtotal' => (float) ($agg->subtotal ?? 0),
             'tax_amount' => (float) ($agg->tax_amount ?? 0),
             'discount_amount' => (float) ($agg->discount_amount ?? 0),
+            'service_charge_total' => (float) ($agg->service_charge_total ?? 0),
             'total' => (float) ($agg->total ?? 0),
         ];
 
@@ -147,7 +148,7 @@ class ReportsService
         $agg = Order::where('user_id', $shift->user_id)
             ->whereBetween('created_at', [$from, $to])
             ->where('status', 'completed')
-            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(total),0) as total')
+            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(service_charge_amount),0) as service_charge_total, COALESCE(SUM(total),0) as total')
             ->first();
 
         $totals = [
@@ -155,6 +156,7 @@ class ReportsService
             'subtotal' => (float) ($agg->subtotal ?? 0),
             'tax_amount' => (float) ($agg->tax_amount ?? 0),
             'discount_amount' => (float) ($agg->discount_amount ?? 0),
+            'service_charge_total' => (float) ($agg->service_charge_total ?? 0),
             'total' => (float) ($agg->total ?? 0),
         ];
 
@@ -186,7 +188,7 @@ class ReportsService
     {
         $agg = Order::whereBetween('created_at', [$from, $to])
             ->where('status', 'completed')
-            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(total),0) as total')
+            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(service_charge_amount),0) as service_charge_total, COALESCE(SUM(total),0) as total')
             ->first();
 
         $totals = [
@@ -194,6 +196,7 @@ class ReportsService
             'subtotal' => (float) ($agg->subtotal ?? 0),
             'tax_amount' => (float) ($agg->tax_amount ?? 0),
             'discount_amount' => (float) ($agg->discount_amount ?? 0),
+            'service_charge_total' => (float) ($agg->service_charge_total ?? 0),
             'total' => (float) ($agg->total ?? 0),
         ];
 

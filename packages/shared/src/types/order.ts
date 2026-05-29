@@ -77,6 +77,12 @@ export type Order = {
   tax_amount?: number;
   discount_amount?: number;
   delivery_fee?: number;
+  service_charge_enabled?: boolean;
+  service_charge_amount?: number;
+  service_charge_amount_laar?: number;
+  service_charge_label?: string | null;
+  service_charge_type?: string | null;
+  service_charge_taxable?: boolean;
   promo_discount_laar?: number;
   loyalty_discount_laar?: number;
   gift_card_discount_laar?: number;

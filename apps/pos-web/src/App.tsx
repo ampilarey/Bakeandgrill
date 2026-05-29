@@ -248,7 +248,7 @@ function App() {
   // that doesn't belong on that channel.
   const shift = useShift(isLoggedIn, isLoggedIn, deviceId);
   const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap, setSmsNotifications);
-  const cart = useCart();
+  const cart = useCart(orderType);
 
   // When switching to Delivery (or attaching a customer mid-ticket),
   // copy name/phone into the delivery contact fields if still blank.
@@ -1212,6 +1212,8 @@ function App() {
               setCartItems={cart.setCartItems}
               cartSubtotal={cart.cartSubtotal}
               cartTax={cart.cartTax}
+              cartServiceCharge={cart.cartServiceCharge}
+              serviceChargeLabel={cart.serviceChargeLabel}
               cartTotal={cart.cartTotal}
               discountValue={cart.discountValue}
               rewardsDiscount={cart.rewardsDiscount}
@@ -1463,6 +1465,8 @@ function App() {
           // money went.
           discount={cart.discountValue + cart.rewardsDiscount}
           tax={cart.cartTax}
+          serviceCharge={cart.cartServiceCharge}
+          serviceChargeLabel={cart.serviceChargeLabel}
           deliveryFee={
             orderType === "Delivery" && order.resumedOrderId === null
               ? deliveryFeeEst

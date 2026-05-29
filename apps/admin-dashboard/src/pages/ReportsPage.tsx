@@ -220,6 +220,9 @@ export function ReportsPage() {
             <StatCard label="Completed Revenue" value={mvr(summary.total_revenue)} sub="Finished orders only" accent="#22c55e" />
             <StatCard label="Completed Orders" value={summary.order_count.toLocaleString()} accent="#D4813A" />
             <StatCard label="Avg Order Value"  value={mvr(summary.average_order_value ?? 0)} accent="#8b5cf6" />
+            {(summary.service_charge_total ?? 0) > 0 && (
+              <StatCard label="Service Charge" value={mvr(summary.service_charge_total ?? 0)} sub="Collected on completed orders" accent="#0ea5e9" />
+            )}
           </div>
           <Card>
             <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>

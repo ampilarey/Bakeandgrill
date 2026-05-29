@@ -80,11 +80,12 @@
 
 <div class="pdf-totals">
     <div class="pdf-totals-row"><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></div>
-    @if ((float) $order->tax_amount > 0.0001)
-        <div class="pdf-totals-row"><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></div>
-    @endif
     @if ($discount > 0.0001)
         <div class="pdf-totals-row"><span>Discount</span><span>− MVR {{ number_format($discount, 2) }}</span></div>
+    @endif
+    @include('partials.order-service-charge-line', ['order' => $order, 'asPdf' => true])
+    @if ((float) $order->tax_amount > 0.0001)
+        <div class="pdf-totals-row"><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></div>
     @endif
     <div class="pdf-totals-grand"><span>Total</span><span>MVR {{ number_format((float) $order->total, 2) }}</span></div>
     @if ($refundedTotal > 0.0001)

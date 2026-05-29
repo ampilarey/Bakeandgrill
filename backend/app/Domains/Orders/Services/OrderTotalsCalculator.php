@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Services;
 
 use App\Domains\Orders\DTOs\DiscountsInput;
+use App\Domains\Orders\DTOs\ServiceChargeBreakdown;
 use App\Domains\Orders\DTOs\TotalsBreakdown;
 use App\Domains\Shared\ValueObjects\Money;
 use App\Models\Order;
@@ -12,29 +13,43 @@ use App\Models\Order;
 /**
  * Calculates order totals deterministically using per-item tax rates.
  *
- * ALWAYS applies discounts in this exact order:
- *   1. ITEM-LEVEL PROMO DISCOUNTS (on individual line items)
- *   2. ORDER-LEVEL PROMO DISCOUNTS (on subtotal)
- *   3. LOYALTY DISCOUNT (from hold)
- *   4. MANUAL STAFF DISCOUNT
- *   5. GUARD: discountedSubtotal = max(0, subtotal − totalDiscounts)
- *   6. TAX (applied proportionally per item — discounts reduce taxable amount)
- *   7. GRAND TOTAL
- *
- * Tax is calculated per order item using the tax_rate snapshotted at order time.
- * When a discount reduces the subtotal, the discount is applied proportionally
- * across items so each item's effective taxable amount is reduced fairly.
- *
- * Rounding: floor() for discounts (merchant-favorable), round() for tax.
- * All arithmetic done in integer laari via Money value object.
+ * Order:
+ *   1. Subtotal from line items
+ *   2. Order-level discounts
+ *   3. Discounted subtotal
+ *   4. Service charge (from settings snapshot, or frozen on locked orders)
+ *   5. Per-item tax (+ optional service charge tax)
+ *   6. Grand total (items + service charge + tax)
+ *   7. Delivery fee added in recalculateAndPersist
  */
 class OrderTotalsCalculator
 {
+    public function __construct(
+        private readonly ServiceChargeCalculator $serviceChargeCalculator = new ServiceChargeCalculator,
+    ) {}
+
+    public static function orderTotalsLocked(Order $order): bool
+    {
+        if ($order->payment_status === 'paid') {
+            return true;
+        }
+
+        return in_array($order->status, [
+            'paid',
+            'completed',
+            'cancelled',
+            'refunded',
+            'partially_refunded',
+            'payment_pending',
+        ], true);
+    }
+
     public function calculate(
         Order $order,
         DiscountsInput $discounts = new DiscountsInput,
         ?int $taxRateBp = null,
         ?bool $taxInclusive = null,
+        ?ServiceChargeBreakdown $lockedServiceCharge = null,
     ): TotalsBreakdown {
         $taxInclusive ??= (bool) config('app.tax_inclusive', false);
 
@@ -52,30 +67,41 @@ class OrderTotalsCalculator
             ->add($referralDisco);
         $discountedSubtotal = $subtotal->subtract($totalDiscount);
 
-        // Use per-item tax rates from order_items.tax_rate (snapshotted at order time).
-        // Falls back to the global TAX_RATE_BP config only when an explicit override is
-        // passed — this preserves backward compatibility for any callers that pass taxRateBp.
+        $serviceCharge = $lockedServiceCharge
+            ?? $this->serviceChargeCalculator->calculate($order, $discountedSubtotal->amountLaar);
+        $serviceChargeMoney = new Money($serviceCharge->amountLaar);
+
         if ($taxRateBp !== null) {
-            // Legacy / explicit override path: global rate on whole subtotal.
             if ($taxInclusive) {
                 $tax = $discountedSubtotal->extractTax($taxRateBp);
-                $grandTotal = $discountedSubtotal;
+                $grandTotal = $discountedSubtotal->add($serviceChargeMoney);
             } else {
-                $tax = $discountedSubtotal->addTax($taxRateBp)->subtract($discountedSubtotal);
-                $grandTotal = $discountedSubtotal->add($tax);
+                $itemTax = $discountedSubtotal->addTax($taxRateBp)->subtract($discountedSubtotal);
+                $tax = $itemTax;
+                if ($serviceCharge->taxable && $serviceCharge->amountLaar > 0) {
+                    $scTax = new Money($serviceCharge->amountLaar)->addTax($taxRateBp)->subtract(new Money($serviceCharge->amountLaar));
+                    $tax = $tax->add($scTax);
+                }
+                $grandTotal = $discountedSubtotal->add($serviceChargeMoney)->add($tax);
             }
             $effectiveTaxRateBp = $taxRateBp;
         } else {
-            // Per-item tax path: each item taxed at its own rate.
             $tax = $this->calculatePerItemTax($order, $subtotal, $discountedSubtotal, $taxInclusive);
 
-            if ($taxInclusive) {
-                $grandTotal = $discountedSubtotal;
-            } else {
-                $grandTotal = $discountedSubtotal->add($tax);
+            if ($serviceCharge->taxable && $serviceCharge->amountLaar > 0 && !$taxInclusive) {
+                $avgRate = $this->weightedAverageTaxRate($order, $subtotal, $discountedSubtotal);
+                if ($avgRate > 0) {
+                    $scTaxLaar = (int) round($serviceCharge->amountLaar * $avgRate / 100);
+                    $tax = $tax->add(new Money($scTaxLaar));
+                }
             }
 
-            // Store 0 in tax_rate_bp on the order since there is no single rate.
+            if ($taxInclusive) {
+                $grandTotal = $discountedSubtotal->add($serviceChargeMoney);
+            } else {
+                $grandTotal = $discountedSubtotal->add($serviceChargeMoney)->add($tax);
+            }
+
             $effectiveTaxRateBp = 0;
         }
 
@@ -88,6 +114,7 @@ class OrderTotalsCalculator
             referralDiscount: $referralDisco,
             totalDiscount: $totalDiscount,
             discountedSubtotal: $discountedSubtotal,
+            serviceCharge: $serviceCharge,
             tax: $tax,
             grandTotal: $grandTotal,
             taxInclusive: $taxInclusive,
@@ -108,15 +135,18 @@ class OrderTotalsCalculator
             referralDiscountLaar: (int) ($order->referral_discount_laar ?? 0),
         );
 
-        $breakdown = $this->calculate($order, $discounts);
+        $lockedServiceCharge = self::orderTotalsLocked($order)
+            ? ServiceChargeBreakdown::fromOrderSnapshot($order)
+            : null;
 
-        // Delivery fee is tracked separately and added on top of the item grand total.
+        $breakdown = $this->calculate($order, $discounts, lockedServiceCharge: $lockedServiceCharge);
+
         $deliveryFeeLaar = (int) ($order->delivery_fee_laar ?? 0);
-        $totalWithDeliveryLaar = $breakdown->grandTotal->amountLaar + $deliveryFeeLaar;
+        $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $deliveryFeeLaar;
 
         $order->update(array_merge($breakdown->toOrderAttributes(), [
-            'total_laar' => $totalWithDeliveryLaar,
-            'total' => round($totalWithDeliveryLaar / 100, 2),
+            'total_laar' => $totalWithExtrasLaar,
+            'total' => round($totalWithExtrasLaar / 100, 2),
         ]));
 
         return $order->load(['items.modifiers']);
@@ -133,14 +163,6 @@ class OrderTotalsCalculator
         return new Money($totalLaar);
     }
 
-    /**
-     * Calculate tax by applying each item's own tax_rate to its proportional share
-     * of the discounted subtotal.
-     *
-     * When a discount reduces the order total, it is spread proportionally across
-     * items so that each item's taxable amount is reduced fairly before applying
-     * the item's own tax rate.
-     */
     private function calculatePerItemTax(
         Order $order,
         Money $subtotal,
@@ -153,7 +175,6 @@ class OrderTotalsCalculator
             return new Money(0);
         }
 
-        // Ratio of discounted subtotal to original subtotal (how much of each laari survives after discounts).
         $discountRatio = $discountedSubtotal->amountLaar / $subtotal->amountLaar;
 
         $totalTaxLaar = 0;
@@ -164,14 +185,11 @@ class OrderTotalsCalculator
             }
 
             $itemLaar = (int) round((float) $item->total_price * 100);
-            // Apply discount proportionally to this item's price.
             $effectiveLaar = (int) round($itemLaar * $discountRatio);
 
             if ($taxInclusive) {
-                // Extract the tax already baked into the price: tax = price * rate / (100 + rate)
                 $taxLaar = (int) round($effectiveLaar * $taxRate / (100 + $taxRate));
             } else {
-                // Add tax on top: tax = price * rate / 100
                 $taxLaar = (int) round($effectiveLaar * $taxRate / 100);
             }
 
@@ -179,5 +197,35 @@ class OrderTotalsCalculator
         }
 
         return new Money($totalTaxLaar);
+    }
+
+    /**
+     * Weighted average item tax rate (percent) by post-discount effective laar.
+     */
+    private function weightedAverageTaxRate(Order $order, Money $subtotal, Money $discountedSubtotal): float
+    {
+        if ($subtotal->amountLaar === 0) {
+            return 0.0;
+        }
+
+        $discountRatio = $discountedSubtotal->amountLaar / $subtotal->amountLaar;
+        $weightedSum = 0.0;
+        $totalEffective = 0;
+
+        foreach ($order->items as $item) {
+            $taxRate = (float) $item->tax_rate;
+            if ($taxRate <= 0) {
+                continue;
+            }
+            $itemLaar = (int) round((float) $item->total_price * 100);
+            $effectiveLaar = (int) round($itemLaar * $discountRatio);
+            if ($effectiveLaar <= 0) {
+                continue;
+            }
+            $weightedSum += $effectiveLaar * $taxRate;
+            $totalEffective += $effectiveLaar;
+        }
+
+        return $totalEffective > 0 ? $weightedSum / $totalEffective : 0.0;
     }
 }

@@ -35,6 +35,12 @@ import {
   ratesFromApi,
   type LoyaltyRatesConfig,
 } from '../utils/loyalty';
+import { useSiteSettings } from '../context/SiteSettingsContext';
+import {
+  parseServiceChargePublicSettings,
+  previewServiceCharge,
+  serviceChargeTaxLaar,
+} from '@shared/utils/serviceCharge';
 
 export type CartItem = {
   id: number;
@@ -133,6 +139,11 @@ function readToken(): string | null {
 export function useCheckout() {
   const navigate = useNavigate();
   const { pruneCartToAllowedItemIds, refreshPricesFromMenu } = useCart();
+  const siteSettings = useSiteSettings();
+  const serviceChargeConfig = useMemo(
+    () => parseServiceChargePublicSettings(siteSettings as Record<string, string | null | undefined>),
+    [siteSettings],
+  );
 
   const [cartTick, bumpCart] = useReducer((n: number) => n + 1, 0);
   const cart = useMemo(() => readCart(), [cartTick]);
@@ -363,8 +374,17 @@ export function useCheckout() {
   // GST is on the discounted subtotal (standard Maldivian T-GST — discounts reduce
   // the taxable amount). Scale the effective tax rate proportionally.
   const discountedSubtotalLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta);
-  const taxLaar = subtotalLaar > 0 ? Math.round(discountedSubtotalLaar * fullTaxLaar / subtotalLaar) : 0;
-  const totalLaar = discountedSubtotalLaar + taxLaar + deliveryFeeLaar;
+  const backendOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
+  const serviceChargePreview = useMemo(
+    () => previewServiceCharge(serviceChargeConfig, backendOrderType, discountedSubtotalLaar),
+    [serviceChargeConfig, backendOrderType, discountedSubtotalLaar],
+  );
+  const serviceChargeLaar = serviceChargePreview.amountLaar;
+  const weightedTaxRatePercent = subtotalLaar > 0 ? (fullTaxLaar / subtotalLaar) * 100 : 0;
+  const itemTaxLaar = subtotalLaar > 0 ? Math.round(discountedSubtotalLaar * fullTaxLaar / subtotalLaar) : 0;
+  const scTaxLaar = serviceChargeTaxLaar(serviceChargeConfig, serviceChargeLaar, weightedTaxRatePercent);
+  const taxLaar = itemTaxLaar + scTaxLaar;
+  const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxLaar + deliveryFeeLaar;
 
   useEffect(() => {
     if (useLoyalty && loyaltyRedeemPoints < loyaltyRates.minRedeemPoints) {
@@ -789,7 +809,8 @@ export function useCheckout() {
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
-    subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta, totalLaar,
+    subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
+    serviceChargeLaar, serviceChargeLabel: serviceChargePreview.label, totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardDelta,

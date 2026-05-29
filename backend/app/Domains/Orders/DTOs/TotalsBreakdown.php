@@ -21,6 +21,7 @@ final readonly class TotalsBreakdown
         public Money $referralDiscount,
         public Money $totalDiscount,
         public Money $discountedSubtotal,
+        public ServiceChargeBreakdown $serviceCharge,
         public Money $tax,
         public Money $grandTotal,
         public bool $taxInclusive,
@@ -29,11 +30,10 @@ final readonly class TotalsBreakdown
 
     public function toOrderAttributes(): array
     {
-        return [
+        return array_merge([
             'subtotal' => $this->subtotal->toMvr(),
             'tax_amount' => $this->tax->toMvr(),
             'discount_amount' => $this->totalDiscount->toMvr(),
-            'total' => $this->grandTotal->toMvr(),
             'subtotal_laar' => $this->subtotal->amountLaar,
             'tax_laar' => $this->tax->amountLaar,
             'promo_discount_laar' => $this->promoDiscount->amountLaar,
@@ -41,9 +41,8 @@ final readonly class TotalsBreakdown
             'manual_discount_laar' => $this->manualDiscount->amountLaar,
             'gift_card_discount_laar' => $this->giftCardDiscount->amountLaar,
             'referral_discount_laar' => $this->referralDiscount->amountLaar,
-            'total_laar' => $this->grandTotal->amountLaar,
             'tax_inclusive' => $this->taxInclusive,
             'tax_rate_bp' => $this->taxRateBp,
-        ];
+        ], $this->serviceCharge->toOrderAttributes());
     }
 }
