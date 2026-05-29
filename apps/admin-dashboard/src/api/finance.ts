@@ -562,6 +562,26 @@ export async function getInventoryForecast(): Promise<{ items: { id: number; nam
   return req('/forecasts/inventory');
 }
 
+export type DeliveryZoneReportRow = {
+  zone: string;
+  orders_count: number;
+  order_total: number;
+  fees_total: number;
+  avg_fee: number;
+};
+
+export type DeliveryZonesReport = {
+  from: string;
+  to: string;
+  zones: DeliveryZoneReportRow[];
+  totals: { orders_count: number; order_total: number; fees_total: number };
+};
+
+export async function getDeliveryZonesReport(params: { from?: string; to?: string } = {}): Promise<DeliveryZonesReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/delivery-zones?${q}`);
+}
+
 export interface ItemForecast {
   item_id: number;
   item_name: string;

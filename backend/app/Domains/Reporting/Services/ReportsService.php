@@ -233,4 +233,49 @@ class ReportsService
             'quantity' => (float) ($totals->quantity ?? 0),
         ];
     }
+
+    /**
+     * Delivery performance grouped by island/zone for completed delivery orders.
+     *
+     * @return array{
+     *     from: string,
+     *     to: string,
+     *     zones: list<array{zone: string, orders_count: int, order_total: float, fees_total: float, avg_fee: float}>,
+     *     totals: array{orders_count: int, order_total: float, fees_total: float}
+     * }
+     */
+    public function deliveryZones(Carbon $from, Carbon $to): array
+    {
+        $rows = Order::query()
+            ->where('type', 'delivery')
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$from, $to])
+            ->whereNotNull('delivery_island')
+            ->where('delivery_island', '!=', '')
+            ->selectRaw('delivery_island as zone, COUNT(*) as orders_count, COALESCE(SUM(total),0) as order_total, COALESCE(SUM(delivery_fee),0) as fees_total, COALESCE(AVG(delivery_fee),0) as avg_fee')
+            ->groupBy('delivery_island')
+            ->orderByDesc('orders_count')
+            ->get();
+
+        $ordersCount = (int) $rows->sum('orders_count');
+        $orderTotal = (float) $rows->sum('order_total');
+        $feesTotal = (float) $rows->sum('fees_total');
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'zones' => $rows->map(fn ($row) => [
+                'zone' => (string) $row->zone,
+                'orders_count' => (int) $row->orders_count,
+                'order_total' => (float) $row->order_total,
+                'fees_total' => (float) $row->fees_total,
+                'avg_fee' => round((float) $row->avg_fee, 2),
+            ])->values()->all(),
+            'totals' => [
+                'orders_count' => $ordersCount,
+                'order_total' => $orderTotal,
+                'fees_total' => $feesTotal,
+            ],
+        ];
+    }
 }

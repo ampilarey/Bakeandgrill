@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
-  getPromotionReport, getLoyaltyReport,
+  getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
   fetchPosStaffOptions, fetchShiftHistory, fetchDevices,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
-  type PromotionReportItem, type LoyaltyReport,
+  type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -29,7 +29,7 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
   takeaway: 'Takeaway', pos: 'POS',
 };
 
-const TABS = ['Summary', 'Breakdown', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty'] as const;
+const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -80,6 +80,7 @@ export function ReportsPage() {
   const [ar,        setAr]        = useState<AccountsReceivable[] | null>(null);
   const [promoReport, setPromoReport] = useState<PromotionReportItem[] | null>(null);
   const [loyaltyReport, setLoyaltyReport] = useState<LoyaltyReport | null>(null);
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZonesReport | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -94,6 +95,7 @@ export function ReportsPage() {
       };
       if (tab === 'Summary')    setSummary(await fetchSalesSummary({ from, to, ...posFilters }));
       if (tab === 'Breakdown')  setBreakdown(await getSalesBreakdown({ from, to }));
+      if (tab === 'Delivery Zones') setDeliveryZones(await getDeliveryZonesReport({ from, to }));
       if (tab === 'Tax')        setTaxReport(await getTaxReport({ from, to }));
       if (tab === 'X / Z Report') {
         const [x, z] = await Promise.all([getXReport(), getZReport()]);
@@ -125,7 +127,7 @@ export function ReportsPage() {
     fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
   }, []);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {
@@ -355,6 +357,48 @@ export function ReportsPage() {
             </table>
           </Card>
         </div>
+      )}
+
+      {/* ── Delivery Zones ── */}
+      {!loading && tab === 'Delivery Zones' && deliveryZones && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+            <StatCard label="Delivery Orders" value={String(deliveryZones.totals.orders_count)} accent="#0ea5e9" />
+            <StatCard label="Order Revenue" value={mvr(deliveryZones.totals.order_total)} accent="#D4813A" />
+            <StatCard label="Delivery Fees" value={mvr(deliveryZones.totals.fees_total)} accent="#22c55e" />
+          </div>
+          <Card>
+            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>
+              Performance by zone ({deliveryZones.from} – {deliveryZones.to})
+            </p>
+            {(deliveryZones.zones ?? []).length === 0 ? (
+              <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed delivery orders in this period.</p>
+            ) : (
+              <table style={S.table}>
+                <thead>
+                  <tr>
+                    <th style={S.th}>Zone</th>
+                    <th style={S.th}>Orders</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Revenue</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Fees</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Avg Fee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deliveryZones.zones.map((row) => (
+                    <tr key={row.zone}>
+                      <td style={S.td}>{row.zone}</td>
+                      <td style={{ ...S.td, color: '#9C8E7E' }}>{row.orders_count}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.order_total)}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{mvr(row.fees_total)}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{mvr(row.avg_fee)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </>
       )}
 
       {/* ── X / Z Reports ── */}

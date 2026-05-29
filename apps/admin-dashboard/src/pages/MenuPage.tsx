@@ -13,6 +13,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, PageHeader, Spinner, useConfirmDialog,
 } from '../components/Layout';
+import { menuItemMarginLabel, menuItemMarginLevel, MENU_MARGIN_COLORS } from '../utils/menuMargin';
 
 // ── Image upload field ────────────────────────────────────────────────────────
 function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
@@ -1061,6 +1062,22 @@ export function MenuPage() {
                         <td style={{ padding: '10px 14px' }}>
                           <div style={{ fontWeight: 600 }}>{item.name}</div>
                           {item.sku && <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.sku}</div>}
+                          {(() => {
+                            const price = parseFloat(String(item.base_price));
+                            const level = menuItemMarginLevel(price, item.cost);
+                            const label = menuItemMarginLabel(price, item.cost);
+                            if (!label || level === 'unknown' || level === 'ok') return null;
+                            const style = MENU_MARGIN_COLORS[level];
+                            return (
+                              <span style={{
+                                display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 800,
+                                color: style.color, background: style.bg, border: `1px solid ${style.border}`,
+                                borderRadius: 4, padding: '2px 6px',
+                              }}>
+                                ⚠ {label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: '10px 14px', color: '#6B5D4F', fontSize: 13 }}>
                           {item.category ? (() => {

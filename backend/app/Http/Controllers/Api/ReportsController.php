@@ -166,6 +166,13 @@ class ReportsController extends Controller
         return response()->json($this->reports->inventoryValuation());
     }
 
+    public function deliveryZones(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->deliveryZones($from, $to));
+    }
+
     public function inventoryValuationCsv()
     {
         $data = $this->reports->inventoryValuation();

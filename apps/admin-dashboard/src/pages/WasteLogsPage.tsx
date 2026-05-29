@@ -112,6 +112,20 @@ export default function WasteLogsPage() {
   const maxItemCost = topItems[0]?.cost ?? 1;
   const maxReasonCost = byReason[0]?.cost ?? 1;
 
+  const wasteTrend = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const log of allLogs) {
+      const day = log.created_at?.slice(0, 10);
+      if (!day) continue;
+      map[day] = (map[day] ?? 0) + (log.cost_estimate ?? 0);
+    }
+    return Object.entries(map)
+      .map(([date, cost]) => ({ date, cost }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [allLogs]);
+
+  const maxTrendCost = wasteTrend.reduce((m, d) => Math.max(m, d.cost), 0) || 1;
+
   // ── Log form handler ────────────────────────────────────────────────────────
   const handleLog = async () => {
     if (!form.item_id) { setFormError(`Select a ${itemType === 'menu' ? 'menu item' : 'inventory item'}.`); return; }
@@ -248,6 +262,37 @@ export default function WasteLogsPage() {
             </div>
 
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+
+              {/* Daily waste trend */}
+              <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: '0 0 16px' }}>
+                  Waste Cost Trend
+                </h3>
+                {wasteTrend.length === 0 ? (
+                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>No data in this range.</p>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, minHeight: 120, overflowX: 'auto', paddingBottom: 4 }}>
+                    {wasteTrend.map(({ date, cost }) => (
+                      <div key={date} style={{ flex: '1 0 28px', maxWidth: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <div
+                          title={`${date}: ${mvr(cost)}`}
+                          style={{
+                            width: '100%',
+                            maxWidth: 36,
+                            height: `${Math.max(8, (cost / maxTrendCost) * 100)}px`,
+                            background: '#ef4444',
+                            borderRadius: '6px 6px 2px 2px',
+                            transition: 'height 0.3s ease',
+                          }}
+                        />
+                        <span style={{ fontSize: 10, color: '#9C8E7E', transform: 'rotate(-45deg)', transformOrigin: 'top left', whiteSpace: 'nowrap' }}>
+                          {date.slice(5)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Breakdown by reason */}
               <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20 }}>

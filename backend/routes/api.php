@@ -363,6 +363,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/reports/x-report', [ReportsController::class, 'xReport']);
         Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
         Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
+        Route::get('/reports/delivery-zones', [ReportsController::class, 'deliveryZones']);
         Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
         Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');
         Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');

@@ -9,6 +9,8 @@ import {
   fetchSalesSummary,
   getCurrentShift,
   getDailySummary,
+  getInventoryForecast,
+  getPurchaseSuggestions,
   getSystemHealth,
   kdsStart,
   fetchPosOverview,
@@ -362,6 +364,8 @@ export function DashboardPage() {
   const [shiftErr, setShiftErr] = useState('');
 
   const [lowStockTotal, setLowStockTotal] = useState(0);
+  const [stockRunway, setStockRunway] = useState<Array<{ id: number; name: string; days_of_stock: number | null; status: string; unit: string }>>([]);
+  const [poSuggestCount, setPoSuggestCount] = useState(0);
   const [printPending, setPrintPending] = useState(0);
   const [smsFailed, setSmsFailed] = useState(0);
   const [smsSent, setSmsSent] = useState(0);
@@ -435,14 +439,25 @@ export function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canOrders]);
 
-  // ── load low stock ──
+  // ── load inventory intelligence (reorder + runway + PO suggestions) ──
   useEffect(() => {
     if (!canInventory) return;
-    fetchLowStockItems()
-      .then((r) => {
-        const items = r.data ?? [];
+    Promise.all([
+      fetchLowStockItems(),
+      getInventoryForecast().catch(() => ({ items: [] as Awaited<ReturnType<typeof getInventoryForecast>>['items'] })),
+      getPurchaseSuggestions().catch(() => ({ items: [] as Awaited<ReturnType<typeof getPurchaseSuggestions>>['items'], by_supplier: [] })),
+    ])
+      .then(([lowStockRes, forecastRes, suggestRes]) => {
+        const items = lowStockRes.data ?? [];
         setLowStock(items.slice(0, 8));
         setLowStockTotal(items.length);
+        const urgentRunway = (forecastRes.items ?? [])
+          .filter((i) => ['out_of_stock', 'critical', 'low'].includes(i.status))
+          .filter((i) => i.days_of_stock == null || i.days_of_stock <= 7)
+          .sort((a, b) => (a.days_of_stock ?? 999) - (b.days_of_stock ?? 999))
+          .slice(0, 5);
+        setStockRunway(urgentRunway);
+        setPoSuggestCount((suggestRes.items ?? []).length);
         if (items.length > 0) {
           const key = 'admin_low_stock_notified_count';
           const prev = sessionStorage.getItem(key);
@@ -540,10 +555,10 @@ export function DashboardPage() {
       });
     }
   }
-  if (canInventory && lowStockTotal > 0) {
+  if (canInventory && (lowStockTotal > 0 || stockRunway.length > 0)) {
     opsCards.push({
-      key: 'stock', label: 'Low Stock', value: String(lowStockTotal),
-      sub: 'Below reorder level', accent: '#ef4444', icon: Package,
+      key: 'stock', label: 'Inventory Alerts', value: String(lowStockTotal + stockRunway.length),
+      sub: `${lowStockTotal} reorder · ${stockRunway.length} runway`, accent: '#ef4444', icon: Package,
       onClick: () => navigate('/inventory'),
     });
   }
@@ -869,27 +884,55 @@ export function DashboardPage() {
           </div>
         )}
 
-        {/* Low stock alerts */}
+        {/* Inventory intelligence */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Low Stock Alerts</span>
-            {lowStock.length > 0 && (
-              <span style={{
-                fontSize: 11, fontWeight: 700, color: '#ef4444',
-                background: '#FEE2E2', borderRadius: 20, padding: '2px 8px',
-              }}>{lowStock.length} items</span>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Inventory Intelligence</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => navigate('/inventory')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Inventory →</button>
+              <button type="button" onClick={() => navigate('/forecasts')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Forecasts →</button>
+              {poSuggestCount > 0 && (
+                <button type="button" onClick={() => navigate('/purchase-orders')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {poSuggestCount} PO suggestions →
+                </button>
+              )}
+            </div>
           </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 12 }}>
+            <StatCard label="Below Reorder" value={String(lowStockTotal)} accent="#ef4444" icon={Package} />
+            <StatCard label="Runway Risk" value={String(stockRunway.length)} sub="≤7 days stock" accent="#f97316" icon={AlertTriangle} />
+            <StatCard label="PO Suggestions" value={String(poSuggestCount)} accent="#8b5cf6" icon={TrendingUp} />
+          </div>
+
           {lowStockErr && <ErrorMsg message={lowStockErr} />}
-          {lowStock.length === 0 && !lowStockErr ? (
+
+          {stockRunway.length > 0 && (
+            <Card style={{ marginBottom: 12, padding: 14 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#92400E' }}>Stock-out runway (consumption rate)</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {stockRunway.map((item) => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ fontWeight: 600, color: '#1C1408' }}>{item.name}</span>
+                    <span style={{ color: item.status === 'out_of_stock' ? '#ef4444' : '#f97316', fontWeight: 700 }}>
+                      {item.days_of_stock == null ? 'Out' : `${item.days_of_stock.toFixed(1)}d left`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {lowStock.length === 0 && stockRunway.length === 0 && !lowStockErr ? (
             <Card>
               <div style={{ textAlign: 'center', padding: '28px 0', color: '#22c55e', fontSize: 13 }}>
                 <Package size={20} style={{ display: 'block', margin: '0 auto 8px' }} />
-                All stock levels are healthy.
+                All stock levels look healthy.
               </div>
             </Card>
-          ) : (
+          ) : lowStock.length > 0 ? (
             <TableCard>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Below reorder point</p>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>
@@ -916,7 +959,7 @@ export function DashboardPage() {
                 </tbody>
               </table>
             </TableCard>
-          )}
+          ) : null}
         </div>
 
         {/* Orders by channel */}
