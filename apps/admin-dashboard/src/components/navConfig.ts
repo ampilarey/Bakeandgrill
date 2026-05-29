@@ -37,8 +37,12 @@ export const PINNED_NAV_ITEMS: NavItem[] = [
   { to: '/inventory', icon: Boxes,           label: 'Inventory', permission: 'inventory.view', description: 'Stock levels' },
   { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.view',      description: 'Categories & items' },
   { to: '/customers', icon: Users,           label: 'Customers',  permission: 'customers.manage', description: 'Customer database' },
+  { to: '/customers/growth', icon: BarChart2, label: 'Customer Growth', permission: 'customers.manage', description: 'Metrics, segments & CRM' },
   { to: '/reports',   icon: BarChart3,       label: 'Reports',    permission: 'reports.view',     description: 'Sales & daily summaries' },
 ];
+
+/** Paths that should not stay active for nested routes (e.g. /customers vs /customers/growth) */
+export const NAV_EXACT_MATCH_PATHS = new Set(['/customers']);
 
 const PINNED_PATHS = new Set(PINNED_NAV_ITEMS.map((i) => i.to));
 
@@ -70,7 +74,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Customers & Marketing',
     icon: Heart,
     items: [
-      { to: '/customers/growth', icon: BarChart2, label: 'Customer Growth', permission: 'customers.manage', description: 'Metrics, segments & CRM' },
       { to: '/reservations', icon: CalendarDays,  label: 'Reservations', permission: 'reservations.view', description: 'Table bookings' },
       { to: '/reviews',      icon: Star,          label: 'Reviews',      permission: 'customers.manage',  description: 'Moderate ratings' },
       { to: '/loyalty',      icon: Heart,         label: 'Loyalty',      permission: 'loyalty.manage',    description: 'Points & rewards' },

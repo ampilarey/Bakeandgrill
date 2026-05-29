@@ -7,6 +7,7 @@ import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
 import {
   PINNED_NAV_ITEMS, getNavGroups, getAllNavItems, resolveNavItemForPath, BOTTOM_TABS, can, LogOut,
+  NAV_EXACT_MATCH_PATHS,
   type NavItem,
 } from './navConfig';
 
@@ -18,6 +19,12 @@ function useWindowWidth() {
     return () => window.removeEventListener('resize', h);
   }, []);
   return w;
+}
+
+function isNavItemActive(pathname: string, to: string): boolean {
+  const path = pathname.replace(/\/$/, '') || '/';
+  if (NAV_EXACT_MATCH_PATHS.has(to)) return path === to;
+  return path === to || path.startsWith(to + '/');
 }
 
 function SideNavItem({
@@ -34,6 +41,7 @@ function SideNavItem({
           collapsed ? 'admin-nav-item--collapsed' : '',
         ].filter(Boolean).join(' ')
       }
+      end={NAV_EXACT_MATCH_PATHS.has(to)}
     >
       <span style={{ position: 'relative', flexShrink: 0, display: 'flex' }}>
         <Icon size={17} />
@@ -264,7 +272,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
               </p>
               <div className="more-drawer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {PINNED_NAV_ITEMS.filter((item) => can(user, item.permission)).map(({ to, icon: Icon, label }) => {
-                  const isActive = location.pathname.startsWith(to);
+                  const isActive = isNavItemActive(location.pathname, to);
                   return (
                     <NavLink key={to} to={to} onClick={closeDrawer} className={`admin-mobile-drawer-tile${isActive ? ' admin-mobile-drawer-tile--active' : ''}`}>
                       <Icon size={22} />
@@ -288,7 +296,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                 </p>
                 <div className="more-drawer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                   {visibleItems.map(({ to, icon: Icon, label }) => {
-                    const isActive = location.pathname.startsWith(to);
+                    const isActive = isNavItemActive(location.pathname, to);
                     return (
                       <NavLink key={to} to={to} onClick={closeDrawer} className={`admin-mobile-drawer-tile${isActive ? ' admin-mobile-drawer-tile--active' : ''}`}>
                         <Icon size={22} />
@@ -386,7 +394,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                 </button>
               );
             }
-            const isActive = location.pathname.startsWith(to);
+            const isActive = isNavItemActive(location.pathname, to);
             return (
               <NavLink
                 key={to}
