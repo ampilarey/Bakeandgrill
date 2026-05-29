@@ -74,6 +74,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Customers & Marketing',
     icon: Heart,
     items: [
+      { to: '/customers/growth', icon: BarChart2, label: 'Customer Growth', permission: 'customers.manage', description: 'Metrics, segments & CRM' },
       { to: '/reservations', icon: CalendarDays,  label: 'Reservations', permission: 'reservations.view', description: 'Table bookings' },
       { to: '/reviews',      icon: Star,          label: 'Reviews',      permission: 'customers.manage',  description: 'Moderate ratings' },
       { to: '/loyalty',      icon: Heart,         label: 'Loyalty',      permission: 'loyalty.manage',    description: 'Points & rewards' },
@@ -122,8 +123,11 @@ const DEV_NAV_ITEM: NavItem = {
   description: 'UAT checklist (dev only)',
 };
 
+/** Also show in sidebar groups (not only pinned quick-access) */
+const PINNED_GROUP_DUPLICATES = new Set(['/customers/growth']);
+
 function withoutPinnedItems(items: NavItem[]): NavItem[] {
-  return items.filter((i) => !PINNED_PATHS.has(i.to));
+  return items.filter((i) => !PINNED_PATHS.has(i.to) || PINNED_GROUP_DUPLICATES.has(i.to));
 }
 
 export function getNavGroups(includeDevItems = !import.meta.env.PROD): NavGroup[] {
