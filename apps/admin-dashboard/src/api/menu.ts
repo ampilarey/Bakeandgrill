@@ -65,6 +65,14 @@ export type MenuItem = {
   category?: { id: number; name: string } | null;
   menu_group?: { id: number; name: string; slug: string } | null;
   channel_availabilities?: ItemChannelAvailabilityRow[] | null;
+  is_combo?: boolean;
+  combo_discount_pct?: number | null;
+  combo_items?: Array<{
+    item_id: number;
+    quantity: number;
+    is_optional: boolean;
+    item?: { id: number; name: string; base_price: number } | null;
+  }>;
 };
 
 export type MenuItemPayload = {
@@ -92,6 +100,9 @@ export type MenuItemPayload = {
     valid_from?: string | null;
     valid_until?: string | null;
   }>;
+  is_combo?: boolean;
+  combo_discount_pct?: number | null;
+  combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean }>;
 };
 
 export async function fetchItemVariants(itemId: number): Promise<{ variants: MenuVariant[] }> {

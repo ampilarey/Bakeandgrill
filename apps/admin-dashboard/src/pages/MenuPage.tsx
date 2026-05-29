@@ -212,6 +212,8 @@ const SALES_CHANNELS = [
 
 type VariantRow = MenuVariant & { _key: string };
 
+type ComboRow = { item_id: string; quantity: string; is_optional: boolean };
+
 type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
   image_url: string; base_price: string; tax_rate: string;
@@ -220,6 +222,9 @@ type ItemForm = {
   menu_group_id: string;
   channels: Record<string, boolean>;
   has_variants: boolean;
+  is_combo: boolean;
+  combo_discount_pct: string;
+  combo_items: ComboRow[];
   track_stock: boolean;
   stock_quantity: string;
   low_stock_threshold: string;
@@ -257,6 +262,13 @@ function itemToForm(item: MenuItem): ItemForm {
     menu_group_id: item.menu_group_id != null ? String(item.menu_group_id) : '1',
     channels: channelsFromItem(item),
     has_variants: item.has_variants ?? false,
+    is_combo: item.is_combo ?? false,
+    combo_discount_pct: item.combo_discount_pct != null ? String(item.combo_discount_pct) : '',
+    combo_items: (item.combo_items ?? []).map((row) => ({
+      item_id: String(row.item_id),
+      quantity: String(row.quantity ?? 1),
+      is_optional: row.is_optional ?? false,
+    })),
     track_stock: item.track_stock ?? false,
     stock_quantity: item.stock_quantity != null ? String(item.stock_quantity) : '0',
     low_stock_threshold: item.low_stock_threshold != null ? String(item.low_stock_threshold) : '5',
@@ -300,16 +312,28 @@ function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayloa
       is_enabled: !!form.channels[id],
     }));
   }
+  payload.is_combo = form.is_combo;
+  payload.combo_discount_pct = form.combo_discount_pct !== '' ? parseFloat(form.combo_discount_pct) : null;
+  if (form.is_combo) {
+    payload.combo_items = form.combo_items
+      .filter((row) => row.item_id !== '')
+      .map((row) => ({
+        item_id: parseInt(row.item_id, 10),
+        quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
+        is_optional: row.is_optional,
+      }));
+  }
   return payload;
 }
 
 function ItemFormModal({
-  initial, title, categories, menuGroups, onSave, onClose, itemId,
+  initial, title, categories, menuGroups, allItems, onSave, onClose, itemId,
 }: {
   initial: ItemForm;
   title: string;
   categories: MenuCategory[];
   menuGroups: MenuGroupRow[];
+  allItems: MenuItem[];
   onSave: (f: ItemForm) => Promise<void>;
   onClose: () => void;
   itemId?: number;
@@ -328,6 +352,10 @@ function ItemFormModal({
     }
     if (form.has_variants && form.variants.length === 0) { setError('Add at least one variant, or turn off "This product has variants".'); return; }
     if (form.has_variants && form.variants.some((v) => !v.name.trim())) { setError('All variants must have a name.'); return; }
+    if (form.is_combo && !form.has_variants) {
+      const rows = form.combo_items.filter((row) => row.item_id !== '');
+      if (rows.length === 0) { setError('Add at least one component item for this bundle.'); return; }
+    }
     if (!form.has_variants && form.track_stock) {
       const qty = parseInt(form.stock_quantity, 10);
       if (!Number.isFinite(qty) || qty < 0) { setError('Quantity on hand must be 0 or more.'); return; }
@@ -411,6 +439,68 @@ function ItemFormModal({
                 </Field>
               </div>
             )}
+
+            {!form.has_variants && (
+              <div style={{ padding: '12px 14px', background: '#F8F6F3', borderRadius: 10, border: '1px solid #E8E0D8' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_combo}
+                    onChange={(e) => {
+                      set('is_combo', e.target.checked);
+                      if (e.target.checked && form.combo_items.length === 0) {
+                        set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
+                      }
+                    }}
+                  />
+                  <span style={{ fontWeight: 600 }}>Bundle / combo item</span>
+                </label>
+                {form.is_combo && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Field label="Bundle discount (%)">
+                      <Input value={form.combo_discount_pct} onChange={(v) => set('combo_discount_pct', v)} type="number" placeholder="Optional" />
+                    </Field>
+                    <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', fontWeight: 600 }}>Included items</p>
+                    {form.combo_items.map((row, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px auto auto', gap: 8, alignItems: 'center' }}>
+                        <select
+                          value={row.item_id}
+                          onChange={(e) => {
+                            const next = [...form.combo_items];
+                            next[idx] = { ...next[idx], item_id: e.target.value };
+                            set('combo_items', next);
+                          }}
+                          style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                        >
+                          <option value="">Select item…</option>
+                          {allItems.filter((it) => it.id !== itemId && !it.is_combo).map((it) => (
+                            <option key={it.id} value={String(it.id)}>{it.name}</option>
+                          ))}
+                        </select>
+                        <Input value={row.quantity} onChange={(v) => {
+                          const next = [...form.combo_items];
+                          next[idx] = { ...next[idx], quantity: v };
+                          set('combo_items', next);
+                        }} type="number" placeholder="Qty" />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                          <input type="checkbox" checked={row.is_optional} onChange={(e) => {
+                            const next = [...form.combo_items];
+                            next[idx] = { ...next[idx], is_optional: e.target.checked };
+                            set('combo_items', next);
+                          }} />
+                          Optional
+                        </label>
+                        <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>×</Btn>
+                      </div>
+                    ))}
+                    <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
+                      + Add component
+                    </Btn>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Category">
                 <select
@@ -853,8 +943,11 @@ export function MenuPage() {
     menu_group_id: '1',
     channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true },
     has_variants: false, variants: [],
+    is_combo: false, combo_discount_pct: '', combo_items: [],
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
   };
+
+  const allMenuItems = items;
 
   return (
     <>
@@ -1190,6 +1283,7 @@ export function MenuPage() {
           title="New Menu Item"
           categories={categories}
           menuGroups={menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }]}
+          allItems={allMenuItems}
           onSave={handleCreateItem}
           onClose={() => setCreatingItem(false)}
         />
@@ -1201,6 +1295,7 @@ export function MenuPage() {
           title={`Edit: ${editingItem.name}`}
           categories={categories}
           menuGroups={menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }]}
+          allItems={allMenuItems}
           onSave={handleUpdateItem}
           onClose={() => setEditingItem(null)}
           itemId={editingItem.id}

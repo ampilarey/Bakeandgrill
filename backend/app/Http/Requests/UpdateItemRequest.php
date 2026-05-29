@@ -73,6 +73,12 @@ class UpdateItemRequest extends FormRequest
             'variants.*.low_stock_threshold' => 'nullable|integer|min:0',
             'variants.*.is_active' => 'nullable|boolean',
             'variants.*.sort_order' => 'nullable|integer',
+            'is_combo' => 'sometimes|boolean',
+            'combo_discount_pct' => 'nullable|numeric|min:0|max:100',
+            'combo_items' => 'sometimes|array',
+            'combo_items.*.item_id' => 'required_with:combo_items|integer|exists:items,id',
+            'combo_items.*.quantity' => 'nullable|integer|min:1|max:99',
+            'combo_items.*.is_optional' => 'nullable|boolean',
         ];
     }
 }

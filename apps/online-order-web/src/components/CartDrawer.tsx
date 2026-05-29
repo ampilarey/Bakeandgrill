@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchItems } from '../api';
+import { fetchItems, fetchCartRecommendations } from '../api';
 import type { Item } from '../api';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,19 +29,31 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const [upsellItems, setUpsellItems] = useState<Item[]>([]);
   const hasFetched = useRef(false);
 
-  // Fetch upsell candidates once (browser caches the GET — same request as MenuPage)
   useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    fetchItems().then(({ data }) => {
-      const inCartIds = new Set(cart.map((e) => e.item.id));
-      const candidates = data
-        .filter((item) => !inCartIds.has(item.id) && item.is_available !== false && !item.has_variants && Number(item.base_price) < 50)
-        .sort((a, b) => Number(a.base_price) - Number(b.base_price))
-        .slice(0, 3);
-      setUpsellItems(candidates);
-    }).catch(() => { /* non-fatal */ });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (cart.length === 0) {
+      setUpsellItems([]);
+      return;
+    }
+    const cartIds = cart.map((e) => e.item.id);
+    fetchCartRecommendations(cartIds, 3)
+      .then(({ items }) => {
+        if (items.length > 0) {
+          setUpsellItems(items);
+          return;
+        }
+        if (hasFetched.current) return;
+        hasFetched.current = true;
+        return fetchItems().then(({ data }) => {
+          const inCartIds = new Set(cartIds);
+          const candidates = data
+            .filter((item) => !inCartIds.has(item.id) && item.is_available !== false && !item.has_variants && Number(item.base_price) < 50)
+            .sort((a, b) => Number(a.base_price) - Number(b.base_price))
+            .slice(0, 3);
+          setUpsellItems(candidates);
+        });
+      })
+      .catch(() => { /* non-fatal */ });
+  }, [cart]);
 
   const handleCheckout = () => {
     if (cart.length === 0) return;

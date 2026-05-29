@@ -462,6 +462,7 @@ Route::middleware('throttle:120,1')->group(function () {
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/categories/{id}', [CategoryController::class, 'show']);
     Route::get('/items', [ItemController::class, 'index']);
+    Route::post('/recommendations/cart', [App\Http\Controllers\Api\ItemRecommendationsController::class, 'forCart']);
     Route::get('/items/{id}', [ItemController::class, 'show']);
     Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode']);
 });

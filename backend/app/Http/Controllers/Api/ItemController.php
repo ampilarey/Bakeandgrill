@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
+use App\Domains\Menu\Services\ComboCompositionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
@@ -47,6 +48,7 @@ class ItemController extends Controller
         if ($isAdmin && !$isPosView) {
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
+            $with[] = 'comboItems.item';
         }
         $query = Item::with($with);
 
@@ -59,6 +61,7 @@ class ItemController extends Controller
 
         if (!$isAdmin) {
             $query->where('is_active', true);
+            $query->with(['comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants']);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
         } elseif ($isPosView) {
             // POS register only needs sellable items for the active order
@@ -210,6 +213,23 @@ class ItemController extends Controller
                 if (!$isAdmin) {
                     $data['spice_level'] = $item->spice_level ?? null;
                     $data['is_combo'] = (bool) ($item->is_combo ?? false);
+                    $data['combo_discount_pct'] = $item->combo_discount_pct;
+                    if ($data['is_combo'] && $item->relationLoaded('comboItems')) {
+                        $data['combo_items'] = $item->comboItems->map(fn ($row) => [
+                            'item_id' => $row->item_id,
+                            'quantity' => $row->quantity,
+                            'is_optional' => $row->is_optional,
+                            'item' => $row->item ? [
+                                'id' => $row->item->id,
+                                'name' => $row->item->name,
+                                'name_dv' => $row->item->name_dv,
+                                'base_price' => $row->item->base_price,
+                                'image_url' => $row->item->display_image_url ?? $row->item->image_url,
+                                'is_available' => $row->item->is_available,
+                                'has_variants' => $row->item->has_variants,
+                            ] : null,
+                        ])->values();
+                    }
                     $data['dietary_tags'] = $item->dietary_tags ?? [];
                     $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
                     $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
@@ -234,6 +254,23 @@ class ItemController extends Controller
                 }
             }
 
+            if ($includeAdminExtras) {
+                $data['is_combo'] = (bool) ($item->is_combo ?? false);
+                $data['combo_discount_pct'] = $item->combo_discount_pct;
+                $data['combo_items'] = $item->relationLoaded('comboItems')
+                    ? $item->comboItems->map(fn ($row) => [
+                        'item_id' => $row->item_id,
+                        'quantity' => $row->quantity,
+                        'is_optional' => $row->is_optional,
+                        'item' => $row->item ? [
+                            'id' => $row->item->id,
+                            'name' => $row->item->name,
+                            'base_price' => $row->item->base_price,
+                        ] : null,
+                    ])->values()
+                    : [];
+            }
+
             return $data;
         });
 
@@ -243,12 +280,13 @@ class ItemController extends Controller
     /**
      * Store a newly created item
      */
-    public function store(StoreItemRequest $request, VariantSyncService $variantSync)
+    public function store(StoreItemRequest $request, VariantSyncService $variantSync, ComboCompositionService $combos)
     {
         $data = $request->validated();
         $variantsData = $data['variants'] ?? null;
         $channelRows = $data['channel_availability'] ?? null;
-        unset($data['variants'], $data['modifier_ids'], $data['channel_availability']);
+        $comboRows = $data['combo_items'] ?? null;
+        unset($data['variants'], $data['modifier_ids'], $data['channel_availability'], $data['combo_items']);
 
         $item = Item::create($data);
 
@@ -296,9 +334,13 @@ class ItemController extends Controller
             }
         }
 
+        if ($item->is_combo && is_array($comboRows)) {
+            $combos->sync($item, $comboRows);
+        }
+
         return response()->json([
             'message' => 'Item created successfully',
-            'item' => $item->load(['category', 'variants', 'modifiers', 'channelAvailabilities']),
+            'item' => $item->load(['category', 'variants', 'modifiers', 'channelAvailabilities', 'comboItems.item']),
         ], 201);
     }
 
@@ -374,12 +416,13 @@ class ItemController extends Controller
     /**
      * Update an item
      */
-    public function update(UpdateItemRequest $request, $id, VariantSyncService $variantSync)
+    public function update(UpdateItemRequest $request, $id, VariantSyncService $variantSync, ComboCompositionService $combos)
     {
         $item = Item::findOrFail($id);
         $data = $request->validated();
         $variantsData = $data['variants'] ?? null;
-        unset($data['channel_availability'], $data['variants'], $data['modifier_ids']);
+        $comboRows = $data['combo_items'] ?? null;
+        unset($data['channel_availability'], $data['variants'], $data['modifier_ids'], $data['combo_items']);
         $item->update($data);
 
         if ($request->has('modifier_ids')) {
@@ -409,9 +452,18 @@ class ItemController extends Controller
             }
         }
 
+        if ($request->has('combo_items') || array_key_exists('is_combo', $data)) {
+            $item->refresh();
+            if ($item->is_combo && is_array($comboRows)) {
+                $combos->sync($item, $comboRows);
+            } elseif (!$item->is_combo) {
+                $combos->sync($item, []);
+            }
+        }
+
         return response()->json([
             'message' => 'Item updated successfully',
-            'item' => $item->load(['category', 'variants', 'modifiers', 'menuGroup', 'channelAvailabilities']),
+            'item' => $item->load(['category', 'variants', 'modifiers', 'menuGroup', 'channelAvailabilities', 'comboItems.item']),
         ]);
     }
 

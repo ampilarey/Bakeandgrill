@@ -169,3 +169,11 @@ export interface ItemPhoto {
 export async function getItemPhotos(itemId: number): Promise<{ photos: ItemPhoto[] }> {
   return request(`/items/${itemId}/photos`);
 }
+
+export async function fetchCartRecommendations(itemIds: number[], limit = 3): Promise<{ items: MenuItem[] }> {
+  if (itemIds.length === 0) return { items: [] };
+  return request('/recommendations/cart', {
+    method: 'POST',
+    body: JSON.stringify({ item_ids: itemIds, limit }),
+  });
+}

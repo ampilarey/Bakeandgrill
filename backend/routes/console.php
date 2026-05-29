@@ -136,3 +136,8 @@ Schedule::command('marketing:prune-abandoned-carts')
     ->dailyAt('03:30')
     ->withoutOverlapping()
     ->onFailure($alertOnFailure('marketing:prune-abandoned-carts'));
+
+Schedule::command('insights:compute-item-pairs')
+    ->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('insights:compute-item-pairs'));
