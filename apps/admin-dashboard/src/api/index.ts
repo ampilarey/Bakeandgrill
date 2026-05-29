@@ -8,6 +8,7 @@ export * from './menu';
 export * from './finance';
 export * from './staff';
 export * from './customers';
+export * from './customer-growth';
 export * from './marketing';
 export * from './operations';
 export * from './settings';

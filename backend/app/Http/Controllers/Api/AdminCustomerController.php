@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Customers\Services\CustomerSegmentationService;
 use App\Models\Customer;
 use App\Rules\MaldivesPhone;
 use App\Services\CustomerAccountService;
@@ -17,8 +18,24 @@ class AdminCustomerController extends Controller
      * GET /admin/customers
      * Paginated list with search and active filter.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, CustomerSegmentationService $segments): JsonResponse
     {
+        if ($request->filled('segment')) {
+            $paginator = $segments->customersInSegment($request->query('segment'), [
+                'search' => $request->query('search'),
+                'page' => $request->integer('page', 1),
+            ]);
+
+            return response()->json([
+                'data' => $paginator->items(),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'total' => $paginator->total(),
+                ],
+            ]);
+        }
+
         $query = Customer::withCount('orders')
             ->orderByDesc('created_at');
 
@@ -38,7 +55,12 @@ class AdminCustomerController extends Controller
         $paginator = $query->paginate(30);
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn (Customer $c) => $this->format($c)),
+            'data' => collect($paginator->items())->map(function (Customer $c) use ($segments) {
+                $row = $this->format($c);
+                $row['badges'] = $segments->badgesForCustomer($c);
+
+                return $row;
+            }),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

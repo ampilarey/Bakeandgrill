@@ -21,6 +21,7 @@ export interface AdminCustomer {
   credit_status?: 'active' | 'on_hold' | 'blocked';
   credit_limit_laar?: number;
   credit_balance_laar?: number;
+  badges?: string[];
 }
 
 export type CustomerCreditInfo = {
@@ -110,11 +111,13 @@ export async function recordCustomerCreditRepayment(
 export async function fetchAdminCustomers(params?: {
   search?: string;
   is_active?: boolean;
+  segment?: string;
   page?: number;
 }): Promise<{ data: AdminCustomer[]; meta: { current_page: number; last_page: number; total: number } }> {
   const qs = new URLSearchParams();
   if (params?.search)                  qs.set('search', params.search);
   if (params?.is_active !== undefined) qs.set('is_active', String(params.is_active));
+  if (params?.segment)                 qs.set('segment', params.segment);
   if (params?.page)                    qs.set('page', String(params.page));
   return req(`/admin/customers?${qs}`);
 }

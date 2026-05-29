@@ -36,6 +36,7 @@ const SpecialsPage            = lazyWithRetry(() => import('./pages/SpecialsPage
 const RefundsPage             = lazyWithRetry(() => import('./pages/RefundsPage'));
 const WasteLogsPage           = lazyWithRetry(() => import('./pages/WasteLogsPage'));
 const CustomersPage           = lazyWithRetry(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
+const CustomerGrowthPage      = lazyWithRetry(() => import('./pages/CustomerGrowthPage').then((m) => ({ default: m.CustomerGrowthPage })));
 const InventoryPage           = lazyWithRetry(() => import('./pages/InventoryPage'));
 const TablesPage              = lazyWithRetry(() => import('./pages/TablesPage'));
 const ActivityPage            = lazyWithRetry(() => import('./pages/ActivityPage'));
@@ -326,6 +327,11 @@ export default function App() {
                 <Route path="waste-logs" element={
                   <PermissionGuard user={user} permission="menu.manage">
                     <WasteLogsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="customers/growth" element={
+                  <PermissionGuard user={user} permission="customers.manage">
+                    <CustomerGrowthPage />
                   </PermissionGuard>
                 } />
                 <Route path="customers" element={

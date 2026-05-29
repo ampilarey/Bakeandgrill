@@ -784,7 +784,25 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admi
 
 // Admin: customer management
 Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admin/customers')->group(function () {
+    Route::middleware('permission:customers.analytics')->group(function () {
+        Route::get('/metrics', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'metrics']);
+    });
+
+    Route::get('/segments', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'listSegments']);
+    Route::get('/segments/{segment}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'segmentCustomers']);
+    Route::get('/data-quality', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'dataQuality']);
+
     Route::get('/', [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
+    Route::get('/{id}/growth-summary', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'growthSummary']);
+    Route::get('/{id}/activity', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'activity']);
+    Route::post('/{id}/tags', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'attachTag']);
+    Route::delete('/{id}/tags/{tag}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'detachTag']);
+    Route::post('/{id}/follow-up-note', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'followUpNote']);
+
+    Route::middleware('permission:integrations.sms')->group(function () {
+        Route::post('/{id}/send-sms', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'sendSms']);
+    });
+
     Route::get('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
     Route::patch('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
     Route::patch('/{id}/phone', [App\Http\Controllers\Api\AdminCustomerController::class, 'changePhone']);

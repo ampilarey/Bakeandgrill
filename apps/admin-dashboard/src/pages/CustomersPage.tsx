@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   fetchAdminCustomers, getAdminCustomer, updateAdminCustomer, deleteAdminCustomer,
   changeAdminCustomerPhone, mergeAdminCustomers,
-  type AdminCustomer, type Order,
+  fetchCustomerGrowthSummary, fetchCustomerSegments,
+  type AdminCustomer, type Order, type CustomerSegmentMeta,
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
@@ -10,6 +12,7 @@ import {
   ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
+import { Customer360Drawer, BADGE_MAP } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function fmtDate(iso: string | null | undefined) {
@@ -30,6 +33,11 @@ export function CustomersPage() {
   const [error, setError]           = useState('');
   const [search, setSearch]         = useState('');
   const [page, setPage]             = useState(1);
+  const [segmentFilter, setSegmentFilter] = useState('');
+  const [activeFilter, setActiveFilter]   = useState<'all' | 'active' | 'inactive'>('all');
+  const [segments, setSegments]     = useState<CustomerSegmentMeta[]>([]);
+  const [paidSpend, setPaidSpend]   = useState<number | null>(null);
+  const [view360Id, setView360Id]   = useState<number | null>(null);
 
   const [selected, setSelected]          = useState<AdminCustomer | null>(null);
   const [detail, setDetail]              = useState<{ customer: AdminCustomer; orders: Order[] } | null>(null);
@@ -57,34 +65,51 @@ export function CustomersPage() {
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = async (s: string, p: number) => {
+  const load = async (s: string, p: number, segment: string, active: typeof activeFilter) => {
     setLoading(true); setError('');
     try {
-      const res = await fetchAdminCustomers({ search: s || undefined, page: p });
+      const res = await fetchAdminCustomers({
+        search: s || undefined,
+        page: p,
+        segment: segment || undefined,
+        is_active: active === 'all' ? undefined : active === 'active',
+      });
       setCustomers(res.data ?? []);
       setMeta(res.meta ?? { current_page: 1, last_page: 1, total: 0 });
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
-  // Single load trigger: useEffect covers page changes; handleSearch debounces search changes.
-  useEffect(() => { void load(search, page); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchCustomerSegments()
+      .then((r) => setSegments(r.segments ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { void load(search, page, segmentFilter, activeFilter); }, [page, segmentFilter, activeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (v: string) => {
     setSearch(v);
     setPage(1);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => void load(v, 1), 400);
+    searchTimer.current = setTimeout(() => void load(v, 1, segmentFilter, activeFilter), 400);
   };
 
   const openDetail = async (c: AdminCustomer) => {
     setSelected(c);
     setEditing(false);
     setSaveError('');
+    setPaidSpend(null);
     setDetailLoading(true);
     try {
-      const res = await getAdminCustomer(c.id);
+      const [res, growth] = await Promise.all([
+        getAdminCustomer(c.id),
+        fetchCustomerGrowthSummary(c.id).catch(() => null),
+      ]);
       setDetail(res);
+      if (growth?.summary?.lifetime) {
+        setPaidSpend(growth.summary.lifetime.total_paid_spend);
+      }
       setForm({
         name: res.customer.name ?? '',
         email: res.customer.email ?? '',
@@ -99,6 +124,7 @@ export function CustomersPage() {
   const closeDetail = () => {
     setSelected(null);
     setDetail(null);
+    setPaidSpend(null);
     setEditing(false);
     setPhoneModalOpen(false);
     setMergeModalOpen(false);
@@ -183,7 +209,7 @@ export function CustomersPage() {
           setMergeSelected([]);
           setMergeSearch('');
           setMergeResults([]);
-          void load(search, page);
+          void load(search, page, segmentFilter, activeFilter);
         } catch (e) {
           setMergeError((e as Error).message);
         } finally {
@@ -238,9 +264,17 @@ export function CustomersPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <ConfirmDialog state={dlg} close={closeDlg} />
 
-      <PageHeader title="Customers" subtitle={`${meta.total} registered customers`} />
+      <PageHeader
+        title="Customers"
+        subtitle={`${meta.total} registered customers`}
+        action={
+          <Link to="/customers/growth" style={{ fontSize: 14, color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+            Growth dashboard →
+          </Link>
+        }
+      />
 
-      <TableStateBar error={error} onRetry={() => void load(search, page)} />
+      <TableStateBar error={error} onRetry={() => void load(search, page, segmentFilter, activeFilter)} />
 
       {/* Search bar */}
       <Card style={{ padding: '12px 16px' }}>
@@ -251,6 +285,25 @@ export function CustomersPage() {
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
+          <select
+            style={{ ...inputStyle, maxWidth: 200 }}
+            value={segmentFilter}
+            onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }}
+          >
+            <option value="">All segments</option>
+            {segments.map((s) => (
+              <option key={s.slug} value={s.slug}>{s.label} ({s.count})</option>
+            ))}
+          </select>
+          <select
+            style={{ ...inputStyle, maxWidth: 140 }}
+            value={activeFilter}
+            onChange={(e) => { setActiveFilter(e.target.value as typeof activeFilter); setPage(1); }}
+          >
+            <option value="all">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
           <span style={{ fontSize: 13, color: '#8B7355' }}>{meta.total} total</span>
         </div>
       </Card>
@@ -258,7 +311,7 @@ export function CustomersPage() {
       {/* Table */}
       <TableCard stickyHead>
         {loading ? (
-          <TableSkeleton rows={8} cols={7} />
+          <TableSkeleton rows={8} cols={8} />
         ) : customers.length === 0 ? (
           <EmptyState message="No customers found" />
         ) : (
@@ -267,6 +320,7 @@ export function CustomersPage() {
             <tr>
               <th style={TH}>Customer</th>
               <th style={TH}>Phone</th>
+              <th style={TH}>Badges</th>
               <th style={TH}>Tier</th>
               <th style={TH}>Orders</th>
               <th style={TH}>Last Order</th>
@@ -291,6 +345,18 @@ export function CustomersPage() {
                   {c.email && <div style={{ fontSize: 11, color: '#8B7355' }}>{c.email}</div>}
                 </td>
                 <td style={TD}>{c.phone}</td>
+                <td style={TD}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {(c.badges ?? []).length === 0 ? (
+                      <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>
+                    ) : (c.badges ?? []).map((b) => {
+                      const meta = BADGE_MAP[b];
+                      return meta
+                        ? <Badge key={b} color={meta.color}>{meta.label}</Badge>
+                        : <Badge key={b} color="gray">{b}</Badge>;
+                    })}
+                  </div>
+                </td>
                 <td style={TD}>
                   {c.tier
                     ? <Badge color={TIER_COLOR[c.tier] ?? 'gray'}>{c.tier}</Badge>
@@ -358,7 +424,7 @@ export function CustomersPage() {
                   {[
                     { label: 'Total Orders', value: String(detail.customer.orders_count) },
                     { label: 'Loyalty Pts', value: String(detail.customer.loyalty_points ?? 0) },
-                    { label: 'Total Spend', value: `MVR ${(detail.orders ?? []).reduce((s, o) => s + parseFloat(String(o.total ?? 0)), 0).toFixed(2)}` },
+                    { label: 'Total Spend', value: paidSpend != null ? `MVR ${paidSpend.toFixed(2)}` : '…' },
                   ].map(({ label, value }) => (
                     <div key={label} style={{ background: '#FAF7F3', border: '1px solid #F0EAE3', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
                       <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#D4813A' }}>{value}</p>
@@ -458,10 +524,11 @@ export function CustomersPage() {
             ) : null}
 
             {/* Footer actions */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid #F0EAE3', display: 'flex', gap: 8, flexShrink: 0 }}>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #F0EAE3', display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
               {!editing ? (
                 <>
                   <Btn variant="secondary" onClick={() => setEditing(true)}>Edit</Btn>
+                  <Btn variant="secondary" onClick={() => detail && setView360Id(detail.customer.id)}>View Customer 360</Btn>
                   <Btn variant="danger" onClick={() => detail && handleDelete(detail.customer)}>Deactivate</Btn>
                   <div style={{ flex: 1 }} />
                   <Btn onClick={closeDetail}>Close</Btn>
@@ -475,6 +542,10 @@ export function CustomersPage() {
             </div>
           </div>
         </>
+      )}
+
+      {view360Id != null && (
+        <Customer360Drawer customerId={view360Id} onClose={() => setView360Id(null)} />
       )}
 
       {phoneModalOpen && (

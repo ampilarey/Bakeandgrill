@@ -9,6 +9,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Sanctum\HasApiTokens;
@@ -97,6 +98,34 @@ class Customer extends Model implements AuthenticatableContract
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function paidOrders(): HasMany
+    {
+        return $this->hasMany(Order::class)->whereNotNull('paid_at')
+            ->whereNotIn('status', ['cancelled', 'refunded', 'partially_refunded']);
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(CustomerTag::class, 'customer_tag_assignments')
+            ->withTimestamps()
+            ->withPivot(['assigned_by']);
+    }
+
+    public function followUpNotes(): HasMany
+    {
+        return $this->hasMany(CustomerFollowUpNote::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function referralCodes(): HasMany
+    {
+        return $this->hasMany(ReferralCode::class);
     }
 
     public function receipts(): HasMany
