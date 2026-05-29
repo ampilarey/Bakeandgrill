@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
-import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
-import type { Category, Item, Modifier } from '../api';
+import { Link, useSearchParams } from 'react-router-dom';
+import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
+import type { Category, Item, Modifier, DailySpecial } from '../api';
 
 function fmtOrderingTime(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -37,6 +37,11 @@ function isFixedSpecialItem(item: Item): boolean {
   return isItemOnSale(item) && !isPercentDiscountItem(item);
 }
 
+function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct: number | null | undefined): boolean {
+  if (!badge || !discountPct || discountPct <= 0) return false;
+  return !badge.includes(`${discountPct}%`);
+}
+
 type SaleFilter = 'all' | 'discount' | 'special';
 
 export function MenuPage() {
@@ -48,6 +53,7 @@ export function MenuPage() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
@@ -127,6 +133,9 @@ export function MenuPage() {
 
   useEffect(() => {
     loadMenu();
+    fetchActiveSpecials()
+      .then(({ specials: sp }) => setSpecials((sp ?? []).slice(0, 8)))
+      .catch(() => { /* non-blocking */ });
     const onChannel = () => loadMenu();
     window.addEventListener('sales_channel_change', onChannel);
     return () => window.removeEventListener('sales_channel_change', onChannel);
@@ -404,6 +413,72 @@ export function MenuPage() {
           >
             Delivery is unavailable for these items — you&apos;re viewing the <strong>pickup</strong> menu.
           </div>
+        )}
+
+        {/* Today's Specials */}
+        {specials.length > 0 && (
+          <section style={{ padding: '1rem var(--page-gutter) 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>Today&apos;s Specials</h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.15rem 0 0' }}>Limited-time deals, today only</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.875rem', overflowX: 'auto', paddingBottom: '0.35rem' }}>
+              {specials.map((sp) => {
+                const cardKey = sp.variant_id ? `${sp.id}-${sp.variant_id}` : String(sp.id);
+                const imgSrc = sp.item_image
+                  ? sp.item_image.startsWith('http') ? sp.item_image : `${API_ORIGIN}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
+                  : null;
+                const price = Number(sp.effective_price ?? 0);
+                const wasPrice = sp.original_price != null && Number(sp.original_price) > price
+                  ? Number(sp.original_price)
+                  : null;
+                const badge = sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special Offer');
+                const pctUnderBadge = showDiscountPctUnderBadge(sp.badge_label, sp.discount_pct);
+                return (
+                  <Link
+                    key={cardKey}
+                    to={`/menu?item=${sp.item_id}`}
+                    style={{
+                      flexShrink: 0, width: 168, borderRadius: 'var(--radius-2xl)',
+                      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                      overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
+                    }}
+                  >
+                    <div style={{ height: 100, background: 'var(--color-surface-alt)', position: 'relative', overflow: 'hidden' }}>
+                      {imgSrc
+                        ? <img src={imgSrc} alt={sp.item_name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 28, opacity: 0.3 }}>🍽️</div>
+                      }
+                      {(badge || sp.discount_pct) && (
+                        <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, zIndex: 2 }}>
+                          <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
+                            {badge}
+                          </div>
+                          {pctUnderBadge && (
+                            <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
+                              {sp.discount_pct}% OFF
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '0.65rem 0.75rem', flex: 1 }}>
+                      <p style={{ margin: '0 0 3px', fontWeight: 700, fontSize: 12, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item_name}</p>
+                      {sp.variant_name && (
+                        <p style={{ margin: '0 0 3px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{sp.variant_name}</p>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                        <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
+                        {wasPrice && <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
         )}
 
         {/* Mobile category picker — sticky trigger */}

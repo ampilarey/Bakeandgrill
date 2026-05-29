@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Reporting\Services;
 
+use App\Models\AuditLog;
+use App\Models\Customer;
 use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Shift;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -276,6 +279,144 @@ class ReportsService
                 'order_total' => $orderTotal,
                 'fees_total' => $feesTotal,
             ],
+        ];
+    }
+
+    /**
+     * Discount totals split by type for completed orders in range.
+     *
+     * @return array{from: string, to: string, rows: list<array{type: string, amount_laar: int, amount: float, orders_count: int}>}
+     */
+    public function discountsByType(Carbon $from, Carbon $to): array
+    {
+        $base = Order::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->where('status', 'completed');
+
+        $types = [
+            'promo' => 'promo_discount_laar',
+            'loyalty' => 'loyalty_discount_laar',
+            'manual' => 'manual_discount_laar',
+            'gift_card' => 'gift_card_discount_laar',
+            'referral' => 'referral_discount_laar',
+        ];
+
+        $rows = [];
+        foreach ($types as $label => $column) {
+            $sumLaar = (int) (clone $base)->sum($column);
+            $ordersCount = (int) (clone $base)->where($column, '>', 0)->count();
+            $rows[] = [
+                'type' => $label,
+                'amount_laar' => $sumLaar,
+                'amount' => round($sumLaar / 100, 2),
+                'orders_count' => $ordersCount,
+            ];
+        }
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * Void/cancel counts grouped by staff from audit logs.
+     *
+     * @return array{from: string, to: string, rows: list<array{user_id: int|null, name: string, voids_count: int}>}
+     */
+    public function voidsByStaff(Carbon $from, Carbon $to): array
+    {
+        $rows = AuditLog::query()
+            ->where('action', 'order.cancelled')
+            ->whereBetween('created_at', [$from, $to])
+            ->select('user_id', DB::raw('COUNT(*) as voids_count'))
+            ->groupBy('user_id')
+            ->orderByDesc('voids_count')
+            ->get();
+
+        $names = User::query()
+            ->whereIn('id', $rows->pluck('user_id')->filter())
+            ->pluck('name', 'id');
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows->map(fn ($row) => [
+                'user_id' => $row->user_id !== null ? (int) $row->user_id : null,
+                'name' => $row->user_id ? (string) ($names[$row->user_id] ?? 'Unknown') : 'System',
+                'voids_count' => (int) $row->voids_count,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Refund totals grouped by reason.
+     *
+     * @return array{from: string, to: string, rows: list<array{reason: string, refunds_count: int, amount: float}>}
+     */
+    public function refundsByReason(Carbon $from, Carbon $to): array
+    {
+        $rows = Refund::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->select('reason', DB::raw('COUNT(*) as refunds_count'), DB::raw('COALESCE(SUM(amount),0) as amount'))
+            ->groupBy('reason')
+            ->orderByDesc('amount')
+            ->get();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows->map(fn ($row) => [
+                'reason' => (string) ($row->reason ?: 'unspecified'),
+                'refunds_count' => (int) $row->refunds_count,
+                'amount' => round((float) $row->amount, 2),
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Outstanding customer credit exposure snapshot.
+     *
+     * @return array{
+     *     total_balance_laar: int,
+     *     total_balance: float,
+     *     customers_count: int,
+     *     top_customers: list<array{id: int, name: string, balance_laar: int, balance: float}>
+     * }
+     */
+    public function creditExposure(): array
+    {
+        $totalLaar = (int) Customer::query()
+            ->where('credit_enabled', true)
+            ->where('credit_balance_laar', '>', 0)
+            ->sum('credit_balance_laar');
+
+        $customersCount = (int) Customer::query()
+            ->where('credit_enabled', true)
+            ->where('credit_balance_laar', '>', 0)
+            ->count();
+
+        $top = Customer::query()
+            ->where('credit_enabled', true)
+            ->where('credit_balance_laar', '>', 0)
+            ->orderByDesc('credit_balance_laar')
+            ->limit(10)
+            ->get(['id', 'name', 'credit_balance_laar'])
+            ->map(fn (Customer $c) => [
+                'id' => $c->id,
+                'name' => (string) $c->name,
+                'balance_laar' => (int) $c->credit_balance_laar,
+                'balance' => round((int) $c->credit_balance_laar / 100, 2),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'total_balance_laar' => $totalLaar,
+            'total_balance' => round($totalLaar / 100, 2),
+            'customers_count' => $customersCount,
+            'top_customers' => $top,
         ];
     }
 }

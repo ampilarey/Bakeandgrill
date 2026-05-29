@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Http;
 
 class SystemHealthService
 {
+    public function __construct(
+        private readonly SchedulerRunTracker $schedulerRuns = new SchedulerRunTracker,
+    ) {}
+
     /**
      * Aggregate operational health signals for the owner dashboard.
      *
@@ -114,6 +118,7 @@ class SystemHealthService
             'recent_failed_jobs' => $recentFailedJobs,
             'recent_webhook_failures' => $recentWebhookFailures,
             'stuck_payment_pending_orders' => $stuckOrders,
+            'scheduler_last_runs' => $this->schedulerRuns->getLastRuns(),
         ];
     }
 

@@ -173,6 +173,32 @@ class ReportsController extends Controller
         return response()->json($this->reports->deliveryZones($from, $to));
     }
 
+    public function discountsByType(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->discountsByType($from, $to));
+    }
+
+    public function voidsByStaff(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->voidsByStaff($from, $to));
+    }
+
+    public function refundsByReason(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->refundsByReason($from, $to));
+    }
+
+    public function creditExposure()
+    {
+        return response()->json($this->reports->creditExposure());
+    }
+
     public function inventoryValuationCsv()
     {
         $data = $this->reports->inventoryValuation();

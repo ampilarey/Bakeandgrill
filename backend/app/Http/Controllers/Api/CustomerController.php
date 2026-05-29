@@ -10,6 +10,7 @@ use App\Http\Requests\CustomerSmsOptOutRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyLedger;
 use App\Models\Order;
 use App\Services\AuditLogService;
 use App\Support\OrderSettlement;
@@ -448,6 +449,12 @@ class CustomerController extends Controller
             ->with(['items.modifiers', 'items.item', 'payments'])
             ->findOrFail($id);
 
+        $loyaltyPointsEarned = (int) LoyaltyLedger::query()
+            ->where('order_id', $order->id)
+            ->where('customer_id', $customer->id)
+            ->where('type', 'earn')
+            ->sum('points');
+
         return response()->json([
             'order' => array_merge([
                 'id' => $order->id,
@@ -464,6 +471,7 @@ class CustomerController extends Controller
                 'loyalty_discount_laar' => (int) ($order->loyalty_discount_laar ?? 0),
                 'gift_card_discount_laar' => (int) ($order->gift_card_discount_laar ?? 0),
                 'referral_discount_laar' => (int) ($order->referral_discount_laar ?? 0),
+                'loyalty_points_earned' => $loyaltyPointsEarned,
                 'paid_at' => $order->paid_at?->toIso8601String(),
                 'created_at' => $order->created_at->toIso8601String(),
                 'items' => $order->items->map(fn ($item) => [

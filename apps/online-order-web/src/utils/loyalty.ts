@@ -48,6 +48,15 @@ export function discountLaarForRedeemPoints(points: number, rates: LoyaltyRatesC
  * Max points redeemable on this order before hitting available balance, percent cap, or max redeem.
  * `subtotalLaar` should be food subtotal after promo (laari).
  */
+/** Preview points earned on food subtotal (MVR), mirroring PointsCalculator floor(). */
+export function estimateEarnPointsForSubtotalMvr(
+  subtotalMvr: number,
+  earnRatePerMvr = 1,
+): number {
+  if (subtotalMvr <= 0 || earnRatePerMvr <= 0) return 0;
+  return Math.floor(subtotalMvr * earnRatePerMvr);
+}
+
 export function maxRedeemPointsForSubtotalLaar(
   subtotalLaar: number,
   availablePoints: number,

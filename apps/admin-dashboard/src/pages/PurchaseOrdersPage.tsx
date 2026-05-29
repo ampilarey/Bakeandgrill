@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, fetchPurchases, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, fetchInventoryItems, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryItem } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -38,6 +38,71 @@ export function PurchaseOrdersPage() {
   const [receiveNotes, setReceiveNotes]   = useState('');
 
   const [creatingPoFor, setCreatingPoFor] = useState<number | null>(null);
+
+  // Manual PO
+  const [showManualPo, setShowManualPo] = useState(false);
+  const [manualSuppliers, setManualSuppliers] = useState<Supplier[]>([]);
+  const [manualInvItems, setManualInvItems] = useState<InventoryItem[]>([]);
+  const [manualPoForm, setManualPoForm] = useState({
+    supplier_id: '',
+    purchase_date: new Date().toISOString().slice(0, 10),
+    notes: '',
+    lines: [{ inventory_item_id: '', quantity: '1', unit_cost: '0' }],
+  });
+  const [manualPoSaving, setManualPoSaving] = useState(false);
+  const [manualPoError, setManualPoError] = useState('');
+
+  const openManualPo = async () => {
+    setManualPoError('');
+    setManualPoForm({
+      supplier_id: '',
+      purchase_date: new Date().toISOString().slice(0, 10),
+      notes: '',
+      lines: [{ inventory_item_id: '', quantity: '1', unit_cost: '0' }],
+    });
+    setShowManualPo(true);
+    try {
+      const [supRes, invRes] = await Promise.all([
+        fetchSuppliers({ active_only: true }),
+        fetchInventoryItems({ page: 1 }),
+      ]);
+      setManualSuppliers(supRes.data ?? []);
+      setManualInvItems(invRes.data ?? []);
+    } catch (e) { setManualPoError((e as Error).message); }
+  };
+
+  const handleCreateManualPo = async () => {
+    if (!manualPoForm.supplier_id) { setManualPoError('Select a supplier.'); return; }
+    const lines = manualPoForm.lines
+      .filter((l) => l.inventory_item_id)
+      .map((l) => {
+        const item = manualInvItems.find((i) => i.id === Number(l.inventory_item_id));
+        const qty = parseFloat(l.quantity);
+        const cost = parseFloat(l.unit_cost);
+        if (!item || isNaN(qty) || qty <= 0 || isNaN(cost) || cost < 0) return null;
+        return {
+          inventory_item_id: item.id,
+          name: item.name,
+          quantity: qty,
+          unit_cost: cost,
+        };
+      })
+      .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number }[];
+    if (lines.length === 0) { setManualPoError('Add at least one valid line item.'); return; }
+    setManualPoSaving(true); setManualPoError('');
+    try {
+      await createPurchase({
+        supplier_id: Number(manualPoForm.supplier_id),
+        purchase_date: manualPoForm.purchase_date,
+        notes: manualPoForm.notes || undefined,
+        items: lines,
+      });
+      showToast('Purchase order created.');
+      setShowManualPo(false);
+      void load();
+    } catch (e) { setManualPoError((e as Error).message); }
+    finally { setManualPoSaving(false); }
+  };
 
   // CSV import
   const [showImport, setShowImport] = useState(false);
@@ -171,6 +236,7 @@ export function PurchaseOrdersPage() {
         <Select value={statusFilter} onChange={(v) => setStatus(v)} options={STATUS_OPTIONS} style={{ width: 180 }} />
         <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <Btn variant="secondary" onClick={() => void openManualPo()}>+ Create Manual PO</Btn>
           <Btn variant="secondary" onClick={() => setShowImport(true)}>⬆ Import CSV</Btn>
           <Btn onClick={loadSuggestions} disabled={sugLoading}>
             {sugLoading ? 'Loading…' : '💡 Auto-Suggest POs'}
@@ -421,6 +487,62 @@ export function PurchaseOrdersPage() {
             <Btn onClick={() => void handleImportCsv()} disabled={!importFile || importing}>
               {importing ? 'Importing…' : 'Import'}
             </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Manual PO modal */}
+      {showManualPo && (
+        <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={560}>
+          {manualPoError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Supplier *</label>
+          <select value={manualPoForm.supplier_id} onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_id: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12 }}>
+            <option value="">Select supplier…</option>
+            {manualSuppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Purchase date *</label>
+          <input type="date" value={manualPoForm.purchase_date} onChange={(e) => setManualPoForm((f) => ({ ...f, purchase_date: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Line items</p>
+          {manualPoForm.lines.map((line, idx) => (
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'end' }}>
+              <select value={line.inventory_item_id} onChange={(e) => {
+                const val = e.target.value;
+                const item = manualInvItems.find((i) => i.id === Number(val));
+                setManualPoForm((f) => ({
+                  ...f,
+                  lines: f.lines.map((l, i) => i === idx ? {
+                    ...l,
+                    inventory_item_id: val,
+                    unit_cost: item?.cost_per_unit != null ? String(item.cost_per_unit) : l.unit_cost,
+                  } : l),
+                }));
+              }}
+                style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }}>
+                <option value="">Inventory item…</option>
+                {manualInvItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </select>
+              <input type="number" min="0.001" step="any" placeholder="Qty" value={line.quantity}
+                onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
+                style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
+              <input type="number" min="0" step="0.01" placeholder="Unit cost" value={line.unit_cost}
+                onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value } : l) }))}
+                style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
+              {manualPoForm.lines.length > 1 && (
+                <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }))}>✕</Btn>
+              )}
+            </div>
+          ))}
+          <Btn small variant="secondary" onClick={() => setManualPoForm((f) => ({ ...f, lines: [...f.lines, { inventory_item_id: '', quantity: '1', unit_cost: '0' }] }))} style={{ marginBottom: 12 }}>
+            + Add line
+          </Btn>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+          <textarea rows={2} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 16 }} />
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setShowManualPo(false)}>Cancel</Btn>
+            <Btn onClick={() => void handleCreateManualPo()} disabled={manualPoSaving}>{manualPoSaving ? 'Creating…' : 'Create PO'}</Btn>
           </ModalActions>
         </Modal>
       )}

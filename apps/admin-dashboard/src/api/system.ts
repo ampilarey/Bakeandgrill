@@ -30,6 +30,11 @@ export interface SystemHealthDetailed {
     total: number;
     created_at: string | null;
   }>;
+  scheduler_last_runs?: Array<{
+    command: string;
+    last_run: string | null;
+    stale: boolean;
+  }>;
 }
 
 export async function getSystemHealthDetailed(): Promise<SystemHealthDetailed> {

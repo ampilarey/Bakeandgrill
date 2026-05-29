@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchItems, fetchCartRecommendations } from '../api';
+import { fetchItems, fetchCartRecommendations, getLoyaltyAccount } from '../api';
 import type { Item } from '../api';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { estimateEarnPointsForSubtotalMvr } from '../utils/loyalty';
 
 const DEFAULT_FREE_DELIVERY_MVR = 200;
 
@@ -22,12 +24,35 @@ type Props = {
 
 export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const { cart, cartTotal, updateQuantity, addItem } = useCart();
   const { t } = useLanguage();
   const s = useSiteSettings();
   const freeDeliveryMvr = parseFreeDeliveryThreshold(s.delivery_free_threshold);
   const [upsellItems, setUpsellItems] = useState<Item[]>([]);
+  const [earnRatePerMvr, setEarnRatePerMvr] = useState(1);
   const hasFetched = useRef(false);
+
+  useEffect(() => {
+    if (!token || cart.length === 0) {
+      setEarnRatePerMvr(1);
+      return;
+    }
+    let cancelled = false;
+    getLoyaltyAccount(token)
+      .then((res) => {
+        if (!cancelled && (res.program?.enabled ?? true)) {
+          setEarnRatePerMvr(res.rates?.earn_per_mvr ?? 1);
+        }
+      })
+      .catch(() => { /* non-fatal */ });
+    return () => { cancelled = true; };
+  }, [token, cart.length]);
+
+  const earnPreviewPoints = useMemo(() => {
+    if (!token || cart.length === 0) return 0;
+    return estimateEarnPointsForSubtotalMvr(cartTotal, earnRatePerMvr);
+  }, [token, cart.length, cartTotal, earnRatePerMvr]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -154,6 +179,12 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
             {cartTotal >= freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: 'var(--color-success-bg)', borderRadius: 8 }}>
                 🎉 You qualify for free delivery!
+              </div>
+            )}
+
+            {earnPreviewPoints > 0 && (
+              <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '0.35rem 0.5rem', background: 'var(--color-warning-bg, #FFFBEB)', borderRadius: 8, border: '1px solid rgba(252, 211, 77, 0.35)' }}>
+                ⭐ ~{earnPreviewPoints.toLocaleString()} pts you&apos;ll earn
               </div>
             )}
           </div>

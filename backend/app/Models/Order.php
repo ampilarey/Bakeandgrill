@@ -78,6 +78,8 @@ class Order extends Model
         'service_charge_label',
         'service_charge_taxable',
         'service_charge_applied_to',
+        'packaging_fee_laar',
+        'small_order_fee_laar',
         'delivery_eta_at',
         'delivery_driver_id',
         'driver_assigned_at',
@@ -118,6 +120,8 @@ class Order extends Model
         'service_charge_amount_laar' => 'integer',
         'service_charge_amount' => 'decimal:2',
         'service_charge_taxable' => 'boolean',
+        'packaging_fee_laar' => 'integer',
+        'small_order_fee_laar' => 'integer',
         'tip_amount' => 'decimal:2',
         'estimated_wait_minutes' => 'integer',
     ];

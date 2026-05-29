@@ -8,6 +8,7 @@ use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Domains\Orders\Services\PackagingFeeCalculator;
 use App\Models\Customer;
 use App\Models\Device;
 use App\Models\Item;
@@ -24,6 +25,7 @@ class OrderCreationService
         private OrderTotalsCalculator $calculator,
         private KitchenMenuResolver $kitchenMenuResolver,
         private SpecialPricingService $specialPricing,
+        private PackagingFeeCalculator $packagingFeeCalculator,
     ) {}
 
     public function createFromPayload(array $payload, ?object $user): Order
@@ -68,6 +70,10 @@ class OrderCreationService
         // on the OrderPaid event once BML/zero-balance confirms the payment.
         $isCustomerOnlineOrder = $user === null
             && in_array($payload['type'] ?? '', ['online_pickup', 'delivery'], true);
+
+        if ($isCustomerOnlineOrder) {
+            $this->assertOnlineOrderThrottleNotExceeded();
+        }
 
         $initialStatus = $isCustomerOnlineOrder ? 'payment_pending' : 'pending';
 
@@ -505,6 +511,23 @@ class OrderCreationService
         }
 
         return $subtotal;
+    }
+
+    private function assertOnlineOrderThrottleNotExceeded(): void
+    {
+        $max = $this->packagingFeeCalculator->orderingMaxPer15Min();
+        if ($max <= 0) {
+            return;
+        }
+
+        $recentCount = Order::query()
+            ->whereIn('type', ['online_pickup', 'delivery'])
+            ->where('created_at', '>=', now()->subMinutes(15))
+            ->count();
+
+        if ($recentCount >= $max) {
+            abort(429, 'Too many online orders. Please try again in a few minutes.');
+        }
     }
 
     private function generateOrderNumber(): string

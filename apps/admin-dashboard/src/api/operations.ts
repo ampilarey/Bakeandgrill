@@ -504,3 +504,102 @@ export interface StockCountEntry {
 export async function submitStockCount(counts: StockCountEntry[]): Promise<{ adjustments: { item_id: number; difference: number; balance_after: number }[] }> {
   return req('/inventory/stock-count', { method: 'POST', body: JSON.stringify({ counts }) });
 }
+
+export async function createInventoryItem(data: {
+  name: string;
+  unit: string;
+  sku?: string;
+  current_stock?: number;
+  reorder_point?: number;
+  unit_cost?: number;
+  is_active?: boolean;
+}): Promise<{ item: InventoryItem }> {
+  const res = await req<{ item: BackendInventoryRow }>('/inventory', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return { item: mapInventoryRow(res.item) };
+}
+
+// ── Prepared stock (menu items) ───────────────────────────────────────────────
+
+export interface PreparedStockRow {
+  item_id: number;
+  variant_id: number | null;
+  name: string;
+  stock: number;
+  low_stock_threshold: number;
+}
+
+export async function fetchPreparedStock(): Promise<{ items: PreparedStockRow[] }> {
+  return req('/prepared-stock');
+}
+
+export async function adjustPreparedStock(
+  itemId: number,
+  data: { delta: number; variant_id?: number | null; notes?: string },
+): Promise<{ message: string; item: PreparedStockRow }> {
+  return req(`/items/${itemId}/prepared-stock/adjust`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ── Suppliers CRUD ────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id: number;
+  name: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  payment_terms: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export async function fetchSuppliers(params?: { search?: string; active_only?: boolean; page?: number }): Promise<{
+  data: Supplier[];
+  meta: { current_page: number; last_page: number; total: number };
+}> {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set('search', params.search);
+  if (params?.active_only) qs.set('active_only', '1');
+  if (params?.page) qs.set('page', String(params.page));
+  const res = await req<{ suppliers: { data: Supplier[]; current_page: number; last_page: number; total: number } }>(
+    `/suppliers?${qs}`,
+  );
+  return {
+    data: res.suppliers?.data ?? [],
+    meta: {
+      current_page: res.suppliers?.current_page ?? 1,
+      last_page: res.suppliers?.last_page ?? 1,
+      total: res.suppliers?.total ?? 0,
+    },
+  };
+}
+
+export async function createSupplier(data: {
+  name: string;
+  contact_name?: string;
+  phone?: string;
+  email?: string;
+}): Promise<{ supplier: Supplier }> {
+  return req('/suppliers', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSupplier(id: number, data: Partial<{
+  name: string;
+  contact_name: string;
+  phone: string;
+  email: string;
+  is_active: boolean;
+}>): Promise<{ supplier: Supplier }> {
+  return req(`/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteSupplier(id: number): Promise<void> {
+  await req(`/suppliers/${id}`, { method: 'DELETE' });
+}

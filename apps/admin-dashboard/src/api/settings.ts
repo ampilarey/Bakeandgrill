@@ -158,6 +158,31 @@ export async function updateServiceChargeSettings(
   return req('/admin/settings/service-charge', { method: 'PUT', body: JSON.stringify(settings) });
 }
 
+// ── Packaging fee & ordering caps ─────────────────────────────────────────────
+
+export type PackagingFeeSettings = {
+  packaging_enabled: boolean;
+  packaging_label: string;
+  packaging_type: 'percent' | 'fixed';
+  packaging_value: number;
+  packaging_apply_delivery: boolean;
+  packaging_apply_online_pickup: boolean;
+  small_order_enabled: boolean;
+  small_order_threshold_mvr: number;
+  small_order_amount_mvr: number;
+  ordering_max_per_15min: number;
+};
+
+export async function getPackagingFeeSettings(): Promise<{ settings: PackagingFeeSettings }> {
+  return req('/admin/settings/packaging-fee');
+}
+
+export async function updatePackagingFeeSettings(
+  settings: PackagingFeeSettings,
+): Promise<{ message: string; settings: PackagingFeeSettings }> {
+  return req('/admin/settings/packaging-fee', { method: 'PUT', body: JSON.stringify(settings) });
+}
+
 // ── Permissions ───────────────────────────────────────────────────────────────
 
 export interface PermissionItem {

@@ -6,6 +6,8 @@ import { API_ORIGIN, request } from './client';
 export type OrderDetail = Order & {
   items?: OrderItem[];
   payments?: Array<{ method: string; amount: number; status: string }>;
+  /** Points credited when the order completed (customer order API). */
+  loyalty_points_earned?: number;
 };
 
 export type DeliveryOrderPayload = {

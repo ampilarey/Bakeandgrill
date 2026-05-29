@@ -3,7 +3,8 @@ import {
   getSupplierPerformance, rateSupplier,
   getSupplierRatings, getSupplierPerformanceSingle, refreshSupplierCache,
   getSupplierPriceHistory, getPriceComparison, fetchInventoryItems,
-  type SupplierPerf, type SupplierRating, type PriceHistory,
+  fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
+  type SupplierPerf, type SupplierRating, type PriceHistory, type Supplier,
 } from '../api';
 import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -50,6 +51,65 @@ export function SupplierIntelligencePage() {
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [priceLoading, setPriceLoading] = useState(false);
 
+  // Suppliers CRUD
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+  const [supplierModal, setSupplierModal] = useState<Supplier | 'new' | null>(null);
+  const [supplierForm, setSupplierForm] = useState({ name: '', contact_name: '', phone: '', email: '' });
+  const [supplierSaving, setSupplierSaving] = useState(false);
+  const [supplierFormError, setSupplierFormError] = useState('');
+
+  const loadSuppliers = async () => {
+    setSuppliersLoading(true);
+    try {
+      const res = await fetchSuppliers({ active_only: false });
+      setSuppliers(res.data ?? []);
+    } catch (e) { setError((e as Error).message); }
+    finally { setSuppliersLoading(false); }
+  };
+
+  const openSupplierModal = (sup?: Supplier) => {
+    setSupplierModal(sup ?? 'new');
+    setSupplierForm({
+      name: sup?.name ?? '',
+      contact_name: sup?.contact_name ?? '',
+      phone: sup?.phone ?? '',
+      email: sup?.email ?? '',
+    });
+    setSupplierFormError('');
+  };
+
+  const handleSaveSupplier = async () => {
+    if (!supplierForm.name.trim()) { setSupplierFormError('Name is required.'); return; }
+    setSupplierSaving(true); setSupplierFormError('');
+    try {
+      const payload = {
+        name: supplierForm.name.trim(),
+        contact_name: supplierForm.contact_name.trim() || undefined,
+        phone: supplierForm.phone.trim() || undefined,
+        email: supplierForm.email.trim() || undefined,
+      };
+      if (supplierModal && supplierModal !== 'new') {
+        await updateSupplier(supplierModal.id, payload);
+      } else {
+        await createSupplier(payload);
+      }
+      setSupplierModal(null);
+      void loadSuppliers();
+      void load();
+    } catch (e) { setSupplierFormError((e as Error).message); }
+    finally { setSupplierSaving(false); }
+  };
+
+  const handleDeleteSupplier = async (id: number) => {
+    if (!window.confirm('Delete this supplier? This cannot be undone.')) return;
+    try {
+      await deleteSupplier(id);
+      void loadSuppliers();
+      void load();
+    } catch (e) { setError((e as Error).message); }
+  };
+
   const load = async () => {
     setLoading(true); setError('');
     try { setPerfs((await getSupplierPerformance()).suppliers); }
@@ -57,7 +117,7 @@ export function SupplierIntelligencePage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); void loadSuppliers(); }, []);
 
   useEffect(() => {
     fetchInventoryItems({ page: 1 })
@@ -170,6 +230,45 @@ export function SupplierIntelligencePage() {
         }
       />
       {error && <ErrorMsg message={error} />}
+
+      {/* ── Suppliers directory ── */}
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: 0 }}>Suppliers</p>
+          <Btn small onClick={() => openSupplierModal()}>+ Add Supplier</Btn>
+        </div>
+        {suppliersLoading ? <Spinner /> : suppliers.length === 0 ? (
+          <EmptyState message="No suppliers yet. Add one to use in purchase orders." />
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr>
+              <th style={TH}>Name</th>
+              <th style={TH}>Contact</th>
+              <th style={TH}>Phone</th>
+              <th style={TH}>Email</th>
+              <th style={TH}>Status</th>
+              <th style={TH}>Actions</th>
+            </tr></thead>
+            <tbody>
+              {suppliers.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ ...TD, fontWeight: 600 }}>{s.name}</td>
+                  <td style={TD}>{s.contact_name ?? '—'}</td>
+                  <td style={TD}>{s.phone ?? '—'}</td>
+                  <td style={TD}>{s.email ?? '—'}</td>
+                  <td style={TD}>{s.is_active ? 'Active' : 'Inactive'}</td>
+                  <td style={TD}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <Btn small variant="secondary" onClick={() => openSupplierModal(s)}>Edit</Btn>
+                      <Btn small variant="danger" onClick={() => void handleDeleteSupplier(s.id)}>Delete</Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
 
       {loading ? <Spinner /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -438,6 +537,29 @@ export function SupplierIntelligencePage() {
           <ModalActions>
             <Btn variant="ghost" onClick={() => setRating(null)}>Cancel</Btn>
             <Btn onClick={handleRate} disabled={saving}>{saving ? 'Saving…' : 'Submit Rating'}</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Supplier create/edit modal */}
+      {supplierModal && (
+        <Modal title={supplierModal === 'new' ? 'Add Supplier' : 'Edit Supplier'} onClose={() => setSupplierModal(null)}>
+          {supplierFormError && <ErrorMsg message={supplierFormError} />}
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 4 }}>Name *</label>
+          <input value={supplierForm.name} onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 4 }}>Contact name</label>
+          <input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 4 }}>Phone</label>
+          <input value={supplierForm.phone} onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 4 }}>Email</label>
+          <input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box' }} />
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setSupplierModal(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleSaveSupplier()} disabled={supplierSaving}>{supplierSaving ? 'Saving…' : 'Save'}</Btn>
           </ModalActions>
         </Modal>
       )}

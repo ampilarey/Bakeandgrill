@@ -187,6 +187,25 @@ export function SystemHealthPage() {
               </Card>
             </>
           )}
+
+          {(data.scheduler_last_runs?.length ?? 0) > 0 && (
+            <>
+              <SectionLabel>Scheduled task last runs</SectionLabel>
+              <Card>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(data.scheduler_last_runs ?? []).map((row) => (
+                    <div key={row.command} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{row.command}</span>
+                      <span style={{ color: row.stale ? '#DC2626' : '#16A34A' }}>
+                        {row.last_run ? fmtTime(row.last_run) : 'Never recorded'}
+                        {row.stale && row.last_run ? ' · stale' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </>
+          )}
         </>
       )}
     </div>

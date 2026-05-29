@@ -3,10 +3,12 @@ import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
+  getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport,
   fetchPosStaffOptions, fetchShiftHistory, fetchDevices,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
+  type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -29,7 +31,12 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
   takeaway: 'Takeaway', pos: 'POS',
 };
 
-const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty'] as const;
+const DISCOUNT_TYPE_LABELS: Record<string, string> = {
+  promo: 'Promo code', loyalty: 'Loyalty', manual: 'Manual',
+  gift_card: 'Gift card', referral: 'Referral',
+};
+
+const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -81,6 +88,10 @@ export function ReportsPage() {
   const [promoReport, setPromoReport] = useState<PromotionReportItem[] | null>(null);
   const [loyaltyReport, setLoyaltyReport] = useState<LoyaltyReport | null>(null);
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZonesReport | null>(null);
+  const [discountsReport, setDiscountsReport] = useState<DiscountsByTypeReport | null>(null);
+  const [voidsReport, setVoidsReport] = useState<VoidsByStaffReport | null>(null);
+  const [refundsReport, setRefundsReport] = useState<RefundsByReasonReport | null>(null);
+  const [creditExposure, setCreditExposure] = useState<CreditExposureReport | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -110,6 +121,10 @@ export function ReportsPage() {
       // tab. The backend was already date-aware via optional from/to.
       if (tab === 'Promotions')          setPromoReport((await getPromotionReport({ from, to })).report);
       if (tab === 'Loyalty')             setLoyaltyReport((await getLoyaltyReport({ from, to })).report);
+      if (tab === 'Discounts')           setDiscountsReport(await getDiscountsByTypeReport({ from, to }));
+      if (tab === 'Voids')               setVoidsReport(await getVoidsByStaffReport({ from, to }));
+      if (tab === 'Refunds')             setRefundsReport(await getRefundsByReasonReport({ from, to }));
+      if (tab === 'Credit Exposure')     setCreditExposure(await getCreditExposureReport());
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -127,7 +142,7 @@ export function ReportsPage() {
     fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
   }, []);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {
@@ -146,13 +161,23 @@ export function ReportsPage() {
       downloadCSV('promotions-report', promoReport.map(p => ({ Name: p.name, Code: p.code, Redemptions: p.redemptions_count, 'Total Discount (MVR)': mvr(p.total_discount_laar / 100) })));
     } else if (tab === 'Loyalty' && loyaltyReport) {
       downloadCSV('loyalty-report', [{ 'Total Accounts': loyaltyReport.total_accounts, 'Outstanding Pts': loyaltyReport.total_outstanding_points, 'Lifetime Pts': loyaltyReport.total_earned_lifetime, Bronze: loyaltyReport.bronze_count, Silver: loyaltyReport.silver_count, Gold: loyaltyReport.gold_count, Platinum: loyaltyReport.platinum_count }]);
+    } else if (tab === 'Discounts' && discountsReport) {
+      downloadCSV('discounts-by-type', (discountsReport.rows ?? []).map(r => ({ Type: DISCOUNT_TYPE_LABELS[r.type] ?? r.type, Amount: mvr(r.amount), Orders: r.orders_count })));
+    } else if (tab === 'Voids' && voidsReport) {
+      downloadCSV('voids-by-staff', (voidsReport.rows ?? []).map(r => ({ Staff: r.name, Voids: r.voids_count })));
+    } else if (tab === 'Refunds' && refundsReport) {
+      downloadCSV('refunds-by-reason', (refundsReport.rows ?? []).map(r => ({ Reason: r.reason, Count: r.refunds_count, Amount: mvr(r.amount) })));
+    } else if (tab === 'Credit Exposure' && creditExposure) {
+      downloadCSV('credit-exposure', (creditExposure.top_customers ?? []).map(c => ({ Customer: c.name, Balance: mvr(c.balance) })));
     }
   };
 
   const canExport = (tab === 'Summary' && summary) || (tab === 'Breakdown' && breakdown) ||
     (tab === 'Tax' && taxReport) || (tab === 'Inventory' && inventory) ||
     (tab === 'Accounts Payable' && ap) || (tab === 'Accounts Receivable' && ar) ||
-    (tab === 'Promotions' && promoReport) || (tab === 'Loyalty' && loyaltyReport);
+    (tab === 'Promotions' && promoReport) || (tab === 'Loyalty' && loyaltyReport) ||
+    (tab === 'Discounts' && discountsReport) || (tab === 'Voids' && voidsReport) ||
+    (tab === 'Refunds' && refundsReport) || (tab === 'Credit Exposure' && creditExposure);
 
   return (
     <>
@@ -653,6 +678,127 @@ export function ReportsPage() {
               ))}
             </div>
           </Card>
+        </>
+      )}
+
+      {/* ── Discounts by type ── */}
+      {!loading && tab === 'Discounts' && discountsReport && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Total Discounts" value={mvr((discountsReport.rows ?? []).reduce((s, r) => s + r.amount, 0))} accent="#ef4444" />
+            <StatCard label="Discount Types" value={String((discountsReport.rows ?? []).filter(r => r.amount > 0).length)} accent="#D4813A" />
+          </div>
+          <Card>
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Type</th>
+                <th style={S.th}>Orders</th>
+                <th style={{ ...S.th, textAlign: 'right' }}>Amount</th>
+              </tr></thead>
+              <tbody>
+                {(discountsReport.rows ?? []).map((row) => (
+                  <tr key={row.type}>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{DISCOUNT_TYPE_LABELS[row.type] ?? row.type}</td>
+                    <td style={S.td}>{row.orders_count.toLocaleString()}</td>
+                    <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </>
+      )}
+
+      {/* ── Voids by staff ── */}
+      {!loading && tab === 'Voids' && voidsReport && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Total Voids" value={String((voidsReport.rows ?? []).reduce((s, r) => s + r.voids_count, 0))} accent="#ef4444" />
+            <StatCard label="Staff Involved" value={String((voidsReport.rows ?? []).length)} accent="#6B5D4F" />
+          </div>
+          {(voidsReport.rows ?? []).length === 0 ? (
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No voids in this period.</p></Card>
+          ) : (
+            <Card>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Staff</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Voids</th>
+                </tr></thead>
+                <tbody>
+                  {(voidsReport.rows ?? []).map((row, i) => (
+                    <tr key={row.user_id ?? `sys-${i}`}>
+                      <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{row.voids_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ── Refunds by reason ── */}
+      {!loading && tab === 'Refunds' && refundsReport && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Total Refunded" value={mvr((refundsReport.rows ?? []).reduce((s, r) => s + r.amount, 0))} accent="#ef4444" />
+            <StatCard label="Refund Count" value={String((refundsReport.rows ?? []).reduce((s, r) => s + r.refunds_count, 0))} accent="#D4813A" />
+          </div>
+          {(refundsReport.rows ?? []).length === 0 ? (
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No refunds in this period.</p></Card>
+          ) : (
+            <Card>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Reason</th>
+                  <th style={S.th}>Count</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Amount</th>
+                </tr></thead>
+                <tbody>
+                  {(refundsReport.rows ?? []).map((row) => (
+                    <tr key={row.reason}>
+                      <td style={{ ...S.td, fontWeight: 600, textTransform: 'capitalize' }}>{row.reason.replace(/_/g, ' ')}</td>
+                      <td style={S.td}>{row.refunds_count}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ── Credit exposure ── */}
+      {!loading && tab === 'Credit Exposure' && creditExposure && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Total Outstanding" value={mvr(creditExposure.total_balance)} accent="#ef4444" />
+            <StatCard label="Customers with Balance" value={String(creditExposure.customers_count)} accent="#8b5cf6" />
+          </div>
+          {(creditExposure.top_customers ?? []).length === 0 ? (
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding credit balances.</p></Card>
+          ) : (
+            <Card>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by balance</p>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Customer</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Balance</th>
+                </tr></thead>
+                <tbody>
+                  {(creditExposure.top_customers ?? []).map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ ...S.td, fontWeight: 600 }}>{c.name}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{mvr(c.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
         </>
       )}
     </>

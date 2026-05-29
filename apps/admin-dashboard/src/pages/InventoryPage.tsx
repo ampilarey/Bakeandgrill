@@ -11,8 +11,9 @@ import {
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
   getUnitConversions, createUnitConversion, deleteUnitConversion,
   getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
+  fetchPreparedStock, adjustPreparedStock,
   type InventoryItem, type InventoryCategory, type UnitConversion,
-  type InventoryPriceHistoryEntry, type CheapestSupplier,
+  type InventoryPriceHistoryEntry, type CheapestSupplier, type PreparedStockRow,
 } from '../api';
 
 const S = {
@@ -31,7 +32,7 @@ export default function InventoryPage() {
   usePageTitle('Inventory');
   const { can } = useCurrentUserPermissions();
   const canManage = can('inventory.manage');
-  const [tab, setTab] = useState<'stock' | 'categories' | 'conversions' | 'stock-count'>('stock');
+  const [tab, setTab] = useState<'stock' | 'prepared' | 'categories' | 'conversions' | 'stock-count'>('stock');
 
   // ── Stock tab ──────────────────────────────────────────────────────────────
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -101,6 +102,46 @@ export default function InventoryPage() {
 
   useEffect(() => { void loadItems(); }, [searchDebounced]);
   useEffect(() => { void loadLowStock(); }, []);
+
+  // ── Prepared stock tab ─────────────────────────────────────────────────────
+  const [preparedRows, setPreparedRows] = useState<PreparedStockRow[]>([]);
+  const [preparedLoading, setPreparedLoading] = useState(false);
+  const [preparedError, setPreparedError] = useState('');
+  const [prepAdjust, setPrepAdjust] = useState<PreparedStockRow | null>(null);
+  const [prepDelta, setPrepDelta] = useState('');
+  const [prepNotes, setPrepNotes] = useState('');
+  const [prepSaving, setPrepSaving] = useState(false);
+  const [prepAdjError, setPrepAdjError] = useState('');
+
+  const loadPrepared = async () => {
+    setPreparedLoading(true); setPreparedError('');
+    try {
+      const res = await fetchPreparedStock();
+      setPreparedRows(res.items ?? []);
+    } catch (e) { setPreparedError((e as Error).message); }
+    finally { setPreparedLoading(false); }
+  };
+
+  useEffect(() => { if (tab === 'prepared') void loadPrepared(); }, [tab]);
+
+  const handlePrepAdjust = async () => {
+    if (!prepAdjust) return;
+    const delta = parseInt(prepDelta, 10);
+    if (isNaN(delta) || delta === 0) { setPrepAdjError('Enter a non-zero whole number.'); return; }
+    setPrepSaving(true); setPrepAdjError('');
+    try {
+      await adjustPreparedStock(prepAdjust.item_id, {
+        delta,
+        variant_id: prepAdjust.variant_id,
+        notes: prepNotes || undefined,
+      });
+      setPrepAdjust(null);
+      setPrepDelta('');
+      setPrepNotes('');
+      void loadPrepared();
+    } catch (e) { setPrepAdjError((e as Error).message); }
+    finally { setPrepSaving(false); }
+  };
 
   const handleAdjust = async () => {
     const qty = parseFloat(adjForm.quantity);
@@ -303,6 +344,7 @@ export default function InventoryPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
         <button style={S.tab(tab === 'stock')} onClick={() => setTab('stock')}>Stock</button>
+        <button style={S.tab(tab === 'prepared')} onClick={() => setTab('prepared')}>Prepared Stock</button>
         {canManage && (
           <>
         <button style={S.tab(tab === 'categories')} onClick={() => setTab('categories')}>Categories</button>
@@ -400,6 +442,49 @@ export default function InventoryPage() {
                 })}
               </tbody>
             </table>
+            )}
+          </TableCard>
+        </>
+      )}
+
+      {/* ── Prepared Stock Tab ── */}
+      {tab === 'prepared' && (
+        <>
+          {preparedError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{preparedError}</p>}
+          <TableCard stickyHead>
+            {preparedLoading ? (
+              <TableSkeleton rows={6} cols={4} />
+            ) : preparedRows.length === 0 ? (
+              <EmptyState message="No menu items track prepared stock. Enable stock tracking on menu items in Menu." />
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Item', 'On Hand', 'Low Threshold', 'Actions'].map(h => (
+                      <th key={h} style={TH}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {preparedRows.map((row) => {
+                    const isLow = row.stock <= row.low_stock_threshold;
+                    return (
+                      <tr key={`${row.item_id}-${row.variant_id ?? 'base'}`}>
+                        <td style={{ ...TD, fontWeight: 600 }}>{row.name}</td>
+                        <td style={{ ...TD, color: isLow ? '#ef4444' : '#1C1408', fontWeight: 700 }}>{row.stock}</td>
+                        <td style={{ ...TD, color: '#9C8E7E' }}>{row.low_stock_threshold}</td>
+                        <td style={TD}>
+                          {canManage ? (
+                            <Btn small onClick={() => { setPrepAdjust(row); setPrepDelta(''); setPrepNotes(''); setPrepAdjError(''); }}>
+                              Adjust
+                            </Btn>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </TableCard>
         </>
@@ -595,6 +680,24 @@ export default function InventoryPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Prepared stock adjust modal ── */}
+      {prepAdjust && (
+        <Modal title={`Adjust Prepared Stock — ${prepAdjust.name}`} onClose={() => setPrepAdjust(null)}>
+          {prepAdjError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{prepAdjError}</p>}
+          <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
+            Current on hand: <strong>{prepAdjust.stock}</strong>. Use positive to add, negative to remove.
+          </p>
+          <label style={S.label}>Delta (+/−)</label>
+          <input type="number" value={prepDelta} onChange={(e) => setPrepDelta(e.target.value)} style={{ ...S.input, marginBottom: 12 }} />
+          <label style={S.label}>Notes (optional)</label>
+          <input value={prepNotes} onChange={(e) => setPrepNotes(e.target.value)} style={{ ...S.input, marginBottom: 16 }} />
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setPrepAdjust(null)}>Cancel</Btn>
+            <Btn onClick={() => void handlePrepAdjust()} disabled={prepSaving}>{prepSaving ? 'Saving…' : 'Apply'}</Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {/* ── Price History Modal ── */}

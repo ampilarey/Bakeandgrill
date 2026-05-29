@@ -173,6 +173,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'show']);
         Route::put('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'update']);
     });
+    Route::prefix('admin/settings/packaging-fee')->middleware('permission:settings.update')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'show']);
+        Route::patch('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'update']);
+    });
 
     // Device Management (Admin only)
     Route::prefix('devices')->middleware('can:device.manage')->group(function () {
@@ -364,6 +368,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
         Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
         Route::get('/reports/delivery-zones', [ReportsController::class, 'deliveryZones']);
+        Route::get('/reports/discounts-by-type', [ReportsController::class, 'discountsByType']);
+        Route::get('/reports/voids-by-staff', [ReportsController::class, 'voidsByStaff']);
+        Route::get('/reports/refunds-by-reason', [ReportsController::class, 'refundsByReason']);
+        Route::get('/reports/credit-exposure', [ReportsController::class, 'creditExposure']);
         Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
         Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');
         Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');
@@ -714,6 +722,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:staff.schedule'])-
 // Waste Logs (staff)
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:inventory.manage'])->prefix('waste-logs')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\WasteLogController::class, 'index']);
+    Route::get('/summary', [App\Http\Controllers\Api\WasteLogController::class, 'summary']);
     Route::post('/', [App\Http\Controllers\Api\WasteLogController::class, 'store']);
 });
 

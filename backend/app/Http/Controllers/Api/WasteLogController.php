@@ -113,6 +113,44 @@ class WasteLogController extends Controller
         return response()->json(['waste_log' => $this->format($wasteLog)], 201);
     }
 
+    public function summary(Request $request): JsonResponse
+    {
+        $from = $request->query('from');
+        $to = $request->query('to');
+
+        $base = WasteLog::query();
+        if ($from) {
+            $base->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $base->whereDate('created_at', '<=', $to);
+        }
+
+        $byReason = (clone $base)
+            ->select('reason', DB::raw('COUNT(*) as entries'), DB::raw('COALESCE(SUM(cost_estimate),0) as cost'))
+            ->groupBy('reason')
+            ->orderByDesc('cost')
+            ->get()
+            ->map(fn ($row) => [
+                'reason' => (string) $row->reason,
+                'entries' => (int) $row->entries,
+                'cost' => round((float) $row->cost, 2),
+            ])
+            ->values()
+            ->all();
+
+        $totalCost = (float) (clone $base)->sum('cost_estimate');
+        $totalEntries = (int) (clone $base)->count();
+
+        return response()->json([
+            'from' => $from,
+            'to' => $to,
+            'total_cost' => round($totalCost, 2),
+            'total_entries' => $totalEntries,
+            'by_reason' => $byReason,
+        ]);
+    }
+
     private function format(WasteLog $w): array
     {
         return [

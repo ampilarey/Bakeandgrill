@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { getItemReviews, getItemPhotos, API_ORIGIN } from '../api';
+import { fetchCartRecommendations, getItemReviews, getItemPhotos, API_ORIGIN } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { Variant } from '@shared/types';
+import { useCart } from '../context/CartContext';
 
 type Props = {
   item: Item;
@@ -15,6 +16,7 @@ type Props = {
 export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAddToCart, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
+  const { addItem } = useCart();
 
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(() => {
@@ -38,6 +40,7 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
   const [avgRating, setAvgRating] = useState<number | null>(null);
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [pairings, setPairings] = useState<Item[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,11 +48,15 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
     setActivePhoto(0);
     setReviews([]);
     setAvgRating(null);
+    setPairings([]);
     getItemReviews(item.id)
       .then((res) => { if (!cancelled) { setReviews(res.reviews?.slice(0, 5) ?? []); setAvgRating(res.average_rating ?? null); } })
       .catch(() => {});
     getItemPhotos(item.id)
       .then((res) => { if (!cancelled) setPhotos(res.photos ?? []); })
+      .catch(() => {});
+    fetchCartRecommendations([item.id], 3)
+      .then(({ items: recs }) => { if (!cancelled) setPairings(recs ?? []); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [item.id]);
@@ -153,6 +160,22 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
           <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
             {item.description}
           </p>
+        )}
+
+        {item.is_combo && item.combo_items && item.combo_items.length > 0 && (
+          <div style={{ marginBottom: '1.25rem' }}>
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-dark)', marginBottom: '0.5rem' }}>
+              Includes:
+            </p>
+            <ul style={{ margin: 0, paddingLeft: '1.125rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+              {item.combo_items.map((entry) => (
+                <li key={`${entry.item_id}-${entry.quantity}`}>
+                  {entry.quantity > 1 ? `${entry.quantity}× ` : ''}{entry.item_name}
+                  {entry.is_optional ? ' (optional)' : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {/* Rating summary */}
@@ -286,6 +309,35 @@ export function ItemModal({ item, qty, selectedModifiers, onToggleModifier, onAd
             : 'Select an option first'
           }
         </button>
+
+        {pairings.length > 0 && (
+          <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 0.75rem' }}>
+              Goes well with
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {pairings.map((rec) => (
+                <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', flex: 1, lineHeight: 1.3 }}>{rec.name}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                    MVR {Number(rec.base_price).toFixed(2)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => addItem(rec, 1, [], null)}
+                    style={{
+                      flexShrink: 0, padding: '0.3rem 0.7rem', background: 'var(--color-primary)', color: 'white',
+                      border: 'none', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                    aria-label={`Add ${rec.name} to cart`}
+                  >
+                    + Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Customer reviews */}
         {reviews.length > 0 && (

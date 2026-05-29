@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, getOrderByTrackingToken, initiateOnlinePayment, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { WhatsAppIcon, ViberIcon } from "../components/icons";
@@ -248,7 +248,7 @@ export function OrderStatusPage() {
   const { orderId, trackingToken: trackingTokenFromPath } = useParams<{ orderId?: string; trackingToken?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { clearCart } = useCart();
+  const { clearCart, addItem } = useCart();
   const s = useSiteSettings();
 
   const paymentState = searchParams.get("payment") as PaymentState;
@@ -262,6 +262,7 @@ export function OrderStatusPage() {
   const [showPaymentBanner, setShowPaymentBanner] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  const [reordering, setReordering] = useState(false);
 
   const token = readToken();
   const esRef = useRef<EventSource | null>(null);
@@ -409,7 +410,46 @@ export function OrderStatusPage() {
 
   const isCancelled = order?.status === 'cancelled';
   const isDone = order?.status === 'completed';
+  const pointsEarned = order?.loyalty_points_earned ?? 0;
+  const showPointsCelebration = isDone && pointsEarned > 0;
   const activeStep = order ? stepIndex(order.status) : -1;
+
+  const handleOrderAgain = async () => {
+    if (!order) return;
+    if (!isDone) {
+      navigate('/');
+      return;
+    }
+    if (!token) {
+      navigate('/account');
+      return;
+    }
+    setReordering(true);
+    try {
+      const payload = await getReorderPayload(token, order.id);
+      clearCart();
+      for (const line of payload.items) {
+        const fakeItem = {
+          id: line.item_id,
+          name: line.item_name ?? line.name ?? 'Item',
+          base_price: line.unit_price ?? line.price ?? 0,
+          has_variants: false,
+          is_available: true,
+        } as Parameters<typeof addItem>[0];
+        const mods = (line.modifiers ?? []).map((m) => ({
+          id: m.id,
+          name: m.name,
+          price: m.price ?? 0,
+        })) as Parameters<typeof addItem>[2];
+        addItem(fakeItem, line.quantity, mods, null);
+      }
+      navigate('/checkout');
+    } catch {
+      navigate('/menu');
+    } finally {
+      setReordering(false);
+    }
+  };
 
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe } = usePushNotifications(token);
 
@@ -655,6 +695,24 @@ export function OrderStatusPage() {
               )}
             </div>
 
+            {showPointsCelebration && (
+              <div style={{
+                ...S.card,
+                background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
+                borderColor: 'rgba(252, 211, 77, 0.45)',
+                textAlign: 'center',
+                padding: '1.375rem 1.25rem',
+              }}>
+                <p style={{ fontSize: '1.75rem', margin: '0 0 0.35rem' }}>🎉</p>
+                <p style={{ fontSize: 'var(--text-body)', fontWeight: 800, color: '#92400E', margin: '0 0 0.25rem' }}>
+                  You earned {pointsEarned.toLocaleString()} loyalty points!
+                </p>
+                <p style={{ fontSize: 'var(--text-sm)', color: '#B45309', margin: 0 }}>
+                  Points are added to your account — redeem them on your next order.
+                </p>
+              </div>
+            )}
+
             {/* Order details card */}
             <div style={S.card}>
               <p style={S.cardTitle}>Order Details</p>
@@ -842,19 +900,22 @@ export function OrderStatusPage() {
 
             {/* CTA */}
             <button
+              type="button"
               style={{
                 background: isDone ? 'var(--color-primary)' : 'var(--color-surface)',
                 color: isDone ? 'white' : 'var(--color-primary)',
                 border: isDone ? 'none' : '1.5px solid var(--color-primary)',
                 borderRadius: '0.75rem', padding: '0.875rem 1.5rem',
                 fontSize: 'var(--text-body)', fontWeight: 700,
-                cursor: 'pointer', width: '100%', fontFamily: 'inherit',
+                cursor: isDone && reordering ? 'wait' : 'pointer', width: '100%', fontFamily: 'inherit',
                 boxShadow: isDone ? '0 4px 14px var(--color-primary-glow)' : 'none',
                 transition: 'all 0.15s',
+                opacity: reordering ? 0.85 : 1,
               }}
-              onClick={() => navigate('/')}
+              disabled={reordering}
+              onClick={() => void handleOrderAgain()}
             >
-              {isDone ? '🔁 Order again' : '← Back to menu'}
+              {reordering ? 'Adding to cart…' : isDone ? '🔁 Order again' : '← Back to menu'}
             </button>
           </div>
         )}

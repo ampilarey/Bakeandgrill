@@ -26,6 +26,7 @@ class OrderTotalsCalculator
 {
     public function __construct(
         private readonly ServiceChargeCalculator $serviceChargeCalculator = new ServiceChargeCalculator,
+        private readonly PackagingFeeCalculator $packagingFeeCalculator = new PackagingFeeCalculator,
     ) {}
 
     public static function orderTotalsLocked(Order $order): bool
@@ -41,6 +42,25 @@ class OrderTotalsCalculator
             'refunded',
             'partially_refunded',
             'payment_pending',
+        ], true);
+    }
+
+    /**
+     * Packaging/small-order fees stay editable through payment_pending so
+     * online checkout totals remain accurate until payment is confirmed.
+     */
+    public static function packagingFeesLocked(Order $order): bool
+    {
+        if ($order->payment_status === 'paid') {
+            return true;
+        }
+
+        return in_array($order->status, [
+            'paid',
+            'completed',
+            'cancelled',
+            'refunded',
+            'partially_refunded',
         ], true);
     }
 
@@ -141,10 +161,20 @@ class OrderTotalsCalculator
 
         $breakdown = $this->calculate($order, $discounts, lockedServiceCharge: $lockedServiceCharge);
 
+        $discountedLaar = $breakdown->discountedSubtotal->amountLaar;
+        $feesLocked = self::packagingFeesLocked($order);
+        $packagingLaar = $feesLocked
+            ? (int) ($order->packaging_fee_laar ?? 0)
+            : $this->packagingFeeCalculator->calculatePackaging($order, $discountedLaar);
+        $smallOrderLaar = $feesLocked
+            ? (int) ($order->small_order_fee_laar ?? 0)
+            : $this->packagingFeeCalculator->calculateSmallOrder($order, $discountedLaar);
         $deliveryFeeLaar = (int) ($order->delivery_fee_laar ?? 0);
-        $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $deliveryFeeLaar;
+        $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $packagingLaar + $smallOrderLaar + $deliveryFeeLaar;
 
         $order->update(array_merge($breakdown->toOrderAttributes(), [
+            'packaging_fee_laar' => $packagingLaar,
+            'small_order_fee_laar' => $smallOrderLaar,
             'total_laar' => $totalWithExtrasLaar,
             'total' => round($totalWithExtrasLaar / 100, 2),
         ]));

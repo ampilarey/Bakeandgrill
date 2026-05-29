@@ -522,6 +522,15 @@ export async function createPurchaseFromSuggest(data: {
   return req('/purchases/from-suggest', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function createPurchase(data: {
+  supplier_id: number;
+  purchase_date: string;
+  notes?: string;
+  items: { inventory_item_id: number; name: string; quantity: number; unit_cost: number }[];
+}): Promise<{ purchase: Purchase }> {
+  return req('/purchases', { method: 'POST', body: JSON.stringify(data) });
+}
+
 export type SuggestionItem = {
   inventory_item_id: number;
   name: string;
@@ -729,6 +738,52 @@ export async function getLoyaltyReport(params: { from?: string; to?: string } = 
   Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
   const qs = q.toString();
   return req(`/reports/loyalty${qs ? `?${qs}` : ''}`);
+}
+
+// ── Discounts / Voids / Refunds / Credit exposure ───────────────────────────
+
+export interface DiscountsByTypeReport {
+  from: string;
+  to: string;
+  rows: { type: string; amount_laar: number; amount: number; orders_count: number }[];
+}
+
+export async function getDiscountsByTypeReport(params: { from: string; to: string }): Promise<DiscountsByTypeReport> {
+  const qs = new URLSearchParams(params);
+  return req(`/reports/discounts-by-type?${qs}`);
+}
+
+export interface VoidsByStaffReport {
+  from: string;
+  to: string;
+  rows: { user_id: number | null; name: string; voids_count: number }[];
+}
+
+export async function getVoidsByStaffReport(params: { from: string; to: string }): Promise<VoidsByStaffReport> {
+  const qs = new URLSearchParams(params);
+  return req(`/reports/voids-by-staff?${qs}`);
+}
+
+export interface RefundsByReasonReport {
+  from: string;
+  to: string;
+  rows: { reason: string; refunds_count: number; amount: number }[];
+}
+
+export async function getRefundsByReasonReport(params: { from: string; to: string }): Promise<RefundsByReasonReport> {
+  const qs = new URLSearchParams(params);
+  return req(`/reports/refunds-by-reason?${qs}`);
+}
+
+export interface CreditExposureReport {
+  total_balance_laar: number;
+  total_balance: number;
+  customers_count: number;
+  top_customers: { id: number; name: string; balance_laar: number; balance: number }[];
+}
+
+export async function getCreditExposureReport(): Promise<CreditExposureReport> {
+  return req('/reports/credit-exposure');
 }
 
 // ── System Health ─────────────────────────────────────────────────────────────

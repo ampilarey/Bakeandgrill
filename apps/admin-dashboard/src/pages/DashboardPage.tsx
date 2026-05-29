@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ChefHat, Clock, CreditCard, DollarSign, MessageSquare, Monitor, Package, Play, Printer, Receipt, ShoppingBag, Trash2, TrendingUp, Truck, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChefHat, ClipboardList, Clock, CreditCard, DollarSign, MessageSquare, Monitor, Package, Play, Printer, Receipt, ShoppingBag, Trash2, TrendingUp, Truck, Users } from 'lucide-react';
 import { playChime } from '../utils/audio';
 import { pushNotification } from '../utils/notifications';
 import {
@@ -19,6 +19,7 @@ import {
   cleanupStaleTickets,
   fetchPrintJobs,
   fetchSmsLogStats,
+  getCreditExposureReport,
   type MaintenancePreview,
   type InventoryItem,
   type Order,
@@ -26,6 +27,7 @@ import {
   type SystemHealth,
   type PosOverview,
   type SalesSummary,
+  type CreditExposureReport,
 } from '../api';
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -352,6 +354,7 @@ export function DashboardPage() {
   const [summaryErr, setSummaryErr] = useState('');
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
+  const [creditExposure, setCreditExposure] = useState<CreditExposureReport | null>(null);
 
   const [activeOrders, setActiveOrders]   = useState<Order[]>([]);
   const [ordersErr, setOrdersErr]         = useState('');
@@ -390,6 +393,9 @@ export function DashboardPage() {
     fetchSalesSummary({ from: summaryDate, to: summaryDate })
       .then(setSalesSummary)
       .catch(() => setSalesSummary(null));
+    getCreditExposureReport()
+      .then(setCreditExposure)
+      .catch(() => setCreditExposure(null));
   }, [summaryDate, canFinancialSummary]);
 
   // ── load active orders (poll every 10s) — diff drives the live feed ──
@@ -605,7 +611,22 @@ export function DashboardPage() {
         title="Dashboard"
         subtitle={new Date(summaryDate + 'T00:00:00').toLocaleDateString('en-MV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         action={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {!import.meta.env.PROD && (
+              <button
+                type="button"
+                onClick={() => navigate('/checklist')}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontSize: 12, fontWeight: 700, color: '#D4813A',
+                  background: 'rgba(212,129,58,0.1)', border: '1px solid rgba(212,129,58,0.3)',
+                  borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <ClipboardList size={14} />
+                Go-live checklist
+              </button>
+            )}
             <input
               type="date"
               value={summaryDate}
@@ -757,6 +778,15 @@ export function DashboardPage() {
           <StatCard label="Tax"        value={fmt(summary.tax)}        accent="#f59e0b" icon={Receipt} />
           <StatCard label="Expenses"   value={fmt(summary.expenses)}   accent="#f97316" icon={CreditCard} />
           <StatCard label="Waste Cost" value={fmt(summary.waste_cost)} accent="#ef4444" icon={Trash2} />
+          {creditExposure && creditExposure.total_balance > 0 && (
+            <StatCard
+              label="Credit Exposure"
+              value={fmt(creditExposure.total_balance)}
+              sub={`${creditExposure.customers_count} customer${creditExposure.customers_count !== 1 ? 's' : ''} with balance`}
+              accent="#ef4444"
+              icon={CreditCard}
+            />
+          )}
         </div>
       )}
 

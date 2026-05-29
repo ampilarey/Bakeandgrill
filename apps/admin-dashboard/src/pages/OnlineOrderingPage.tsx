@@ -8,7 +8,10 @@ import {
   setOnlineOrderingOverride,
   getSiteSettings,
   updateSiteSettings,
+  getPackagingFeeSettings,
+  updatePackagingFeeSettings,
   type OnlineOrderingGateStatus,
+  type PackagingFeeSettings,
 } from '../api';
 
 const DAYS = [
@@ -143,6 +146,16 @@ const S = {
   }),
 };
 
+const DEFAULT_RAMADAN_BUSINESS_HOURS: Record<string, string> = {
+  mon: '4:00 PM – 11:00 PM',
+  tue: '4:00 PM – 11:00 PM',
+  wed: '4:00 PM – 11:00 PM',
+  thu: '4:00 PM – 11:00 PM',
+  fri: '4:00 PM – 11:00 PM',
+  sat: '4:00 PM – 11:00 PM',
+  sun: '4:00 PM – 11:00 PM',
+};
+
 const REASON_LABELS: Record<string, string> = {
   master_switch_off: 'Master switch is off',
   schedule:          'Outside scheduled hours',
@@ -163,6 +176,9 @@ export default function OnlineOrderingPage() {
   const [schedule, setSchedule]     = useState<Schedule>(DEFAULT_SCHEDULE);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [scheduleSaving, setScheduleSaving]   = useState(false);
+
+  const [feeSettings, setFeeSettings] = useState<PackagingFeeSettings | null>(null);
+  const [feeSaving, setFeeSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -193,7 +209,51 @@ export default function OnlineOrderingPage() {
       const raw = Object.values(settings).flat().find((s: any) => s.key === 'online_ordering_schedule')?.value ?? '';
       if (raw) setSchedule(parseSchedule(raw));
     }).finally(() => setScheduleLoading(false));
+    getPackagingFeeSettings()
+      .then(({ settings }) => setFeeSettings(settings))
+      .catch(() => { /* optional */ });
   }, []);
+
+  const saveFeeSettings = async () => {
+    if (!feeSettings) return;
+    setFeeSaving(true);
+    try {
+      const { settings } = await updatePackagingFeeSettings(feeSettings);
+      setFeeSettings(settings);
+      showToast('Fees & order cap saved.');
+    } catch {
+      showToast('Failed to save fee settings.', 'err');
+    } finally {
+      setFeeSaving(false);
+    }
+  };
+
+  const applyRamadanPreset = async () => {
+    const preset: Schedule = Object.fromEntries(
+      DAYS.map(({ key }) => [key, {
+        enabled: true,
+        windows: [{ open: '17:00', close: '01:00' }],
+      }]),
+    ) as Schedule;
+    setSchedule(preset);
+
+    let businessHours = DEFAULT_RAMADAN_BUSINESS_HOURS;
+    try {
+      const { settings } = await getSiteSettings();
+      const rawPreset = Object.values(settings).flat().find((s: { key: string }) => s.key === 'ramadan_hours_preset')?.value;
+      if (rawPreset) {
+        const parsed = JSON.parse(rawPreset) as Record<string, string>;
+        if (parsed && typeof parsed === 'object') businessHours = { ...DEFAULT_RAMADAN_BUSINESS_HOURS, ...parsed };
+      }
+    } catch { /* use default */ }
+
+    try {
+      await updateSiteSettings({ business_hours: JSON.stringify(businessHours) });
+      showToast('Ramadan hours applied to business hours and online schedule — save schedule to persist ordering windows.');
+    } catch {
+      showToast('Schedule updated locally; failed to save business hours.', 'err');
+    }
+  };
 
   const saveSchedule = async () => {
     setScheduleSaving(true);
@@ -504,13 +564,72 @@ export default function OnlineOrderingPage() {
           </div>
         )}
 
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button style={S.btnPrimary} onClick={saveSchedule} disabled={scheduleSaving}>
             <Save size={14} />
             {scheduleSaving ? 'Saving…' : 'Save Schedule'}
           </button>
+          <button type="button" style={S.btnSecondary} onClick={() => void applyRamadanPreset()}>
+            Apply Ramadan preset (business hours + 5pm–1am online)
+          </button>
         </div>
       </div>
+
+      {feeSettings && (
+        <div style={S.card}>
+          <p style={S.sectionTitle}>Packaging & order limits</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <input type="checkbox" checked={feeSettings.packaging_enabled} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_enabled: e.target.checked })} />
+              Packaging fee enabled
+            </label>
+            <div>
+              <label style={S.label}>Packaging label</label>
+              <input style={S.input} value={feeSettings.packaging_label} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_label: e.target.value })} />
+            </div>
+            <div>
+              <label style={S.label}>Type</label>
+              <select style={S.input} value={feeSettings.packaging_type} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_type: e.target.value as 'percent' | 'fixed' })}>
+                <option value="fixed">Fixed MVR</option>
+                <option value="percent">Percent</option>
+              </select>
+            </div>
+            <div>
+              <label style={S.label}>Value</label>
+              <input style={S.input} type="number" min={0} step={0.01} value={feeSettings.packaging_value} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_value: parseFloat(e.target.value) || 0 })} />
+            </div>
+            <div>
+              <label style={S.label}>Max orders / 15 min (0 = unlimited)</label>
+              <input style={S.input} type="number" min={0} max={500} value={feeSettings.ordering_max_per_15min} onChange={(e) => setFeeSettings({ ...feeSettings, ordering_max_per_15min: parseInt(e.target.value, 10) || 0 })} />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <input type="checkbox" checked={feeSettings.packaging_apply_delivery} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_apply_delivery: e.target.checked })} />
+              Packaging on delivery
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <input type="checkbox" checked={feeSettings.packaging_apply_online_pickup} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_apply_online_pickup: e.target.checked })} />
+              Packaging on online pickup
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <input type="checkbox" checked={feeSettings.small_order_enabled} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_enabled: e.target.checked })} />
+              Small-order fee below threshold
+            </label>
+            <div>
+              <label style={S.label}>Small order threshold (MVR)</label>
+              <input style={S.input} type="number" min={0} value={feeSettings.small_order_threshold_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_threshold_mvr: parseFloat(e.target.value) || 0 })} />
+            </div>
+            <div>
+              <label style={S.label}>Small order fee (MVR)</label>
+              <input style={S.input} type="number" min={0} value={feeSettings.small_order_amount_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_amount_mvr: parseFloat(e.target.value) || 0 })} />
+            </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <button style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
+              {feeSaving ? 'Saving…' : 'Save fees & limits'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
