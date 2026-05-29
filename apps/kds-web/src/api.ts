@@ -17,7 +17,10 @@ export type KdsOrder = {
   id: number;
   order_number: string;
   status: string;
+  type?: string;
   created_at: string;
+  delivery_island?: string | null;
+  table_number?: string | null;
   items: KdsOrderItem[];
 };
 

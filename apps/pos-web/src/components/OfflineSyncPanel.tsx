@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   countPendingOfflineOrders,
+  deleteOfflineOrder,
+  getConflictOfflineOrders,
   getSyncLog,
+  retryOfflineOrder,
+  type OfflineOrderRecord,
   type SyncLogRecord,
 } from "../offline/db";
 import { runOfflineSync } from "../offline/syncEngine";
@@ -13,14 +17,18 @@ type Props = {
 
 export function OfflineSyncPanel({ shiftId, onClose }: Props) {
   const [pending, setPending] = useState(0);
+  const [conflicts, setConflicts] = useState<OfflineOrderRecord[]>([]);
   const [log, setLog] = useState<SyncLogRecord | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const count = await countPendingOfflineOrders(shiftId ?? undefined);
+    const conflictRows = await getConflictOfflineOrders(shiftId ?? undefined);
     const syncLog = await getSyncLog();
     setPending(count);
+    setConflicts(conflictRows);
     setLog(syncLog);
   }, [shiftId]);
 
@@ -48,13 +56,50 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
     }
   };
 
+  const handleRetry = async (order: OfflineOrderRecord) => {
+    setResolvingId(order.local_order_id);
+    setMessage("");
+    try {
+      await retryOfflineOrder(order.local_order_id);
+      const result = await runOfflineSync(true);
+      await refresh();
+      if (result.synced > 0) {
+        setMessage(`Retried and synced ${order.local_order_number}.`);
+      } else {
+        setMessage(`Retried ${order.local_order_number} — still pending or conflict.`);
+      }
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Retry failed.");
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
+  const handleDiscard = async (order: OfflineOrderRecord) => {
+    if (!window.confirm(`Discard offline order ${order.local_order_number}? This cannot be undone.`)) {
+      return;
+    }
+    setResolvingId(order.local_order_id);
+    setMessage("");
+    try {
+      await deleteOfflineOrder(order.local_order_id);
+      await refresh();
+      setMessage(`Discarded ${order.local_order_number}.`);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Discard failed.");
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 850, background: "rgba(15,23,42,0.45)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
     }}>
       <div style={{
-        width: "min(420px, 100%)", background: "#fff", borderRadius: 12,
+        width: "min(480px, 100%)", maxHeight: "min(90vh, 640px)", overflow: "auto",
+        background: "#fff", borderRadius: 12,
         padding: 20, boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -64,11 +109,70 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
 
         <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
           <div><strong>Pending:</strong> {pending}</div>
+          <div><strong>Conflicts:</strong> {conflicts.length}</div>
           <div><strong>Last sync:</strong> {log?.last_success_at ? new Date(log.last_success_at).toLocaleString() : "Never"}</div>
           {log?.last_error && (
             <div style={{ color: "#b91c1c", fontSize: 13 }}>{log.last_error}</div>
           )}
         </div>
+
+        {conflicts.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>Conflicts — resolve manually</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {conflicts.map((order) => {
+                const busy = resolvingId === order.local_order_id;
+                return (
+                  <div
+                    key={order.local_order_id}
+                    style={{
+                      border: "1px solid #fecaca",
+                      background: "#fef2f2",
+                      borderRadius: 8,
+                      padding: 12,
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>{order.local_order_number}</div>
+                    <div style={{ color: "#64748b", marginTop: 2 }}>
+                      MVR {order.payment.amount.toFixed(2)} · {order.items.length} items
+                    </div>
+                    {order.last_error && (
+                      <div style={{ color: "#b91c1c", marginTop: 6, lineHeight: 1.4 }}>{order.last_error}</div>
+                    )}
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleRetry(order)}
+                        style={{
+                          minHeight: 36, padding: "0 12px", borderRadius: 8, border: "none",
+                          background: "#0f172a", color: "#fff", fontWeight: 600, cursor: "pointer",
+                          opacity: busy ? 0.6 : 1,
+                        }}
+                      >
+                        Retry sync
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleDiscard(order)}
+                        style={{
+                          minHeight: 36, padding: "0 12px", borderRadius: 8,
+                          border: "1px solid #fecaca", background: "#fff", color: "#b91c1c",
+                          fontWeight: 600, cursor: "pointer",
+                          opacity: busy ? 0.6 : 1,
+                        }}
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {message && (
           <div style={{ marginTop: 12, padding: 10, background: "#f1f5f9", borderRadius: 8, fontSize: 13 }}>

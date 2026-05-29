@@ -16,6 +16,7 @@ import {
 } from "../api";
 import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, type, z } from "../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel } from "../orderTypeLabels";
+import { formatTicketAge, parkedTicketAgeLevel, PARKED_AGE_COLORS } from "../utils/ticketAging";
 
 export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
 
@@ -168,6 +169,12 @@ export function OpenTicketsPanel({
   // "show Pickup tickets matching 'aisha'". Hidden by default.
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [, setAgeTick] = useState(0);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => setAgeTick((t) => t + 1), 30_000);
+    return () => window.clearInterval(timerId);
+  }, []);
 
   // ── Merge / split state ────────────────────────────────────────
   // Two-tap-plus-confirm merge flow:
@@ -934,6 +941,9 @@ export function OpenTicketsPanel({
             ready: { label: "✅ READY", color: "#047857", bg: "#ECFDF5", border: "#A7F3D0", title: "Ready for the customer to collect" },
           }[stage];
 
+          const parkedAgeLevel = stage === "parked" ? parkedTicketAgeLevel(t.created_at) : "ok";
+          const parkedAgeStyle = PARKED_AGE_COLORS[parkedAgeLevel];
+
           // In merge mode every row that isn't the target is a
           // candidate source. The target highlights blue and shows
           // a hint instead of buttons.
@@ -1002,6 +1012,23 @@ export function OpenTicketsPanel({
                     >
                       {stageBadge.label}
                     </span>
+                    {stage === "parked" && (
+                      <span
+                        title={parkedAgeLevel === "critical"
+                          ? "Parked 30+ minutes — fire or void soon"
+                          : parkedAgeLevel === "warn"
+                            ? "Parked 15+ minutes"
+                            : "Time since ticket was saved"}
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: parkedAgeStyle.color, background: parkedAgeStyle.bg,
+                          padding: "2px 6px", borderRadius: 4,
+                          border: `1px solid ${parkedAgeStyle.border}`,
+                        }}
+                      >
+                        ⏱ {formatTicketAge(t.created_at)}
+                      </span>
+                    )}
                     {isPaid && (
                       <span
                         title="Customer has paid"

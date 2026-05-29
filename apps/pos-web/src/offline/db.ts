@@ -272,6 +272,25 @@ export async function countPendingOfflineOrders(shiftId?: number): Promise<numbe
   return orders.length;
 }
 
+export async function getConflictOfflineOrders(shiftId?: number): Promise<OfflineOrderRecord[]> {
+  const db = await getOfflineDb();
+  const conflicts = await db.getAllFromIndex("offline_orders", "status", "conflict");
+  if (shiftId == null) return conflicts;
+  return conflicts.filter((o) => o.shift_id === shiftId);
+}
+
+export async function deleteOfflineOrder(localOrderId: string): Promise<void> {
+  const db = await getOfflineDb();
+  await db.delete("offline_orders", localOrderId);
+}
+
+export async function retryOfflineOrder(localOrderId: string): Promise<void> {
+  await updateOfflineOrder(localOrderId, {
+    status: "pending_sync",
+    last_error: undefined,
+  });
+}
+
 export async function getOfflineOrderSyncCounts(shiftId?: number): Promise<{
   pending: number;
   failed: number;
