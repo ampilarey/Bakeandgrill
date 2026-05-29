@@ -4,10 +4,10 @@ import {
   fetchCustomerGrowthMetrics, fetchCustomerSegments, fetchCustomerSegment,
   fetchCustomerDataQuality,
   fetchMarketingAutomation, updateMarketingAutomation,
-  fetchCorporateInquiries,
+  fetchCorporateInquiries, fetchItemPairs,
   type CustomerGrowthMetrics, type CustomerSegmentMeta, type CustomerSegmentRow,
   type CustomerDataQualityReport, type MarketingAutomationSettings,
-  type CorporateInquiry,
+  type CorporateInquiry, type ItemPairRow,
 } from '../api';
 import { Customer360Drawer } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -17,7 +17,7 @@ import {
   StatCard, TableCard, TD, TH,
 } from '../components/SharedUI';
 
-type Tab = 'overview' | 'segments' | 'marketing' | 'quality' | 'corporate';
+type Tab = 'overview' | 'segments' | 'marketing' | 'quality' | 'corporate' | 'pairs';
 
 const TAB_STYLE = (active: boolean): React.CSSProperties => ({
   padding: '8px 18px', border: 'none', borderRadius: 8, cursor: 'pointer',
@@ -50,6 +50,9 @@ export function CustomerGrowthPage() {
   const [corpInquiries, setCorpInquiries] = useState<CorporateInquiry[]>([]);
   const [corpMeta, setCorpMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [corpPage, setCorpPage] = useState(1);
+  const [itemPairs, setItemPairs] = useState<ItemPairRow[]>([]);
+  const [pairsMeta, setPairsMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [pairsPage, setPairsPage] = useState(1);
 
   useEffect(() => {
     const load = async () => {
@@ -121,6 +124,18 @@ export function CustomerGrowthPage() {
       .finally(() => setLoading(false));
   }, [tab, corpPage]);
 
+  useEffect(() => {
+    if (tab !== 'pairs' || !canAnalytics) return;
+    setLoading(true);
+    fetchItemPairs({ page: pairsPage })
+      .then((r) => {
+        setItemPairs(r.data ?? []);
+        setPairsMeta(r.meta ?? { current_page: 1, last_page: 1, total: 0 });
+      })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [tab, pairsPage, canAnalytics]);
+
   const saveAutomation = async () => {
     if (!automation) return;
     setAutomationSaving(true);
@@ -148,9 +163,9 @@ export function CustomerGrowthPage() {
       />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        {(['overview', 'segments', 'marketing', 'corporate', 'quality'] as Tab[]).map((t) => (
+        {(['overview', 'segments', 'marketing', 'corporate', 'pairs', 'quality'] as Tab[]).map((t) => (
           <button key={t} type="button" style={TAB_STYLE(tab === t)} onClick={() => setTab(t)}>
-            {t === 'overview' ? 'Overview' : t === 'segments' ? 'Segments' : t === 'marketing' ? 'Marketing' : t === 'corporate' ? 'Corporate' : 'Data Quality'}
+            {t === 'overview' ? 'Overview' : t === 'segments' ? 'Segments' : t === 'marketing' ? 'Marketing' : t === 'corporate' ? 'Corporate' : t === 'pairs' ? 'Item Pairs' : 'Data Quality'}
           </button>
         ))}
       </div>
@@ -356,6 +371,48 @@ export function CustomerGrowthPage() {
                   {' · '}
                   <button type="button" disabled={corpPage <= 1} onClick={() => setCorpPage((p) => p - 1)} style={{ marginRight: 8, fontFamily: 'inherit', cursor: 'pointer' }}>Prev</button>
                   <button type="button" disabled={corpPage >= corpMeta.last_page} onClick={() => setCorpPage((p) => p + 1)} style={{ fontFamily: 'inherit', cursor: 'pointer' }}>Next</button>
+                </>
+              )}
+            </p>
+          </TableCard>
+        )
+      )}
+
+      {tab === 'pairs' && (
+        !canAnalytics ? (
+          <Card><EmptyState message="You need customers.analytics permission to view item pairs." /></Card>
+        ) : loading && itemPairs.length === 0 ? <Spinner /> : (
+          <TableCard>
+            <p style={{ padding: '12px 14px 0', margin: 0, fontSize: 13, color: '#6B5D4F' }}>
+              Frequently bought together — based on completed orders (run nightly via insights:compute-item-pairs).
+            </p>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  {['Item', 'Often paired with', 'Times together'].map((h) => (
+                    <th key={h} style={TH}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {itemPairs.length === 0 ? (
+                  <tr><td colSpan={3}><EmptyState message="No pair stats yet — needs order history." /></td></tr>
+                ) : itemPairs.map((row) => (
+                  <tr key={`${row.item_id}-${row.paired_item_id}`}>
+                    <td style={TD}>{row.item_name}</td>
+                    <td style={TD}>{row.paired_item_name}</td>
+                    <td style={{ ...TD, fontWeight: 700 }}>{row.pair_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ padding: 12, fontSize: 12, color: '#9C8E7E' }}>
+              {pairsMeta.total} pairs
+              {pairsMeta.last_page > 1 && (
+                <>
+                  {' · '}
+                  <button type="button" disabled={pairsPage <= 1} onClick={() => setPairsPage((p) => p - 1)} style={{ marginRight: 8, fontFamily: 'inherit', cursor: 'pointer' }}>Prev</button>
+                  <button type="button" disabled={pairsPage >= pairsMeta.last_page} onClick={() => setPairsPage((p) => p + 1)} style={{ fontFamily: 'inherit', cursor: 'pointer' }}>Next</button>
                 </>
               )}
             </p>

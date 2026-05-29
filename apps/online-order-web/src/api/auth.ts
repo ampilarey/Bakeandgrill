@@ -138,3 +138,10 @@ export async function changeCustomerPassword(
 export async function getCustomerMe(token: string): Promise<{ customer: AuthCustomer }> {
   return request(ENDPOINTS.CUSTOMER_ME, { headers: { Authorization: `Bearer ${token}` } });
 }
+
+export async function guestSession(payload: { phone: string; name: string }): Promise<AuthResponse> {
+  return request<AuthResponse>(ENDPOINTS.CUSTOMER_GUEST_SESSION, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

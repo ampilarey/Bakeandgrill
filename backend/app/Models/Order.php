@@ -85,6 +85,8 @@ class Order extends Model
         'driver_assigned_at',
         'picked_up_at',
         'delivered_at',
+        'pickup_slot_at',
+        'proof_of_delivery_path',
         'store_id',
     ];
 
@@ -109,6 +111,7 @@ class Order extends Model
         'driver_assigned_at' => 'datetime',
         'picked_up_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'pickup_slot_at' => 'datetime',
         // Scalars
         'tax_inclusive' => 'boolean',
         'referral_redemption_recorded' => 'boolean',

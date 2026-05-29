@@ -122,6 +122,7 @@ class OrderCreationService
                 'total' => 0,
                 'notes' => $payload['notes'] ?? null,
                 'customer_notes' => $payload['customer_notes'] ?? null,
+                'pickup_slot_at' => !empty($payload['pickup_slot_at']) ? $payload['pickup_slot_at'] : null,
             ]);
 
             $this->addOrderItems($order, $payload['items'] ?? [], $user, !empty($payload['offline_sync']));

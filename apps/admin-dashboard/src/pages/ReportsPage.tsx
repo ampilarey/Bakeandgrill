@@ -5,7 +5,7 @@ import {
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
   getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
-  getCashierPerformanceReport, getProductMarginsReport, getStockDiscrepancyReport,
+  getCashierPerformanceReport, getProductMarginsReport, getCustomerCohortsReport, getStockDiscrepancyReport,
   getHourlySalesReport, getStationPerformanceReport,
   fetchPosStaffOptions, fetchShiftHistory, fetchDevices,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
@@ -13,7 +13,7 @@ import {
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
   type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
-  type CashierPerformanceReport, type ProductMarginsReport, type StockDiscrepancyReport,
+  type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
   type HourlySalesReport, type StationPerformanceReport,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
@@ -42,7 +42,7 @@ const DISCOUNT_TYPE_LABELS: Record<string, string> = {
   gift_card: 'Gift card', referral: 'Referral',
 };
 
-const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV', 'Cashier Performance', 'Product Margins', 'Stock Discrepancy', 'Hourly Sales', 'Station Performance'] as const;
+const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV', 'Customer Cohorts', 'Cashier Performance', 'Product Margins', 'Stock Discrepancy', 'Hourly Sales', 'Station Performance'] as const;
 type Tab = typeof TABS[number];
 
 const S = {
@@ -102,6 +102,7 @@ export function ReportsPage() {
   const [velocityReport, setVelocityReport] = useState<StockVelocityReport | null>(null);
   const [shiftVariances, setShiftVariances] = useState<ShiftVariancesReport | null>(null);
   const [customerLtv, setCustomerLtv] = useState<CustomerLtvReport | null>(null);
+  const [customerCohorts, setCustomerCohorts] = useState<CustomerCohortsReport | null>(null);
   const [cashierPerf, setCashierPerf] = useState<CashierPerformanceReport | null>(null);
   const [productMargins, setProductMargins] = useState<ProductMarginsReport | null>(null);
   const [stockDiscrepancy, setStockDiscrepancy] = useState<StockDiscrepancyReport | null>(null);
@@ -144,6 +145,7 @@ export function ReportsPage() {
       if (tab === 'Stock Velocity')       setVelocityReport(await getStockVelocityReport({ from, to }));
       if (tab === 'Shift Variances')       setShiftVariances(await getShiftVariancesReport({ from, to }));
       if (tab === 'Customer LTV')          setCustomerLtv(await getCustomerLtvReport({ from, to }));
+      if (tab === 'Customer Cohorts')      setCustomerCohorts(await getCustomerCohortsReport({ from, to }));
       if (tab === 'Cashier Performance')   setCashierPerf(await getCashierPerformanceReport({ from, to }));
       if (tab === 'Product Margins')       setProductMargins(await getProductMarginsReport());
       if (tab === 'Stock Discrepancy')     setStockDiscrepancy(await getStockDiscrepancyReport());
@@ -166,7 +168,7 @@ export function ReportsPage() {
     fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
   }, []);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Hourly Sales' || tab === 'Station Performance';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {
@@ -946,6 +948,36 @@ export function ReportsPage() {
                     <td style={S.td}>{row.order_count}</td>
                     <td style={{ ...S.td, fontWeight: 700 }}>{mvr(row.total_spent)}</td>
                     <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.last_order ? new Date(row.last_order).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {!loading && tab === 'Customer Cohorts' && customerCohorts && (
+        <Card>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+            New vs returning customers by first-order month ({customerCohorts.from} – {customerCohorts.to})
+          </p>
+          {(customerCohorts.cohorts ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No first-time customers in this period.</p>
+          ) : (
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Cohort month</th>
+                <th style={S.th}>New customers</th>
+                <th style={S.th}>Repeat (2+ orders)</th>
+                <th style={S.th}>Repeat rate</th>
+              </tr></thead>
+              <tbody>
+                {customerCohorts.cohorts.map((row) => (
+                  <tr key={row.cohort_month}>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{row.cohort_month}</td>
+                    <td style={S.td}>{row.new_customers}</td>
+                    <td style={S.td}>{row.repeat_customers}</td>
+                    <td style={{ ...S.td, fontWeight: 700 }}>{row.repeat_rate}%</td>
                   </tr>
                 ))}
               </tbody>

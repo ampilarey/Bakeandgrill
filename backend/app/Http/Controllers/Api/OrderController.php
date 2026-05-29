@@ -290,6 +290,11 @@ class OrderController extends Controller
         $payload['customer_id'] = $customer->id;
         $payload['type'] = $payload['type'] ?? 'online_pickup';
 
+        if (!empty($payload['pickup_slot_at'])) {
+            app(\App\Domains\Ordering\Services\PickupSlotService::class)
+                ->assertSlotAvailable($payload['pickup_slot_at']);
+        }
+
         $order = app(OrderCreationService::class)->createFromPayload($payload, null);
         $customer->update(['last_order_at' => now()]);
 

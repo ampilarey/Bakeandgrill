@@ -180,6 +180,7 @@ export function useCheckout() {
   }, []);
 
   const [orderType, setOrderType]   = useState<OrderType>("pickup");
+  const [pickupSlotAt, setPickupSlotAt] = useState<string | null>(null);
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
 
@@ -691,6 +692,7 @@ export function useCheckout() {
           })),
           type: "online_pickup",
           customer_notes: notes || undefined,
+          pickup_slot_at: pickupSlotAt ?? undefined,
         });
         orderId = res.order.id;
       }
@@ -852,7 +854,7 @@ export function useCheckout() {
 
   return {
     cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
-    orderType, setOrderType, delivery, setDelivery, notes, setNotes,
+    orderType, setOrderType, pickupSlotAt, setPickupSlotAt, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,

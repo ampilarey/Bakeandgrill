@@ -111,8 +111,21 @@ class DriverLocationController extends Controller
 
         $driver = $order->deliveryDriver;
 
+        $etaMinutes = null;
+        if ($cached && in_array($order->status, ['picked_up', 'on_the_way'], true)) {
+            $speed = isset($cached['speed']) ? (float) $cached['speed'] : 0.0;
+            if ($speed > 2) {
+                $etaMinutes = max(5, min(35, (int) round(12 - min(8, $speed))));
+            } else {
+                $recordedAt = isset($cached['recorded_at']) ? strtotime((string) $cached['recorded_at']) : false;
+                $ageMin = $recordedAt ? max(0, (int) floor((time() - $recordedAt) / 60)) : 0;
+                $etaMinutes = max(8, min(30, 18 - min(10, $ageMin)));
+            }
+        }
+
         return response()->json([
             'location' => $cached,
+            'eta_minutes' => $etaMinutes,
             'driver' => $driver ? [
                 'name' => $driver->name,
                 'phone' => $driver->phone,

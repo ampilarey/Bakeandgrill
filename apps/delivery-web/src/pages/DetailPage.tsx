@@ -27,6 +27,9 @@ export default function DetailPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [proofUploading, setProofUploading] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -47,12 +50,35 @@ export default function DetailPage() {
     setUpdating(true);
     setError('');
     try {
+      if (next === 'delivered' && proofFile && !proofUrl) {
+        setProofUploading(true);
+        const uploaded = await api.uploadProof(delivery.id, proofFile);
+        setProofUrl(uploaded.proof_url);
+        setProofFile(null);
+        setProofUploading(false);
+      }
       const { delivery: updated } = await api.updateStatus(delivery.id, next);
       setDelivery(prev => prev ? { ...prev, ...updated, status: updated.status as DeliveryStatus } : prev);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update status.');
     } finally {
       setUpdating(false);
+      setProofUploading(false);
+    }
+  };
+
+  const handleProofOnly = async () => {
+    if (!delivery || !proofFile) return;
+    setProofUploading(true);
+    setError('');
+    try {
+      const uploaded = await api.uploadProof(delivery.id, proofFile);
+      setProofUrl(uploaded.proof_url);
+      setProofFile(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to upload photo.');
+    } finally {
+      setProofUploading(false);
     }
   };
 
@@ -113,8 +139,43 @@ export default function DetailPage() {
         {/* Status stepper */}
         <div style={S.card}>
           <p style={S.cardTitle}>Delivery Status</p>
-          <StatusStepper status={delivery.status as DeliveryStatus} onUpdate={handleStatusUpdate} loading={updating} />
+          <StatusStepper status={delivery.status as DeliveryStatus} onUpdate={handleStatusUpdate} loading={updating || proofUploading} />
         </div>
+
+        {['picked_up', 'on_the_way'].includes(delivery.status) && (
+          <div style={S.card}>
+            <p style={S.cardTitle}>Proof of delivery</p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.45 }}>
+              Optional — take a photo at the door. It uploads automatically when you mark delivered.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+              style={{ fontSize: '0.875rem', width: '100%' }}
+            />
+            {proofFile && (
+              <button
+                type="button"
+                onClick={() => void handleProofOnly()}
+                disabled={proofUploading}
+                style={{
+                  marginTop: 10, width: '100%', padding: '10px 14px',
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)', fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                }}
+              >
+                {proofUploading ? 'Uploading…' : 'Upload photo now'}
+              </button>
+            )}
+            {proofUrl && (
+              <p style={{ margin: '10px 0 0', fontSize: '0.8125rem', color: 'var(--color-success)', fontWeight: 600 }}>
+                ✓ Proof saved
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Address */}
         <div style={S.card}>

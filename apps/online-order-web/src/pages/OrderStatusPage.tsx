@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, getWaitTimeEstimate, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { WhatsAppIcon, ViberIcon } from "../components/icons";
@@ -26,7 +26,7 @@ type DriverLocationData = {
 };
 
 function DriverTracker({ orderId, token }: { orderId: number; token: string | null }) {
-  const [data, setData] = useState<{ location: DriverLocationData | null; driver: { name: string; phone: string } | null } | null>(null);
+  const [data, setData] = useState<{ location: DriverLocationData | null; driver: { name: string; phone: string } | null; eta_minutes?: number | null } | null>(null);
   const [fetchErr, setFetchErr] = useState(false);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
           },
         });
         if (res.ok) {
-          const json = await res.json() as { location: DriverLocationData | null; driver: { name: string; phone: string } | null };
+          const json = await res.json() as { location: DriverLocationData | null; driver: { name: string; phone: string } | null; eta_minutes?: number | null };
           setData(json);
           setFetchErr(false);
         } else {
@@ -71,6 +71,11 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
       borderRadius: '1rem', padding: '1rem', color: 'white',
     }}>
       <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}>🚀 Your driver is on the way!</p>
+      {data?.eta_minutes != null && (
+        <p style={{ fontSize: 'var(--text-base)', fontWeight: 800, margin: '0 0 0.35rem' }}>
+          ETA ~{data.eta_minutes} min
+        </p>
+      )}
       {driver && <p style={{ fontSize: 'var(--text-body)', fontWeight: 700, margin: '0 0 0.25rem' }}>🛵 {driver.name}</p>}
       {location ? (
         <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>
@@ -263,6 +268,7 @@ export function OrderStatusPage() {
   const [isPaying, setIsPaying] = useState(false);
   const [payError, setPayError] = useState("");
   const [reordering, setReordering] = useState(false);
+  const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
   const token = readToken();
   const esRef = useRef<EventSource | null>(null);
@@ -303,6 +309,17 @@ export function OrderStatusPage() {
       ? `Order #${order.order_number} — Bake & Grill`
       : 'Order Status — Bake & Grill';
   }, [order?.order_number]);
+
+  useEffect(() => {
+    if (!order || !['pending', 'paid', 'confirmed', 'preparing', 'in_progress', 'ready'].includes(order.status)) {
+      return;
+    }
+    getWaitTimeEstimate()
+      .then(({ wait_minutes, queue_depth }) => {
+        if (queue_depth > 0) setWaitMinutes(wait_minutes);
+      })
+      .catch(() => { /* non-blocking */ });
+  }, [order?.status, order?.id]);
 
   // ONL-002: only trust the SERVER for "is this order paid?". The
   // ?payment=CONFIRMED query param can be forged by anyone pasting a
@@ -737,6 +754,12 @@ export function OrderStatusPage() {
               <DetailRow label="Order number" value={`#${order.order_number}`} />
               <DetailRow label="Type" value={orderTypeLabel(order.type)} />
               <DetailRow label="Status" value={statusInfo.label} />
+              {(order.estimated_wait_minutes ?? waitMinutes) != null && ['pending', 'paid', 'confirmed', 'preparing', 'in_progress', 'ready'].includes(order.status) && (
+                <DetailRow label="Kitchen wait" value={`~${order.estimated_wait_minutes ?? waitMinutes} min`} />
+              )}
+              {order.pickup_slot_at && (
+                <DetailRow label="Pickup time" value={new Date(order.pickup_slot_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} />
+              )}
               {order.paid_at && (
                 <DetailRow label="Paid at" value={new Date(order.paid_at).toLocaleString()} />
               )}

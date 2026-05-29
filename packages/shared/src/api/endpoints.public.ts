@@ -24,6 +24,7 @@ export const PUBLIC_ENDPOINTS = {
   CUSTOMER_SESSION_CHECK:    '/auth/customer/check',
   CUSTOMER_FORGOT_PASSWORD:  '/auth/customer/forgot-password',
   CUSTOMER_RESET_PASSWORD:   '/auth/customer/reset-password',
+  CUSTOMER_GUEST_SESSION:    '/auth/customer/guest-session',
   STAFF_PIN_LOGIN:           '/auth/staff/pin-login',
 
   // Gift card balance check (intentionally public — anyone holding the
@@ -37,6 +38,7 @@ export const PUBLIC_ENDPOINTS = {
   ORDERING_STATUS:           '/ordering/status',
   ORDERING_DELIVERY_STATUS:  '/ordering/delivery-status',
   ORDERING_DELIVERY_FEE_PREVIEW: '/ordering/delivery-fee-preview',
+  PICKUP_SLOTS:                '/ordering/pickup-slots',
   REVIEWS_FEATURED:            '/reviews/featured',
   CORPORATE_INQUIRIES:         '/corporate-inquiries',
   WAIT_TIME:                 '/wait-time',

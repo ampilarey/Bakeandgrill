@@ -866,4 +866,72 @@ class ReportsService
 
         return ['rows' => $rows];
     }
+
+    /**
+     * New vs returning customers grouped by first-order month.
+     *
+     * @return array{from: string, to: string, cohorts: list<array{cohort_month: string, new_customers: int, repeat_customers: int, repeat_rate: float}>}
+     */
+    public function customerCohorts(Carbon $from, Carbon $to): array
+    {
+        $firstByCustomer = Order::query()
+            ->whereNotNull('customer_id')
+            ->whereIn('status', ['completed', 'delivered'])
+            ->where('payment_status', 'paid')
+            ->selectRaw('customer_id, MIN(created_at) as first_order_at')
+            ->groupBy('customer_id')
+            ->havingRaw('MIN(created_at) BETWEEN ? AND ?', [$from, $to])
+            ->get()
+            ->keyBy('customer_id');
+
+        if ($firstByCustomer->isEmpty()) {
+            return [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'cohorts' => [],
+            ];
+        }
+
+        $repeatCounts = Order::query()
+            ->whereIn('customer_id', $firstByCustomer->keys())
+            ->whereIn('status', ['completed', 'delivered'])
+            ->where('payment_status', 'paid')
+            ->selectRaw('customer_id, COUNT(*) as order_count')
+            ->groupBy('customer_id')
+            ->pluck('order_count', 'customer_id');
+
+        $byMonth = [];
+        foreach ($firstByCustomer as $customerId => $row) {
+            $month = Carbon::parse($row->first_order_at)->format('Y-m');
+            if (!isset($byMonth[$month])) {
+                $byMonth[$month] = [
+                    'cohort_month' => $month,
+                    'new_customers' => 0,
+                    'repeat_customers' => 0,
+                ];
+            }
+            $byMonth[$month]['new_customers']++;
+            if ((int) ($repeatCounts[$customerId] ?? 0) > 1) {
+                $byMonth[$month]['repeat_customers']++;
+            }
+        }
+
+        $cohorts = collect($byMonth)
+            ->map(function (array $row): array {
+                $row['repeat_rate'] = $row['new_customers'] > 0
+                    ? round(($row['repeat_customers'] / $row['new_customers']) * 100, 1)
+                    : 0.0;
+
+                return $row;
+            })
+            ->sortBy('cohort_month')
+            ->values()
+            ->all();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'cohorts' => $cohorts,
+        ];
+    }
 }

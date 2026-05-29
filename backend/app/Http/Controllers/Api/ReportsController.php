@@ -265,6 +265,13 @@ class ReportsController extends Controller
         return response()->json($this->reports->productMargins($limit));
     }
 
+    public function customerCohorts(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->customerCohorts($from, $to));
+    }
+
     public function stockDiscrepancy()
     {
         return response()->json($this->reports->stockDiscrepancy());

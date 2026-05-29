@@ -29,6 +29,7 @@ class StoreCustomerOrderRequest extends FormRequest
             // SECURITY: Only accept modifier_id - server determines price
             'items.*.modifiers.*.modifier_id' => 'required|integer|exists:modifiers,id',
             'items.*.modifiers.*.quantity' => 'sometimes|integer|min:1|max:10',
+            'pickup_slot_at' => 'nullable|date|after:now',
         ];
     }
 }

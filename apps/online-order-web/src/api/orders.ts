@@ -8,6 +8,9 @@ export type OrderDetail = Order & {
   payments?: Array<{ method: string; amount: number; status: string }>;
   /** Points credited when the order completed (customer order API). */
   loyalty_points_earned?: number;
+  pickup_slot_at?: string | null;
+  estimated_wait_minutes?: number | null;
+  proof_of_delivery_url?: string | null;
 };
 
 export type DeliveryOrderPayload = {
@@ -56,6 +59,7 @@ export async function createCustomerOrder(
     items: Array<{ item_id: number; quantity: number; variant_id?: number; modifiers?: Array<{ modifier_id: number; quantity?: number }> }>;
     customer_notes?: string;
     type?: string;
+    pickup_slot_at?: string;
   },
 ): Promise<{ order: Order }> {
   return request<{ order: Order }>(ENDPOINTS.CUSTOMER_ORDERS, {

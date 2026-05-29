@@ -75,4 +75,23 @@ export const api = {
 
   postLocation: (locations: import('./types').DriverLocation[]) =>
     request<{ message: string }>('POST', '/driver/location', { locations }),
+
+  uploadProof: async (orderId: number, file: File) => {
+    const token = getToken();
+    const form = new FormData();
+    form.append('photo', file);
+    const res = await fetch(`${BASE}/driver/deliveries/${orderId}/proof`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Upload failed.' }));
+      throw new Error((err as { message?: string }).message ?? 'Upload failed.');
+    }
+    return res.json() as Promise<{ message: string; proof_url: string }>;
+  },
 };

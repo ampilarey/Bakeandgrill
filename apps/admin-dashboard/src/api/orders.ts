@@ -49,6 +49,7 @@ export type Order = {
   delivery_driver_id?: number | null;
   driver?: { id: number; name: string; phone?: string | null } | null;
   driver_assigned_at?: string | null;
+  proof_of_delivery_path?: string | null;
 };
 
 export type OrdersResponse = {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchItems, fetchCartRecommendations, getLoyaltyAccount, getMyFavourites, toggleFavourite } from '../api';
+import { fetchItems, fetchCartRecommendations, getLoyaltyAccount, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
 import type { Item } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -32,6 +32,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const [upsellItems, setUpsellItems] = useState<Item[]>([]);
   const [earnRatePerMvr, setEarnRatePerMvr] = useState(1);
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
+  const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -43,6 +44,19 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
       .then((res) => setFavouriteIds(new Set((res.data ?? []).map((f) => f.id))))
       .catch(() => { /* non-fatal */ });
   }, [token]);
+
+  useEffect(() => {
+    if (cart.length === 0) {
+      setWaitMinutes(null);
+      return;
+    }
+    getWaitTimeEstimate()
+      .then(({ wait_minutes, queue_depth }) => {
+        if (queue_depth > 0) setWaitMinutes(wait_minutes);
+        else setWaitMinutes(null);
+      })
+      .catch(() => setWaitMinutes(null));
+  }, [cart.length]);
 
   const handleToggleFavourite = (itemId: number) => {
     if (!token) return;
@@ -231,6 +245,12 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--color-warning-bg)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-warning)', border: '1px solid rgba(202,138,4,0.25)' }}>
             {closedMessage}
           </div>
+        )}
+
+        {waitMinutes != null && cart.length > 0 && (
+          <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+            Kitchen wait ~{waitMinutes} min
+          </p>
         )}
 
         <button

@@ -77,6 +77,9 @@ Route::get('/ordering/delivery-status', [App\Http\Controllers\Api\DeliveryStatus
 Route::get('/ordering/delivery-fee-preview', [App\Http\Controllers\Api\DeliveryFeePreviewController::class, 'show'])
     ->middleware('throttle:120,1');
 
+Route::get('/ordering/pickup-slots', [App\Http\Controllers\Api\PickupSlotController::class, 'index'])
+    ->middleware('throttle:120,1');
+
 /*
 |--------------------------------------------------------------------------
 | Staff Authentication Routes
@@ -132,6 +135,10 @@ Route::prefix('auth/customer')
         Route::post('/forgot-password', [CustomerAuthController::class, 'forgotPassword'])
             ->middleware('throttle:30,1');
         Route::post('/reset-password', [CustomerAuthController::class, 'resetPassword'])
+            ->middleware('throttle:30,1');
+
+        // Guest checkout — name + phone only (no OTP)
+        Route::post('/guest-session', [CustomerAuthController::class, 'guestSession'])
             ->middleware('throttle:30,1');
     });
 
@@ -390,6 +397,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/reports/customer-ltv', [ReportsController::class, 'customerLtv']);
         Route::get('/reports/cashier-performance', [ReportsController::class, 'cashierPerformance']);
         Route::get('/reports/product-margins', [ReportsController::class, 'productMargins']);
+        Route::get('/reports/customer-cohorts', [ReportsController::class, 'customerCohorts']);
         Route::get('/reports/stock-discrepancy', [ReportsController::class, 'stockDiscrepancy']);
         Route::get('/reports/hourly-sales', [ReportsController::class, 'hourlySales']);
         Route::get('/reports/station-performance', [ReportsController::class, 'stationPerformance']);
@@ -727,6 +735,10 @@ Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->group(funct
     Route::patch('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'update']);
 });
 
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.analytics'])->group(function () {
+    Route::get('/admin/marketing/item-pairs', [App\Http\Controllers\Api\ItemPairAdminController::class, 'index']);
+});
+
 // ─── Tips, Scheduling, Waste, Wait Time ──────────────────────────────────────
 
 // Public wait time estimate
@@ -1010,6 +1022,7 @@ Route::middleware(['auth:sanctum', 'driver.token'])->group(function (): void {
     Route::get('/driver/deliveries/history', [App\Http\Controllers\Api\DriverDeliveryController::class, 'history']);
     Route::get('/driver/deliveries/{order}', [App\Http\Controllers\Api\DriverDeliveryController::class, 'show']);
     Route::patch('/driver/deliveries/{order}/status', [App\Http\Controllers\Api\DriverDeliveryController::class, 'updateStatus']);
+    Route::post('/driver/deliveries/{order}/proof', [App\Http\Controllers\Api\DriverProofController::class, 'store']);
     Route::get('/driver/stats', [App\Http\Controllers\Api\DriverDeliveryController::class, 'stats']);
 
     // Location (push from driver app)

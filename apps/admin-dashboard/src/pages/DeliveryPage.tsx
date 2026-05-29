@@ -260,6 +260,19 @@ export function DeliveryPage() {
                   onAssigned={(updated) => { setSelected(updated); void loadOrders(); }}
                 />
               )}
+              {selected.proof_of_delivery_path && (
+                <div style={{ marginTop: 16 }}>
+                  <p style={{ fontWeight: 700, fontSize: 13, color: '#D4813A', marginBottom: 8 }}>Proof of delivery</p>
+                  <a
+                    href={`/storage/${selected.proof_of_delivery_path}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 13, color: '#2563eb', fontWeight: 600 }}
+                  >
+                    View delivery photo →
+                  </a>
+                </div>
+              )}
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18 }}>
                 <span>Total</span>
                 <span style={{ color: '#D4813A' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</span>

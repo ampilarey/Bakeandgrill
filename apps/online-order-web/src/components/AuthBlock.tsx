@@ -7,11 +7,13 @@ import {
   forgotPassword,
   resetPassword,
   completeProfile,
+  guestSession,
   type AuthCustomer,
 } from "../api";
 
 type Step =
   | "phone"
+  | "guest"
   | "password"
   | "otp"
   | "forgot_phone"
@@ -37,6 +39,7 @@ function persistAuth(token: string, customer: AuthCustomer) {
 export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const [step, setStep]       = useState<Step>("phone");
   const [phone, setPhone]     = useState("");
+  const [guestName, setGuestName] = useState("");
   const [password, setPassword]   = useState("");
   const [otp, setOtp]         = useState("");
   const [hint, setHint]       = useState<string | null>(null);
@@ -86,8 +89,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     if (s === 'otp' || s === 'forgot_otp') setResendIn(30);
   };
 
-  // ── Step 1: phone submitted ───────────────────────────────────────────────
-
   const handleCheckPhone = async () => {
     setError("");
     setLoading(true);
@@ -100,6 +101,21 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
         go("otp");
       }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuestCheckout = async () => {
+    if (!guestName.trim()) { setError("Please enter your name."); return; }
+    setError("");
+    setLoading(true);
+    try {
+      const res = await guestSession({ phone, name: guestName.trim() });
+      const name = persistAuth(res.token, res.customer);
+      onSuccess(res.token, name);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -232,7 +248,41 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             onClick={handleCheckPhone} disabled={loading || !phone}>
             {loading ? "Checking…" : "Continue →"}
           </button>
+          {skipProfileSetup && (
+            <button style={S.ghostBtn} onClick={() => { go("guest"); setError(""); }}>
+              Checkout as guest — no OTP needed
+            </button>
+          )}
           <p style={S.note}>Used for order updates only — we never sell your number or spam you.</p>
+        </>
+      )}
+
+      {/* ── Guest checkout (name + phone) ───────────────── */}
+      {step === "guest" && (
+        <>
+          <h2 style={S.title}>Guest checkout</h2>
+          <p style={S.sub}>Enter your name and phone — no account or OTP required.</p>
+          {error && <p style={S.error}>{error}</p>}
+          <label style={S.label}>Your name</label>
+          <input
+            style={S.input} type="text" placeholder="Ahmed Ali"
+            value={guestName} onChange={e => setGuestName(e.target.value)}
+            autoFocus autoComplete="name"
+          />
+          <label style={S.label}>Phone number</label>
+          <input
+            style={S.input} type="tel" inputMode="numeric" placeholder="7xxxxxxx"
+            value={phone} onChange={e => setPhone(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleGuestCheckout()}
+            autoComplete="tel"
+          />
+          <button style={{ ...S.primaryBtn, opacity: loading || !phone || !guestName.trim() ? 0.55 : 1 }}
+            onClick={handleGuestCheckout} disabled={loading || !phone || !guestName.trim()}>
+            {loading ? "Starting…" : "Continue to checkout →"}
+          </button>
+          <button style={S.ghostBtn} onClick={() => { go("phone"); setGuestName(""); }}>
+            ← Sign in with OTP instead
+          </button>
         </>
       )}
 

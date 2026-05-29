@@ -787,6 +787,24 @@ export async function getProductMarginsReport(params: { limit?: number } = {}): 
   return req(`/reports/product-margins?${q}`);
 }
 
+export type CustomerCohortRow = {
+  cohort_month: string;
+  new_customers: number;
+  repeat_customers: number;
+  repeat_rate: number;
+};
+
+export type CustomerCohortsReport = {
+  from: string;
+  to: string;
+  cohorts: CustomerCohortRow[];
+};
+
+export async function getCustomerCohortsReport(params: { from?: string; to?: string } = {}): Promise<CustomerCohortsReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/customer-cohorts?${q}`);
+}
+
 export async function getStockDiscrepancyReport(): Promise<StockDiscrepancyReport> {
   return req('/reports/stock-discrepancy');
 }

@@ -423,4 +423,64 @@ class CustomerAuthController extends Controller
             'customer' => $this->customerResponse($customer, $token),
         ]);
     }
+
+    /**
+     * Guest checkout — name + phone only, no OTP.
+     * Finds or creates a customer and issues a Sanctum token for one checkout session.
+     */
+    public function guestSession(Request $request)
+    {
+        $input = $request->validate([
+            'phone' => ['required', 'string', new MaldivesPhone],
+            'name' => 'required|string|max:100',
+        ]);
+
+        $phone = $this->normalizePhone($input['phone']);
+        $rateKey = 'guest-checkout:' . $phone . ':' . ($request->ip() ?? 'unknown');
+
+        if (RateLimiter::tooManyAttempts($rateKey, 10)) {
+            throw ValidationException::withMessages([
+                'phone' => ['Too many guest checkout attempts. Please try again later or sign in with OTP.'],
+            ]);
+        }
+        RateLimiter::hit($rateKey, 3600);
+
+        $existing = Customer::withTrashed()->where('phone', $phone)->first();
+        if ($existing && $existing->trashed()) {
+            $existing->restore();
+            $existing->update(['is_active' => true]);
+            $customer = $existing;
+        } elseif ($existing) {
+            if (!$existing->is_active) {
+                throw ValidationException::withMessages([
+                    'phone' => ['This account has been deactivated. Please contact support.'],
+                ]);
+            }
+            $customer = $existing;
+            if (!$customer->name && $input['name']) {
+                $customer->update(['name' => $input['name']]);
+            }
+        } else {
+            $customer = Customer::create([
+                'phone' => $phone,
+                'name' => $input['name'],
+                'loyalty_points' => 0,
+                'tier' => 'bronze',
+            ]);
+        }
+
+        $customer->update(['last_login_at' => now()]);
+
+        $token = $customer->createToken(
+            'customer-guest-' . $customer->phone . '-' . bin2hex(random_bytes(4)),
+            ['customer'],
+        )->plainTextToken;
+
+        return response()->json([
+            'message' => 'Guest session started',
+            'token' => $token,
+            'is_new_customer' => $customer->wasRecentlyCreated,
+            'customer' => $this->customerResponse($customer, $token),
+        ]);
+    }
 }

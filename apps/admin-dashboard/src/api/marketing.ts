@@ -221,3 +221,24 @@ export async function updateMarketingAutomation(
 ): Promise<{ settings: MarketingAutomationSettings; message: string }> {
   return req('/admin/marketing/automation', { method: 'PATCH', body: JSON.stringify(data) });
 }
+
+// ── Frequently bought together (item affinity) ───────────────────────────────
+
+export type ItemPairRow = {
+  item_id: number;
+  item_name: string;
+  paired_item_id: number;
+  paired_item_name: string;
+  pair_count: number;
+};
+
+export async function fetchItemPairs(params?: { page?: number; per_page?: number }): Promise<{
+  data: ItemPairRow[];
+  meta: { current_page: number; last_page: number; total: number };
+}> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.per_page) qs.set('per_page', String(params.per_page));
+  const query = qs.toString() ? `?${qs}` : '';
+  return req(`/admin/marketing/item-pairs${query}`);
+}

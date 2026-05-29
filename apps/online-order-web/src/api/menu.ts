@@ -166,6 +166,19 @@ export async function getWaitTimeEstimate(): Promise<{ wait_minutes: number; que
   return request(ENDPOINTS.WAIT_TIME);
 }
 
+export type PickupSlot = {
+  starts_at: string;
+  ends_at: string;
+  label: string;
+  available: boolean;
+  remaining: number;
+};
+
+export async function fetchPickupSlots(date?: string): Promise<{ date: string; slots: PickupSlot[] }> {
+  const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+  return request(`${ENDPOINTS.PICKUP_SLOTS}${qs}`);
+}
+
 export interface FeaturedReview {
   id: number;
   rating: number;

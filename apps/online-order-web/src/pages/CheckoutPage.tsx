@@ -4,6 +4,8 @@ import {
   fetchOnlineOrderingStatus, type OnlineOrderingStatus,
   fetchDeliveryZoneStatus,
   getWaitTimeEstimate,
+  fetchPickupSlots,
+  type PickupSlot,
 } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
@@ -202,6 +204,10 @@ export function CheckoutPage() {
   const [onlineGate, setOnlineGate] = useState<OnlineOrderingStatus | null>(null);
   const [zoneError, setZoneError] = useState<string | null>(null);
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
+  const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>([]);
+  const [pickupSlotsLoading, setPickupSlotsLoading] = useState(false);
+
+  const pickupSlotsEnabled = s.pickup_slots_enabled !== '0' && s.pickup_slots_enabled !== 'false';
 
   useEffect(() => {
     fetchOrderingEligibility().then(setOrderElig).catch(() => setOrderElig(null));
@@ -228,7 +234,7 @@ export function CheckoutPage() {
 
   const {
     cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
-    orderType, setOrderType, delivery, setDelivery, notes, setNotes,
+    orderType, setOrderType, pickupSlotAt, setPickupSlotAt, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
     promoCode, setPromoCode, promoApplied,
@@ -252,6 +258,25 @@ export function CheckoutPage() {
   useEffect(() => {
     if (deliveryBlocked && orderType === 'delivery') setOrderType('pickup');
   }, [deliveryBlocked, orderType, setOrderType]);
+
+  useEffect(() => {
+    if (orderType !== 'pickup' || !pickupSlotsEnabled) {
+      setPickupSlots([]);
+      if (orderType !== 'pickup') setPickupSlotAt(null);
+      return;
+    }
+    setPickupSlotsLoading(true);
+    fetchPickupSlots()
+      .then((res) => {
+        const available = (res.slots ?? []).filter((slot) => slot.available);
+        setPickupSlots(available);
+        if (pickupSlotAt && !available.some((slot) => slot.starts_at === pickupSlotAt)) {
+          setPickupSlotAt(null);
+        }
+      })
+      .catch(() => setPickupSlots([]))
+      .finally(() => setPickupSlotsLoading(false));
+  }, [orderType, pickupSlotsEnabled, setPickupSlotAt]);
 
   if (cart.length === 0) {
     return (
@@ -304,6 +329,53 @@ export function CheckoutPage() {
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
           {orderElig.delivery.message ?? 'Delivery is not available right now. Please choose pickup.'}
         </p>
+      )}
+    </SectionCard>
+  );
+
+  const sectionPickupSlot = orderType === 'pickup' && pickupSlotsEnabled && (
+    <SectionCard title="Pickup time">
+      {pickupSlotsLoading ? (
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Loading available times…</p>
+      ) : pickupSlots.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+          Pickup slots are full or unavailable right now — we'll prepare your order as soon as possible after payment.
+        </p>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 12px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+            Choose when you'd like to collect your order (optional).
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setPickupSlotAt(null)}
+              style={{
+                ...S.typeBtn,
+                ...(pickupSlotAt === null ? S.typeBtnActive : {}),
+                padding: '8px 12px',
+                fontSize: '0.85rem',
+              }}
+            >
+              ASAP
+            </button>
+            {pickupSlots.map((slot) => (
+              <button
+                key={slot.starts_at}
+                type="button"
+                onClick={() => setPickupSlotAt(slot.starts_at)}
+                style={{
+                  ...S.typeBtn,
+                  ...(pickupSlotAt === slot.starts_at ? S.typeBtnActive : {}),
+                  padding: '8px 12px',
+                  fontSize: '0.85rem',
+                }}
+              >
+                {slot.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </SectionCard>
   );
@@ -773,6 +845,7 @@ export function CheckoutPage() {
             {token && (
               <>
                 {sectionOrderType}
+                {sectionPickupSlot}
                 {sectionDelivery}
                 {sectionNotes}
                 {sectionPromo}
@@ -798,6 +871,7 @@ export function CheckoutPage() {
             {token && (
               <>
                 {sectionOrderType}
+                {sectionPickupSlot}
                 {sectionDelivery}
                 {sectionNotes}
                 {sectionPromo}
