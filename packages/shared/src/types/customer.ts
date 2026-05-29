@@ -5,6 +5,7 @@ export type Customer = {
   phone: string;
   name?: string | null;
   email?: string | null;
+  date_of_birth?: string | null;
   loyalty_points?: number;
   tier?: string | null;
   preferred_language?: string | null;
@@ -59,8 +60,23 @@ export type LoyaltyRates = {
   max_redeem_percent: number;
 };
 
+export type LoyaltyTierProgress = {
+  enabled: boolean;
+  current_tier: string;
+  current_tier_name: string;
+  next_tier?: string | null;
+  next_tier_name?: string | null;
+  lifetime_points: number;
+  next_threshold?: number | null;
+  points_to_next?: number | null;
+  progress_percent?: number | null;
+  near_next_tier?: boolean;
+  at_max_tier?: boolean;
+};
+
 export type LoyaltyMeResponse = {
   account: LoyaltyAccount;
+  tier_progress?: LoyaltyTierProgress | null;
   program?: LoyaltyProgramPublic;
   rates?: LoyaltyRates;
 };

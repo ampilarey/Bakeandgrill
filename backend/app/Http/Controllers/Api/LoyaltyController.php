@@ -38,6 +38,11 @@ class LoyaltyController extends Controller
 
         $account = $this->service->accountFor($customer);
 
+        $tierProgress = $this->settings->tierProgress(
+            (int) $account->lifetime_points,
+            (string) $account->tier,
+        );
+
         return response()->json([
             'account' => [
                 'points_balance' => $account->points_balance,
@@ -46,6 +51,7 @@ class LoyaltyController extends Controller
                 'lifetime_points' => $account->lifetime_points,
                 'tier' => $account->tier,
             ],
+            'tier_progress' => $tierProgress,
             'program' => $this->settings->publicRates(),
             'rates' => [
                 'earn_per_mvr' => $this->calculator->earnRatePerMvr(),

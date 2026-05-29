@@ -111,7 +111,7 @@ export async function completeProfile(
 
 export async function updateCustomerProfile(
   token: string,
-  data: { name?: string; email?: string },
+  data: { name?: string; email?: string; date_of_birth?: string | null },
 ): Promise<{ customer: AuthCustomer }> {
   return request(ENDPOINTS.CUSTOMER_PROFILE, {
     method: 'PATCH',

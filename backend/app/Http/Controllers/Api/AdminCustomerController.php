@@ -100,6 +100,7 @@ class AdminCustomerController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'date_of_birth' => ['sometimes', 'nullable', 'date', 'before:today', 'after:1900-01-01'],
             'internal_notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'is_active' => ['sometimes', 'boolean'],
             'sms_opt_out' => ['sometimes', 'boolean'],
@@ -174,6 +175,7 @@ class AdminCustomerController extends Controller
             'name' => $c->name,
             'phone' => $c->phone,
             'email' => $c->email,
+            'date_of_birth' => $c->date_of_birth?->format('Y-m-d'),
             'tier' => $c->tier,
             'loyalty_points' => $c->loyalty_points,
             'is_active' => (bool) $c->is_active,

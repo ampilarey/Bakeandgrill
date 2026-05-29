@@ -22,7 +22,7 @@ import type {
   CustomerCreditSummary, CustomerCreditInvoice,
   CustomerAddress,
 } from '../api';
-import type { LoyaltyAccount } from '@shared/types';
+import type { LoyaltyAccount, LoyaltyTierProgress } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -98,6 +98,7 @@ export function AccountPage() {
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loyalty, setLoyalty] = useState<LoyaltyAccount | null>(null);
+  const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyError, setLoyaltyError] = useState('');
 
   // Reservations
@@ -149,7 +150,7 @@ export function AccountPage() {
   const [reminderSaving, setReminderSaving] = useState(false);
 
   // Profile edit state
-  const [profileForm, setProfileForm] = useState({ name: '', email: '' });
+  const [profileForm, setProfileForm] = useState({ name: '', email: '', date_of_birth: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
@@ -178,12 +179,19 @@ export function AccountPage() {
     getCustomerMe(token)
       .then((res) => {
         setCustomer(res.customer as AuthCustomer);
-        setProfileForm({ name: res.customer.name ?? '', email: (res.customer as AuthCustomer).email ?? '' });
+        setProfileForm({
+          name: res.customer.name ?? '',
+          email: (res.customer as AuthCustomer).email ?? '',
+          date_of_birth: (res.customer as AuthCustomer).date_of_birth ?? '',
+        });
       })
       .catch((e: Error) => setProfileMsg({ type: 'error', text: e.message || 'Failed to load profile.' }))
       .finally(() => setLoadingProfile(false));
     getLoyaltyAccount(token)
-      .then(({ account }) => setLoyalty(account))
+      .then(({ account, tier_progress }) => {
+        setLoyalty(account);
+        if (tier_progress) setLoyaltyTierProgress(tier_progress);
+      })
       .catch((e: Error) => setLoyaltyError(e.message || 'Failed to load loyalty account.'));
   }, [token, authReady]);
 
@@ -398,6 +406,7 @@ export function AccountPage() {
       const res = await updateCustomerProfile(token, {
         name: profileForm.name || undefined,
         email: profileForm.email || undefined,
+        date_of_birth: profileForm.date_of_birth || null,
       });
       setCustomer(res.customer);
       setProfileMsg({ type: 'success', text: 'Profile updated.' });
@@ -595,6 +604,19 @@ export function AccountPage() {
                 onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
                 placeholder="you@example.com"
               />
+            </FieldRow>
+
+            <FieldRow label="Date of birth">
+              <input
+                type="date"
+                style={inputStyle}
+                value={profileForm.date_of_birth}
+                onChange={(e) => setProfileForm((f) => ({ ...f, date_of_birth: e.target.value }))}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                Optional — used for birthday loyalty rewards (SMS only if you haven&apos;t opted out).
+              </p>
             </FieldRow>
 
             <button
@@ -1060,6 +1082,36 @@ export function AccountPage() {
 
               {/* Tier progress bar */}
               {(() => {
+                if (loyaltyTierProgress?.enabled) {
+                  if (loyaltyTierProgress.at_max_tier) {
+                    return (
+                      <div style={{ textAlign: 'center', padding: '0.75rem', background: 'var(--color-surface-alt)', borderRadius: 12, fontSize: 13, color: 'var(--tier-platinum-text)', fontWeight: 600 }}>
+                        💎 You&apos;ve reached {loyaltyTierProgress.current_tier_name} — the highest tier!
+                      </div>
+                    );
+                  }
+                  if (loyaltyTierProgress.next_tier_name) {
+                    const progress = (loyaltyTierProgress.progress_percent ?? 0) / 100;
+                    const ptsLeft = loyaltyTierProgress.points_to_next ?? 0;
+                    return (
+                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700 }}>{loyaltyTierProgress.current_tier_name}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: TIER_COLOR[loyaltyTierProgress.next_tier ?? '']?.text ?? '#92400E' }}>
+                            {loyaltyTierProgress.next_tier_name}
+                          </span>
+                        </div>
+                        <div style={{ height: 10, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden', marginBottom: 8 }}>
+                          <div style={{ height: '100%', width: `${(progress * 100).toFixed(1)}%`, background: TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D', borderRadius: 999, transition: 'width 0.4s ease' }} />
+                        </div>
+                        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, textAlign: 'center' }}>
+                          {ptsLeft > 0 ? <><strong>{ptsLeft.toLocaleString()} pts</strong> to reach {loyaltyTierProgress.next_tier_name}</> : `You've reached ${loyaltyTierProgress.next_tier_name}!`}
+                        </p>
+                      </div>
+                    );
+                  }
+                }
+
                 const TIERS = [
                   { key: 'bronze',   label: 'Bronze',   threshold: 0,     next: 1000,  icon: '🥉' },
                   { key: 'silver',   label: 'Silver',   threshold: 1000,  next: 5000,  icon: '🥈' },

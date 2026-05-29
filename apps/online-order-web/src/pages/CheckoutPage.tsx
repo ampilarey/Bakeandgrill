@@ -206,7 +206,7 @@ export function CheckoutPage() {
   }, []);
 
   const {
-    cart, token, customerName, loyaltyAccount, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
+    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
@@ -656,6 +656,22 @@ export function CheckoutPage() {
 
   return (
     <div style={S.page}>
+      {loyaltyTierProgress?.near_next_tier && loyaltyTierProgress.next_tier_name && (
+        <div style={{
+          margin: '0 0 1rem',
+          padding: '12px 16px',
+          borderRadius: 12,
+          background: 'var(--color-warning-bg, #FFFBEB)',
+          border: '1px solid var(--color-warning, #FCD34D)',
+          fontSize: 14,
+          color: 'var(--color-text)',
+        }}>
+          ⭐ You&apos;re close to <strong>{loyaltyTierProgress.next_tier_name}</strong>
+          {loyaltyTierProgress.points_to_next != null && loyaltyTierProgress.points_to_next > 0
+            ? <> — just <strong>{loyaltyTierProgress.points_to_next.toLocaleString()} more points</strong> after this order!</>
+            : '!'}
+        </div>
+      )}
       {/* ── Branded header ─────────────────────────────────── */}
       <BrandedHeader
         onBack={() => navigate(-1)}

@@ -305,6 +305,7 @@ class CustomerController extends Controller
                 'phone' => $customer->phone,
                 'name' => $customer->name,
                 'email' => $customer->email,
+                'date_of_birth' => $customer->date_of_birth?->format('Y-m-d'),
                 'loyalty_points' => $customer->loyalty_points,
                 'tier' => $customer->tier,
                 'preferred_language' => $customer->preferred_language,
@@ -510,13 +511,25 @@ class CustomerController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|max:255',
             'preferred_language' => 'sometimes|in:en,dv,ar',
+            'date_of_birth' => 'sometimes|nullable|date|before:today|after:1900-01-01',
         ]);
 
         $customer->update($validated);
+        $customer->refresh();
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'customer' => $customer,
+            'customer' => [
+                'id' => $customer->id,
+                'phone' => $customer->phone,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'date_of_birth' => $customer->date_of_birth?->format('Y-m-d'),
+                'loyalty_points' => $customer->loyalty_points,
+                'tier' => $customer->tier,
+                'preferred_language' => $customer->preferred_language,
+                'is_profile_complete' => $customer->is_profile_complete,
+            ],
         ]);
     }
 

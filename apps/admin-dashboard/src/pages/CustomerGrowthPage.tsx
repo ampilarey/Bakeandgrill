@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import {
   fetchCustomerGrowthMetrics, fetchCustomerSegments, fetchCustomerSegment,
   fetchCustomerDataQuality,
+  fetchMarketingAutomation, updateMarketingAutomation,
   type CustomerGrowthMetrics, type CustomerSegmentMeta, type CustomerSegmentRow,
-  type CustomerDataQualityReport,
+  type CustomerDataQualityReport, type MarketingAutomationSettings,
 } from '../api';
 import { Customer360Drawer } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -41,6 +42,9 @@ export function CustomerGrowthPage() {
   const [view360Id, setView360Id] = useState<number | null>(null);
   const [marketingSegment, setMarketingSegment] = useState('sms_opt_in');
   const [draftSms, setDraftSms] = useState('');
+  const [automation, setAutomation] = useState<MarketingAutomationSettings | null>(null);
+  const [automationSaving, setAutomationSaving] = useState(false);
+  const [automationMsg, setAutomationMsg] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -92,6 +96,28 @@ export function CustomerGrowthPage() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [tab]);
+
+  useEffect(() => {
+    if (tab !== 'marketing') return;
+    fetchMarketingAutomation()
+      .then((r) => setAutomation(r.settings))
+      .catch((e: Error) => setAutomationMsg(e.message));
+  }, [tab]);
+
+  const saveAutomation = async () => {
+    if (!automation) return;
+    setAutomationSaving(true);
+    setAutomationMsg('');
+    try {
+      const res = await updateMarketingAutomation(automation);
+      setAutomation(res.settings);
+      setAutomationMsg('Automation settings saved.');
+    } catch (e) {
+      setAutomationMsg((e as Error).message);
+    } finally {
+      setAutomationSaving(false);
+    }
+  };
 
   const marketingOptIn = segments.find((s) => s.slug === marketingSegment)?.count ?? 0;
   const marketingOptOut = segments.find((s) => s.slug === 'sms_opt_out')?.count ?? 0;
@@ -207,6 +233,42 @@ export function CustomerGrowthPage() {
       )}
 
       {tab === 'marketing' && (
+        <>
+        <Card>
+          <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Automated campaigns</p>
+          {automationMsg && (
+            <p style={{ fontSize: 13, color: automationMsg.includes('saved') ? '#15803D' : '#B91C1C', marginBottom: 12 }}>{automationMsg}</p>
+          )}
+          {!automation ? (
+            <Spinner />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                <input type="checkbox" checked={automation.birthday_enabled} onChange={(e) => setAutomation({ ...automation, birthday_enabled: e.target.checked })} />
+                Birthday loyalty bonus + SMS
+              </label>
+              <Input label="Birthday bonus points" type="number" value={String(automation.birthday_points)} onChange={(v) => setAutomation({ ...automation, birthday_points: Number(v) })} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Birthday SMS template</label>
+              <textarea value={automation.birthday_sms_template} onChange={(e) => setAutomation({ ...automation, birthday_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginTop: 8 }}>
+                <input type="checkbox" checked={automation.abandoned_cart_enabled} onChange={(e) => setAutomation({ ...automation, abandoned_cart_enabled: e.target.checked })} />
+                Abandoned cart recovery SMS
+              </label>
+              <Input label="Delay before SMS (minutes)" type="number" value={String(automation.abandoned_cart_delay_minutes)} onChange={(v) => setAutomation({ ...automation, abandoned_cart_delay_minutes: Number(v) })} />
+              <Input label="Cart snapshot retention (days)" type="number" value={String(automation.abandoned_cart_ttl_days)} onChange={(v) => setAutomation({ ...automation, abandoned_cart_ttl_days: Number(v) })} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Abandoned cart SMS template</label>
+              <textarea value={automation.abandoned_cart_sms_template} onChange={(e) => setAutomation({ ...automation, abandoned_cart_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
+
+              <Btn onClick={() => void saveAutomation()} disabled={automationSaving}>
+                {automationSaving ? 'Saving…' : 'Save automation settings'}
+              </Btn>
+              <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>
+                Only customers who have not opted out of SMS receive these messages. One SMS per birthday per year and one per cart snapshot.
+              </p>
+            </div>
+          )}
+        </Card>
         <Card>
           <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Segment outreach</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -232,6 +294,7 @@ export function CustomerGrowthPage() {
             Bulk send uses existing SMS Campaigns. Opt-out customers are never included in campaigns when opted_in filter is enabled.
           </p>
         </Card>
+        </>
       )}
 
       {tab === 'quality' && (

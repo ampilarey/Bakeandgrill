@@ -11,6 +11,7 @@ import {
   createLoyaltyHold,
   previewLoyaltyHold,
   getLoyaltyAccount,
+  snapshotCustomerCart,
   getCustomerMe,
   getOrderDetail,
   initiateOnlinePayment,
@@ -27,6 +28,7 @@ import {
   type CustomerAddress,
   type LoyaltyAccount,
 } from "../api";
+import type { LoyaltyTierProgress } from "@shared/types";
 import {
   discountLaarForRedeemPoints,
   DEFAULT_LOYALTY_RATES,
@@ -150,6 +152,7 @@ export function useCheckout() {
   const [token, setToken] = useState<string | null>(readToken);
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [loyaltyAccount, setLoyaltyAccount] = useState<LoyaltyAccount | null>(null);
+  const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyRates, setLoyaltyRates] = useState<LoyaltyRatesConfig>(DEFAULT_LOYALTY_RATES);
   const [loyaltyProgramMessage, setLoyaltyProgramMessage] = useState('');
 
@@ -309,6 +312,9 @@ export function useCheckout() {
       if (!cancelled && r.rates) {
         setLoyaltyRates(ratesFromApi(r.rates));
       }
+      if (!cancelled && r.tier_progress) {
+        setLoyaltyTierProgress(r.tier_progress);
+      }
       if (!cancelled && r.account && r.account.points_balance > 0 && (r.program?.enabled ?? true)) {
         setLoyaltyAccount(r.account);
       }
@@ -338,6 +344,22 @@ export function useCheckout() {
       (item.modifiers ?? []).reduce((ms, m) => ms + Math.round(m.price * 100) * item.quantity, 0),
     0,
   );
+
+  useEffect(() => {
+    if (!token || cart.length === 0) return;
+    const timer = window.setTimeout(() => {
+      snapshotCustomerCart(token, {
+        items: cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        subtotal_laar: subtotalLaar,
+      }).catch(() => { /* best-effort abandon tracking */ });
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [token, cart, subtotalLaar]);
 
   // Full tax on the un-discounted subtotal (used only to derive the effective rate)
   const fullTaxLaar = cart.reduce((sum, item) => {
@@ -803,7 +825,7 @@ export function useCheckout() {
   };
 
   return {
-    cart, token, customerName, loyaltyAccount, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
+    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage,
     orderType, setOrderType, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,

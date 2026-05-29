@@ -120,3 +120,19 @@ Schedule::command('webhooks:check-failed --hours=1')
 Schedule::command('jobs:alert-failed --hours=1')
     ->everyFifteenMinutes()
     ->onFailure($alertOnFailure('jobs:alert-failed'));
+
+// Marketing automation
+Schedule::command('marketing:send-birthday-offers')
+    ->dailyAt('08:30')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('marketing:send-birthday-offers'));
+
+Schedule::command('marketing:send-abandoned-cart-reminders')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('marketing:send-abandoned-cart-reminders'));
+
+Schedule::command('marketing:prune-abandoned-carts')
+    ->dailyAt('03:30')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('marketing:prune-abandoned-carts'));

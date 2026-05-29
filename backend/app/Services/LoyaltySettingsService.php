@@ -219,6 +219,63 @@ final class LoyaltySettingsService
         return max(0, (float) ($tier?->earn_multiplier ?? 1.0));
     }
 
+    /** @return array<string, mixed>|null */
+    public function tierProgress(int $lifetimePoints, ?string $currentTierSlug = null): ?array
+    {
+        if (!$this->tiersEnabled()) {
+            return null;
+        }
+
+        $tiers = $this->tiers()->values();
+        if ($tiers->isEmpty()) {
+            return null;
+        }
+
+        $currentSlug = $currentTierSlug ?? $this->tierForLifetimePoints($lifetimePoints);
+        $currentIdx = $tiers->search(fn (LoyaltyTier $t) => $t->slug === $currentSlug);
+        if ($currentIdx === false) {
+            $currentIdx = 0;
+        }
+
+        /** @var LoyaltyTier $current */
+        $current = $tiers[$currentIdx];
+        $next = $tiers->get($currentIdx + 1);
+
+        if ($next === null) {
+            return [
+                'enabled' => true,
+                'current_tier' => $current->slug,
+                'current_tier_name' => $current->name,
+                'next_tier' => null,
+                'next_tier_name' => null,
+                'lifetime_points' => $lifetimePoints,
+                'next_threshold' => null,
+                'points_to_next' => 0,
+                'progress_percent' => 100,
+                'near_next_tier' => false,
+                'at_max_tier' => true,
+            ];
+        }
+
+        $range = max(1, $next->min_lifetime_points - $current->min_lifetime_points);
+        $progress = min(1.0, max(0.0, ($lifetimePoints - $current->min_lifetime_points) / $range));
+        $pointsToNext = max(0, $next->min_lifetime_points - $lifetimePoints);
+
+        return [
+            'enabled' => true,
+            'current_tier' => $current->slug,
+            'current_tier_name' => $current->name,
+            'next_tier' => $next->slug,
+            'next_tier_name' => $next->name,
+            'lifetime_points' => $lifetimePoints,
+            'next_threshold' => $next->min_lifetime_points,
+            'points_to_next' => $pointsToNext,
+            'progress_percent' => (int) round($progress * 100),
+            'near_next_tier' => $progress >= 0.85 || $pointsToNext <= 500,
+            'at_max_tier' => false,
+        ];
+    }
+
     /** @param list<array<string, mixed>> $rows */
     public function syncTiers(array $rows): Collection
     {

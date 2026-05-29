@@ -196,3 +196,25 @@ export async function sendSmsPromotion(data: {
 }): Promise<{ promotion: SmsPromotion }> {
   return req('/sms/promotions/send', { method: 'POST', body: JSON.stringify(data) });
 }
+
+// ── Marketing automation (birthday + abandoned cart) ────────────────────────
+
+export type MarketingAutomationSettings = {
+  birthday_enabled: boolean;
+  birthday_points: number;
+  birthday_sms_template: string;
+  abandoned_cart_enabled: boolean;
+  abandoned_cart_delay_minutes: number;
+  abandoned_cart_sms_template: string;
+  abandoned_cart_ttl_days: number;
+};
+
+export async function fetchMarketingAutomation(): Promise<{ settings: MarketingAutomationSettings }> {
+  return req('/admin/marketing/automation');
+}
+
+export async function updateMarketingAutomation(
+  data: Partial<MarketingAutomationSettings>,
+): Promise<{ settings: MarketingAutomationSettings; message: string }> {
+  return req('/admin/marketing/automation', { method: 'PATCH', body: JSON.stringify(data) });
+}

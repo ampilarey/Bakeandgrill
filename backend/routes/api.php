@@ -421,6 +421,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'storeCustomer']);
     Route::patch('/profile', [CustomerController::class, 'update']);
+    Route::post('/cart/snapshot', [App\Http\Controllers\Api\CustomerCartController::class, 'snapshot']);
     Route::get('/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'index']);
     Route::post('/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'store']);
     Route::patch('/addresses/{id}', [App\Http\Controllers\Api\CustomerAddressController::class, 'update']);
@@ -692,6 +693,8 @@ Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->group(funct
     Route::get('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'index']);
     Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
     Route::get('/admin/referrals', [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
+    Route::get('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'show']);
+    Route::patch('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'update']);
 });
 
 // ─── Tips, Scheduling, Waste, Wait Time ──────────────────────────────────────

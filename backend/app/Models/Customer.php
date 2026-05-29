@@ -22,6 +22,7 @@ class Customer extends Model implements AuthenticatableContract
         'name',
         'phone',
         'email',
+        'date_of_birth',
         // 'password' is intentionally excluded from $fillable to prevent mass-assignment.
         // Set it explicitly: $customer->password = $plain; $customer->save();
         // The 'hashed' cast (below) handles bcrypt automatically.
@@ -75,6 +76,7 @@ class Customer extends Model implements AuthenticatableContract
         'is_active' => 'boolean',
         'last_login_at' => 'datetime',
         'last_order_at' => 'datetime',
+        'date_of_birth' => 'date',
         'preferences' => 'array',
         'sms_opt_out' => 'boolean',
         'sms_opt_out_at' => 'datetime',

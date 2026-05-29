@@ -60,6 +60,20 @@ export async function createLoyaltyHold(
   });
 }
 
+export async function snapshotCustomerCart(
+  token: string,
+  payload: {
+    items: Array<{ id: number; name: string; quantity: number; price?: number }>;
+    subtotal_laar?: number;
+  },
+): Promise<{ cart_token: string; snapshot_at: string }> {
+  return request(ENDPOINTS.CUSTOMER_CART_SNAPSHOT, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function releaseLoyaltyHold(token: string, orderId: number): Promise<void> {
   await request<void>(`${ENDPOINTS.LOYALTY_HOLD}/${orderId}`, {
     method: 'DELETE',
