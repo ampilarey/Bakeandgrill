@@ -110,6 +110,29 @@ export async function setDeliveryOverride(until: string | null): Promise<{ overr
   return req('/admin/ordering/delivery-override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
 }
 
+export interface DeliveryFeeSettings {
+  default_fee: number;
+  free_threshold: number;
+  zone_fees: Record<string, number>;
+  zone_whitelist: string[] | null;
+  zones_enforced: boolean;
+  source: 'database' | 'config';
+}
+
+export async function getDeliveryFeeSettings(): Promise<{ settings: DeliveryFeeSettings; delivery_status: DeliveryGateStatus }> {
+  return req('/admin/delivery/settings');
+}
+
+export async function updateDeliveryFeeSettings(payload: {
+  default_fee: number;
+  free_threshold: number;
+  zone_fees: Record<string, number>;
+  restrict_to_zone_fees?: boolean;
+  zone_whitelist?: string[] | null;
+}): Promise<{ message: string; settings: DeliveryFeeSettings; delivery_status: DeliveryGateStatus }> {
+  return req('/admin/delivery/settings', { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
 // ── Service Charge ────────────────────────────────────────────────────────────
 
 export type ServiceChargeSettings = {

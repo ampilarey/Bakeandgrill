@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Delivery\Services\DeliverySettingsService;
 use App\Models\SiteSetting;
 use Carbon\Carbon;
 
@@ -24,6 +25,10 @@ use Carbon\Carbon;
  */
 class DeliveryGateService
 {
+    public function __construct(
+        private readonly DeliverySettingsService $deliverySettings,
+    ) {}
+
     public function assertDeliveryOpen(?string $deliveryArea = null, ?Carbon $at = null): void
     {
         $result = $this->evaluate($deliveryArea, $at);
@@ -44,7 +49,7 @@ class DeliveryGateService
         $overrideUntil = SiteSetting::get('delivery_override_until');
         $overrideActive = $this->isOverrideActive($at);
 
-        $freeThreshold = (float) config('delivery.free_threshold', 200.00);
+        $freeThreshold = $this->deliverySettings->freeThreshold();
 
         return [
             'delivery_open' => $result->allowed,

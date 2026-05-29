@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Domains\Delivery\Services\DeliveryFeeCalculator;
+use App\Domains\Delivery\Services\DeliverySettingsService;
 use Tests\TestCase;
 
 class DeliveryFeeCalculatorTest extends TestCase
@@ -14,7 +15,18 @@ class DeliveryFeeCalculatorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->calculator = new DeliveryFeeCalculator;
+
+        $settings = $this->createMock(DeliverySettingsService::class);
+        $settings->method('freeThreshold')->willReturn(200.0);
+        $settings->method('defaultFee')->willReturn(30.0);
+        $settings->method('zoneFees')->willReturn([
+            'Male' => 20.00,
+            'Hulhumale' => 30.00,
+            'Vilimale' => 30.00,
+            'Maafushi' => 50.00,
+        ]);
+
+        $this->calculator = new DeliveryFeeCalculator($settings);
     }
 
     public function test_known_island_returns_correct_fee(): void

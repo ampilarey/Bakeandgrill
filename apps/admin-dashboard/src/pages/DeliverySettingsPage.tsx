@@ -7,7 +7,10 @@ import {
   toggleDelivery,
   setDeliveryOverride,
   updateDeliverySchedule,
+  getDeliveryFeeSettings,
+  updateDeliveryFeeSettings,
   type DeliveryGateStatus,
+  type DeliveryFeeSettings,
 } from '../api';
 
 const DAYS = [
@@ -110,6 +113,8 @@ const S = {
   }),
 };
 
+type ZoneFeeRow = { name: string; fee: string };
+
 export default function DeliverySettingsPage() {
   usePageTitle('Delivery Settings');
 
@@ -125,6 +130,13 @@ export default function DeliverySettingsPage() {
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleSaving, setScheduleSaving]   = useState(false);
 
+  const [feeSettings, setFeeSettings] = useState<DeliveryFeeSettings | null>(null);
+  const [defaultFee, setDefaultFee] = useState('30');
+  const [freeThreshold, setFreeThreshold] = useState('200');
+  const [zoneRows, setZoneRows] = useState<ZoneFeeRow[]>([]);
+  const [restrictZones, setRestrictZones] = useState(false);
+  const [feeSaving, setFeeSaving] = useState(false);
+
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -132,9 +144,19 @@ export default function DeliverySettingsPage() {
 
   const load = () => {
     setLoading(true);
-    getDeliveryStatus()
-      .then((s) => {
+    Promise.all([getDeliveryStatus(), getDeliveryFeeSettings()])
+      .then(([s, feeRes]) => {
         setStatus(s);
+        setFeeSettings(feeRes.settings);
+        setDefaultFee(String(feeRes.settings.default_fee));
+        setFreeThreshold(String(feeRes.settings.free_threshold));
+        setRestrictZones(feeRes.settings.zones_enforced);
+        setZoneRows(
+          Object.entries(feeRes.settings.zone_fees).map(([name, fee]) => ({
+            name,
+            fee: String(fee),
+          })),
+        );
         setScheduleEnabled(s.schedule_active);
         if (s.override_until) {
           const d = new Date(s.override_until);
@@ -241,6 +263,48 @@ export default function DeliverySettingsPage() {
     ) as Schedule);
   };
 
+  const saveFeeSettings = async () => {
+    const zoneFees: Record<string, number> = {};
+    for (const row of zoneRows) {
+      const name = row.name.trim();
+      const fee = parseFloat(row.fee);
+      if (!name || Number.isNaN(fee)) {
+        showToast('Each zone needs a name and valid fee.', 'err');
+        return;
+      }
+      zoneFees[name] = fee;
+    }
+
+    setFeeSaving(true);
+    try {
+      const res = await updateDeliveryFeeSettings({
+        default_fee: parseFloat(defaultFee) || 0,
+        free_threshold: parseFloat(freeThreshold) || 0,
+        zone_fees: zoneFees,
+        restrict_to_zone_fees: restrictZones,
+      });
+      setFeeSettings(res.settings);
+      setStatus(res.delivery_status);
+      showToast('Zones and fees saved.');
+    } catch {
+      showToast('Failed to save zones and fees.', 'err');
+    } finally {
+      setFeeSaving(false);
+    }
+  };
+
+  const addZoneRow = () => {
+    setZoneRows((prev) => [...prev, { name: '', fee: '30' }]);
+  };
+
+  const updateZoneRow = (idx: number, field: 'name' | 'fee', value: string) => {
+    setZoneRows((prev) => prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
+  };
+
+  const removeZoneRow = (idx: number) => {
+    setZoneRows((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   if (loading) {
     return (
       <div style={{ padding: '2rem' }}>
@@ -282,6 +346,91 @@ export default function DeliverySettingsPage() {
           {toast.msg}
         </div>
       )}
+
+      {/* Zones & fees */}
+      <div style={S.card}>
+        <div style={S.sectionTitle}>Zones &amp; Fees</div>
+        <p style={{ fontSize: 12, color: '#9C8575', marginTop: -8, marginBottom: 16, lineHeight: 1.5 }}>
+          Per-island delivery fees and free-delivery threshold. Online cart progress uses the threshold automatically.
+          {feeSettings?.source === 'config' && (
+            <span> Currently showing config defaults until you save.</span>
+          )}
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={S.label}>Default fee (MVR)</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={defaultFee}
+              onChange={(e) => setDefaultFee(e.target.value)}
+              style={S.input}
+            />
+          </div>
+          <div>
+            <label style={S.label}>Free delivery from (MVR subtotal)</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={freeThreshold}
+              onChange={(e) => setFreeThreshold(e.target.value)}
+              style={S.input}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+          {zoneRows.map((row, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Island / area"
+                value={row.name}
+                onChange={(e) => updateZoneRow(idx, 'name', e.target.value)}
+                style={{ ...S.input, flex: '1 1 140px' }}
+              />
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Fee"
+                value={row.fee}
+                onChange={(e) => updateZoneRow(idx, 'fee', e.target.value)}
+                style={{ ...S.input, width: 100 }}
+              />
+              <span style={{ fontSize: 12, color: '#9C8575' }}>MVR</span>
+              <button
+                type="button"
+                onClick={() => removeZoneRow(idx)}
+                style={{ background: 'none', border: 'none', color: '#C0392B', cursor: 'pointer', fontSize: 18 }}
+                aria-label="Remove zone"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+          <button type="button" style={S.btnSecondary} onClick={addZoneRow}>+ Add zone</button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4A3728', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={restrictZones}
+              onChange={(e) => setRestrictZones(e.target.checked)}
+            />
+            Only deliver to listed zones
+          </label>
+        </div>
+
+        <button type="button" style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
+          <Save size={14} />
+          {feeSaving ? 'Saving…' : 'Save Zones & Fees'}
+        </button>
+      </div>
 
       {/* Status card */}
       <div style={S.card}>

@@ -7,13 +7,17 @@ namespace App\Domains\Delivery\Services;
 /**
  * Calculates the delivery fee for an order.
  *
- * Current implementation: flat fee from config, per island zone.
- * Future: can be replaced with a DB-driven fee table.
+ * Fees and thresholds are loaded from site_settings via DeliverySettingsService,
+ * with config/env fallback.
  *
  * All amounts in MVR (decimal). Converted to laari in the order pipeline.
  */
 class DeliveryFeeCalculator
 {
+    public function __construct(
+        private readonly DeliverySettingsService $settings,
+    ) {}
+
     /**
      * Calculate delivery fee in MVR.
      *
@@ -22,12 +26,12 @@ class DeliveryFeeCalculator
      */
     public function calculate(string $island, int $subtotalLaar = 0): float
     {
-        $freeThreshold = (float) config('delivery.free_threshold', 200.00);
+        $freeThreshold = $this->settings->freeThreshold();
         if ($freeThreshold > 0 && $subtotalLaar >= (int) round($freeThreshold * 100)) {
             return 0.0;
         }
 
-        $zones = $this->zones();
+        $zones = $this->settings->zoneFees();
         $normalizedIsland = mb_strtolower(trim($island));
 
         foreach ($zones as $zone => $fee) {
@@ -36,13 +40,12 @@ class DeliveryFeeCalculator
             }
         }
 
-        // Default zone fee
-        return (float) config('delivery.default_fee', 30.00);
+        return $this->settings->defaultFee();
     }
 
     public function freeThresholdMvr(): float
     {
-        return (float) config('delivery.free_threshold', 200.00);
+        return $this->settings->freeThreshold();
     }
 
     /**
@@ -51,25 +54,5 @@ class DeliveryFeeCalculator
     public function calculateLaar(string $island, int $subtotalLaar = 0): int
     {
         return (int) floor($this->calculate($island, $subtotalLaar) * 100);
-    }
-
-    /**
-     * Zone => fee map (MVR). Loaded from config or defaults.
-     */
-    private function zones(): array
-    {
-        $configured = config('delivery.zones', []);
-
-        if (!empty($configured)) {
-            return $configured;
-        }
-
-        // Sensible Maldives defaults
-        return [
-            'Male' => 20.00,
-            'Hulhumale' => 30.00,
-            'Vilimale' => 30.00,
-            'Maafushi' => 50.00,
-        ];
     }
 }

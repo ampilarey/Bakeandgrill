@@ -164,6 +164,11 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::post('/delivery-override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'deliveryOverride']);
     });
 
+    Route::prefix('admin/delivery')->middleware('permission:settings.update')->group(function () {
+        Route::get('/settings', [App\Http\Controllers\Api\DeliverySettingsController::class, 'show']);
+        Route::patch('/settings', [App\Http\Controllers\Api\DeliverySettingsController::class, 'update']);
+    });
+
     Route::prefix('admin/settings/service-charge')->middleware('permission:settings.update')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'show']);
         Route::put('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'update']);

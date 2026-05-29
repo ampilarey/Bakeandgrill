@@ -4,9 +4,14 @@ import { fetchItems } from '../api';
 import type { Item } from '../api';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
-// MVR threshold for free delivery — must match backend config/delivery.php DELIVERY_FREE_THRESHOLD
-const FREE_DELIVERY_MVR = 200;
+const DEFAULT_FREE_DELIVERY_MVR = 200;
+
+function parseFreeDeliveryThreshold(raw: string | undefined): number {
+  const parsed = raw ? parseFloat(raw) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_FREE_DELIVERY_MVR;
+}
 
 type Props = {
   isOpen?: boolean;
@@ -19,6 +24,8 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const navigate = useNavigate();
   const { cart, cartTotal, updateQuantity, addItem } = useCart();
   const { t } = useLanguage();
+  const s = useSiteSettings();
+  const freeDeliveryMvr = parseFreeDeliveryThreshold(s.delivery_free_threshold);
   const [upsellItems, setUpsellItems] = useState<Item[]>([]);
   const hasFetched = useRef(false);
 
@@ -121,18 +128,18 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
             </div>
 
             {/* Free delivery progress bar */}
-            {cartTotal < FREE_DELIVERY_MVR && (
+            {cartTotal < freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
-                  <span>🛵 Add <strong style={{ color: 'var(--color-primary)' }}>MVR {(FREE_DELIVERY_MVR - cartTotal).toFixed(2)}</strong> for free delivery</span>
-                  <span>MVR {FREE_DELIVERY_MVR}</span>
+                  <span>🛵 Add <strong style={{ color: 'var(--color-primary)' }}>MVR {(freeDeliveryMvr - cartTotal).toFixed(2)}</strong> for free delivery</span>
+                  <span>MVR {freeDeliveryMvr}</span>
                 </div>
                 <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, (cartTotal / FREE_DELIVERY_MVR) * 100)}%`, background: 'var(--color-primary)', borderRadius: 999, transition: 'width 0.3s ease' }} />
+                  <div style={{ height: '100%', width: `${Math.min(100, (cartTotal / freeDeliveryMvr) * 100)}%`, background: 'var(--color-primary)', borderRadius: 999, transition: 'width 0.3s ease' }} />
                 </div>
               </div>
             )}
-            {cartTotal >= FREE_DELIVERY_MVR && (
+            {cartTotal >= freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: 'var(--color-success-bg)', borderRadius: 8 }}>
                 🎉 You qualify for free delivery!
               </div>
