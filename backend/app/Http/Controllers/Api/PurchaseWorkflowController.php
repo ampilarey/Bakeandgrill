@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Models\InventoryItem;
+use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
@@ -156,6 +157,8 @@ class PurchaseWorkflowController extends Controller
 
             $purchase->save();
         });
+
+        app(GstLedgerPoster::class)->postPurchaseInput($purchase->fresh(), $request->user()?->id);
 
         return response()->json(['purchase' => $purchase->fresh(['items.inventoryItem', 'supplier'])]);
     }

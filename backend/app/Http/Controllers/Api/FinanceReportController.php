@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Payments\Services\PaymentCommissionService;
+use App\Domains\Gst\Services\GstReportService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -188,48 +189,9 @@ class FinanceReportController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
-        $monthExpr = match (DB::getDriverName()) {
-            'sqlite' => "strftime('%Y-%m', created_at)",
-            'pgsql' => "TO_CHAR(created_at, 'YYYY-MM')",
-            default => 'DATE_FORMAT(created_at, "%Y-%m")',
-        };
-
-        $taxable = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
-            ->where('tax_amount', '>', 0)
-            ->selectRaw("{$monthExpr} as period")
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SUBTOTAL_LAAR) . ' as taxable_amount')
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax_collected')
-            ->selectRaw('COUNT(*) as transactions')
-            ->groupByRaw($monthExpr)
-            ->orderByRaw($monthExpr)
-            ->get();
-
-        $totalTaxable = $taxable->sum('taxable_amount');
-        $totalCollected = $taxable->sum('tax_collected');
-
-        // Input tax on purchases (if tracked on invoice)
-        $inputTax = Invoice::where('type', 'purchase')
-            ->whereBetween('issue_date', [$from->toDateString(), $to->toDateString()])
-            ->where('status', '!=', 'void')
-            ->sum('tax_amount');
-
-        return response()->json([
-            'from' => $from->toDateString(),
-            'to' => $to->toDateString(),
-            'output_tax' => [
-                'taxable_revenue' => (float) $totalTaxable,
-                'tax_collected' => (float) $totalCollected,
-                'by_period' => $taxable->map(fn ($r) => [
-                    'period' => $r->period,
-                    'taxable_amount' => (float) $r->taxable_amount,
-                    'tax_collected' => (float) $r->tax_collected,
-                    'transactions' => (int) $r->transactions,
-                ]),
-            ],
-            'input_tax' => (float) $inputTax,
-            'net_tax_payable' => round((float) $totalCollected - (float) $inputTax, 2),
-        ]);
+        return response()->json(
+            app(GstReportService::class)->legacyTaxSummary($from->toDateString(), $to->toDateString())
+        );
     }
 
     // ──────────────────────────────────────────────────────────

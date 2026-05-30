@@ -54,6 +54,9 @@ Route::middleware('throttle:60,1')
     });
 
 // Opening hours status (public - for online order app)
+Route::get('/gst/bootstrap', [App\Http\Controllers\Api\GstBootstrapController::class, 'show'])
+    ->middleware('throttle:120,1');
+
 Route::get('/opening-hours/status', [App\Http\Controllers\Api\OpeningHoursController::class, 'status'])
     ->middleware('throttle:120,1');
 
@@ -199,6 +202,12 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::prefix('admin/settings/packaging-fee')->middleware('permission:settings.update')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'show']);
         Route::patch('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'update']);
+    });
+    Route::prefix('admin/gst/settings')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\GstSettingsController::class, 'show'])
+            ->middleware('permission:reports.financial');
+        Route::put('/', [App\Http\Controllers\Api\GstSettingsController::class, 'update'])
+            ->middleware('permission:settings.update');
     });
 
     // Device Management — read (devices.view) vs mutate (manage / approve)

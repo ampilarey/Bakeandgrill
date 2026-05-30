@@ -19,6 +19,18 @@ class UpdatePurchaseRequest extends FormRequest
             'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
             'purchase_date' => 'nullable|date',
+            'supplier_tin' => 'nullable|string|max:30',
+            'supplier_invoice_no' => 'nullable|string|max:64',
+            'supplier_invoice_date' => 'nullable|date',
+            'amount_excluding_gst_laar' => 'nullable|integer|min:0',
+            'gst_rate_bp' => 'nullable|integer|min:0|max:10000',
+            'gst_laar' => 'nullable|integer|min:0',
+            'total_laar' => 'nullable|integer|min:0',
+            'is_tax_invoice_received' => 'nullable|boolean',
+            'is_input_tax_claimable' => 'nullable|boolean',
+            'claim_block_reason' => 'nullable|string|max:500',
+            'revenue_or_capital' => 'nullable|in:revenue,capital',
+            'taxable_activity_no' => 'nullable|string|max:30',
         ];
     }
 }

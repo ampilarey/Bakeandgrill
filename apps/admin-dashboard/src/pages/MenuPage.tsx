@@ -8,6 +8,7 @@ import {
   type MenuGroupRow, type MenuVariant,
 } from '../api';
 import { PhotosTab } from './MenuPage/PhotosTab';
+import { useGstBootstrap } from '../hooks/useGstBootstrap';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -216,7 +217,7 @@ type ComboRow = { item_id: string; quantity: string; is_optional: boolean };
 
 type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
-  image_url: string; base_price: string; tax_rate: string;
+  image_url: string; base_price: string; tax_code: string;
   sort_order: string; is_active: boolean; is_available: boolean;
   category_id: string;
   menu_group_id: string;
@@ -256,7 +257,7 @@ function itemToForm(item: MenuItem): ItemForm {
     sku: item.sku ?? '',
     image_url: item.image_url ?? '',
     base_price: String(item.base_price),
-    tax_rate: item.tax_rate != null ? String(item.tax_rate) : '',
+    tax_code: item.tax_code ?? (item.tax_rate && Number(item.tax_rate) > 0 ? 'standard_8' : 'out_of_scope'),
     sort_order: item.sort_order != null ? String(item.sort_order) : '',
     is_active: item.is_active,
     is_available: item.is_available,
@@ -290,7 +291,7 @@ function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayloa
     image_url: form.image_url.trim() || null,
     base_price: parseFloat(form.base_price) || 0,
     has_variants: form.has_variants,
-    tax_rate: form.tax_rate !== '' ? parseFloat(form.tax_rate) : null,
+    tax_code: form.tax_code,
     sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
     is_active: form.is_active,
     is_available: form.is_available,
@@ -334,6 +335,47 @@ function formToPayload(form: ItemForm, includeChannels: boolean): MenuItemPayloa
   return payload;
 }
 
+const TAX_CODE_OPTIONS = [
+  { value: 'standard_8', label: 'Standard rated (8%)' },
+  { value: 'zero_rated', label: 'Zero rated' },
+  { value: 'exempt', label: 'Exempt' },
+  { value: 'out_of_scope', label: 'Out of scope' },
+] as const;
+
+function TaxCodeField({
+  value,
+  onChange,
+  bootstrap,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  bootstrap: ReturnType<typeof useGstBootstrap>;
+}) {
+  const displayRate = value === 'standard_8' ? (bootstrap?.tax_rate_percent ?? 8) : 0;
+  return (
+    <Field label="Tax classification">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #E8DDD0', fontSize: 14 }}
+      >
+        {TAX_CODE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.value === 'standard_8'
+              ? `Standard rated (${bootstrap?.tax_rate_percent ?? 8}%)`
+              : o.label}
+          </option>
+        ))}
+      </select>
+      {value === 'standard_8' && (
+        <span style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4, display: 'block' }}>
+          Rate from GST settings: {displayRate}% (read-only)
+        </span>
+      )}
+    </Field>
+  );
+}
+
 function ItemFormModal({
   initial, title, categories, menuGroups, allItems, onSave, onClose, itemId,
 }: {
@@ -350,6 +392,7 @@ function ItemFormModal({
   const [form, setForm] = useState<ItemForm>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const gstBootstrap = useGstBootstrap();
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
@@ -435,9 +478,7 @@ function ItemFormModal({
               <>
                 <VariantsEditor rows={form.variants} onChange={(rows) => set('variants', rows)} />
                 <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <Field label="Tax Rate (%)">
-                    <Input value={form.tax_rate} onChange={(v) => set('tax_rate', v)} type="number" placeholder="0" />
-                  </Field>
+                  <TaxCodeField value={form.tax_code} onChange={(v) => set('tax_code', v)} bootstrap={gstBootstrap} />
                   <Field label="Sort Order">
                     <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
                   </Field>
@@ -448,9 +489,7 @@ function ItemFormModal({
                 <Field label="Price (MVR) *">
                   <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
                 </Field>
-                <Field label="Tax Rate (%)">
-                  <Input value={form.tax_rate} onChange={(v) => set('tax_rate', v)} type="number" placeholder="0" />
-                </Field>
+                <TaxCodeField value={form.tax_code} onChange={(v) => set('tax_code', v)} bootstrap={gstBootstrap} />
                 <Field label="Sort Order">
                   <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
                 </Field>
@@ -954,7 +993,7 @@ export function MenuPage() {
 
   const EMPTY_ITEM_FORM: ItemForm = {
     name: '', name_dv: '', description: '', sku: '', image_url: '',
-    base_price: '', tax_rate: '', sort_order: '',
+    base_price: '', tax_code: 'standard_8', sort_order: '',
     is_active: true, is_available: true,
     category_id: selectedCat != null ? String(selectedCat) : '',
     menu_group_id: '1',

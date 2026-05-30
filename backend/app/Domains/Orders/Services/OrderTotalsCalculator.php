@@ -7,6 +7,8 @@ namespace App\Domains\Orders\Services;
 use App\Domains\Orders\DTOs\DiscountsInput;
 use App\Domains\Orders\DTOs\ServiceChargeBreakdown;
 use App\Domains\Orders\DTOs\TotalsBreakdown;
+use App\Domains\Gst\Services\GstSettingsService;
+use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Shared\ValueObjects\Money;
 use App\Models\Order;
 
@@ -27,6 +29,8 @@ class OrderTotalsCalculator
     public function __construct(
         private readonly ServiceChargeCalculator $serviceChargeCalculator = new ServiceChargeCalculator,
         private readonly PackagingFeeCalculator $packagingFeeCalculator = new PackagingFeeCalculator,
+        private readonly GstTaxCalculator $gstTax = new GstTaxCalculator,
+        private readonly GstSettingsService $gstSettings = new GstSettingsService,
     ) {}
 
     public static function orderTotalsLocked(Order $order): bool
@@ -71,7 +75,7 @@ class OrderTotalsCalculator
         ?bool $taxInclusive = null,
         ?ServiceChargeBreakdown $lockedServiceCharge = null,
     ): TotalsBreakdown {
-        $taxInclusive ??= (bool) config('app.tax_inclusive', false);
+        $taxInclusive ??= $this->gstSettings->taxInclusive();
 
         $subtotal = $this->calculateSubtotalFromItems($order);
         $promoDisco = new Money($discounts->promoDiscountLaar);
@@ -210,19 +214,18 @@ class OrderTotalsCalculator
 
         $totalTaxLaar = 0;
         foreach ($order->items as $item) {
-            $taxRate = (float) $item->tax_rate;
-            if ($taxRate <= 0) {
-                continue;
-            }
-
             $itemLaar = (int) round((float) $item->total_price * 100);
             $effectiveLaar = (int) round($itemLaar * $discountRatio);
 
-            if ($taxInclusive) {
-                $taxLaar = (int) round($effectiveLaar * $taxRate / (100 + $taxRate));
-            } else {
-                $taxLaar = (int) round($effectiveLaar * $taxRate / 100);
+            if ($effectiveLaar <= 0) {
+                continue;
             }
+
+            $taxLaar = $this->gstTax->calculateLineTaxLaar(
+                $effectiveLaar,
+                $item->tax_code ?? null,
+                $taxInclusive,
+            );
 
             $totalTaxLaar += $taxLaar;
         }
@@ -244,8 +247,8 @@ class OrderTotalsCalculator
         $totalEffective = 0;
 
         foreach ($order->items as $item) {
-            $taxRate = (float) $item->tax_rate;
-            if ($taxRate <= 0) {
+            $rate = $this->gstTax->resolveTaxRatePercent($item->tax_code ?? null);
+            if ($rate <= 0) {
                 continue;
             }
             $itemLaar = (int) round((float) $item->total_price * 100);
@@ -253,7 +256,7 @@ class OrderTotalsCalculator
             if ($effectiveLaar <= 0) {
                 continue;
             }
-            $weightedSum += $effectiveLaar * $taxRate;
+            $weightedSum += $effectiveLaar * $rate;
             $totalEffective += $effectiveLaar;
         }
 

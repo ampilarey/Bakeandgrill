@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, setSalesChannel, type SalesChannel } from "../api/menu";
+import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, setSalesChannel, type SalesChannel } from "../api/menu";
 import { useCart } from "../context/CartContext";
 import {
   applyPromoCode,
@@ -157,6 +157,13 @@ export function useCheckout() {
   const [loyaltyRates, setLoyaltyRates] = useState<LoyaltyRatesConfig>(DEFAULT_LOYALTY_RATES);
   const [earnRatePerMvr, setEarnRatePerMvr] = useState(1);
   const [loyaltyProgramMessage, setLoyaltyProgramMessage] = useState('');
+  const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
+
+  useEffect(() => {
+    fetchGstBootstrap()
+      .then((b) => setDefaultTaxRatePercent(b.tax_rate_percent))
+      .catch(() => setDefaultTaxRatePercent(8));
+  }, []);
 
   // Sync token when AuthContext recovers session via Blade cookie (e.g. after BML payment
   // clears localStorage on mobile Safari, checkSession() restores it asynchronously).
@@ -389,7 +396,7 @@ export function useCheckout() {
 
   // Full tax on the un-discounted subtotal (used only to derive the effective rate)
   const fullTaxLaar = cart.reduce((sum, item) => {
-    const rate = item.taxRate ?? 0;
+    const rate = (item.taxRate ?? 0) > 0 ? (item.taxRate ?? 0) : defaultTaxRatePercent;
     if (rate <= 0) return sum;
     const itemLaar =
       Math.round(item.price * 100) * item.quantity +

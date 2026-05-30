@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Gst\Services\GstInvoiceSequenceService;
+use App\Domains\Gst\Services\GstLedgerPoster;
+use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\Invoice;
@@ -20,7 +23,12 @@ use Illuminate\Support\Facades\Storage;
 
 class InvoiceController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly GstLedgerPoster $gstPoster,
+        private readonly GstInvoiceSequenceService $gstSequence,
+        private readonly GstSettingsService $gstSettings,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -83,7 +91,18 @@ class InvoiceController extends Controller
             'items.*.item_id' => ['nullable', 'integer', 'exists:items,id'],
             'items.*.inventory_item_id' => ['nullable', 'integer', 'exists:inventory_items,id'],
             'items.*.tax_rate_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'is_tax_invoice' => ['sometimes', 'boolean'],
+            'customer_tin' => ['nullable', 'string', 'max:30'],
         ]);
+
+        if (!empty($validated['is_tax_invoice'])) {
+            if (empty($validated['customer_tin']) && empty($validated['recipient_name'])) {
+                return response()->json(['message' => 'Tax invoice requires customer TIN and recipient name.'], 422);
+            }
+            if (empty($validated['customer_tin'])) {
+                return response()->json(['message' => 'Customer TIN is required for tax invoices.'], 422);
+            }
+        }
 
         $invoice = DB::transaction(function () use ($validated, $request) {
             $subtotal = 0.0;
@@ -116,10 +135,15 @@ class InvoiceController extends Controller
 
             $total = round($subtotal + $taxTotal, 2);
 
+            $isTaxInvoice = !empty($validated['is_tax_invoice']);
             $inv = Invoice::create([
-                'invoice_number' => $this->generateInvoiceNumber(),
+                'invoice_number' => $isTaxInvoice
+                    ? $this->gstSequence->nextTaxInvoiceNumber()
+                    : $this->generateInvoiceNumber(),
                 'type' => $validated['type'],
-                'status' => 'draft',
+                'status' => $isTaxInvoice ? 'sent' : 'draft',
+                'is_tax_invoice' => $isTaxInvoice,
+                'customer_tin' => $validated['customer_tin'] ?? null,
                 'order_id' => $validated['order_id'] ?? null,
                 'purchase_id' => $validated['purchase_id'] ?? null,
                 'customer_id' => $validated['customer_id'] ?? null,
@@ -152,6 +176,10 @@ class InvoiceController extends Controller
         });
 
         $this->audit->log('invoice.created', 'Invoice', $invoice->id, [], ['number' => $invoice->invoice_number], [], $request);
+
+        if ($invoice->is_tax_invoice && $invoice->status === 'sent') {
+            $this->gstPoster->postTaxInvoice($invoice, $request->user()?->id);
+        }
 
         return response()->json(['invoice' => $this->format($invoice->load('items'))], 201);
     }
@@ -191,6 +219,10 @@ class InvoiceController extends Controller
         $invoice = Invoice::findOrFail($id);
         $invoice->update(['status' => 'sent']);
         $this->audit->log('invoice.sent', 'Invoice', $invoice->id, [], [], [], $request);
+
+        if ($invoice->is_tax_invoice) {
+            $this->gstPoster->postTaxInvoice($invoice->fresh(), $request->user()?->id);
+        }
 
         return response()->json(['invoice' => $this->format($invoice->fresh())]);
     }
@@ -232,17 +264,24 @@ class InvoiceController extends Controller
     {
         $parent = Invoice::with('items')->findOrFail($id);
 
-        $creditNote = DB::transaction(function () use ($parent, $request) {
+        $validated = $request->validate([
+            'credit_note_reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $creditNote = DB::transaction(function () use ($parent, $request, $validated) {
             $cn = Invoice::create([
-                'invoice_number' => $this->generateInvoiceNumber(),
+                'invoice_number' => $this->gstSequence->nextCreditNoteNumber(),
                 'type' => 'credit_note',
-                'status' => 'draft',
+                'status' => 'sent',
+                'is_tax_invoice' => (bool) $parent->is_tax_invoice,
                 'parent_invoice_id' => $parent->id,
                 'customer_id' => $parent->customer_id,
+                'customer_tin' => $parent->customer_tin,
                 'supplier_id' => $parent->supplier_id,
                 'created_by' => $request->user()->id,
                 'recipient_name' => $parent->recipient_name,
                 'recipient_phone' => $parent->recipient_phone,
+                'recipient_address' => $parent->recipient_address,
                 'subtotal' => $parent->subtotal,
                 'subtotal_laar' => $parent->subtotal_laar,
                 'tax_amount' => $parent->tax_amount,
@@ -254,6 +293,7 @@ class InvoiceController extends Controller
                 'tax_rate_bp' => $parent->tax_rate_bp,
                 'issue_date' => now()->toDateString(),
                 'notes' => "Credit note for {$parent->invoice_number}",
+                'credit_note_reason' => $validated['credit_note_reason'] ?? null,
             ]);
 
             foreach ($parent->items as $item) {
@@ -266,6 +306,8 @@ class InvoiceController extends Controller
 
             return $cn;
         });
+
+        $this->gstPoster->postCreditNote($creditNote->fresh(), $request->user()?->id);
 
         return response()->json(['invoice' => $this->format($creditNote->load('items'))], 201);
     }
@@ -309,11 +351,22 @@ class InvoiceController extends Controller
 
     public function createFromOrder(Request $request, int $orderId): JsonResponse
     {
+        $validated = $request->validate([
+            'is_tax_invoice' => ['sometimes', 'boolean'],
+            'customer_tin' => ['nullable', 'string', 'max:30'],
+            'recipient_name' => ['nullable', 'string', 'max:200'],
+            'recipient_address' => ['nullable', 'string'],
+        ]);
+
         $order = Order::with(['items.item', 'customer'])->findOrFail($orderId);
-        $invoice = $this->createFromOrderInternal($order, $request->user());
+        $invoice = $this->createFromOrderInternal($order, $request->user(), $validated);
 
         $created = $invoice->wasRecentlyCreated;
         $this->audit->log('invoice.created_from_order', 'Invoice', $invoice->id, [], ['order_id' => $orderId], [], $request);
+
+        if ($invoice->is_tax_invoice && $invoice->status === 'sent') {
+            $this->gstPoster->postTaxInvoice($invoice, $request->user()?->id);
+        }
 
         return response()->json(['invoice' => $this->format($invoice->load('items'))], $created ? 201 : 200);
     }
@@ -322,10 +375,9 @@ class InvoiceController extends Controller
      * Create (or return existing) a sale invoice from an order.
      * Reusable internally without wrapping in a JsonResponse.
      */
-    public function createFromOrderInternal(Order $order, ?User $actor): Invoice
+    public function createFromOrderInternal(Order $order, ?User $actor, array $options = []): Invoice
     {
-        return DB::transaction(function () use ($order, $actor) {
-            // Lock the order row to prevent concurrent calls creating duplicate invoices.
+        return DB::transaction(function () use ($order, $actor, $options) {
             Order::lockForUpdate()->findOrFail($order->id);
 
             $order->loadMissing(['items.item', 'customer']);
@@ -334,24 +386,34 @@ class InvoiceController extends Controller
             if ($existing) {
                 return $existing;
             }
+
+            $isTaxInvoice = (bool) ($options['is_tax_invoice'] ?? false);
+            $customerTin = $options['customer_tin'] ?? $order->customer?->tin;
+            $invoiceNumber = $isTaxInvoice
+                ? $this->gstSequence->nextTaxInvoiceNumber()
+                : $this->generateInvoiceNumber();
+
             $inv = Invoice::create([
-                'invoice_number' => $this->generateInvoiceNumber(),
+                'invoice_number' => $invoiceNumber,
                 'type' => 'sale',
-                'status' => 'draft',
+                'status' => $isTaxInvoice ? 'sent' : 'draft',
+                'is_tax_invoice' => $isTaxInvoice,
                 'order_id' => $order->id,
                 'customer_id' => $order->customer_id,
+                'customer_tin' => $customerTin,
                 'created_by' => $actor?->id,
-                'recipient_name' => $order->customer?->name,
+                'recipient_name' => $options['recipient_name'] ?? $order->customer?->name,
                 'recipient_phone' => $order->customer?->phone,
+                'recipient_address' => $options['recipient_address'] ?? $order->customer?->billing_address,
                 'subtotal' => $order->subtotal ?? $order->total,
-                'subtotal_laar' => (int) round(($order->subtotal ?? $order->total) * 100),
+                'subtotal_laar' => (int) ($order->subtotal_laar ?? round(($order->subtotal ?? $order->total) * 100)),
                 'tax_amount' => $order->tax_amount ?? 0,
-                'tax_laar' => (int) round(($order->tax_amount ?? 0) * 100),
+                'tax_laar' => (int) ($order->tax_laar ?? round(($order->tax_amount ?? 0) * 100)),
                 'discount_amount' => $order->discount_amount ?? 0,
                 'discount_laar' => (int) round(($order->discount_amount ?? 0) * 100),
                 'total' => $order->total,
-                'total_laar' => (int) round($order->total * 100),
-                'tax_rate_bp' => $order->tax_rate_bp ?? 0,
+                'total_laar' => (int) ($order->total_laar ?? round($order->total * 100)),
+                'tax_rate_bp' => $order->tax_rate_bp ?: $this->gstSettings->defaultTaxRateBp(),
                 'issue_date' => now()->toDateString(),
             ]);
 
@@ -489,6 +551,9 @@ class InvoiceController extends Controller
             'invoice_number' => $inv->invoice_number,
             'type' => $inv->type,
             'status' => $inv->status,
+            'is_tax_invoice' => (bool) $inv->is_tax_invoice,
+            'customer_tin' => $inv->customer_tin,
+            'credit_note_reason' => $inv->credit_note_reason,
             'recipient_name' => $inv->recipient_name,
             'recipient_phone' => $inv->recipient_phone,
             'recipient_email' => $inv->recipient_email,

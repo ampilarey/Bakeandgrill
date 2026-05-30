@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\Gst\Services\GstSettingsService;
+use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Models\Item;
 use App\Models\PreOrder;
 use Illuminate\Http\Request;
@@ -57,8 +59,10 @@ class PreOrderController extends Controller
         $subtotalLaar = 0;
         $taxLaar = 0;
 
-        $globalTaxBp = (int) config('app.tax_rate_bp', 0); // 0 = no fallback tax
-        $taxInclusive = (bool) config('app.tax_inclusive', false);
+        $settings = app(GstSettingsService::class);
+        $calculator = app(GstTaxCalculator::class);
+        $globalTaxBp = $settings->defaultTaxRateBp();
+        $taxInclusive = $settings->taxInclusive();
 
         foreach ($request->items as $itemData) {
             $item = Item::find($itemData['item_id']);
@@ -69,16 +73,10 @@ class PreOrderController extends Controller
             $qty = (int) $itemData['quantity'];
             $unitPriceLaar = (int) round((float) $item->base_price * 100);
             $lineLaar = $unitPriceLaar * $qty;
-            $itemTaxBp = (int) ($item->tax_rate_bp ?? $globalTaxBp);
+            $itemTaxBp = $calculator->resolveTaxRateBp($item->tax_code ?? null);
 
-            // Per-item tax: inclusive prices have tax extracted from
-            // base_price; exclusive prices have tax added on top.
             if ($itemTaxBp > 0) {
-                if ($taxInclusive) {
-                    $itemTaxLaar = (int) round($lineLaar * $itemTaxBp / (10000 + $itemTaxBp));
-                } else {
-                    $itemTaxLaar = (int) round($lineLaar * $itemTaxBp / 10000);
-                }
+                $itemTaxLaar = $calculator->calculateLineTaxLaar($lineLaar, $item->tax_code ?? null, $taxInclusive);
             } else {
                 $itemTaxLaar = 0;
             }

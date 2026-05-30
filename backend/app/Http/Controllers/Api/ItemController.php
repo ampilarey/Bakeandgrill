@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Menu\Services\ComboCompositionService;
+use App\Domains\Gst\Services\GstItemTaxNormalizer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
@@ -291,6 +292,7 @@ class ItemController extends Controller
     public function store(StoreItemRequest $request, VariantSyncService $variantSync, ComboCompositionService $combos)
     {
         $data = $request->validated();
+        $data = app(GstItemTaxNormalizer::class)->normalize($data);
         $variantsData = $data['variants'] ?? null;
         $channelRows = $data['channel_availability'] ?? null;
         $comboRows = $data['combo_items'] ?? null;
@@ -434,6 +436,12 @@ class ItemController extends Controller
     {
         $item = Item::findOrFail($id);
         $data = $request->validated();
+        if (array_key_exists('tax_code', $data) || array_key_exists('tax_rate', $data)) {
+            $data = app(GstItemTaxNormalizer::class)->normalize(array_merge([
+                'tax_code' => $item->tax_code,
+                'tax_rate' => $item->tax_rate,
+            ], $data));
+        }
         $variantsData = $data['variants'] ?? null;
         $comboRows = $data['combo_items'] ?? null;
         unset($data['channel_availability'], $data['variants'], $data['modifier_ids'], $data['combo_items']);

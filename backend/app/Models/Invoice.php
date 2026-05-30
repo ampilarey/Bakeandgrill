@@ -15,14 +15,14 @@ class Invoice extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'invoice_number', 'token', 'type', 'status',
+        'invoice_number', 'token', 'type', 'status', 'is_tax_invoice',
         'order_id', 'purchase_id', 'customer_id', 'supplier_id', 'created_by',
-        'recipient_name', 'recipient_phone', 'recipient_email', 'recipient_address',
+        'recipient_name', 'recipient_phone', 'recipient_email', 'recipient_address', 'customer_tin',
         'subtotal_laar', 'tax_laar', 'discount_laar', 'total_laar', 'amount_paid_laar',
         'subtotal', 'tax_amount', 'discount_amount', 'total',
         'tax_rate_bp', 'issue_date', 'due_date', 'paid_at',
         'payment_method', 'payment_reference',
-        'notes', 'terms', 'pdf_path', 'parent_invoice_id',
+        'notes', 'terms', 'pdf_path', 'parent_invoice_id', 'credit_note_reason',
     ];
 
     protected $hidden = ['token'];
@@ -31,6 +31,7 @@ class Invoice extends Model
         'issue_date' => 'date',
         'due_date' => 'date',
         'paid_at' => 'datetime',
+        'is_tax_invoice' => 'boolean',
     ];
 
     protected static function booted(): void

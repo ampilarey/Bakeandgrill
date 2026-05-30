@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Gst\Services\GstInputTaxValidator;
+use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Services\AuditLogService;
@@ -85,8 +87,21 @@ class ExpenseController extends Controller
             'is_recurring' => ['nullable', 'boolean'],
             'recurrence_interval' => ['nullable', 'in:daily,weekly,monthly,quarterly,yearly'],
             'notes' => ['nullable', 'string'],
+            'supplier_tin' => ['nullable', 'string', 'max:30'],
+            'supplier_invoice_no' => ['nullable', 'string', 'max:64'],
+            'supplier_invoice_date' => ['nullable', 'date'],
+            'amount_excluding_gst_laar' => ['nullable', 'integer', 'min:0'],
+            'gst_rate_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'is_tax_invoice_received' => ['nullable', 'boolean'],
+            'is_input_tax_claimable' => ['nullable', 'boolean'],
+            'claim_block_reason' => ['nullable', 'string', 'max:500'],
+            'revenue_or_capital' => ['nullable', 'in:revenue,capital'],
+            'taxable_activity_no' => ['nullable', 'string', 'max:30'],
         ]);
 
+        $validator = app(GstInputTaxValidator::class);
+        $validated = $validator->normalizeExpense($validated);
+        $validator->assertClaimable($validated, 'expense');
         $validated['user_id'] = $request->user()->id;
         $validated['amount_laar'] = (int) round($validated['amount'] * 100);
         $validated['tax_laar'] = (int) round(($validated['tax_amount'] ?? 0) * 100);
@@ -128,7 +143,21 @@ class ExpenseController extends Controller
             'reference_number' => ['nullable', 'string', 'max:100'],
             'expense_date' => ['sometimes', 'date'],
             'notes' => ['nullable', 'string'],
+            'supplier_tin' => ['nullable', 'string', 'max:30'],
+            'supplier_invoice_no' => ['nullable', 'string', 'max:64'],
+            'supplier_invoice_date' => ['nullable', 'date'],
+            'amount_excluding_gst_laar' => ['nullable', 'integer', 'min:0'],
+            'gst_rate_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'is_tax_invoice_received' => ['nullable', 'boolean'],
+            'is_input_tax_claimable' => ['nullable', 'boolean'],
+            'claim_block_reason' => ['nullable', 'string', 'max:500'],
+            'revenue_or_capital' => ['nullable', 'in:revenue,capital'],
+            'taxable_activity_no' => ['nullable', 'string', 'max:30'],
         ]);
+
+        $validator = app(GstInputTaxValidator::class);
+        $validated = $validator->normalizeExpense($validated);
+        $validator->assertClaimable($validated, 'expense');
 
         if (isset($validated['amount'])) {
             $validated['amount_laar'] = (int) round($validated['amount'] * 100);
@@ -174,6 +203,9 @@ class ExpenseController extends Controller
         );
 
         $expense->update(['status' => 'approved', 'approved_by' => $request->user()->id]);
+        $fresh = $expense->fresh();
+        app(GstInputTaxValidator::class)->assertClaimable($fresh->toArray(), 'expense');
+        app(GstLedgerPoster::class)->postExpenseInput($fresh, $request->user()?->id);
 
         return response()->json(['expense' => $this->format($expense->fresh('category'))]);
     }
@@ -257,6 +289,16 @@ class ExpenseController extends Controller
             'approved_by' => $e->approvedBy?->name,
             'payment_id' => $e->payment_id,
             'is_auto' => $e->payment_id !== null,
+            'supplier_tin' => $e->supplier_tin,
+            'supplier_invoice_no' => $e->supplier_invoice_no,
+            'supplier_invoice_date' => $e->supplier_invoice_date?->toDateString(),
+            'amount_excluding_gst_laar' => $e->amount_excluding_gst_laar,
+            'gst_rate_bp' => $e->gst_rate_bp,
+            'is_tax_invoice_received' => (bool) $e->is_tax_invoice_received,
+            'is_input_tax_claimable' => (bool) $e->is_input_tax_claimable,
+            'claim_block_reason' => $e->claim_block_reason,
+            'revenue_or_capital' => $e->revenue_or_capital,
+            'taxable_activity_no' => $e->taxable_activity_no,
             'created_at' => $e->created_at,
         ];
     }

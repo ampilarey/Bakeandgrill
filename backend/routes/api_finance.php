@@ -46,6 +46,19 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('rep
     Route::get('/profit-and-loss', [App\Http\Controllers\Api\FinanceReportController::class, 'profitAndLoss']);
     Route::get('/cash-flow', [App\Http\Controllers\Api\FinanceReportController::class, 'cashFlow']);
     Route::get('/tax', [App\Http\Controllers\Api\FinanceReportController::class, 'taxReport']);
+    Route::prefix('gst')->group(function () {
+        Route::get('/summary', [App\Http\Controllers\Api\GstReportController::class, 'summary']);
+        Route::get('/output-statement', [App\Http\Controllers\Api\GstReportController::class, 'outputStatement']);
+        Route::get('/input-statement', [App\Http\Controllers\Api\GstReportController::class, 'inputStatement']);
+        Route::get('/ledger', [App\Http\Controllers\Api\GstReportController::class, 'ledger']);
+        Route::get('/reconciliation', [App\Http\Controllers\Api\GstReportController::class, 'reconciliation']);
+        Route::post('/periods/{period}/lock', [App\Http\Controllers\Api\GstReportController::class, 'lockPeriod']);
+        Route::post('/manual-adjustment', [App\Http\Controllers\Api\GstReportController::class, 'manualAdjustment']);
+        Route::get('/export/summary.csv', [App\Http\Controllers\Api\GstReportController::class, 'exportSummary']);
+        Route::get('/export/output-statement.xlsx', [App\Http\Controllers\Api\GstReportController::class, 'exportOutputXlsx']);
+        Route::get('/export/input-statement.xlsx', [App\Http\Controllers\Api\GstReportController::class, 'exportInputXlsx']);
+        Route::get('/export/ledger.csv', [App\Http\Controllers\Api\GstReportController::class, 'exportLedger']);
+    });
     Route::get('/daily-summary', [App\Http\Controllers\Api\FinanceReportController::class, 'dailySummary']);
     Route::get('/accounts-payable', [App\Http\Controllers\Api\FinanceReportController::class, 'accountsPayable']);
     Route::get('/accounts-receivable', [App\Http\Controllers\Api\FinanceReportController::class, 'accountsReceivable']);

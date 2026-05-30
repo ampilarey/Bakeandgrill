@@ -22,6 +22,9 @@ class Customer extends Model implements AuthenticatableContract
         'name',
         'phone',
         'email',
+        'tin',
+        'is_gst_registered',
+        'billing_address',
         'date_of_birth',
         // 'password' is intentionally excluded from $fillable to prevent mass-assignment.
         // Set it explicitly: $customer->password = $plain; $customer->save();
@@ -80,6 +83,7 @@ class Customer extends Model implements AuthenticatableContract
         'preferences' => 'array',
         'sms_opt_out' => 'boolean',
         'sms_opt_out_at' => 'datetime',
+        'is_gst_registered' => 'boolean',
         'credit_enabled' => 'boolean',
         'credit_approved_at' => 'datetime',
         'credit_limit_laar' => 'integer',

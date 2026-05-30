@@ -8,7 +8,7 @@ import {
   serviceChargeTaxLaar,
   type ServiceChargePublicConfig,
 } from "@shared/utils/serviceCharge";
-import { fetchPublicSiteSettings } from "../api";
+import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
 
 export type PaymentRow = {
   id: string;
@@ -122,12 +122,24 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   } | null>(null);
 
   const [serviceChargeConfig, setServiceChargeConfig] = useState<ServiceChargePublicConfig | null>(null);
+  const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
 
   useEffect(() => {
     fetchPublicSiteSettings()
       .then((settings) => setServiceChargeConfig(parseServiceChargePublicSettings(settings)))
       .catch(() => setServiceChargeConfig(null));
+    fetchGstBootstrap()
+      .then((b) => setDefaultTaxRatePercent(b.tax_rate_percent))
+      .catch(() => setDefaultTaxRatePercent(8));
   }, []);
+
+  const effectiveLineTaxRate = useCallback((item: CartItem): number => {
+    const code = (item as { tax_code?: string | null }).tax_code;
+    if (code === "zero_rated" || code === "exempt" || code === "out_of_scope") return 0;
+    const rate = Number(item.tax_rate ?? 0);
+    if (Number.isFinite(rate) && rate > 0) return rate;
+    return defaultTaxRatePercent;
+  }, [defaultTaxRatePercent]);
 
   const backendOrderType = mapPosOrderType(posOrderType);
 
@@ -202,8 +214,8 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     let weightedRateSum = 0;
     let weightedLaar = 0;
     for (const item of cartItems) {
-      const rate = Number(item.tax_rate ?? 0);
-      if (!Number.isFinite(rate) || rate <= 0) continue;
+      const rate = effectiveLineTaxRate(item);
+      if (rate <= 0) continue;
       const lineGrossLaar = Math.round(lineUnitPrice(item) * item.quantity * 100);
       const effectiveLaar = Math.round(lineGrossLaar * discountRatio);
       taxLaar += Math.round(effectiveLaar * rate / 100);
@@ -220,7 +232,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       taxLaar += serviceChargeTaxLaar(serviceChargeConfig, scPreview.amountLaar, avgRate);
     }
     return taxLaar / 100;
-  }, [cartItems, cartSubtotal, discountedSubtotal, serviceChargeConfig, backendOrderType]);
+  }, [cartItems, cartSubtotal, discountedSubtotal, serviceChargeConfig, backendOrderType, effectiveLineTaxRate]);
 
   const cartServiceCharge = useMemo(() => {
     if (!serviceChargeConfig) return 0;

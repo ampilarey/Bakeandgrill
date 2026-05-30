@@ -42,6 +42,7 @@ class StoreItemRequest extends FormRequest
             'has_variants' => 'sometimes|boolean',
             'cost' => 'nullable|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'tax_code' => 'sometimes|string|in:standard_8,zero_rated,exempt,out_of_scope',
             'is_active' => 'sometimes|boolean',
             'is_available' => 'sometimes|boolean',
             'track_stock' => 'sometimes|boolean',

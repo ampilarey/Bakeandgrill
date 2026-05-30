@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers\Domains;
 
 use App\Domains\Customers\Listeners\ReverseCreditOnRefundListener;
+use App\Domains\Gst\Listeners\PostGstOnOrderPaidListener;
+use App\Domains\Gst\Listeners\PostGstOnRefundListener;
 use App\Domains\Inventory\Events\LowStockReached;
 use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Domains\Inventory\Listeners\DeductInventoryListener;
@@ -73,6 +75,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             IncrementDailySpecialSoldCountListener::class,
             RecordReferralRedemptionListener::class,
             SendPaymentConfirmationListener::class,
+            PostGstOnOrderPaidListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],
 
@@ -101,6 +104,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             RestoreInventoryOnRefundListener::class,
             ReverseCreditOnRefundListener::class,
             DecrementDailySpecialSoldCountListener::class,
+            PostGstOnRefundListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],
 

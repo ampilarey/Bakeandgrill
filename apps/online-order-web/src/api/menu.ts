@@ -255,3 +255,31 @@ export async function fetchCartRecommendations(itemIds: number[], limit = 3): Pr
     body: JSON.stringify({ item_ids: itemIds, limit }),
   });
 }
+
+export type GstBootstrap = {
+  default_tax_rate_bp: number;
+  tax_rate_percent: number;
+  tax_inclusive: boolean;
+  gst_registered: boolean;
+  currency: string;
+};
+
+let gstBootstrapCache: GstBootstrap | null = null;
+
+/** Authoritative GST rate for checkout preview — order create is server-calculated. */
+export async function fetchGstBootstrap(): Promise<GstBootstrap> {
+  if (gstBootstrapCache) return gstBootstrapCache;
+  try {
+    const data = await request<GstBootstrap>('/gst/bootstrap');
+    gstBootstrapCache = data;
+    return data;
+  } catch {
+    return {
+      default_tax_rate_bp: 800,
+      tax_rate_percent: 8,
+      tax_inclusive: false,
+      gst_registered: false,
+      currency: 'MVR',
+    };
+  }
+}

@@ -104,6 +104,9 @@ class AdminCustomerController extends Controller
             'internal_notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'is_active' => ['sometimes', 'boolean'],
             'sms_opt_out' => ['sometimes', 'boolean'],
+            'tin' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'is_gst_registered' => ['sometimes', 'boolean'],
+            'billing_address' => ['sometimes', 'nullable', 'string'],
         ]);
 
         $customer->update($validated);
@@ -191,6 +194,9 @@ class AdminCustomerController extends Controller
             'credit_status' => $c->credit_status ?? 'blocked',
             'credit_limit_laar' => (int) ($c->credit_limit_laar ?? 0),
             'credit_balance_laar' => (int) ($c->credit_balance_laar ?? 0),
+            'tin' => $c->tin,
+            'is_gst_registered' => (bool) ($c->is_gst_registered ?? false),
+            'billing_address' => $c->billing_address,
         ];
     }
 }

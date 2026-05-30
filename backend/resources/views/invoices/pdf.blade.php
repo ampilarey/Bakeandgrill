@@ -1,7 +1,10 @@
 @extends('layouts.pdf')
 
 @php
-    $displayStatus = strtoupper($invoice->type) . ' · ' . strtoupper($invoice->status);
+    $gstSettings = \App\Models\GstSetting::query()->first();
+    $isTaxInvoice = (bool) ($invoice->is_tax_invoice ?? false);
+    $docLabel = $invoice->type === 'credit_note' ? 'Credit Note' : ($isTaxInvoice ? 'Tax Invoice' : 'Invoice');
+    $displayStatus = strtoupper($docLabel) . ' · ' . strtoupper($invoice->status);
     $statusClass = match ($invoice->status) {
         'paid' => 'paid',
         'sent', 'draft' => 'sent',
@@ -10,8 +13,8 @@
     $billTo = $invoice->recipient_name ?? ($invoice->customer?->name ?? $invoice->supplier?->name ?? '—');
 @endphp
 
-@section('title', 'Invoice ' . $invoice->invoice_number)
-@section('doc_type', 'Invoice')
+@section('title', $docLabel . ' ' . $invoice->invoice_number)
+@section('doc_type', $docLabel)
 @section('doc_number', $invoice->invoice_number)
 @section('doc_status', $displayStatus)
 @section('doc_status_class', $statusClass)
@@ -20,8 +23,11 @@
 <div class="pdf-meta-grid">
     <div class="pdf-meta-col">
         <div class="pdf-meta-label">From</div>
-        <div class="pdf-meta-value"><strong>{{ $brandSiteName }}</strong></div>
-        <div class="pdf-meta-value">{{ $brandAddress }}</div>
+        <div class="pdf-meta-value"><strong>{{ $gstSettings?->seller_name ?? $brandSiteName }}</strong></div>
+        <div class="pdf-meta-value">{{ $gstSettings?->seller_address ?? $brandAddress }}</div>
+        @if ($gstSettings?->seller_tin)
+            <div class="pdf-meta-value">TIN: {{ $gstSettings->seller_tin }}</div>
+        @endif
     </div>
     <div class="pdf-meta-col">
         <div class="pdf-meta-label">{{ $invoice->type === 'purchase' ? 'Supplier' : 'Bill to' }}</div>
@@ -34,6 +40,9 @@
         @endif
         @if ($invoice->recipient_address)
             <div class="pdf-meta-value">{{ $invoice->recipient_address }}</div>
+        @endif
+        @if ($invoice->customer_tin)
+            <div class="pdf-meta-value">TIN: {{ $invoice->customer_tin }}</div>
         @endif
     </div>
 </div>

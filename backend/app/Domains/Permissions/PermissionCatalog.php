@@ -121,6 +121,7 @@ final class PermissionCatalog
             ['group' => 'Reports', 'slug' => 'reports.basic', 'name' => 'Basic reports'],
             ['group' => 'Reports', 'slug' => 'reports.sales', 'name' => 'Sales reports'],
             ['group' => 'Reports', 'slug' => 'reports.financial', 'name' => 'Financial reports'],
+            ['group' => 'Reports', 'slug' => 'reports.gst', 'name' => 'GST reports & MIRA exports'],
             ['group' => 'Reports', 'slug' => 'reports.inventory', 'name' => 'Inventory reports'],
             ['group' => 'Reports', 'slug' => 'reports.xreport', 'name' => 'X-Report'],
             ['group' => 'Reports', 'slug' => 'reports.zreport', 'name' => 'Z-Report'],

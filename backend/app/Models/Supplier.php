@@ -17,6 +17,7 @@ class Supplier extends Model
         'contact_name',
         'phone',
         'email',
+        'tin',
         'address',
         'payment_terms',
         'notes',

@@ -31,6 +31,9 @@ export type Invoice = {
   paid_at: string | null;
   payment_method: string | null;
   notes: string | null;
+  is_tax_invoice?: boolean;
+  customer_tin?: string | null;
+  credit_note_reason?: string | null;
   customer: { id: number; name: string; phone: string } | null;
   supplier: { id: number; name: string } | null;
   order_id: number | null;
@@ -160,6 +163,14 @@ export type Expense = {
   next_recurrence_date: string | null;
   receipt_path: string | null;
   notes: string | null;
+  supplier_tin?: string | null;
+  supplier_invoice_no?: string | null;
+  supplier_invoice_date?: string | null;
+  amount_excluding_gst_laar?: number | null;
+  gst_rate_bp?: number | null;
+  gst_laar?: number | null;
+  is_input_tax_claimable?: boolean;
+  revenue_or_capital?: 'revenue' | 'capital' | null;
   category: { id: number; name: string; icon: string } | null;
   supplier: { id: number; name: string } | null;
   logged_by: string | null;
@@ -496,7 +507,7 @@ export interface Purchase {
   id: number;
   purchase_number: string;
   supplier_id: number;
-  supplier?: { id: number; name: string } | null;
+  supplier?: { id: number; name: string; tin?: string | null } | null;
   status: string;
   total: number;
   subtotal?: number;
@@ -506,6 +517,15 @@ export interface Purchase {
   actual_delivery_date?: string | null;
   approved_at?: string | null;
   notes?: string;
+  supplier_tin?: string | null;
+  supplier_invoice_no?: string | null;
+  supplier_invoice_date?: string | null;
+  amount_excluding_gst_laar?: number | null;
+  gst_rate_bp?: number | null;
+  gst_laar?: number | null;
+  is_tax_invoice_received?: boolean;
+  is_input_tax_claimable?: boolean;
+  revenue_or_capital?: 'revenue' | 'capital' | null;
   created_at: string;
   items?: {
     id: number;
@@ -537,6 +557,10 @@ export async function rejectPurchase(id: number, reason: string): Promise<void> 
 
 export async function getPurchase(id: number): Promise<{ purchase: Purchase }> {
   return req(`/purchases/${id}`);
+}
+
+export async function updatePurchase(id: number, data: Record<string, unknown>): Promise<{ purchase: Purchase }> {
+  return req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function receivePurchase(id: number, data: {

@@ -22,6 +22,7 @@ const ReservationsPage        = lazyWithRetry(() => import('./pages/Reservations
 const AnalyticsPage           = lazyWithRetry(() => import('./pages/AnalyticsPage'));
 const InvoicesPage            = lazyWithRetry(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })));
 const ExpensesPage            = lazyWithRetry(() => import('./pages/ExpensesPage').then((m) => ({ default: m.ExpensesPage })));
+const GstPage                 = lazyWithRetry(() => import('./pages/GstPage'));
 const ProfitLossPage          = lazyWithRetry(() => import('./pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
 const SupplierIntelligencePage = lazyWithRetry(() => import('./pages/SupplierIntelligencePage').then((m) => ({ default: m.SupplierIntelligencePage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
@@ -271,6 +272,11 @@ export default function App() {
                 <Route path="profit-loss" element={
                   <PermissionGuard user={user} permission="finance.profit_loss">
                     <ProfitLossPage />
+                  </PermissionGuard>
+                } />
+                <Route path="gst" element={
+                  <PermissionGuard user={user} permission="reports.financial">
+                    <GstPage />
                   </PermissionGuard>
                 } />
                 <Route path="supplier-intelligence" element={

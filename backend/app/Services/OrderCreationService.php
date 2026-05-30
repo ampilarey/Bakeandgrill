@@ -447,6 +447,7 @@ class OrderCreationService
                 'daily_special_id' => $dailySpecialId,
                 'total_price' => 0,
                 'tax_rate' => (float) $itemModel->tax_rate,
+                'tax_code' => $itemModel->tax_code ?? 'standard_8',
                 'notes' => $notes,
                 'status' => 'pending',
             ]);

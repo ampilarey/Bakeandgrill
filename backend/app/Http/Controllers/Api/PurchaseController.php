@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Gst\Services\GstInputTaxValidator;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportPurchaseRequest;
 use App\Http\Requests\StorePurchaseReceiptRequest;
@@ -37,6 +38,9 @@ class PurchaseController extends Controller
     public function store(StorePurchaseRequest $request)
     {
         $validated = $request->validated();
+        $validator = app(GstInputTaxValidator::class);
+        $validated = $validator->normalizePurchase($validated);
+        $validator->assertClaimable($validated, 'purchase');
         $purchase = $this->createFromPayload($validated, $request);
 
         app(AuditLogService::class)->log(
@@ -63,7 +67,11 @@ class PurchaseController extends Controller
     public function update(UpdatePurchaseRequest $request, $id)
     {
         $purchase = Purchase::findOrFail($id);
-        $purchase->update($request->validated());
+        $validated = $request->validated();
+        $validator = app(GstInputTaxValidator::class);
+        $validated = $validator->normalizePurchase(array_merge($purchase->toArray(), $validated));
+        $validator->assertClaimable($validated, 'purchase');
+        $purchase->update($validated);
 
         return response()->json(['purchase' => $purchase]);
     }
@@ -253,7 +261,14 @@ class PurchaseController extends Controller
     private function createFromPayload(array $validated, Request $request): Purchase
     {
         return DB::transaction(function () use ($validated, $request) {
-            $purchase = Purchase::create([
+            $gstFields = array_intersect_key($validated, array_flip([
+                'supplier_tin', 'supplier_invoice_no', 'supplier_invoice_date',
+                'amount_excluding_gst_laar', 'gst_rate_bp', 'gst_laar', 'total_laar',
+                'is_tax_invoice_received', 'is_input_tax_claimable', 'claim_block_reason',
+                'revenue_or_capital', 'taxable_activity_no',
+            ]));
+
+            $purchase = Purchase::create(array_merge([
                 'purchase_number' => $this->generatePurchaseNumber(),
                 'supplier_id' => $validated['supplier_id'] ?? null,
                 'user_id' => $request->user()?->id,
@@ -263,7 +278,7 @@ class PurchaseController extends Controller
                 'total' => 0,
                 'notes' => $validated['notes'] ?? null,
                 'purchase_date' => $validated['purchase_date'],
-            ]);
+            ], $gstFields));
 
             $subtotal = 0;
 
@@ -329,9 +344,14 @@ class PurchaseController extends Controller
                 }
             }
 
+            $gstLaar = (int) ($validated['gst_laar'] ?? 0);
+            $totalLaar = (int) ($validated['total_laar'] ?? round($subtotal * 100));
             $purchase->update([
                 'subtotal' => $subtotal,
-                'total' => $subtotal,
+                'tax_amount' => round($gstLaar / 100, 2),
+                'total' => round($totalLaar / 100, 2),
+                'total_laar' => $totalLaar > 0 ? $totalLaar : (int) round($subtotal * 100),
+                'gst_laar' => $gstLaar,
             ]);
 
             return $purchase->load(['supplier', 'items.inventoryItem', 'receipts']);

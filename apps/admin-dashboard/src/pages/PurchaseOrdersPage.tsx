@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { approvePurchase, rejectPurchase, receivePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, fetchInventoryItems, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryItem } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, fetchInventoryItems, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryItem } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -36,6 +36,15 @@ export function PurchaseOrdersPage() {
   // per-item receive quantities (purchase_item_id → qty)
   const [receiveQtys, setReceiveQtys]     = useState<Record<number, number>>({});
   const [receiveNotes, setReceiveNotes]   = useState('');
+  const [gstForm, setGstForm] = useState({
+    is_input_tax_claimable: false,
+    supplier_tin: '',
+    supplier_invoice_no: '',
+    supplier_invoice_date: '',
+    amount_ex_gst: '',
+    gst_amount: '',
+    revenue_or_capital: 'revenue' as 'revenue' | 'capital',
+  });
 
   const [creatingPoFor, setCreatingPoFor] = useState<number | null>(null);
 
@@ -178,12 +187,36 @@ export function PurchaseOrdersPage() {
     (po.items ?? []).forEach((item) => { initial[item.id] = item.quantity - item.received_quantity; });
     setReceiveQtys(initial);
     setReceiveNotes('');
+    setGstForm({
+      is_input_tax_claimable: !!po.is_input_tax_claimable,
+      supplier_tin: po.supplier_tin ?? po.supplier?.tin ?? '',
+      supplier_invoice_no: po.supplier_invoice_no ?? '',
+      supplier_invoice_date: po.supplier_invoice_date ?? '',
+      amount_ex_gst: po.amount_excluding_gst_laar != null ? String(po.amount_excluding_gst_laar / 100) : '',
+      gst_amount: po.gst_laar != null ? String(po.gst_laar / 100) : '',
+      revenue_or_capital: (po.revenue_or_capital as 'revenue' | 'capital') ?? 'revenue',
+    });
   };
 
   const handleReceive = async () => {
     if (!detail) return;
     setActionLoading(true);
     try {
+      if (gstForm.is_input_tax_claimable) {
+        const exLaar = gstForm.amount_ex_gst ? Math.round(parseFloat(gstForm.amount_ex_gst) * 100) : undefined;
+        const gstLaar = gstForm.gst_amount ? Math.round(parseFloat(gstForm.gst_amount) * 100) : undefined;
+        await updatePurchase(detail.id, {
+          is_input_tax_claimable: true,
+          is_tax_invoice_received: true,
+          supplier_tin: gstForm.supplier_tin || undefined,
+          supplier_invoice_no: gstForm.supplier_invoice_no || undefined,
+          supplier_invoice_date: gstForm.supplier_invoice_date || undefined,
+          amount_excluding_gst_laar: exLaar,
+          gst_laar: gstLaar,
+          gst_rate_bp: gstLaar ? 800 : undefined,
+          revenue_or_capital: gstForm.revenue_or_capital,
+        });
+      }
       await receivePurchase(detail.id, {
         items: (detail.items ?? []).map((item) => ({
           purchase_item_id: item.id,
@@ -397,6 +430,7 @@ export function PurchaseOrdersPage() {
           </TableCard>
 
           {['ordered', 'partial'].includes(detail.status) && (
+            <>
             <div style={{ marginTop: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
               <textarea
@@ -406,6 +440,27 @@ export function PurchaseOrdersPage() {
                 style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
               />
             </div>
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #E8E0D8' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', margin: '0 0 10px' }}>Input GST (optional)</p>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 10 }}>
+                <input type="checkbox" checked={gstForm.is_input_tax_claimable} onChange={(e) => setGstForm((f) => ({ ...f, is_input_tax_claimable: e.target.checked }))} />
+                Claimable input tax on this purchase
+              </label>
+              {gstForm.is_input_tax_claimable && (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <input placeholder="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input placeholder="Supplier invoice no." value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                    <input type="date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                  </div>
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input type="number" placeholder="Amount ex-GST (MVR)" value={gstForm.amount_ex_gst} onChange={(e) => setGstForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                    <input type="number" placeholder="GST amount (MVR)" value={gstForm.gst_amount} onChange={(e) => setGstForm((f) => ({ ...f, gst_amount: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                  </div>
+                </div>
+              )}
+            </div>
+            </>
           )}
 
           <ModalActions>

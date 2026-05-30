@@ -6,6 +6,7 @@ export * from './auth';
 export * from './orders';
 export * from './menu';
 export * from './finance';
+export * from './gst';
 export * from './staff';
 export * from './customers';
 export * from './customer-growth';

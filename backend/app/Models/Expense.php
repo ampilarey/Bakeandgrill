@@ -13,8 +13,11 @@ class Expense extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'expense_number', 'expense_category_id', 'supplier_id', 'user_id', 'purchase_id', 'payment_id',
-        'description', 'amount_laar', 'amount', 'tax_laar', 'tax_amount',
+        'expense_number', 'expense_category_id', 'supplier_id', 'supplier_tin',
+        'supplier_invoice_no', 'supplier_invoice_date', 'user_id', 'purchase_id', 'payment_id',
+        'description', 'amount_laar', 'amount', 'amount_excluding_gst_laar', 'tax_laar', 'tax_amount',
+        'gst_rate_bp', 'is_tax_invoice_received', 'is_input_tax_claimable', 'claim_block_reason',
+        'revenue_or_capital', 'taxable_activity_no',
         'payment_method', 'reference_number', 'expense_date', 'receipt_path',
         'is_recurring', 'recurrence_interval', 'next_recurrence_date',
         'status', 'approved_by', 'notes',
@@ -31,6 +34,10 @@ class Expense extends Model
         'tax_amount' => 'decimal:2',
         'amount_laar' => 'integer',
         'tax_laar' => 'integer',
+        'amount_excluding_gst_laar' => 'integer',
+        'gst_rate_bp' => 'integer',
+        'is_tax_invoice_received' => 'boolean',
+        'is_input_tax_claimable' => 'boolean',
         'is_recurring' => 'boolean',
         'expense_date' => 'date',
         'next_recurrence_date' => 'date',

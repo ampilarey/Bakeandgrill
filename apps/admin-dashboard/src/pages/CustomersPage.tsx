@@ -47,6 +47,7 @@ export function CustomersPage() {
   const [saveError, setSaveError]        = useState('');
   const [form, setForm] = useState({
     name: '', email: '', internal_notes: '', is_active: true, sms_opt_out: false,
+    tin: '', billing_address: '', is_gst_registered: false,
   });
 
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
@@ -116,6 +117,9 @@ export function CustomersPage() {
         internal_notes: res.customer.internal_notes ?? '',
         is_active: res.customer.is_active,
         sms_opt_out: res.customer.sms_opt_out,
+        tin: res.customer.tin ?? '',
+        billing_address: res.customer.billing_address ?? '',
+        is_gst_registered: res.customer.is_gst_registered ?? false,
       });
     } catch (e) { setError((e as Error).message); }
     finally { setDetailLoading(false); }
@@ -229,6 +233,9 @@ export function CustomersPage() {
         internal_notes: form.internal_notes,
         is_active: form.is_active,
         sms_opt_out: form.sms_opt_out,
+        tin: form.tin || undefined,
+        billing_address: form.billing_address || undefined,
+        is_gst_registered: form.is_gst_registered,
       });
       setDetail({ ...detail, customer: res.customer });
       setCustomers((prev) => prev.map((c) => c.id === res.customer.id ? res.customer : c));
@@ -446,6 +453,8 @@ export function CustomersPage() {
                         ['Status', detail.customer.is_active ? 'Active' : 'Inactive'],
                         ['SMS Opt-out', detail.customer.sms_opt_out ? 'Yes' : 'No'],
                         ['Last Login', fmtDate(detail.customer.last_login_at)],
+                        ['TIN', detail.customer.tin ?? '—'],
+                        ['GST Registered', detail.customer.is_gst_registered ? 'Yes' : 'No'],
                       ] as [string, string][]).map(([label, value]) => (
                         <div key={label} style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
                           <p style={{ color: '#9C8E7E', margin: '0 0 2px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
@@ -463,12 +472,20 @@ export function CustomersPage() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {saveError && <ErrorMsg message={saveError} />}
-                    {(['name', 'email'] as const).map((key) => (
+                    {(['name', 'email', 'tin', 'billing_address'] as const).map((key) => (
                       <div key={key}>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4, textTransform: 'capitalize' }}>{key}</label>
-                        <input style={inputStyle} value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4, textTransform: key === 'tin' ? 'uppercase' : 'capitalize' }}>{key === 'billing_address' ? 'Billing address' : key === 'tin' ? 'TIN' : key}</label>
+                        {key === 'billing_address' ? (
+                          <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={form.billing_address} onChange={(e) => setForm((f) => ({ ...f, billing_address: e.target.value }))} />
+                        ) : (
+                          <input style={inputStyle} value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
+                        )}
                       </div>
                     ))}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                      <input type="checkbox" checked={form.is_gst_registered} onChange={(e) => setForm((f) => ({ ...f, is_gst_registered: e.target.checked }))} />
+                      GST registered (B2B tax invoices)
+                    </label>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Internal Notes</label>
                       <textarea style={{ ...inputStyle, height: 80, resize: 'vertical' }} value={form.internal_notes} onChange={(e) => setForm((f) => ({ ...f, internal_notes: e.target.value }))} />

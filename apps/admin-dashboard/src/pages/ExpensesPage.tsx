@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
@@ -8,6 +8,83 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); }
 
 const STATUS_COLOR: Record<string, string> = { approved: 'green', pending: 'yellow', rejected: 'red' };
+
+const emptyForm = {
+  expense_category_id: '', description: '', amount: '', expense_date: today(), payment_method: 'cash', notes: '',
+  is_input_tax_claimable: false,
+  supplier_tin: '', supplier_invoice_no: '', supplier_invoice_date: '',
+  amount_ex_gst: '', gst_amount: '', revenue_or_capital: 'revenue' as 'revenue' | 'capital',
+};
+
+function laarFromMvr(v: string): number | undefined {
+  if (!v.trim()) return undefined;
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? Math.round(n * 100) : undefined;
+}
+
+function gstExpensePayload(form: typeof emptyForm) {
+  return {
+    is_input_tax_claimable: form.is_input_tax_claimable,
+    supplier_tin: form.supplier_tin || undefined,
+    supplier_invoice_no: form.supplier_invoice_no || undefined,
+    supplier_invoice_date: form.supplier_invoice_date || undefined,
+    amount_excluding_gst_laar: laarFromMvr(form.amount_ex_gst),
+    gst_laar: laarFromMvr(form.gst_amount),
+    gst_rate_bp: form.gst_amount ? 800 : undefined,
+    revenue_or_capital: form.revenue_or_capital,
+  };
+}
+
+function GstExpenseFields({ form, setForm, fieldStyle }: {
+  form: typeof emptyForm;
+  setForm: Dispatch<SetStateAction<typeof emptyForm>>;
+  fieldStyle: CSSProperties;
+}) {
+  return (
+    <div style={{ borderTop: '1px solid #E8DDD0', paddingTop: 12, marginTop: 4 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', margin: '0 0 10px' }}>Input GST (optional)</p>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 10 }}>
+        <input type="checkbox" checked={form.is_input_tax_claimable} onChange={(e) => setForm((f) => ({ ...f, is_input_tax_claimable: e.target.checked }))} />
+        Claimable input tax
+      </label>
+      {form.is_input_tax_claimable && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            Supplier TIN *
+            <input value={form.supplier_tin} onChange={(e) => setForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+          </label>
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              Supplier invoice no. *
+              <input value={form.supplier_invoice_no} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              Invoice date *
+              <input type="date" value={form.supplier_invoice_date} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+            </label>
+          </div>
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              Amount ex-GST (MVR)
+              <input type="number" value={form.amount_ex_gst} onChange={(e) => setForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+            </label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              GST amount (MVR, 8%)
+              <input type="number" value={form.gst_amount} onChange={(e) => setForm((f) => ({ ...f, gst_amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+            </label>
+          </div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            Revenue or capital
+            <select value={form.revenue_or_capital} onChange={(e) => setForm((f) => ({ ...f, revenue_or_capital: e.target.value as 'revenue' | 'capital' }))} style={{ ...fieldStyle, marginTop: 4 }}>
+              <option value="revenue">Revenue expense</option>
+              <option value="capital">Capital expense</option>
+            </select>
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ExpensesPage() {
   usePageTitle('Expenses');
@@ -24,7 +101,6 @@ export function ExpensesPage() {
   const [saving, setSaving]       = useState(false);
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
-  const emptyForm = { expense_category_id: '', description: '', amount: '', expense_date: today(), payment_method: 'cash', notes: '' };
   const [form, setForm] = useState(emptyForm);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [toast, setToast] = useState('');
@@ -79,7 +155,7 @@ export function ExpensesPage() {
     }
     setSaving(true);
     try {
-      await storeExpense({ ...form, expense_category_id: catId, amount });
+      await storeExpense({ ...form, expense_category_id: catId, amount, ...gstExpensePayload(form) });
       setShowAdd(false);
       setForm(emptyForm);
       void load();
@@ -96,6 +172,13 @@ export function ExpensesPage() {
       expense_date: exp.expense_date ?? today(),
       payment_method: exp.payment_method ?? 'cash',
       notes: exp.notes ?? '',
+      is_input_tax_claimable: !!exp.is_input_tax_claimable,
+      supplier_tin: exp.supplier_tin ?? '',
+      supplier_invoice_no: exp.supplier_invoice_no ?? '',
+      supplier_invoice_date: exp.supplier_invoice_date ?? '',
+      amount_ex_gst: exp.amount_excluding_gst_laar != null ? String(exp.amount_excluding_gst_laar / 100) : '',
+      gst_amount: exp.gst_laar != null ? String(exp.gst_laar / 100) : '',
+      revenue_or_capital: (exp.revenue_or_capital as 'revenue' | 'capital') ?? 'revenue',
     });
   };
 
@@ -109,7 +192,7 @@ export function ExpensesPage() {
     }
     setSaving(true);
     try {
-      await updateExpense(editingExpense.id, { ...form, expense_category_id: catId, amount });
+      await updateExpense(editingExpense.id, { ...form, expense_category_id: catId, amount, ...gstExpensePayload(form) });
       setEditingExpense(null);
       setForm(emptyForm);
       void load();
@@ -339,6 +422,7 @@ export function ExpensesPage() {
               Notes
               <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }} />
             </label>
+            <GstExpenseFields form={form} setForm={setForm} fieldStyle={fieldStyle} />
           </div>
           <ModalActions>
             <Btn variant="ghost" onClick={() => { setEditingExpense(null); setForm(emptyForm); }}>Cancel</Btn>
@@ -413,6 +497,7 @@ export function ExpensesPage() {
                 style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }}
               />
             </label>
+            <GstExpenseFields form={form} setForm={setForm} fieldStyle={fieldStyle} />
           </div>
           <ModalActions>
             <Btn variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Btn>

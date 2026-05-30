@@ -55,6 +55,7 @@ export type MenuItem = {
   has_variants?: boolean;
   variants?: MenuVariant[];
   tax_rate?: number | null;
+  tax_code?: string | null;
   is_available: boolean;
   is_active: boolean;
   sort_order?: number | null;
@@ -90,6 +91,7 @@ export type MenuItemPayload = {
   has_variants?: boolean;
   variants?: MenuVariant[];
   tax_rate?: number | null;
+  tax_code?: string | null;
   category_id?: number | null;
   menu_group_id?: number | null;
   sort_order?: number | null;

@@ -30,6 +30,7 @@ class Item extends Model
         'has_variants',
         'cost',
         'tax_rate',
+        'tax_code',
         'is_active',
         'is_available',
         'sort_order',
