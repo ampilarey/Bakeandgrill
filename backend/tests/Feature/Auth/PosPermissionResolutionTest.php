@@ -256,6 +256,23 @@ class PosPermissionResolutionTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_manager_can_list_devices_with_view_only_permission(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+
+        Device::create([
+            'name' => 'Front POS',
+            'identifier' => 'POS-FRONT',
+            'type' => 'pos',
+            'status' => 'approved',
+            'is_active' => true,
+        ]);
+
+        $this->getJson('/api/devices')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'Front POS');
+    }
+
     public function test_owner_can_approve_devices(): void
     {
         Sanctum::actingAs($this->owner, ['staff']);

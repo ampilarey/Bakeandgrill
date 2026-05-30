@@ -52,7 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/tables',      icon: LayoutGrid, label: 'Tables',         permission: 'orders.view',            description: 'Floor plan & seating' },
       { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'delivery.view',          description: 'Active delivery queue' },
       { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
-      { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permission: 'staff.view',             description: 'Clock in / out' },
+      { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permission: 'pos.time_clock',         description: 'Clock in / out' },
     ],
   },
   {
@@ -181,7 +181,7 @@ export const BOTTOM_TABS: NavItem[] = [
 
 /** Returns true if the given user has the specified permission (with legacy alias support). */
 const PERM_ALIASES: Record<string, string[]> = {
-  'devices.manage': ['devices.approve', 'devices.view'],
+  'devices.manage': ['devices.approve'],
   'devices.view': ['devices.manage', 'devices.approve'],
   'integrations.sms': ['sms_marketing.view', 'sms_marketing.manage'],
   'sms_marketing.view': ['integrations.sms', 'sms_marketing.manage'],
@@ -206,7 +206,6 @@ const PERM_ALIASES: Record<string, string[]> = {
   'payments.cash_manage': ['finance.cash_manage', 'pos.open_shift', 'pos.close_shift'],
   'staff.schedule': ['staff.manage'],
   'inventory.view': ['inventory.manage'],
-  'inventory.manage': ['inventory.view'],
 };
 
 export function can(user: StaffUser, permission?: string): boolean {

@@ -197,18 +197,18 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::patch('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'update']);
     });
 
-    // Device Management (Admin only)
-    Route::prefix('devices')->middleware('can:device.manage')->group(function () {
+    // Device Management — read (devices.view) vs mutate (manage / approve)
+    Route::prefix('devices')->group(function () {
+        Route::get('/', [DeviceController::class, 'index'])->middleware('permission:devices.view');
+        Route::get('/pending', [DeviceController::class, 'pending'])->middleware('permission:devices.view');
         Route::post('/register', [DeviceController::class, 'register'])
-            ->middleware('throttle:10,1');
-        Route::get('/', [DeviceController::class, 'index']);
-        Route::get('/pending', [DeviceController::class, 'pending']);
-        Route::patch('/{id}', [DeviceController::class, 'update']);
-        Route::patch('/{id}/approve', [DeviceController::class, 'approve']);
-        Route::patch('/{id}/reject', [DeviceController::class, 'reject']);
-        Route::patch('/{id}/disable', [DeviceController::class, 'disable']);
-        Route::patch('/{id}/enable', [DeviceController::class, 'enable']);
-        Route::delete('/{id}', [DeviceController::class, 'destroy']);
+            ->middleware(['permission:devices.manage', 'throttle:10,1']);
+        Route::patch('/{id}', [DeviceController::class, 'update'])->middleware('permission:devices.manage');
+        Route::patch('/{id}/approve', [DeviceController::class, 'approve'])->middleware('permission:devices.approve');
+        Route::patch('/{id}/reject', [DeviceController::class, 'reject'])->middleware('permission:devices.approve');
+        Route::patch('/{id}/disable', [DeviceController::class, 'disable'])->middleware('permission:devices.manage');
+        Route::patch('/{id}/enable', [DeviceController::class, 'enable'])->middleware('permission:devices.manage');
+        Route::delete('/{id}', [DeviceController::class, 'destroy'])->middleware('permission:devices.manage');
     });
 
     // Device self-registration (any authenticated staff, no device.active check)

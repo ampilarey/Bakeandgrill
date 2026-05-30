@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
@@ -18,6 +19,9 @@ const DEVICE_TYPES = ['pos', 'kds', 'display', 'other'];
 
 export default function DevicesPage() {
   usePageTitle('Device Management');
+  const { can } = useCurrentUserPermissions();
+  const canManage = can('devices.manage');
+  const canApprove = can('devices.approve');
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [pending, setPending] = useState<Device[]>([]);
@@ -154,9 +158,11 @@ export default function DevicesPage() {
       <PageHeader
         title="Device Management"
         action={
-          <Btn onClick={() => { setModal(true); setFormError(''); setProvisioned(null); }}>
-            + Pre-provision Device
-          </Btn>
+          canManage ? (
+            <Btn onClick={() => { setModal(true); setFormError(''); setProvisioned(null); }}>
+              + Pre-provision Device
+            </Btn>
+          ) : undefined
         }
       />
 
@@ -192,15 +198,21 @@ export default function DevicesPage() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Btn small onClick={() => openApproveModal(d)} disabled={actionLoading === d.id}>
-                    {actionLoading === d.id ? '…' : '✓ Approve'}
-                  </Btn>
-                  <Btn small variant="secondary" onClick={() => handleReject(d)} disabled={actionLoading === d.id}>
-                    {actionLoading === d.id ? '…' : '✕ Reject'}
-                  </Btn>
-                  <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
-                    🗑
-                  </Btn>
+                  {canApprove && (
+                    <>
+                      <Btn small onClick={() => openApproveModal(d)} disabled={actionLoading === d.id}>
+                        {actionLoading === d.id ? '…' : '✓ Approve'}
+                      </Btn>
+                      <Btn small variant="secondary" onClick={() => handleReject(d)} disabled={actionLoading === d.id}>
+                        {actionLoading === d.id ? '…' : '✕ Reject'}
+                      </Btn>
+                    </>
+                  )}
+                  {canManage && (
+                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
+                      🗑
+                    </Btn>
+                  )}
                 </div>
               </div>
             ))}
@@ -213,16 +225,16 @@ export default function DevicesPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Name', 'Type', 'Status', 'Last Cashier', 'Open Shift', 'Last Seen', 'Actions'].map(h => (
+              {['Name', 'Type', 'Status', 'Last Cashier', 'Open Shift', 'Last Seen', ...(canManage ? ['Actions'] : [])].map(h => (
                 <th key={h} style={TH}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+              <tr><td colSpan={canManage ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
             ) : approved.length === 0 ? (
-              <tr><td colSpan={7}><EmptyState message="No approved devices yet." /></td></tr>
+              <tr><td colSpan={canManage ? 7 : 6}><EmptyState message="No approved devices yet." /></td></tr>
             ) : approved.map(d => (
               <tr key={d.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>{d.name}</td>
@@ -239,6 +251,7 @@ export default function DevicesPage() {
                 <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>
                   {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}
                 </td>
+                {canManage && (
                 <td style={TD}>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Btn
@@ -254,6 +267,7 @@ export default function DevicesPage() {
                     </Btn>
                   </div>
                 </td>
+                )}
               </tr>
             ))}
           </tbody>

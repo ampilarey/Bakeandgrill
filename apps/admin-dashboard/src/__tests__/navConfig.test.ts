@@ -53,4 +53,29 @@ describe('navConfig', () => {
     expect(can(user, 'inventory.view')).toBe(true);
     expect(can(user, 'inventory.manage')).toBe(true);
   });
+
+  it('inventory.view alone does not grant inventory.manage', () => {
+    const user: StaffUser = {
+      id: 4,
+      name: 'Cashier',
+      email: 'c@test.com',
+      role: 'staff',
+      permissions: ['inventory.view'],
+    };
+    expect(can(user, 'inventory.view')).toBe(true);
+    expect(can(user, 'inventory.manage')).toBe(false);
+  });
+
+  it('devices.view alone does not grant devices.manage', () => {
+    const user: StaffUser = {
+      id: 5,
+      name: 'Supervisor',
+      email: 's@test.com',
+      role: 'manager',
+      permissions: ['devices.view'],
+    };
+    expect(can(user, 'devices.view')).toBe(true);
+    expect(can(user, 'devices.manage')).toBe(false);
+    expect(can(user, 'devices.approve')).toBe(false);
+  });
 });

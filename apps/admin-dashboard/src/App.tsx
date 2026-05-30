@@ -354,7 +354,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="time-clock" element={
-                  <PermissionGuard user={user} permission="staff.view">
+                  <PermissionGuard user={user} permission="pos.time_clock">
                     <TimeClockPage />
                   </PermissionGuard>
                 } />
