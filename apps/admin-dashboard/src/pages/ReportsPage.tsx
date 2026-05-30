@@ -42,10 +42,68 @@ const DISCOUNT_TYPE_LABELS: Record<string, string> = {
   gift_card: 'Gift card', referral: 'Referral',
 };
 
-const TABS = ['Summary', 'Breakdown', 'Delivery Zones', 'X / Z Report', 'Tax', 'Inventory', 'Accounts Payable', 'Accounts Receivable', 'Promotions', 'Loyalty', 'Discounts', 'Voids', 'Refunds', 'Credit Exposure', 'Overrides', 'Stock Velocity', 'Shift Variances', 'Customer LTV', 'Customer Cohorts', 'Cashier Performance', 'Product Margins', 'Stock Discrepancy', 'Hourly Sales', 'Station Performance'] as const;
-type Tab = typeof TABS[number];
+const REPORT_SECTIONS = [
+  {
+    id: 'sales',
+    label: 'Sales',
+    tabs: ['Summary', 'Breakdown', 'Hourly Sales', 'Station Performance', 'Cashier Performance', 'Product Margins'],
+  },
+  {
+    id: 'finance',
+    label: 'Finance',
+    tabs: ['X / Z Report', 'Tax', 'Accounts Payable', 'Accounts Receivable', 'Credit Exposure'],
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    tabs: ['Delivery Zones', 'Discounts', 'Voids', 'Refunds', 'Overrides', 'Shift Variances'],
+  },
+  {
+    id: 'inventory',
+    label: 'Inventory',
+    tabs: ['Inventory', 'Stock Velocity', 'Stock Discrepancy'],
+  },
+  {
+    id: 'customers',
+    label: 'Customers',
+    tabs: ['Promotions', 'Loyalty', 'Customer LTV', 'Customer Cohorts'],
+  },
+] as const;
+
+type Tab = typeof REPORT_SECTIONS[number]['tabs'][number];
+
+function sectionForTab(t: Tab) {
+  return REPORT_SECTIONS.find((s) => (s.tabs as readonly string[]).includes(t)) ?? REPORT_SECTIONS[0];
+}
 
 const S = {
+  sectionTab: (active: boolean): React.CSSProperties => ({
+    padding: '10px 16px',
+    fontSize: 13,
+    fontWeight: active ? 700 : 500,
+    color: active ? '#D4813A' : '#9C8E7E',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    borderBottom: active ? '2px solid #D4813A' : '2px solid transparent',
+    marginBottom: -2,
+    whiteSpace: 'nowrap',
+  }),
+  sectionBar: {
+    display: 'flex',
+    gap: 4,
+    marginBottom: 0,
+    borderBottom: '2px solid #E8E0D8',
+    flexWrap: 'wrap' as const,
+  },
+  subTabBar: {
+    display: 'flex',
+    gap: 4,
+    marginBottom: 20,
+    marginTop: 12,
+    flexWrap: 'wrap' as const,
+  },
   tab: (active: boolean): React.CSSProperties => ({
     padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 400,
@@ -74,6 +132,7 @@ function BarCell({ value, max }: { value: number; max: number }) {
 export function ReportsPage() {
   usePageTitle('Reports');
   const [tab, setTab]         = useState<Tab>('Summary');
+  const currentSection = sectionForTab(tab);
   const [from, setFrom]       = useState(daysAgo(7));
   const [to, setTo]           = useState(today());
   const [cashierId, setCashierId] = useState('');
@@ -209,14 +268,26 @@ export function ReportsPage() {
     <>
       <PageHeader
         title="Reports"
-        subtitle="Sales, breakdowns, tax, and inventory"
+        subtitle="Sales, finance, operations, inventory, and customer reports"
         action={canExport ? <Btn small variant="secondary" onClick={handleExportCSV}>Export CSV</Btn> : undefined}
       />
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap' }}>
-        {TABS.map(t => (
-          <button key={t} style={S.tab(tab === t)} onClick={() => setTab(t)}>{t}</button>
+      {/* Section + report tabs */}
+      <div style={S.sectionBar}>
+        {REPORT_SECTIONS.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            style={S.sectionTab(currentSection.id === section.id)}
+            onClick={() => setTab(section.tabs[0])}
+          >
+            {section.label}
+          </button>
+        ))}
+      </div>
+      <div style={S.subTabBar}>
+        {currentSection.tabs.map((t) => (
+          <button key={t} type="button" style={S.tab(tab === t)} onClick={() => setTab(t)}>{t}</button>
         ))}
       </div>
 
