@@ -43,6 +43,15 @@ export const STAFF_ENDPOINTS = {
   REFUND_BY_ID:                (id: number) => `/refunds/${id}`,
   ORDER_REFUNDS:               (orderId: number) => `/orders/${orderId}/refunds`,
 
+  // Purchase requests (POS / KDS / admin)
+  PURCHASE_REQUESTS:           '/purchase-requests',
+  PURCHASE_REQUESTS_MY:        '/purchase-requests/my',
+  PURCHASE_REQUESTS_ASSIGNED:  '/purchase-requests/assigned-to-me',
+  PURCHASE_REQUEST_BY_ID:      (id: number) => `/purchase-requests/${id}`,
+  PURCHASE_REQUEST_APPROVE:    (id: number) => `/purchase-requests/${id}/approve`,
+  PURCHASE_REQUEST_ITEM_BOUGHT: (requestId: number, itemId: number) =>
+    `/purchase-requests/${requestId}/items/${itemId}/mark-bought`,
+
   // Admin-only (additionally permission-gated server-side)
   ADMIN_UPLOAD_IMAGE:          '/admin/upload-image',
   ADMIN_SPECIALS:              '/admin/specials',

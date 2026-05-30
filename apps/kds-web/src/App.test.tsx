@@ -13,6 +13,12 @@ vi.mock("./api", () => ({
   bumpOrder: vi.fn(),
   recallOrder: vi.fn(),
   markItem86: vi.fn(),
+  createPurchaseRequest: vi.fn(),
+  fetchMyPurchaseRequests: vi.fn(),
+  fetchAssignedPurchaseRequests: vi.fn(),
+  markPurchaseRequestItemBought: vi.fn(),
+  markPurchaseRequestItemPartial: vi.fn(),
+  markPurchaseRequestItemNotAvailable: vi.fn(),
   hasKdsPermission: (perms: string[], slug: string) => perms.includes(slug),
 }));
 
@@ -26,5 +32,18 @@ describe("KDS App", () => {
     render(<App />);
     expect(screen.getByText(/Kitchen Display/i)).toBeInTheDocument();
     expect(screen.getByText(/Email or phone/i)).toBeInTheDocument();
+  });
+
+  it("shows request item button when logged in with permission", async () => {
+    const { fetchMe } = await import("./api");
+    vi.mocked(fetchMe).mockResolvedValue({
+      id: 1,
+      name: "Kitchen",
+      role: "kitchen_staff",
+      permissions: ["kds.view", "purchase_requests.create"],
+    });
+    localStorage.setItem("kds_token", "test-token");
+    render(<App />);
+    await screen.findByRole("button", { name: /Request item/i });
   });
 });

@@ -1,10 +1,14 @@
 import { palette, radius, space, type } from "../theme";
+import type { CSSProperties } from "react";
 
 type Props = {
   cashierName: string;
   onLogout: () => void;
   onSwitchUser?: () => void;
   kdsUrl?: string;
+  onRequestItems?: () => void;
+  onMyRequests?: () => void;
+  onBuyingList?: () => void;
 };
 
 const defaultKdsUrl =
@@ -15,7 +19,25 @@ export function KitchenStaffLanding({
   onLogout,
   onSwitchUser,
   kdsUrl = defaultKdsUrl,
+  onRequestItems,
+  onMyRequests,
+  onBuyingList,
 }: Props) {
+  const actionBtn: CSSProperties = {
+    display: "block",
+    width: "100%",
+    boxSizing: "border-box",
+    padding: `${space.m}px ${space.l}px`,
+    borderRadius: radius.m,
+    fontWeight: 700,
+    fontSize: type.body.fontSize,
+    textDecoration: "none",
+    marginBottom: space.m,
+    cursor: "pointer",
+    textAlign: "center",
+    border: "none",
+  };
+
   return (
     <div
       style={{
@@ -49,26 +71,29 @@ export function KitchenStaffLanding({
         </h1>
         <p style={{ margin: `0 0 ${space.l}px`, color: palette.panelMuted, lineHeight: 1.5, fontSize: type.body.fontSize }}>
           Signed in as <strong>{cashierName || "Kitchen staff"}</strong>.
-          Open the kitchen display to view and prepare tickets. Cashiers handle payments and mark orders ready for customers.
+          Open the kitchen display to view and prepare tickets.
         </p>
         <a
           href={kdsUrl}
-          style={{
-            display: "block",
-            width: "100%",
-            boxSizing: "border-box",
-            padding: `${space.m}px ${space.l}px`,
-            borderRadius: radius.m,
-            background: "#1C1408",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: type.body.fontSize,
-            textDecoration: "none",
-            marginBottom: space.m,
-          }}
+          style={{ ...actionBtn, background: "#1C1408", color: "#fff" }}
         >
           Open Kitchen Display →
         </a>
+        {onRequestItems && (
+          <button type="button" onClick={onRequestItems} style={{ ...actionBtn, background: "#fff", color: palette.panelInk, border: `1px solid ${palette.border}` }}>
+            Request items
+          </button>
+        )}
+        {onMyRequests && (
+          <button type="button" onClick={onMyRequests} style={{ ...actionBtn, background: "#fff", color: palette.panelInk, border: `1px solid ${palette.border}` }}>
+            My requests
+          </button>
+        )}
+        {onBuyingList && (
+          <button type="button" onClick={onBuyingList} style={{ ...actionBtn, background: "#fff", color: palette.panelInk, border: `1px solid ${palette.border}` }}>
+            Buying list
+          </button>
+        )}
         <div style={{ display: "flex", gap: space.s, justifyContent: "center", flexWrap: "wrap" }}>
           {onSwitchUser && (
             <button

@@ -24,6 +24,9 @@ import { OpenShiftModal }    from "./components/OpenShiftModal";
 import { CloseShiftModal }   from "./components/CloseShiftModal";
 import { ShiftClosedGate }   from "./components/ShiftClosedGate";
 import { KitchenStaffLanding } from "./components/KitchenStaffLanding";
+import { RequestItemModal } from "./components/RequestItemModal";
+import { MyPurchaseRequestsPanel } from "./components/MyPurchaseRequestsPanel";
+import { AssignedBuyingListPanel } from "./components/AssignedBuyingListPanel";
 import { ChargeOverlay }     from "./components/ChargeOverlay";
 import { SaveTicketModal }   from "./components/SaveTicketModal";
 import { OpenTicketsPanel }  from "./components/OpenTicketsPanel";
@@ -54,7 +57,7 @@ import {
   validateDeliveryDetails,
 } from "./orderTypes";
 
-type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | "ops";
+type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | "ops" | "my_requests" | "buying_list";
 
 function App() {
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -109,6 +112,9 @@ function App() {
   const canViewKds = hasPosPermission(staffPermissions, "kds.view");
   const canAccessOps = canOpsInventory || canOpsPreparedStock || canOpsSuppliers || canOpsReports || canOpsMarketing;
   const canKitchenOnly = canViewKds && !canRingSales && !canAccessOps && !canViewShiftHistory;
+  const canCreatePurchaseRequest = hasPosPermission(staffPermissions, "purchase_requests.create");
+  const canViewOwnPurchaseRequests = hasPosPermission(staffPermissions, "purchase_requests.view_own");
+  const canBuyAssigned = hasPosPermission(staffPermissions, "purchase_requests.buy");
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
@@ -184,6 +190,8 @@ function App() {
 
   // Modals/overlays
   const [showSendBill, setShowSendBill] = useState(false);
+  const [showRequestItemModal, setShowRequestItemModal] = useState(false);
+  const [kitchenPane, setKitchenPane] = useState<"home" | "my_requests" | "buying_list">("home");
   const [showCharge, setShowCharge] = useState(false);
   const [chargeCreditAvailable, setChargeCreditAvailable] = useState(0);
   const [chargeCreditEligible, setChargeCreditEligible] = useState(false);
@@ -951,6 +959,9 @@ function App() {
     }
     if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
     if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
+    if (canCreatePurchaseRequest) main.push({ id: "request_item", label: "Request items", icon: "🛒", group: "main" });
+    if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });
+    if (canBuyAssigned) main.push({ id: "buying_list", label: "Buying list", icon: "✅", group: "main" });
 
     const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [];
     if (!shiftOpen && canOpenShift) {
@@ -969,6 +980,7 @@ function App() {
     return [...main, ...user];
   }, [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps,
+    canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned,
     canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount,
   ]);
 
@@ -979,9 +991,12 @@ function App() {
     shift: shiftOpen || canOpenShift || canCloseShift,
     shift_history: canViewShiftHistory,
     ops: canAccessOps,
+    my_requests: canViewOwnPurchaseRequests,
+    buying_list: canBuyAssigned,
   }), [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory,
     canAccessOps, canOpenShift, canCloseShift, shiftOpen,
+    canViewOwnPurchaseRequests, canBuyAssigned,
   ]);
 
   useEffect(() => {
@@ -1031,12 +1046,31 @@ function App() {
   }
 
   if (canKitchenOnly) {
+    if (kitchenPane === "my_requests") {
+      return (
+        <MyPurchaseRequestsPanel
+          onClose={() => setKitchenPane("home")}
+          onRequestNew={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
+        />
+      );
+    }
+    if (kitchenPane === "buying_list") {
+      return <AssignedBuyingListPanel onClose={() => setKitchenPane("home")} />;
+    }
     return (
-      <KitchenStaffLanding
-        cashierName={cashierName}
-        onLogout={handleLogout}
-        onSwitchUser={canLockScreen ? lockScreen : undefined}
-      />
+      <>
+        <KitchenStaffLanding
+          cashierName={cashierName}
+          onLogout={handleLogout}
+          onSwitchUser={canLockScreen ? lockScreen : undefined}
+          onRequestItems={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
+          onMyRequests={canViewOwnPurchaseRequests ? () => setKitchenPane("my_requests") : undefined}
+          onBuyingList={canBuyAssigned ? () => setKitchenPane("buying_list") : undefined}
+        />
+        {showRequestItemModal && (
+          <RequestItemModal onClose={() => setShowRequestItemModal(false)} />
+        )}
+      </>
     );
   }
 
@@ -1530,6 +1564,20 @@ function App() {
               refunds: canRefund,
               shiftOpen,
             }}
+            onRequestItem={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
+          />
+        )}
+
+        {pane === 'my_requests' && (
+          <MyPurchaseRequestsPanel
+            onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
+            onRequestNew={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
+          />
+        )}
+
+        {pane === 'buying_list' && (
+          <AssignedBuyingListPanel
+            onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
           />
         )}
       </main>
@@ -1573,6 +1621,10 @@ function App() {
             setShowPreferences(true);
             return;
           }
+          if (id === "request_item") {
+            setShowRequestItemModal(true);
+            return;
+          }
           setPane(id as Pane);
         }}
       />
@@ -1583,6 +1635,10 @@ function App() {
           onClose={() => setShowPreferences(false)}
           onSaved={(resolved) => setIdleLockMinutes(resolved)}
         />
+      )}
+
+      {showRequestItemModal && (
+        <RequestItemModal onClose={() => setShowRequestItemModal(false)} />
       )}
 
       {showSendBill && (
@@ -1761,6 +1817,8 @@ function paneTitle(p: Pane): string {
     case "shift": return "Current Shift";
     case "shift_history": return "Shift History";
     case "ops": return "Operations";
+    case "my_requests": return "My Requests";
+    case "buying_list": return "Buying List";
   }
 }
 

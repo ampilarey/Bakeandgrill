@@ -15,6 +15,7 @@ import {
   type KdsOrder,
   type KdsStaffUser,
 } from "./api";
+import { KdsPurchaseRequestOverlay } from "./components/KdsPurchaseRequestOverlay";
 import { useKdsSse } from "./hooks/useKdsSse";
 import { isAudioEnabled, playChime, playLateAlert, setAudioEnabled } from "./utils/audio";
 import { elapsed, isLateTicket, minutesSince, urgencyColor } from "./utils/kdsDisplay";
@@ -63,6 +64,7 @@ function App() {
   const [stationFilter, setStationFilter] = useState<number | "all">("all");
   const [menuGroups, setMenuGroups] = useState<KdsMenuGroup[]>([]);
   const [eightySixing, setEightySixing] = useState<number | null>(null);
+  const [prOverlay, setPrOverlay] = useState<null | "request" | "my" | "buying">(null);
 
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstLoadRef = useRef(true);
@@ -212,6 +214,9 @@ function App() {
   const canRecall = hasKdsPermission(permissions, "kds.recall_order");
   const can86 = hasKdsPermission(permissions, "kds.manage_availability");
   const canPrint = hasKdsPermission(permissions, "kds.print_ticket");
+  const canCreatePurchaseRequest = hasKdsPermission(permissions, "purchase_requests.create");
+  const canViewOwnPurchaseRequests = hasKdsPermission(permissions, "purchase_requests.view_own");
+  const canBuyAssigned = hasKdsPermission(permissions, "purchase_requests.buy");
 
   const handleLogin = async () => {
     setErrorMessage("");
@@ -639,6 +644,21 @@ function App() {
           >
             Refresh
           </button>
+          {canCreatePurchaseRequest && (
+            <button type="button" onClick={() => setPrOverlay("request")} className="text-xs" style={{ color: "#fff", background: "#D4813A", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 700 }}>
+              Request item
+            </button>
+          )}
+          {canViewOwnPurchaseRequests && (
+            <button type="button" onClick={() => setPrOverlay("my")} className="text-xs" style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+              My requests
+            </button>
+          )}
+          {canBuyAssigned && (
+            <button type="button" onClick={() => setPrOverlay("buying")} className="text-xs" style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+              Buying list
+            </button>
+          )}
           <a href="/" className="text-xs" style={{ color: "#8B7355", textDecoration: "none" }}>← Site</a>
           <button
             className="text-xs underline"
@@ -700,6 +720,10 @@ function App() {
         <Column title="Cooking" items={inProgressOrders} />
         <Column title="Ready" items={readyOrders} />
       </main>
+
+      {prOverlay && token && (
+        <KdsPurchaseRequestOverlay token={token} mode={prOverlay} onClose={() => setPrOverlay(null)} />
+      )}
     </div>
   );
 }

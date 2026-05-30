@@ -145,3 +145,109 @@ export async function markItem86(token: string, itemId: number): Promise<void> {
 export function hasKdsPermission(permissions: string[], slug: string): boolean {
   return permissions.includes(slug);
 }
+
+export type KdsPurchaseRequestItem = {
+  id: number;
+  name: string;
+  requested_qty: number;
+  requested_unit: string;
+  approved_qty: number | null;
+  status: string;
+};
+
+export type KdsPurchaseRequest = {
+  id: number;
+  request_no: string;
+  status: string;
+  priority: string;
+  items: KdsPurchaseRequestItem[];
+};
+
+function prHeaders(token: string) {
+  return authHeaders(token);
+}
+
+export async function createPurchaseRequest(
+  token: string,
+  payload: {
+    source: "kds" | "pos" | "admin";
+    priority?: string;
+    items: Array<{
+      free_text_name?: string;
+      category?: string;
+      requested_qty: number;
+      requested_unit: string;
+      reason?: string;
+      notes?: string;
+    }>;
+  },
+): Promise<{ request: KdsPurchaseRequest }> {
+  return request(`/purchase-requests`, {
+    method: 'POST',
+    headers: prHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchMyPurchaseRequests(token: string): Promise<{ data: KdsPurchaseRequest[] }> {
+  return request('/purchase-requests/my', { headers: prHeaders(token) });
+}
+
+export async function fetchAssignedPurchaseRequests(token: string): Promise<{ data: KdsPurchaseRequest[] }> {
+  return request('/purchase-requests/assigned-to-me', { headers: prHeaders(token) });
+}
+
+export async function markPurchaseRequestItemBought(
+  token: string,
+  requestId: number,
+  itemId: number,
+  payload: { actual_qty?: number; buyer_notes?: string },
+): Promise<void> {
+  await request(`/purchase-requests/${requestId}/items/${itemId}/mark-bought`, {
+    method: 'POST',
+    headers: prHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function markPurchaseRequestItemPartial(
+  token: string,
+  requestId: number,
+  itemId: number,
+  payload: { actual_qty: number },
+): Promise<void> {
+  await request(`/purchase-requests/${requestId}/items/${itemId}/mark-partial`, {
+    method: 'POST',
+    headers: prHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function markPurchaseRequestItemNotAvailable(
+  token: string,
+  requestId: number,
+  itemId: number,
+  notes?: string,
+): Promise<void> {
+  await request(`/purchase-requests/${requestId}/items/${itemId}/mark-not-available`, {
+    method: 'POST',
+    headers: prHeaders(token),
+    body: JSON.stringify({ buyer_notes: notes }),
+  });
+}
+
+export async function uploadPurchaseRequestAttachment(
+  token: string,
+  requestId: number,
+  file: File,
+  type: 'request_photo' | 'receipt',
+): Promise<void> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('type', type);
+  await request(`/purchase-requests/${requestId}/attachments`, {
+    method: 'POST',
+    headers: prHeaders(token),
+    body: form,
+  });
+}

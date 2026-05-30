@@ -27,6 +27,7 @@ const ProfitLossPage          = lazyWithRetry(() => import('./pages/ProfitLossPa
 const SupplierIntelligencePage = lazyWithRetry(() => import('./pages/SupplierIntelligencePage').then((m) => ({ default: m.SupplierIntelligencePage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
 const PurchaseOrdersPage      = lazyWithRetry(() => import('./pages/PurchaseOrdersPage').then((m) => ({ default: m.PurchaseOrdersPage })));
+const PurchaseRequestsPage    = lazyWithRetry(() => import('./pages/PurchaseRequestsPage'));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
@@ -292,6 +293,11 @@ export default function App() {
                 <Route path="purchase-orders" element={
                   <PermissionGuard user={user} permission="suppliers.purchases">
                     <PurchaseOrdersPage />
+                  </PermissionGuard>
+                } />
+                <Route path="purchase-requests" element={
+                  <PermissionGuard user={user} permission="purchase_requests.view_all">
+                    <PurchaseRequestsPage />
                   </PermissionGuard>
                 } />
                 {/* Webhooks */}

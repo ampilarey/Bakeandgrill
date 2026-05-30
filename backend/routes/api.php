@@ -354,6 +354,43 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::post('/purchases/import', [PurchaseController::class, 'import']);
     });
 
+    // Purchase Requests — operational buying tasks (staff request, manager verify)
+    Route::post('/purchase-requests', [App\Http\Controllers\Api\PurchaseRequestController::class, 'store'])
+        ->middleware('permission:purchase_requests.create');
+    Route::get('/purchase-requests/my', [App\Http\Controllers\Api\PurchaseRequestController::class, 'my'])
+        ->middleware('permission:purchase_requests.view_own');
+    Route::get('/purchase-requests/assigned-to-me', [App\Http\Controllers\Api\PurchaseRequestController::class, 'assignedToMe'])
+        ->middleware('permission:purchase_requests.view_own');
+    Route::get('/purchase-requests', [App\Http\Controllers\Api\PurchaseRequestController::class, 'index'])
+        ->middleware('permission:purchase_requests.view_all');
+    Route::get('/purchase-requests/{id}', [App\Http\Controllers\Api\PurchaseRequestController::class, 'show']);
+    Route::put('/purchase-requests/{id}', [App\Http\Controllers\Api\PurchaseRequestController::class, 'update'])
+        ->middleware('permission:purchase_requests.approve');
+    Route::post('/purchase-requests/{id}/approve', [App\Http\Controllers\Api\PurchaseRequestController::class, 'approve'])
+        ->middleware('permission:purchase_requests.approve');
+    Route::post('/purchase-requests/{id}/reject', [App\Http\Controllers\Api\PurchaseRequestController::class, 'reject'])
+        ->middleware('permission:purchase_requests.reject');
+    Route::post('/purchase-requests/{id}/assign', [App\Http\Controllers\Api\PurchaseRequestController::class, 'assign'])
+        ->middleware('permission:purchase_requests.assign');
+    Route::post('/purchase-requests/{id}/cancel', [App\Http\Controllers\Api\PurchaseRequestController::class, 'cancel']);
+    Route::post('/purchase-requests/{id}/merge', [App\Http\Controllers\Api\PurchaseRequestController::class, 'merge'])
+        ->middleware('permission:purchase_requests.merge');
+    Route::post('/purchase-requests/{id}/verify-all', [App\Http\Controllers\Api\PurchaseRequestController::class, 'verifyAll'])
+        ->middleware('permission:purchase_requests.verify');
+    Route::post('/purchase-requests/{id}/convert-to-purchase', [App\Http\Controllers\Api\PurchaseRequestController::class, 'convertToPurchase'])
+        ->middleware('permission:purchase_requests.convert_to_purchase');
+    Route::post('/purchase-requests/{id}/convert-to-expense', [App\Http\Controllers\Api\PurchaseRequestController::class, 'convertToExpense'])
+        ->middleware('permission:purchase_requests.convert_to_expense');
+    Route::post('/purchase-requests/{id}/attachments', [App\Http\Controllers\Api\PurchaseRequestController::class, 'uploadAttachment']);
+    Route::post('/purchase-requests/{id}/items/{itemId}/mark-bought', [App\Http\Controllers\Api\PurchaseRequestController::class, 'markBought'])
+        ->middleware('permission:purchase_requests.buy');
+    Route::post('/purchase-requests/{id}/items/{itemId}/mark-partial', [App\Http\Controllers\Api\PurchaseRequestController::class, 'markPartial'])
+        ->middleware('permission:purchase_requests.buy');
+    Route::post('/purchase-requests/{id}/items/{itemId}/mark-not-available', [App\Http\Controllers\Api\PurchaseRequestController::class, 'markNotAvailable'])
+        ->middleware('permission:purchase_requests.buy');
+    Route::post('/purchase-requests/{id}/items/{itemId}/verify-received', [App\Http\Controllers\Api\PurchaseRequestController::class, 'verifyItem'])
+        ->middleware('permission:purchase_requests.verify');
+
     // Customers — lightweight POS lookup / quick-create (any authenticated staff)
     Route::get('/customers/search', [CustomerController::class, 'search'])
         ->middleware(['permission:customers.lookup', 'throttle:60,1']);

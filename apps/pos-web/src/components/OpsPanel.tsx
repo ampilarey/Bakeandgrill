@@ -49,8 +49,8 @@ type OpsPermissions = {
  *    can't accidentally fire 3-segment Unicode messages without seeing
  *    the bill first.
  */
-export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
-  const { permissions, ...ops } = props;
+export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onRequestItem?: () => void }) {
+  const { permissions, onRequestItem, ...ops } = props;
   const [tab, setTab] = useState<Tab>("inventory");
 
   const lowStockThreshold = 5;
@@ -130,7 +130,7 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
         flex: 1, overflow: "auto", padding: 20,
         display: "flex", flexDirection: "column", gap: 16,
       }}>
-        {activeTab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} />}
+        {activeTab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} onRequestItem={onRequestItem} />}
         {activeTab === "prepared"   && <PreparedStockTab setOpsMessage={ops.setOpsMessage} />}
         {activeTab === "suppliers"  && <SuppliersTab ops={ops} />}
         {activeTab === "refunds"    && <RefundsTab ops={ops} />}
@@ -340,7 +340,7 @@ function PreparedStockTab({ setOpsMessage }: { setOpsMessage: (msg: string) => v
 // Inventory tab
 // ────────────────────────────────────────────────────────────────────
 
-function InventoryTab({ ops, lowStockThreshold }: { ops: OpsState; lowStockThreshold: number }) {
+function InventoryTab({ ops, lowStockThreshold, onRequestItem }: { ops: OpsState; lowStockThreshold: number; onRequestItem?: () => void }) {
   const [search, setSearch] = useState("");
   const [lowOnly, setLowOnly] = useState(false);
   const [activeForm, setActiveForm] = useState<"adjust" | "waste" | "receive" | null>(null);
@@ -360,7 +360,10 @@ function InventoryTab({ ops, lowStockThreshold }: { ops: OpsState; lowStockThres
         title="Inventory"
         subtitle="Track stock levels, record waste, receive purchases."
         right={(
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {onRequestItem && (
+              <SecondaryBtn onClick={onRequestItem}>Request item</SecondaryBtn>
+            )}
             <SecondaryBtn onClick={() => setActiveForm("waste")}    active={activeForm === "waste"}>Record waste</SecondaryBtn>
             <SecondaryBtn onClick={() => setActiveForm("adjust")}   active={activeForm === "adjust"}>Adjust stock</SecondaryBtn>
             <PrimaryBtn   onClick={() => setActiveForm("receive")}>Receive stock</PrimaryBtn>

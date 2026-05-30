@@ -188,6 +188,20 @@ final class PermissionCatalog
             ['group' => 'Kitchen / KDS', 'slug' => 'kds.mark_kitchen_done', 'name' => 'Mark kitchen preparation done', 'description' => 'Signal food is ready for cashier review — does not notify customer'],
             ['group' => 'Kitchen / KDS', 'slug' => 'kds.print_ticket', 'name' => 'Reprint kitchen ticket'],
             ['group' => 'Kitchen / KDS', 'slug' => 'kds.manage_availability', 'name' => '86 items from KDS', 'description' => 'Toggle item availability from kitchen display'],
+
+            // Purchase Requests
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.create', 'name' => 'Create purchase requests'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.view_own', 'name' => 'View own purchase requests'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.view_all', 'name' => 'View all purchase requests'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.approve', 'name' => 'Approve purchase requests'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.assign', 'name' => 'Assign buyers'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.buy', 'name' => 'Mark items bought (when assigned)'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.verify', 'name' => 'Verify received items'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.cancel', 'name' => 'Cancel purchase requests'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.reject', 'name' => 'Reject purchase requests'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.merge', 'name' => 'Merge duplicate requests'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.convert_to_purchase', 'name' => 'Convert request to purchase order'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.convert_to_expense', 'name' => 'Convert request to expense'],
         ];
     }
 
@@ -215,6 +229,16 @@ final class PermissionCatalog
     }
 
     /** @return list<string> */
+    public static function purchaseRequestsStaffSlugs(): array
+    {
+        return [
+            'purchase_requests.create',
+            'purchase_requests.view_own',
+            'purchase_requests.buy',
+        ];
+    }
+
+    /** @return list<string> */
     public static function staffSlugs(): array
     {
         return [
@@ -232,6 +256,7 @@ final class PermissionCatalog
             'dashboard.view',
             'inventory.view', 'suppliers.view', 'delivery.view', 'reservations.view',
             'menu.view',
+            ...self::purchaseRequestsStaffSlugs(),
         ];
     }
 
@@ -245,6 +270,7 @@ final class PermissionCatalog
             'kds.print_ticket',
             'pos.time_clock',
             'pos.lock_screen',
+            ...self::purchaseRequestsStaffSlugs(),
         ];
     }
 

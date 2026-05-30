@@ -7,6 +7,7 @@ namespace App\Domains\Operations\Services;
 use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\Order;
+use App\Models\PurchaseRequest;
 use App\Models\SiteSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -83,6 +84,43 @@ final class OpsAlertsService
                 'count' => $negativeInventory,
                 'message' => "{$negativeInventory} inventory SKU(s) with negative on-hand quantity",
                 'link' => '/inventory',
+            ];
+        }
+
+        $pendingRequests = PurchaseRequest::query()->where('status', 'requested')->count();
+        if ($pendingRequests > 0) {
+            $alerts[] = [
+                'type' => 'purchase_requests_pending',
+                'severity' => 'warning',
+                'count' => $pendingRequests,
+                'message' => "{$pendingRequests} purchase request(s) awaiting approval",
+                'link' => '/purchase-requests',
+            ];
+        }
+
+        $awaitingVerify = PurchaseRequest::query()->where('status', 'bought_pending_verification')->count();
+        if ($awaitingVerify > 0) {
+            $alerts[] = [
+                'type' => 'purchase_requests_verify',
+                'severity' => 'warning',
+                'count' => $awaitingVerify,
+                'message' => "{$awaitingVerify} purchase request(s) bought — pending verification",
+                'link' => '/purchase-requests',
+            ];
+        }
+
+        $overdueRequests = PurchaseRequest::query()
+            ->whereNotIn('status', ['closed', 'cancelled', 'rejected', 'received'])
+            ->whereNotNull('needed_by')
+            ->where('needed_by', '<', now())
+            ->count();
+        if ($overdueRequests > 0) {
+            $alerts[] = [
+                'type' => 'purchase_requests_overdue',
+                'severity' => 'critical',
+                'count' => $overdueRequests,
+                'message' => "{$overdueRequests} purchase request(s) past needed-by date",
+                'link' => '/purchase-requests',
             ];
         }
 

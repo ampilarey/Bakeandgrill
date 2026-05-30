@@ -7,7 +7,7 @@ import {
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Menu, Zap, MapPin, Store,
-  ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck, HeartPulse, UserCircle,
+  ConciergeBell, CircleDollarSign, Wrench,   ClipboardCheck, HeartPulse, UserCircle, ClipboardPen,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -72,6 +72,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels' },
       { to: '/purchase-orders',       icon: Package,       label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
+      { to: '/purchase-requests',     icon: ClipboardPen,  label: 'Purchase Requests', permission: 'purchase_requests.view_all', description: 'Staff buying tasks' },
       { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'menu.manage',         description: 'Log waste & shrinkage' },
       { to: '/supplier-intelligence', icon: Factory,       label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
