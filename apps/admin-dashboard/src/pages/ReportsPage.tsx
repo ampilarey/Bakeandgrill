@@ -91,18 +91,12 @@ const S = {
     whiteSpace: 'nowrap',
   }),
   sectionBar: {
-    display: 'flex',
-    gap: 4,
     marginBottom: 0,
     borderBottom: '2px solid #E8E0D8',
-    flexWrap: 'wrap' as const,
   },
   subTabBar: {
-    display: 'flex',
-    gap: 4,
     marginBottom: 20,
     marginTop: 12,
-    flexWrap: 'wrap' as const,
   },
   tab: (active: boolean): React.CSSProperties => ({
     padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -273,7 +267,7 @@ export function ReportsPage() {
       />
 
       {/* Section + report tabs */}
-      <div style={S.sectionBar}>
+      <div className="tab-scroll-row" style={S.sectionBar}>
         {REPORT_SECTIONS.map((section) => (
           <button
             key={section.id}
@@ -285,7 +279,7 @@ export function ReportsPage() {
           </button>
         ))}
       </div>
-      <div style={S.subTabBar}>
+      <div className="tab-scroll-row" style={S.subTabBar}>
         {currentSection.tabs.map((t) => (
           <button key={t} type="button" style={S.tab(tab === t)} onClick={() => setTab(t)}>{t}</button>
         ))}
@@ -294,7 +288,7 @@ export function ReportsPage() {
       {/* Date filters — only for date-range tabs */}
       {needsDate && (
         <Card style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+          <div className="mobile-filters-body" data-responsive-grid style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
             <DateInput label="From" value={from} onChange={setFrom} />
             <DateInput label="To"   value={to}   onChange={setTo} />
             {tab === 'Summary' && (

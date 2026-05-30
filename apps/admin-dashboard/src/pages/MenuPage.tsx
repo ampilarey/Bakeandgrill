@@ -1009,7 +1009,7 @@ export function MenuPage() {
             {categories.filter((c) => !c.parent_id).map((cat) => (
               <div key={cat.id}>
                 <Card style={{ padding: '14px 18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     {cat.image_url && (
                       <img src={cat.image_url} alt={cat.name}
                         style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
@@ -1030,7 +1030,7 @@ export function MenuPage() {
                         Sort: {cat.sort_order ?? 0} · {cat.items?.length ?? '?'} items
                       </p>
                     </div>
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <div className="menu-cat-actions" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       {canManage && (
                         <>
                       <Btn small variant="ghost" onClick={() => handleToggleCat(cat)}>
@@ -1045,8 +1045,9 @@ export function MenuPage() {
                 </Card>
                 {/* Subcategories indented beneath parent */}
                 {categories.filter((c) => c.parent_id === cat.id).map((sub) => (
+                  <div className="menu-subcat-card">
                   <Card key={sub.id} style={{ padding: '12px 18px', marginTop: 6, marginLeft: 28, borderLeft: '3px solid #E8E0D8' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <span style={{ fontSize: 16, color: '#94a3b8', flexShrink: 0 }}>↳</span>
                       {sub.image_url && (
                         <img src={sub.image_url} alt={sub.name}
@@ -1063,7 +1064,7 @@ export function MenuPage() {
                           Sort: {sub.sort_order ?? 0} · {sub.items?.length ?? '?'} items
                         </p>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <div className="menu-cat-actions" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         {canManage && (
                           <>
                         <Btn small variant="ghost" onClick={() => handleToggleCat(sub)}>
@@ -1076,6 +1077,7 @@ export function MenuPage() {
                       </div>
                     </div>
                   </Card>
+                  </div>
                 ))}
               </div>
             ))}
@@ -1149,7 +1151,7 @@ export function MenuPage() {
           ) : (
             <>
               <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-scroll">
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
                     <tr style={{ background: '#F8F6F3', borderBottom: '1px solid #E8E0D8' }}>

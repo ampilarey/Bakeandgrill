@@ -481,6 +481,16 @@ a { text-decoration: none; color: inherit; }
   }
 
   /*
+   * width:100% on tables was compressing columns instead of scrolling.
+   * Let tables grow to content width; wrapper (or table itself) scrolls.
+   */
+  .table-scroll > table,
+  :not(.table-scroll) > table {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  /*
    * Any <table> whose direct parent is NOT already a .table-scroll wrapper
    * gets the block+overflow treatment so it scrolls horizontally on narrow screens.
    * This covers pages that render <table> directly inside <Card> or other divs.
@@ -490,6 +500,82 @@ a { text-decoration: none; color: inherit; }
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
+  }
+
+  /* Section / sub-tab rows: single horizontal scroll line instead of wrapping */
+  .tab-scroll-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tab-scroll-row::-webkit-scrollbar {
+    display: none;
+  }
+  .tab-scroll-row > button {
+    flex-shrink: 0;
+  }
+
+  /* Orders (and similar): collapsible filter panel on mobile */
+  .mobile-filters {
+    margin-bottom: 20px;
+    border: 1.5px solid #E8E0D8;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .mobile-filters > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1C1408;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .mobile-filters > summary::-webkit-details-marker {
+    display: none;
+  }
+  .mobile-filters > summary::after {
+    content: '▾';
+    color: #9C8E7E;
+    font-size: 12px;
+  }
+  .mobile-filters[open] > summary::after {
+    transform: rotate(180deg);
+  }
+  .mobile-filters-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 16px 16px;
+  }
+  .mobile-filters-body input[type="search"],
+  .mobile-filters-body select,
+  .mobile-filters-body label {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  /* Menu category cards: stack title row and actions on narrow screens */
+  .menu-cat-row {
+    flex-wrap: wrap;
+  }
+  .menu-cat-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding-top: 8px;
+  }
+
+  .menu-subcat-card {
+    margin-left: 8px;
   }
 
   /* Order detail drawer: full-width on mobile (was 420px fixed) */
@@ -541,6 +627,29 @@ a { text-decoration: none; color: inherit; }
 
   /* Sticky page headers can swallow the viewport — cap their height */
   .page-header { padding: 8px 0 !important; }
+}
+
+@media (min-width: 768px) {
+  .mobile-filters {
+    border: none;
+    background: transparent;
+    overflow: visible;
+    margin-bottom: 20px;
+  }
+  .mobile-filters > summary {
+    display: none;
+  }
+  .mobile-filters-body {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+  }
+  .menu-cat-actions {
+    width: auto;
+    padding-top: 0;
+  }
 }
 
 /* Small mobile: < 480px */

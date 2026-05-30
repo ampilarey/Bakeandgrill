@@ -63,18 +63,12 @@ const S = {
     whiteSpace: 'nowrap',
   }),
   sectionBar: {
-    display: 'flex',
-    gap: 4,
     marginBottom: 0,
     borderBottom: '2px solid #E8E0D8',
-    flexWrap: 'wrap' as const,
   },
   subTabBar: {
-    display: 'flex',
-    gap: 4,
     marginBottom: 20,
     marginTop: 12,
-    flexWrap: 'wrap' as const,
   },
   tab: (active: boolean): React.CSSProperties => ({
     padding: '8px 18px',
@@ -100,7 +94,7 @@ export function SmsPage() {
     <>
       <PageHeader title="SMS" subtitle="Transactional alerts, marketing campaigns, and message templates" />
 
-      <div style={S.sectionBar}>
+      <div className="tab-scroll-row" style={S.sectionBar}>
         {SMS_SECTIONS.map((section) => (
           <button
             key={section.id}
@@ -114,7 +108,7 @@ export function SmsPage() {
       </div>
 
       {currentSection.tabs.length > 1 && (
-        <div style={S.subTabBar}>
+        <div className="tab-scroll-row" style={S.subTabBar}>
           {currentSection.tabs.map(({ id, label, icon }) => (
             <button key={id} type="button" style={S.tab(tab === id)} onClick={() => setTab(id)}>
               {icon}{label}

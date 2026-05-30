@@ -7,7 +7,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input,
-  PageHeader, Select, Spinner, TD, TH, useConfirmDialog,
+  PageHeader, Select, Spinner, TableCard, TD, TH, useConfirmDialog,
 } from '../components/Layout';
 import { downloadCSV } from '../utils/csvExport';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
@@ -339,7 +339,7 @@ export function PromotionsPage() {
       ) : promos.length === 0 ? (
         <Card><EmptyState message="No promotions yet. Create your first promo code." /></Card>
       ) : (
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
@@ -398,7 +398,7 @@ export function PromotionsPage() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </TableCard>
       )}
     </>
   );

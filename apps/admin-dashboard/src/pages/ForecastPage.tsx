@@ -244,7 +244,7 @@ export function ForecastPage() {
                   {itemForecast.item_name} — next {itemForecastDays} days
                 </div>
                 <div style={{ overflowX: 'auto' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100, minWidth: 400 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100, minWidth: 'min(100%, 320px)' }}>
                     {(itemForecast.forecast ?? []).map((d) => {
                       const maxQty = Math.max(...(itemForecast.forecast ?? []).map((x) => x.predicted_qty), 1);
                       const barH = Math.max(4, (d.predicted_qty / maxQty) * 84);

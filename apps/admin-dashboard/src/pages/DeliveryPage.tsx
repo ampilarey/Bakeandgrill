@@ -200,6 +200,7 @@ export function DeliveryPage() {
                 {(settlement.rows ?? []).length === 0 ? (
                   <EmptyState message="No driver-assigned deliveries in this period." />
                 ) : (
+                  <div className="table-scroll">
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -223,6 +224,7 @@ export function DeliveryPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 )}
               </Card>
             </>

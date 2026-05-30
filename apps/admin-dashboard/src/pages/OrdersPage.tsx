@@ -619,8 +619,10 @@ export function OrdersPage() {
 
       <TableStateBar error={error} onRetry={load} />
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Filters — collapsible on mobile */}
+      <details className="mobile-filters">
+        <summary>Search &amp; filters</summary>
+        <div className="mobile-filters-body">
         <input
           type="search"
           value={search}
@@ -646,11 +648,6 @@ export function OrdersPage() {
           <option value="">All stations</option>
           {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
-        {/* Toggle-chip for the phone-call pickup chase view. Styled
-            as a button so it visually reads as a state, not a filter
-            dropdown — chip flips red when active so a manager doing
-            end-of-day reconciliation can't miss that the list is
-            filtered. */}
         <button
           type="button"
           onClick={() => { setUnpaidOnly((v) => !v); setPage(1); }}
@@ -676,7 +673,8 @@ export function OrdersPage() {
             {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
-      </div>
+        </div>
+      </details>
 
       {loading && orders.length === 0 ? (
         <Spinner />
