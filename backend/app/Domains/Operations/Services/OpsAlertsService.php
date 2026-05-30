@@ -110,6 +110,11 @@ final class OpsAlertsService
                             "datetime(fired_at, '+' || estimated_wait_minutes || ' minutes') < ?",
                             [$cutoff->toDateTimeString()],
                         );
+                    } elseif (DB::connection()->getDriverName() === 'pgsql') {
+                        $q->whereRaw(
+                            "fired_at + (estimated_wait_minutes * INTERVAL '1 minute') < ?",
+                            [$cutoff],
+                        );
                     } else {
                         $q->whereRaw(
                             'DATE_ADD(fired_at, INTERVAL estimated_wait_minutes MINUTE) < ?',
