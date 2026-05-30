@@ -119,7 +119,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     items: [
       { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
-      { to: '/settings',      icon: Settings,    label: 'Settings',       permission: 'website.manage', description: 'Website, permissions & charges' },
+      { to: '/settings',      icon: Settings,    label: 'Settings',       permission: 'settings.update', description: 'Operational settings & charges' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permission: 'website.manage', description: 'Queue, webhooks & alerts' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
@@ -216,6 +216,29 @@ export function can(user: StaffUser, permission?: string): boolean {
     if (perms.includes(alias)) return true;
   }
   return false;
+}
+
+/** True if the user holds any of the listed permission slugs (owner always true). */
+export function canAny(user: StaffUser, permissions: string[]): boolean {
+  if (user.role === 'owner') return true;
+  return permissions.some((p) => can(user, p));
+}
+
+/** First sidebar route this user may open — used for login redirect and / fallback. */
+export function getDefaultNavPath(user: StaffUser): string {
+  const items = getAllNavItems(user.role === 'owner');
+  for (const item of items) {
+    if (item.to.startsWith('#')) continue;
+    if (can(user, item.permission)) return item.to;
+  }
+  return '/account';
+}
+
+/** Nav items the user can access (for palette / diagnostics). */
+export function getAccessibleNavItems(user: StaffUser): NavItem[] {
+  return getAllNavItems(user.role === 'owner').filter(
+    (item) => !item.to.startsWith('#') && can(user, item.permission),
+  );
 }
 
 /** Map route → group label for search palette subtitles */

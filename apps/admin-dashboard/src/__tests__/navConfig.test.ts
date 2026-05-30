@@ -4,6 +4,8 @@ import {
   NAV_GROUPS,
   resolveNavItemForPath,
   can,
+  getDefaultNavPath,
+  canAny,
 } from '../components/navConfig';
 import type { StaffUser } from '../api';
 
@@ -77,5 +79,34 @@ describe('navConfig', () => {
     expect(can(user, 'devices.view')).toBe(true);
     expect(can(user, 'devices.manage')).toBe(false);
     expect(can(user, 'devices.approve')).toBe(false);
+  });
+
+  it('getDefaultNavPath picks first accessible route', () => {
+    const cashier: StaffUser = {
+      id: 7,
+      name: 'Cashier',
+      email: 'c2@test.com',
+      role: 'staff',
+      permissions: ['admin.access', 'orders.view', 'dashboard.view'],
+    };
+    expect(getDefaultNavPath(cashier)).toBe('/dashboard');
+
+    const ordersOnly: StaffUser = {
+      ...cashier,
+      permissions: ['admin.access', 'orders.view'],
+    };
+    expect(getDefaultNavPath(ordersOnly)).toBe('/orders');
+  });
+
+  it('canAny passes when user holds one slug', () => {
+    const user: StaffUser = {
+      id: 8,
+      name: 'Ops',
+      email: 'ops@test.com',
+      role: 'manager',
+      permissions: ['settings.update'],
+    };
+    expect(canAny(user, ['website.manage', 'settings.update'])).toBe(true);
+    expect(canAny(user, ['website.manage', 'roles_permissions.manage'])).toBe(false);
   });
 });

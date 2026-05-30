@@ -5,7 +5,7 @@ import { ToastProvider } from './components/ui';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { CommandPalette } from './components/CommandPalette';
-import { can as userCan } from './components/navConfig';
+import { can as userCan, getDefaultNavPath, canAny as userCanAny } from './components/navConfig';
 import { clearCurrentUserPermissionCache, primeCurrentUserPermissionCache } from './hooks/usePermissions';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
@@ -74,16 +74,20 @@ function AuthGuard({
 function PermissionGuard({
   user,
   permission,
+  permissions,
   children,
 }: {
   user: StaffUser | null;
-  permission: string;
+  permission?: string;
+  permissions?: string[];
   children: React.ReactNode;
 }) {
   if (!user) return <Navigate to="/login" replace />;
-  // Owner bypasses all permission checks
   if (user.role === 'owner') return <>{children}</>;
-  if (!userCan(user, permission)) {
+  const allowed = permissions?.length
+    ? userCanAny(user, permissions)
+    : userCan(user, permission ?? '');
+  if (!allowed) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
         <div style={{ fontSize: 48 }}>🔒</div>
@@ -147,7 +151,7 @@ export default function App() {
     clearCurrentUserPermissionCache();
     primeCurrentUserPermissionCache(staffUser);
     setUser(staffUser);
-    navigate(returnTo ?? '/dashboard');
+    navigate(returnTo ?? getDefaultNavPath(staffUser));
   };
 
   const handleLogout = async () => {
@@ -178,7 +182,7 @@ export default function App() {
             <Layout user={user!} onLogout={handleLogout} onSearch={() => setPaletteOpen(true)}>
               <Suspense fallback={<PageFallback />}>
               <Routes>
-                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route index element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />
                 <Route path="dashboard" element={
                   <PermissionGuard user={user} permission="dashboard.view">
                     <DashboardPage />
@@ -298,7 +302,7 @@ export default function App() {
                 } />
                 {/* Settings hub */}
                 <Route path="settings/*" element={
-                  <PermissionGuard user={user} permission="website.manage">
+                  <PermissionGuard user={user} permissions={['website.manage', 'settings.update', 'roles_permissions.manage']}>
                     <SettingsPage />
                   </PermissionGuard>
                 } />
@@ -393,7 +397,7 @@ export default function App() {
                     <SystemHealthPage />
                   </PermissionGuard>
                 } />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />
               </Routes>
               </Suspense>
             </Layout>

@@ -9,6 +9,7 @@ import {
   type PermissionItem,
 } from '../../api';
 import { Button, Card, Badge, useToast } from '../../components/ui';
+import { COMMON_PERMISSION_SLUGS, ROLE_CHEAT_SHEET } from '../../components/permissionsCheatSheet';
 
 type Tab = 'roles' | 'users';
 
@@ -270,6 +271,50 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
           <li>View-only grants (e.g. <code style={{ fontSize: 12 }}>inventory.view</code>, <code style={{ fontSize: 12 }}>devices.view</code>) do not include edit/manage actions.</li>
         </ul>
       </Card>
+
+      <details style={{ border: '1px solid #E8E0D8', borderRadius: 12, padding: '12px 16px', background: '#FFFBF7' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, color: '#1C1408' }}>
+          Role cheat sheet (for managers)
+        </summary>
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {ROLE_CHEAT_SHEET.map((role) => (
+            <div key={role.slug}>
+              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{role.label}</p>
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6B5D4F' }}>{role.summary}</p>
+              {role.can.length > 0 && (
+                <ul style={{ margin: '0 0 6px', paddingLeft: 18, fontSize: 12, color: '#15803d', lineHeight: 1.5 }}>
+                  {role.can.map((line) => <li key={line}>{line}</li>)}
+                </ul>
+              )}
+              {role.cannot.length > 0 && (
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#b45309', lineHeight: 1.5 }}>
+                  {role.cannot.map((line) => <li key={line}>{line}</li>)}
+                </ul>
+              )}
+            </div>
+          ))}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E8E0D8', textAlign: 'left' }}>
+                  <th style={{ padding: '6px 8px', color: '#9C8E7E' }}>Slug</th>
+                  <th style={{ padding: '6px 8px', color: '#9C8E7E' }}>Gates</th>
+                  <th style={{ padding: '6px 8px', color: '#9C8E7E' }}>Typical role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMMON_PERMISSION_SLUGS.map((row) => (
+                  <tr key={row.slug} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#1C1408' }}>{row.slug}</td>
+                    <td style={{ padding: '6px 8px', color: '#6B5D4F' }}>{row.gates}</td>
+                    <td style={{ padding: '6px 8px', color: '#6B5D4F' }}>{row.typical}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
 
       <div style={{ display: 'flex', gap: 8 }}>
         <Button variant={tab === 'roles' ? 'primary' : 'ghost'} size="sm" icon={<Shield size={14} />} onClick={() => setTab('roles')}>
