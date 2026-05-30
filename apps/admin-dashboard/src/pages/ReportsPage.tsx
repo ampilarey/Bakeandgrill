@@ -178,8 +178,12 @@ export function ReportsPage() {
       if (tab === 'Delivery Zones') setDeliveryZones(await getDeliveryZonesReport({ from, to }));
       if (tab === 'Tax')        setTaxReport(await getTaxReport({ from, to }));
       if (tab === 'X / Z Report') {
-        const [x, z] = await Promise.all([getXReport(), getZReport()]);
-        setXReport(x); setZReport(z);
+        const [xResult, zResult] = await Promise.allSettled([getXReport(), getZReport()]);
+        setXReport(xResult.status === 'fulfilled' ? xResult.value : null);
+        setZReport(zResult.status === 'fulfilled' ? zResult.value : null);
+        if (xResult.status === 'rejected' && zResult.status === 'rejected') {
+          throw xResult.reason;
+        }
       }
       if (tab === 'Inventory')           setInventory(await getInventoryValuation());
       if (tab === 'Accounts Payable')    setAp((await getAccountsPayable()).data);
@@ -518,63 +522,60 @@ export function ReportsPage() {
       )}
 
       {/* ── X / Z Reports ── */}
-      {!loading && tab === 'X / Z Report' && (xReport || zReport) && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
-          {[{ label: 'X-Report (current shift)', data: xReport }, { label: 'Z-Report (last closed shift)', data: zReport }].map(({ label, data }) =>
-            data && (
+      {!loading && tab === 'X / Z Report' && (
+        <>
+          {!xReport && !zReport && (
+            <Card><p style={{ margin: 0, color: '#6B5D4F' }}>No shift or report data available for this period.</p></Card>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+            {[
+              { label: 'X-Report (current shift)', data: xReport, empty: 'No active shift — open a shift to generate an X-Report.' },
+              { label: 'Z-Report (date range)', data: zReport, empty: 'No Z-Report data for the selected period.' },
+            ].map(({ label, data, empty }) => (
               <Card key={label}>
                 <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 4px' }}>{label}</p>
-                <p style={{ fontSize: 11, color: '#9C8E7E', margin: '0 0 16px' }}>
-                  Generated: {new Date(data.generated_at).toLocaleString()}
-                </p>
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                  {[
-                    { l: 'Orders',    v: data.totals.orders.toString() },
-                    { l: 'Revenue',   v: mvr(data.totals.revenue) },
-                    { l: 'Tax',       v: mvr(data.totals.tax) },
-                    { l: 'Discounts', v: mvr(data.totals.discounts) },
-                  ].map(({ l, v }) => (
-                    <div key={l} style={{ background: '#FAF7F4', borderRadius: 8, padding: '10px 14px' }}>
-                      <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 4 }}>{l}</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#1C1408' }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', margin: '0 0 8px' }}>By Order Type</p>
-                <table style={S.table}>
-                  <thead><tr>
-                    <th style={S.th}>Type</th><th style={S.th}>Count</th><th style={S.th}>Total</th>
-                  </tr></thead>
-                  <tbody>
-                    {(data.by_type ?? []).map(t => (
-                      <tr key={t.type}>
-                        <td style={S.td}>{ORDER_TYPE_LABELS[t.type] ?? t.type}</td>
-                        <td style={{ ...S.td, color: '#9C8E7E' }}>{t.count}</td>
-                        <td style={S.td}>{mvr(t.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {Object.keys(data.by_payment).length > 0 && (
+                {!data ? (
+                  <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>{empty}</p>
+                ) : (
                   <>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', margin: '16px 0 8px' }}>By Payment Method</p>
-                    <table style={S.table}>
-                      <thead><tr><th style={S.th}>Method</th><th style={S.th}>Total</th></tr></thead>
-                      <tbody>
-                        {Object.entries(data.by_payment).map(([method, total]) => (
-                          <tr key={method}>
-                            <td style={S.td}>{method}</td>
-                            <td style={S.td}>{mvr(total as number)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <p style={{ fontSize: 11, color: '#9C8E7E', margin: '0 0 16px' }}>
+                      {data.from} → {data.to}
+                    </p>
+                    <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                      {[
+                        { l: 'Orders', v: String(data.totals.orders_count ?? 0) },
+                        { l: 'Revenue', v: mvr(data.totals.total ?? 0) },
+                        { l: 'Tax', v: mvr(data.totals.tax_amount ?? 0) },
+                        { l: 'Discounts', v: mvr(data.totals.discount_amount ?? 0) },
+                      ].map(({ l, v }) => (
+                        <div key={l} style={{ background: '#FAF7F4', borderRadius: 8, padding: '10px 14px' }}>
+                          <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 4 }}>{l}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#1C1408' }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {Object.keys(data.payments ?? {}).length > 0 && (
+                      <>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', margin: '0 0 8px' }}>By Payment Method</p>
+                        <table style={S.table}>
+                          <thead><tr><th style={S.th}>Method</th><th style={S.th}>Total</th></tr></thead>
+                          <tbody>
+                            {Object.entries(data.payments ?? {}).map(([method, total]) => (
+                              <tr key={method}>
+                                <td style={S.td}>{method}</td>
+                                <td style={S.td}>{mvr(total as number)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
                   </>
                 )}
               </Card>
-            )
-          )}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* ── Tax Report ── */}

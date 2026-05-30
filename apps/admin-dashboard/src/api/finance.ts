@@ -308,12 +308,18 @@ export async function getSalesBreakdown(params: { from: string; to: string }): P
 }
 
 export interface XReport {
-  generated_at: string;
   from: string;
   to: string;
-  totals: { orders: number; revenue: number; tax: number; discounts: number };
-  by_type: { type: string; count: number; total: number }[];
-  by_payment: Record<string, number>;
+  totals: {
+    orders_count: number;
+    subtotal: number;
+    tax_amount: number;
+    discount_amount: number;
+    service_charge_total: number;
+    total: number;
+  };
+  payments: Record<string, number>;
+  refunds?: number;
 }
 
 export async function getXReport(): Promise<XReport> {
