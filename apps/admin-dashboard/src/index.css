@@ -232,6 +232,7 @@ a { text-decoration: none; color: inherit; }
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
   padding: 9px 12px;
   border-radius: var(--radius-md);
   text-decoration: none;

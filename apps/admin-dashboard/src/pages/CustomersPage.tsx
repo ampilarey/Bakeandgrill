@@ -420,7 +420,7 @@ export function CustomersPage() {
               <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                 {/* KPI strip */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {[
                     { label: 'Total Orders', value: String(detail.customer.orders_count) },
                     { label: 'Loyalty Pts', value: String(detail.customer.loyalty_points ?? 0) },

@@ -185,7 +185,7 @@ export function Btn({ variant = 'primary', small, children, style, ...rest }: Bt
       {...rest}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-        minHeight: small ? '2rem' : '2.75rem',
+        minHeight: '44px',
         padding: small ? '0 0.75rem' : '0 1rem',
         borderRadius: 10, fontWeight: 600,
         fontSize: small ? '0.8125rem' : '0.875rem',

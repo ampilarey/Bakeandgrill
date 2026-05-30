@@ -12,7 +12,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses' },
+  { value: 'all', label: 'All Statuses' },
   { value: 'draft',     label: 'Draft'     },
   { value: 'ordered',   label: 'Ordered'   },
   { value: 'partial',   label: 'Partial'   },
@@ -27,7 +27,7 @@ export function PurchaseOrdersPage() {
   const [error, setError]                 = useState('');
   const [suggestions, setSuggestions]     = useState<PurchaseSuggestions | null>(null);
   const [sugLoading, setSugLoading]       = useState(false);
-  const [statusFilter, setStatus]         = useState('');
+  const [statusFilter, setStatus]         = useState('all');
   const [detail, setDetail]               = useState<Purchase | null>(null);
   const [rejectId, setRejectId]           = useState<number | null>(null);
   const [rejectReason, setRejectReason]   = useState('');
@@ -125,7 +125,7 @@ export function PurchaseOrdersPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchPurchases({ status: statusFilter || undefined });
+      const res = await fetchPurchases({ status: statusFilter !== 'all' ? statusFilter : undefined });
       setPurchases(res.purchases?.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
