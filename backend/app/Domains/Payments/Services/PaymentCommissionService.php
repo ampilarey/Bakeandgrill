@@ -116,6 +116,8 @@ class PaymentCommissionService
             'commission_rate_bp' => $rateBp,
             'commission_channel' => $channel,
         ]);
+
+        app(PaymentCommissionExpenseService::class)->syncForPayment($payment->fresh());
     }
 
     /**

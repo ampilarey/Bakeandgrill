@@ -54,4 +54,9 @@ class Payment extends Model
     {
         return $this->belongsTo(Shift::class);
     }
+
+    public function commissionExpense(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Expense::class);
+    }
 }

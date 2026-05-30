@@ -103,7 +103,6 @@ export function ProfitLossPage() {
                     { label: 'Cost of Goods (COGS)', value: -pnl.cogs,               color: '#ef4444' },
                     { label: 'Operating Expenses',   value: -pnl.expenses.total,     color: '#f97316' },
                     { label: 'Waste Cost',           value: -pnl.waste_cost,         color: '#f59e0b' },
-                    ...((pnl.payment_processing_fees ?? 0) > 0 ? [{ label: 'Payment Processing Fees', value: -(pnl.payment_processing_fees ?? 0), color: '#dc2626' }] : []),
                     { label: 'Net Profit',           value: pnl.operating_profit,    color: pnl.operating_profit >= 0 ? '#D4813A' : '#dc2626' },
                   ].map((row) => (
                     <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
@@ -126,12 +125,6 @@ export function ProfitLossPage() {
                     <div key={cat.category} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <span style={{ fontSize: 13, color: '#6B5D4F' }}>{cat.icon} {cat.category}</span>
                       <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>MVR {parseFloat(String(cat.total ?? 0)).toFixed(2)}</span>
-                    </div>
-                  ))}
-                  {(pnl.payment_commission?.by_channel ?? []).filter((row) => row.commission > 0).map((row) => (
-                    <div key={row.channel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingTop: 8, borderTop: '1px solid #F3EDE4' }}>
-                      <span style={{ fontSize: 13, color: '#6B5D4F' }}>💳 {row.label} fees</span>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: '#dc2626' }}>MVR {parseFloat(String(row.commission ?? 0)).toFixed(2)}</span>
                     </div>
                   ))}
                 </Card>

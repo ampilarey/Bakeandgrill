@@ -116,6 +116,7 @@ class ExpenseController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $expense = Expense::findOrFail($id);
+        $this->assertNotAutoExpense($expense);
 
         $validated = $request->validate([
             'expense_category_id' => ['sometimes', 'integer', 'exists:expense_categories,id'],
@@ -144,6 +145,7 @@ class ExpenseController extends Controller
     public function destroy(Request $request, int $id): JsonResponse
     {
         $expense = Expense::findOrFail($id);
+        $this->assertNotAutoExpense($expense);
         $expense->delete();
         $this->audit->log('expense.deleted', 'Expense', $id, [], [], [], $request);
 
@@ -253,7 +255,18 @@ class ExpenseController extends Controller
             'supplier' => $e->supplier ? ['id' => $e->supplier->id, 'name' => $e->supplier->name] : null,
             'logged_by' => $e->user?->name,
             'approved_by' => $e->approvedBy?->name,
+            'payment_id' => $e->payment_id,
+            'is_auto' => $e->payment_id !== null,
             'created_at' => $e->created_at,
         ];
+    }
+
+    private function assertNotAutoExpense(Expense $expense): void
+    {
+        abort_if(
+            $expense->payment_id !== null,
+            422,
+            'This expense was auto-recorded from a card/gateway payment and cannot be edited or deleted.',
+        );
     }
 }

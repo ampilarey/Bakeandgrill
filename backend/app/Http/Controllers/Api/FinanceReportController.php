@@ -51,15 +51,19 @@ class FinanceReportController extends Controller
             ->whereIn('status', ['received', 'partial'])
             ->sum('total');
 
-        // Operating expenses
-        $opex = Expense::whereBetween('expense_date', [$from->toDateString(), $to->toDateString()])
+        // Operating expenses (use date strings — SQLite stores expense_date with time)
+        $opex = Expense::whereDate('expense_date', '>=', $from->toDateString())
+            ->whereDate('expense_date', '<=', $to->toDateString())
             ->where('status', 'approved')
             ->selectRaw('SUM(amount) as total, expense_category_id')
             ->with('category:id,name,icon')
             ->groupBy('expense_category_id')
             ->get();
 
-        $opexTotal = $opex->sum('total');
+        $opexTotal = (float) Expense::whereDate('expense_date', '>=', $from->toDateString())
+            ->whereDate('expense_date', '<=', $to->toDateString())
+            ->where('status', 'approved')
+            ->sum('amount');
 
         // Waste cost
         $wasteCost = WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
@@ -70,7 +74,8 @@ class FinanceReportController extends Controller
         $grossRevenue = (float) ($revenue->total ?? 0);
         $netRevenue = round($grossRevenue - $refundsTotal, 2);
         $grossProfit = round($netRevenue - (float) $cogs, 2);
-        $operatingProfit = round($grossProfit - $opexTotal - $wasteCost - $paymentProcessingFees, 2);
+        // Bank commissions are auto-recorded as approved expenses — included in $opexTotal.
+        $operatingProfit = round($grossProfit - $opexTotal - $wasteCost, 2);
 
         return response()->json([
             'from' => $from->toDateString(),
@@ -261,7 +266,7 @@ class FinanceReportController extends Controller
         $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
         $paymentProcessingFees = (float) ($commissionSummary['totals']['commission_total'] ?? 0);
 
-        $profit = round($revenue - $expenses - $purchases - $wasteCost - $paymentProcessingFees, 2);
+        $profit = round($revenue - $expenses - $purchases - $wasteCost, 2);
 
         $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
 

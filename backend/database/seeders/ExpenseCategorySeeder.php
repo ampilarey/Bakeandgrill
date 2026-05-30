@@ -24,6 +24,7 @@ class ExpenseCategorySeeder extends Seeder
             ['name' => 'Transport',   'icon' => '🚚'],
             ['name' => 'Licenses',    'icon' => '📋'],
             ['name' => 'Insurance',   'icon' => '🛡️'],
+            ['name' => 'Bank / payment processing', 'icon' => '💳'],
             ['name' => 'Other',       'icon' => '📂'],
         ];
 

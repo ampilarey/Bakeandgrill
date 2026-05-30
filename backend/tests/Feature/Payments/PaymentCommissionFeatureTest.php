@@ -10,6 +10,7 @@ use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Expense;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -112,6 +113,11 @@ class PaymentCommissionFeatureTest extends TestCase
         $this->assertSame('pos_card', $payment->commission_channel);
         $this->assertSame(250, $payment->commission_rate_bp);
         $this->assertGreaterThan(0, $payment->commission_laar);
+
+        $expense = Expense::where('payment_id', $payment->id)->first();
+        $this->assertNotNull($expense);
+        $this->assertSame('approved', $expense->status);
+        $this->assertSame($payment->commission_laar, $expense->amount_laar);
     }
 
     public function test_sales_summary_includes_commission_breakdown(): void
@@ -161,7 +167,7 @@ class PaymentCommissionFeatureTest extends TestCase
             ->assertJsonPath('payment_commission.by_channel.1.channel', 'online_gateway');
     }
 
-    public function test_profit_and_loss_deducts_payment_processing_fees(): void
+    public function test_profit_and_loss_includes_commission_in_operating_expenses(): void
     {
         $owner = $this->makeOwner(['email' => 'owner3@commission.test']);
         Sanctum::actingAs($owner, ['staff']);
@@ -173,23 +179,60 @@ class PaymentCommissionFeatureTest extends TestCase
             'created_at' => now(),
         ]);
 
-        Payment::create([
+        $payment = Payment::create([
             'order_id' => $order->id,
             'method' => 'card',
             'amount' => 100,
             'amount_laar' => 10000,
             'status' => 'paid',
             'processed_at' => now(),
+            'collected_by_user_id' => $owner->id,
             'commission_laar' => 250,
             'commission_rate_bp' => 250,
             'commission_channel' => 'pos_card',
         ]);
 
+        $expense = app(\App\Domains\Payments\Services\PaymentCommissionExpenseService::class)->syncForPayment($payment);
+        $this->assertNotNull($expense);
+
         $date = now()->toDateString();
+        $this->assertDatabaseHas('expenses', [
+            'payment_id' => $payment->id,
+            'status' => 'approved',
+            'amount' => 2.5,
+        ]);
+
         $response = $this->getJson("/api/reports/finance/profit-and-loss?from={$date}&to={$date}");
 
         $response->assertOk()
             ->assertJsonPath('payment_processing_fees', 2.5)
-            ->assertJsonPath('payment_commission.totals.commission_total', 2.5);
+            ->assertJsonPath('expenses.total', 2.5)
+            ->assertJsonPath('operating_profit', round(100 - 2.5, 2));
+    }
+
+    public function test_auto_commission_expense_cannot_be_deleted(): void
+    {
+        $owner = $this->makeOwner(['email' => 'owner4@commission.test']);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $order = Order::factory()->create(['status' => 'completed', 'total' => 50, 'total_laar' => 5000]);
+        $payment = Payment::create([
+            'order_id' => $order->id,
+            'method' => 'card',
+            'amount' => 50,
+            'amount_laar' => 5000,
+            'status' => 'paid',
+            'processed_at' => now(),
+            'collected_by_user_id' => $owner->id,
+            'commission_laar' => 125,
+            'commission_rate_bp' => 250,
+            'commission_channel' => 'pos_card',
+        ]);
+
+        $expense = app(\App\Domains\Payments\Services\PaymentCommissionExpenseService::class)->syncForPayment($payment);
+        $this->assertNotNull($expense);
+
+        $this->deleteJson("/api/expenses/{$expense->id}")
+            ->assertStatus(422);
     }
 }

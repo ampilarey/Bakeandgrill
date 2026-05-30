@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Payments;
 
 use App\Domains\Payments\Services\PaymentCommissionService;
+use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\SiteSetting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,10 +18,13 @@ class PaymentCommissionServiceTest extends TestCase
 
     private PaymentCommissionService $service;
 
+    private User $owner;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->service = app(PaymentCommissionService::class);
+        $this->owner = $this->makeOwner(['email' => 'owner@pc-unit.test']);
         $this->seedCommissionSettings(true, 250, 300);
     }
 
@@ -62,22 +67,24 @@ class PaymentCommissionServiceTest extends TestCase
     public function test_apply_to_payment_snapshots_different_channel_rates(): void
     {
         $posPayment = Payment::create([
-            'order_id' => $this->makePaidOrder()->id,
+            'order_id' => $this->makePaidOrder($this->owner)->id,
             'method' => 'card',
             'amount' => 100,
             'amount_laar' => 10000,
             'status' => 'paid',
             'processed_at' => now(),
+            'collected_by_user_id' => $this->owner->id,
         ]);
 
         $gatewayPayment = Payment::create([
-            'order_id' => $this->makePaidOrder()->id,
+            'order_id' => $this->makePaidOrder($this->owner)->id,
             'method' => 'bml_connect',
             'gateway' => 'bml',
             'amount' => 100,
             'amount_laar' => 10000,
             'status' => 'confirmed',
             'processed_at' => now(),
+            'collected_by_user_id' => $this->owner->id,
         ]);
 
         $this->service->applyToPayment($posPayment);
@@ -93,6 +100,9 @@ class PaymentCommissionServiceTest extends TestCase
         $this->assertSame(PaymentCommissionService::CHANNEL_ONLINE_GATEWAY, $gatewayPayment->commission_channel);
         $this->assertSame(300, $gatewayPayment->commission_rate_bp);
         $this->assertSame(300, $gatewayPayment->commission_laar);
+
+        $this->assertNotNull(Expense::where('payment_id', $posPayment->id)->first());
+        $this->assertNotNull(Expense::where('payment_id', $gatewayPayment->id)->first());
     }
 
     public function test_apply_is_idempotent(): void

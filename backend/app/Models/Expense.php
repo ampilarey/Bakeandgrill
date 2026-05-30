@@ -13,7 +13,7 @@ class Expense extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'expense_number', 'expense_category_id', 'supplier_id', 'user_id', 'purchase_id',
+        'expense_number', 'expense_category_id', 'supplier_id', 'user_id', 'purchase_id', 'payment_id',
         'description', 'amount_laar', 'amount', 'tax_laar', 'tax_amount',
         'payment_method', 'reference_number', 'expense_date', 'receipt_path',
         'is_recurring', 'recurrence_interval', 'next_recurrence_date',
@@ -26,6 +26,7 @@ class Expense extends Model
         'user_id' => 'integer',
         'approved_by' => 'integer',
         'purchase_id' => 'integer',
+        'payment_id' => 'integer',
         'amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'amount_laar' => 'integer',
@@ -58,5 +59,10 @@ class Expense extends Model
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
 }

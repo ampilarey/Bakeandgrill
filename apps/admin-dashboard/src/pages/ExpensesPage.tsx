@@ -238,7 +238,12 @@ export function ExpensesPage() {
                       <td style={{ ...TD, width: 36 }}><input type="checkbox" checked={bulkSelected.has(exp.id)} onChange={() => toggleBulk(exp.id)} style={{ cursor: 'pointer' }} /></td>
                       <td style={{ ...TD, whiteSpace: 'nowrap', color: '#9C8E7E' }}>{exp.expense_date}</td>
                       <td style={TD}>{exp.category?.icon} {exp.category?.name}</td>
-                      <td style={{ ...TD, color: '#1C1408' }}>{exp.description}</td>
+                      <td style={{ ...TD, color: '#1C1408' }}>
+                        {exp.description}
+                        {exp.is_auto && (
+                          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 6px', borderRadius: 4 }}>AUTO</span>
+                        )}
+                      </td>
                       <td style={{ ...TD, fontWeight: 700, color: '#D4813A', whiteSpace: 'nowrap' }}>MVR {parseFloat(String(exp.amount ?? 0)).toFixed(2)}</td>
                       <td style={{ ...TD, color: '#6B5D4F' }}>{exp.payment_method?.replace('_', ' ') ?? '—'}</td>
                       <td style={TD}>
@@ -254,11 +259,15 @@ export function ExpensesPage() {
                           <Btn small variant="secondary" onClick={() => triggerReceiptUpload(exp.id)} disabled={actionLoading === exp.id}>
                             {actionLoading === exp.id ? '…' : '📎 Receipt'}
                           </Btn>
-                          <Btn small variant="secondary" onClick={() => void handlePushXero(exp)} disabled={actionLoading === exp.id}>
+                          <Btn small variant="secondary" onClick={() => void handlePushXero(exp)} disabled={actionLoading === exp.id || exp.is_auto}>
                             {actionLoading === exp.id ? '…' : 'Xero ↑'}
                           </Btn>
-                          <Btn small variant="secondary" onClick={() => handleEdit(exp)}>Edit</Btn>
-                          <Btn small variant="danger" onClick={() => handleDelete(exp.id)}>Delete</Btn>
+                          {!exp.is_auto && (
+                            <>
+                              <Btn small variant="secondary" onClick={() => handleEdit(exp)}>Edit</Btn>
+                              <Btn small variant="danger" onClick={() => handleDelete(exp.id)}>Delete</Btn>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

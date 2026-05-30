@@ -163,6 +163,8 @@ export type Expense = {
   category: { id: number; name: string; icon: string } | null;
   supplier: { id: number; name: string } | null;
   logged_by: string | null;
+  payment_id?: number | null;
+  is_auto?: boolean;
   created_at: string;
 };
 
