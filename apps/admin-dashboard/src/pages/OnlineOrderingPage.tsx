@@ -6,6 +6,7 @@ import {
   getOnlineOrderingStatus,
   toggleOnlineOrdering,
   setOnlineOrderingOverride,
+  updateOnlineOrderingSchedule,
   getSiteSettings,
   updateSiteSettings,
   getPackagingFeeSettings,
@@ -57,12 +58,6 @@ function parseSchedule(raw: string): Schedule {
   } catch {
     return DEFAULT_SCHEDULE;
   }
-}
-
-function serializeSchedule(schedule: Schedule): string {
-  const out: Record<string, { enabled: boolean; windows: TimeWindow[] }> = {};
-  for (const { key } of DAYS) out[key] = schedule[key];
-  return JSON.stringify(out);
 }
 
 const S = {
@@ -296,7 +291,7 @@ export default function OnlineOrderingPage() {
   const saveSchedule = async () => {
     setScheduleSaving(true);
     try {
-      await updateSiteSettings({ online_ordering_schedule: serializeSchedule(schedule) });
+      await updateOnlineOrderingSchedule(schedule);
       showToast('Schedule saved.');
     } catch {
       showToast('Failed to save schedule.', 'err');
