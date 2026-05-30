@@ -330,7 +330,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy via SSH
-        if: ${{ secrets.DEPLOY_HOST != '' }}
+        id: deploy
+        continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -352,12 +353,13 @@ jobs:
             && echo "Test deploy complete."
 
       - name: Post-deploy smoke (test)
-        if: ${{ secrets.DEPLOY_HOST != '' }}
+        if: steps.deploy.outcome == 'success'
         run: ./scripts/post-deploy-smoke.sh test
 
-      - name: Skip deploy (no SSH credentials)
-        if: ${{ secrets.DEPLOY_HOST == '' }}
-        run: echo "DEPLOY_HOST secret not configured — skipping test deploy."
+      - name: Deploy skipped or failed
+        if: steps.deploy.outcome != 'success'
+        run: |
+          echo "::notice::Test deploy skipped or failed. Configure DEPLOY_HOST, DEPLOY_USER, and DEPLOY_SSH_KEY secrets to enable auto-deploy."
 
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)
@@ -369,7 +371,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy via SSH
-        if: ${{ secrets.DEPLOY_HOST_PROD != '' }}
+        id: deploy
+        continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST_PROD }}
@@ -391,12 +394,13 @@ jobs:
             && echo "Production deploy complete."
 
       - name: Post-deploy smoke (production)
-        if: ${{ secrets.DEPLOY_HOST_PROD != '' }}
+        if: steps.deploy.outcome == 'success'
         run: ./scripts/post-deploy-smoke.sh production
 
-      - name: Skip deploy (no SSH credentials)
-        if: ${{ secrets.DEPLOY_HOST_PROD == '' }}
-        run: echo "DEPLOY_HOST_PROD secret not configured — skipping production deploy."
+      - name: Deploy skipped or failed
+        if: steps.deploy.outcome != 'success'
+        run: |
+          echo "::notice::Production deploy skipped or failed. Configure DEPLOY_HOST_PROD, DEPLOY_USER_PROD, and DEPLOY_SSH_KEY_PROD secrets."
 
   contract:
     name: API contract tests (snapshot)
