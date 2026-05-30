@@ -11,6 +11,7 @@ import {
   type Order, type DeliveryDriver,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Badge, Btn, Card, EmptyState, TableStateBar,
   PageHeader, Select, Spinner, statColor,
@@ -56,6 +57,12 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function canQuickAdvanceStatus(status: string, can: (slug?: string) => boolean): boolean {
+  if (status === 'held') return can('pos.hold_resume');
+  if (['pending', 'paid', 'preparing', 'in_progress', 'ready'].includes(status)) return can('orders.manage');
+  return false;
+}
+
 function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   orderId: number;
   onClose: () => void;
@@ -73,6 +80,13 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [copyLinkBusy, setCopyLinkBusy] = useState(false);
   const [drivers, setDrivers] = useState<DeliveryDriver[]>([]);
   const [driverAssigning, setDriverAssigning] = useState(false);
+  const { can } = useCurrentUserPermissions();
+  const canManage = can('orders.manage');
+  const canHoldResume = can('pos.hold_resume');
+  const canSendBill = can('orders.send_sms_bill');
+  const canRecordPayment = can('pos.ring_sales');
+  const canReceipts = can('orders.receipts');
+  const canInvoice = can('finance.invoices');
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -235,41 +249,44 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             </div>
 
             {/* Action buttons */}
+            {(canManage || canHoldResume || canSendBill || canRecordPayment) && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {['pending', 'paid'].includes(order.status) && (
+              {canManage && ['pending', 'paid'].includes(order.status) && (
                 <Btn small onClick={() => doAction('start', () => kdsStart(order.id), 'Start preparing')}>
                   {acting === 'start' ? '…' : '▶ Start Preparing'}
                 </Btn>
               )}
-              {['preparing', 'in_progress'].includes(order.status) && (
+              {canManage && ['preparing', 'in_progress'].includes(order.status) && (
                 <Btn small onClick={() => doAction('bump', () => kdsBump(order.id), 'Mark ready')}>
                   {acting === 'bump' ? '…' : '✓ Mark Ready'}
                 </Btn>
               )}
-              {order.status === 'held' && (
+              {canHoldResume && order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
                   {acting === 'resume' ? '…' : '▶ Resume Order'}
                 </Btn>
               )}
-              {['pending', 'paid', 'preparing', 'in_progress', 'ready'].includes(order.status) && (
+              {canHoldResume && ['pending', 'paid', 'preparing', 'in_progress', 'ready'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => doAction('hold', () => holdOrder(order.id), 'Order held')}>
                   {acting === 'hold' ? '…' : '⏸ Hold'}
                 </Btn>
               )}
-              {order.type === 'dine_in' && ['ready', 'preparing', 'in_progress'].includes(order.status) && (
+              {canSendBill && order.type === 'dine_in' && ['ready', 'preparing', 'in_progress'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => doAction('bill', () => sendOrderBill(order.id), 'Bill sent')}>
                   {acting === 'bill' ? '…' : '🧾 Send Bill'}
                 </Btn>
               )}
-              {!['paid', 'completed', 'cancelled'].includes(order.status) && (
+              {canRecordPayment && !['paid', 'completed', 'cancelled'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => { setShowPayment(true); setPayRows([{ method: 'cash', amount: String(parseFloat(String(order.total ?? 0)).toFixed(2)) }]); }}>
                   💵 Record Payment
                 </Btn>
               )}
             </div>
+            )}
 
-            {phone && order.status !== 'cancelled' && (
+            {phone && order.status !== 'cancelled' && (canReceipts || canInvoice) && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {canReceipts && (
                 <Btn
                   small
                   variant="secondary"
@@ -278,15 +295,16 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 >
                   {copyLinkBusy ? '…' : 'Copy invoice / receipt link'}
                 </Btn>
-                {['paid', 'completed', 'refunded', 'delivered'].includes(order.status) ? (
+                )}
+                {canReceipts && ['paid', 'completed', 'refunded', 'delivered'].includes(order.status) ? (
                   <Btn small disabled={receiptBusy} onClick={() => void handleSendReceiptSms()}>
                     {receiptBusy ? '…' : '📱 Send receipt SMS'}
                   </Btn>
-                ) : (
+                ) : canInvoice ? (
                   <Btn small disabled={receiptBusy} onClick={() => void handleSendInvoiceSms()}>
                     {receiptBusy ? '…' : '📱 Send invoice SMS'}
                   </Btn>
-                )}
+                ) : null}
               </div>
             )}
 
@@ -320,7 +338,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               </div>
             )}
 
-            {order.type === 'delivery' && (
+            {order.type === 'delivery' && canManage && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontWeight: 700, fontSize: 13, color: '#6B5D4F', marginBottom: 8 }}>
                   🚗 Driver
@@ -472,6 +490,8 @@ type SortDir = 'asc' | 'desc';
 
 export function OrdersPage() {
     usePageTitle('Orders');
+  const { can } = useCurrentUserPermissions();
+  const canSendReceipt = can('orders.send_sms_bill');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -790,7 +810,7 @@ export function OrdersPage() {
                   <td style={{ padding: '8px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
                       {/* Quick status advance */}
-                      {quickLabel(o.status) && (
+                      {quickLabel(o.status) && canQuickAdvanceStatus(o.status, can) && (
                         <button
                           onClick={() => void quickAdvance(o)}
                           disabled={quickActing === o.id}
@@ -807,7 +827,7 @@ export function OrdersPage() {
                         </button>
                       )}
                       {/* Receipt SMS */}
-                      {(o.customer?.phone ?? o.customer_phone) && (
+                      {canSendReceipt && (o.customer?.phone ?? o.customer_phone) && (
                         <button
                           onClick={() => void sendSmsReceipt(o)}
                           disabled={smsBusy === o.id}

@@ -149,6 +149,7 @@ final class PermissionCatalog
             ['group' => 'Staff', 'slug' => 'users.create', 'name' => 'Create users'],
             ['group' => 'Staff', 'slug' => 'users.update', 'name' => 'Update users'],
             ['group' => 'Staff', 'slug' => 'users.delete', 'name' => 'Delete users'],
+            ['group' => 'System', 'slug' => 'admin.access', 'name' => 'Access admin panel', 'description' => 'Sign in to the admin dashboard (phone + password)'],
             ['group' => 'System', 'slug' => 'roles_permissions.manage', 'name' => 'Manage roles & permissions'],
             ['group' => 'System', 'slug' => 'settings.manage', 'name' => 'Manage settings'],
             ['group' => 'System', 'slug' => 'settings.update', 'name' => 'Update operational settings'],

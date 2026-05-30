@@ -41,13 +41,13 @@ class PosPermissionResolutionTest extends TestCase
         ]);
 
         $this->manager = User::create([
-            'name' => 'Manager User', 'email' => 'manager@test.com',
+            'name' => 'Manager User', 'email' => 'manager@test.com', 'phone' => '7700002',
             'password' => Hash::make('password'), 'role_id' => $managerRole->id,
             'pin_hash' => Hash::make('1234'), 'is_active' => true,
         ]);
 
         $this->staff = User::create([
-            'name' => 'Staff User', 'email' => 'staff@test.com',
+            'name' => 'Staff User', 'email' => 'staff@test.com', 'phone' => '7700003',
             'password' => Hash::make('password'), 'role_id' => $staffRole->id,
             'pin_hash' => Hash::make('1234'), 'is_active' => true,
         ]);
@@ -350,5 +350,27 @@ class PosPermissionResolutionTest extends TestCase
 
         $this->postJson('/api/shifts/open', ['opening_cash' => 100])
             ->assertForbidden();
+    }
+
+    public function test_staff_phone_login_rejected_without_admin_access(): void
+    {
+        $this->assertFalse($this->permissions()->hasPermission($this->staff, 'admin.access'));
+
+        $this->postJson('/api/auth/staff/login', [
+            'phone' => '7700003',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['phone']);
+    }
+
+    public function test_manager_phone_login_succeeds_with_admin_access(): void
+    {
+        $this->assertTrue($this->permissions()->hasPermission($this->manager, 'admin.access'));
+
+        $this->postJson('/api/auth/staff/login', [
+            'phone' => '7700002',
+            'password' => 'password',
+        ])->assertOk()
+            ->assertJsonStructure(['token', 'user' => ['permissions']]);
     }
 }

@@ -112,6 +112,13 @@ class StaffAuthController extends Controller
         RateLimiter::clear($rateKey);
         $user->update(['last_login_at' => now()]);
 
+        $user->loadMissing('role');
+        if (!app(\App\Services\PermissionService::class)->hasPermission($user, 'admin.access')) {
+            throw ValidationException::withMessages([
+                'phone' => ['You do not have permission to access the admin panel.'],
+            ]);
+        }
+
         $token = $user->createToken('staff-' . $user->id, ['staff'])->plainTextToken;
 
         return response()->json([
