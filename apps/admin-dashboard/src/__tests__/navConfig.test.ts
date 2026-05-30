@@ -8,11 +8,20 @@ import {
 import type { StaffUser } from '../api';
 
 describe('navConfig', () => {
-  it('Inventory nav item uses inventory.view', () => {
-    const inv = PINNED_NAV_ITEMS.find((i) => i.to === '/inventory');
+  it('Inventory lives in Menu & Inventory group, not pinned', () => {
+    expect(PINNED_NAV_ITEMS.find((i) => i.to === '/inventory')).toBeUndefined();
+    const group = NAV_GROUPS.find((g) => g.id === 'menu-inventory');
+    const inv = group?.items.find((i) => i.to === '/inventory');
     expect(inv?.permission).toBe('inventory.view');
-    const inGroup = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.to === '/inventory');
-    expect(inGroup).toBeUndefined();
+  });
+
+  it('pinned quick access has four daily ops items', () => {
+    expect(PINNED_NAV_ITEMS.map((i) => i.to)).toEqual([
+      '/dashboard',
+      '/orders',
+      '/kds',
+      '/menu',
+    ]);
   });
 
   it('resolveNavItemForPath matches delivery route', () => {
@@ -21,9 +30,15 @@ describe('navConfig', () => {
     expect(match?.to).toBe('/delivery');
   });
 
-  it('ordering control nav item points to online-ordering', () => {
+  it('resolveNavItemForPath does not match delivery-settings as delivery', () => {
     const all = [...PINNED_NAV_ITEMS, ...NAV_GROUPS.flatMap((g) => g.items)];
-    const ordering = all.find((i) => i.to === '/online-ordering');
+    const match = resolveNavItemForPath('/delivery-settings', all);
+    expect(match?.to).toBe('/delivery-settings');
+  });
+
+  it('ordering control is under Online Store group', () => {
+    const group = NAV_GROUPS.find((g) => g.id === 'online-store');
+    const ordering = group?.items.find((i) => i.to === '/online-ordering');
     expect(ordering?.label).toBe('Ordering Control');
   });
 

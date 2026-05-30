@@ -6,7 +6,7 @@ import {
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link, ShoppingBag, Menu, Zap, MapPin,
+  Printer, Link, ShoppingBag, Menu, Zap, MapPin, Store,
   ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck, HeartPulse,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
@@ -34,11 +34,7 @@ export const PINNED_NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard.view', description: 'Overview & KPIs' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view',    description: 'Live order queue' },
   { to: '/kds',       icon: ChefHat,         label: 'Kitchen Display', permission: 'orders.view', description: 'KDS screen' },
-  { to: '/inventory', icon: Boxes,           label: 'Inventory', permission: 'inventory.view', description: 'Stock levels' },
   { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.view',      description: 'Categories & items' },
-  { to: '/customers', icon: Users,           label: 'Customers',  permission: 'customers.manage', description: 'Customer database' },
-  { to: '/customers/growth', icon: BarChart2, label: 'Customer Growth', permission: 'customers.manage', description: 'Metrics, segments & CRM' },
-  { to: '/reports',   icon: BarChart3,       label: 'Reports',    permission: 'reports.view',     description: 'Sales & daily summaries' },
 ];
 
 /** Paths that should not stay active for nested routes (e.g. /customers vs /customers/growth) */
@@ -52,35 +48,57 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Operations',
     icon: ConciergeBell,
     items: [
-      { to: '/activity', icon: Zap,           label: 'POS Activity',   permission: 'reports.view',        description: 'Audit log & POS events' },
-      { to: '/tables',   icon: LayoutGrid,      label: 'Tables',         permission: 'orders.view',        description: 'Floor plan & seating' },
-      { to: '/delivery', icon: Truck,           label: 'Delivery Orders', permission: 'delivery.view',      description: 'Active delivery queue' },
-      { to: '/shifts',   icon: Wallet,          label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
+      { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
+      { to: '/tables',      icon: LayoutGrid, label: 'Tables',         permission: 'orders.view',            description: 'Floor plan & seating' },
+      { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'delivery.view',          description: 'Active delivery queue' },
+      { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
+      { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permission: 'staff.view',             description: 'Clock in / out' },
     ],
   },
   {
-    id: 'menu-stock',
-    label: 'Menu & Stock',
-    icon: UtensilsCrossed,
+    id: 'online-store',
+    label: 'Online Store',
+    icon: Store,
     items: [
-      { to: '/specials',              icon: Tag,             label: 'Daily Specials',  permission: 'menu.manage',         description: 'Scheduled item discounts' },
-      { to: '/purchase-orders',       icon: Package,         label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
-      { to: '/supplier-intelligence', icon: Factory,         label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
-      { to: '/waste-logs',            icon: Trash2,          label: 'Waste Tracking',  permission: 'menu.manage',         description: 'Log waste & shrinkage' },
+      { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online hours, fees & overrides' },
+      { to: '/delivery-settings', icon: MapPin,      label: 'Delivery & Zones', permission: 'settings.update', description: 'Delivery hours, zone fees & alerts' },
+      { to: '/specials',          icon: Tag,         label: 'Daily Specials',   permission: 'menu.manage',     description: 'Scheduled item discounts' },
+    ],
+  },
+  {
+    id: 'menu-inventory',
+    label: 'Menu & Inventory',
+    icon: Boxes,
+    items: [
+      { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels' },
+      { to: '/purchase-orders',       icon: Package,       label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
+      { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'menu.manage',         description: 'Log waste & shrinkage' },
+      { to: '/supplier-intelligence', icon: Factory,       label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
+      { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
     ],
   },
   {
     id: 'customers',
-    label: 'Customers & Marketing',
-    icon: Heart,
+    label: 'Customers',
+    icon: Users,
     items: [
-      { to: '/reservations', icon: CalendarDays,  label: 'Reservations', permission: 'reservations.view', description: 'Table bookings' },
-      { to: '/reviews',      icon: Star,          label: 'Reviews',      permission: 'customers.manage',  description: 'Moderate ratings' },
-      { to: '/loyalty',      icon: Heart,         label: 'Loyalty',      permission: 'loyalty.manage',    description: 'Points & rewards' },
-      { to: '/gift-cards',   icon: Gift,          label: 'Gift Cards',   permission: 'promotions.manage', description: 'Issue & manage cards' },
-      { to: '/referrals',    icon: Share2,        label: 'Referrals',    permission: 'customers.manage',  description: 'Referral program' },
-      { to: '/promotions',   icon: Target,        label: 'Promotions',   permission: 'promotions.manage', description: 'Discounts & offers' },
-      { to: '/sms',          icon: MessageSquare, label: 'SMS Campaigns', permission: 'sms_marketing.view', description: 'Bulk messaging' },
+      { to: '/customers',        icon: Users,      label: 'Customers',       permission: 'customers.manage',    description: 'Customer database' },
+      { to: '/customers/growth', icon: BarChart2,  label: 'Customer Growth', permission: 'customers.manage',    description: 'Metrics, segments & CRM' },
+      { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
+      { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.view',   description: 'Table bookings' },
+      { to: '/reviews',          icon: Star,       label: 'Reviews',         permission: 'customers.manage',    description: 'Moderate ratings' },
+      { to: '/loyalty',          icon: Heart,      label: 'Loyalty',         permission: 'loyalty.manage',      description: 'Points & rewards' },
+      { to: '/gift-cards',       icon: Gift,       label: 'Gift Cards',      permission: 'promotions.manage',   description: 'Issue & manage cards' },
+      { to: '/referrals',        icon: Share2,     label: 'Referrals',       permission: 'customers.manage',    description: 'Referral program' },
+    ],
+  },
+  {
+    id: 'marketing',
+    label: 'Marketing',
+    icon: Target,
+    items: [
+      { to: '/promotions', icon: Target,        label: 'Promotions',      permission: 'promotions.manage',  description: 'Discounts & offers' },
+      { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permission: 'sms_marketing.view', description: 'Campaigns, templates & sends' },
     ],
   },
   {
@@ -88,12 +106,11 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Finance',
     icon: CircleDollarSign,
     items: [
-      { to: '/analytics',   icon: BarChart2,    label: 'Analytics',     permission: 'customers.analytics', description: 'Advanced insights' },
-      { to: '/profit-loss', icon: PieChart,     label: 'Profit & Loss', permission: 'finance.profit_loss', description: 'P&L statement' },
-      { to: '/invoices',    icon: DollarSign,   label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
-      { to: '/expenses',    icon: Receipt,      label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
-      { to: '/refunds',     icon: RotateCcw,    label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
-      { to: '/forecasts',   icon: TrendingDown, label: 'Forecasts',     permission: 'reports.financial',   description: 'Demand forecasting' },
+      { to: '/reports',     icon: BarChart3,  label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
+      { to: '/profit-loss', icon: PieChart,   label: 'Profit & Loss', permission: 'finance.profit_loss', description: 'P&L statement' },
+      { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
+      { to: '/expenses',    icon: Receipt,    label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
+      { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
     ],
   },
   {
@@ -101,16 +118,13 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Team & System',
     icon: Wrench,
     items: [
-      { to: '/staff',              icon: Users,       label: 'Staff',              permission: 'staff.view',          description: 'Team management' },
-      { to: '/time-clock',         icon: Clock,       label: 'Time Clock',         permission: 'staff.view',          description: 'Clock in / out' },
-      { to: '/settings',           icon: Settings,    label: 'Settings',           permission: 'website.manage',      description: 'System configuration' },
-      { to: '/system-health',      icon: HeartPulse,  label: 'System Health',      permission: 'website.manage',      description: 'Queue, webhooks & alerts' },
-      { to: '/online-ordering',    icon: ShoppingBag, label: 'Ordering Control',   permission: 'settings.update',     description: 'Online hours, fees & overrides' },
-      { to: '/delivery-settings',  icon: MapPin,      label: 'Delivery & Zones',   permission: 'settings.update',     description: 'Delivery hours, zone fees & alerts' },
-      { to: '/devices',            icon: Monitor,     label: 'Devices',            permission: 'devices.view',        description: 'POS & KDS devices' },
-      { to: '/print-jobs',         icon: Printer,     label: 'Print Queue',        permission: 'devices.view',        description: 'Receipt print jobs' },
-      { to: '/webhooks',           icon: Webhook,     label: 'Webhooks',           permission: 'webhooks.manage',     description: 'Outbound integrations' },
-      { to: '/xero',               icon: Link,        label: 'Xero',               permission: 'xero.manage',         description: 'Accounting sync' },
+      { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
+      { to: '/settings',      icon: Settings,    label: 'Settings',       permission: 'website.manage', description: 'Website, permissions & charges' },
+      { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permission: 'website.manage', description: 'Queue, webhooks & alerts' },
+      { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
+      { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
+      { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'webhooks.manage', description: 'Outbound integrations' },
+      { to: '/xero',          icon: Link,        label: 'Xero',           permission: 'xero.manage',    description: 'Accounting sync' },
     ],
   },
 ];
@@ -126,11 +140,8 @@ const CHECKLIST_NAV_ITEM: NavItem = {
 /** Legacy alias — checklist is always available to owners */
 const DEV_NAV_ITEM = CHECKLIST_NAV_ITEM;
 
-/** Also show in sidebar groups (not only pinned quick-access) */
-const PINNED_GROUP_DUPLICATES = new Set(['/customers/growth']);
-
 function withoutPinnedItems(items: NavItem[]): NavItem[] {
-  return items.filter((i) => !PINNED_PATHS.has(i.to) || PINNED_GROUP_DUPLICATES.has(i.to));
+  return items.filter((i) => !PINNED_PATHS.has(i.to));
 }
 
 export function getNavGroups(includeDevItems = true): NavGroup[] {
@@ -164,7 +175,7 @@ export const BOTTOM_TABS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home',    permission: 'dashboard.view' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders',  permission: 'orders.view'  },
   { to: '/kds',       icon: ChefHat,         label: 'Kitchen', permission: 'orders.view'  },
-  { to: '/reports',   icon: BarChart3,       label: 'Reports', permission: 'reports.view' },
+  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu',    permission: 'menu.view'    },
   { to: '#more',      icon: Menu,            label: 'More'                                },
 ];
 
