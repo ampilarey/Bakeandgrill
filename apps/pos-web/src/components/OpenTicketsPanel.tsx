@@ -70,6 +70,8 @@ type Props = {
   canManageOrderStatus?: boolean;
   canSendBill?: boolean;
   canSendPayLink?: boolean;
+  /** When true, Mark ready is disabled until POS receives from kitchen. */
+  requirePosReceivingBeforeReady?: boolean;
   onResume: (ticket: OpenTicket) => void;
   onClose: () => void;
   /** Phone of the currently-attached cart customer, if any — used to
@@ -105,6 +107,7 @@ export function OpenTicketsPanel({
   canManageOrderStatus = true,
   canSendBill = true,
   canSendPayLink = true,
+  requirePosReceivingBeforeReady = false,
   onResume,
   onClose,
   cartCustomerPhone,
@@ -1033,6 +1036,34 @@ export function OpenTicketsPanel({
                         Kitchen done
                       </span>
                     )}
+                    {stage === "cooking" && (t as { kitchen_handover_status?: string | null }).kitchen_handover_status === "produced"
+                      && !(t as { pos_received_at?: string | null }).pos_received_at && (
+                      <span
+                        title="Produced — receive from kitchen before marking ready"
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: "#B45309", background: "#FFFBEB",
+                          padding: "2px 6px", borderRadius: 4,
+                          border: "1px solid #FDE68A",
+                        }}
+                      >
+                        Awaiting receive
+                      </span>
+                    )}
+                    {stage === "cooking" && ((t as { pos_received_at?: string | null }).pos_received_at
+                      || (t as { kitchen_handover_status?: string | null }).kitchen_handover_status === "received") && (
+                      <span
+                        title="Received from kitchen — safe to mark ready"
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: "#1D4ED8", background: "#EFF6FF",
+                          padding: "2px 6px", borderRadius: 4,
+                          border: "1px solid #BFDBFE",
+                        }}
+                      >
+                        Received
+                      </span>
+                    )}
                     {stage === "parked" && (
                       <span
                         title={parkedAgeLevel === "critical"
@@ -1142,7 +1173,31 @@ export function OpenTicketsPanel({
                         🍳 Start cooking
                       </ActionButton>
                     )}
-                    {stage === "cooking" && canManageOrderStatus && (
+                    {stage === "cooking" && canManageOrderStatus && (() => {
+                      const needsReceive = requirePosReceivingBeforeReady
+                        && !(t as { pos_received_at?: string | null }).pos_received_at
+                        && (t as { kitchen_handover_status?: string | null }).kitchen_handover_status !== "received";
+                      if (needsReceive) {
+                        return (
+                          <span
+                            title="Receive from kitchen first (Kitchen receiving drawer)"
+                            style={{
+                              flex: 1,
+                              textAlign: "center",
+                              padding: "8px 10px",
+                              borderRadius: 8,
+                              fontSize: type.bodySm.fontSize,
+                              fontWeight: 700,
+                              color: "#B45309",
+                              background: "#FFFBEB",
+                              border: "1px dashed #FDE68A",
+                            }}
+                          >
+                            Receive from kitchen first
+                          </span>
+                        );
+                      }
+                      return (
                       <ActionButton
                         onClick={() => handleMarkReady(t)}
                         busy={busy}
@@ -1152,7 +1207,8 @@ export function OpenTicketsPanel({
                       >
                         ✅ Mark ready
                       </ActionButton>
-                    )}
+                      );
+                    })()}
                     {stage === "ready" && isPaid && canManageOrderStatus && (
                       <ActionButton
                         onClick={() => handleMarkPickedUp(t)}

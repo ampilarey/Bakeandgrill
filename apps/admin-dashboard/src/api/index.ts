@@ -17,6 +17,7 @@ export * from './sms-module';
 export * from './pos-admin';
 export * from './system';
 export * from './procurement';
+export * from './kitchen-production';
 
 // Re-export shared types that were previously re-exported from the monolithic api.ts
 export type { StaffUser } from '@shared/types';

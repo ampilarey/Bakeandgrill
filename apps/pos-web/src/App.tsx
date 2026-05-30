@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "./api";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
 import { startSyncEnginePolling } from "./offline/syncEngine";
@@ -30,6 +30,7 @@ import { AssignedBuyingListPanel } from "./components/AssignedBuyingListPanel";
 import { ChargeOverlay }     from "./components/ChargeOverlay";
 import { SaveTicketModal }   from "./components/SaveTicketModal";
 import { OpenTicketsPanel }  from "./components/OpenTicketsPanel";
+import { KitchenReceivingPanel } from "./components/KitchenReceivingPanel";
 import { ReceiptsPanel }     from "./components/ReceiptsPanel";
 import { ShiftPanel }        from "./components/ShiftPanel";
 import { ShiftHistoryPanel } from "./components/ShiftHistoryPanel";
@@ -57,7 +58,7 @@ import {
   validateDeliveryDetails,
 } from "./orderTypes";
 
-type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | "ops" | "my_requests" | "buying_list";
+type Pane = "sales" | "receipts" | "shift" | "open_tickets" | "shift_history" | "ops" | "my_requests" | "buying_list" | "kitchen_receiving";
 
 function App() {
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -115,6 +116,8 @@ function App() {
   const canCreatePurchaseRequest = hasPosPermission(staffPermissions, "purchase_requests.create");
   const canViewOwnPurchaseRequests = hasPosPermission(staffPermissions, "purchase_requests.view_own");
   const canBuyAssigned = hasPosPermission(staffPermissions, "purchase_requests.buy");
+  const canKitchenReceive = hasPosPermission(staffPermissions, "kitchen.receiving.view");
+  const [kitchenHandoverSettings, setKitchenHandoverSettings] = useState<KitchenHandoverSettings | null>(null);
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
@@ -488,6 +491,13 @@ function App() {
     }, 3000);
     return () => window.clearTimeout(handle);
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !canKitchenReceive) return;
+    void fetchKitchenHandoverSettings()
+      .then((res) => setKitchenHandoverSettings(res.settings))
+      .catch(() => undefined);
+  }, [isLoggedIn, canKitchenReceive]);
 
   const order = useOrderCreation({
     isOnline,
@@ -962,6 +972,7 @@ function App() {
     if (canCreatePurchaseRequest) main.push({ id: "request_item", label: "Request items", icon: "🛒", group: "main" });
     if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });
     if (canBuyAssigned) main.push({ id: "buying_list", label: "Buying list", icon: "✅", group: "main" });
+    if (canKitchenReceive && shiftOpen) main.push({ id: "kitchen_receiving", label: "Kitchen receive", icon: "🍳", group: "main" });
 
     const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [];
     if (!shiftOpen && canOpenShift) {
@@ -980,7 +991,7 @@ function App() {
     return [...main, ...user];
   }, [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps,
-    canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned,
+    canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
     canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount,
   ]);
 
@@ -993,10 +1004,11 @@ function App() {
     ops: canAccessOps,
     my_requests: canViewOwnPurchaseRequests,
     buying_list: canBuyAssigned,
+    kitchen_receiving: canKitchenReceive && shiftOpen,
   }), [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory,
     canAccessOps, canOpenShift, canCloseShift, shiftOpen,
-    canViewOwnPurchaseRequests, canBuyAssigned,
+    canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
   ]);
 
   useEffect(() => {
@@ -1509,6 +1521,7 @@ function App() {
             canManageOrderStatus={canManageOrderStatus}
             canSendBill={canSendBill}
             canSendPayLink={canSendPayLink}
+            requirePosReceivingBeforeReady={kitchenHandoverSettings?.kitchen_require_pos_receiving_before_ready ?? true}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             smsNotifications={smsNotifications}
             onClose={() => setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "shift_history")}
@@ -1578,6 +1591,13 @@ function App() {
         {pane === 'buying_list' && (
           <AssignedBuyingListPanel
             onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
+          />
+        )}
+
+        {pane === 'kitchen_receiving' && (
+          <KitchenReceivingPanel
+            onClose={() => setPane(canViewActiveOrders && shiftOpen ? "open_tickets" : canRingSales && shiftOpen ? "sales" : "shift_history")}
+            onReceived={() => void refreshOpenTickets()}
           />
         )}
       </main>
@@ -1819,6 +1839,7 @@ function paneTitle(p: Pane): string {
     case "ops": return "Operations";
     case "my_requests": return "My Requests";
     case "buying_list": return "Buying List";
+    case "kitchen_receiving": return "Kitchen Receive";
   }
 }
 

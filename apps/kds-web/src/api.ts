@@ -7,6 +7,8 @@ export type KdsOrderItem = {
   item_name: string;
   variant_name?: string | null;
   quantity: number;
+  kitchen_produced_qty?: number | null;
+  kitchen_received_qty?: number | null;
   notes?: string | null;
   status?: string;
   menu_group_id?: number | null;
@@ -30,6 +32,8 @@ export type KdsOrder = {
   notes?: string | null;
   kitchen_done_at?: string | null;
   kitchen_done_by?: { id: number; name: string } | null;
+  kitchen_handover_status?: string | null;
+  pos_received_at?: string | null;
   items: KdsOrderItem[];
 };
 
@@ -109,6 +113,52 @@ export async function startOrder(token: string, orderId: number): Promise<void> 
 
 export async function kitchenDoneOrder(token: string, orderId: number): Promise<void> {
   await request<void>(ENDPOINTS.KDS_ORDER_KITCHEN_DONE(orderId), {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+}
+
+export async function markOrderItemCooked(
+  token: string,
+  orderId: number,
+  orderItemId: number,
+  payload?: { qty?: number; notes?: string },
+): Promise<void> {
+  await request<void>(ENDPOINTS.KDS_ORDER_ITEM_COOKED(orderId, orderItemId), {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
+export type KitchenProductionBatch = {
+  id: number;
+  batch_no: string;
+  production_type: string;
+  status: string;
+  order?: { id: number; order_number: string; type?: string } | null;
+  items: Array<{
+    id: number;
+    name: string;
+    produced_qty: number;
+    unit: string;
+    status: string;
+  }>;
+};
+
+export async function createKitchenProductionBatch(
+  token: string,
+  payload: Record<string, unknown>,
+): Promise<{ batch: KitchenProductionBatch }> {
+  return request('/kitchen-production', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function submitKitchenProductionBatch(token: string, batchId: number): Promise<void> {
+  await request(`/kitchen-production/${batchId}/submit`, {
     method: 'POST',
     headers: authHeaders(token),
   });

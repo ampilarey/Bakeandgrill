@@ -17,6 +17,7 @@ export const ROLE_CHEAT_SHEET: CheatSheetRole[] = [
       'View KDS queue, start tickets, mark kitchen done, reprint kitchen chits',
       'Time clock and lock screen on shared tablets',
       'Create purchase requests and mark assigned buying tasks',
+      'Record kitchen production, waste, remakes — no POS receiving by default',
     ],
     cannot: [
       'Ring sales, open/close shifts, take payments, void/refund',
@@ -32,6 +33,7 @@ export const ROLE_CHEAT_SHEET: CheatSheetRole[] = [
       'POS: ring sales, payments, hold/resume, receipts, discounts, loyalty redeem',
       'Open/close own shift, time clock, own shift history',
       'Create purchase requests, view own requests, mark bought when assigned',
+      'Receive from kitchen, reject handover, request remakes (POS receiving)',
       'Admin (if admin.access granted): read orders, menu, reports, inventory view',
     ],
     cannot: [
@@ -85,6 +87,9 @@ export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'purchase_requests.create', gates: 'Submit purchase requests from POS/KDS', typical: 'Staff, Kitchen' },
   { slug: 'purchase_requests.view_all', gates: 'Manager purchase request inbox', typical: 'Manager' },
   { slug: 'purchase_requests.verify', gates: 'Verify bought items → stock in', typical: 'Manager' },
+  { slug: 'kitchen.production.create', gates: 'Record kitchen production batches', typical: 'Kitchen Staff' },
+  { slug: 'kitchen.receiving.receive', gates: 'POS receive from kitchen before handover', typical: 'Staff+' },
+  { slug: 'kitchen.variance.review', gates: 'Review production/receiving variances', typical: 'Manager' },
   { slug: 'devices.view', gates: 'List devices & print queue', typical: 'Manager' },
   { slug: 'devices.approve', gates: 'Approve pending POS/KDS devices', typical: 'Owner' },
   { slug: 'settings.update', gates: 'Online ordering & delivery operational settings', typical: 'Manager' },

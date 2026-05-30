@@ -7,7 +7,7 @@ import {
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Menu, Zap, MapPin, Store,
-  ConciergeBell, CircleDollarSign, Wrench,   ClipboardCheck, HeartPulse, UserCircle, ClipboardPen,
+  ConciergeBell, CircleDollarSign, Wrench,   ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -51,6 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
       { to: '/tables',      icon: LayoutGrid, label: 'Tables',         permission: 'orders.view',            description: 'Floor plan & seating' },
       { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'delivery.view',          description: 'Active delivery queue' },
+      { to: '/kitchen-production', icon: Utensils, label: 'Kitchen Handover', permission: 'kitchen.production.view_all', description: 'Production, receiving & variance' },
       { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
       { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permission: 'pos.time_clock',         description: 'Clock in / out' },
     ],

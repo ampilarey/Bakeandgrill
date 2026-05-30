@@ -6,6 +6,8 @@ namespace App\Domains\Operations\Services;
 
 use App\Models\InventoryItem;
 use App\Models\Item;
+use App\Models\KitchenProductionBatch;
+use App\Models\KitchenProductionVariance;
 use App\Models\Order;
 use App\Models\PurchaseRequest;
 use App\Models\SiteSetting;
@@ -121,6 +123,28 @@ final class OpsAlertsService
                 'count' => $overdueRequests,
                 'message' => "{$overdueRequests} purchase request(s) past needed-by date",
                 'link' => '/purchase-requests',
+            ];
+        }
+
+        $pendingKitchenReceive = KitchenProductionBatch::query()->where('status', 'submitted')->count();
+        if ($pendingKitchenReceive > 0) {
+            $alerts[] = [
+                'type' => 'kitchen_pending_receive',
+                'severity' => 'warning',
+                'count' => $pendingKitchenReceive,
+                'message' => "{$pendingKitchenReceive} kitchen batch(es) awaiting POS receive",
+                'link' => '/kitchen-production',
+            ];
+        }
+
+        $openVariances = KitchenProductionVariance::query()->whereNull('reviewed_at')->count();
+        if ($openVariances > 0) {
+            $alerts[] = [
+                'type' => 'kitchen_variances_open',
+                'severity' => 'warning',
+                'count' => $openVariances,
+                'message' => "{$openVariances} kitchen variance(s) need manager review",
+                'link' => '/kitchen-production',
             ];
         }
 

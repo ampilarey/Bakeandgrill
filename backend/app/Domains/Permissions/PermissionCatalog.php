@@ -202,6 +202,27 @@ final class PermissionCatalog
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.merge', 'name' => 'Merge duplicate requests'],
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.convert_to_purchase', 'name' => 'Convert request to purchase order'],
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.convert_to_expense', 'name' => 'Convert request to expense'],
+
+            // Kitchen Production & Receiving
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.create', 'name' => 'Create kitchen production batches'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.submit', 'name' => 'Submit kitchen production'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.view_own', 'name' => 'View own kitchen production'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.view_all', 'name' => 'View all kitchen production'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.cancel_own', 'name' => 'Cancel own production batches'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.record_waste', 'name' => 'Record kitchen waste'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.record_remake', 'name' => 'Record kitchen remake'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.attach_photo', 'name' => 'Attach kitchen production photos'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.manage', 'name' => 'Manage kitchen production'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.override', 'name' => 'Override kitchen production records'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.convert_to_prepared_stock', 'name' => 'Convert production to prepared stock'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.reports', 'name' => 'View kitchen production reports'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.view', 'name' => 'View kitchen receiving queue'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.receive', 'name' => 'Receive from kitchen'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.reject', 'name' => 'Reject kitchen handover'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.request_remake', 'name' => 'Request kitchen remake'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.attach_photo', 'name' => 'Attach receiving photos'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.manage', 'name' => 'Manage kitchen receiving'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.variance.review', 'name' => 'Review kitchen variances'],
         ];
     }
 
@@ -226,6 +247,32 @@ final class PermissionCatalog
         ];
 
         return array_values(array_diff(self::ownerSlugs(), $excluded));
+    }
+
+    /** @return list<string> */
+    public static function kitchenProductionStaffSlugs(): array
+    {
+        return [
+            'kitchen.production.create',
+            'kitchen.production.submit',
+            'kitchen.production.view_own',
+            'kitchen.production.cancel_own',
+            'kitchen.production.record_waste',
+            'kitchen.production.record_remake',
+            'kitchen.production.attach_photo',
+        ];
+    }
+
+    /** @return list<string> */
+    public static function kitchenReceivingStaffSlugs(): array
+    {
+        return [
+            'kitchen.receiving.view',
+            'kitchen.receiving.receive',
+            'kitchen.receiving.reject',
+            'kitchen.receiving.request_remake',
+            'kitchen.receiving.attach_photo',
+        ];
     }
 
     /** @return list<string> */
@@ -257,6 +304,7 @@ final class PermissionCatalog
             'inventory.view', 'suppliers.view', 'delivery.view', 'reservations.view',
             'menu.view',
             ...self::purchaseRequestsStaffSlugs(),
+            ...self::kitchenReceivingStaffSlugs(),
         ];
     }
 
@@ -271,6 +319,7 @@ final class PermissionCatalog
             'pos.time_clock',
             'pos.lock_screen',
             ...self::purchaseRequestsStaffSlugs(),
+            ...self::kitchenProductionStaffSlugs(),
         ];
     }
 

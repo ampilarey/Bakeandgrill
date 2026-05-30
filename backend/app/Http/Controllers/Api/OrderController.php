@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Customers\Services\CustomerCreditService;
+use App\Domains\Kitchen\Support\KitchenHandoverSettings;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
@@ -1055,6 +1056,12 @@ class OrderController extends Controller
                 && $order->payment_status !== 'paid'
                 && $order->status !== 'paid') {
                 return ['error' => 'Online order is unpaid — wait for payment confirmation before marking ready.'];
+            }
+
+            if (KitchenHandoverSettings::requirePosReceivingBeforeReady()
+                && $order->kitchen_handover_status !== 'received'
+                && $order->pos_received_at === null) {
+                return ['error' => 'Receive from kitchen before marking ready.'];
             }
 
             $oldStatus = $order->status;

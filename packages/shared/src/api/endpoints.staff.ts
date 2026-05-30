@@ -28,6 +28,7 @@ export const STAFF_ENDPOINTS = {
   KDS_ORDER_BUMP:              (id: number) => `/kds/orders/${id}/bump`,
   KDS_ORDER_RECALL:            (id: number) => `/kds/orders/${id}/recall`,
   KDS_ORDER_KITCHEN_DONE:      (id: number) => `/kds/orders/${id}/kitchen-done`,
+  KDS_ORDER_ITEM_COOKED:       (orderId: number, itemId: number) => `/kds/orders/${orderId}/items/${itemId}/cooked`,
   KDS_ORDER_PRINT_TICKET:      (id: number) => `/kds/orders/${id}/print-ticket`,
   STREAM_ORDERS:               '/stream/orders',
   STREAM_KDS:                  '/stream/kds',
@@ -51,6 +52,24 @@ export const STAFF_ENDPOINTS = {
   PURCHASE_REQUEST_APPROVE:    (id: number) => `/purchase-requests/${id}/approve`,
   PURCHASE_REQUEST_ITEM_BOUGHT: (requestId: number, itemId: number) =>
     `/purchase-requests/${requestId}/items/${itemId}/mark-bought`,
+
+  // Kitchen production & receiving
+  KITCHEN_HANDOVER_SETTINGS:     '/kitchen-handover/settings',
+  KITCHEN_PRODUCTION:            '/kitchen-production',
+  KITCHEN_PRODUCTION_BY_ID:      (id: number) => `/kitchen-production/${id}`,
+  KITCHEN_PRODUCTION_SUBMIT:     (id: number) => `/kitchen-production/${id}/submit`,
+  KITCHEN_RECEIVING_PENDING:     '/kitchen-receiving/pending',
+  KITCHEN_RECEIVING_FOR_ORDER:   (orderId: number) => `/kitchen-receiving/orders/${orderId}`,
+  KITCHEN_RECEIVING_RECEIVE_ALL: (batchId: number) => `/kitchen-receiving/${batchId}/receive-all`,
+  KITCHEN_RECEIVING_RECEIVE_ITEM: (batchId: number, itemId: number) =>
+    `/kitchen-receiving/${batchId}/items/${itemId}/receive`,
+  KITCHEN_VARIANCE:              '/kitchen-variance',
+  KITCHEN_VARIANCE_REVIEW:       (id: number) => `/kitchen-variance/${id}/review`,
+  KITCHEN_REPORTS_SUMMARY:       '/kitchen-reports/summary',
+  KITCHEN_REPORTS_HANDOVER:      '/kitchen-reports/handover',
+  KITCHEN_REPORTS_WASTE:         '/kitchen-reports/waste',
+  KITCHEN_REPORTS_STAFF_OUTPUT:  '/kitchen-reports/staff-output',
+  KITCHEN_REPORTS_POS_RECEIVING: '/kitchen-reports/pos-receiving',
 
   // Admin-only (additionally permission-gated server-side)
   ADMIN_UPLOAD_IMAGE:          '/admin/upload-image',

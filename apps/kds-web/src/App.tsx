@@ -11,11 +11,13 @@ import {
   recallOrder,
   staffLogin,
   startOrder,
+  markOrderItemCooked,
   type KdsMenuGroup,
   type KdsOrder,
   type KdsStaffUser,
 } from "./api";
 import { KdsPurchaseRequestOverlay } from "./components/KdsPurchaseRequestOverlay";
+import { KitchenProductionPanel } from "./components/kitchen-production/KitchenProductionPanel";
 import { useKdsSse } from "./hooks/useKdsSse";
 import { isAudioEnabled, playChime, playLateAlert, setAudioEnabled } from "./utils/audio";
 import { elapsed, isLateTicket, minutesSince, urgencyColor } from "./utils/kdsDisplay";
@@ -65,6 +67,7 @@ function App() {
   const [menuGroups, setMenuGroups] = useState<KdsMenuGroup[]>([]);
   const [eightySixing, setEightySixing] = useState<number | null>(null);
   const [prOverlay, setPrOverlay] = useState<null | "request" | "my" | "buying">(null);
+  const [viewMode, setViewMode] = useState<"board" | "production">("board");
 
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstLoadRef = useRef(true);
@@ -217,6 +220,8 @@ function App() {
   const canCreatePurchaseRequest = hasKdsPermission(permissions, "purchase_requests.create");
   const canViewOwnPurchaseRequests = hasKdsPermission(permissions, "purchase_requests.view_own");
   const canBuyAssigned = hasKdsPermission(permissions, "purchase_requests.buy");
+  const canProduce = hasKdsPermission(permissions, "kitchen.production.create");
+  const canPreparedStock = hasKdsPermission(permissions, "kitchen.production.create");
 
   const handleLogin = async () => {
     setErrorMessage("");
@@ -271,6 +276,13 @@ function App() {
     kitchenDoneOrder(token, orderId)
       .then(() => void load(token))
       .catch(() => setErrorMessage(`Failed to mark order #${orderId} kitchen done.`));
+  };
+
+  const handleItemCooked = (orderId: number, itemId: number) => {
+    if (!token) return;
+    markOrderItemCooked(token, orderId, itemId)
+      .then(() => void load(token))
+      .catch(() => setErrorMessage("Failed to mark item cooked."));
   };
 
   const handlePrint = (orderId: number) => {
@@ -496,7 +508,26 @@ function App() {
                     {item.modifiers.map((mod) => mod.modifier_name).join(", ")}
                   </div>
                 )}
+                {item.kitchen_produced_qty != null && (
+                  <div className="text-xs mt-1" style={{ color: "#047857" }}>
+                    Cooked {item.kitchen_produced_qty}/{item.quantity}
+                  </div>
+                )}
               </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+              {canProduce && ["in_progress", "preparing"].includes(order.status)
+                && (item.kitchen_produced_qty ?? 0) < item.quantity && (
+                <button
+                  type="button"
+                  onClick={() => handleItemCooked(order.id, item.id)}
+                  style={{
+                    fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 6,
+                    border: "none", background: "#047857", color: "#fff", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  Cooked
+                </button>
+              )}
               {item.item_id && can86 ? (
                 <button
                   type="button"
@@ -510,6 +541,7 @@ function App() {
                   {eightySixing === item.item_id ? "…" : "86"}
                 </button>
               ) : null}
+              </div>
             </div>
           ))}
         </div>
@@ -659,6 +691,16 @@ function App() {
               Buying list
             </button>
           )}
+          {canProduce && (
+            <button
+              type="button"
+              onClick={() => setViewMode((m) => (m === "board" ? "production" : "board"))}
+              className="text-xs"
+              style={{ color: "#fff", background: viewMode === "production" ? "#047857" : "#1C1408", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 700 }}
+            >
+              {viewMode === "production" ? "Ticket board" : "Production"}
+            </button>
+          )}
           <a href="/" className="text-xs" style={{ color: "#8B7355", textDecoration: "none" }}>← Site</a>
           <button
             className="text-xs underline"
@@ -716,9 +758,23 @@ function App() {
       </div>
 
       <main className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:p-6 lg:grid-cols-3">
-        <Column title="Pending" items={pendingOrders} flash={newTicketFlash} />
-        <Column title="Cooking" items={inProgressOrders} />
-        <Column title="Ready" items={readyOrders} />
+        {viewMode === "production" && token ? (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <KitchenProductionPanel
+              token={token}
+              orders={orders}
+              canProduce={canProduce}
+              canPreparedStock={canPreparedStock}
+              onRefresh={() => void load(token)}
+            />
+          </div>
+        ) : (
+          <>
+            <Column title="Pending" items={pendingOrders} flash={newTicketFlash} />
+            <Column title="Cooking" items={inProgressOrders} />
+            <Column title="Ready" items={readyOrders} />
+          </>
+        )}
       </main>
 
       {prOverlay && token && (

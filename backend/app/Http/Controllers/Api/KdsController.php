@@ -10,15 +10,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\MenuGroup;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Services\AuditLogService;
+use App\Services\KitchenProductionService;
 use App\Services\OrderStatusMachine;
 use App\Services\PrintJobService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class KdsController extends Controller
 {
+    public function __construct(
+        private readonly KitchenProductionService $productionService,
+    ) {}
     /**
      * Canonical list of statuses the kitchen needs to see. Shared with
      * KdsStreamProvider so the REST list endpoint and the SSE stream
@@ -109,6 +115,8 @@ class KdsController extends Controller
                 'id' => $order->kitchenDoneBy->id,
                 'name' => $order->kitchenDoneBy->name,
             ] : null,
+            'kitchen_handover_status' => $order->kitchen_handover_status,
+            'pos_received_at' => $order->pos_received_at?->toIso8601String(),
             'items' => $order->items->map(function ($line) {
                 return [
                     'id' => $line->id,
@@ -116,6 +124,8 @@ class KdsController extends Controller
                     'item_name' => $line->item_name,
                     'variant_name' => $line->variant_name,
                     'quantity' => $line->quantity,
+                    'kitchen_produced_qty' => $line->kitchen_produced_qty !== null ? (float) $line->kitchen_produced_qty : null,
+                    'kitchen_received_qty' => $line->kitchen_received_qty !== null ? (float) $line->kitchen_received_qty : null,
                     'notes' => $line->notes,
                     'status' => $line->status,
                     'menu_group_id' => $line->item?->menu_group_id,
@@ -165,41 +175,37 @@ class KdsController extends Controller
 
     public function kitchenDone(Request $request, int $id): JsonResponse
     {
-        $result = DB::transaction(function () use ($id, $request) {
-            $order = Order::lockForUpdate()->findOrFail($id);
+        try {
+            $result = DB::transaction(function () use ($id, $request) {
+                $order = Order::lockForUpdate()->findOrFail($id);
+                $order = $this->productionService->markOrderKitchenDone($order, $request->user(), $request);
 
-            if (!in_array($order->status, ['in_progress', 'preparing'], true)) {
-                return ['error' => 'Only in-progress orders can be marked kitchen done.'];
-            }
-
-            if ($order->kitchen_done_at !== null) {
-                return ['order' => $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy'])];
-            }
-
-            $userId = $request->user()?->id;
-            $order->update([
-                'kitchen_done_at' => now(),
-                'kitchen_done_by' => $userId,
-            ]);
-
-            app(AuditLogService::class)->log(
-                'order.kitchen_done',
-                'Order',
-                $order->id,
-                ['kitchen_done_at' => null],
-                ['kitchen_done_at' => $order->fresh()->kitchen_done_at?->toIso8601String()],
-                ['source' => 'kds', 'user_id' => $userId],
-                $request,
-            );
-
-            return ['order' => $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy'])];
-        });
-
-        if (isset($result['error'])) {
-            return response()->json(['message' => $result['error']], 422);
+                return ['order' => $order];
+            });
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
         }
 
         return response()->json(['order' => self::formatKitchenOrder($result['order'])]);
+    }
+
+    public function markItemCooked(Request $request, int $orderId, int $orderItemId): JsonResponse
+    {
+        $validated = $request->validate([
+            'qty' => ['nullable', 'numeric', 'min:0.001'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $order = Order::findOrFail($orderId);
+            $orderItem = OrderItem::where('order_id', $order->id)->where('id', $orderItemId)->firstOrFail();
+            $this->productionService->markOrderItemCooked($order, $orderItem, $request->user(), $validated, $request);
+            $order = $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy']);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        return response()->json(['order' => self::formatKitchenOrder($order)]);
     }
 
     public function printTicket(Request $request, int $id): JsonResponse

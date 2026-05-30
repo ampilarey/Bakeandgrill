@@ -59,6 +59,9 @@ class Order extends Model
         'completed_at',
         'kitchen_done_at',
         'kitchen_done_by',
+        'pos_received_at',
+        'pos_received_by',
+        'kitchen_handover_status',
         'tip_amount',
         'estimated_wait_minutes',
         // Delivery fields
@@ -110,6 +113,8 @@ class Order extends Model
         'completed_at' => 'datetime',
         'kitchen_done_at' => 'datetime',
         'kitchen_done_by' => 'integer',
+        'pos_received_at' => 'datetime',
+        'pos_received_by' => 'integer',
         'cancelled_at' => 'datetime',
         'delivery_eta_at' => 'datetime',
         'driver_assigned_at' => 'datetime',

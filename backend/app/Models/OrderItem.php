@@ -27,12 +27,16 @@ class OrderItem extends Model
         'tax_rate',
         'notes',
         'status',
+        'kitchen_produced_qty',
+        'kitchen_received_qty',
     ];
 
     protected $casts = [
         'order_id' => 'integer',
         'item_id' => 'integer',
         'variant_id' => 'integer',
+        'kitchen_produced_qty' => 'float',
+        'kitchen_received_qty' => 'float',
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'original_unit_price' => 'decimal:2',
