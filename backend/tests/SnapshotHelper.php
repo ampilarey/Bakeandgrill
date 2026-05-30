@@ -58,6 +58,24 @@ trait SnapshotHelper
         'restaurant_table_id',
         'category_id',
         'parent_id',
+        // PG sequences advance across rolled-back test transactions
+        'shift_id',
+    ];
+
+    /** Decimal/money fields — normalized to "0.00" strings for cross-DB snapshots. */
+    protected array $snapshotMoneyKeys = [
+        'subtotal',
+        'tax_amount',
+        'discount_amount',
+        'total',
+        'delivery_fee',
+        'tip_amount',
+        'unit_price',
+        'total_price',
+        'tax_rate',
+        'service_charge_amount',
+        'service_charge_value',
+        'original_unit_price',
     ];
 
     public function assertMatchesApiSnapshot(
@@ -93,6 +111,8 @@ trait SnapshotHelper
         foreach ($data as $key => $value) {
             if (in_array($key, $this->snapshotVolatileKeys, true)) {
                 $result[$key] = is_null($value) ? null : '__VOLATILE__';
+            } elseif (in_array($key, $this->snapshotMoneyKeys, true) && is_numeric($value)) {
+                $result[$key] = number_format((float) $value, 2, '.', '');
             } elseif (is_array($value)) {
                 $result[$key] = $this->normalizeForSnapshot($value);
             } else {
