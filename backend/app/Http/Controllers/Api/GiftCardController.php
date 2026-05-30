@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
@@ -68,13 +69,10 @@ class GiftCardController extends Controller
                 return response()->json(['message' => 'This gift card has expired.'], 422);
             }
 
-            // Apply up to the current order total_laar (which already reflects all
-            // previously-applied discounts: promo, loyalty, referral).
-            // Using the gross subtotal_laar would let the card over-commit its balance
-            // when stacked with other discounts.
-            $maxDiscount = (int) round((float) $card->current_balance * 100);
-            $currentDueLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
-            $discountLaar = min($maxDiscount, max(0, $currentDueLaar));
+            $discountLaar = min(
+                $card->balanceLaar(),
+                EffectiveDiscount::remainingPreTaxBeforeGift($order),
+            );
 
             $order->update([
                 'gift_card_code' => $card->code,
@@ -154,9 +152,10 @@ class GiftCardController extends Controller
                 return response()->json(['message' => 'This gift card has expired.'], 422);
             }
 
-            $maxDiscount = (int) round((float) $card->current_balance * 100);
-            $currentDueLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
-            $discountLaar = min($maxDiscount, max(0, $currentDueLaar));
+            $discountLaar = min(
+                $card->balanceLaar(),
+                EffectiveDiscount::remainingPreTaxBeforeGift($order),
+            );
 
             $order->update([
                 'gift_card_code' => $card->code,

@@ -45,8 +45,9 @@ class FinanceReportController extends Controller
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
             ->value('total');
 
-        // COGS: purchase costs in the period
+        // COGS: received purchases in the period (exclude draft/cancelled POs)
         $cogs = Purchase::whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
+            ->whereIn('status', ['received', 'partial'])
             ->sum('total');
 
         // Operating expenses
@@ -123,6 +124,7 @@ class FinanceReportController extends Controller
             ->keyBy('date');
 
         $purchaseByDay = Purchase::whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
+            ->whereIn('status', ['received', 'partial'])
             ->selectRaw('purchase_date as date, SUM(total) as amount')
             ->groupBy('purchase_date')
             ->orderBy('purchase_date')
@@ -182,9 +184,12 @@ class FinanceReportController extends Controller
         };
 
         $taxable = Order::whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
             ->where('tax_amount', '>', 0)
-            ->selectRaw("{$monthExpr} as period, SUM(subtotal) as taxable_amount, SUM(tax_amount) as tax_collected, COUNT(*) as transactions")
+            ->selectRaw("{$monthExpr} as period")
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SUBTOTAL_LAAR) . ' as taxable_amount')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax_collected')
+            ->selectRaw('COUNT(*) as transactions')
             ->groupByRaw($monthExpr)
             ->orderByRaw($monthExpr)
             ->get();
@@ -227,23 +232,35 @@ class FinanceReportController extends Controller
         $from = Carbon::parse($date)->startOfDay();
         $to = Carbon::parse($date)->endOfDay();
 
-        $orders = Order::whereBetween('created_at', [$from, $to])->where('status', 'completed');
+        $orders = Order::whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES);
         $orderCount = (clone $orders)->count();
-        $revenue = (float) (clone $orders)->sum('total');
-        $tax = (float) (clone $orders)->sum('tax_amount');
-        $discounts = (float) (clone $orders)->sum('discount_amount');
+        $revenue = (float) (clone $orders)
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
+            ->value('total');
+        $tax = (float) (clone $orders)
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as total')
+            ->value('total');
+        $discounts = (float) (clone $orders)
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_DISCOUNT_LAAR) . ' as total')
+            ->value('total');
         $avgOrder = $orderCount > 0 ? round($revenue / $orderCount, 2) : 0;
 
         $expenses = (float) Expense::whereDate('expense_date', $date)->where('status', 'approved')->sum('amount');
-        $purchases = (float) Purchase::whereDate('purchase_date', $date)->sum('total');
+        $purchases = (float) Purchase::whereDate('purchase_date', $date)
+            ->whereIn('status', ['received', 'partial'])
+            ->sum('total');
         $wasteCost = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
         $profit = round($revenue - $expenses - $purchases - $wasteCost, 2);
 
+        $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
+
         // Orders by type / channel
         $byType = Order::whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
-            ->selectRaw('orders.type as order_type, COUNT(*) as count, SUM(total) as revenue')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->selectRaw('orders.type as order_type, COUNT(*) as count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaar) . ' as revenue')
             ->groupBy('type')
             ->get();
 
@@ -252,7 +269,7 @@ class FinanceReportController extends Controller
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('items', 'items.id', '=', 'order_items.item_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->where('orders.status', 'completed')
+            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
             ->selectRaw('items.name, SUM(order_items.quantity) as qty, SUM(order_items.quantity * order_items.unit_price) as revenue')
             ->groupBy('items.id', 'items.name')
             ->orderByDesc('qty')

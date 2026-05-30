@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Models\Customer;
@@ -135,9 +136,10 @@ class OfflineOrderRewardsService
                 throw new \RuntimeException('This gift card has expired.');
             }
 
-            $maxDiscount = (int) round((float) $card->current_balance * 100);
-            $currentDueLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
-            $discountLaar = min($maxDiscount, max(0, $currentDueLaar));
+            $discountLaar = min(
+                $card->balanceLaar(),
+                EffectiveDiscount::remainingPreTaxBeforeGift($order),
+            );
 
             $order->update([
                 'gift_card_code' => $card->code,

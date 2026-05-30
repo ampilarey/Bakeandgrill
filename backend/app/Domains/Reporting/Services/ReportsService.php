@@ -191,7 +191,11 @@ class ReportsService
         $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('order', fn ($q) => $q->where('user_id', $shift->user_id))
+            ->whereHas('order', function ($q) use ($from, $to, $shift) {
+                $q->where('user_id', $shift->user_id)
+                    ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+                    ->whereBetween('created_at', [$from, $to]);
+            })
             ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -238,6 +242,9 @@ class ReportsService
         $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('order', fn ($q) => $q
+                ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+                ->whereBetween('created_at', [$from, $to]))
             ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -285,7 +292,7 @@ class ReportsService
     {
         $rows = Order::query()
             ->where('type', 'delivery')
-            ->where('status', 'completed')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
             ->whereBetween('created_at', [$from, $to])
             ->whereNotNull('delivery_island')
             ->where('delivery_island', '!=', '')
@@ -541,7 +548,7 @@ class ReportsService
 
         $rows = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->where('orders.status', 'completed')
+            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereNotNull('order_items.item_id')
             ->selectRaw('order_items.item_id, order_items.item_name, SUM(order_items.quantity) as qty_sold')
@@ -727,7 +734,7 @@ class ReportsService
         $sales = Order::query()
             ->leftJoin('users', 'users.id', '=', 'orders.user_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->where('orders.status', 'completed')
+            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
             ->selectRaw('orders.user_id, users.name, COUNT(*) as orders_count, COALESCE(SUM(orders.total),0) as total, COALESCE(AVG(orders.total),0) as avg_order')
             ->groupBy('orders.user_id', 'users.name')
             ->get()
@@ -851,7 +858,7 @@ class ReportsService
             ->leftJoin('items as i', 'i.id', '=', 'oi.item_id')
             ->leftJoin('menu_groups as mg', 'mg.id', '=', 'i.menu_group_id')
             ->whereBetween('o.created_at', [$from, $to])
-            ->where('o.status', 'completed')
+            ->whereIn('o.status', ReportMoneySql::SALE_STATUSES)
             ->selectRaw('i.menu_group_id, COALESCE(mg.name, \'Unassigned\') as station, COUNT(oi.id) as line_count, COALESCE(SUM(oi.quantity),0) as qty, COALESCE(SUM(oi.total_price),0) as revenue')
             ->groupBy('i.menu_group_id', 'mg.name')
             ->orderByDesc('revenue')

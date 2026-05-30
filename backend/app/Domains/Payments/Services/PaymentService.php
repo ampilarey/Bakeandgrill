@@ -558,9 +558,15 @@ class PaymentService
             return;
         }
 
-        $deductLaar = (int) $order->gift_card_discount_laar;
-        $currentLaar = (int) round((float) $giftCard->current_balance * 100);
-        $newBalanceLaar = max(0, $currentLaar - $deductLaar);
+        $deductLaar = min(
+            \App\Domains\Orders\Support\EffectiveDiscount::giftCardRedeemLaar($order),
+            $giftCard->balanceLaar(),
+        );
+        if ($deductLaar <= 0) {
+            return;
+        }
+
+        $newBalanceLaar = max(0, $giftCard->balanceLaar() - $deductLaar);
         $newBalanceMvr = round($newBalanceLaar / 100, 2);
         $deductMvr = round($deductLaar / 100, 2);
 

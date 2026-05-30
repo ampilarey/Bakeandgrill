@@ -7,7 +7,7 @@ import {
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Menu, Zap, MapPin, Store,
-  ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck, HeartPulse,
+  ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck, HeartPulse, UserCircle,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -119,6 +119,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     items: [
       { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
+      { to: '/account',       icon: UserCircle,  label: 'My Account',     description: 'Profile & session' },
       { to: '/settings',      icon: Settings,    label: 'Settings',       permission: 'settings.update', description: 'Operational settings & charges' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permission: 'website.manage', description: 'Queue, webhooks & alerts' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
@@ -144,7 +145,12 @@ function withoutPinnedItems(items: NavItem[]): NavItem[] {
   return items.filter((i) => !PINNED_PATHS.has(i.to));
 }
 
-export function getNavGroups(includeDevItems = true): NavGroup[] {
+/** Hide go-live checklist in production builds; route remains reachable by URL. */
+export function showDevNavItems(): boolean {
+  return import.meta.env.DEV;
+}
+
+export function getNavGroups(includeDevItems = showDevNavItems()): NavGroup[] {
   let groups = NAV_GROUPS.map((g) => ({ ...g, items: withoutPinnedItems(g.items) }));
   if (includeDevItems) {
     groups = groups.map((g) =>
@@ -156,7 +162,7 @@ export function getNavGroups(includeDevItems = true): NavGroup[] {
   return groups;
 }
 
-export function getAllNavItems(includeDevItems = true): NavItem[] {
+export function getAllNavItems(includeDevItems = showDevNavItems()): NavItem[] {
   return [...PINNED_NAV_ITEMS, ...getNavGroups(includeDevItems).flatMap((g) => g.items)];
 }
 
@@ -226,7 +232,7 @@ export function canAny(user: StaffUser, permissions: string[]): boolean {
 
 /** First sidebar route this user may open — used for login redirect and / fallback. */
 export function getDefaultNavPath(user: StaffUser): string {
-  const items = getAllNavItems(user.role === 'owner');
+  const items = getAllNavItems(showDevNavItems() || user.role === 'owner');
   for (const item of items) {
     if (item.to.startsWith('#')) continue;
     if (can(user, item.permission)) return item.to;
@@ -236,7 +242,7 @@ export function getDefaultNavPath(user: StaffUser): string {
 
 /** Nav items the user can access (for palette / diagnostics). */
 export function getAccessibleNavItems(user: StaffUser): NavItem[] {
-  return getAllNavItems(user.role === 'owner').filter(
+  return getAllNavItems(showDevNavItems() || user.role === 'owner').filter(
     (item) => !item.to.startsWith('#') && can(user, item.permission),
   );
 }

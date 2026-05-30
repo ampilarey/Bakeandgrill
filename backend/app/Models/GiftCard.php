@@ -54,4 +54,20 @@ class GiftCard extends Model
     {
         return $this->hasMany(GiftCardTransaction::class);
     }
+
+    public function balanceLaar(): int
+    {
+        return (int) round((float) $this->current_balance * 100);
+    }
+
+    public function setBalanceLaar(int $laar): void
+    {
+        $laar = max(0, $laar);
+        $this->current_balance = round($laar / 100, 2);
+        if ($laar <= 0 && $this->status === 'active') {
+            $this->status = 'depleted';
+        } elseif ($laar > 0 && $this->status === 'depleted') {
+            $this->status = 'active';
+        }
+    }
 }

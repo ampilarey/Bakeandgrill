@@ -195,16 +195,18 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
    */
   const cartTax = useMemo(() => {
     if (cartSubtotal <= 0) return 0;
-    const discountRatio = discountedSubtotal / cartSubtotal;
-    let tax = 0;
+    const subtotalLaar = Math.round(cartSubtotal * 100);
+    const discountedLaar = Math.round(discountedSubtotal * 100);
+    const discountRatio = subtotalLaar > 0 ? discountedLaar / subtotalLaar : 0;
+    let taxLaar = 0;
     let weightedRateSum = 0;
     let weightedLaar = 0;
     for (const item of cartItems) {
       const rate = Number(item.tax_rate ?? 0);
       if (!Number.isFinite(rate) || rate <= 0) continue;
-      const lineGross = lineUnitPrice(item) * item.quantity;
-      const effectiveLaar = lineGross * discountRatio;
-      tax += (effectiveLaar * rate) / 100;
+      const lineGrossLaar = Math.round(lineUnitPrice(item) * item.quantity * 100);
+      const effectiveLaar = Math.round(lineGrossLaar * discountRatio);
+      taxLaar += Math.round(effectiveLaar * rate / 100);
       weightedRateSum += effectiveLaar * rate;
       weightedLaar += effectiveLaar;
     }
@@ -212,12 +214,12 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       const scPreview = previewServiceCharge(
         serviceChargeConfig,
         backendOrderType,
-        Math.round(discountedSubtotal * 100),
+        discountedLaar,
       );
       const avgRate = weightedLaar > 0 ? weightedRateSum / weightedLaar : 0;
-      tax += serviceChargeTaxLaar(serviceChargeConfig, scPreview.amountLaar, avgRate) / 100;
+      taxLaar += serviceChargeTaxLaar(serviceChargeConfig, scPreview.amountLaar, avgRate);
     }
-    return Math.round(tax * 100) / 100;
+    return taxLaar / 100;
   }, [cartItems, cartSubtotal, discountedSubtotal, serviceChargeConfig, backendOrderType]);
 
   const cartServiceCharge = useMemo(() => {

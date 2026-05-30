@@ -54,6 +54,29 @@ final class EffectiveDiscount
         return min($subtotalLaar, max(0, array_sum($parts)));
     }
 
+    /** Pre-tax subtotal still available before applying a gift card. */
+    public static function remainingPreTaxBeforeGift(object $order): int
+    {
+        $sub = self::subtotalLaarFromOrder($order);
+        $parts = self::partsFromOrder($order);
+        $parts['gift_card'] = 0;
+
+        return max(0, $sub - self::effectiveTotalLaar($sub, $parts));
+    }
+
+    /** Gift-card laar to debit at redemption (allocated share, not raw field). */
+    public static function giftCardRedeemLaar(object $order): int
+    {
+        $parts = self::partsFromOrder($order);
+        if (($parts['gift_card'] ?? 0) <= 0) {
+            return 0;
+        }
+
+        $sub = self::subtotalLaarFromOrder($order);
+
+        return self::allocate($sub, $parts)['gift_card'];
+    }
+
     /**
      * @return array{promo: int, loyalty: int, manual: int, gift_card: int, referral: int}
      */
