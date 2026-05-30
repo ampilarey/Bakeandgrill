@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/SharedUI';
+import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import {
   getOnlineOrderingStatus,
   toggleOnlineOrdering,
@@ -34,6 +36,26 @@ type Schedule = Record<DayKey, DaySchedule>;
 const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
   DAYS.map(({ key }) => [key, { enabled: true, windows: [{ open: '10:00', close: '22:00' }] }])
 ) as Schedule;
+
+const PAGE_SECTIONS = [
+  { id: 'gates', label: 'Gates & Schedule' },
+  { id: 'fees', label: 'Fees' },
+] as const;
+
+type PageSection = (typeof PAGE_SECTIONS)[number]['id'];
+
+const sectionTabStyle = (active: boolean): React.CSSProperties => ({
+  padding: '7px 14px',
+  borderRadius: 8,
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  fontSize: 13,
+  fontWeight: active ? 700 : 500,
+  background: active ? '#fff' : 'transparent',
+  color: active ? '#1C1408' : '#6B5D4F',
+  boxShadow: active ? '0 1px 3px rgba(28,20,8,0.08)' : 'none',
+});
 
 function parseSchedule(raw: string): Schedule {
   try {
@@ -170,6 +192,16 @@ const REASON_LABELS: Record<string, string> = {
 
 export default function OnlineOrderingPage() {
   usePageTitle('Ordering Control');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const section: PageSection = searchParams.get('section') === 'fees' ? 'fees' : 'gates';
+
+  const setSection = (next: PageSection) => {
+    if (next === 'gates') {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ section: next }, { replace: true });
+    }
+  };
 
   const [status, setStatus]       = useState<OnlineOrderingGateStatus | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -401,6 +433,14 @@ export default function OnlineOrderingPage() {
       <PageHeader title="Ordering Control Center" subtitle="Online ordering gates, schedules, fees, and limits" />
       <OrderingControlTabs />
 
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
+        {PAGE_SECTIONS.map(({ id, label }) => (
+          <button key={id} type="button" style={sectionTabStyle(section === id)} onClick={() => setSection(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Toast */}
       {toast && (
         <div style={{
@@ -415,6 +455,7 @@ export default function OnlineOrderingPage() {
         </div>
       )}
 
+      {section === 'gates' && (<>
       {/* Status badge + quick status */}
       <div style={S.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -611,7 +652,9 @@ export default function OnlineOrderingPage() {
           </button>
         </div>
       </div>
+      </>)}
 
+      {section === 'fees' && (<>
       {feeSettings && (
         <div style={S.card}>
           <p style={S.sectionTitle}>Packaging & order limits</p>
@@ -667,6 +710,12 @@ export default function OnlineOrderingPage() {
           </div>
         </div>
       )}
+
+      <div style={S.card}>
+        <p style={S.sectionTitle}>Service charge</p>
+        <ServiceChargeSettings />
+      </div>
+      </>)}
     </div>
   );
 }

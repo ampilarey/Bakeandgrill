@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Upload, Save } from 'lucide-react';
-import { isWebsiteOpsGroup, WebsiteOpsRedirectForGroup } from './SettingsRedirects';
 import { getSiteSettings, updateSiteSettings, uploadSiteLogo, type SiteSettingsGroup } from '../../api';
+
+/** Ops groups managed on Ordering Control / Delivery — never show in Website Settings tabs */
+const WEBSITE_OPS_GROUPS = new Set(['ordering', 'online ordering', 'delivery', 'charges']);
 import { Button, Input, Tabs, TabList, Tab, TabPanel, Toggle, useToast } from '../../components/ui';
 
 const WEEK_DAYS = [
@@ -294,7 +296,7 @@ export function WebsiteSettings() {
     );
   }
 
-  const groups = Object.keys(settings);
+  const groups = Object.keys(settings).filter((g) => !WEBSITE_OPS_GROUPS.has(g.toLowerCase()));
   const tabs = groups.length > 0 ? groups : ['General', 'Branding', 'Footer', 'Social', 'SEO'];
 
   return (
@@ -304,19 +306,7 @@ export function WebsiteSettings() {
           {tabs.map((g) => <Tab key={g} id={g.toLowerCase()}>{g}</Tab>)}
         </TabList>
 
-        {tabs.map((group) => {
-          const groupKey = group.toLowerCase();
-
-          // Ops groups (ordering gates, fees) are managed elsewhere — redirect instead of raw JSON
-          if (isWebsiteOpsGroup(groupKey)) {
-            return (
-              <TabPanel key={group} id={groupKey}>
-                <WebsiteOpsRedirectForGroup groupKey={groupKey} />
-              </TabPanel>
-            );
-          }
-
-          return (
+        {tabs.map((group) => (
           <TabPanel key={group} id={group.toLowerCase()}>
             <div style={{ paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 680 }}>
               {(settings[group] ?? []).map((item) => {
@@ -410,8 +400,7 @@ export function WebsiteSettings() {
               </div>
             </div>
           </TabPanel>
-          );
-        })}
+        ))}
       </Tabs>
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />

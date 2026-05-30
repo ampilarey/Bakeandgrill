@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Globe, Shield, Bell, Receipt } from 'lucide-react';
+import { Globe, Shield, Bell } from 'lucide-react';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
-import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import {
   getSiteSettings, updateSiteSettings,
   fetchSmsTemplates,
@@ -15,6 +14,7 @@ import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
   ordering: '/online-ordering',
   delivery: '/delivery-settings',
+  'ordering-charges': '/online-ordering?section=fees',
 };
 
 // ─── Sub-page cards ───────────────────────────────────────────────────────────
@@ -27,7 +27,6 @@ const HUB_CARDS = [
   // ADM-016: cashiers ended up on a stub list that lacked the actions
   // they expected.
   { id: 'notifications', icon: Bell,         label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
-  { id: 'ordering-charges', icon: Receipt,   label: 'Ordering & Charges',    desc: 'Service charge percentage/fixed amount and which order types it applies to' },
 ];
 
 // ─── Notifications sub-page ──────────────────────────────────────────────────
@@ -298,7 +297,6 @@ export function SettingsPage() {
         {active === 'website'           && <WebsiteSettings />}
         {active === 'permissions'       && <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />}
         {active === 'notifications'     && <NotificationsSettings />}
-        {active === 'ordering-charges'  && <ServiceChargeSettings />}
       </div>
     );
   }
@@ -307,7 +305,7 @@ export function SettingsPage() {
     <div className="animate-fade-in">
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1C1408', margin: 0 }}>Settings</h1>
-        <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>Website content, customer notifications, permissions, and service charge</p>
+        <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>Website content, customer notifications, and permissions</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
