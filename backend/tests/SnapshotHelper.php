@@ -27,6 +27,7 @@ trait SnapshotHelper
         'customer_id',
         'user_id',
         'device_id',
+        'collected_by_user_id',
         'token',
         'idempotency_key',
         'hold_key',
