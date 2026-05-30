@@ -238,9 +238,12 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // pickup orders through ready → completed and trigger the
     // customer-facing SMS chain without the kitchen needing extra
     // hardware.
-    Route::post('/orders/{id}/start-cooking', [OrderController::class, 'startCooking'])->middleware('throttle:30,1');
-    Route::post('/orders/{id}/mark-ready', [OrderController::class, 'markReady'])->middleware('throttle:30,1');
-    Route::post('/orders/{id}/mark-picked-up', [OrderController::class, 'markPickedUp'])->middleware('throttle:30,1');
+    Route::post('/orders/{id}/start-cooking', [OrderController::class, 'startCooking'])
+        ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
+    Route::post('/orders/{id}/mark-ready', [OrderController::class, 'markReady'])
+        ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
+    Route::post('/orders/{id}/mark-picked-up', [OrderController::class, 'markPickedUp'])
+        ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
     // Void a non-terminal ticket from the POS Active Orders panel —
     // returns deducted POS stock, releases promo/loyalty/gift-card
     // holds, frees the dine-in table, audit-logs the cashier + reason.

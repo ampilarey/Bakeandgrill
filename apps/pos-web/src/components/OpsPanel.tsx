@@ -28,6 +28,8 @@ type OpsPermissions = {
   suppliers?: boolean;
   reports?: boolean;
   marketing?: boolean;
+  refunds?: boolean;
+  shiftOpen?: boolean;
 };
 
 /**
@@ -62,12 +64,13 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions }) {
   const showSup = permissions ? !!permissions.suppliers : true;
   const showRep = permissions ? !!permissions.reports : true;
   const showMkt = permissions ? !!permissions.marketing : true;
+  const showRefunds = (permissions ? !!permissions.refunds : true) && !!permissions?.shiftOpen;
 
   const tabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
     ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
     ...(showPrepared ? [{ id: "prepared" as Tab, label: "Menu stock", icon: "🥐" }] : []),
     ...(showSup ? [{ id: "suppliers" as Tab, label: "Suppliers", icon: "🏭" }] : []),
-    { id: "refunds" as Tab, label: "Refunds", icon: "↩️" },
+    ...(showRefunds ? [{ id: "refunds" as Tab, label: "Refunds", icon: "↩️" }] : []),
     ...(showRep ? [{ id: "reports" as Tab, label: "Reports", icon: "📊" }] : []),
     ...(showMkt ? [{ id: "marketing" as Tab, label: "Marketing", icon: "📣" }] : []),
   ];

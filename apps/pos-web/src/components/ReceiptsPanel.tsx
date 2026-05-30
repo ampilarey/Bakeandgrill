@@ -11,6 +11,7 @@ type Props = {
   /** Select this order when the list loads (post-charge redirect). */
   initialOrderId?: number | null;
   receiptResendEnabled?: boolean;
+  canRefund?: boolean;
 };
 
 /**
@@ -25,6 +26,7 @@ export function ReceiptsPanel({
   defaultScope = "today",
   initialOrderId = null,
   receiptResendEnabled = true,
+  canRefund = true,
 }: Props) {
   const [scope, setScope] = useState<"today" | "shift" | "all">(defaultScope);
   const [q, setQ] = useState("");
@@ -152,7 +154,7 @@ export function ReceiptsPanel({
           display: "flex", flexDirection: "column", minHeight: 0,
         }}>
           {selected ? (
-            <ReceiptDetail receipt={selected} receiptResendEnabled={receiptResendEnabled} />
+            <ReceiptDetail receipt={selected} receiptResendEnabled={receiptResendEnabled} canRefund={canRefund} />
           ) : (
             <EmptyState emoji="📄" title="Pick a receipt" body="Select one from the list to see details, send it, or refund it." />
           )}
@@ -163,7 +165,15 @@ export function ReceiptsPanel({
   );
 }
 
-function ReceiptDetail({ receipt, receiptResendEnabled = true }: { receipt: Receipt; receiptResendEnabled?: boolean }) {
+function ReceiptDetail({
+  receipt,
+  receiptResendEnabled = true,
+  canRefund = true,
+}: {
+  receipt: Receipt;
+  receiptResendEnabled?: boolean;
+  canRefund?: boolean;
+}) {
   const [link, setLink] = useState<string | null>(null);
   const [phone, setPhone] = useState(receipt.customer?.phone ?? "");
   const [busy, setBusy] = useState<"" | "send" | "refund" | "link" | "print">("");
@@ -323,6 +333,7 @@ function ReceiptDetail({ receipt, receiptResendEnabled = true }: { receipt: Rece
         </div>
         )}
 
+        {canRefund && (
         <details>
           <summary style={{ cursor: "pointer", fontSize: 12, color: "#475569", fontWeight: 600 }}>
             Refund this receipt
@@ -352,6 +363,7 @@ function ReceiptDetail({ receipt, receiptResendEnabled = true }: { receipt: Rece
             </button>
           </div>
         </details>
+        )}
 
         {link && (
           <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0F172A", wordBreak: "break-all" }}>

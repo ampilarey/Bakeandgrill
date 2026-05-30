@@ -35,8 +35,24 @@ describe("offlineGate", () => {
       cached_at: new Date().toISOString(),
     });
 
-    const result = await evaluateOfflineGate();
+    const result = await evaluateOfflineGate({ requireShift: true });
     expect(result.allowed).toBe(false);
     expect(result.reason).toMatch(/shift/i);
+  });
+
+  it("allows ops-only staff offline without cached shift", async () => {
+    localStorage.setItem("pos_token", "token");
+    vi.mocked(ensureCachedStaffSession).mockResolvedValue({
+      id: "current",
+      staff_user_id: 1,
+      name: "Staff",
+      permissions: ["inventory.manage"],
+      cached_at: new Date().toISOString(),
+    });
+    vi.mocked(loadCachedShift).mockResolvedValue(null);
+    vi.mocked(loadCachedMenu).mockResolvedValue(null);
+
+    const result = await evaluateOfflineGate({ requireShift: false });
+    expect(result.allowed).toBe(true);
   });
 });

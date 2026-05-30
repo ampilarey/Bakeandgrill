@@ -137,6 +137,10 @@ class OrderCreationService
             );
             $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
 
+            if ($discountLaar > 0 && $user instanceof \App\Models\User && ! $user->hasPermission('promotions.discounts')) {
+                abort(403, 'You do not have permission to apply manual discounts.');
+            }
+
             // Persist the discount field first so recalculateAndPersist can read it.
             $order->update(['manual_discount_laar' => $discountLaar]);
 

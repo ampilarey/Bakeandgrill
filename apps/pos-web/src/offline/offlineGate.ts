@@ -15,7 +15,15 @@ export type OfflineGateResult = {
   session: CachedStaffSession | null;
 };
 
-export async function evaluateOfflineGate(): Promise<OfflineGateResult> {
+export type OfflineGateOptions = {
+  /** When false, ops-only staff can work offline without a cached shift/menu. */
+  requireShift?: boolean;
+};
+
+export async function evaluateOfflineGate(
+  options: OfflineGateOptions = {},
+): Promise<OfflineGateResult> {
+  const requireShift = options.requireShift ?? true;
   const token = localStorage.getItem("pos_token");
   const [session, shift, menu] = await Promise.all([
     ensureCachedStaffSession(),
@@ -31,11 +39,11 @@ export async function evaluateOfflineGate(): Promise<OfflineGateResult> {
     return { allowed: false, reason: "No cached staff session. Connect once while online.", menu, shift, session };
   }
 
-  if (!shift?.shift_id || !shift.opened_at) {
+  if (requireShift && (!shift?.shift_id || !shift.opened_at)) {
     return { allowed: false, reason: "No cached open shift. Open a shift while online.", menu, shift, session };
   }
 
-  if (!menu?.items?.length) {
+  if (requireShift && !menu?.items?.length) {
     return { allowed: false, reason: "No cached menu. Connect while online to download the menu.", menu, shift, session };
   }
 

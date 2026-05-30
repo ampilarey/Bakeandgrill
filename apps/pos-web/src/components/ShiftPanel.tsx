@@ -9,7 +9,9 @@ type Props = {
   onCashMovement: (type: "cash_in" | "cash_out", amount: number, reason: string) => Promise<void>;
   onClose: () => void;
   onCloseShift: () => void;
+  onOpenShift?: () => void;
   canCloseShift?: boolean;
+  canOpenShift?: boolean;
   canCashInOut?: boolean;
 };
 
@@ -21,11 +23,43 @@ type Props = {
  * (tips out, supplier pay, owner draw, etc.) without contacting an
  * admin first.
  */
-export function ShiftPanel({ shift, summary, onCashMovement, onClose, onCloseShift, canCloseShift = true, canCashInOut = true }: Props) {
+export function ShiftPanel({
+  shift,
+  summary,
+  onCashMovement,
+  onClose,
+  onCloseShift,
+  onOpenShift,
+  canCloseShift = true,
+  canOpenShift = true,
+  canCashInOut = true,
+}: Props) {
   if (!shift || !summary) {
     return (
       <PanelShell title="Shift" onClose={onClose}>
-        <EmptyState emoji="💰" title="No data yet" body="Once your shift has activity, it'll show up here." />
+        <EmptyState
+          emoji="💰"
+          title="No open shift"
+          body={
+            canOpenShift
+              ? "Open a shift before ringing sales. You can still use Operations for inventory and other back-office tasks."
+              : "You don't have permission to open a shift. Ask a manager to open one for this station."
+          }
+        />
+        {canOpenShift && onOpenShift && (
+          <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
+            <button
+              type="button"
+              onClick={onOpenShift}
+              style={{
+                padding: "12px 24px", borderRadius: 10, border: "none",
+                background: "#10B981", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer",
+              }}
+            >
+              Open shift
+            </button>
+          </div>
+        )}
       </PanelShell>
     );
   }

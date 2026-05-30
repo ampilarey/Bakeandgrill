@@ -66,6 +66,10 @@ type Props = {
    *  orders.void permission. The backend also enforces this (403) but
    *  hiding the button avoids dead-tap UX. */
   canVoidOrders?: boolean;
+  canHoldResume?: boolean;
+  canManageOrderStatus?: boolean;
+  canSendBill?: boolean;
+  canSendPayLink?: boolean;
   onResume: (ticket: OpenTicket) => void;
   onClose: () => void;
   /** Phone of the currently-attached cart customer, if any — used to
@@ -97,6 +101,10 @@ type Props = {
  */
 export function OpenTicketsPanel({
   canVoidOrders = true,
+  canHoldResume = true,
+  canManageOrderStatus = true,
+  canSendBill = true,
+  canSendPayLink = true,
   onResume,
   onClose,
   cartCustomerPhone,
@@ -1099,7 +1107,7 @@ export function OpenTicketsPanel({
                     charging a ticket mid-merge. */}
                 {mergeTargetId === null && (
                   <>
-                    {stage === "parked" && (
+                    {stage === "parked" && canHoldResume && (
                       <ActionButton
                         onClick={() => handleFireToKitchen(t)}
                         busy={busy}
@@ -1110,7 +1118,7 @@ export function OpenTicketsPanel({
                         🍳 Fire to kitchen
                       </ActionButton>
                     )}
-                    {stage === "queued" && (
+                    {stage === "queued" && canManageOrderStatus && (
                       <ActionButton
                         onClick={() => handleStartCooking(t)}
                         busy={busy}
@@ -1121,7 +1129,7 @@ export function OpenTicketsPanel({
                         🍳 Start cooking
                       </ActionButton>
                     )}
-                    {stage === "cooking" && (
+                    {stage === "cooking" && canManageOrderStatus && (
                       <ActionButton
                         onClick={() => handleMarkReady(t)}
                         busy={busy}
@@ -1132,7 +1140,7 @@ export function OpenTicketsPanel({
                         ✅ Mark ready
                       </ActionButton>
                     )}
-                    {stage === "ready" && isPaid && (
+                    {stage === "ready" && isPaid && canManageOrderStatus && (
                       <ActionButton
                         onClick={() => handleMarkPickedUp(t)}
                         busy={busy}
@@ -1162,7 +1170,7 @@ export function OpenTicketsPanel({
                         💳 Charge
                       </button>
                     )}
-                    {isUnpaid && hasPhone && smsNotifications.send_pay_link && (
+                    {isUnpaid && hasPhone && canSendPayLink && smsNotifications.send_pay_link && (
                       <ActionButton
                         onClick={() => handleSendPayLink(t)}
                         busy={busy}
@@ -1173,7 +1181,7 @@ export function OpenTicketsPanel({
                         💳 Send pay link
                       </ActionButton>
                     )}
-                    {smsNotifications.send_bill && (
+                    {canSendBill && smsNotifications.send_bill && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

@@ -40,6 +40,7 @@ final class PermissionCatalog
         'pos.close_shift' => ['finance.cash_manage', 'payments.cash_manage'],
         'pos.lock_screen' => ['pos.access'],
         'pos.time_clock' => ['pos.access'],
+        'pos.manage_order_status' => ['pos.active_orders'],
         'orders.receipts' => ['orders.view'],
         'orders.send_sms_bill' => ['orders.view'],
         'orders.send_payment_link' => ['orders.view'],
@@ -69,6 +70,7 @@ final class PermissionCatalog
             ['group' => 'POS', 'slug' => 'pos.active_orders', 'name' => 'View active orders'],
             ['group' => 'POS', 'slug' => 'pos.view_this_device_orders', 'name' => 'View this device orders'],
             ['group' => 'POS', 'slug' => 'pos.view_all_station_orders', 'name' => 'View all station orders'],
+            ['group' => 'POS', 'slug' => 'pos.manage_order_status', 'name' => 'Update order status', 'description' => 'Start cooking, mark ready, and mark picked up on active orders'],
 
             // Orders
             ['group' => 'Orders', 'slug' => 'orders.create', 'name' => 'Create orders'],
@@ -197,7 +199,7 @@ final class PermissionCatalog
     {
         return [
             'pos.access', 'pos.open_shift', 'pos.close_shift', 'pos.lock_screen', 'pos.time_clock',
-            'pos.ring_sales', 'pos.hold_resume', 'pos.active_orders', 'pos.view_this_device_orders',
+            'pos.ring_sales', 'pos.hold_resume', 'pos.active_orders', 'pos.manage_order_status', 'pos.view_this_device_orders',
             'orders.create', 'orders.view', 'orders.update', 'orders.receipts',
             'orders.send_sms_bill', 'orders.send_payment_link',
             'payments.cash', 'payments.card', 'payments.split', 'payments.credit',

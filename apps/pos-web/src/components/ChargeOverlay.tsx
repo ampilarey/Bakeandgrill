@@ -25,6 +25,13 @@ type Props = {
   creditAvailableMvr?: number;
   /** When true, only cash / card / transfer are offered. */
   isOffline?: boolean;
+  /** Hide tender types the cashier is not permitted to use. */
+  allowedTenders?: {
+    cash?: boolean;
+    card?: boolean;
+    digital_wallet?: boolean;
+    split?: boolean;
+  };
   onClose: () => void;
   onConfirm: (rows: Array<{ method: ChargeMethod; amount: number }>) => Promise<void>;
   submitting: boolean;
@@ -62,11 +69,22 @@ export function ChargeOverlay({
   creditEligible = false,
   creditAvailableMvr = 0,
   isOffline = false,
+  allowedTenders,
   onClose,
   onConfirm,
   submitting,
   errorMessage,
 }: Props) {
+  const tenderAllowed = useMemo(() => ({
+    cash: allowedTenders?.cash !== false,
+    card: allowedTenders?.card !== false,
+    digital_wallet: allowedTenders?.digital_wallet !== false,
+    split: allowedTenders?.split !== false,
+  }), [allowedTenders?.cash, allowedTenders?.card, allowedTenders?.digital_wallet, allowedTenders?.split]);
+  const baseMethods = useMemo(
+    () => (["cash", "card", "digital_wallet"] as const).filter((m) => tenderAllowed[m]),
+    [tenderAllowed],
+  );
   const showBreakdown =
     (typeof subtotal === "number" && (
       subtotal !== total
@@ -90,6 +108,12 @@ export function ChargeOverlay({
   // Reset the received-amount input whenever the total or method changes —
   // otherwise a stale value from a prior order can linger.
   useEffect(() => { setReceived(total > 0 ? total.toFixed(2) : ""); }, [total, method]);
+
+  useEffect(() => {
+    if (method === "house_account") return;
+    if (baseMethods.includes(method)) return;
+    if (baseMethods.length > 0) setMethod(baseMethods[0]);
+  }, [method, baseMethods]);
 
   // Esc closes; useful for keyboard-driven counters.
   // Guarded by `submitting` so a stray Escape mid-payment can't
@@ -331,7 +355,7 @@ export function ChargeOverlay({
             <div>
               <p style={tinyLabel}>Tender</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {(["cash", "card", "digital_wallet"] as ChargeMethod[]).map((m) => (
+                {baseMethods.map((m) => (
                   <button
                     key={m}
                     onClick={() => setMethod(m)}
@@ -386,7 +410,7 @@ export function ChargeOverlay({
               </div>
             )}
 
-            {method !== "cash" && method !== "house_account" && !isOffline && (
+            {method !== "cash" && method !== "house_account" && !isOffline && tenderAllowed.split && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "10px 12px", borderRadius: 10, background: "#fff",
@@ -405,7 +429,7 @@ export function ChargeOverlay({
               </div>
             )}
 
-            {split && method !== "cash" && method !== "house_account" && !isOffline && (
+            {split && method !== "cash" && method !== "house_account" && !isOffline && tenderAllowed.split && (
               <div>
                 <p style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
                 <CashInput

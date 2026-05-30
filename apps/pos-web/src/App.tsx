@@ -95,6 +95,16 @@ function App() {
   const canOpsReports = hasPosPermission(staffPermissions, "reports.view");
   const canOpsMarketing = hasPosPermission(staffPermissions, "integrations.sms");
   const canUseCredit = hasPosPermission(staffPermissions, "payments.credit");
+  const canPayCash = hasPosPermission(staffPermissions, "payments.cash");
+  const canPayCard = hasPosPermission(staffPermissions, "payments.card");
+  const canPaySplit = hasPosPermission(staffPermissions, "payments.split");
+  const canApplyDiscount = hasPosPermission(staffPermissions, "promotions.discounts");
+  const canUseRewards = canApplyDiscount || hasPosPermission(staffPermissions, "loyalty.redeem");
+  const canRefund = hasPosPermission(staffPermissions, "orders.refund");
+  const canSendBill = hasPosPermission(staffPermissions, "orders.send_sms_bill");
+  const canSendPayLink = hasPosPermission(staffPermissions, "orders.send_payment_link");
+  const canManageOrderStatus = hasPosPermission(staffPermissions, "pos.manage_order_status");
+  const canTimeClock = hasPosPermission(staffPermissions, "pos.time_clock");
   const canAccessOps = canOpsInventory || canOpsPreparedStock || canOpsSuppliers || canOpsReports || canOpsMarketing;
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
@@ -247,6 +257,9 @@ function App() {
   // automatically, so the cashier can't accidentally ring something
   // that doesn't belong on that channel.
   const shift = useShift(isLoggedIn, isLoggedIn, deviceId);
+  const canUseNonOrderFeatures = canAccessOps || canViewShiftHistory;
+  const canEnterPosShell = !!shift.current || canUseNonOrderFeatures;
+  const shiftOpen = !!shift.current;
   const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap, setSmsNotifications);
   const cart = useCart(orderType);
 
@@ -350,8 +363,8 @@ function App() {
       return;
     }
     if (menu.isLoading || shift.loading) return;
-    void evaluateOfflineGate().then(setOfflineGate);
-  }, [isLoggedIn, isReachable, menu.isLoading, shift.loading]);
+    void evaluateOfflineGate({ requireShift: canRingSales }).then(setOfflineGate);
+  }, [isLoggedIn, isReachable, menu.isLoading, shift.loading, canRingSales]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -794,7 +807,10 @@ function App() {
   const handleCloseShift = async (closingCash: number, notes?: string) => {
     await shift.close(closingCash, notes);
     setShowCloseShift(false);
-    setPane("sales");
+    if (canRingSales) setPane("sales");
+    else if (canAccessOps) setPane("ops");
+    else if (canViewShiftHistory) setPane("shift_history");
+    else setPane("shift");
   };
   const handleSaveTicketSubmit = async (name: string, note: string | undefined, fireToKitchen: boolean) => {
     try {
@@ -901,38 +917,51 @@ function App() {
 
   const drawerItems = useMemo(() => {
     const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; disabled?: boolean }> = [];
-    if (canRingSales) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
-    if (canViewReceipts) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
-    if (canViewActiveOrders) {
+    if (canRingSales && shiftOpen) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
+    if (canViewReceipts && shiftOpen) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
+    if (canViewActiveOrders && shiftOpen) {
       main.push({
         id: "open_tickets", label: "Active Orders", icon: "🎫", group: "main",
         badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined,
       });
     }
-    if (shift.current || canViewShiftHistory) {
-      main.push({ id: "shift", label: "Current Shift", icon: "💰", group: "main" });
+    if (shiftOpen || canOpenShift || canCloseShift) {
+      main.push({ id: "shift", label: shiftOpen ? "Current Shift" : "Shift", icon: "💰", group: "main" });
     }
     if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
     if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
 
-    const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [
+    const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [];
+    if (!shiftOpen && canOpenShift) {
+      user.push({ id: "open_shift", label: "Open shift", icon: "💰", group: "user" });
+    }
+    if (shiftOpen && canCloseShift) {
+      user.push({ id: "close_shift", label: "Close shift", icon: "🔒", group: "user" });
+    }
+    user.push(
       { id: "refresh_menu", label: "Refresh data", icon: "↻", group: "user" },
       { id: "check_update", label: "Update app", icon: "⬇", group: "user" },
       { id: "preferences", label: "My settings", icon: "⚙️", group: "user" },
-    ];
+    );
     if (canLockScreen) user.push({ id: "lock", label: "Lock screen", icon: "🔒", group: "user" });
     user.push({ id: "logout", label: "Log out", icon: "↩", group: "user" });
     return [...main, ...user];
-  }, [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, canLockScreen, openTicketsCount, shift.current]);
+  }, [
+    canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps,
+    canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount,
+  ]);
 
   const paneAllowed = useMemo((): Record<Pane, boolean> => ({
-    sales: canRingSales,
-    receipts: canViewReceipts,
-    open_tickets: canViewActiveOrders,
-    shift: !!shift.current || canViewShiftHistory,
+    sales: canRingSales && shiftOpen,
+    receipts: canViewReceipts && shiftOpen,
+    open_tickets: canViewActiveOrders && shiftOpen,
+    shift: shiftOpen || canOpenShift || canCloseShift,
     shift_history: canViewShiftHistory,
     ops: canAccessOps,
-  }), [canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps, shift.current]);
+  }), [
+    canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory,
+    canAccessOps, canOpenShift, canCloseShift, shiftOpen,
+  ]);
 
   useEffect(() => {
     if (paneAllowed[pane]) return;
@@ -954,6 +983,7 @@ function App() {
           deviceId={deviceId}
           authError={authError} onLogin={handleLogin}
         />
+        {canTimeClock && (
         <button
           onClick={() => setShowTimeClock(true)}
           style={{
@@ -964,6 +994,7 @@ function App() {
             boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
           }}
         >⏰ Time Clock</button>
+        )}
       </>
     );
   }
@@ -978,8 +1009,8 @@ function App() {
     );
   }
 
-  // Hard shift gate — POS UI is unreachable until a shift is open.
-  if (!shift.loading && !shift.current) {
+  // Hard shift gate — sales-only cashiers must open a shift first.
+  if (!shift.loading && !shift.current && !canEnterPosShell) {
     return (
       <>
         <ShiftClosedGate
@@ -1003,8 +1034,8 @@ function App() {
   if (!isReachable && offlineGate && !offlineGate.allowed && !menu.isLoading && !shift.loading) {
     const activeSessionFallback =
       !!localStorage.getItem("pos_token")
-      && shift.current != null
-      && menu.items.length > 0;
+      && (shift.current != null || !canRingSales)
+      && (shift.current != null ? menu.items.length > 0 : true);
 
     if (!activeSessionFallback) {
     return (
@@ -1023,7 +1054,7 @@ function App() {
           <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
             <button
               type="button"
-              onClick={() => void connectivity.ping().then(() => evaluateOfflineGate().then(setOfflineGate))}
+              onClick={() => void connectivity.ping().then(() => evaluateOfflineGate({ requireShift: canRingSales }).then(setOfflineGate))}
               style={{
                 minHeight: 44, padding: "0 16px", borderRadius: 8,
                 border: "none", background: "#0F172A", color: "#fff", fontWeight: 700, cursor: "pointer",
@@ -1085,6 +1116,15 @@ function App() {
             </span>
           )}
 
+          {!shiftOpen && canEnterPosShell && (
+            <span className="pos-topbar-chip" style={{
+              padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+              background: '#FEF3C7', color: '#92400E',
+            }}>
+              No shift
+            </span>
+          )}
+
           <span
             className="pos-status-pill"
             style={{
@@ -1129,6 +1169,26 @@ function App() {
           )}
         </div>
       </header>
+
+      {!shiftOpen && canEnterPosShell && canOpenShift && (
+        <div style={{
+          margin: '0 12px', padding: '10px 14px', borderRadius: 10,
+          background: '#FEF3C7', color: '#92400E', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+        }}>
+          <span>No open shift — ordering is disabled until you open a shift.</span>
+          <button
+            type="button"
+            onClick={() => setShowOpenShift(true)}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: 'none',
+              background: '#10B981', color: '#fff', fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Open shift
+          </button>
+        </div>
+      )}
 
       {!isReachable && (
         <div className="pos-offline-banner">
@@ -1195,6 +1255,33 @@ function App() {
       {/* Main body */}
       <main className="pos-main" style={{ flex: 1, display: 'flex', minHeight: 0, padding: 12, gap: 12 }}>
         {pane === 'sales' && (
+          !shiftOpen ? (
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', padding: 32,
+              textAlign: 'center', color: '#64748B',
+            }}>
+              <div>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🛒</div>
+                <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 18, color: '#0F172A' }}>Open a shift to ring sales</p>
+                <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.5 }}>
+                  Inventory and other back-office tools are still available from the menu.
+                </p>
+                {canOpenShift && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOpenShift(true)}
+                    style={{
+                      padding: '12px 20px', borderRadius: 10, border: 'none',
+                      background: '#10B981', color: '#fff', fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Open shift
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
           <>
             <OrderCart
               orderType={orderType}
@@ -1261,6 +1348,9 @@ function App() {
               onOpenTickets={() => setPane("open_tickets")}
               canRingSales={canRingSales}
               canHoldResume={canHoldResume}
+              canApplyDiscount={canApplyDiscount}
+              canUseRewards={canUseRewards}
+              canSendBill={canSendBill}
               onCheckout={() => {
                 // Pre-flight checks BEFORE opening the charge overlay.
                 // Once the overlay is up (z-index 900) it covers the
@@ -1328,26 +1418,32 @@ function App() {
               lastRefreshedAt={menu.lastRefreshedAt}
             />
           </>
+          )
         )}
 
         {pane === 'receipts' && (
           <ReceiptsPanel
             onClose={() => {
               setReceiptsFocusOrderId(null);
-              setPane("sales");
+              setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "shift_history");
             }}
             shiftId={shift.current?.id ?? null}
             initialOrderId={receiptsFocusOrderId}
             receiptResendEnabled={smsNotifications.receipt_resend}
+            canRefund={canRefund && shiftOpen}
           />
         )}
 
         {pane === 'open_tickets' && (
           <OpenTicketsPanel
             canVoidOrders={canVoidOrders}
+            canHoldResume={canHoldResume}
+            canManageOrderStatus={canManageOrderStatus}
+            canSendBill={canSendBill}
+            canSendPayLink={canSendPayLink}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             smsNotifications={smsNotifications}
-            onClose={() => setPane("sales")}
+            onClose={() => setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "shift_history")}
             onResume={(t) => {
               // Tap-to-open active ticket: load the order into the main
               // POS cart in edit mode (cart unlocked, "Save changes"
@@ -1375,15 +1471,17 @@ function App() {
             shift={shift.current}
             summary={shift.summary}
             onCashMovement={shift.cashMovement}
-            onClose={() => setPane("sales")}
+            onClose={() => setPane(canAccessOps ? "ops" : canViewShiftHistory ? "shift_history" : "shift")}
             onCloseShift={() => setShowCloseShift(true)}
+            onOpenShift={() => setShowOpenShift(true)}
             canCloseShift={canCloseShift}
+            canOpenShift={canOpenShift}
             canCashInOut={canCashInOut}
           />
         )}
 
         {pane === 'shift_history' && (
-          <ShiftHistoryPanel onClose={() => setPane("sales")} />
+          <ShiftHistoryPanel onClose={() => setPane(canAccessOps ? "ops" : "shift")} />
         )}
 
         {pane === 'ops' && (
@@ -1395,6 +1493,8 @@ function App() {
               suppliers: canOpsSuppliers,
               reports: canOpsReports,
               marketing: canOpsMarketing,
+              refunds: canRefund,
+              shiftOpen,
             }}
           />
         )}
@@ -1414,6 +1514,8 @@ function App() {
           setDrawerOpen(false);
           if (id === "logout") return handleLogout();
           if (id === "lock") return canLockScreen ? lockScreen() : undefined;
+          if (id === "open_shift") return canOpenShift ? setShowOpenShift(true) : undefined;
+          if (id === "close_shift") return canCloseShift ? setShowCloseShift(true) : undefined;
           if (id === "refresh_menu") {
             // One-tap full refresh — menu items + categories, tables,
             // kitchen-note chips, held-tickets badge, and the shift
@@ -1484,6 +1586,12 @@ function App() {
           creditEligible={canUseCredit && chargeCreditEligible && isReachable}
           creditAvailableMvr={chargeCreditAvailable}
           isOffline={!isReachable}
+          allowedTenders={{
+            cash: canPayCash,
+            card: canPayCard,
+            digital_wallet: canPayCard,
+            split: canPaySplit,
+          }}
           submitting={order.isSubmitting}
           errorMessage={order.statusMessage}
           onClose={() => setShowCharge(false)}
@@ -1524,6 +1632,14 @@ function App() {
           }}
           onConfirm={handleCloseShift}
           onCancel={() => setShowCloseShift(false)}
+        />
+      )}
+
+      {showOpenShift && canOpenShift && (
+        <OpenShiftModal
+          onConfirm={handleOpenShift}
+          onCancel={() => setShowOpenShift(false)}
+          busy={openShiftBusy}
         />
       )}
 

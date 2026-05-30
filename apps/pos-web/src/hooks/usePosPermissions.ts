@@ -7,6 +7,7 @@ const POS_PERM_ALIASES: Record<string, string[]> = {
   'pos.active_orders': ['orders.view'],
   'pos.view_this_device_orders': ['orders.view'],
   'pos.view_all_station_orders': ['orders.view'],
+  'pos.manage_order_status': ['pos.active_orders'],
   'orders.receipts': ['orders.view'],
   'payments.cash_in_out': ['finance.cash_manage', 'payments.cash_manage'],
   'shifts.view_own_history': ['finance.cash_manage'],

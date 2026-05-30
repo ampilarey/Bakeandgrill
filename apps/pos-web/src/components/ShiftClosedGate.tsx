@@ -28,7 +28,7 @@ export function ShiftClosedGate({ onOpenShift, onLogout, onSwitchUser, canOpenSh
         </p>
         <p style={{ color: "#64748B", fontSize: 14, margin: "0 0 24px", lineHeight: 1.5 }}>
           {canOpenShift
-            ? "Count the cash in your drawer and open a shift before ringing up sales. Sales recorded outside a shift can't be reconciled at the end of the day."
+            ? "Count the cash in your drawer and open a shift before ringing up sales. If you only need inventory or back-office tools, ask a manager to grant Operations access."
             : "You don't have permission to open a shift. Ask a manager or owner to open one for this station, or contact them to update your permissions."}
         </p>
 

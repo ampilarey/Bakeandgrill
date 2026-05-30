@@ -102,6 +102,9 @@ type Props = {
 
   canRingSales?: boolean;
   canHoldResume?: boolean;
+  canApplyDiscount?: boolean;
+  canUseRewards?: boolean;
+  canSendBill?: boolean;
 
   /** Owner-curated chip list of kitchen notes (e.g. "No salt"). The
    *  cashier taps one or more per cart line. Fetched from the public
@@ -576,7 +579,7 @@ export function OrderCart(p: Props) {
             and lets the cashier stage promo / loyalty / gift card
             against the ticket. Actual server-side apply happens during
             charge, between createOrder and settleOrder. */}
-        {p.attachedCustomer && p.cartItems.length > 0 && (
+        {p.attachedCustomer && p.cartItems.length > 0 && p.canUseRewards !== false && (
           <CustomerRewardsPanel
             customer={p.attachedCustomer}
             taxableSubtotal={p.cartSubtotal}
@@ -714,6 +717,7 @@ export function OrderCart(p: Props) {
             materialised). Switched to inputMode="decimal" so iOS
             pops its numpad on focus, matching every other numeric
             field in the cart sidebar. */}
+        {p.canApplyDiscount !== false && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
           <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Discount</label>
           <input
@@ -731,6 +735,7 @@ export function OrderCart(p: Props) {
             }}
           />
         </div>
+        )}
 
         {/* Save ticket / Open tickets — Save is disabled in resumed
             mode because it would create a brand new held order; the
@@ -786,7 +791,7 @@ export function OrderCart(p: Props) {
             attempted yet — once a charge is recorded the bug fix in
             useOrderCreation clears lastCreatedOrderId so this button
             stops appearing for already-paid tickets. */}
-        {p.smsNotifications?.send_bill !== false && p.lastCreatedOrderId && p.pendingPaymentForOrderId === null && (
+        {p.canSendBill !== false && p.smsNotifications?.send_bill !== false && p.lastCreatedOrderId && p.pendingPaymentForOrderId === null && (
           <button
             onClick={p.onOpenSendBill}
             style={{
