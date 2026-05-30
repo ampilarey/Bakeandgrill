@@ -63,6 +63,16 @@ return new class extends Migration
                         SELECT 1 FROM orders WHERE orders.id = payments.order_id AND orders.shift_id IS NOT NULL
                     )
                 ');
+            } elseif ($driver === 'pgsql') {
+                DB::statement('
+                    UPDATE payments p
+                    SET shift_id = o.shift_id,
+                        collected_by_user_id = o.user_id
+                    FROM orders o
+                    WHERE p.order_id = o.id
+                      AND p.shift_id IS NULL
+                      AND o.shift_id IS NOT NULL
+                ');
             } else {
                 DB::statement('
                     UPDATE payments p
