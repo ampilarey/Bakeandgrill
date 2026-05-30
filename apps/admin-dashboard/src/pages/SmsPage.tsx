@@ -13,37 +13,116 @@ import { RecipientsTab } from './SmsPage/RecipientsTab';
 
 type Tab = 'recipients' | 'automations' | 'logs' | 'campaigns' | 'promotions' | 'contacts' | 'templates' | 'scheduled';
 
-const TABS: [Tab, string, React.ReactNode][] = [
-  ['recipients',  'Recipients',        <BellRing size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />],
-  ['automations', 'Automations',       <Cpu size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />],
-  ['logs',        'Audit Logs',        null],
-  ['campaigns',   'Campaigns',         null],
-  ['promotions',  'Promotions',        <Zap size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />],
-  ['contacts',    'Contacts & Groups', <Users size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />],
-  ['templates',   'Templates',         <FileText size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />],
-  ['scheduled',   'Scheduled',         <Clock size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />],
+type SmsTabDef = { id: Tab; label: string; icon?: React.ReactNode };
+
+const SMS_SECTIONS: { id: string; label: string; tabs: SmsTabDef[] }[] = [
+  {
+    id: 'transactional',
+    label: 'Transactional',
+    tabs: [
+      { id: 'recipients' as Tab, label: 'Recipients', icon: <BellRing size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'automations' as Tab, label: 'Automations', icon: <Cpu size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'logs' as Tab, label: 'Audit Logs' },
+    ],
+  },
+  {
+    id: 'marketing',
+    label: 'Marketing',
+    tabs: [
+      { id: 'campaigns' as Tab, label: 'Campaigns' },
+      { id: 'promotions' as Tab, label: 'Promotions', icon: <Zap size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'contacts' as Tab, label: 'Contacts & Groups', icon: <Users size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'scheduled' as Tab, label: 'Scheduled', icon: <Clock size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+    ],
+  },
+  {
+    id: 'library',
+    label: 'Library',
+    tabs: [
+      { id: 'templates' as Tab, label: 'Templates', icon: <FileText size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+    ],
+  },
 ];
 
+function sectionForTab(t: Tab) {
+  return SMS_SECTIONS.find((s) => s.tabs.some((tab) => tab.id === t)) ?? SMS_SECTIONS[0];
+}
+
+const S = {
+  sectionTab: (active: boolean): React.CSSProperties => ({
+    padding: '10px 16px',
+    fontSize: 13,
+    fontWeight: active ? 700 : 500,
+    color: active ? '#D4813A' : '#9C8E7E',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    borderBottom: active ? '2px solid #D4813A' : '2px solid transparent',
+    marginBottom: -2,
+    whiteSpace: 'nowrap',
+  }),
+  sectionBar: {
+    display: 'flex',
+    gap: 4,
+    marginBottom: 0,
+    borderBottom: '2px solid #E8E0D8',
+    flexWrap: 'wrap' as const,
+  },
+  subTabBar: {
+    display: 'flex',
+    gap: 4,
+    marginBottom: 20,
+    marginTop: 12,
+    flexWrap: 'wrap' as const,
+  },
+  tab: (active: boolean): React.CSSProperties => ({
+    padding: '8px 18px',
+    borderRadius: 8,
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontSize: 13,
+    fontWeight: active ? 700 : 400,
+    background: active ? '#D4813A' : 'transparent',
+    color: active ? '#fff' : '#6B5D4F',
+    transition: 'all .15s',
+    whiteSpace: 'nowrap',
+  }),
+};
+
 export function SmsPage() {
-    usePageTitle('SMS');
+  usePageTitle('SMS');
   const [tab, setTab] = useState<Tab>('recipients');
+  const currentSection = sectionForTab(tab);
 
   return (
     <>
-      <PageHeader title="SMS" subtitle="Manage notification recipients, campaigns, templates, scheduled sends and automations" />
-      <div style={{ display: 'flex', marginBottom: 20, borderBottom: '2px solid #E8E0D8', flexWrap: 'wrap' }}>
-        {TABS.map(([t, label, icon]) => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: '10px 16px', fontSize: 13, fontWeight: tab === t ? 700 : 500,
-            color: tab === t ? '#D4813A' : '#9C8E7E',
-            background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            borderBottom: tab === t ? '2px solid #D4813A' : '2px solid transparent',
-            marginBottom: -2, transition: 'color 0.15s', whiteSpace: 'nowrap',
-          }}>
-            {icon}{label}
+      <PageHeader title="SMS" subtitle="Transactional alerts, marketing campaigns, and message templates" />
+
+      <div style={S.sectionBar}>
+        {SMS_SECTIONS.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            style={S.sectionTab(currentSection.id === section.id)}
+            onClick={() => setTab(section.tabs[0].id)}
+          >
+            {section.label}
           </button>
         ))}
       </div>
+
+      {currentSection.tabs.length > 1 && (
+        <div style={S.subTabBar}>
+          {currentSection.tabs.map(({ id, label, icon }) => (
+            <button key={id} type="button" style={S.tab(tab === id)} onClick={() => setTab(id)}>
+              {icon}{label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {tab === 'recipients'  && <RecipientsTab />}
       {tab === 'automations' && <AutomationsTab />}
       {tab === 'logs'        && <LogsTab />}
