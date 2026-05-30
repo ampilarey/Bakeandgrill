@@ -6,7 +6,7 @@ import {
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Target, RotateCcw, Trash2,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link, ShoppingBag, Menu, Zap,
+  Printer, Link, ShoppingBag, Menu, Zap, MapPin,
   ConciergeBell, CircleDollarSign, Wrench, ClipboardCheck, HeartPulse,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
@@ -54,7 +54,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/activity', icon: Zap,           label: 'POS Activity',   permission: 'reports.view',        description: 'Audit log & POS events' },
       { to: '/tables',   icon: LayoutGrid,      label: 'Tables',         permission: 'orders.view',        description: 'Floor plan & seating' },
-      { to: '/delivery', icon: Truck,           label: 'Delivery',       permission: 'delivery.view',      description: 'Delivery orders' },
+      { to: '/delivery', icon: Truck,           label: 'Delivery Orders', permission: 'delivery.view',      description: 'Active delivery queue' },
       { to: '/shifts',   icon: Wallet,          label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
     ],
   },
@@ -105,7 +105,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/time-clock',         icon: Clock,       label: 'Time Clock',         permission: 'staff.view',          description: 'Clock in / out' },
       { to: '/settings',           icon: Settings,    label: 'Settings',           permission: 'website.manage',      description: 'System configuration' },
       { to: '/system-health',      icon: HeartPulse,  label: 'System Health',      permission: 'website.manage',      description: 'Queue, webhooks & alerts' },
-      { to: '/online-ordering',    icon: ShoppingBag, label: 'Ordering Control',   permission: 'settings.update',     description: 'Online + delivery settings' },
+      { to: '/online-ordering',    icon: ShoppingBag, label: 'Ordering Control',   permission: 'settings.update',     description: 'Online hours, fees & overrides' },
+      { to: '/delivery-settings',  icon: MapPin,      label: 'Delivery & Zones',   permission: 'settings.update',     description: 'Delivery hours, zone fees & alerts' },
       { to: '/devices',            icon: Monitor,     label: 'Devices',            permission: 'devices.view',        description: 'POS & KDS devices' },
       { to: '/print-jobs',         icon: Printer,     label: 'Print Queue',        permission: 'devices.view',        description: 'Receipt print jobs' },
       { to: '/webhooks',           icon: Webhook,     label: 'Webhooks',           permission: 'webhooks.manage',     description: 'Outbound integrations' },
@@ -163,7 +164,7 @@ export const BOTTOM_TABS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home',    permission: 'dashboard.view' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders',  permission: 'orders.view'  },
   { to: '/kds',       icon: ChefHat,         label: 'Kitchen', permission: 'orders.view'  },
-  { to: '/reports',   icon: BarChart3,       label: 'Finance', permission: 'reports.view' },
+  { to: '/reports',   icon: BarChart3,       label: 'Reports', permission: 'reports.view' },
   { to: '#more',      icon: Menu,            label: 'More'                                },
 ];
 

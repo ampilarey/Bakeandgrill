@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Globe, Shield, Link2, Bell, Truck, ShoppingBag, Receipt } from 'lucide-react';
-import { Button, Card } from '../components/ui';
+import { Globe, Shield, Bell, Receipt } from 'lucide-react';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
-import { OnlineOrderingRedirectPanel, DeliveryRedirectPanel } from './SettingsPage/SettingsRedirects';
 import {
   getSiteSettings, updateSiteSettings,
   fetchSmsTemplates,
   type SmsTemplate,
 } from '../api';
 import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
+
+/** Legacy ?tab= values from before hub cleanup — redirect to sidebar routes */
+const LEGACY_TAB_REDIRECTS: Record<string, string> = {
+  ordering: '/online-ordering',
+  delivery: '/delivery-settings',
+};
 
 // ─── Sub-page cards ───────────────────────────────────────────────────────────
 const HUB_CARDS = [
@@ -23,41 +27,8 @@ const HUB_CARDS = [
   // ADM-016: cashiers ended up on a stub list that lacked the actions
   // they expected.
   { id: 'notifications', icon: Bell,         label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
-  { id: 'integrations',  icon: Link2,        label: 'Integrations',          desc: 'Xero, Webhooks, SMS provider' },
-  { id: 'ordering-charges', icon: Receipt,      label: 'Ordering & Charges',    desc: 'Service charge percentage/fixed amount and which order types it applies to' },
-  { id: 'ordering',      icon: ShoppingBag,  label: 'Online Ordering',       desc: 'Opens Ordering Control — hours, fees, overrides' },
-  { id: 'delivery',      icon: Truck,        label: 'Delivery Availability', desc: 'Opens Delivery & Zones — schedule, fees, overrides' },
+  { id: 'ordering-charges', icon: Receipt,   label: 'Ordering & Charges',    desc: 'Service charge percentage/fixed amount and which order types it applies to' },
 ];
-
-// ─── Integrations sub-page ────────────────────────────────────────────────────
-function IntegrationsSettings() {
-  const navigate = useNavigate();
-  const integrations = [
-    { label: 'Xero Accounting', desc: 'Sync invoices and expenses to Xero.', path: '/xero', icon: '📊' },
-    { label: 'Webhooks', desc: 'Send real-time event payloads to external services.', path: '/webhooks', icon: '🔗' },
-    { label: 'SMS Campaigns', desc: 'Send bulk SMS and manage campaigns.', path: '/sms', icon: '💬' },
-  ];
-  return (
-    <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {integrations.map((intg) => (
-        <Card key={intg.path}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 24 }}>{intg.icon}</span>
-              <div>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#3D2B1F' }}>{intg.label}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E' }}>{intg.desc}</p>
-              </div>
-            </div>
-            <Button variant="secondary" onClick={() => navigate(intg.path)}>
-              Open →
-            </Button>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
 
 // ─── Notifications sub-page ──────────────────────────────────────────────────
 type NotifConfig = {
@@ -276,6 +247,7 @@ function NotificationsSettings() {
 
 // ─── Main SettingsPage ────────────────────────────────────────────────────────
 export function SettingsPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const userParam = searchParams.get('user');
@@ -289,10 +261,16 @@ export function SettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (tabParam && LEGACY_TAB_REDIRECTS[tabParam]) {
+      navigate(LEGACY_TAB_REDIRECTS[tabParam], { replace: true });
+      return;
+    }
     if (tabParam && HUB_CARDS.some((c) => c.id === tabParam)) {
       setActive(tabParam);
+    } else if (tabParam === 'integrations') {
+      setActive(null);
     }
-  }, [tabParam]);
+  }, [tabParam, navigate]);
 
   if (active) {
     const card = HUB_CARDS.find((c) => c.id === active) ?? HUB_CARDS[0];
@@ -317,13 +295,10 @@ export function SettingsPage() {
           <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>{card.desc}</p>
         </div>
 
-        {active === 'website'        && <WebsiteSettings />}
-        {active === 'permissions'    && <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />}
-        {active === 'notifications'  && <NotificationsSettings />}
-        {active === 'integrations'   && <IntegrationsSettings />}
-        {active === 'ordering-charges' && <ServiceChargeSettings />}
-        {active === 'ordering'       && <OnlineOrderingRedirectPanel />}
-        {active === 'delivery'       && <DeliveryRedirectPanel />}
+        {active === 'website'           && <WebsiteSettings />}
+        {active === 'permissions'       && <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />}
+        {active === 'notifications'     && <NotificationsSettings />}
+        {active === 'ordering-charges'  && <ServiceChargeSettings />}
       </div>
     );
   }
@@ -332,7 +307,7 @@ export function SettingsPage() {
     <div className="animate-fade-in">
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1C1408', margin: 0 }}>Settings</h1>
-        <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>Manage your business settings, permissions, and integrations</p>
+        <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>Website content, customer notifications, permissions, and service charge</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
