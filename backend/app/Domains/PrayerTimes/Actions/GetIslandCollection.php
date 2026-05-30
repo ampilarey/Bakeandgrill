@@ -40,4 +40,18 @@ final class GetIslandCollection
     {
         Cache::forget(self::CACHE_KEY);
     }
+
+    public function findById(int $id): ?IslandData
+    {
+        $row = DB::table('prayer_islands')
+            ->where('is_active', true)
+            ->where('id', $id)
+            ->first([
+                'id', 'category_id', 'atoll', 'atoll_latin',
+                'name', 'name_latin', 'latitude', 'longitude',
+                'offset_minutes', 'is_active',
+            ]);
+
+        return $row !== null ? IslandData::fromStdClass($row) : null;
+    }
 }

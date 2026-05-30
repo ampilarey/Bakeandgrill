@@ -8,6 +8,7 @@ use App\Domains\PrayerTimes\Actions\GetIslandCollection;
 use App\Domains\PrayerTimes\Actions\GetPrayerTimesForIslandAndDate;
 use App\Domains\PrayerTimes\ViewModels\PrayerPageViewModel;
 use App\Http\Requests\Prayer\PrayerTimesWebRequest;
+use App\Support\PrayerTimeHelper;
 use Illuminate\View\View;
 
 class PrayerTimesWebController extends Controller
@@ -24,8 +25,7 @@ class PrayerTimesWebController extends Controller
         $islandId = $request->resolvedIslandId();
 
         if ($islandId === 0) {
-            $island = $islands->first(fn ($i) => $i->name === 'މާލެ')
-                ?? $islands->first(fn ($i) => strtolower($i->nameLatin ?? '') === 'male')
+            $island = PrayerTimeHelper::findMaleIsland($islands)
                 ?? $islands->first();
         } else {
             $island = $islands->first(fn ($i) => $i->id === $islandId);

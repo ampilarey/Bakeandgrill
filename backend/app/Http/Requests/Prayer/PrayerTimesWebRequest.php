@@ -33,7 +33,7 @@ class PrayerTimesWebRequest extends FormRequest
             }
         }
 
-        return now()->startOfDay();
+        return PrayerTimeHelper::todayInMvt();
     }
 
     public function resolvedIslandId(): int

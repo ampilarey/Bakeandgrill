@@ -21,8 +21,7 @@ class PrayerTimesApiController extends Controller
     public function __invoke(PrayerTimesApiRequest $request): JsonResponse
     {
         $islandId = (int) $request->validated('island_id');
-        $islands = $this->getIslands->execute();
-        $island = $islands->first(fn ($i) => $i->id === $islandId);
+        $island = $this->getIslands->findById($islandId);
 
         if ($island === null) {
             return response()->json(['error' => 'Island not found'], 404);

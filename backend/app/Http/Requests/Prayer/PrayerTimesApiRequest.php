@@ -34,6 +34,6 @@ class PrayerTimesApiRequest extends FormRequest
             }
         }
 
-        return now()->startOfDay();
+        return PrayerTimeHelper::todayInMvt();
     }
 }

@@ -6,6 +6,7 @@ namespace App\Domains\PrayerTimes\ViewModels;
 
 use App\Domains\PrayerTimes\DTOs\IslandData;
 use App\Domains\PrayerTimes\DTOs\PrayerTimesResult;
+use App\Support\PrayerTimeHelper;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -43,7 +44,7 @@ final readonly class PrayerPageViewModel
     /** Whether the selected date is today (used to drive live countdown JS) */
     public function isToday(): bool
     {
-        return $this->selectedDate->isToday();
+        return PrayerTimeHelper::isSameMvtDay($this->selectedDate);
     }
 
     /** Page <title> */

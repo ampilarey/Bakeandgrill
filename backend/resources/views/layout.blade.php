@@ -1205,6 +1205,19 @@
         return (abbr ? abbr+'. ' : '') + (nameLatin || '');
     }
 
+    var MALE_DV = 'މާލެ';
+    var MALE_FALLBACK = { id: 102, atollLatin: 'Kaafu', nameLatin: 'Malé' };
+    function isMaleLatinName(nameLatin) {
+        if (!nameLatin) return false;
+        return nameLatin.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z]/g,'').toLowerCase()==='male';
+    }
+    function findMaleIsland(islands) {
+        var male = islands.find(function(i){ return i.name===MALE_DV || isMaleLatinName(i.name_latin); });
+        return male
+            ? { id: male.id, atollLatin: male.atoll_latin||'Kaafu', nameLatin: male.name_latin||'Malé' }
+            : MALE_FALLBACK;
+    }
+
     /* ── DOM helpers ────────────────────────────────────────────────────── */
     function $$(id)        { return document.getElementById(id); }
     function setText(id,v) { var e=$$( id); if(e) e.textContent=v; }
@@ -1411,7 +1424,6 @@
         /* Default: find Malé from the islands list, no location prompt.
            If the API is slow or offline, fall back to the hardcoded Malé entry
            so the prayer bar always appears on first visit. */
-        var MALE_FALLBACK = { id: 1, atollLatin: 'Kaafu', nameLatin: 'Malé' };
         var didLoad = false;
         function useIsland(found) {
             if (didLoad) return; didLoad = true;
@@ -1428,12 +1440,7 @@
                 clearTimeout(fallbackTimer);
                 allIslands=d.islands||[];
                 try{ localStorage.setItem('pt_islands_list', JSON.stringify(allIslands)); }catch(e){}
-                var male=allIslands.find(function(i){
-                    return (i.name_latin||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z]/g,'').toLowerCase()==='male';
-                });
-                useIsland(male
-                    ? { id:male.id, atollLatin:male.atoll_latin||'Kaafu', nameLatin:male.name_latin||'Malé' }
-                    : MALE_FALLBACK);
+                useIsland(findMaleIsland(allIslands));
             }).catch(function(){ clearTimeout(fallbackTimer); useIsland(MALE_FALLBACK); });
     }
 

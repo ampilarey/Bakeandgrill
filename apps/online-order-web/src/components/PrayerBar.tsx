@@ -104,6 +104,21 @@ function makeLabel(atollLatin: string, nameLatin: string) {
   return (abbr ? abbr + '. ' : '') + (nameLatin || '');
 }
 
+const MALE_DV = 'މާލެ';
+const MALE_FALLBACK: IslandInfo = { id: 102, atollLatin: 'Kaafu', nameLatin: 'Malé' };
+
+function isMaleLatinName(nameLatin: string | null | undefined): boolean {
+  if (!nameLatin) return false;
+  return nameLatin.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase() === 'male';
+}
+
+function findMaleIsland(islands: Island[]): IslandInfo {
+  const male = islands.find(i => i.name === MALE_DV || isMaleLatinName(i.name_latin));
+  return male
+    ? { id: male.id, atollLatin: male.atoll_latin || 'Kaafu', nameLatin: male.name_latin || 'Malé' }
+    : MALE_FALLBACK;
+}
+
 function computeTick(prayers: PrayerData, tomorrowPrayers?: PrayerData | null): TickInfo {
   const mv = getMVT();
   const nowMin = mv.getUTCHours() * 60 + mv.getUTCMinutes();
@@ -290,7 +305,6 @@ export function PrayerBar() {
     }
 
     // Default to Malé — with 3-second fallback so the bar shows even if API is slow
-    const MALE_FALLBACK: IslandInfo = { id: 1, atollLatin: 'Kaafu', nameLatin: 'Malé' };
     let didLoad = false;
     const useIsland = (info: IslandInfo) => {
       if (didLoad) return; didLoad = true;
@@ -312,12 +326,7 @@ export function PrayerBar() {
         const islands: Island[] = d.islands || [];
         setAllIslands(islands);
         try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
-        const male = islands.find(i =>
-          (i.name_latin || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase() === 'male'
-        );
-        useIsland(male
-          ? { id: male.id, atollLatin: male.atoll_latin || 'Kaafu', nameLatin: male.name_latin || 'Malé' }
-          : MALE_FALLBACK);
+        useIsland(findMaleIsland(islands));
       })
       .catch(() => { clearTimeout(fallbackTimer); useIsland(MALE_FALLBACK); });
   }, [loadPrayers, startTick]);
