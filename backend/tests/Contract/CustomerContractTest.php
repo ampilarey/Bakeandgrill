@@ -33,6 +33,7 @@ class CustomerContractTest extends ContractTestCase
         'subtotal', 'tax_amount', 'discount_amount', 'total', 'total_laar',
         'subtotal_laar', 'tax_laar', 'promo_discount_laar', 'delivery_fee',
         'delivery_fee_laar', 'loyalty_discount_laar', 'gift_card_discount_laar',
+        'remaining_balance_laar',
         // Loyalty fields
         'points_balance', 'lifetime_points', 'loyalty_points',
     ];
@@ -119,6 +120,7 @@ class CustomerContractTest extends ContractTestCase
         $order = Order::factory()->pending()->create([
             'customer_id' => $this->customer->id,
             'total' => 30.00,
+            'total_laar' => 3000,
         ]);
 
         $response = $this->getJson("/api/customer/orders/{$order->id}", $this->localCustomerAuthHeaders())

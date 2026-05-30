@@ -5,9 +5,10 @@ import {
 } from '../components/SharedUI';
 import {
   fetchTables, createTable, updateTable, openTable, closeTable,
-  mergeTables, splitTableByAmount,
+  mergeTables, splitTableByAmount, splitTableByItems,
   type RestaurantTable,
 } from '../api';
+import { fetchOrder, type OrderItem } from '../api/orders';
 import { LayoutGrid, Map } from 'lucide-react';
 
 const S = {
@@ -79,7 +80,11 @@ export default function TablesPage() {
 
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [splitTableId, setSplitTableId]   = useState<number | null>(null);
+  const [splitMode, setSplitMode]         = useState<'amount' | 'items'>('amount');
   const [splitAmount, setSplitAmount]     = useState('');
+  const [splitOrderItems, setSplitOrderItems] = useState<OrderItem[]>([]);
+  const [splitSelectedIds, setSplitSelectedIds] = useState<number[]>([]);
+  const [splitLoadingItems, setSplitLoadingItems] = useState(false);
   const [splitting, setSplitting]         = useState(false);
   const [toast, setToast]                 = useState('');
   const [confirmMerge, setConfirmMerge]   = useState(false);
@@ -95,6 +100,29 @@ export default function TablesPage() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  useEffect(() => {
+    if (!splitTableId) {
+      setSplitOrderItems([]);
+      setSplitSelectedIds([]);
+      setSplitMode('amount');
+      return;
+    }
+    const table = tables.find((t) => t.id === splitTableId);
+    if (!table?.current_order_id) {
+      setSplitOrderItems([]);
+      setSplitSelectedIds([]);
+      return;
+    }
+    setSplitLoadingItems(true);
+    void fetchOrder(table.current_order_id)
+      .then((res) => {
+        setSplitOrderItems(res.order.items ?? []);
+        setSplitSelectedIds([]);
+      })
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setSplitLoadingItems(false));
+  }, [splitTableId, tables]);
 
   const openModal = (t?: RestaurantTable) => {
     setEditTable(t ?? null);
@@ -164,10 +192,15 @@ export default function TablesPage() {
 
   const splittingTable = tables.find(t => t.id === splitTableId) ?? null;
 
-  // Split is "carve off a sub-bill of MVR X" — the most common cashier
-  // flow ("table of 4 wants to pay 200 separately"). Backend supports
-  // splitting by line-items too (`item_ids`); that needs its own modal
-  // with the order's line list and is intentionally deferred.
+  // Split by amount or by selected line items (both create a sibling ticket).
+  const resetSplitModal = () => {
+    setSplitTableId(null);
+    setSplitAmount('');
+    setSplitMode('amount');
+    setSplitSelectedIds([]);
+    setSplitOrderItems([]);
+  };
+
   const handleSplit = async () => {
     if (!splittingTable || !splittingTable.current_order_id) {
       setError('No active ticket on this table to split.');
@@ -181,12 +214,34 @@ export default function TablesPage() {
     setSplitting(true);
     try {
       await splitTableByAmount(splittingTable.id, splittingTable.current_order_id, amount);
-      setSplitTableId(null);
-      setSplitAmount('');
+      resetSplitModal();
       showToast(`Split MVR ${amount.toFixed(2)} into a new ticket.`);
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setSplitting(false); }
+  };
+
+  const handleSplitByItems = async () => {
+    if (!splittingTable || !splittingTable.current_order_id) {
+      setError('No active ticket on this table to split.');
+      return;
+    }
+    if (splitSelectedIds.length === 0) {
+      setError('Select at least one line item to move to the new ticket.');
+      return;
+    }
+    setSplitting(true);
+    try {
+      await splitTableByItems(splittingTable.id, splittingTable.current_order_id, splitSelectedIds);
+      resetSplitModal();
+      showToast(`Split ${splitSelectedIds.length} item(s) into a new ticket.`);
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setSplitting(false); }
+  };
+
+  const toggleSplitItem = (id: number) => {
+    setSplitSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   };
 
   const toggleSelect = (id: number) => {
@@ -448,14 +503,14 @@ export default function TablesPage() {
       )}
 
       {splitTableId && splittingTable && (
-        <Modal title={`Split Bill — T${splittingTable.name}`} onClose={() => { setSplitTableId(null); setSplitAmount(''); }} maxWidth={400}>
+        <Modal title={`Split Bill — T${splittingTable.name}`} onClose={resetSplitModal} maxWidth={440}>
           {!splittingTable.current_order_id ? (
             <>
               <p style={{ fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
                 This table has no active ticket. Open the table from the POS first, then come back here to split the bill.
               </p>
               <ModalActions>
-                <Btn variant="secondary" onClick={() => setSplitTableId(null)}>Close</Btn>
+                <Btn variant="secondary" onClick={resetSplitModal}>Close</Btn>
               </ModalActions>
             </>
           ) : (
@@ -464,30 +519,100 @@ export default function TablesPage() {
                 Carve off part of <strong>Order #{splittingTable.current_order_number}</strong> into a new ticket.
               </p>
               {splittingTable.current_order_total != null && (
-                <p style={{ fontSize: 12, color: '#9C8E7E', marginBottom: 16 }}>
+                <p style={{ fontSize: 12, color: '#9C8E7E', marginBottom: 12 }}>
                   Current bill total: <strong>MVR {splittingTable.current_order_total.toFixed(2)}</strong>
                 </p>
               )}
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 6 }}>
-                Amount to split off (MVR) *
-              </label>
-              <input
-                type="number" min="0.01" step="0.01"
-                placeholder="e.g. 250.00"
-                value={splitAmount}
-                onChange={(e) => setSplitAmount(e.target.value)}
-                style={{ ...S.input, marginBottom: 4 }}
-                autoFocus
-              />
-              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '6px 0 0' }}>
-                A new ticket is created on the same table with this amount. The cashier can settle the two tickets independently.
-              </p>
-              <ModalActions>
-                <Btn variant="secondary" onClick={() => { setSplitTableId(null); setSplitAmount(''); }}>Cancel</Btn>
-                <Btn onClick={() => void handleSplit()} disabled={splitting || !splitAmount}>
-                  {splitting ? 'Splitting…' : 'Split Bill'}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <Btn
+                  variant={splitMode === 'amount' ? 'primary' : 'secondary'}
+                  onClick={() => setSplitMode('amount')}
+                >
+                  By amount
                 </Btn>
-              </ModalActions>
+                <Btn
+                  variant={splitMode === 'items' ? 'primary' : 'secondary'}
+                  onClick={() => setSplitMode('items')}
+                >
+                  By items
+                </Btn>
+              </div>
+              {splitMode === 'amount' ? (
+                <>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 6 }}>
+                    Amount to split off (MVR) *
+                  </label>
+                  <input
+                    type="number" min="0.01" step="0.01"
+                    placeholder="e.g. 250.00"
+                    value={splitAmount}
+                    onChange={(e) => setSplitAmount(e.target.value)}
+                    style={{ ...S.input, marginBottom: 4 }}
+                    autoFocus
+                  />
+                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '6px 0 0' }}>
+                    A new ticket is created on the same table with this amount.
+                  </p>
+                  <ModalActions>
+                    <Btn variant="secondary" onClick={resetSplitModal}>Cancel</Btn>
+                    <Btn onClick={() => void handleSplit()} disabled={splitting || !splitAmount}>
+                      {splitting ? 'Splitting…' : 'Split Bill'}
+                    </Btn>
+                  </ModalActions>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, color: '#6B5D4F', marginBottom: 8 }}>
+                    Select line items to move to the new ticket.
+                  </p>
+                  {splitLoadingItems ? (
+                    <p style={{ fontSize: 12, color: '#9C8E7E' }}>Loading items…</p>
+                  ) : splitOrderItems.length === 0 ? (
+                    <p style={{ fontSize: 12, color: '#9C8E7E' }}>No line items on this ticket.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto', marginBottom: 12 }}>
+                      {splitOrderItems.map((line) => (
+                        <label
+                          key={line.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 10,
+                            padding: '10px 12px',
+                            border: '1px solid #E8E0D8',
+                            borderRadius: 10,
+                            cursor: 'pointer',
+                            background: splitSelectedIds.includes(line.id) ? '#FFF7ED' : '#fff',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={splitSelectedIds.includes(line.id)}
+                            onChange={() => toggleSplitItem(line.id)}
+                            style={{ marginTop: 2 }}
+                          />
+                          <span style={{ flex: 1, fontSize: 13, color: '#0F172A' }}>
+                            {line.quantity}× {line.item_name}
+                            {line.variant_name ? ` (${line.variant_name})` : ''}
+                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+                            MVR {Number(line.total_price).toFixed(2)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <ModalActions>
+                    <Btn variant="secondary" onClick={resetSplitModal}>Cancel</Btn>
+                    <Btn
+                      onClick={() => void handleSplitByItems()}
+                      disabled={splitting || splitSelectedIds.length === 0 || splitLoadingItems}
+                    >
+                      {splitting ? 'Splitting…' : 'Split Selected Items'}
+                    </Btn>
+                  </ModalActions>
+                </>
+              )}
             </>
           )}
         </Modal>

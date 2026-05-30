@@ -164,7 +164,7 @@ class SmsNotificationSettingsTest extends TestCase
 
     public function test_template_preview_returns_placeholder_labels(): void
     {
-        $ownerRole = Role::create(['name' => 'Owner', 'slug' => 'owner', 'is_active' => true]);
+        $ownerRole = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'slug' => 'owner', 'is_active' => true]);
         $owner = User::create([
             'name' => 'Owner',
             'email' => 'owner@smsnotif.test',

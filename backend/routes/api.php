@@ -231,7 +231,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // the customer a BML Connect pay link for the remaining balance.
     Route::post('/orders/{id}/fire-to-kitchen', [OrderController::class, 'fireToKitchen'])
         ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
-    Route::post('/orders/{id}/send-pay-link', [OrderController::class, 'sendPayLink'])->middleware('throttle:10,1');
+    Route::post('/orders/{id}/send-pay-link', [OrderController::class, 'sendPayLink'])
+        ->middleware(['permission:orders.send_payment_link', 'throttle:10,1']);
     // Cashier-callable lifecycle bumps — POS equivalents of KDS
     // bump/complete. Lets a cashier-only setup (no KDS terminal) move
     // pickup orders through ready → completed and trigger the
@@ -263,7 +264,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
     Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
-    Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])->middleware('throttle:10,1');
+    Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])
+        ->middleware(['permission:orders.send_sms_bill', 'throttle:10,1']);
     Route::patch('/orders/{id}/customer', [OrderController::class, 'updateCustomer'])
         ->middleware(['permission:pos.ring_sales', 'throttle:30,1']);
 
@@ -274,7 +276,8 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // browser.
     Route::get('/kds/orders', [KdsController::class, 'index']);
     Route::get('/kds/menu-groups', [KdsController::class, 'menuGroups']);
-    Route::post('/kds/items/{id}/86', [KdsController::class, 'toggleItemAvailability']);
+    Route::post('/kds/items/{id}/86', [KdsController::class, 'toggleItemAvailability'])
+        ->middleware('permission:menu.manage');
     Route::post('/kds/orders/{id}/start', [KdsController::class, 'start'])->middleware('device.active');
     Route::post('/kds/orders/{id}/bump', [KdsController::class, 'bump'])->middleware('device.active');
     Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall'])->middleware('device.active');
@@ -330,18 +333,18 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 
     // Customers — lightweight POS lookup / quick-create (any authenticated staff)
     Route::get('/customers/search', [CustomerController::class, 'search'])
-        ->middleware('throttle:60,1');
+        ->middleware(['permission:customers.lookup', 'throttle:60,1']);
     Route::post('/customers/quick', [CustomerController::class, 'quickCreate'])
-        ->middleware('throttle:30,1');
+        ->middleware(['permission:customers.create', 'throttle:30,1']);
     // Add/fix a customer's name or email straight from the POS chip —
     // intentionally name/email only, NOT phone (see updateFromPos doc).
     Route::patch('/customers/{id}', [CustomerController::class, 'updateFromPos'])
-        ->middleware('throttle:30,1');
+        ->middleware(['permission:customers.lookup', 'throttle:30,1']);
     // Compact customer "dashboard" for the POS Customer chip (profile +
     // loyalty + lifetime stats + last 5 paid orders). One round-trip
     // when the cashier attaches a customer to a ticket.
     Route::get('/customers/{id}/pos-summary', [CustomerController::class, 'posSummary'])
-        ->middleware('throttle:60,1');
+        ->middleware(['permission:customers.lookup', 'throttle:60,1']);
     Route::get('/customers/{id}/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'indexForCustomer'])
         ->middleware('throttle:60,1');
 
@@ -912,11 +915,16 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:reservations.manag
 
 // ─── Time Clock ────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
-    Route::get('/time-clock/status', [App\Http\Controllers\Api\TimeClockController::class, 'status']);
-    Route::post('/time-clock/in', [App\Http\Controllers\Api\TimeClockController::class, 'clockIn'])->middleware('permission:staff.view');
-    Route::post('/time-clock/out', [App\Http\Controllers\Api\TimeClockController::class, 'clockOut'])->middleware('permission:staff.view');
-    Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history'])->middleware('permission:staff.view');
-    Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary'])->middleware('permission:staff.view');
+    Route::get('/time-clock/status', [App\Http\Controllers\Api\TimeClockController::class, 'status'])
+        ->middleware('permission:pos.time_clock');
+    Route::post('/time-clock/in', [App\Http\Controllers\Api\TimeClockController::class, 'clockIn'])
+        ->middleware('permission:pos.time_clock');
+    Route::post('/time-clock/out', [App\Http\Controllers\Api\TimeClockController::class, 'clockOut'])
+        ->middleware('permission:pos.time_clock');
+    Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history'])
+        ->middleware('permission:pos.time_clock');
+    Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary'])
+        ->middleware('permission:pos.time_clock');
 });
 
 // ─── Barcode Label Data ──────────────────────────────────────────────────────

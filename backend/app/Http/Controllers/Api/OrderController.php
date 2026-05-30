@@ -1495,6 +1495,21 @@ class OrderController extends Controller
                 );
             }
 
+            $tenderMethods = collect($validated['payments'])->pluck('method')->unique()->values();
+            if ($tenderMethods->count() > 1) {
+                if (!$permissions->hasPermission($collector, 'payments.split')) {
+                    abort(403, 'You do not have permission to take split payments.');
+                }
+            } else {
+                $method = (string) ($tenderMethods->first() ?? 'cash');
+                if ($method !== 'house_account') {
+                    $tenderPermission = $method === 'cash' ? 'payments.cash' : 'payments.card';
+                    if (!$permissions->hasPermission($collector, $tenderPermission)) {
+                        abort(403, 'You do not have permission to take this payment type.');
+                    }
+                }
+            }
+
             // Held tickets must transition back to 'pending' before any
             // payment is applied. Previously addPayments silently flipped a
             // held order straight to 'paid', which bypassed the

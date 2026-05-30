@@ -14,6 +14,8 @@
         "loyalty_discount_laar": "__VOLATILE__",
         "gift_card_discount_laar": "__VOLATILE__",
         "referral_discount_laar": 0,
+        "remaining_balance_laar": "__VOLATILE__",
+        "loyalty_points_earned": 0,
         "paid_at": null,
         "created_at": "__VOLATILE__",
         "items": [],
@@ -23,6 +25,9 @@
         "delivery_contact_name": null,
         "delivery_contact_phone": null,
         "delivery_notes": null,
+        "pickup_slot_at": null,
+        "estimated_wait_minutes": null,
+        "proof_of_delivery_url": null,
         "payment_settlement": {
             "settlement": "unpaid",
             "paid_on_credit": false,

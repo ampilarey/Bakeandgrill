@@ -70,7 +70,7 @@ class LoyaltyTest extends TestCase
 
         $account = LoyaltyAccount::where('customer_id', $this->customer->id)->first();
         // Should only have earned once
-        $expectedPoints = (new PointsCalculator)->pointsForOrder($this->order);
+        $expectedPoints = app(PointsCalculator::class)->pointsForOrder($this->order);
         $this->assertEquals($expectedPoints, $account->points_balance);
     }
 

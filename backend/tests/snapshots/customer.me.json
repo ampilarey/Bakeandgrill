@@ -4,6 +4,7 @@
         "phone": "__VOLATILE__",
         "name": "__VOLATILE__",
         "email": "__VOLATILE__",
+        "date_of_birth": null,
         "loyalty_points": "__VOLATILE__",
         "tier": "bronze",
         "preferred_language": "en",

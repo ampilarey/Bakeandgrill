@@ -35,7 +35,7 @@ class VariantStockTest extends TestCase
 
         MenuGroup::firstOrCreate(['id' => 1], ['name' => 'Default', 'slug' => 'default', 'sort_order' => 0, 'is_active' => true]);
 
-        $role = Role::create(['name' => 'Owner', 'slug' => 'owner', 'description' => '', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'slug' => 'owner', 'description' => '', 'is_active' => true]);
         $this->staff = User::create([
             'name' => 'Staff', 'email' => 'stock@test.com', 'password' => Hash::make('pw'),
             'role_id' => $role->id, 'pin_hash' => Hash::make('1234'), 'is_active' => true,

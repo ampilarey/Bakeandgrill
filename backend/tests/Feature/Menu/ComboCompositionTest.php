@@ -23,8 +23,8 @@ class ComboCompositionTest extends TestCase
 
     public function test_admin_can_create_combo_with_components(): void
     {
-        $drink = $this->makeItem(false, [], ['name' => 'Latte']);
-        $snack = $this->makeItem(false, [], ['name' => 'Brownie']);
+        $drink = $this->makeItem(false, 10, ['name' => 'Latte']);
+        $snack = $this->makeItem(false, 10, ['name' => 'Brownie']);
 
         $response = $this->postJson('/api/items', [
             'name' => 'Coffee Combo',

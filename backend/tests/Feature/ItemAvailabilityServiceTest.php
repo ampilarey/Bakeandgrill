@@ -144,7 +144,7 @@ class ItemAvailabilityServiceTest extends TestCase
     public function test_admin_items_api_does_not_include_availability_field(): void
     {
         // Admin role
-        $role = \App\Models\Role::create(['name' => 'Owner', 'slug' => 'owner', 'is_active' => true]);
+        $role = \App\Models\Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'slug' => 'owner', 'is_active' => true]);
         $user = \App\Models\User::create([
             'name' => 'Owner', 'email' => 'owner@test.com',
             'password' => \Illuminate\Support\Facades\Hash::make('pw'),

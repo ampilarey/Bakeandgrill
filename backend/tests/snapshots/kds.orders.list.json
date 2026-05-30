@@ -61,6 +61,20 @@
             "cancelled_at": null,
             "cancelled_by": null,
             "offline_local_number": null,
+            "service_charge_enabled": false,
+            "service_charge_type": null,
+            "service_charge_rate_bp": 0,
+            "service_charge_value": null,
+            "service_charge_amount_laar": 0,
+            "service_charge_amount": "0.00",
+            "service_charge_label": "Service charge",
+            "service_charge_taxable": true,
+            "service_charge_applied_to": null,
+            "delivery_location_link": null,
+            "packaging_fee_laar": 0,
+            "small_order_fee_laar": 0,
+            "pickup_slot_at": null,
+            "proof_of_delivery_path": null,
             "items": [
                 {
                     "id": "__VOLATILE__",
@@ -78,7 +92,11 @@
                     "updated_at": "__VOLATILE__",
                     "deleted_at": null,
                     "tax_rate": "0.00",
-                    "modifiers": []
+                    "original_unit_price": null,
+                    "daily_special_id": null,
+                    "modifiers": [],
+                    "menu_group_id": 1,
+                    "prep_time_minutes": null
                 }
             ]
         }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, getWaitTimeEstimate, getMyReferralCode, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, initiatePartialPayment, getWaitTimeEstimate, getMyReferralCode, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { WhatsAppIcon, ViberIcon } from "../components/icons";
@@ -267,6 +267,7 @@ export function OrderStatusPage() {
   const [showPaymentBanner, setShowPaymentBanner] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  const [partialAmountMvr, setPartialAmountMvr] = useState("");
   const [reordering, setReordering] = useState(false);
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
@@ -340,13 +341,32 @@ export function OrderStatusPage() {
   // Now we additionally require the server-reported payment_status,
   // and we only clear the cart once we've seen a paid order on this
   // visit (cartClearedRef guard).
+  const remainingLaar = order?.remaining_balance_laar ?? (
+    order && order.payment_status !== 'paid'
+      ? (order.total_laar ?? Math.round((order.total ?? 0) * 100))
+      : 0
+  );
+  const remainingMvr = remainingLaar / 100;
+
   const serverPaymentConfirmed =
-    !!order && (order.payment_status === 'paid' || order.payment_status === 'partial');
+    !!order && (order.payment_status === 'paid' || remainingLaar <= 0);
+
+  const needsRemainingPayment =
+    !!order &&
+    !!token &&
+    remainingLaar > 0 &&
+    !['cancelled', 'refunded', 'completed'].includes(order.status) &&
+    order.payment_status !== 'paid';
 
   const needsPaymentRetry =
-    !!order &&
-    order.status === 'payment_pending' &&
-    !serverPaymentConfirmed;
+    needsRemainingPayment && order?.status === 'payment_pending';
+
+  const redirectToPayment = (paymentUrl: string | null | undefined) => {
+    if (!paymentUrl) {
+      throw new Error("Payment could not be started. Please try again in a moment.");
+    }
+    window.location.href = paymentUrl;
+  };
 
   const handlePayAgain = async () => {
     if (!order || !token) {
@@ -359,10 +379,38 @@ export function OrderStatusPage() {
     try {
       localStorage.setItem(PENDING_ORDER_KEY, String(order.id));
       const payment = await initiateOnlinePayment(token, order.id);
-      if (!payment.payment_url) {
-        throw new Error("Payment could not be started. Please try again in a moment.");
-      }
-      window.location.href = payment.payment_url;
+      redirectToPayment(payment.payment_url);
+    } catch (e) {
+      setPayError((e as Error).message);
+      setIsPaying(false);
+    }
+  };
+
+  const handlePayPartial = async () => {
+    if (!order || !token) {
+      setPayError("Please sign in to pay for this order.");
+      return;
+    }
+    const amountLaar = Math.round(parseFloat(partialAmountMvr) * 100);
+    if (!Number.isFinite(amountLaar) || amountLaar <= 0) {
+      setPayError("Enter a valid amount in MVR.");
+      return;
+    }
+    if (amountLaar > remainingLaar) {
+      setPayError(`Amount cannot exceed MVR ${remainingMvr.toFixed(2)} remaining.`);
+      return;
+    }
+    setIsPaying(true);
+    setPayError("");
+    try {
+      localStorage.setItem(PENDING_ORDER_KEY, String(order.id));
+      const payment = await initiatePartialPayment(
+        token,
+        order.id,
+        amountLaar,
+        `web-partial:${order.id}:${amountLaar}:${Date.now()}`,
+      );
+      redirectToPayment(payment.payment_url);
     } catch (e) {
       setPayError((e as Error).message);
       setIsPaying(false);
@@ -658,10 +706,12 @@ export function OrderStatusPage() {
                 </div>
               </div>
 
-              {needsPaymentRetry && paymentState !== "FAILED" && (
+              {(needsPaymentRetry || (needsRemainingPayment && order.payment_status === 'partial')) && paymentState !== "FAILED" && (
                 <div style={{ marginBottom: '1rem' }}>
                   <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 0.75rem' }}>
-                    Payment is still pending. Complete checkout to send your order to the kitchen.
+                    {order.payment_status === 'partial'
+                      ? `MVR ${remainingMvr.toFixed(2)} remaining on this order.`
+                      : 'Payment is still pending. Complete checkout to send your order to the kitchen.'}
                   </p>
                   {payError && (
                     <p style={{ margin: '0 0 0.5rem', fontSize: 'var(--text-xs)', color: 'var(--color-error)' }}>{payError}</p>
@@ -683,10 +733,47 @@ export function OrderStatusPage() {
                       fontFamily: 'inherit',
                       boxShadow: '0 4px 14px var(--color-primary-glow)',
                       opacity: isPaying ? 0.85 : 1,
+                      marginBottom: order.payment_status === 'partial' ? '0.75rem' : 0,
                     }}
                   >
-                    {isPaying ? 'Starting payment…' : 'Pay now'}
+                    {isPaying ? 'Starting payment…' : `Pay MVR ${remainingMvr.toFixed(2)}`}
                   </button>
+                  {order.payment_status === 'partial' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        max={remainingMvr}
+                        value={partialAmountMvr}
+                        onChange={(e) => setPartialAmountMvr(e.target.value)}
+                        placeholder="Custom amount (MVR)"
+                        style={{
+                          flex: 1,
+                          padding: '0.65rem 0.75rem',
+                          borderRadius: '0.5rem',
+                          border: '1px solid var(--color-border)',
+                          fontFamily: 'inherit',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handlePayPartial()}
+                        disabled={isPaying || !partialAmountMvr}
+                        style={{
+                          padding: '0.65rem 0.85rem',
+                          borderRadius: '0.5rem',
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)',
+                          fontWeight: 600,
+                          cursor: isPaying ? 'wait' : 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        Pay part
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

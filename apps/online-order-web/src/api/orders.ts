@@ -6,6 +6,7 @@ import { API_ORIGIN, request } from './client';
 export type OrderDetail = Order & {
   items?: OrderItem[];
   payments?: Array<{ method: string; amount: number; status: string }>;
+  remaining_balance_laar?: number;
   /** Points credited when the order completed (customer order API). */
   loyalty_points_earned?: number;
   pickup_slot_at?: string | null;
@@ -105,6 +106,32 @@ export async function initiateOnlinePayment(token: string, orderId: number): Pro
   return request<InitiatePaymentResult>(ENDPOINTS.ORDER_PAY_BML(orderId), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export type InitiatePartialPaymentResult = {
+  payment_url: string;
+  payment_id: number;
+  amount_laar: number;
+  remaining_balance_before_laar: number;
+  remaining_balance_after_laar: number;
+  reused: boolean;
+};
+
+export async function initiatePartialPayment(
+  token: string,
+  orderId: number,
+  amountLaar: number,
+  idempotencyKey: string,
+): Promise<InitiatePartialPaymentResult> {
+  return request<InitiatePartialPaymentResult>(ENDPOINTS.PARTIAL_PAYMENT, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      order_id: orderId,
+      amount: amountLaar,
+      idempotency_key: idempotencyKey,
+    }),
   });
 }
 

@@ -51,7 +51,7 @@ class RefundCapTest extends TestCase
             'is_available' => true,
         ]);
 
-        $role = Role::create(['name' => 'Owner', 'slug' => 'owner', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'slug' => 'owner', 'is_active' => true]);
         $this->owner = User::create([
             'name' => 'Owner',
             'email' => 'owner@refund.test',

@@ -74,7 +74,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Customers & Marketing',
     icon: Heart,
     items: [
-      { to: '/customers/growth', icon: BarChart2, label: 'Customer Growth', permission: 'customers.manage', description: 'Metrics, segments & CRM' },
       { to: '/reservations', icon: CalendarDays,  label: 'Reservations', permission: 'reservations.view', description: 'Table bookings' },
       { to: '/reviews',      icon: Star,          label: 'Reviews',      permission: 'customers.manage',  description: 'Moderate ratings' },
       { to: '/loyalty',      icon: Heart,         label: 'Loyalty',      permission: 'loyalty.manage',    description: 'Points & rewards' },

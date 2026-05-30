@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Concerns;
 
+use App\Domains\Permissions\PermissionCatalog;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Device;
 use App\Models\User;
@@ -24,7 +25,7 @@ trait PreparesPosApi
         $roleSlug = $user->role?->slug;
 
         if (!in_array($roleSlug, ['owner', 'manager', 'staff'], true)) {
-            foreach (['pos.ring_sales', 'pos.open_shift', 'pos.close_shift', 'orders.create', 'finance.cash_manage'] as $slug) {
+            foreach (PermissionCatalog::staffSlugs() as $slug) {
                 $user->grantPermission($slug);
             }
             $user->unsetRelation('permissions');

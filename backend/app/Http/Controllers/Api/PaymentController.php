@@ -35,7 +35,7 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Order already paid'], 422);
         }
 
-        $dueLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        $dueLaar = $this->paymentService->getRemainingBalanceLaar($order);
         if ($dueLaar <= 0) {
             return response()->json([
                 'message' => 'Nothing to pay. Your order is fully covered — use “Place order” again to confirm without card.',
@@ -44,7 +44,7 @@ class PaymentController extends Controller
         }
 
         try {
-            $result = $this->paymentService->initiateBmlPayment($order);
+            $result = $this->paymentService->initiateBmlPayment($order, $dueLaar);
         } catch (\RuntimeException $e) {
             Log::error('PaymentController: BML payment initiation failed', [
                 'order_id' => $order->id,

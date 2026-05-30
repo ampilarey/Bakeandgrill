@@ -9,12 +9,14 @@ use Tests\TestCase;
 
 class PointsCalculatorTest extends TestCase
 {
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
+
     private PointsCalculator $calc;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->calc = new PointsCalculator;
+        $this->calc = app(PointsCalculator::class);
     }
 
     public function test_discount_for_100_points_default_rate(): void

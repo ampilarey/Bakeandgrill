@@ -37,8 +37,8 @@ class PromotionTest extends TestCase
         parent::setUp();
 
         $role = Role::firstOrCreate(
-            ['slug' => 'cashier'],
-            ['name' => 'Cashier', 'description' => '', 'is_active' => true],
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => '', 'is_active' => true],
         );
         $this->staff = User::create([
             'name' => 'Staff', 'email' => 'staff@test.com',
@@ -235,11 +235,15 @@ class PromotionTest extends TestCase
         $this->createPromo();
         $order = $this->createOrder();
 
+        $restrictedRole = Role::firstOrCreate(
+            ['slug' => 'basic'],
+            ['name' => 'Basic', 'description' => '', 'is_active' => true],
+        );
         $restricted = User::create([
             'name' => 'Restricted',
-            'email' => 'restricted@test.com',
+            'email' => 'restricted-apply@test.com',
             'password' => Hash::make('password'),
-            'role_id' => $this->staff->role_id,
+            'role_id' => $restrictedRole->id,
             'pin_hash' => Hash::make('9999'),
             'is_active' => true,
         ]);
@@ -304,7 +308,10 @@ class PromotionTest extends TestCase
         $this->postJson("/api/orders/{$order->id}/apply-promo", ['code' => 'SAVE10'])->assertOk();
 
         // Now create a staff user without the permission and try to remove
-        $restrictedRole = Role::create(['name' => 'Basic', 'slug' => 'basic', 'description' => '', 'is_active' => true]);
+        $restrictedRole = Role::firstOrCreate(
+            ['slug' => 'basic'],
+            ['name' => 'Basic', 'description' => '', 'is_active' => true],
+        );
         $restricted = User::create([
             'name' => 'Restricted', 'email' => 'restricted@test.com',
             'password' => Hash::make('password'), 'role_id' => $restrictedRole->id,

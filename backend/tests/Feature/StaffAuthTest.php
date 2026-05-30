@@ -16,12 +16,10 @@ class StaffAuthTest extends TestCase
 
     private function createOwner(string $email = 'owner@example.com'): User
     {
-        $role = Role::create([
-            'name' => 'Owner',
-            'slug' => 'owner',
-            'description' => 'Owner role',
-            'is_active' => true,
-        ]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => 'Owner role', 'is_active' => true],
+        );
 
         return User::create([
             'name' => 'Test User',

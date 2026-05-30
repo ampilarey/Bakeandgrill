@@ -248,18 +248,49 @@ jobs:
           TEST_PHONE:   ${{ secrets.E2E_TEST_PHONE }}
           TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
         run: |
+          # Non-blocking for test deploy visibility; production uses e2e-gate below.
           npx playwright test \
             --project=chromium \
             --grep "@smoke|public-pages|admin-auth|apps-smoke" \
             --reporter=github \
             --timeout=30000 \
             || true
-          # NOTE: `|| true` makes E2E non-blocking intentionally.
-          # E2E tests run against test.bakeandgrill.mv (live UAT server).
-          # Failures annotate the PR for visibility but do not block the deploy.
-          # This is correct for UAT: test-server stability should not gate CI.
-          # When a production server is introduced, consider making E2E blocking
-          # for the production deploy job specifically.
+
+  e2e-gate:
+    name: Playwright E2E (production gate)
+    runs-on: ubuntu-latest
+    needs: [frontend, test]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (Chromium only)
+        run: npx playwright install chromium --with-deps
+
+      - name: Run smoke E2E tests (blocking)
+        env:
+          BASE_URL: https://test.bakeandgrill.mv
+          ADMIN_PIN:    ${{ secrets.E2E_ADMIN_PIN }}
+          DRIVER_PHONE: ${{ secrets.E2E_DRIVER_PHONE }}
+          DRIVER_PIN:   ${{ secrets.E2E_DRIVER_PIN }}
+          TEST_PHONE:   ${{ secrets.E2E_TEST_PHONE }}
+          TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+        run: |
+          npx playwright test \
+            --project=chromium \
+            --grep "@smoke|public-pages|admin-auth|apps-smoke" \
+            --reporter=github \
+            --timeout=30000
 
       - name: Upload Playwright report
         if: always()
@@ -305,7 +336,7 @@ jobs:
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)
     runs-on: ubuntu-latest
-    needs: [frontend, test, test-postgres, contract]
+    needs: [frontend, test, test-postgres, contract, e2e-gate]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     environment: production
     steps:

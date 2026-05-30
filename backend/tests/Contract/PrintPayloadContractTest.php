@@ -38,7 +38,10 @@ class PrintPayloadContractTest extends ContractTestCase
     {
         parent::setUp();
 
-        $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'description' => '', 'is_active' => true]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => '', 'is_active' => true],
+        );
 
         $this->staff = User::create([
             'name' => 'Test Cashier',

@@ -6,6 +6,7 @@
         "lifetime_points": "__VOLATILE__",
         "tier": "bronze"
     },
+    "tier_progress": null,
     "program": {
         "enabled": true,
         "earn_per_mvr": 1,

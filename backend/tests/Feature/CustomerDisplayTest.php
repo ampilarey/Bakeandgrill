@@ -42,7 +42,7 @@ class CustomerDisplayTest extends TestCase
     {
         parent::setUp();
 
-        $role = Role::create(['name' => 'Owner', 'slug' => 'owner', 'description' => '', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'slug' => 'owner', 'description' => '', 'is_active' => true]);
         $this->staff = User::create([
             'name' => 'Staff',
             'email' => 'staff@display-test.com',

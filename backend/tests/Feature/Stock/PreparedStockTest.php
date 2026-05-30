@@ -72,17 +72,15 @@ class PreparedStockTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->staffRole = Role::create([
-            'name' => 'Cashier',
-            'slug' => 'cashier',
-            'is_active' => true,
-        ]);
+        $this->staffRole = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => '', 'is_active' => true],
+        );
 
-        $managerRole = Role::create([
-            'name' => 'Manager',
-            'slug' => 'manager',
-            'is_active' => true,
-        ]);
+        $managerRole = Role::firstOrCreate(
+            ['slug' => 'manager'],
+            ['name' => 'Manager', 'description' => '', 'is_active' => true],
+        );
 
         $this->staffUser = User::create([
             'name' => 'Cashier',

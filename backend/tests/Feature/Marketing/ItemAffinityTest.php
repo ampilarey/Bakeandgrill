@@ -17,9 +17,9 @@ class ItemAffinityTest extends TestCase
 
     public function test_compute_pairs_builds_bidirectional_stats(): void
     {
-        $a = $this->makeItem(false, [], ['name' => 'Coffee']);
-        $b = $this->makeItem(false, [], ['name' => 'Croissant']);
-        $c = $this->makeItem(false, [], ['name' => 'Tea']);
+        $a = $this->makeItem(false, 10, ['name' => 'Coffee']);
+        $b = $this->makeItem(false, 10, ['name' => 'Croissant']);
+        $c = $this->makeItem(false, 10, ['name' => 'Tea']);
 
         $order1 = Order::factory()->create(['status' => 'paid']);
         OrderItem::create(['order_id' => $order1->id, 'item_id' => $a->id, 'item_name' => $a->name, 'quantity' => 1, 'unit_price' => 30, 'total_price' => 30]);

@@ -8,6 +8,7 @@ use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\SiteSetting;
+use Illuminate\Support\Facades\DB;
 
 final class OpsAlertsService
 {
@@ -102,8 +103,19 @@ final class OpsAlertsService
                 })->orWhere(function ($q) use ($cutoff): void {
                     $q->whereNotNull('fired_at')
                         ->whereNotNull('estimated_wait_minutes')
-                        ->where('estimated_wait_minutes', '>', 0)
-                        ->whereRaw('DATE_ADD(fired_at, INTERVAL estimated_wait_minutes MINUTE) < ?', [$cutoff]);
+                        ->where('estimated_wait_minutes', '>', 0);
+
+                    if (DB::connection()->getDriverName() === 'sqlite') {
+                        $q->whereRaw(
+                            "datetime(fired_at, '+' || estimated_wait_minutes || ' minutes') < ?",
+                            [$cutoff->toDateTimeString()],
+                        );
+                    } else {
+                        $q->whereRaw(
+                            'DATE_ADD(fired_at, INTERVAL estimated_wait_minutes MINUTE) < ?',
+                            [$cutoff],
+                        );
+                    }
                 });
             })
             ->count();

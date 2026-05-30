@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { smsCharCount } from "@shared/utils/smsCharCount";
 import { adjustPreparedStock, fetchPreparedStock, type PreparedStockRow } from "../api";
 import type { useOps } from "../hooks/useOps";
 
@@ -847,21 +848,9 @@ function ReportsTab({ ops }: { ops: OpsState }) {
 function MarketingTab({ ops }: { ops: OpsState }) {
   const [confirming, setConfirming] = useState(false);
 
-  // GSM-7 vs UCS-2 segment math — matches admin SMS page logic so the
-  // estimate before send doesn't lie. Unicode (emoji, Thaana) jumps to
-  // 70-char segments which can triple SMS cost on long messages.
-  const encoding = useMemo<"GSM-7" | "UCS-2">(() => {
-    // Anything outside the basic GSM 03.38 set forces UCS-2.
-    // Cheap heuristic: any char with code > 127 is non-ASCII → assume UCS-2.
-    return /[^\x00-\x7F]/.test(ops.promoMessage) ? "UCS-2" : "GSM-7";
-  }, [ops.promoMessage]);
-
-  const segments = useMemo(() => {
-    const len = ops.promoMessage.length;
-    if (len === 0) return 0;
-    const perSeg = encoding === "UCS-2" ? 70 : 160;
-    return Math.ceil(len / perSeg);
-  }, [ops.promoMessage, encoding]);
+  const smsStats = useMemo(() => smsCharCount(ops.promoMessage), [ops.promoMessage]);
+  const encoding = smsStats.encoding as "GSM-7" | "UCS-2";
+  const segments = smsStats.segments;
 
   return (
     <>

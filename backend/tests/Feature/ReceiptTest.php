@@ -19,12 +19,10 @@ class ReceiptTest extends TestCase
 
     public function test_staff_can_send_receipt(): void
     {
-        $role = Role::create([
-            'name' => 'Cashier',
-            'slug' => 'cashier',
-            'description' => 'Cashier role',
-            'is_active' => true,
-        ]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
+        );
 
         $user = User::create([
             'name' => 'Cashier',

@@ -71,14 +71,14 @@ class OnlineOrderingGateTest extends TestCase
             'is_active' => true,
         ]);
 
-        $cashierRole = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
-        $managerRole = Role::create(['name' => 'Manager', 'slug' => 'manager', 'is_active' => true]);
+        $staffRole = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
+        $managerRole = Role::firstOrCreate(['slug' => 'manager'], ['name' => 'Manager', 'description' => '', 'is_active' => true]);
 
         $this->staffUser = User::create([
             'name' => 'Cashier',
             'email' => 'cashier@gate-test.com',
             'password' => Hash::make('password'),
-            'role_id' => $cashierRole->id,
+            'role_id' => $staffRole->id,
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);

@@ -471,6 +471,8 @@ class CustomerController extends Controller
                 'loyalty_discount_laar' => (int) ($order->loyalty_discount_laar ?? 0),
                 'gift_card_discount_laar' => (int) ($order->gift_card_discount_laar ?? 0),
                 'referral_discount_laar' => (int) ($order->referral_discount_laar ?? 0),
+                'remaining_balance_laar' => app(\App\Domains\Payments\Services\PaymentService::class)
+                    ->getRemainingBalanceLaar($order),
                 'loyalty_points_earned' => $loyaltyPointsEarned,
                 'paid_at' => $order->paid_at?->toIso8601String(),
                 'created_at' => $order->created_at->toIso8601String(),

@@ -57,7 +57,10 @@ class KdsBumpEventsTest extends TestCase
             'is_available' => true,
         ]);
 
-        $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
+        );
         $this->staff = User::create([
             'name' => 'KDS Staff',
             'email' => 'kds@bump.test',

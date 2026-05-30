@@ -35,7 +35,10 @@ class PosCustomerLookupTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $role = Role::create(['name' => 'Cashier', 'slug' => 'cashier', 'is_active' => true]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => '', 'is_active' => true],
+        );
         $this->staffUser = User::create([
             'name' => 'Cashier',
             'email' => 'cashier@lookup.test',
