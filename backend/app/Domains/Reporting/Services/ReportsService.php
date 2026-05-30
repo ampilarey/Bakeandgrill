@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Reporting\Services;
 
 use App\Domains\Orders\Support\EffectiveDiscount;
+use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\AuditLog;
 use App\Models\Customer;
@@ -27,6 +28,9 @@ use Illuminate\Support\Facades\DB;
  */
 class ReportsService
 {
+    /** @var list<string> */
+    private const PAYMENT_STATUSES = ['paid', 'completed', 'confirmed'];
+
     /**
      * Sales summary totals and payment breakdown for a date range.
      */
@@ -73,7 +77,7 @@ class ReportsService
         $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::query()
             ->whereBetween('processed_at', [$from, $to])
-            ->whereIn('status', ['paid', 'completed'])
+            ->whereIn('status', self::PAYMENT_STATUSES)
             ->whereHas('order', function ($oq) use ($from, $to, $userId, $shiftId, $deviceId) {
                 $oq->whereIn('status', ReportMoneySql::SALE_STATUSES)
                     ->whereBetween('created_at', [$from, $to])
@@ -95,6 +99,11 @@ class ReportsService
             ]),
             'totals' => $totals,
             'payments' => $payments,
+            'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to, array_filter([
+                'user_id' => $userId,
+                'shift_id' => $shiftId,
+                'device_id' => $deviceId,
+            ])),
         ];
     }
 
@@ -190,7 +199,7 @@ class ReportsService
 
         $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::whereBetween('processed_at', [$from, $to])
-            ->whereIn('status', ['paid', 'completed'])
+            ->whereIn('status', self::PAYMENT_STATUSES)
             ->whereHas('order', function ($q) use ($from, $to, $shift) {
                 $q->where('user_id', $shift->user_id)
                     ->whereIn('status', ReportMoneySql::SALE_STATUSES)
@@ -212,6 +221,9 @@ class ReportsService
             'totals' => $totals,
             'payments' => $payments,
             'refunds' => $refundsTotal,
+            'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to, [
+                'user_id' => $shift->user_id,
+            ]),
         ];
     }
 
@@ -241,7 +253,7 @@ class ReportsService
 
         $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::whereBetween('processed_at', [$from, $to])
-            ->whereIn('status', ['paid', 'completed'])
+            ->whereIn('status', self::PAYMENT_STATUSES)
             ->whereHas('order', fn ($q) => $q
                 ->whereIn('status', ReportMoneySql::SALE_STATUSES)
                 ->whereBetween('created_at', [$from, $to]))
@@ -259,6 +271,7 @@ class ReportsService
             'totals' => $totals,
             'payments' => $payments,
             'refunds' => $refunds,
+            'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to),
         ];
     }
 

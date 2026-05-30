@@ -71,7 +71,7 @@ class OrderOfflineSettlementService
 
             $linksShift = !in_array($method, self::NON_SHIFT_METHODS, true);
 
-            Payment::create([
+            $payment = Payment::create([
                 'idempotency_key' => $payKey,
                 'order_id' => $order->id,
                 'method' => $method,
@@ -83,6 +83,8 @@ class OrderOfflineSettlementService
                 'collected_by_user_id' => $collector->id,
                 'shift_id' => $linksShift ? $shift->id : null,
             ]);
+
+            app(\App\Domains\Payments\Services\PaymentCommissionService::class)->applyToPayment($payment);
 
             $oldStatus = $order->status;
 

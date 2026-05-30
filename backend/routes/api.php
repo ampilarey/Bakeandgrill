@@ -192,6 +192,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'show']);
         Route::put('/', [App\Http\Controllers\Api\ServiceChargeSettingsController::class, 'update']);
     });
+    Route::prefix('admin/settings/payment-commission')->middleware('permission:settings.update')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\PaymentCommissionSettingsController::class, 'show']);
+        Route::put('/', [App\Http\Controllers\Api\PaymentCommissionSettingsController::class, 'update']);
+    });
     Route::prefix('admin/settings/packaging-fee')->middleware('permission:settings.update')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'show']);
         Route::patch('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'update']);

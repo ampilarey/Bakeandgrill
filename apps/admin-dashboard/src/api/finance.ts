@@ -233,6 +233,8 @@ export type PnLReport = {
   gross_margin_pct: number;
   expenses: { total: number; by_category: { category: string; icon: string; total: number }[] };
   waste_cost: number;
+  payment_processing_fees?: number;
+  payment_commission?: PaymentCommissionSummary;
   operating_profit: number;
   net_profit_margin_pct: number;
 };
@@ -245,11 +247,29 @@ export async function getCashFlow(from: string, to: string): Promise<{ total_inf
   return req(`/reports/finance/cash-flow?from=${from}&to=${to}`);
 }
 
-export async function getDailySummary(date: string): Promise<{ date: string; revenue: number; tax: number; orders: number; avg_order: number; expenses: number; purchases: number; waste_cost: number; net_profit: number; by_type: { type: string; count: number; revenue: number }[]; top_items: { name: string; qty: number; revenue: number }[] }> {
+export async function getDailySummary(date: string): Promise<{ date: string; revenue: number; tax: number; orders: number; avg_order: number; expenses: number; purchases: number; waste_cost: number; payment_processing_fees?: number; payment_commission?: PaymentCommissionSummary; net_profit: number; by_type: { type: string; count: number; revenue: number }[]; top_items: { name: string; qty: number; revenue: number }[] }> {
   return req(`/reports/finance/daily-summary?date=${date}`);
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────
+
+export type PaymentCommissionChannel = {
+  channel: string;
+  label: string;
+  gross: number;
+  commission: number;
+  net: number;
+  rate_bp: number;
+  rate_percent: number;
+};
+
+export type PaymentCommissionSummary = {
+  enabled: boolean;
+  rates: { pos_card_rate_bp: number; online_gateway_rate_bp: number };
+  totals: { gross_commissionable: number; commission_total: number; net_settlement: number };
+  by_channel: PaymentCommissionChannel[];
+  by_method: { method: string; channel: string; gross: number; commission: number; net: number }[];
+};
 
 export type SalesSummary = {
   total_revenue: number;
@@ -259,6 +279,7 @@ export type SalesSummary = {
   service_charge_total?: number;
   delivery_fee_total?: number;
   payments?: Record<string, number>;
+  payment_commission?: PaymentCommissionSummary;
 };
 
 export async function fetchSalesSummary(params?: {
@@ -279,6 +300,7 @@ export async function fetchSalesSummary(params?: {
     to: string;
     totals: { orders_count: number; total: number; subtotal: number; service_charge_total?: number; delivery_fee_total?: number };
     payments: Record<string, number>;
+    payment_commission?: PaymentCommissionSummary;
   }>(`/reports/sales-summary?${qs}`);
   const order_count = res.totals?.orders_count ?? 0;
   const total_revenue = res.totals?.total ?? 0;
@@ -290,6 +312,7 @@ export async function fetchSalesSummary(params?: {
     service_charge_total: res.totals?.service_charge_total ?? 0,
     delivery_fee_total: res.totals?.delivery_fee_total ?? 0,
     payments: res.payments,
+    payment_commission: res.payment_commission,
   };
 }
 
@@ -320,6 +343,7 @@ export interface XReport {
   };
   payments: Record<string, number>;
   refunds?: number;
+  payment_commission?: PaymentCommissionSummary;
 }
 
 export async function getXReport(): Promise<XReport> {

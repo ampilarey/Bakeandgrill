@@ -4,6 +4,7 @@ import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } fro
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/SharedUI';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
+import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
 import {
   getOnlineOrderingStatus,
   toggleOnlineOrdering,
@@ -714,6 +715,11 @@ export default function OnlineOrderingPage() {
       <div style={S.card}>
         <p style={S.sectionTitle}>Service charge</p>
         <ServiceChargeSettings />
+      </div>
+
+      <div style={S.card}>
+        <p style={S.sectionTitle}>Payment commission (BML / card)</p>
+        <PaymentCommissionSettings />
       </div>
       </>)}
     </div>

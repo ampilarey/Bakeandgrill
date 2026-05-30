@@ -1039,6 +1039,20 @@ export function DashboardPage() {
               accent="#D4813A"
               icon={Truck}
             />
+            {(salesSummary.payment_commission?.totals.net_settlement ?? 0) > 0 && (
+              <>
+                {(salesSummary.payment_commission?.by_channel ?? []).filter((row) => row.net > 0).map((row) => (
+                  <StatCard
+                    key={row.channel}
+                    label={`Net ${row.label}`}
+                    value={fmt(row.net)}
+                    sub={`Gross ${fmt(row.gross)} · Fee ${fmt(row.commission)}`}
+                    accent="#16a34a"
+                    icon={Receipt}
+                  />
+                ))}
+              </>
+            )}
           </div>
           {salesSummary.payments && Object.keys(salesSummary.payments).length > 0 && (
             <Card style={{ marginBottom: 24 }}>

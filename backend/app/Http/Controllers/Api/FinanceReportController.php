@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -63,10 +64,13 @@ class FinanceReportController extends Controller
         // Waste cost
         $wasteCost = WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
+        $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
+        $paymentProcessingFees = (float) ($commissionSummary['totals']['commission_total'] ?? 0);
+
         $grossRevenue = (float) ($revenue->total ?? 0);
         $netRevenue = round($grossRevenue - $refundsTotal, 2);
         $grossProfit = round($netRevenue - (float) $cogs, 2);
-        $operatingProfit = round($grossProfit - $opexTotal - $wasteCost, 2);
+        $operatingProfit = round($grossProfit - $opexTotal - $wasteCost - $paymentProcessingFees, 2);
 
         return response()->json([
             'from' => $from->toDateString(),
@@ -91,6 +95,8 @@ class FinanceReportController extends Controller
                 ]),
             ],
             'waste_cost' => (float) $wasteCost,
+            'payment_processing_fees' => $paymentProcessingFees,
+            'payment_commission' => $commissionSummary,
             'operating_profit' => $operatingProfit,
             'net_profit_margin_pct' => $netRevenue > 0 ? round($operatingProfit / $netRevenue * 100, 2) : 0,
         ]);
@@ -252,7 +258,10 @@ class FinanceReportController extends Controller
             ->sum('total');
         $wasteCost = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
-        $profit = round($revenue - $expenses - $purchases - $wasteCost, 2);
+        $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
+        $paymentProcessingFees = (float) ($commissionSummary['totals']['commission_total'] ?? 0);
+
+        $profit = round($revenue - $expenses - $purchases - $wasteCost - $paymentProcessingFees, 2);
 
         $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
 
@@ -286,6 +295,8 @@ class FinanceReportController extends Controller
             'expenses' => $expenses,
             'purchases' => $purchases,
             'waste_cost' => $wasteCost,
+            'payment_processing_fees' => $paymentProcessingFees,
+            'payment_commission' => $commissionSummary,
             'net_profit' => $profit,
             'by_type' => $byType->map(fn ($r) => [
                 'type' => $r->order_type ?? 'unknown',

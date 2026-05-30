@@ -1611,6 +1611,10 @@ class OrderController extends Controller
                     $creditService->recordCharge($creditCustomer, $order, $payment, $collector, $request);
                 }
 
+                if ($paymentStatus === 'paid') {
+                    app(\App\Domains\Payments\Services\PaymentCommissionService::class)->applyToPayment($payment);
+                }
+
                 app(AuditLogService::class)->log('payment.created', 'Payment', $payment->id, [], $payment->toArray(), ['order_id' => $order->id], $request);
             }
 

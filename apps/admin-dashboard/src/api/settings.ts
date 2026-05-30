@@ -158,6 +158,28 @@ export async function updateServiceChargeSettings(
   return req('/admin/settings/service-charge', { method: 'PUT', body: JSON.stringify(settings) });
 }
 
+// ── Payment commission (BML / card processing fees) ─────────────────────────
+
+export type PaymentCommissionSettings = {
+  enabled: boolean;
+  pos_card_rate_bp: number;
+  online_gateway_rate_bp: number;
+  pos_card_rate_percent: number;
+  online_gateway_rate_percent: number;
+};
+
+export async function getPaymentCommissionSettings(): Promise<{ settings: PaymentCommissionSettings }> {
+  return req('/admin/settings/payment-commission');
+}
+
+export async function updatePaymentCommissionSettings(payload: {
+  enabled: boolean;
+  pos_card_rate_bp: number;
+  online_gateway_rate_bp: number;
+}): Promise<{ message: string; settings: PaymentCommissionSettings }> {
+  return req('/admin/settings/payment-commission', { method: 'PUT', body: JSON.stringify(payload) });
+}
+
 // ── Packaging fee & ordering caps ─────────────────────────────────────────────
 
 export type PackagingFeeSettings = {

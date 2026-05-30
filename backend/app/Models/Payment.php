@@ -19,6 +19,9 @@ class Payment extends Model
         'currency',
         'amount',
         'amount_laar',
+        'commission_laar',
+        'commission_rate_bp',
+        'commission_channel',
         'local_id',
         'status',
         'reference_number',
@@ -31,6 +34,8 @@ class Payment extends Model
         'shift_id' => 'integer',
         'amount' => 'decimal:2',
         'amount_laar' => 'integer',
+        'commission_laar' => 'integer',
+        'commission_rate_bp' => 'integer',
         'gateway_response' => 'array',
         'processed_at' => 'datetime',
     ];

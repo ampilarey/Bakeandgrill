@@ -15,6 +15,7 @@ import {
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
   type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
   type HourlySalesReport, type StationPerformanceReport,
+  type PaymentCommissionSummary,
 } from '../api';
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -31,6 +32,46 @@ function today()        { return localISO(new Date()); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return localISO(d); }
 function mvr(n: number) { return `MVR ${(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 function pct(n: number, total: number) { return total > 0 ? `${((n / total) * 100).toFixed(1)}%` : '0%'; }
+
+function PaymentCommissionBlock({ commission }: { commission?: PaymentCommissionSummary }) {
+  if (!commission || (commission.totals.gross_commissionable ?? 0) <= 0) return null;
+  const th = { textAlign: 'left' as const, padding: '8px 12px', fontSize: 11, color: '#9C8E7E', borderBottom: '1px solid #E8E0D8' };
+  const td = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #F3EDE4' };
+  return (
+    <div style={{ marginTop: 20 }}>
+      <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Card / gateway settlement</p>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={th}>Channel</th>
+            <th style={{ ...th, textAlign: 'right' }}>Gross</th>
+            <th style={{ ...th, textAlign: 'right' }}>Rate</th>
+            <th style={{ ...th, textAlign: 'right' }}>Commission</th>
+            <th style={{ ...th, textAlign: 'right' }}>Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(commission.by_channel ?? []).filter((row) => row.gross > 0).map((row) => (
+            <tr key={row.channel}>
+              <td style={td}>{row.label}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{mvr(row.gross)}</td>
+              <td style={{ ...td, textAlign: 'right', color: '#9C8E7E' }}>{row.rate_percent}%</td>
+              <td style={{ ...td, textAlign: 'right', color: '#dc2626' }}>{mvr(row.commission)}</td>
+              <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.net)}</td>
+            </tr>
+          ))}
+          <tr>
+            <td style={{ ...td, fontWeight: 700 }}>Total</td>
+            <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.gross_commissionable)}</td>
+            <td style={td} />
+            <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{mvr(commission.totals.commission_total)}</td>
+            <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.net_settlement)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 const ORDER_TYPE_LABELS: Record<string, string> = {
   online_pickup: 'Online Pickup', delivery: 'Delivery', dine_in: 'Dine-In',
@@ -348,6 +389,13 @@ export function ReportsPage() {
             {(summary.service_charge_total ?? 0) > 0 && (
               <StatCard label="Service Charge" value={mvr(summary.service_charge_total ?? 0)} sub="Collected on completed orders" accent="#0ea5e9" />
             )}
+            {(summary.payment_commission?.totals.gross_commissionable ?? 0) > 0 && (
+              <>
+                <StatCard label="Card/Gateway Gross" value={mvr(summary.payment_commission!.totals.gross_commissionable)} accent="#6366f1" />
+                <StatCard label="BML Commission" value={mvr(summary.payment_commission!.totals.commission_total)} sub="Processing fees" accent="#dc2626" />
+                <StatCard label="Net Settlement" value={mvr(summary.payment_commission!.totals.net_settlement)} sub="After fees" accent="#16a34a" />
+              </>
+            )}
           </div>
           <Card>
             <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
@@ -375,6 +423,7 @@ export function ReportsPage() {
                 </table>
               </>
             )}
+            <PaymentCommissionBlock commission={summary.payment_commission} />
           </Card>
         </>
       )}
@@ -573,6 +622,7 @@ export function ReportsPage() {
                         </table>
                       </>
                     )}
+                    <PaymentCommissionBlock commission={data.payment_commission} />
                   </>
                 )}
               </Card>

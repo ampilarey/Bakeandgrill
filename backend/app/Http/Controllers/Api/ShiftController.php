@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Shifts\DTOs\ShiftClosedData;
 use App\Domains\Shifts\DTOs\ShiftOpenedData;
 use App\Domains\Shifts\Events\ShiftClosed;
@@ -136,6 +137,14 @@ class ShiftController extends Controller
             ->groupBy('method')
             ->pluck('total', 'method');
 
+        $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary(
+            $shift->opened_at,
+            $shift->closed_at ?? now(),
+            [
+                'payment_query' => fn ($q) => $this->scopePaymentsForShiftSummary($q, $shift),
+            ],
+        );
+
         $openUnpaidOrders = Order::where('shift_id', $shift->id)
             ->whereIn('payment_status', ['unpaid', 'partial'])
             ->whereNotIn('status', ['cancelled', 'refunded', 'completed'])
@@ -164,7 +173,11 @@ class ShiftController extends Controller
                 'discounts' => 0,
                 'refunds' => $refundsTotal,
                 'net_sales' => $gross - $refundsTotal,
+                'card_gross' => (float) ($commissionSummary['totals']['gross_commissionable'] ?? 0),
+                'card_commission' => (float) ($commissionSummary['totals']['commission_total'] ?? 0),
+                'card_net' => (float) ($commissionSummary['totals']['net_settlement'] ?? 0),
             ],
+            'payment_commission' => $commissionSummary,
             'tenders' => $tenders,
             'open_unpaid_orders' => $openUnpaidOrders,
         ]);
@@ -180,11 +193,17 @@ class ShiftController extends Controller
      */
     private function paymentsForShiftSummary(Shift $shift)
     {
+        return Payment::query()->where(function ($q) use ($shift) {
+            $this->scopePaymentsForShiftSummary($q, $shift);
+        });
+    }
+
+    private function scopePaymentsForShiftSummary($query, Shift $shift): void
+    {
         $gatewayMethods = ['bml_connect', 'bml_pay', 'bml', 'online', 'stripe'];
         $singleOpenShift = Shift::whereNull('closed_at')->count() === 1;
 
-        return Payment::query()
-            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+        $query->whereIn('status', ['paid', 'completed', 'confirmed'])
             ->where(function ($q) use ($shift, $gatewayMethods, $singleOpenShift) {
                 $q->where('shift_id', $shift->id);
 
