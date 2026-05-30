@@ -260,6 +260,17 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 820 }}>
+      <Card>
+        <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>How permissions work</p>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#6B5D4F', lineHeight: 1.55 }}>
+          <li><strong>Owner</strong> bypasses all checks — always full access.</li>
+          <li><strong>Role defaults</strong> apply to Manager and Staff; changes here affect every user on that role.</li>
+          <li><strong>User overrides</strong> (Allow / Deny / Inherit) win over role defaults for one person.</li>
+          <li><strong>Admin login</strong> requires <code style={{ fontSize: 12 }}>admin.access</code>; <strong>POS PIN login</strong> requires <code style={{ fontSize: 12 }}>pos.access</code>.</li>
+          <li>View-only grants (e.g. <code style={{ fontSize: 12 }}>inventory.view</code>, <code style={{ fontSize: 12 }}>devices.view</code>) do not include edit/manage actions.</li>
+        </ul>
+      </Card>
+
       <div style={{ display: 'flex', gap: 8 }}>
         <Button variant={tab === 'roles' ? 'primary' : 'ghost'} size="sm" icon={<Shield size={14} />} onClick={() => setTab('roles')}>
           Role permissions

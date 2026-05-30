@@ -204,7 +204,6 @@ const PERM_ALIASES: Record<string, string[]> = {
   'pos.hold_resume': ['orders.create'],
   'finance.cash_manage': ['payments.cash_manage', 'pos.open_shift', 'pos.close_shift'],
   'payments.cash_manage': ['finance.cash_manage', 'pos.open_shift', 'pos.close_shift'],
-  'staff.schedule': ['staff.manage'],
   'inventory.view': ['inventory.manage'],
 };
 

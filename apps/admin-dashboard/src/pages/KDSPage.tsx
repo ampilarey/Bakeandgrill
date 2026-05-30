@@ -4,6 +4,7 @@ import type { KdsTicket } from '../api';
 import { fetchMenuGroups, fetchAdminItems, toggleItemAvailability } from '../api/menu';
 import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useSse } from '../hooks/useSse';
 import { playChime, playLateAlert } from '../utils/audio';
 
@@ -43,6 +44,9 @@ function ticketPrepTarget(ticket: KdsTicket, itemPrepMap: Record<number, number>
 
 export function KDSPage() {
     usePageTitle('Kitchen Display');
+  const { can } = useCurrentUserPermissions();
+  const canManageOrders = can('orders.manage');
+  const can86Items = can('menu.manage');
   const [tickets, setTickets] = useState<KdsTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -258,7 +262,8 @@ export function KDSPage() {
           <Column title="Pending" items={pending} color="#f59e0b" flash={newTicketFlash}>
             {(t) => (
               <>
-                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
+                <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
+                {canManageOrders && (
                 <Btn
                   small onClick={() => act(t.id, kdsStart)}
                   disabled={acting === t.id}
@@ -266,6 +271,7 @@ export function KDSPage() {
                 >
                   {acting === t.id ? '…' : 'Start Cooking'}
                 </Btn>
+                )}
               </>
             )}
           </Column>
@@ -273,7 +279,7 @@ export function KDSPage() {
           <Column title="Cooking" items={cooking} color="#3b82f6">
             {(t) => (
               <>
-                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
+                <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
                 {/*
                   Marking ready moved to POS — cashier owns the
                   "Ready for pickup!" SMS so the call to notify the
@@ -310,7 +316,8 @@ export function KDSPage() {
           <Column title="Ready" items={ready} color="#22c55e">
             {(t) => (
               <>
-                <TicketHeader ticket={t} on86={handle86} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
+                <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
+                {canManageOrders && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <Btn
                     small onClick={() => act(t.id, kdsBump)}
@@ -327,6 +334,7 @@ export function KDSPage() {
                     Recall
                   </Btn>
                 </div>
+                )}
               </>
             )}
           </Column>

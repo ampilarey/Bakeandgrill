@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
   StatCard, TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
@@ -21,6 +22,8 @@ const STATUS_OPTIONS = [
 
 export default function RefundsPage() {
   usePageTitle('Refunds');
+  const { can } = useCurrentUserPermissions();
+  const canIssueRefund = can('orders.refund');
   const toast = useToast();
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
@@ -91,7 +94,9 @@ export default function RefundsPage() {
     <div>
       <PageHeader
         title="Refunds"
-        action={<Btn onClick={() => { setIssueOpen(true); setIssueError(''); }}>+ Process Refund</Btn>}
+        action={canIssueRefund ? (
+          <Btn onClick={() => { setIssueOpen(true); setIssueError(''); }}>+ Process Refund</Btn>
+        ) : undefined}
       />
 
       <TableStateBar error={error} onRetry={() => void load()} />

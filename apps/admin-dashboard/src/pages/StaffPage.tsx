@@ -518,7 +518,9 @@ export function StaffPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { can } = useCurrentUserPermissions();
-  const canManageStaff = can('staff.manage');
+  const canCreateStaff = can('staff.create');
+  const canUpdateStaff = can('staff.update');
+  const canDeleteStaff = can('staff.delete');
   const canSchedule = can('staff.schedule');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [activeTab, setActiveTab] = useState<'staff' | 'schedules'>(() => (
@@ -606,7 +608,7 @@ export function StaffPage() {
       <PageHeader
         title="Staff Management"
         subtitle="Manage staff accounts and PINs"
-        action={activeTab === 'staff' && canManageStaff ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
+        action={activeTab === 'staff' && canCreateStaff ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
       />
 
       {/* Tab switcher — schedules tab requires staff.schedule permission */}
@@ -664,13 +666,13 @@ export function StaffPage() {
                         for users who can actually perform it. Viewers see a
                         read-only row instead of a wall of buttons that all 403. */}
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {canManageStaff && (
+                      {canUpdateStaff && (
                         <Btn small variant="secondary" onClick={() => setEditing(m)}>Edit</Btn>
                       )}
-                      {canManageStaff && (
+                      {canUpdateStaff && (
                         <Btn small variant="ghost" onClick={() => setChangingPin(m)}>PIN</Btn>
                       )}
-                      {canManageStaff && (
+                      {canUpdateStaff && (
                         <Btn small variant="ghost" onClick={() => handleToggleActive(m)}>
                           {m.is_active ? 'Disable' : 'Enable'}
                         </Btn>
@@ -681,10 +683,10 @@ export function StaffPage() {
                           <Btn small variant="ghost" onClick={() => navigate(`/settings?tab=permissions&user=${m.id}`)}>POS perms →</Btn>
                         </>
                       )}
-                      {canManageStaff && (
+                      {canUpdateStaff && (
                         <Btn small variant="ghost" onClick={() => setNotifPrefsUser(m)}>SMS Prefs</Btn>
                       )}
-                      {canManageStaff && (
+                      {canDeleteStaff && (
                         <Btn small variant="danger" onClick={() => handleDelete(m)}>Remove</Btn>
                       )}
                     </div>
