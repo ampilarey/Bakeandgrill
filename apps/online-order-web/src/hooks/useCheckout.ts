@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchItems, fetchDeliveryFeePreview, setSalesChannel, type SalesChannel } from "../api/menu";
+import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, setSalesChannel, type SalesChannel } from "../api/menu";
 import { useCart } from "../context/CartContext";
 import {
   applyPromoCode,
@@ -225,6 +225,10 @@ export function useCheckout() {
   const [addressLabel, setAddressLabel] = useState("");
 
   const [deliveryFee, setDeliveryFee] = useState(0);
+  const [packagingFeeLaar, setPackagingFeeLaar] = useState(0);
+  const [packagingFeeLabel, setPackagingFeeLabel] = useState('Packaging fee');
+  const [smallOrderFeeLaar, setSmallOrderFeeLaar] = useState(0);
+  const [smallOrderFeeLabel, setSmallOrderFeeLabel] = useState('Small order fee');
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [isPlacing, setIsPlacing]     = useState(false);
   const [globalError, setGlobalError] = useState("");
@@ -428,7 +432,23 @@ export function useCheckout() {
   const itemTaxLaar = subtotalLaar > 0 ? Math.round(discountedSubtotalLaar * fullTaxLaar / subtotalLaar) : 0;
   const scTaxLaar = serviceChargeTaxLaar(serviceChargeConfig, serviceChargeLaar, weightedTaxRatePercent);
   const taxLaar = itemTaxLaar + scTaxLaar;
-  const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxLaar + deliveryFeeLaar;
+
+  useEffect(() => {
+    const feeOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
+    fetchCheckoutFeesPreview(feeOrderType, discountedSubtotalLaar)
+      .then((res) => {
+        setPackagingFeeLaar(res.packaging_fee_laar ?? 0);
+        setPackagingFeeLabel(res.packaging_fee_label ?? 'Packaging fee');
+        setSmallOrderFeeLaar(res.small_order_fee_laar ?? 0);
+        setSmallOrderFeeLabel(res.small_order_fee_label ?? 'Small order fee');
+      })
+      .catch(() => {
+        setPackagingFeeLaar(0);
+        setSmallOrderFeeLaar(0);
+      });
+  }, [orderType, discountedSubtotalLaar]);
+
+  const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
 
   const earnPreviewPoints = useMemo(
     () => estimateEarnPointsForSubtotalMvr(discountedSubtotalLaar / 100, earnRatePerMvr),
@@ -860,7 +880,9 @@ export function useCheckout() {
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
-    serviceChargeLaar, serviceChargeLabel: serviceChargePreview.label, totalLaar,
+    serviceChargeLaar, serviceChargeLabel: serviceChargePreview.label,
+    packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
+    totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardDelta,

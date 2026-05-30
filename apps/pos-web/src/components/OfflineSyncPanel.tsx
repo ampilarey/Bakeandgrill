@@ -9,6 +9,7 @@ import {
   type SyncLogRecord,
 } from "../offline/db";
 import { runOfflineSync } from "../offline/syncEngine";
+import { ConflictResolveModal } from "./ConflictResolveModal";
 
 type Props = {
   shiftId: number | null;
@@ -22,6 +23,7 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [detailOrder, setDetailOrder] = useState<OfflineOrderRecord | null>(null);
 
   const refresh = useCallback(async () => {
     const count = await countPendingOfflineOrders(shiftId ?? undefined);
@@ -162,6 +164,19 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
                       <button
                         type="button"
                         disabled={busy}
+                        onClick={() => setDetailOrder(order)}
+                        style={{
+                          minHeight: 36, padding: "0 12px", borderRadius: 8,
+                          border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a",
+                          fontWeight: 600, cursor: "pointer",
+                          opacity: busy ? 0.6 : 1,
+                        }}
+                      >
+                        View details
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
                         onClick={() => void handleRetry(order)}
                         style={{
                           minHeight: 36, padding: "0 12px", borderRadius: 8, border: "none",
@@ -223,6 +238,20 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
           </button>
         </div>
       </div>
+
+      {detailOrder && (
+        <ConflictResolveModal
+          order={detailOrder}
+          busy={resolvingId === detailOrder.local_order_id}
+          onClose={() => setDetailOrder(null)}
+          onRetry={() => {
+            void handleRetry(detailOrder).then(() => setDetailOrder(null));
+          }}
+          onDiscard={() => {
+            void handleDiscard(detailOrder).then(() => setDetailOrder(null));
+          }}
+        />
+      )}
     </div>
   );
 }

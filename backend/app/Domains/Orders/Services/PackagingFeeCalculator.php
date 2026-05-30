@@ -15,6 +15,16 @@ class PackagingFeeCalculator
 
     public function calculatePackaging(Order $order, int $discountedSubtotalLaar): int
     {
+        return $this->previewPackagingForOrderType((string) ($order->type ?? ''), $discountedSubtotalLaar);
+    }
+
+    public function calculateSmallOrder(Order $order, int $discountedSubtotalLaar): int
+    {
+        return $this->previewSmallOrderForOrderType((string) ($order->type ?? ''), $discountedSubtotalLaar);
+    }
+
+    public function previewPackagingForOrderType(string $orderType, int $discountedSubtotalLaar): int
+    {
         if ($discountedSubtotalLaar <= 0) {
             return 0;
         }
@@ -23,7 +33,6 @@ class PackagingFeeCalculator
             return 0;
         }
 
-        $orderType = (string) ($order->type ?? '');
         if (!$this->orderTypeEligible($orderType)) {
             return 0;
         }
@@ -50,7 +59,7 @@ class PackagingFeeCalculator
         return max(0, (int) round($value * 100));
     }
 
-    public function calculateSmallOrder(Order $order, int $discountedSubtotalLaar): int
+    public function previewSmallOrderForOrderType(string $orderType, int $discountedSubtotalLaar): int
     {
         if ($discountedSubtotalLaar <= 0) {
             return 0;
@@ -60,7 +69,6 @@ class PackagingFeeCalculator
             return 0;
         }
 
-        $orderType = (string) ($order->type ?? '');
         if (!in_array($orderType, ['online_pickup', 'delivery'], true)) {
             return 0;
         }
@@ -76,6 +84,24 @@ class PackagingFeeCalculator
         $feeMvr = min(max(0, $feeMvr), self::MAX_FIXED_MVR);
 
         return max(0, (int) round($feeMvr * 100));
+    }
+
+    /**
+     * @return array{
+     *   packaging_fee_laar: int,
+     *   packaging_fee_label: string,
+     *   small_order_fee_laar: int,
+     *   small_order_fee_label: string,
+     * }
+     */
+    public function previewCheckoutFees(string $orderType, int $discountedSubtotalLaar): array
+    {
+        return [
+            'packaging_fee_laar' => $this->previewPackagingForOrderType($orderType, $discountedSubtotalLaar),
+            'packaging_fee_label' => $this->stringSetting('packaging_fee_label', 'Packaging fee'),
+            'small_order_fee_laar' => $this->previewSmallOrderForOrderType($orderType, $discountedSubtotalLaar),
+            'small_order_fee_label' => 'Small order fee',
+        ];
     }
 
     public function orderTypeEligible(string $orderType): bool

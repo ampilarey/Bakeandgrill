@@ -86,6 +86,24 @@ export async function fetchDeliveryFeePreview(
   return request<DeliveryFeePreview>(`${ENDPOINTS.ORDERING_DELIVERY_FEE_PREVIEW}?${qs}`);
 }
 
+export type CheckoutFeesPreview = {
+  packaging_fee_laar: number;
+  packaging_fee_label: string;
+  small_order_fee_laar: number;
+  small_order_fee_label: string;
+};
+
+export async function fetchCheckoutFeesPreview(
+  orderType: 'delivery' | 'online_pickup',
+  discountedSubtotalLaar: number,
+): Promise<CheckoutFeesPreview> {
+  const qs = new URLSearchParams({
+    order_type: orderType,
+    discounted_subtotal_laar: String(Math.max(0, discountedSubtotalLaar)),
+  });
+  return request<CheckoutFeesPreview>(`${ENDPOINTS.ORDERING_CHECKOUT_FEES_PREVIEW}?${qs}`);
+}
+
 export async function fetchCategories(): Promise<{ data: Category[] }> {
   return request<{ data: Category[] }>(ENDPOINTS.CATEGORIES);
 }

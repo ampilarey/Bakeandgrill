@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, getWaitTimeEstimate, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, getWaitTimeEstimate, getMyReferralCode, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { WhatsAppIcon, ViberIcon } from "../components/icons";
@@ -269,6 +269,7 @@ export function OrderStatusPage() {
   const [payError, setPayError] = useState("");
   const [reordering, setReordering] = useState(false);
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
   const token = readToken();
   const esRef = useRef<EventSource | null>(null);
@@ -320,6 +321,16 @@ export function OrderStatusPage() {
       })
       .catch(() => { /* non-blocking */ });
   }, [order?.status, order?.id]);
+
+  useEffect(() => {
+    if (!token) {
+      setReferralCode(null);
+      return;
+    }
+    getMyReferralCode(token)
+      .then((res) => setReferralCode(res.code ?? null))
+      .catch(() => setReferralCode(null));
+  }, [token]);
 
   // ONL-002: only trust the SERVER for "is this order paid?". The
   // ?payment=CONFIRMED query param can be forged by anyone pasting a
@@ -435,8 +446,11 @@ export function OrderStatusPage() {
 
   const handleShareOrder = async () => {
     if (!order) return;
-    const shareText = `Just ordered from Bake & Grill! Order #${order.order_number}`;
-    const shareUrl = window.location.href;
+    const referralLine = referralCode
+      ? `\nUse my code ${referralCode} on your first order at Bake & Grill!`
+      : '';
+    const shareText = `Just ordered from Bake & Grill! Order #${order.order_number}${referralLine}`;
+    const shareUrl = window.location.origin + '/order';
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Bake & Grill', text: shareText, url: shareUrl });

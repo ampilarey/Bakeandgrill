@@ -106,7 +106,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 }
 
 // ── T&C + Pay button (reused in both columns depending on viewport) ───────────
-function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay, gateClosed, gateMessage, hasPendingReferral }: {
+function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay, gateClosed, gateMessage, hasPendingReferral, waLink }: {
   acceptTerms: boolean;
   setAcceptTerms: (v: boolean) => void;
   globalError: string | null;
@@ -116,6 +116,7 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
   gateClosed?: boolean;
   gateMessage?: string | null;
   hasPendingReferral?: boolean;
+  waLink?: string;
 }) {
   const disabled = isPlacing || !acceptTerms || !!gateClosed;
   return (
@@ -151,6 +152,20 @@ function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, place
           <div>
             <p className="banner-title">Something went wrong</p>
             <p className="banner-sub">{globalError}</p>
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
+                  fontSize: '0.8125rem', fontWeight: 700, color: '#166534',
+                  background: '#dcfce7', padding: '6px 12px', borderRadius: 999, textDecoration: 'none',
+                }}
+              >
+                <WhatsAppIcon size={16} /> Message us on WhatsApp
+              </a>
+            )}
           </div>
         </div>
       )}
@@ -243,6 +258,7 @@ export function CheckoutPage() {
     deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
     serviceChargeLaar, serviceChargeLabel, totalLaar,
+    packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardDelta,
@@ -686,6 +702,12 @@ export function CheckoutPage() {
       {serviceChargeLaar > 0 && (
         <SummaryRow label={serviceChargeLabel} value={`MVR ${laarToMvr(serviceChargeLaar)}`} />
       )}
+      {packagingFeeLaar > 0 && (
+        <SummaryRow label={packagingFeeLabel} value={`MVR ${laarToMvr(packagingFeeLaar)}`} />
+      )}
+      {smallOrderFeeLaar > 0 && (
+        <SummaryRow label={smallOrderFeeLabel} value={`MVR ${laarToMvr(smallOrderFeeLaar)}`} />
+      )}
       {taxLaar > 0 && (
         <SummaryRow label="GST" value={`MVR ${laarToMvr(taxLaar)}`} />
       )}
@@ -753,6 +775,7 @@ export function CheckoutPage() {
       gateClosed={orderingGateClosed}
       gateMessage={onlineGate?.message}
       hasPendingReferral={hasPendingReferral}
+      waLink={waLink}
     />
   );
 

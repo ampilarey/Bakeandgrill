@@ -60,7 +60,7 @@ class SendOrderStatusPushListener implements \Illuminate\Contracts\Queue\ShouldQ
             'ready' => ['Order Ready!',         "Order {$orderNum} is ready for pickup or out for delivery!"],
             'out_for_delivery' => ['Out for Delivery!',    "Order {$orderNum} is on its way to you."],
             'completed' => ['Order Delivered!',     "Order {$orderNum} has been completed. Enjoy your meal!"],
-            'cancelled' => ['Order Cancelled',      "Order {$orderNum} has been cancelled. Please contact us if you have questions."],
+            'cancelled' => ['Order Cancelled',      "Order {$orderNum} was cancelled. If you were charged, your refund will arrive within 3–5 business days. WhatsApp us if you need help."],
             default => [null, ''],
         };
     }

@@ -3,6 +3,21 @@
 @php
     $homeMetaTitle = \App\Models\SiteSetting::get('meta_title', 'Bake & Grill – Dhivehi Breakfast & Artisan Baking in Malé');
     $homeMetaDesc  = \App\Models\SiteSetting::get('meta_description', 'Real food, proper char, baked fresh at 5am daily. Order Dhivehi hedhikaa, artisan pastries and grills online. Fast delivery across Malé.');
+
+    if (!function_exists('normalize_public_menu_link')) {
+        function normalize_public_menu_link(?string $link): string
+        {
+            $link = trim((string) ($link ?: '/order/menu'));
+            if ($link === '/menu') {
+                return '/order/menu';
+            }
+            if (str_starts_with($link, '/menu?') || str_starts_with($link, '/menu/')) {
+                return '/order' . $link;
+            }
+
+            return $link;
+        }
+    }
 @endphp
 @section('title', $homeMetaTitle)
 @section('description', $homeMetaDesc)
@@ -837,7 +852,7 @@
                     @endif
                     <div class="banner-ctas">
                         <a href="{{ $slide['cta_url']  ?? '/order/' }}" class="banner-cta-primary">{{ $slide['cta_text']  ?? 'Order Now →' }}</a>
-                        <a href="{{ $slide['cta2_url'] ?? '/order/menu' }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
+                        <a href="{{ normalize_public_menu_link($slide['cta2_url'] ?? '/order/menu') }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
                     </div>
                 </div>
             </div>
@@ -1006,7 +1021,7 @@
         </div>
         <div class="categories-grid">
             @foreach($categories as $cat)
-            <a href="{{ $cat['link'] ?? '/order/menu' }}" class="cat-card">
+            <a href="{{ normalize_public_menu_link($cat['link'] ?? '/order/menu') }}" class="cat-card">
                 <div class="cat-img">
                     @if(!empty($cat['image_url']))
                         <img src="{{ $cat['image_url'] }}"

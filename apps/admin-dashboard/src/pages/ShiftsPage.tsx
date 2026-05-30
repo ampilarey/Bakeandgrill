@@ -221,6 +221,36 @@ function MyShiftPanel({
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
             Enter the actual cash counted in the drawer. Variance is calculated when you close.
           </p>
+          {closeSummary && closingCash !== '' && !Number.isNaN(parseFloat(closingCash)) && (
+            (() => {
+              const expected = Number(closeSummary.cash_drawer.expected_cash);
+              const actual = parseFloat(closingCash);
+              const variance = actual - expected;
+              const over = variance > 0.009;
+              const under = variance < -0.009;
+              return (
+                <div style={{
+                  background: under ? '#fef2f2' : over ? '#fffbeb' : '#f0fdf4',
+                  border: `1px solid ${under ? '#fecaca' : over ? '#fde68a' : '#bbf7d0'}`,
+                  borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 13,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#1C1408' }}>
+                    <span>Preview variance</span>
+                    <span style={{ color: under ? '#b91c1c' : over ? '#b45309' : '#15803d' }}>
+                      {variance >= 0 ? '+' : ''}{formatMVR(variance)}
+                    </span>
+                  </div>
+                  <p style={{ margin: '8px 0 0', color: '#6B5D4F', lineHeight: 1.45 }}>
+                    {Math.abs(variance) < 0.01
+                      ? 'Counts match expected cash.'
+                      : under
+                        ? 'Drawer is short — check for unrecorded payouts, wrong change, or miscounted bills.'
+                        : 'Drawer is over — check for unrecorded cash sales or duplicate paid-ins.'}
+                  </p>
+                </div>
+              );
+            })()
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={S.label}>Actual Closing Cash (MVR) *</span>

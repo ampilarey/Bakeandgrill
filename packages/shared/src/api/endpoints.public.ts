@@ -38,6 +38,7 @@ export const PUBLIC_ENDPOINTS = {
   ORDERING_STATUS:           '/ordering/status',
   ORDERING_DELIVERY_STATUS:  '/ordering/delivery-status',
   ORDERING_DELIVERY_FEE_PREVIEW: '/ordering/delivery-fee-preview',
+  ORDERING_CHECKOUT_FEES_PREVIEW: '/ordering/checkout-fees-preview',
   PICKUP_SLOTS:                '/ordering/pickup-slots',
   REVIEWS_FEATURED:            '/reviews/featured',
   CORPORATE_INQUIRIES:         '/corporate-inquiries',
