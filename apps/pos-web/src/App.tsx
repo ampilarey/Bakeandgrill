@@ -23,6 +23,7 @@ import { makeCartKey }       from "./hooks/useCart";
 import { OpenShiftModal }    from "./components/OpenShiftModal";
 import { CloseShiftModal }   from "./components/CloseShiftModal";
 import { ShiftClosedGate }   from "./components/ShiftClosedGate";
+import { KitchenStaffLanding } from "./components/KitchenStaffLanding";
 import { ChargeOverlay }     from "./components/ChargeOverlay";
 import { SaveTicketModal }   from "./components/SaveTicketModal";
 import { OpenTicketsPanel }  from "./components/OpenTicketsPanel";
@@ -105,7 +106,9 @@ function App() {
   const canSendPayLink = hasPosPermission(staffPermissions, "orders.send_payment_link");
   const canManageOrderStatus = hasPosPermission(staffPermissions, "pos.manage_order_status");
   const canTimeClock = hasPosPermission(staffPermissions, "pos.time_clock");
+  const canViewKds = hasPosPermission(staffPermissions, "kds.view");
   const canAccessOps = canOpsInventory || canOpsPreparedStock || canOpsSuppliers || canOpsReports || canOpsMarketing;
+  const canKitchenOnly = canViewKds && !canRingSales && !canAccessOps && !canViewShiftHistory;
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
     // Priority order:
@@ -1023,6 +1026,16 @@ function App() {
         cashierName={cashierName}
         onUnlock={handleUnlock}
         onSwitchUser={handleLogout}
+      />
+    );
+  }
+
+  if (canKitchenOnly) {
+    return (
+      <KitchenStaffLanding
+        cashierName={cashierName}
+        onLogout={handleLogout}
+        onSwitchUser={canLockScreen ? lockScreen : undefined}
       />
     );
   }

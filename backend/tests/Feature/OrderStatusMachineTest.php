@@ -75,6 +75,9 @@ class OrderStatusMachineTest extends TestCase
             'is_active' => true,
         ]);
 
+        $this->staffUser->grantPermission('kds.start_order');
+        $this->staffUser->unsetRelation('permissions');
+
         Device::create([
             'name' => 'Status POS',
             'identifier' => self::DEVICE_ID,

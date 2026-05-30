@@ -24,7 +24,12 @@ trait PreparesPosApi
         $user->loadMissing('role');
         $roleSlug = $user->role?->slug;
 
-        if (!in_array($roleSlug, ['owner', 'manager', 'staff'], true)) {
+        if ($roleSlug === 'kitchen_staff') {
+            foreach (PermissionCatalog::kitchenStaffSlugs() as $slug) {
+                $user->grantPermission($slug);
+            }
+            $user->unsetRelation('permissions');
+        } elseif (!in_array($roleSlug, ['owner', 'manager', 'staff'], true)) {
             foreach (PermissionCatalog::staffSlugs() as $slug) {
                 $user->grantPermission($slug);
             }

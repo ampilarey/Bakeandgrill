@@ -20,7 +20,7 @@ class CreateStaffUserCommand extends Command
     protected $signature = 'staff:create
         {email : Staff email used at PIN login}
         {pin : 4–8 digit PIN}
-        {--role=owner : Role slug: owner, manager, staff}
+        {--role=owner : Role slug: owner, manager, staff, kitchen_staff}
         {--name= : Display name (default: local part of email)}
         {--force : Required in production when ALLOW_STAFF_CLI_CREATE is true}';
 
@@ -54,7 +54,7 @@ class CreateStaffUserCommand extends Command
 
         $role = Role::where('slug', $roleSlug)->first();
         if ($role === null) {
-            $this->error("Unknown role slug: {$roleSlug}. Use owner, manager, or staff.");
+            $this->error("Unknown role slug: {$roleSlug}. Use owner, manager, staff, or kitchen_staff.");
 
             return 1;
         }

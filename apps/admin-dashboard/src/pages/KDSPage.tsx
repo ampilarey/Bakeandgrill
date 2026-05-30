@@ -45,8 +45,9 @@ function ticketPrepTarget(ticket: KdsTicket, itemPrepMap: Record<number, number>
 export function KDSPage() {
     usePageTitle('Kitchen Display');
   const { can } = useCurrentUserPermissions();
-  const canManageOrders = can('orders.manage');
-  const can86Items = can('menu.manage');
+  const canStart = can('kds.start_order') || can('orders.manage');
+  const canBumpRecall = can('kds.bump_order') || can('orders.manage');
+  const can86Items = can('kds.manage_availability') || can('menu.manage');
   const [tickets, setTickets] = useState<KdsTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -263,7 +264,7 @@ export function KDSPage() {
             {(t) => (
               <>
                 <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
-                {canManageOrders && (
+                {canStart && (
                 <Btn
                   small onClick={() => act(t.id, kdsStart)}
                   disabled={acting === t.id}
@@ -317,7 +318,7 @@ export function KDSPage() {
             {(t) => (
               <>
                 <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
-                {canManageOrders && (
+                {canBumpRecall && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <Btn
                     small onClick={() => act(t.id, kdsBump)}

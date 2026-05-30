@@ -5,13 +5,15 @@ export type KdsOrderItem = {
   id: number;
   item_id?: number | null;
   item_name: string;
+  variant_name?: string | null;
   quantity: number;
+  notes?: string | null;
+  status?: string;
   menu_group_id?: number | null;
   prep_time_minutes?: number | null;
   modifiers?: Array<{
     id: number;
     modifier_name: string;
-    modifier_price: number;
   }>;
 };
 
@@ -22,13 +24,26 @@ export type KdsOrder = {
   type?: string;
   created_at: string;
   delivery_island?: string | null;
+  delivery_summary?: string | null;
   table_number?: string | null;
+  ticket_name?: string | null;
+  notes?: string | null;
+  kitchen_done_at?: string | null;
+  kitchen_done_by?: { id: number; name: string } | null;
   items: KdsOrderItem[];
 };
 
 export type KdsMenuGroup = {
   id: number;
   name: string;
+};
+
+export type KdsStaffUser = {
+  id: number;
+  name: string;
+  role: string;
+  role_label?: string;
+  permissions: string[];
 };
 
 const apiBaseUrl =
@@ -50,14 +65,25 @@ function authHeaders(token: string) {
 }
 
 export async function staffLogin(
+  username: string,
   pin: string,
   deviceIdentifier: string,
 ): Promise<string> {
   const data = await request<{ token: string }>(ENDPOINTS.STAFF_PIN_LOGIN, {
     method: 'POST',
-    body: JSON.stringify({ pin, device_identifier: deviceIdentifier }),
+    body: JSON.stringify({
+      username: username.trim(),
+      pin,
+      device_identifier: deviceIdentifier,
+    }),
   });
   return data.token;
+}
+
+export async function fetchMe(token: string): Promise<KdsStaffUser> {
+  return request<KdsStaffUser>(ENDPOINTS.AUTH_ME, {
+    headers: authHeaders(token),
+  });
 }
 
 export async function fetchKdsOrders(token: string): Promise<KdsOrder[]> {
@@ -76,6 +102,20 @@ export async function fetchKdsMenuGroups(token: string): Promise<KdsMenuGroup[]>
 
 export async function startOrder(token: string, orderId: number): Promise<void> {
   await request<void>(ENDPOINTS.KDS_ORDER_START(orderId), {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+}
+
+export async function kitchenDoneOrder(token: string, orderId: number): Promise<void> {
+  await request<void>(ENDPOINTS.KDS_ORDER_KITCHEN_DONE(orderId), {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+}
+
+export async function printKitchenTicket(token: string, orderId: number): Promise<void> {
+  await request<void>(ENDPOINTS.KDS_ORDER_PRINT_TICKET(orderId), {
     method: 'POST',
     headers: authHeaders(token),
   });
@@ -100,4 +140,8 @@ export async function markItem86(token: string, itemId: number): Promise<void> {
     method: 'POST',
     headers: authHeaders(token),
   });
+}
+
+export function hasKdsPermission(permissions: string[], slug: string): boolean {
+  return permissions.includes(slug);
 }

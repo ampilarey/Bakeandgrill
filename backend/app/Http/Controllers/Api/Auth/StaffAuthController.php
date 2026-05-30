@@ -62,9 +62,10 @@ class StaffAuthController extends Controller
         $user->update(['last_login_at' => now()]);
 
         $user->loadMissing('role');
-        if (!app(\App\Services\PermissionService::class)->hasPermission($user, 'pos.access')) {
+        $permissions = app(\App\Services\PermissionService::class);
+        if (!$permissions->hasPermission($user, 'pos.access') && !$permissions->hasPermission($user, 'kds.view')) {
             throw ValidationException::withMessages([
-                'pin' => ['You do not have permission to access the POS.'],
+                'pin' => ['You do not have permission to sign in on staff devices.'],
             ]);
         }
 

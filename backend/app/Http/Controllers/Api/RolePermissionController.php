@@ -16,7 +16,7 @@ class RolePermissionController extends Controller
     /** GET /api/roles/{slug}/permissions */
     public function show(string $slug): JsonResponse
     {
-        abort_unless(in_array($slug, ['owner', 'manager', 'staff'], true), 404, 'Unknown role.');
+        abort_unless(in_array($slug, ['owner', 'manager', 'staff', 'kitchen_staff'], true), 404, 'Unknown role.');
 
         return response()->json([
             'role' => $slug,
@@ -32,7 +32,7 @@ class RolePermissionController extends Controller
     {
         abort_if($slug === 'owner', 403, 'Owner permissions cannot be modified — owners always have full access.');
 
-        abort_unless(in_array($slug, ['manager', 'staff'], true), 404, 'Unknown role.');
+        abort_unless(in_array($slug, ['manager', 'staff', 'kitchen_staff'], true), 404, 'Unknown role.');
 
         $validated = $request->validate([
             'permissions' => 'required|array',

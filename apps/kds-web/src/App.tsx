@@ -3,12 +3,17 @@ import {
   bumpOrder,
   fetchKdsOrders,
   fetchKdsMenuGroups,
+  fetchMe,
+  hasKdsPermission,
+  kitchenDoneOrder,
   markItem86,
+  printKitchenTicket,
   recallOrder,
   staffLogin,
   startOrder,
   type KdsMenuGroup,
   type KdsOrder,
+  type KdsStaffUser,
 } from "./api";
 import { useKdsSse } from "./hooks/useKdsSse";
 import { isAudioEnabled, playChime, playLateAlert, setAudioEnabled } from "./utils/audio";
@@ -37,7 +42,10 @@ const formatTime = (iso: string) =>
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState(() => localStorage.getItem("kds_username") ?? "");
   const [pin, setPin] = useState("");
+  const [staffUser, setStaffUser] = useState<KdsStaffUser | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [deviceId, setDeviceId] = useState(() => {
     const stored = localStorage.getItem("kds_device_id");
     if (stored) return stored;
@@ -64,7 +72,22 @@ function App() {
     const saved = localStorage.getItem("kds_token");
     if (saved) {
       setToken(saved);
-      setIsLoggedIn(true);
+      fetchMe(saved)
+        .then((me) => {
+          setStaffUser(me);
+          setPermissions(me.permissions ?? []);
+          if (hasKdsPermission(me.permissions ?? [], "kds.view")) {
+            setIsLoggedIn(true);
+          } else {
+            localStorage.removeItem("kds_token");
+            setToken(null);
+            setErrorMessage("No KDS access for this account.");
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem("kds_token");
+          setToken(null);
+        });
     }
   }, []);
 
@@ -183,17 +206,36 @@ function App() {
       .finally(() => setEightySixing(null));
   };
 
+  const canStart = hasKdsPermission(permissions, "kds.start_order");
+  const canKitchenDone = hasKdsPermission(permissions, "kds.mark_kitchen_done");
+  const canBump = hasKdsPermission(permissions, "kds.bump_order");
+  const canRecall = hasKdsPermission(permissions, "kds.recall_order");
+  const can86 = hasKdsPermission(permissions, "kds.manage_availability");
+  const canPrint = hasKdsPermission(permissions, "kds.print_ticket");
+
   const handleLogin = async () => {
     setErrorMessage("");
+    if (username.trim().length < 3) {
+      setErrorMessage("Enter your email or phone.");
+      return;
+    }
     if (pin.trim().length < 4) {
       setErrorMessage("Enter a valid PIN.");
       return;
     }
 
     try {
-      const tokenValue = await staffLogin(pin.trim(), deviceId.trim());
+      const tokenValue = await staffLogin(username.trim(), pin.trim(), deviceId.trim());
+      const me = await fetchMe(tokenValue);
+      if (!hasKdsPermission(me.permissions ?? [], "kds.view")) {
+        setErrorMessage("No KDS access for this account.");
+        return;
+      }
       localStorage.setItem("kds_token", tokenValue);
+      localStorage.setItem("kds_username", username.trim());
       localStorage.setItem("kds_device_id", deviceId.trim());
+      setStaffUser(me);
+      setPermissions(me.permissions ?? []);
       isFirstLoadRef.current = true;
       prevPendingIdsRef.current = new Set();
       lateAlertedRef.current = new Set();
@@ -201,7 +243,7 @@ function App() {
       setIsLoggedIn(true);
       setPin("");
     } catch {
-      setErrorMessage("Login failed. Check your PIN.");
+      setErrorMessage("Login failed. Check your email/phone and PIN.");
     }
   };
 
@@ -219,9 +261,25 @@ function App() {
       .catch(() => setErrorMessage(`Failed to complete order #${orderId}. Please retry.`));
   };
 
+  const handleKitchenDone = (orderId: number) => {
+    if (!token) return;
+    kitchenDoneOrder(token, orderId)
+      .then(() => void load(token))
+      .catch(() => setErrorMessage(`Failed to mark order #${orderId} kitchen done.`));
+  };
+
+  const handlePrint = (orderId: number) => {
+    if (!token) return;
+    printKitchenTicket(token, orderId)
+      .then(() => setErrorMessage(""))
+      .catch(() => setErrorMessage(`Failed to queue print for order #${orderId}.`));
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("kds_token");
     setToken(null);
+    setStaffUser(null);
+    setPermissions([]);
     setIsLoggedIn(false);
     setOrders([]);
     isFirstLoadRef.current = true;
@@ -266,7 +324,24 @@ function App() {
         }}>
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: "inline-block" }} />
-            <p style={{ color: "#8B7355", fontSize: 14, margin: 0 }}>Kitchen Display — Enter your PIN</p>
+            <p style={{ color: "#8B7355", fontSize: 14, margin: 0 }}>Kitchen Display — sign in</p>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8B7355", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Email or phone
+            </label>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                borderRadius: 10, padding: "10px 12px",
+                border: "1px solid #EDE4D4", fontSize: 14,
+                color: "#2A1E0C", background: "#FFFDF9", outline: "none",
+              }}
+            />
           </div>
 
           <div style={{ marginBottom: 20 }}>
@@ -390,6 +465,11 @@ function App() {
             {order.delivery_island && (
               <p className="text-xs" style={{ color: "#D4813A" }}>🛵 {order.delivery_island}</p>
             )}
+            {order.kitchen_done_at && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#047857", background: "#ECFDF5", padding: "2px 6px", borderRadius: 999 }}>
+                Kitchen done
+              </span>
+            )}
             {order.table_number && (
               <p className="text-xs" style={{ color: "#8B7355" }}>Table {order.table_number}</p>
             )}
@@ -412,7 +492,7 @@ function App() {
                   </div>
                 )}
               </div>
-              {item.item_id ? (
+              {item.item_id && can86 ? (
                 <button
                   type="button"
                   onClick={() => handle86(item.item_id!)}
@@ -428,8 +508,8 @@ function App() {
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          {["pending", "paid", "partial"].includes(order.status) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {["pending", "paid", "partial"].includes(order.status) && canStart && (
             <button
               className="flex-1 rounded-lg text-white py-2 text-sm font-semibold"
               style={{ background: "#1C1408" }}
@@ -439,21 +519,54 @@ function App() {
             </button>
           )}
           {["in_progress", "preparing"].includes(order.status) && (
-            <div
-              className="flex-1 rounded-lg py-2 text-sm font-semibold text-center"
-              style={{ background: "#EFF6FF", color: "#1E40AF", border: "1px dashed #BFDBFE" }}
-            >
-              Ready? Tell cashier — they mark ready from POS
-            </div>
+            <>
+              {canKitchenDone && !order.kitchen_done_at && (
+                <button
+                  className="flex-1 rounded-lg text-white py-2 text-sm font-semibold"
+                  style={{ background: "#047857" }}
+                  onClick={() => handleKitchenDone(order.id)}
+                >
+                  Kitchen done
+                </button>
+              )}
+              {order.kitchen_done_at && (
+                <div
+                  className="flex-1 rounded-lg py-2 text-sm font-semibold text-center"
+                  style={{ background: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0" }}
+                >
+                  Waiting for cashier to mark ready
+                </div>
+              )}
+              {!canKitchenDone && !order.kitchen_done_at && (
+                <div
+                  className="flex-1 rounded-lg py-2 text-sm font-semibold text-center"
+                  style={{ background: "#EFF6FF", color: "#1E40AF", border: "1px dashed #BFDBFE" }}
+                >
+                  Ready? Tell cashier — they mark ready from POS
+                </div>
+              )}
+              {canPrint && (
+                <button
+                  className="rounded-lg py-2 px-3 text-sm font-semibold"
+                  style={{ border: "1px solid #EDE4D4", color: "#8B7355" }}
+                  onClick={() => handlePrint(order.id)}
+                >
+                  Print
+                </button>
+              )}
+            </>
           )}
           {order.status === "ready" && (
             <>
+              {canBump && (
               <button
                 className="flex-1 rounded-lg bg-emerald-600 text-white py-2 text-sm font-semibold"
                 onClick={() => handleBump(order.id)}
               >
                 Complete ✓
               </button>
+              )}
+              {canRecall && (
               <button
                 className="rounded-lg py-2 px-3 text-sm font-semibold"
                 style={{ border: "1px solid #EDE4D4", color: "#8B7355" }}
@@ -461,6 +574,7 @@ function App() {
               >
                 Recall
               </button>
+              )}
             </>
           )}
         </div>
@@ -501,7 +615,9 @@ function App() {
       <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm" style={{ borderBottom: "1px solid #EDE4D4" }}>
         <div>
           <h1 className="text-xl font-semibold" style={{ color: "#2A1E0C" }}>Bake & Grill KDS</h1>
-          <p className="text-sm" style={{ color: "#8B7355" }}>Device {deviceId}</p>
+          <p className="text-sm" style={{ color: "#8B7355" }}>
+            {staffUser?.name ?? "Kitchen"}{staffUser?.role === "kitchen_staff" ? " · Kitchen Staff" : staffUser?.role ? ` · ${staffUser.role}` : ""} · Device {deviceId}
+          </p>
         </div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
           <span className="text-sm" style={{ color: sseConnected ? "#047857" : "#B45309", fontWeight: 600 }}>

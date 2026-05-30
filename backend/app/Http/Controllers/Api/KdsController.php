@@ -12,6 +12,7 @@ use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Services\AuditLogService;
 use App\Services\OrderStatusMachine;
+use App\Services\PrintJobService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -46,11 +47,16 @@ class KdsController extends Controller
             $statuses = $allowed;
         }
 
-        $orders = Order::with(['items.modifiers', 'items.item:id,menu_group_id,prep_time_minutes,is_available'])
+        $orders = Order::with([
+            'items.modifiers',
+            'items.item:id,menu_group_id,prep_time_minutes,is_available',
+            'table:id,number,label',
+            'kitchenDoneBy:id,name',
+        ])
             ->whereIn('status', $statuses)
             ->orderBy('created_at')
             ->get()
-            ->map(fn (Order $order) => $this->formatOrder($order));
+            ->map(fn (Order $order) => $this->formatKitchenOrder($order));
 
         return response()->json(['orders' => $orders]);
     }
@@ -79,20 +85,59 @@ class KdsController extends Controller
         ]);
     }
 
-    /** @return array<string, mixed> */
-    private function formatOrder(Order $order): array
+    /** Kitchen-safe order payload — no financial or payment fields. */
+    public static function formatKitchenOrder(Order $order): array
     {
-        $data = $order->toArray();
-        $data['items'] = $order->items->map(function ($line) {
-            $row = $line->toArray();
-            $row['menu_group_id'] = $line->item?->menu_group_id;
-            $row['prep_time_minutes'] = $line->item?->prep_time_minutes;
-            unset($row['item']);
+        $tableLabel = $order->ticket_name
+            ?? $order->table?->label
+            ?? $order->table?->number
+            ?? null;
 
-            return $row;
-        })->values()->all();
+        $payload = [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'type' => $order->type,
+            'status' => $order->status,
+            'table_number' => $tableLabel,
+            'ticket_name' => $order->ticket_name,
+            'notes' => $order->notes,
+            'customer_notes' => $order->customer_notes,
+            'created_at' => $order->created_at?->toIso8601String(),
+            'updated_at' => $order->updated_at?->toIso8601String(),
+            'kitchen_done_at' => $order->kitchen_done_at?->toIso8601String(),
+            'kitchen_done_by' => $order->kitchenDoneBy ? [
+                'id' => $order->kitchenDoneBy->id,
+                'name' => $order->kitchenDoneBy->name,
+            ] : null,
+            'items' => $order->items->map(function ($line) {
+                return [
+                    'id' => $line->id,
+                    'item_id' => $line->item_id,
+                    'item_name' => $line->item_name,
+                    'variant_name' => $line->variant_name,
+                    'quantity' => $line->quantity,
+                    'notes' => $line->notes,
+                    'status' => $line->status,
+                    'menu_group_id' => $line->item?->menu_group_id,
+                    'prep_time_minutes' => $line->item?->prep_time_minutes,
+                    'modifiers' => $line->modifiers->map(fn ($m) => [
+                        'id' => $m->id,
+                        'modifier_name' => $m->modifier_name,
+                    ])->values()->all(),
+                ];
+            })->values()->all(),
+        ];
 
-        return $data;
+        if ($order->type === 'delivery') {
+            $payload['delivery_summary'] = implode(', ', array_filter([
+                $order->delivery_contact_name,
+                $order->delivery_address_line1,
+                $order->delivery_island,
+            ]));
+            $payload['delivery_island'] = $order->delivery_island;
+        }
+
+        return $payload;
     }
 
     public function start(Request $request, int $id): JsonResponse
@@ -108,14 +153,71 @@ class KdsController extends Controller
             $order->update(['status' => 'in_progress']);
             app(AuditLogService::class)->log('order.started', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'in_progress'], ['source' => 'kds'], $request);
 
-            return ['order' => $order];
+            return ['order' => $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy'])];
         });
 
         if (isset($result['error'])) {
             return response()->json(['message' => $result['error']], 422);
         }
 
-        return response()->json(['order' => $result['order']]);
+        return response()->json(['order' => self::formatKitchenOrder($result['order'])]);
+    }
+
+    public function kitchenDone(Request $request, int $id): JsonResponse
+    {
+        $result = DB::transaction(function () use ($id, $request) {
+            $order = Order::lockForUpdate()->findOrFail($id);
+
+            if (!in_array($order->status, ['in_progress', 'preparing'], true)) {
+                return ['error' => 'Only in-progress orders can be marked kitchen done.'];
+            }
+
+            if ($order->kitchen_done_at !== null) {
+                return ['order' => $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy'])];
+            }
+
+            $userId = $request->user()?->id;
+            $order->update([
+                'kitchen_done_at' => now(),
+                'kitchen_done_by' => $userId,
+            ]);
+
+            app(AuditLogService::class)->log(
+                'order.kitchen_done',
+                'Order',
+                $order->id,
+                ['kitchen_done_at' => null],
+                ['kitchen_done_at' => $order->fresh()->kitchen_done_at?->toIso8601String()],
+                ['source' => 'kds', 'user_id' => $userId],
+                $request,
+            );
+
+            return ['order' => $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy'])];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json(['order' => self::formatKitchenOrder($result['order'])]);
+    }
+
+    public function printTicket(Request $request, int $id): JsonResponse
+    {
+        $order = Order::with(['items.modifiers'])->findOrFail($id);
+        app(PrintJobService::class)->enqueueKitchen($order, 'kds_reprint');
+
+        app(AuditLogService::class)->log(
+            'kitchen.print_ticket',
+            'Order',
+            $order->id,
+            [],
+            ['reason' => 'kds_reprint'],
+            ['source' => 'kds'],
+            $request,
+        );
+
+        return response()->json(['message' => 'Kitchen ticket queued for printing.']);
     }
 
     public function bump(Request $request, int $id): JsonResponse
@@ -124,18 +226,6 @@ class KdsController extends Controller
             // Re-fetch with a row lock inside the transaction to prevent duplicate bumps
             $order = Order::lockForUpdate()->findOrFail($id);
 
-            // Marking-ready is now POS-only — the cashier owns the
-            // "tell the customer it's ready" call so the SMS chain
-            // can't fire without someone looking at the till.
-            // Kitchen can still clear ready tickets off their screen
-            // by bumping ready → completed (post-handoff bookkeeping).
-            //
-            // Anything else (pending/in_progress/paid → ready) is
-            // refused here so a stale KDS terminal can't backdoor
-            // the customer-notification SMS. The cashier hits
-            // "Mark ready" in POS → POST /orders/{id}/mark-ready
-            // → OrderStatusChanged → existing "Ready for pickup!"
-            // SMS listener fires exactly once.
             if ($order->status !== 'ready') {
                 return ['error' => 'Marking ready is now handled by the cashier from POS. Tell the cashier the order is up.'];
             }
@@ -146,18 +236,6 @@ class KdsController extends Controller
                 return ['error' => 'Order cannot be bumped.'];
             }
 
-            // Belt-and-braces payment guard for online-pickup orders
-            // ONLY. Online pickup is the only flow where the customer
-            // has already paid before the order reaches the kitchen
-            // (via the online ordering app + BML webhook). If
-            // payment_status is still unpaid here it means the webhook
-            // hasn't confirmed yet, so completing the order would
-            // wrongly fire loyalty points / completion notifications
-            // for a payment that hasn't actually settled.
-            //
-            // Takeaway / delivery are EXCLUDED — those are legitimate
-            // cash-on-pickup / pay-at-door flows. Dine-in is excluded —
-            // pay-after-meal is the whole model.
             if ($order->type === 'online_pickup'
                 && $order->payment_status !== 'paid'
                 && $order->status !== 'paid') {
@@ -165,9 +243,6 @@ class KdsController extends Controller
             }
 
             $oldStatus = $order->status;
-
-            // State machine (KDS-side, after the POS-only readiness
-            // pivot): only ready → completed remains here.
             $newStatus = $targetStatus;
 
             $order->update([
@@ -185,18 +260,6 @@ class KdsController extends Controller
                 $request,
             );
 
-            // Kitchen reached the terminal "completed" state.
-            // Fire OrderCompleted (earns loyalty points + webhook) — NOT OrderPaid.
-            //
-            // Historical bug: this used to dispatch OrderPaid whenever $oldStatus
-            // wasn't already 'paid', which fired the payment-confirmation SMS,
-            // consumed loyalty holds, recorded referrals, and emitted webhooks
-            // claiming the order was paid — all on tickets that hadn't been
-            // settled yet (cash-on-pickup, dine-in pay-at-end, etc.).
-            //
-            // Payment-time listeners are owned by PaymentConfirmedListener →
-            // OrderPaid, which still fires correctly when payment is actually
-            // taken. The KDS path stays purely about kitchen completion.
             if ($newStatus === 'completed') {
                 $orderForEvent = $order->fresh();
                 DB::afterCommit(function () use ($orderForEvent): void {
@@ -204,14 +267,14 @@ class KdsController extends Controller
                 });
             }
 
-            return ['order' => $order];
+            return ['order' => $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy'])];
         });
 
         if (isset($result['error'])) {
             return response()->json(['message' => $result['error']], 422);
         }
 
-        return response()->json(['order' => $result['order']]);
+        return response()->json(['order' => self::formatKitchenOrder($result['order'])]);
     }
 
     public function recall(Request $request, int $id): JsonResponse
@@ -219,25 +282,27 @@ class KdsController extends Controller
         $result = DB::transaction(function () use ($id, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
 
-            // Route recall through the state machine so the transition is
-            // whitelisted in one place. The machine permits
-            // ready→in_progress and completed→in_progress.
             $machine = app(OrderStatusMachine::class);
             if (!$machine->isAllowed($order->status, 'in_progress')) {
                 return ['error' => 'Only ready or completed orders can be recalled.'];
             }
 
             $oldStatus = $order->status;
-            $order->update(['status' => 'in_progress', 'completed_at' => null]);
+            $order->update([
+                'status' => 'in_progress',
+                'completed_at' => null,
+                'kitchen_done_at' => null,
+                'kitchen_done_by' => null,
+            ]);
             app(AuditLogService::class)->log('order.recalled', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'in_progress'], ['source' => 'kds'], $request);
 
-            return ['order' => $order];
+            return ['order' => $order->fresh(['items.modifiers', 'items.item', 'table', 'kitchenDoneBy'])];
         });
 
         if (isset($result['error'])) {
             return response()->json(['message' => $result['error']], 422);
         }
 
-        return response()->json(['order' => $result['order']]);
+        return response()->json(['order' => self::formatKitchenOrder($result['order'])]);
     }
 }

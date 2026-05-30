@@ -42,5 +42,12 @@ final class PermissionCatalogSync
                 Permission::whereIn('slug', PermissionCatalog::staffSlugs())->pluck('id'),
             );
         }
+
+        $kitchenStaff = Role::where('slug', 'kitchen_staff')->first();
+        if ($kitchenStaff) {
+            $kitchenStaff->permissions()->sync(
+                Permission::whereIn('slug', PermissionCatalog::kitchenStaffSlugs())->pluck('id'),
+            );
+        }
     }
 }

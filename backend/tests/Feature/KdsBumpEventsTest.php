@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Domains\Orders\Events\OrderCompleted;
 use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
 use App\Models\Device;
 use App\Models\Item;
@@ -46,6 +47,8 @@ class KdsBumpEventsTest extends TestCase
     {
         parent::setUp();
 
+        PermissionCatalogSync::sync();
+
         MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
         $category = Category::create(['name' => 'KDS Test', 'slug' => 'kds-bump', 'is_active' => true]);
         $this->item = Item::create([
@@ -69,6 +72,8 @@ class KdsBumpEventsTest extends TestCase
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
+        $this->staff->grantPermission('kds.bump_order');
+        $this->staff->unsetRelation('permissions');
         Device::create(['name' => 'KDS POS', 'identifier' => 'KDS-POS', 'type' => 'pos', 'is_active' => true]);
         // KDS mutation routes (start/bump/recall) now require the
         // X-Device-Identifier header via the device.active middleware

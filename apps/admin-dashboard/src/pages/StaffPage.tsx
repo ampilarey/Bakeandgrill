@@ -50,8 +50,24 @@ function PinInput({ value, onChange }: { value: string; onChange: (v: string) =>
 }
 
 function roleColor(slug: string | null): string {
-  const map: Record<string, string> = { owner: 'purple', manager: 'teal', staff: 'yellow' };
+  const map: Record<string, string> = {
+    owner: 'purple',
+    manager: 'teal',
+    staff: 'yellow',
+    kitchen_staff: 'orange',
+  };
   return map[slug ?? ''] ?? 'gray';
+}
+
+function roleDisplayLabel(slug: string | null, name: string | null): string {
+  const labels: Record<string, string> = {
+    owner: 'Admin',
+    manager: 'Manager',
+    staff: 'Cashier',
+    kitchen_staff: 'Kitchen Staff',
+  };
+  if (slug && labels[slug]) return labels[slug];
+  return name ?? slug ?? '—';
 }
 
 function timeAgo(iso: string | null) {
@@ -647,7 +663,7 @@ export function StaffPage() {
                     {m.phone ?? <span style={{ color: '#d1d5db' }}>—</span>}
                   </td>
                   <td style={TD}>
-                    <Badge label={m.role_name ?? m.role ?? '—'} color={roleColor(m.role)} />
+                    <Badge label={roleDisplayLabel(m.role, m.role_name)} color={roleColor(m.role)} />
                   </td>
                   <td style={TD}>
                     {m.has_pin

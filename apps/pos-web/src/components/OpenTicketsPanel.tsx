@@ -1020,6 +1020,19 @@ export function OpenTicketsPanel({
                     >
                       {stageBadge.label}
                     </span>
+                    {stage === "cooking" && (t as { kitchen_done_at?: string | null }).kitchen_done_at && (
+                      <span
+                        title="Kitchen marked preparation complete — cashier can mark ready for customer"
+                        style={{
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
+                          color: "#047857", background: "#ECFDF5",
+                          padding: "2px 6px", borderRadius: 4,
+                          border: "1px solid #A7F3D0",
+                        }}
+                      >
+                        Kitchen done
+                      </span>
+                    )}
                     {stage === "parked" && (
                       <span
                         title={parkedAgeLevel === "critical"

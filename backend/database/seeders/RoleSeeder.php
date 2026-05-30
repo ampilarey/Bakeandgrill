@@ -10,7 +10,7 @@ use Illuminate\Database\Seeder;
 class RoleSeeder extends Seeder
 {
     /**
-     * Seed the three consolidated roles: owner, manager, staff.
+     * Seed consolidated staff roles: owner, manager, staff, kitchen_staff.
      * admin and cashier have been consolidated (see consolidate_user_roles migration).
      */
     public function run(): void
@@ -19,6 +19,7 @@ class RoleSeeder extends Seeder
             ['name' => 'Owner',   'slug' => 'owner',   'description' => 'Full access to all features and settings'],
             ['name' => 'Manager', 'slug' => 'manager', 'description' => 'Day-to-day management of operations and staff'],
             ['name' => 'Staff',   'slug' => 'staff',   'description' => 'Front-line staff member with limited access'],
+            ['name' => 'Kitchen Staff', 'slug' => 'kitchen_staff', 'description' => 'Kitchen/KDS staff with preparation-only access'],
         ];
 
         foreach ($roles as $role) {

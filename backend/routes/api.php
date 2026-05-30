@@ -290,13 +290,20 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // (start/bump/recall) require an approved device header so a stolen
     // staff token alone can't progress the queue from an off-prem
     // browser.
-    Route::get('/kds/orders', [KdsController::class, 'index']);
-    Route::get('/kds/menu-groups', [KdsController::class, 'menuGroups']);
+    Route::get('/kds/orders', [KdsController::class, 'index'])->middleware('permission:kds.view');
+    Route::get('/kds/menu-groups', [KdsController::class, 'menuGroups'])->middleware('permission:kds.view');
     Route::post('/kds/items/{id}/86', [KdsController::class, 'toggleItemAvailability'])
-        ->middleware('permission:menu.manage');
-    Route::post('/kds/orders/{id}/start', [KdsController::class, 'start'])->middleware('device.active');
-    Route::post('/kds/orders/{id}/bump', [KdsController::class, 'bump'])->middleware('device.active');
-    Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall'])->middleware('device.active');
+        ->middleware('permission:kds.manage_availability');
+    Route::post('/kds/orders/{id}/start', [KdsController::class, 'start'])
+        ->middleware(['permission:kds.start_order', 'device.active']);
+    Route::post('/kds/orders/{id}/kitchen-done', [KdsController::class, 'kitchenDone'])
+        ->middleware(['permission:kds.mark_kitchen_done', 'device.active']);
+    Route::post('/kds/orders/{id}/print-ticket', [KdsController::class, 'printTicket'])
+        ->middleware(['permission:kds.print_ticket', 'device.active']);
+    Route::post('/kds/orders/{id}/bump', [KdsController::class, 'bump'])
+        ->middleware(['permission:kds.bump_order', 'device.active']);
+    Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall'])
+        ->middleware(['permission:kds.recall_order', 'device.active']);
 
     // Print jobs
     Route::get('/print-jobs', [PrintJobController::class, 'index'])->middleware('permission:devices.view');
@@ -640,7 +647,8 @@ Route::middleware('auth:sanctum')->group(function () {
 // staff-only streams (POS / KDS) — require staff token to prevent customer eavesdropping
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::get('/stream/orders', [App\Http\Controllers\Api\StreamController::class, 'orders']);
-    Route::get('/stream/kds', [App\Http\Controllers\Api\StreamController::class, 'kds']);
+    Route::get('/stream/kds', [App\Http\Controllers\Api\StreamController::class, 'kds'])
+        ->middleware('permission:kds.view');
     Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus']);
 });
 

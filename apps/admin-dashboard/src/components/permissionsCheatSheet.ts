@@ -10,6 +10,20 @@ export type CheatSheetRole = {
 
 export const ROLE_CHEAT_SHEET: CheatSheetRole[] = [
   {
+    slug: 'kitchen_staff',
+    label: 'Kitchen Staff',
+    summary: 'KDS-only role. No POS sales, payments, or finance.',
+    can: [
+      'View KDS queue, start tickets, mark kitchen done, reprint kitchen chits',
+      'Time clock and lock screen on shared tablets',
+    ],
+    cannot: [
+      'Ring sales, open/close shifts, take payments, void/refund',
+      'Mark ready for customer (cashier), bump completed pickup, 86 items by default',
+      'Reports, GST, admin settings, menu/inventory management',
+    ],
+  },
+  {
     slug: 'staff',
     label: 'Staff (Cashier)',
     summary: 'POS-first role. No admin phone login unless admin.access is granted.',
@@ -57,6 +71,8 @@ export type CommonSlugRow = {
 export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'admin.access', gates: 'Admin phone + password login', typical: 'Manager, Owner' },
   { slug: 'pos.access', gates: 'POS PIN login', typical: 'All roles with POS duty' },
+  { slug: 'kds.view', gates: 'KDS PIN login and queue access', typical: 'Kitchen Staff, Manager' },
+  { slug: 'kds.mark_kitchen_done', gates: 'Signal food ready for cashier review (no customer SMS)', typical: 'Kitchen Staff, Manager' },
   { slug: 'orders.manage', gates: 'KDS bump/start, assign drivers, order admin actions', typical: 'Manager' },
   { slug: 'orders.void', gates: 'Cancel unpaid POS tickets', typical: 'Manager' },
   { slug: 'orders.refund', gates: 'Issue refunds', typical: 'Manager' },

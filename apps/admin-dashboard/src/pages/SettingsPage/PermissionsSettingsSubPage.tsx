@@ -13,10 +13,11 @@ import { COMMON_PERMISSION_SLUGS, ROLE_CHEAT_SHEET } from '../../components/perm
 
 type Tab = 'roles' | 'users';
 
-const ROLE_OPTIONS = [
+export const ROLE_OPTIONS = [
   { slug: 'owner', label: 'Owner (Admin)' },
   { slug: 'manager', label: 'Manager (Supervisor)' },
   { slug: 'staff', label: 'Staff (Cashier)' },
+  { slug: 'kitchen_staff', label: 'Kitchen Staff' },
 ];
 
 type OverrideMode = 'inherit' | 'allow' | 'deny';

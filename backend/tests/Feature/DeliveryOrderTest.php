@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Item;
@@ -27,6 +28,8 @@ class DeliveryOrderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        PermissionCatalogSync::sync();
 
         MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
         $category = Category::create(['name' => 'Food', 'slug' => 'food', 'is_active' => true]);
@@ -175,11 +178,10 @@ class DeliveryOrderTest extends TestCase
 
     public function test_delivery_order_appears_in_kds_with_delivery_type(): void
     {
-        $role = Role::create(['name' => 'KDS', 'slug' => 'kds', 'description' => '', 'is_active' => true]);
-        $staff = User::create([
-            'name' => 'KDS Staff', 'email' => 'kds@test.com',
-            'password' => Hash::make('password'), 'role_id' => $role->id,
-            'pin_hash' => Hash::make('9999'), 'is_active' => true,
+        $staff = $this->makeStaff('staff', [
+            'name' => 'KDS Staff',
+            'email' => 'kds@test.com',
+            'pin_hash' => Hash::make('9999'),
         ]);
 
         // Customer delivery orders start as payment_pending and only move to pending after

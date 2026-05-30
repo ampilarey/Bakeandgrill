@@ -57,6 +57,8 @@ class Order extends Model
         'held_at',
         'paid_at',
         'completed_at',
+        'kitchen_done_at',
+        'kitchen_done_by',
         'tip_amount',
         'estimated_wait_minutes',
         // Delivery fields
@@ -106,6 +108,8 @@ class Order extends Model
         'fired_at' => 'datetime',
         'paid_at' => 'datetime',
         'completed_at' => 'datetime',
+        'kitchen_done_at' => 'datetime',
+        'kitchen_done_by' => 'integer',
         'cancelled_at' => 'datetime',
         'delivery_eta_at' => 'datetime',
         'driver_assigned_at' => 'datetime',
@@ -191,5 +195,10 @@ class Order extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function kitchenDoneBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'kitchen_done_by');
     }
 }

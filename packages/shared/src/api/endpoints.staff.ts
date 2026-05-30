@@ -27,6 +27,8 @@ export const STAFF_ENDPOINTS = {
   KDS_ORDER_START:             (id: number) => `/kds/orders/${id}/start`,
   KDS_ORDER_BUMP:              (id: number) => `/kds/orders/${id}/bump`,
   KDS_ORDER_RECALL:            (id: number) => `/kds/orders/${id}/recall`,
+  KDS_ORDER_KITCHEN_DONE:      (id: number) => `/kds/orders/${id}/kitchen-done`,
+  KDS_ORDER_PRINT_TICKET:      (id: number) => `/kds/orders/${id}/print-ticket`,
   STREAM_ORDERS:               '/stream/orders',
   STREAM_KDS:                  '/stream/kds',
 

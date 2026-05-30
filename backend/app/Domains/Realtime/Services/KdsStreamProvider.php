@@ -66,6 +66,7 @@ class KdsStreamProvider
             'notes' => $order->notes,
             'created_at' => $order->created_at?->toIso8601String(),
             'updated_at' => $order->updated_at?->toIso8601String(),
+            'kitchen_done_at' => $order->kitchen_done_at?->toIso8601String(),
             'items' => $order->items->map(fn ($item) => [
                 'id' => $item->id,
                 'item_name' => $item->item_name,

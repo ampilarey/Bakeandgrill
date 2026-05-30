@@ -50,6 +50,11 @@ trait ModelHelpers
         return $this->makeStaff('manager', $attrs);
     }
 
+    protected function makeKitchenStaff(array $attrs = []): User
+    {
+        return $this->makeStaff('kitchen_staff', $attrs);
+    }
+
     // ── Customers ─────────────────────────────────────────────────────────────
 
     protected function makeCustomer(array $attrs = []): Customer

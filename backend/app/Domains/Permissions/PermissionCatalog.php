@@ -55,6 +55,13 @@ final class PermissionCatalog
         'shifts.view_own_history' => ['finance.cash_manage'],
         'inventory.view' => ['inventory.view'],
         'suppliers.view' => ['suppliers.view'],
+        'kds.view' => ['orders.view'],
+        'kds.start_order' => ['orders.manage'],
+        'kds.bump_order' => ['orders.manage'],
+        'kds.recall_order' => ['orders.manage'],
+        'kds.mark_kitchen_done' => ['orders.manage'],
+        'kds.print_ticket' => ['orders.manage'],
+        'kds.manage_availability' => ['menu.manage'],
     ];
 
     /** @return list<array{slug: string, name: string, group: string, description?: string}> */
@@ -172,6 +179,15 @@ final class PermissionCatalog
             ['group' => 'Reservations', 'slug' => 'reservations.manage', 'name' => 'Manage reservations'],
             ['group' => 'Delivery', 'slug' => 'delivery.view', 'name' => 'View deliveries'],
             ['group' => 'Delivery', 'slug' => 'delivery.manage', 'name' => 'Manage deliveries'],
+
+            // Kitchen / KDS
+            ['group' => 'Kitchen / KDS', 'slug' => 'kds.view', 'name' => 'View kitchen display', 'description' => 'View KDS queue and stream'],
+            ['group' => 'Kitchen / KDS', 'slug' => 'kds.start_order', 'name' => 'Start order on KDS', 'description' => 'Move ticket to in progress from kitchen'],
+            ['group' => 'Kitchen / KDS', 'slug' => 'kds.bump_order', 'name' => 'Bump order on KDS', 'description' => 'Clear ready ticket after handoff'],
+            ['group' => 'Kitchen / KDS', 'slug' => 'kds.recall_order', 'name' => 'Recall order on KDS'],
+            ['group' => 'Kitchen / KDS', 'slug' => 'kds.mark_kitchen_done', 'name' => 'Mark kitchen preparation done', 'description' => 'Signal food is ready for cashier review — does not notify customer'],
+            ['group' => 'Kitchen / KDS', 'slug' => 'kds.print_ticket', 'name' => 'Reprint kitchen ticket'],
+            ['group' => 'Kitchen / KDS', 'slug' => 'kds.manage_availability', 'name' => '86 items from KDS', 'description' => 'Toggle item availability from kitchen display'],
         ];
     }
 
@@ -220,12 +236,26 @@ final class PermissionCatalog
     }
 
     /** @return list<string> */
+    public static function kitchenStaffSlugs(): array
+    {
+        return [
+            'kds.view',
+            'kds.start_order',
+            'kds.mark_kitchen_done',
+            'kds.print_ticket',
+            'pos.time_clock',
+            'pos.lock_screen',
+        ];
+    }
+
+    /** @return list<string> */
     public static function slugsForRole(string $roleSlug): array
     {
         return match ($roleSlug) {
             'owner' => self::ownerSlugs(),
             'manager' => self::managerSlugs(),
             'staff' => self::staffSlugs(),
+            'kitchen_staff' => self::kitchenStaffSlugs(),
             default => [],
         };
     }
