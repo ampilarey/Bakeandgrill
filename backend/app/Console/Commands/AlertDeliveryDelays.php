@@ -6,7 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
-use App\Models\Order;
+use App\Domains\Operations\Services\OpsAlertsService;
 use App\Models\SiteSetting;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -17,25 +17,11 @@ class AlertDeliveryDelays extends Command
 
     protected $description = 'Log delivery orders past estimated ready time; optionally SMS owner';
 
-    public function handle(SmsService $sms): int
+    public function handle(SmsService $sms, OpsAlertsService $ops): int
     {
         $grace = max(5, (int) $this->option('minutes'));
-        $cutoff = now()->subMinutes($grace);
 
-        $delayed = Order::query()
-            ->where('type', 'delivery')
-            ->whereIn('status', ['preparing', 'in_progress', 'ready', 'delivering', 'out_for_delivery', 'on_the_way'])
-            ->where(function ($query) use ($cutoff): void {
-                $query->where(function ($q) use ($cutoff): void {
-                    $q->whereNotNull('delivery_eta_at')
-                        ->where('delivery_eta_at', '<', $cutoff);
-                })->orWhere(function ($q) use ($cutoff): void {
-                    $q->whereNotNull('fired_at')
-                        ->whereNotNull('estimated_wait_minutes')
-                        ->where('estimated_wait_minutes', '>', 0)
-                        ->whereRaw('DATE_ADD(fired_at, INTERVAL estimated_wait_minutes MINUTE) < ?', [$cutoff]);
-                });
-            })
+        $delayed = $ops->delayedDeliveryQuery($grace)
             ->orderBy('delivery_eta_at')
             ->limit(50)
             ->get(['id', 'order_number', 'status', 'delivery_eta_at', 'fired_at', 'estimated_wait_minutes']);

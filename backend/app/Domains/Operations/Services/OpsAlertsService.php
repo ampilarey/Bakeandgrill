@@ -8,6 +8,7 @@ use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\SiteSetting;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 final class OpsAlertsService
@@ -90,6 +91,14 @@ final class OpsAlertsService
 
     public function delayedDeliveryCount(int $graceMinutes = 15): int
     {
+        return $this->delayedDeliveryQuery($graceMinutes)->count();
+    }
+
+    /**
+     * @return Builder<Order>
+     */
+    public function delayedDeliveryQuery(int $graceMinutes = 15): Builder
+    {
         $graceMinutes = max(5, $graceMinutes);
         $cutoff = now()->subMinutes($graceMinutes);
 
@@ -122,8 +131,7 @@ final class OpsAlertsService
                         );
                     }
                 });
-            })
-            ->count();
+            });
     }
 
     private function bool(string $key, bool $default): bool
