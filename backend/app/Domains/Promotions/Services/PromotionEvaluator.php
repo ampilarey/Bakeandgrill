@@ -119,7 +119,7 @@ class PromotionEvaluator
     {
         if ($promo->scope === 'order') {
             if ($promo->targets->isEmpty()) {
-                return (int) round($order->subtotal * 100);
+                return (int) ($order->subtotal_laar ?? round((float) $order->subtotal * 100));
             }
         }
 

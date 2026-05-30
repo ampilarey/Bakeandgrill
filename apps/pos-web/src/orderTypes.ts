@@ -21,7 +21,7 @@ export const EMPTY_DELIVERY_DETAILS: PosDeliveryDetails = {
   locationLink: "",
 };
 
-/** Rough estimate for Charge screen — server calculates the authoritative fee. */
+/** Rough fallback when the delivery-fee preview API is unreachable. */
 export function estimateDeliveryFeeMvr(island: string, subtotalMvr: number): number {
   const threshold = 200;
   if (subtotalMvr >= threshold) return 0;

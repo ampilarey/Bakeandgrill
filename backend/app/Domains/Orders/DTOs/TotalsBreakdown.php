@@ -28,12 +28,18 @@ final readonly class TotalsBreakdown
         public int $taxRateBp,
     ) {}
 
+    /** Discount actually applied to subtotal (clamped when stacked discounts exceed subtotal). */
+    public function effectiveDiscount(): Money
+    {
+        return $this->subtotal->subtract($this->discountedSubtotal);
+    }
+
     public function toOrderAttributes(): array
     {
         return array_merge([
             'subtotal' => $this->subtotal->toMvr(),
             'tax_amount' => $this->tax->toMvr(),
-            'discount_amount' => $this->totalDiscount->toMvr(),
+            'discount_amount' => $this->effectiveDiscount()->toMvr(),
             'subtotal_laar' => $this->subtotal->amountLaar,
             'tax_laar' => $this->tax->amountLaar,
             'promo_discount_laar' => $this->promoDiscount->amountLaar,

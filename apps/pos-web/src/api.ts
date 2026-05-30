@@ -198,6 +198,25 @@ export async function fetchPublicSiteSettings(): Promise<Record<string, string |
   }
 }
 
+/** Server-side delivery fee preview — matches DeliveryFeeCalculator. */
+export async function previewDeliveryFeeMvr(
+  island: string,
+  subtotalLaar: number,
+): Promise<number> {
+  try {
+    const params = new URLSearchParams({
+      island: island.trim() || "Male",
+      subtotal_laar: String(Math.max(0, subtotalLaar)),
+    });
+    const data = await request<{ fee_mvr: number }>(
+      `/ordering/delivery-fee-preview?${params}`,
+    );
+    return Number.isFinite(data.fee_mvr) ? data.fee_mvr : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function fetchPosQuickNotes(): Promise<string[]> {
   try {
     const settings = await fetchPublicSiteSettings();

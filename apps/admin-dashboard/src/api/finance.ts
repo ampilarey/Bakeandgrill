@@ -331,8 +331,9 @@ export interface ZReport extends XReport {
   closed_at: string | null;
 }
 
-export async function getZReport(): Promise<ZReport> {
-  return req('/reports/z-report');
+export async function getZReport(params?: { from: string; to: string }): Promise<ZReport> {
+  const qs = params ? `?${new URLSearchParams(params)}` : '';
+  return req(`/reports/z-report${qs}`);
 }
 
 export interface InventoryValuation {

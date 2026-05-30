@@ -73,7 +73,7 @@ class PromotionTest extends TestCase
             'name' => 'Test Promo',
             'code' => 'SAVE10',
             'type' => 'percentage',
-            'discount_value' => 1000, // 10%
+            'discount_value' => 10, // 10%
             'is_active' => true,
             'stackable' => false,
         ], $attrs));

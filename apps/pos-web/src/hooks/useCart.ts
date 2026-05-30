@@ -385,6 +385,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     payments,
     setPayments,
     cartSubtotal,
+    discountedSubtotal,
     cartTax,
     cartServiceCharge,
     serviceChargeLabel,

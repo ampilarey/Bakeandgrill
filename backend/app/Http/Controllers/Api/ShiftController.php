@@ -57,30 +57,38 @@ class ShiftController extends Controller
         $cashOut = (float) CashMovement::where('shift_id', $shift->id)
             ->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
 
-        $cashSales = (float) Payment::where('method', 'cash')
+        $cashSalesLaar = (int) Payment::where('method', 'cash')
             ->where('amount', '>', 0)
             ->where('shift_id', $shift->id)
             ->whereIn('status', ['paid', 'completed', 'confirmed'])
-            ->sum('amount');
+            ->selectRaw('COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0) as total_laar')
+            ->value('total_laar');
 
-        $cashRefundsRaw = (float) Payment::where('method', 'cash')
+        $cashRefundsRawLaar = (int) Payment::where('method', 'cash')
             ->where('amount', '<', 0)
             ->where('shift_id', $shift->id)
-            ->sum('amount');
+            ->selectRaw('COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0) as total_laar')
+            ->value('total_laar');
 
-        $refundCashOut = (float) Refund::where('shift_id', $shift->id)
+        $refundCashOutLaar = (int) Refund::where('shift_id', $shift->id)
             ->whereNotIn('status', ['rejected'])
-            ->sum('amount');
+            ->selectRaw('COALESCE(SUM(ROUND(amount * 100)), 0) as total_laar')
+            ->value('total_laar');
 
         $opening = (float) ($shift->opening_cash ?? 0);
+        $openingLaar = (int) round($opening * 100);
+        $cashInLaar = (int) round($cashIn * 100);
+        $cashOutLaar = (int) round($cashOut * 100);
+
+        $expectedLaar = $openingLaar + $cashInLaar - $cashOutLaar + $cashSalesLaar + $cashRefundsRawLaar - $refundCashOutLaar;
 
         return [
             'opening' => $opening,
             'cash_in' => $cashIn,
             'cash_out' => $cashOut,
-            'cash_sales' => $cashSales,
-            'cash_refunds' => abs($cashRefundsRaw) + $refundCashOut,
-            'expected' => $opening + $cashIn - $cashOut + $cashSales + $cashRefundsRaw - $refundCashOut,
+            'cash_sales' => round($cashSalesLaar / 100, 2),
+            'cash_refunds' => round((abs($cashRefundsRawLaar) + $refundCashOutLaar) / 100, 2),
+            'expected' => round($expectedLaar / 100, 2),
         ];
     }
 

@@ -11,7 +11,6 @@ import {
   POS_ORDER_TYPES,
   type PosDeliveryDetails,
   type PosOrderType,
-  estimateDeliveryFeeMvr,
 } from "../orderTypes";
 
 type OrderType = PosOrderType;
@@ -41,6 +40,12 @@ type Props = {
   cartServiceCharge?: number;
   serviceChargeLabel?: string;
   cartTotal: number;
+  /** Amount due at Charge (includes delivery fee when applicable). */
+  chargeTotal: number;
+  /** Post-discount subtotal — base for rewards estimates. */
+  taxableSubtotal: number;
+  /** Server-previewed delivery fee (Delivery orders). */
+  deliveryFeeEst?: number;
   discountValue: number;
   /** Sum of every staged customer-reward discount (promo + loyalty +
    *  gift card). Shown as one "Rewards" line in the cart breakdown. */
@@ -145,7 +150,7 @@ export function OrderCart(p: Props) {
     || !!p.resumedIsPaid;
   const dineIn = p.orderType === "Dine-in";
   const isDelivery = p.orderType === "Delivery";
-  const deliveryFeeEst = isDelivery ? estimateDeliveryFeeMvr(p.deliveryDetails.island, p.cartSubtotal) : 0;
+  const deliveryFeeEst = isDelivery ? (p.deliveryFeeEst ?? 0) : 0;
   const isResumed = p.resumedOrderId !== null;
   const orderLabel = p.resumedOrderLabel ?? `#${p.resumedOrderId}`;
   // When the cashier opened a ticket via "Edit" we relax the resumed
@@ -582,7 +587,7 @@ export function OrderCart(p: Props) {
         {p.attachedCustomer && p.cartItems.length > 0 && p.canUseRewards !== false && (
           <CustomerRewardsPanel
             customer={p.attachedCustomer}
-            taxableSubtotal={p.cartSubtotal}
+            taxableSubtotal={p.taxableSubtotal}
             applied={{
               promo: p.appliedPromo,
               loyalty: p.appliedLoyalty,
@@ -843,7 +848,7 @@ export function OrderCart(p: Props) {
             fontSize: 20, fontWeight: 800,
             fontVariantNumeric: 'tabular-nums',
           }}>
-            MVR {p.cartTotal.toFixed(2)}
+            MVR {p.chargeTotal.toFixed(2)}
           </span>
         </button>
         )}

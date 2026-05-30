@@ -170,7 +170,8 @@ class OrderTotalsCalculator
             ? (int) ($order->small_order_fee_laar ?? 0)
             : $this->packagingFeeCalculator->calculateSmallOrder($order, $discountedLaar);
         $deliveryFeeLaar = (int) ($order->delivery_fee_laar ?? 0);
-        $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $packagingLaar + $smallOrderLaar + $deliveryFeeLaar;
+        $tipLaar = (int) round((float) ($order->tip_amount ?? 0) * 100);
+        $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $packagingLaar + $smallOrderLaar + $deliveryFeeLaar + $tipLaar;
 
         $order->update(array_merge($breakdown->toOrderAttributes(), [
             'packaging_fee_laar' => $packagingLaar,

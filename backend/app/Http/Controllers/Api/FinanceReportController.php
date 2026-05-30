@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Order;
@@ -27,10 +28,13 @@ class FinanceReportController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
-        // Revenue: completed orders (gross — before refunds)
+        // Revenue: completed / partially-refunded sales in the period (gross — before refunds)
         $revenue = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ['completed', 'paid', 'refunded', 'partially_refunded'])
-            ->selectRaw('SUM(total) as total, SUM(tax_amount) as tax, SUM(discount_amount) as discount, COUNT(*) as orders')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->selectRaw('COUNT(*) as orders')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_DISCOUNT_LAAR) . ' as discount')
             ->first();
 
         // Refunds in the period — must subtract from gross or P&L overstates
@@ -38,7 +42,8 @@ class FinanceReportController extends Controller
         // because those money is still with the merchant.
         $refundsTotal = (float) Refund::whereBetween('created_at', [$from, $to])
             ->whereIn('status', ['approved', 'processed', 'completed'])
-            ->sum('amount');
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
+            ->value('total');
 
         // COGS: purchase costs in the period
         $cogs = Purchase::whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
@@ -100,8 +105,9 @@ class FinanceReportController extends Controller
 
         // Inflows: completed order revenue by day
         $inflows = Order::whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
-            ->selectRaw('DATE(created_at) as date, SUM(total) as amount')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->selectRaw('DATE(created_at) as date')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as amount')
             ->groupBy('date')
             ->orderBy('date')
             ->get()

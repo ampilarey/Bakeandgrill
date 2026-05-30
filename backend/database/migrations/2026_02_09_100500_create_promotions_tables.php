@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('code')->unique();
             $table->string('type')->default('percentage'); // percentage | fixed | free_item
-            $table->integer('discount_value')->default(0); // basis points for %, laari for fixed
+            $table->integer('discount_value')->default(0); // whole percent for %, laari for fixed
             $table->boolean('is_active')->default(true);
             $table->timestamp('starts_at')->nullable();
             $table->timestamp('expires_at')->nullable();

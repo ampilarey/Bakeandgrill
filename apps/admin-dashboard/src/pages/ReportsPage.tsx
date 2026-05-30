@@ -178,7 +178,10 @@ export function ReportsPage() {
       if (tab === 'Delivery Zones') setDeliveryZones(await getDeliveryZonesReport({ from, to }));
       if (tab === 'Tax')        setTaxReport(await getTaxReport({ from, to }));
       if (tab === 'X / Z Report') {
-        const [xResult, zResult] = await Promise.allSettled([getXReport(), getZReport()]);
+        const [xResult, zResult] = await Promise.allSettled([
+          getXReport(),
+          getZReport({ from, to }),
+        ]);
         setXReport(xResult.status === 'fulfilled' ? xResult.value : null);
         setZReport(zResult.status === 'fulfilled' ? zResult.value : null);
         if (xResult.status === 'rejected' && zResult.status === 'rejected') {

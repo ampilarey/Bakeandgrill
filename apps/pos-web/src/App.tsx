@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications } from "./api";
+import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications } from "./api";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "./offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "./offline/offlineGate";
 import { startSyncEnginePolling } from "./offline/syncEngine";
@@ -317,9 +317,27 @@ function App() {
     setSelectedDeliveryAddressId("manual");
   }, [cart]);
 
-  const deliveryFeeEst = useMemo(() => {
-    if (orderType !== "Delivery") return 0;
-    return estimateDeliveryFeeMvr(deliveryDetails.island, cart.cartSubtotal);
+  const [deliveryFeeEst, setDeliveryFeeEst] = useState(0);
+
+  useEffect(() => {
+    if (orderType !== "Delivery") {
+      setDeliveryFeeEst(0);
+      return;
+    }
+    let cancelled = false;
+    const subtotalLaar = Math.round(cart.cartSubtotal * 100);
+    const island = deliveryDetails.island.trim() || "Male";
+    const fallback = estimateDeliveryFeeMvr(island, cart.cartSubtotal);
+
+    void previewDeliveryFeeMvr(island, subtotalLaar).then((fee) => {
+      if (!cancelled) {
+        setDeliveryFeeEst(fee > 0 ? fee : fallback);
+      }
+    }).catch(() => {
+      if (!cancelled) setDeliveryFeeEst(fallback);
+    });
+
+    return () => { cancelled = true; };
   }, [orderType, deliveryDetails.island, cart.cartSubtotal]);
 
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
@@ -1302,6 +1320,9 @@ function App() {
               cartServiceCharge={cart.cartServiceCharge}
               serviceChargeLabel={cart.serviceChargeLabel}
               cartTotal={cart.cartTotal}
+              chargeTotal={chargeTotal}
+              taxableSubtotal={cart.discountedSubtotal}
+              deliveryFeeEst={deliveryFeeEst}
               discountValue={cart.discountValue}
               rewardsDiscount={cart.rewardsDiscount}
               appliedPromo={cart.appliedPromo}

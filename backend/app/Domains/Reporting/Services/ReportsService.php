@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Reporting\Services;
 
+use App\Domains\Orders\Support\EffectiveDiscount;
+use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\InventoryItem;
@@ -32,13 +34,26 @@ class ReportsService
     {
         $orderBase = Order::query()
             ->whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
             ->when($deviceId, fn ($q) => $q->where('device_id', $deviceId));
 
+        $subLaar = ReportMoneySql::ORDER_SUBTOTAL_LAAR;
+        $taxLaar = ReportMoneySql::ORDER_TAX_LAAR;
+        $discLaar = ReportMoneySql::ORDER_DISCOUNT_LAAR;
+        $scLaar = ReportMoneySql::ORDER_SERVICE_CHARGE_LAAR;
+        $delLaar = ReportMoneySql::ORDER_DELIVERY_FEE_LAAR;
+        $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
+
         $agg = (clone $orderBase)
-            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(service_charge_amount),0) as service_charge_total, COALESCE(SUM(delivery_fee),0) as delivery_fee_total, COALESCE(SUM(total),0) as total')
+            ->selectRaw('COUNT(*) as orders_count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($subLaar) . ' as subtotal')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($taxLaar) . ' as tax_amount')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($discLaar) . ' as discount_amount')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($scLaar) . ' as service_charge_total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($delLaar) . ' as delivery_fee_total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaar) . ' as total')
             ->first();
 
         $totals = [
@@ -55,17 +70,18 @@ class ReportsService
         // $totals above. Pre-fix, with cashier/shift/station = All, this
         // summed every paid payment in the date window — including orders
         // still pending/held — so revenue and payment lines disagreed wildly.
+        $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::query()
             ->whereBetween('processed_at', [$from, $to])
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('order', function ($oq) use ($from, $to, $userId, $shiftId, $deviceId) {
-                $oq->where('status', 'completed')
+                $oq->whereIn('status', ReportMoneySql::SALE_STATUSES)
                     ->whereBetween('created_at', [$from, $to])
                     ->when($userId, fn ($q2) => $q2->where('user_id', $userId))
                     ->when($shiftId, fn ($q2) => $q2->where('shift_id', $shiftId))
                     ->when($deviceId, fn ($q2) => $q2->where('device_id', $deviceId));
             })
-            ->select('method', DB::raw('SUM(amount) as total'))
+            ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
 
@@ -93,7 +109,7 @@ class ReportsService
             DB::raw('SUM(quantity) as quantity'),
             DB::raw('SUM(total_price) as total'),
         )
-            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to])->where('status', 'completed'))
+            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to])->whereIn('status', ReportMoneySql::SALE_STATUSES))
             ->groupBy('item_id', 'item_name')
             ->orderByDesc('total')
             ->limit(min($limit, 500))
@@ -107,16 +123,17 @@ class ReportsService
         )
             ->join('items', 'items.id', '=', 'order_items.item_id')
             ->join('categories', 'categories.id', '=', 'items.category_id')
-            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to])->where('status', 'completed'))
+            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to])->whereIn('status', ReportMoneySql::SALE_STATUSES))
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('total')
             ->limit(50)
             ->get();
 
         $employees = Order::leftJoin('users', 'users.id', '=', 'orders.user_id')
-            ->select('orders.user_id', 'users.name', DB::raw('COUNT(*) as orders_count'), DB::raw('SUM(orders.total) as total'))
+            ->select('orders.user_id', 'users.name', DB::raw('COUNT(*) as orders_count'))
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->where('orders.status', 'completed')
+            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
             ->groupBy('orders.user_id', 'users.name')
             ->orderByDesc('total')
             ->get()
@@ -153,8 +170,13 @@ class ReportsService
 
         $agg = Order::where('user_id', $shift->user_id)
             ->whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
-            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(service_charge_amount),0) as service_charge_total, COALESCE(SUM(total),0) as total')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->selectRaw('COUNT(*) as orders_count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SUBTOTAL_LAAR) . ' as subtotal')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax_amount')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_DISCOUNT_LAAR) . ' as discount_amount')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SERVICE_CHARGE_LAAR) . ' as service_charge_total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->first();
 
         $totals = [
@@ -166,16 +188,18 @@ class ReportsService
             'total' => (float) ($agg->total ?? 0),
         ];
 
+        $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('order', fn ($q) => $q->where('user_id', $shift->user_id))
-            ->select('method', DB::raw('SUM(amount) as total'))
+            ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
 
         $refundsTotal = Refund::whereBetween('created_at', [$from, $to])
             ->whereHas('order', fn ($q) => $q->where('user_id', $shift->user_id))
-            ->sum('amount');
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
+            ->value('total');
 
         return [
             'shift' => $shift,
@@ -193,8 +217,13 @@ class ReportsService
     public function zReport(Carbon $from, Carbon $to): array
     {
         $agg = Order::whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed')
-            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(tax_amount),0) as tax_amount, COALESCE(SUM(discount_amount),0) as discount_amount, COALESCE(SUM(service_charge_amount),0) as service_charge_total, COALESCE(SUM(total),0) as total')
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->selectRaw('COUNT(*) as orders_count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SUBTOTAL_LAAR) . ' as subtotal')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax_amount')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_DISCOUNT_LAAR) . ' as discount_amount')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SERVICE_CHARGE_LAAR) . ' as service_charge_total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->first();
 
         $totals = [
@@ -206,13 +235,16 @@ class ReportsService
             'total' => (float) ($agg->total ?? 0),
         ];
 
+        $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', ['paid', 'completed'])
-            ->select('method', DB::raw('SUM(amount) as total'))
+            ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
 
-        $refunds = Refund::whereBetween('created_at', [$from, $to])->sum('amount');
+        $refunds = Refund::whereBetween('created_at', [$from, $to])
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
+            ->value('total');
 
         return [
             'from' => $from->toDateString(),
@@ -291,33 +323,63 @@ class ReportsService
      */
     public function discountsByType(Carbon $from, Carbon $to): array
     {
-        $base = Order::query()
+        $orders = Order::query()
             ->whereBetween('created_at', [$from, $to])
-            ->where('status', 'completed');
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->get([
+                'subtotal',
+                'subtotal_laar',
+                'promo_discount_laar',
+                'loyalty_discount_laar',
+                'manual_discount_laar',
+                'gift_card_discount_laar',
+                'referral_discount_laar',
+            ]);
 
         $types = [
-            'promo' => 'promo_discount_laar',
-            'loyalty' => 'loyalty_discount_laar',
-            'manual' => 'manual_discount_laar',
-            'gift_card' => 'gift_card_discount_laar',
-            'referral' => 'referral_discount_laar',
+            'promo' => 'promo',
+            'loyalty' => 'loyalty',
+            'manual' => 'manual',
+            'gift_card' => 'gift_card',
+            'referral' => 'referral',
         ];
 
+        $sums = array_fill_keys(array_keys($types), 0);
+        $ordersWithDiscount = array_fill_keys(array_keys($types), 0);
+        $totalAppliedLaar = 0;
+
+        foreach ($orders as $order) {
+            $subLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
+            $parts = EffectiveDiscount::partsFromOrder($order);
+            $allocated = EffectiveDiscount::allocate($subLaar, $parts);
+            $effective = EffectiveDiscount::effectiveTotalLaar($subLaar, $parts);
+            $totalAppliedLaar += $effective;
+
+            foreach ($types as $label => $key) {
+                $share = $allocated[$key] ?? 0;
+                if ($share > 0) {
+                    $ordersWithDiscount[$label]++;
+                }
+                $sums[$label] += $share;
+            }
+        }
+
         $rows = [];
-        foreach ($types as $label => $column) {
-            $sumLaar = (int) (clone $base)->sum($column);
-            $ordersCount = (int) (clone $base)->where($column, '>', 0)->count();
+        foreach ($types as $label => $key) {
+            $sumLaar = $sums[$label];
             $rows[] = [
                 'type' => $label,
                 'amount_laar' => $sumLaar,
                 'amount' => round($sumLaar / 100, 2),
-                'orders_count' => $ordersCount,
+                'orders_count' => $ordersWithDiscount[$label],
             ];
         }
 
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
+            'total_applied_laar' => $totalAppliedLaar,
+            'total_applied' => round($totalAppliedLaar / 100, 2),
             'rows' => $rows,
         ];
     }

@@ -12,8 +12,8 @@ use InvalidArgumentException;
  * All amounts are stored as integer laari (1 MVR = 100 laari).
  * This avoids floating-point precision errors in financial calculations.
  *
- * Rounding policy (matches BML requirements):
- *   - Discounts: floor() — always round DOWN (customer-favorable)
+ * Rounding policy:
+ *   - Percentage discounts (PromotionEvaluator): floor() on laar
  *   - Tax extraction: round() — standard rounding
  *   - Tax addition: round() — standard rounding
  */
