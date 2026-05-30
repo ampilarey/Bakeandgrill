@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Marketing;
 
-use App\Models\AbandonedCart;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyLedger;
 use App\Models\SiteSetting;

@@ -12,7 +12,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('prayer_islands')) {
+        if (!Schema::hasTable('prayer_islands')) {
             return;
         }
 
@@ -22,7 +22,7 @@ return new class extends Migration
             })
             ->exists();
 
-        if (! $needsLatin) {
+        if (!$needsLatin) {
             return;
         }
 

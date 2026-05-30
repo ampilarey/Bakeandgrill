@@ -124,7 +124,6 @@ final class MarketingAutomationService
             ->delete();
     }
 
-    /** @return Carbon */
     public function abandonedCartEligibleBefore(): Carbon
     {
         return now()->subMinutes($this->settings()['abandoned_cart_delay_minutes']);

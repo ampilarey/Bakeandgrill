@@ -85,7 +85,7 @@ final class PickupSlotService
         $starts = Carbon::parse($isoStartsAt);
         $date = $starts->toDateString();
         $match = collect($this->slotsForDate($date))->first(
-            fn (array $s) => Carbon::parse($s['starts_at'])->equalTo($starts)
+            fn (array $s) => Carbon::parse($s['starts_at'])->equalTo($starts),
         );
 
         if ($match === null || !($match['available'] ?? false)) {

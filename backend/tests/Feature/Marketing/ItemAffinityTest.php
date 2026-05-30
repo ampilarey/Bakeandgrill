@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Marketing;
 
-use App\Models\Item;
-use App\Models\ItemPairStat;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;

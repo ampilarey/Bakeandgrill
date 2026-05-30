@@ -53,7 +53,7 @@ return new class extends Migration
         foreach ($rows as $row) {
             DB::table('site_settings')->updateOrInsert(
                 ['key' => $row['key']],
-                array_merge($row, ['created_at' => now(), 'updated_at' => now()])
+                array_merge($row, ['created_at' => now(), 'updated_at' => now()]),
             );
         }
     }

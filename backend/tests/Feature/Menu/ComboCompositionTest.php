@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Menu;
 
 use App\Models\ComboItem;
-use App\Models\Item;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

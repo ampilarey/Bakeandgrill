@@ -55,7 +55,7 @@ final class PrayerTimeHelper
     }
 
     /**
-     * @param  Collection<int, IslandData>  $islands
+     * @param Collection<int, IslandData> $islands
      */
     public static function findMaleIsland(Collection $islands): ?IslandData
     {
@@ -66,6 +66,7 @@ final class PrayerTimeHelper
 
         return $islands->first(fn (IslandData $i) => self::isMaleLatinName($i->nameLatin));
     }
+
     /**
      * Convert an integer minutes-since-midnight value to HH:MM string.
      * Handles midnight rollover and negative offsets correctly.
