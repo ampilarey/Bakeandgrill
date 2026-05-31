@@ -161,6 +161,13 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     return Math.min(n, cartSubtotal);
   }, [discountAmount, cartSubtotal]);
 
+  const rewardsDiscount = useMemo(() => {
+    const promo = appliedPromo?.discount ?? 0;
+    const loyalty = appliedLoyalty?.discount ?? 0;
+    const giftCard = appliedGiftCard?.discount ?? 0;
+    return Math.max(0, promo + loyalty + giftCard);
+  }, [appliedPromo, appliedLoyalty, appliedGiftCard]);
+
   /**
    * Pre-tax discount total and discounted subtotal — mirrors backend
    * EffectiveDiscount allocation when stacked discounts exceed subtotal.
