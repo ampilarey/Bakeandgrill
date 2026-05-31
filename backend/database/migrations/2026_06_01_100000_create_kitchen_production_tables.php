@@ -34,7 +34,9 @@ return new class extends Migration
 
         Schema::create('kitchen_production_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('kitchen_production_batch_id')->constrained('kitchen_production_batches')->cascadeOnDelete();
+            $table->foreignId('kitchen_production_batch_id')
+                ->constrained('kitchen_production_batches', indexName: 'kp_items_batch_fk')
+                ->cascadeOnDelete();
             $table->foreignId('order_id')->nullable()->constrained('orders')->nullOnDelete();
             $table->foreignId('order_item_id')->nullable()->constrained('order_items')->nullOnDelete();
             $table->foreignId('item_id')->nullable()->constrained('items')->nullOnDelete();
@@ -59,7 +61,9 @@ return new class extends Migration
 
         Schema::create('kitchen_receiving_batches', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('kitchen_production_batch_id')->constrained('kitchen_production_batches')->cascadeOnDelete();
+            $table->foreignId('kitchen_production_batch_id')
+                ->constrained('kitchen_production_batches', indexName: 'kp_recv_batches_prod_fk')
+                ->cascadeOnDelete();
             $table->foreignId('received_by')->constrained('users')->cascadeOnDelete();
             $table->dateTime('received_at');
             $table->string('status', 32)->default('received');
@@ -72,8 +76,12 @@ return new class extends Migration
 
         Schema::create('kitchen_receiving_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('kitchen_receiving_batch_id')->constrained('kitchen_receiving_batches')->cascadeOnDelete();
-            $table->foreignId('kitchen_production_item_id')->constrained('kitchen_production_items')->cascadeOnDelete();
+            $table->foreignId('kitchen_receiving_batch_id')
+                ->constrained('kitchen_receiving_batches', indexName: 'kp_recv_items_batch_fk')
+                ->cascadeOnDelete();
+            $table->foreignId('kitchen_production_item_id')
+                ->constrained('kitchen_production_items', indexName: 'kp_recv_items_prod_fk')
+                ->cascadeOnDelete();
             $table->decimal('received_qty', 12, 3)->default(0);
             $table->decimal('rejected_qty', 12, 3)->default(0);
             $table->decimal('missing_qty', 12, 3)->default(0);
@@ -87,9 +95,17 @@ return new class extends Migration
 
         Schema::create('kitchen_production_attachments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('kitchen_production_batch_id')->constrained('kitchen_production_batches')->cascadeOnDelete();
-            $table->foreignId('kitchen_production_item_id')->nullable()->constrained('kitchen_production_items')->nullOnDelete();
-            $table->foreignId('kitchen_receiving_item_id')->nullable()->constrained('kitchen_receiving_items')->nullOnDelete();
+            $table->foreignId('kitchen_production_batch_id')
+                ->constrained('kitchen_production_batches', indexName: 'kp_attach_batch_fk')
+                ->cascadeOnDelete();
+            $table->foreignId('kitchen_production_item_id')
+                ->nullable()
+                ->constrained('kitchen_production_items', indexName: 'kp_attach_item_fk')
+                ->nullOnDelete();
+            $table->foreignId('kitchen_receiving_item_id')
+                ->nullable()
+                ->constrained('kitchen_receiving_items', indexName: 'kp_attach_recv_item_fk')
+                ->nullOnDelete();
             $table->foreignId('uploaded_by')->constrained('users')->cascadeOnDelete();
             $table->string('type', 32);
             $table->string('file_path');
@@ -101,8 +117,13 @@ return new class extends Migration
 
         Schema::create('kitchen_production_variances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('kitchen_production_batch_id')->constrained('kitchen_production_batches')->cascadeOnDelete();
-            $table->foreignId('kitchen_production_item_id')->nullable()->constrained('kitchen_production_items')->nullOnDelete();
+            $table->foreignId('kitchen_production_batch_id')
+                ->constrained('kitchen_production_batches', indexName: 'kp_var_batch_fk')
+                ->cascadeOnDelete();
+            $table->foreignId('kitchen_production_item_id')
+                ->nullable()
+                ->constrained('kitchen_production_items', indexName: 'kp_var_item_fk')
+                ->nullOnDelete();
             $table->string('variance_type', 32);
             $table->decimal('qty', 12, 3);
             $table->string('unit', 32)->default('pcs');
