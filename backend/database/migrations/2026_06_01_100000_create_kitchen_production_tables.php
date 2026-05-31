@@ -27,9 +27,9 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index(['status', 'production_type']);
-            $table->index('order_id');
-            $table->index('produced_by');
+            $table->index(['status', 'production_type'], 'kp_batches_status_type_idx');
+            $table->index('order_id', 'kp_batches_order_idx');
+            $table->index('produced_by', 'kp_batches_producer_idx');
         });
 
         Schema::create('kitchen_production_items', function (Blueprint $table) {
@@ -53,8 +53,8 @@ return new class extends Migration
             $table->text('kitchen_notes')->nullable();
             $table->timestamps();
 
-            $table->index(['kitchen_production_batch_id', 'status']);
-            $table->index('order_item_id');
+            $table->index(['kitchen_production_batch_id', 'status'], 'kp_items_batch_status_idx');
+            $table->index('order_item_id', 'kp_items_order_item_idx');
         });
 
         Schema::create('kitchen_receiving_batches', function (Blueprint $table) {
@@ -67,7 +67,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index('kitchen_production_batch_id');
+            $table->index('kitchen_production_batch_id', 'kp_recv_batches_prod_idx');
         });
 
         Schema::create('kitchen_receiving_items', function (Blueprint $table) {
@@ -82,7 +82,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index('kitchen_production_item_id');
+            $table->index('kitchen_production_item_id', 'kp_recv_items_prod_idx');
         });
 
         Schema::create('kitchen_production_attachments', function (Blueprint $table) {
@@ -113,7 +113,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index(['kitchen_production_batch_id', 'variance_type']);
+            $table->index(['kitchen_production_batch_id', 'variance_type'], 'kp_var_batch_type_idx');
         });
     }
 
