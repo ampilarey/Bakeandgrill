@@ -556,7 +556,10 @@ export function useOrderCreation(params: Params) {
     paymentRows: PaymentRow[],
   ): Promise<boolean> => {
     const normalized = normalizePayments(paymentRows);
-    const paidTotal = normalized.reduce((s, p) => s + p.amount, 0);
+    const toLaar = (mvr: number) => Math.round(Number(mvr) * 100);
+    const fromLaar = (laar: number) => laar / 100;
+    const totalDueLaar = toLaar(totalDue);
+    const paidTotalLaar = normalized.reduce((s, p) => s + toLaar(p.amount), 0);
     const finalPayments = normalized.map((p, index) => ({
       ...p,
       idempotency_key: `pos:pay:${orderId}:${index}:${p.method}`,
@@ -573,10 +576,10 @@ export function useOrderCreation(params: Params) {
       }
     } else if (finalPayments.length === 0) {
       finalPayments.push({ method: "cash", amount: totalDue, idempotency_key: `pos:pay:${orderId}:0:cash` });
-    } else if (paidTotal < totalDue) {
+    } else if (paidTotalLaar < totalDueLaar) {
       finalPayments.push({
         method: "cash",
-        amount: totalDue - paidTotal,
+        amount: fromLaar(totalDueLaar - paidTotalLaar),
         idempotency_key: `pos:pay:${orderId}:${finalPayments.length}:cash`,
       });
     }

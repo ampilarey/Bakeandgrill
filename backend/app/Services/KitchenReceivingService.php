@@ -255,7 +255,8 @@ class KitchenReceivingService
             ]);
         }
 
-        $this->applyPreparedStock($receivingBatch, $prodItem, (int) round($receivedQty), $user);
+        $stockUnits = max(0, (int) round((float) $receivedQty, 0, PHP_ROUND_HALF_UP));
+        $this->applyPreparedStock($receivingBatch, $prodItem, $stockUnits, $user);
 
         $this->audit->log(
             'kitchen.receiving.received',

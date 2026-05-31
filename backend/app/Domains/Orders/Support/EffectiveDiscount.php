@@ -4,12 +4,35 @@ declare(strict_types=1);
 
 namespace App\Domains\Orders\Support;
 
+use App\Domains\Orders\DTOs\DiscountsInput;
+
 /**
  * Computes the discount actually taken off an order subtotal when
  * multiple discount fields may sum above the subtotal.
  */
 final class EffectiveDiscount
 {
+    /**
+     * @return array{promo: int, loyalty: int, manual: int, gift_card: int, referral: int}
+     */
+    public static function partsFromDiscountsInput(DiscountsInput $discounts): array
+    {
+        return [
+            'promo' => $discounts->promoDiscountLaar,
+            'loyalty' => $discounts->loyaltyDiscountLaar,
+            'manual' => $discounts->manualDiscountLaar,
+            'gift_card' => $discounts->giftCardDiscountLaar,
+            'referral' => $discounts->referralDiscountLaar,
+        ];
+    }
+
+    /**
+     * @return array{promo: int, loyalty: int, manual: int, gift_card: int, referral: int}
+     */
+    public static function allocateFromInput(int $subtotalLaar, DiscountsInput $discounts): array
+    {
+        return self::allocate($subtotalLaar, self::partsFromDiscountsInput($discounts));
+    }
     /**
      * @param  array<string, int>  $parts  e.g. ['promo' => 500, 'loyalty' => 200]
      * @return array<string, int>  Allocated laar per key (sums to effective total)

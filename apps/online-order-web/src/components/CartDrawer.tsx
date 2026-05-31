@@ -211,7 +211,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
 
             {/* Subtotal (tax & delivery calculated at checkout) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)', fontWeight: 700, color: 'var(--color-text)' }}>
-              <span>Subtotal</span>
+              <span>Subtotal <span style={{ fontWeight: 500, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(excl. tax &amp; fees)</span></span>
               <span style={{ color: 'var(--color-primary)', fontSize: '1.05rem' }}>MVR {cartTotal.toFixed(2)}</span>
             </div>
 

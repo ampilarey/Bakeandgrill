@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Customers\Services\CustomerCreditService;
+use App\Domains\Loyalty\Services\PointsCalculator;
+use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerSmsOptOutRequest;
 use App\Models\Customer;
@@ -240,10 +242,13 @@ class CustomerController extends Controller
 
         // Lifetime stats — only count orders that actually got paid so
         // a cashier doesn't see "10 orders" when 7 were cancelled.
+        $totalLaarExpr = ReportMoneySql::ORDER_TOTAL_LAAR;
         $stats = Order::query()
             ->where('customer_id', $customer->id)
             ->whereNotNull('paid_at')
-            ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(total), 0) as total_spent, MIN(paid_at) as first_paid_at, MAX(paid_at) as last_paid_at')
+            ->selectRaw('COUNT(*) as orders_count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as total_spent')
+            ->selectRaw('MIN(paid_at) as first_paid_at, MAX(paid_at) as last_paid_at')
             ->first();
 
         $recent = Order::query()
@@ -272,7 +277,9 @@ class CustomerController extends Controller
                 'internal_notes' => $customer->internal_notes,
                 'created_at' => $customer->created_at?->toIso8601String(),
             ],
-            'loyalty' => $loyaltyPayload,
+            'loyalty' => array_merge($loyaltyPayload, [
+                'redeem_mvr_per_point' => app(PointsCalculator::class)->redeemRatePerPoint(),
+            ]),
             'lifetime' => [
                 'orders_count' => (int) ($stats?->orders_count ?? 0),
                 'total_spent' => (float) ($stats?->total_spent ?? 0),

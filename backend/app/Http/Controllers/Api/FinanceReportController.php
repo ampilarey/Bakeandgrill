@@ -219,6 +219,12 @@ class FinanceReportController extends Controller
             ->value('total');
         $avgOrder = $orderCount > 0 ? round($revenue / $orderCount, 2) : 0;
 
+        $refundsTotal = (float) Refund::whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ['approved', 'processed', 'completed'])
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
+            ->value('total');
+        $netRevenue = round($revenue - $refundsTotal, 2);
+
         $expenses = (float) Expense::whereDate('expense_date', $date)->where('status', 'approved')->sum('amount');
         $purchases = (float) Purchase::whereDate('purchase_date', $date)
             ->whereIn('status', ['received', 'partial'])
@@ -228,7 +234,7 @@ class FinanceReportController extends Controller
         $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
         $paymentProcessingFees = (float) ($commissionSummary['totals']['commission_total'] ?? 0);
 
-        $profit = round($revenue - $expenses - $purchases - $wasteCost, 2);
+        $profit = round($netRevenue - $expenses - $purchases - $wasteCost, 2);
 
         $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
 
@@ -255,6 +261,8 @@ class FinanceReportController extends Controller
         return response()->json([
             'date' => $date,
             'revenue' => $revenue,
+            'refunds' => $refundsTotal,
+            'net_revenue' => $netRevenue,
             'tax' => $tax,
             'discounts' => $discounts,
             'orders' => $orderCount,

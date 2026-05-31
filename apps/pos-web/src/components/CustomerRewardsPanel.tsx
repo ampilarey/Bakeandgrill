@@ -427,9 +427,8 @@ export function CustomerRewardsPanel({
  *  actual discount when the hold is placed, so an over-estimate here
  *  becomes a smaller real discount — never an under-charge. */
 function estimateDiscountPerPoint(s: PosCustomerSummary): number {
-  // Default: 1 point = 0.01 MVR (matches the seeded PointsCalculator).
-  // If we ever expose the rate from the API we can swap this out.
-  void s;
+  const rate = s.loyalty.redeem_mvr_per_point;
+  if (typeof rate === 'number' && rate > 0) return rate;
   return 0.01;
 }
 

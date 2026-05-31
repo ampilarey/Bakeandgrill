@@ -528,6 +528,8 @@ export type PosCustomerSummary = {
     available_points: number;
     lifetime_points: number;
     tier?: string | null;
+    /** MVR discount per loyalty point (from PointsCalculator). */
+    redeem_mvr_per_point?: number;
   };
   lifetime: {
     orders_count: number;

@@ -44,6 +44,8 @@ import {
   previewServiceCharge,
   serviceChargeTaxLaar,
 } from '@shared/utils/serviceCharge';
+import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from '@shared/utils/effectiveDiscount';
+import { estimateDeliveryFeeLaar } from '@shared/utils/deliveryFeeEstimate';
 
 export type CartItem = {
   id: number;
@@ -368,7 +370,7 @@ export function useCheckout() {
           if (!cancelled) setDeliveryFee(preview.fee_laar);
         })
         .catch(() => {
-          if (!cancelled) setDeliveryFee(0);
+          if (!cancelled) setDeliveryFee(estimateDeliveryFeeLaar(island, subtotalLaar));
         });
     }, 250);
 
@@ -427,8 +429,13 @@ export function useCheckout() {
     : 0;
 
   // GST is on the discounted subtotal (standard Maldivian T-GST — discounts reduce
-  // the taxable amount). Scale the effective tax rate proportionally.
-  const discountedSubtotalLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - giftCardDelta - referralDelta);
+  // the taxable amount). Use the same proportional allocation as the backend.
+  const discountedSubtotalLaar = calcDiscountedSubtotalLaar(subtotalLaar, {
+    promo: promoDelta,
+    loyalty: loyaltyDelta,
+    gift_card: giftCardDelta,
+    referral: referralDelta,
+  });
   const backendOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
   const serviceChargePreview = useMemo(
     () => previewServiceCharge(serviceChargeConfig, backendOrderType, discountedSubtotalLaar),

@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit;
+
+use App\Domains\Orders\DTOs\DiscountsInput;
+use App\Domains\Orders\DTOs\ServiceChargeBreakdown;
+use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Models\Order;
+use App\Models\OrderItem;
+use Tests\TestCase;
+
+class OrderTotalsCalculatorDiscountTest extends TestCase
+{
+    public function test_stacked_discounts_are_allocated_before_tax_base(): void
+    {
+        $order = new Order;
+        $order->setRelation('items', collect([
+            $this->lineItem(6.00, 'TGST'),
+        ]));
+
+        $calculator = new OrderTotalsCalculator;
+        $breakdown = $calculator->calculate(
+            $order,
+            new DiscountsInput(
+                promoDiscountLaar: 500,
+                loyaltyDiscountLaar: 500,
+            ),
+            taxRateBp: 800,
+            taxInclusive: false,
+            lockedServiceCharge: ServiceChargeBreakdown::zero(),
+        );
+
+        $this->assertSame(600, $breakdown->subtotal->amountLaar);
+        $this->assertSame(300, $breakdown->promoDiscount->amountLaar);
+        $this->assertSame(300, $breakdown->loyaltyDiscount->amountLaar);
+        $this->assertSame(600, $breakdown->totalDiscount->amountLaar);
+        $this->assertSame(0, $breakdown->discountedSubtotal->amountLaar);
+    }
+
+    private function lineItem(float $totalMvr, ?string $taxCode = null): OrderItem
+    {
+        $item = new OrderItem;
+        $item->total_price = $totalMvr;
+        $item->tax_code = $taxCode;
+
+        return $item;
+    }
+}

@@ -8,6 +8,7 @@ import {
   serviceChargeTaxLaar,
   type ServiceChargePublicConfig,
 } from "@shared/utils/serviceCharge";
+import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/utils/effectiveDiscount";
 import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
 
 export type PaymentRow = {
@@ -161,32 +162,23 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   }, [discountAmount, cartSubtotal]);
 
   /**
-   * Sum of all customer-rewards discounts. Capped so the running total
-   * can never go negative — matches `OrderTotalsCalculator` which does
-   * `max(0, subtotal − Σdiscounts)`.
+   * Pre-tax discount total and discounted subtotal — mirrors backend
+   * EffectiveDiscount allocation when stacked discounts exceed subtotal.
    */
-  const rewardsDiscount = useMemo(() => {
-    const promo = appliedPromo?.discount ?? 0;
-    const loyalty = appliedLoyalty?.discount ?? 0;
-    const giftCard = appliedGiftCard?.discount ?? 0;
-    return Math.max(0, promo + loyalty + giftCard);
-  }, [appliedPromo, appliedLoyalty, appliedGiftCard]);
+  const discountedSubtotal = useMemo(() => {
+    const subLaar = Math.round(cartSubtotal * 100);
+    const afterLaar = calcDiscountedSubtotalLaar(subLaar, {
+      promo: Math.round((appliedPromo?.discount ?? 0) * 100),
+      loyalty: Math.round((appliedLoyalty?.discount ?? 0) * 100),
+      gift_card: Math.round((appliedGiftCard?.discount ?? 0) * 100),
+      manual: Math.round(discountValue * 100),
+    });
+    return afterLaar / 100;
+  }, [cartSubtotal, appliedPromo, appliedLoyalty, appliedGiftCard, discountValue]);
 
-  /** Grand total of every pre-tax discount applied to this ticket. */
   const totalDiscount = useMemo(
-    () => Math.min(cartSubtotal, discountValue + rewardsDiscount),
-    [cartSubtotal, discountValue, rewardsDiscount],
-  );
-
-  /**
-   * Subtotal after discount — the taxable amount.
-   * The backend's OrderTotalsCalculator applies discounts proportionally
-   * across items BEFORE computing per-item tax. We mirror that here so
-   * the POS total matches what the server will charge.
-   */
-  const discountedSubtotal = useMemo(
-    () => Math.max(0, cartSubtotal - totalDiscount),
-    [cartSubtotal, totalDiscount],
+    () => Math.max(0, cartSubtotal - discountedSubtotal),
+    [cartSubtotal, discountedSubtotal],
   );
 
   /**

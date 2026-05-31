@@ -21,14 +21,7 @@ export const EMPTY_DELIVERY_DETAILS: PosDeliveryDetails = {
   locationLink: "",
 };
 
-/** Rough fallback when the delivery-fee preview API is unreachable. */
-export function estimateDeliveryFeeMvr(island: string, subtotalMvr: number): number {
-  const threshold = 200;
-  if (subtotalMvr >= threshold) return 0;
-  const key = island.trim().toLowerCase();
-  const zones: Record<string, number> = { male: 30, hulhumale: 30, "hulhumalé": 30 };
-  return zones[key] ?? 30;
-}
+export { estimateDeliveryFeeMvr } from "@shared/utils/deliveryFeeEstimate";
 
 export function normalizeMvPhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");

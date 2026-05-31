@@ -7,6 +7,7 @@ namespace App\Domains\Orders\Services;
 use App\Domains\Orders\DTOs\DiscountsInput;
 use App\Domains\Orders\DTOs\ServiceChargeBreakdown;
 use App\Domains\Orders\DTOs\TotalsBreakdown;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Shared\ValueObjects\Money;
@@ -17,7 +18,7 @@ use App\Models\Order;
  *
  * Order:
  *   1. Subtotal from line items
- *   2. Order-level discounts
+ *   2. Order-level discounts (proportionally allocated when stacked above subtotal)
  *   3. Discounted subtotal
  *   4. Service charge (from settings snapshot, or frozen on locked orders)
  *   5. Per-item tax (+ optional service charge tax)
@@ -78,17 +79,16 @@ class OrderTotalsCalculator
         $taxInclusive ??= $this->gstSettings->taxInclusive();
 
         $subtotal = $this->calculateSubtotalFromItems($order);
-        $promoDisco = new Money($discounts->promoDiscountLaar);
-        $loyaltyDisco = new Money($discounts->loyaltyDiscountLaar);
-        $manualDisco = new Money($discounts->manualDiscountLaar);
-        $giftCardDisco = new Money($discounts->giftCardDiscountLaar);
-        $referralDisco = new Money($discounts->referralDiscountLaar);
+        $allocated = EffectiveDiscount::allocateFromInput($subtotal->amountLaar, $discounts);
 
-        $totalDiscount = $promoDisco
-            ->add($loyaltyDisco)
-            ->add($manualDisco)
-            ->add($giftCardDisco)
-            ->add($referralDisco);
+        $promoDisco = new Money($allocated['promo']);
+        $loyaltyDisco = new Money($allocated['loyalty']);
+        $manualDisco = new Money($allocated['manual']);
+        $giftCardDisco = new Money($allocated['gift_card']);
+        $referralDisco = new Money($allocated['referral']);
+
+        $totalDiscountLaar = array_sum($allocated);
+        $totalDiscount = new Money($totalDiscountLaar);
         $discountedSubtotal = $subtotal->subtract($totalDiscount);
 
         $serviceCharge = $lockedServiceCharge
@@ -113,9 +113,13 @@ class OrderTotalsCalculator
             $tax = $this->calculatePerItemTax($order, $subtotal, $discountedSubtotal, $taxInclusive);
 
             if ($serviceCharge->taxable && $serviceCharge->amountLaar > 0 && !$taxInclusive) {
-                $avgRate = $this->weightedAverageTaxRate($order, $subtotal, $discountedSubtotal);
-                if ($avgRate > 0) {
-                    $scTaxLaar = (int) round($serviceCharge->amountLaar * $avgRate / 100);
+                $scTaxLaar = $this->calculateServiceChargeTaxLaar(
+                    $order,
+                    $subtotal,
+                    $discountedSubtotal,
+                    $serviceCharge->amountLaar,
+                );
+                if ($scTaxLaar > 0) {
                     $tax = $tax->add(new Money($scTaxLaar));
                 }
             }
@@ -234,18 +238,23 @@ class OrderTotalsCalculator
     }
 
     /**
-     * Weighted average item tax rate (percent) by post-discount effective laar.
+     * Allocate service charge tax across item tax buckets (not a single blended rate).
      */
-    private function weightedAverageTaxRate(Order $order, Money $subtotal, Money $discountedSubtotal): float
-    {
-        if ($subtotal->amountLaar === 0) {
-            return 0.0;
+    private function calculateServiceChargeTaxLaar(
+        Order $order,
+        Money $subtotal,
+        Money $discountedSubtotal,
+        int $serviceChargeLaar,
+    ): int {
+        if ($serviceChargeLaar <= 0 || $subtotal->amountLaar === 0) {
+            return 0;
         }
 
+        $order->loadMissing('items');
         $discountRatio = $discountedSubtotal->amountLaar / $subtotal->amountLaar;
-        $weightedSum = 0.0;
-        $totalEffective = 0;
 
+        /** @var array<float, int> $buckets tax rate percent => post-discount laar */
+        $buckets = [];
         foreach ($order->items as $item) {
             $rate = $this->gstTax->resolveTaxRatePercent($item->tax_code ?? null);
             if ($rate <= 0) {
@@ -256,10 +265,20 @@ class OrderTotalsCalculator
             if ($effectiveLaar <= 0) {
                 continue;
             }
-            $weightedSum += $effectiveLaar * $rate;
-            $totalEffective += $effectiveLaar;
+            $buckets[$rate] = ($buckets[$rate] ?? 0) + $effectiveLaar;
         }
 
-        return $totalEffective > 0 ? $weightedSum / $totalEffective : 0.0;
+        $totalTaxableLaar = array_sum($buckets);
+        if ($totalTaxableLaar <= 0) {
+            return 0;
+        }
+
+        $scTaxLaar = 0;
+        foreach ($buckets as $rate => $bucketLaar) {
+            $scShareLaar = (int) round($serviceChargeLaar * $bucketLaar / $totalTaxableLaar);
+            $scTaxLaar += (int) round($scShareLaar * $rate / 100);
+        }
+
+        return $scTaxLaar;
     }
 }

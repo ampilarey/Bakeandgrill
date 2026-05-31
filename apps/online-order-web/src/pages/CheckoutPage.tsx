@@ -722,7 +722,7 @@ export function CheckoutPage() {
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: '0.8rem' }}>⭐</span>
           <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-            You'll earn <strong style={{ color: 'var(--color-primary)' }}>{Math.floor((totalLaar - deliveryFeeLaar) / 100)} pts</strong> from this order
+            You'll earn <strong style={{ color: 'var(--color-primary)' }}>{earnPreviewPoints} pts</strong> from this order
           </span>
         </div>
       )}

@@ -303,13 +303,19 @@ class ReportsService
      */
     public function deliveryZones(Carbon $from, Carbon $to): array
     {
+        $orderTotalExpr = ReportMoneySql::ORDER_TOTAL_LAAR;
+        $feeLaarExpr = ReportMoneySql::ORDER_DELIVERY_FEE_LAAR;
+
         $rows = Order::query()
             ->where('type', 'delivery')
             ->whereIn('status', ReportMoneySql::SALE_STATUSES)
             ->whereBetween('created_at', [$from, $to])
             ->whereNotNull('delivery_island')
             ->where('delivery_island', '!=', '')
-            ->selectRaw('delivery_island as zone, COUNT(*) as orders_count, COALESCE(SUM(total),0) as order_total, COALESCE(SUM(delivery_fee),0) as fees_total, COALESCE(AVG(delivery_fee),0) as avg_fee')
+            ->selectRaw('delivery_island as zone, COUNT(*) as orders_count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($orderTotalExpr).' as order_total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($feeLaarExpr).' as fees_total')
+            ->selectRaw('ROUND(COALESCE(AVG('.$feeLaarExpr.'), 0) / 100.0, 2) as avg_fee')
             ->groupBy('delivery_island')
             ->orderByDesc('orders_count')
             ->get();
@@ -711,15 +717,18 @@ class ReportsService
     public function customerLtvTop(Carbon $from, Carbon $to, int $limit = 20): array
     {
         $limit = min(50, max(5, $limit));
+        $totalLaarExpr = 'COALESCE(o.total_laar, ROUND(o.total * 100))';
 
         $rows = DB::table('orders as o')
             ->join('customers as c', 'c.id', '=', 'o.customer_id')
             ->whereNotNull('o.customer_id')
-            ->whereNotIn('o.status', ['cancelled'])
+            ->whereIn('o.status', ReportMoneySql::SALE_STATUSES)
             ->whereBetween('o.created_at', [$from, $to])
-            ->selectRaw('c.id, c.name, c.phone, COUNT(o.id) as order_count, SUM(o.total) as total_spent, MAX(o.created_at) as last_order')
+            ->selectRaw('c.id, c.name, c.phone, COUNT(o.id) as order_count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as total_spent')
+            ->selectRaw('MAX(o.created_at) as last_order')
             ->groupBy('c.id', 'c.name', 'c.phone')
-            ->orderByRaw('SUM(o.total) DESC')
+            ->orderByRaw('SUM('.$totalLaarExpr.') DESC')
             ->limit($limit)
             ->get();
 
@@ -744,11 +753,15 @@ class ReportsService
      */
     public function cashierPerformance(Carbon $from, Carbon $to): array
     {
+        $totalLaarExpr = ReportMoneySql::ORDER_TOTAL_LAAR;
+
         $sales = Order::query()
             ->leftJoin('users', 'users.id', '=', 'orders.user_id')
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
-            ->selectRaw('orders.user_id, users.name, COUNT(*) as orders_count, COALESCE(SUM(orders.total),0) as total, COALESCE(AVG(orders.total),0) as avg_order')
+            ->selectRaw('orders.user_id, users.name, COUNT(*) as orders_count')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as total')
+            ->selectRaw('ROUND(COALESCE(AVG('.$totalLaarExpr.'), 0) / 100.0, 2) as avg_order')
             ->groupBy('orders.user_id', 'users.name')
             ->get()
             ->keyBy('user_id');
@@ -832,10 +845,14 @@ class ReportsService
             default => 'HOUR(created_at)',
         };
 
+        $totalLaarExpr = ReportMoneySql::ORDER_TOTAL_LAAR;
+
         $rows = DB::table('orders')
             ->whereBetween('created_at', [$from, $to])
-            ->whereNotIn('status', ['cancelled'])
-            ->selectRaw("{$hourExpr} as hour, COUNT(*) as count, COALESCE(SUM(total),0) as revenue, COALESCE(AVG(total),0) as avg_total")
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->selectRaw("{$hourExpr} as hour, COUNT(*) as count")
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as revenue')
+            ->selectRaw('ROUND(COALESCE(AVG('.$totalLaarExpr.'), 0) / 100.0, 2) as avg_total')
             ->groupByRaw($hourExpr)
             ->orderBy('hour')
             ->get();
