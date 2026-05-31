@@ -7,6 +7,7 @@ namespace Tests\Feature\Stream;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\Role;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -40,6 +41,10 @@ class OrderMarkReadyStreamTest extends TestCase
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
+
+        // This suite tests SSE on mark-ready, not kitchen handover gating.
+        SiteSetting::set('kitchen_require_pos_receiving_before_ready', 'false');
+        SiteSetting::bust();
     }
 
     public function test_mark_ready_dispatches_order_status_changed_for_sse_pipeline(): void
