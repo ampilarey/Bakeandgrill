@@ -813,6 +813,8 @@
     $homeDeliverySubtitle  = \App\Models\SiteSetting::get('home_delivery_subtitle',  'We come to you — no exceptions within the city');
     $homeDeliveryQualityLine  = \App\Models\SiteSetting::get('home_delivery_quality_line',  'Hot food at your door, not a cold box');
     $homeDeliveryPaymentLine  = \App\Models\SiteSetting::get('home_delivery_payment_line',  'BML online payment or cash on delivery');
+    $homeOpenBadgeText        = \App\Models\SiteSetting::get('home_open_badge_text',   "We're open");
+    $homeClosedBadgeText      = \App\Models\SiteSetting::get('home_closed_badge_text', 'Closed now');
 @endphp
 
 {{-- ══════════════════════════════════════════════════════════
@@ -824,13 +826,13 @@
     @if($isOpen)
         <div class="hero-status open">
             <span class="hero-status-dot"></span>
-            We're open
+            {{ $homeOpenBadgeText }}
             @if($todayHours) · Closes {{ $todayHours['close'] }}@endif
         </div>
     @else
         <div class="hero-status closed">
             <span class="hero-status-dot"></span>
-            Closed now
+            {{ $homeClosedBadgeText }}
             @if($todayHours) · Opens {{ $todayHours['open'] }}@endif
         </div>
     @endif
@@ -1170,10 +1172,10 @@
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
                         @if($isOpen)
-                            <span style="color:var(--success-text);font-weight:700;">Open now</span>
+                            <span style="color:var(--success-text);font-weight:700;">{{ $homeOpenBadgeText }}</span>
                             @if($todayHours) · Closes {{ $todayHours['close'] }} @endif
                         @else
-                            <span style="color:var(--danger-text);font-weight:700;">Closed now</span>
+                            <span style="color:var(--danger-text);font-weight:700;">{{ $homeClosedBadgeText }}</span>
                             @if($todayHours) · Opens {{ $todayHours['open'] }} @endif
                         @endif
                         <small><a href="/hours" style="color:var(--amber);">See full schedule →</a></small>

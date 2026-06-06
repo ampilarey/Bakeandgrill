@@ -9,7 +9,7 @@ import {
 } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
-import { useSiteSettings } from "../context/SiteSettingsContext";
+import { useSiteSettingsContext } from "../context/SiteSettingsContext";
 import { AuthBlock } from "../components/AuthBlock";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { CartSummary } from "../components/CartSummary";
@@ -202,9 +202,15 @@ export function CheckoutPage() {
   const navigate  = useNavigate();
   const isMobile  = useIsMobile();
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const s = useSiteSettings();
+  const { settings: s, text } = useSiteSettingsContext();
 
   const siteName    = s.site_name        || 'Bake & Grill';
+  const checkoutTitle = text('order_checkout_title', 'Complete your order');
+  const checkoutSubtitle = text('order_checkout_subtitle', 'Secure payment · Straight to the kitchen');
+  const paymentCompliance = text(
+    'order_payment_compliance',
+    'All prices in MVR. Payments are processed securely via Bank of Maldives (BML). Your card details are never stored on our servers.',
+  );
   const phone       = s.business_phone   || '+960 912 0011';
   const phoneTel    = 'tel:' + phone.replace(/[^+\d]/g, '');
   const email       = s.business_email   || 'admin@bakeandgrill.mv';
@@ -736,7 +742,7 @@ export function CheckoutPage() {
         <img src="/card-brands.png" alt="Amex, Visa, Mastercard, Maestro" style={{ height: '53px', objectFit: 'contain' }} />
       </div>
       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
-        Amount charged in <strong>MVR (Maldivian Rufiyaa)</strong>. Merchant located in the <strong>Maldives</strong>.
+        {paymentCompliance}
       </p>
       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
         Before completing your purchase, please read:
@@ -850,10 +856,10 @@ export function CheckoutPage() {
           <span style={{ fontSize: '1.25rem' }}>🧾</span>
           <div>
             <h1 style={{ fontSize: 'var(--text-md)', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
-              Complete your order
+              {checkoutTitle}
             </h1>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0, marginTop: '0.125rem' }}>
-              Secure payment · Straight to the kitchen
+              {checkoutSubtitle}
               {waitMinutes != null && <> · Kitchen wait ~{waitMinutes} min</>}
             </p>
           </div>

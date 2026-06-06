@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOpeningHoursStatus, fetchOpeningHoursSchedule } from '../api';
 import type { DaySchedule } from '../api';
-import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const DAY_NAMES   = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -22,7 +22,8 @@ export function HoursPage() {
   const [message, setMessage]   = useState<string | null>(null);
   const [schedule, setSchedule] = useState<Record<string, DaySchedule> | null>(null);
   const [loadErr, setLoadErr]   = useState(false);
-  const s = useSiteSettings();
+  const { settings: s, text } = useSiteSettingsContext();
+  const address = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
   const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
 
   usePageTitle('Hours');
@@ -57,10 +58,10 @@ export function HoursPage() {
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '0.875rem' }}>
-          Opening Hours
+          {text('hours_page_title', 'Opening Hours')}
         </h1>
         <p style={{ fontSize: '1rem', color: 'var(--color-text-muted)' }}>
-          We're open most days — visit us at Kalaafaanu Hingun, Malé.
+          We&apos;re open most days — visit us at {address}.
         </p>
       </div>
 
@@ -120,7 +121,7 @@ export function HoursPage() {
 
       {/* Note */}
       <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-bg)', borderRadius: '12px', padding: '1.25rem', marginBottom: '2rem', fontSize: '0.875rem', color: 'var(--color-warning)', lineHeight: 1.6 }}>
-        <strong>Note:</strong> Hours may vary on public holidays and special occasions. For the latest updates, contact us directly or check our WhatsApp.
+        <strong>Note:</strong> {text('hours_page_note', 'Hours may vary on public holidays and special occasions. For the latest updates, contact us directly or check our WhatsApp.')}
       </div>
 
       {/* Actions */}

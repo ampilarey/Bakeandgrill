@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchItems, createPreOrder } from '../api';
 import type { Item, PreOrderResult } from '../api';
 import { AuthBlock } from '../components/AuthBlock';
-import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -18,8 +18,21 @@ function minFulfillmentDate(): string {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export function PreOrderPage() {
-  const s = useSiteSettings();
+  const { settings: s, text } = useSiteSettingsContext();
+  const siteName = s.site_name || 'Bake & Grill';
   const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
+  let confirmSteps: { text?: string }[] = [];
+  try {
+    const parsed = JSON.parse(s.preorder_confirm_steps ?? '[]') as unknown;
+    if (Array.isArray(parsed)) confirmSteps = parsed;
+  } catch { /* use defaults below */ }
+  if (confirmSteps.length === 0) {
+    confirmSteps = [
+      { text: 'Our team will review your request within a few hours.' },
+      { text: 'We will call you to confirm availability and final details.' },
+      { text: 'Payment is collected on delivery or pickup day.' },
+    ];
+  }
   const { token, customerName, setAuth } = useAuth();
   const [step, setStep] = useState<'items' | 'details' | 'confirm' | 'done'>('items');
   const [items, setItems] = useState<Item[]>([]);
@@ -31,7 +44,7 @@ export function PreOrderPage() {
   const [result, setResult] = useState<PreOrderResult | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => { document.title = 'Pre-Order — Bake & Grill'; }, []);
+  useEffect(() => { document.title = `Pre-Order — ${siteName}`; }, [siteName]);
   useEffect(() => {
     fetchItems().then(({ data }) => setItems(data ?? [])).catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
   }, []);
@@ -82,10 +95,9 @@ export function PreOrderPage() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <h1 style={S.heading}>Event Pre-Order</h1>
+          <h1 style={S.heading}>{text('preorder_page_title', 'Event Pre-Order')}</h1>
           <p style={S.sub}>
-            Ordering for a gathering or event? Select your items, choose a fulfillment date,
-            and we'll prepare everything fresh for collection.
+            {text('preorder_page_subtitle', "Ordering for a gathering or event? Select your items, choose a fulfillment date, and we'll prepare everything fresh for collection.")}
           </p>
           <div style={S.notice}>
             ⏰ Pre-orders require <strong>at least 24 hours' notice</strong>. Our team will confirm your order by phone.
@@ -269,7 +281,7 @@ export function PreOrderPage() {
                 onClick={handleSubmit}
                 disabled={!token || loading}
               >
-                {loading ? 'Submitting…' : 'Submit Pre-Order'}
+                {loading ? 'Submitting…' : text('preorder_submit_label', 'Submit Pre-Order')}
               </button>
             </div>
           </div>
@@ -279,10 +291,21 @@ export function PreOrderPage() {
         {step === 'done' && result && (
           <div style={{ ...S.card, maxWidth: '520px', margin: '0 auto', textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Pre-Order Submitted!</h2>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+              {text('preorder_confirm_title', 'Pre-Order Submitted!')}
+            </h2>
             <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-              Your order <strong>{result.order_number}</strong> has been received. Our team will call you to confirm within a few hours.
+              {text('preorder_confirm_message', 'Your pre-order request has been submitted successfully.')}
+              {' '}Order <strong>{result.order_number}</strong>.
             </p>
+            <div style={{ background: 'var(--color-surface-alt)', borderRadius: '10px', padding: '1rem', marginBottom: '1.5rem', textAlign: 'left' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-primary)' }}>What&apos;s Next?</h3>
+              {confirmSteps.map((step, i) => (
+                <p key={i} style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
+                  {i + 1}. {step.text}
+                </p>
+              ))}
+            </div>
 
             <div style={{ background: 'var(--color-surface-alt)', borderRadius: '10px', padding: '1rem', marginBottom: '1.5rem', textAlign: 'left' }}>
               {result.items.map((item, i) => (

@@ -15,10 +15,12 @@ export function Layout() {
   const { cart } = useCart();
   useLanguage(); // keep provider active for t() calls in child pages
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
-  const { settings: s } = useSiteSettingsContext();
+  const { settings: s, footerLinks, text } = useSiteSettingsContext();
 
   const siteName   = s.site_name        || 'Bake & Grill';
   const siteTagline= s.site_tagline     || 'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.';
+  const footerBlurb = s.footer_text?.trim() || siteTagline;
+  const footerRightsSuffix = text('footer_rights_suffix', 'All rights reserved.');
   const logoUrl    = s.logo             || '/logo.png';
   const phone      = s.business_phone   || '+960 912 0011';
   const phoneTel   = 'tel:' + phone.replace(/[^+\d]/g, '');
@@ -333,7 +335,7 @@ export function Layout() {
               <img src={logoUrl} alt={siteName} />
               {siteName}
             </a>
-            <p>{siteTagline}</p>
+            <p>{footerBlurb}</p>
             <div className="order-footer-btns">
               <a href={waLink} target="_blank" rel="noopener noreferrer" className="order-footer-wa" aria-label="Chat on WhatsApp">
                 <WhatsAppIcon /> WhatsApp
@@ -346,7 +348,7 @@ export function Layout() {
 
           {/* ── Quick Links ── */}
           <div className="order-footer-col">
-            <h4>Quick Links</h4>
+            <h4>{text('footer_quick_links_heading', 'Quick Links')}</h4>
             <a href="/">Home</a>
             <Link to="/menu">Order Online</Link>
             <Link to="/pre-order">Pre-Order (Events)</Link>
@@ -360,7 +362,7 @@ export function Layout() {
 
           {/* ── Location ── */}
           <div className="order-footer-col">
-            <h4>Location</h4>
+            <h4>{text('footer_location_heading', 'Location')}</h4>
             <p>{addrLine1}</p>
             <p>{addrCity}</p>
             {landmark && <p>{landmark}</p>}
@@ -369,20 +371,24 @@ export function Layout() {
 
           {/* ── Contact ── */}
           <div className="order-footer-col">
-            <h4>Contact</h4>
+            <h4>{text('footer_contact_heading', 'Contact')}</h4>
             <a href={phoneTel}>📞 {phone}</a>
             <a href={`mailto:${email}`}>✉ {email}</a>
             <div className="order-footer-legal">
-              <a href="/privacy">Privacy Policy</a>
-              <a href="/terms">Terms &amp; Conditions</a>
-              <a href="/refund">Refund Policy</a>
+              {(footerLinks.length > 0 ? footerLinks : [
+                { label: 'Privacy Policy', url: '/privacy' },
+                { label: 'Terms & Conditions', url: '/terms' },
+                { label: 'Refund Policy', url: '/refund' },
+              ]).map((link, i) => (
+                <a key={link.url ?? i} href={link.url ?? '#'}>{link.label}</a>
+              ))}
             </div>
           </div>
         </div>
 
         {/* ── Bottom bar ── */}
         <div className="order-footer-bottom">
-          <span>© {new Date().getFullYear()} {siteName}. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} {siteName}. {footerRightsSuffix}</span>
           <span>{addrCity}</span>
         </div>
       </footer>

@@ -1,19 +1,33 @@
 import { useEffect } from 'react';
-import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 
 export function PrivacyPage() {
-  const s = useSiteSettings();
+  const { settings: s, text } = useSiteSettingsContext();
   const siteName = s.site_name      || 'Bake & Grill';
   const phone    = s.business_phone || '+960 912 0011';
   const phoneTel = 'tel:' + phone.replace(/[^+\d]/g, '');
   const email    = s.business_email || 'admin@bakeandgrill.mv';
   const address  = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
+  const pageTitle = text('privacy_page_title', 'Privacy Policy');
+  const cmsBody = s.legal_privacy_body?.trim();
 
-  useEffect(() => { document.title = `Privacy Policy — ${siteName}`; }, [siteName]);
+  useEffect(() => { document.title = `${pageTitle} — ${siteName}`; }, [siteName, pageTitle]);
+
+  if (cmsBody) {
+    return (
+      <div style={S.wrap}>
+        <h1 style={S.h1}>{pageTitle}</h1>
+        <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
+        {cmsBody.split(/\n\n+/).filter(Boolean).map((para, i) => (
+          <p key={i} style={{ ...S.body, marginBottom: '1.25rem' }}>{para}</p>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div style={S.wrap}>
-      <h1 style={S.h1}>Privacy Policy</h1>
+      <h1 style={S.h1}>{pageTitle}</h1>
       <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
 
       <Section title="Introduction">

@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
-
-const APP_NAME = 'Bake & Grill';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 /**
- * Sets the document title to `${title} — Bake & Grill`.
- * Pass null to use just the base app name.
+ * Sets the document title to `${title} — {site_name}`.
+ * Pass null to use just the site name.
  */
 export function usePageTitle(title: string | null) {
+  const { site_name } = useSiteSettings();
+  const appName = site_name?.trim() || 'Bake & Grill';
+
   useEffect(() => {
-    document.title = title ? `${title} — ${APP_NAME}` : APP_NAME;
-  }, [title]);
+    document.title = title ? `${title} — ${appName}` : appName;
+  }, [title, appName]);
 }

@@ -10,6 +10,7 @@ import {
   guestSession,
   type AuthCustomer,
 } from "../api";
+import { useSiteSettingsContext } from "../context/SiteSettingsContext";
 
 type Step =
   | "phone"
@@ -37,6 +38,7 @@ function persistAuth(token: string, customer: AuthCustomer) {
 }
 
 export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
+  const { text } = useSiteSettingsContext();
   const [step, setStep]       = useState<Step>("phone");
   const [phone, setPhone]     = useState("");
   const [guestName, setGuestName] = useState("");
@@ -253,7 +255,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
               Checkout as guest — no OTP needed
             </button>
           )}
-          <p style={S.note}>Used for order updates only — we never sell your number or spam you.</p>
+          <p style={S.note}>{text('order_auth_privacy_line', 'Used for order updates only — we never sell your number or spam you.')}</p>
         </>
       )}
 

@@ -1,5 +1,10 @@
 @extends('layout')
-@section('title', 'Pre-Order for Event')
+@php
+    $preorderPageTitle = \App\Models\SiteSetting::get('preorder_page_title', 'Pre-Order for Event');
+    $preorderPageSubtitle = \App\Models\SiteSetting::get('preorder_page_subtitle', 'Order in advance for events');
+    $preorderSubmitLabel = \App\Models\SiteSetting::get('preorder_submit_label', '📅 Submit Pre-Order');
+@endphp
+@section('title', $preorderPageTitle)
 @section('content')
 
 <style>
@@ -16,8 +21,8 @@ input[type="number"] {
 
 <div style="background: linear-gradient(135deg, rgba(27, 163, 185, 0.08), rgba(184, 168, 144, 0.08)); padding: 3rem 2rem; text-align: center;">
     <div style="font-size: 3.5rem; margin-bottom: 1rem;">📅</div>
-    <h1 style="font-size: 2.5rem; font-weight: 700;">Pre-Order for Event</h1>
-    <p style="font-size: 1.1rem; color: #636e72;">Order in advance for events</p>
+    <h1 style="font-size: 2.5rem; font-weight: 700;">{{ $preorderPageTitle }}</h1>
+    <p style="font-size: 1.1rem; color: #636e72;">{{ $preorderPageSubtitle }}</p>
 </div>
 
 <!-- Desktop Filters -->
@@ -137,7 +142,7 @@ input[type="number"] {
             <div><label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Notes</label><textarea name="customer_notes" rows="3" style="width: 100%; padding: 0.85rem 1rem; border: 2px solid #e9ecef; border-radius: 8px; font-family: 'Poppins', sans-serif;"></textarea></div>
         </div>
 
-        <button type="submit" style="width: 100%; padding: 1.25rem; background: var(--amber); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 1.15rem; cursor: pointer; box-shadow: 0 4px 12px rgba(212, 129, 58, 0.3);">📅 Submit Pre-Order</button>
+        <button type="submit" style="width: 100%; padding: 1.25rem; background: var(--amber); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 1.15rem; cursor: pointer; box-shadow: 0 4px 12px rgba(212, 129, 58, 0.3);">{{ $preorderSubmitLabel }}</button>
     </form>
 </div>
 

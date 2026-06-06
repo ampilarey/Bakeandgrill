@@ -1,12 +1,37 @@
 @extends('layout')
 
-@section('title', 'Pre-Order Confirmation — Bake & Grill')
+@php
+    $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
+    $preorderConfirmTitle = \App\Models\SiteSetting::get('preorder_confirm_title', 'Pre-Order Received!');
+    $preorderConfirmMessage = \App\Models\SiteSetting::get('preorder_confirm_message', 'Your pre-order request has been submitted successfully.');
+    $preorderConfirmStepsRaw = \App\Models\SiteSetting::get('preorder_confirm_steps');
+    $preorderConfirmSteps = [];
+    if ($preorderConfirmStepsRaw) {
+        try {
+            $decoded = json_decode($preorderConfirmStepsRaw, true, 512, JSON_THROW_ON_ERROR);
+            if (is_array($decoded)) {
+                $preorderConfirmSteps = $decoded;
+            }
+        } catch (\JsonException $e) {
+            $preorderConfirmSteps = [];
+        }
+    }
+    if (count($preorderConfirmSteps) === 0) {
+        $preorderConfirmSteps = [
+            ['text' => 'Our team will review your pre-order'],
+            ['text' => "We'll call you to confirm"],
+            ['text' => "You'll receive SMS confirmation once approved"],
+        ];
+    }
+@endphp
+
+@section('title', 'Pre-Order Confirmation — ' . $siteName)
 
 @section('content')
 <div style="max-width: 720px; margin: 4rem auto; padding: 0 1.25rem; text-align: center;">
     <div style="font-size: 3.5rem; margin-bottom: 1rem;">✅</div>
-    <h1 style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: 0.75rem; color: var(--dark); letter-spacing: -0.02em;">Pre-Order Received!</h1>
-    <p style="font-size: 1.05rem; color: var(--muted, #8B7355); margin-bottom: 2rem;">Your pre-order request has been submitted successfully.</p>
+    <h1 style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; margin-bottom: 0.75rem; color: var(--dark); letter-spacing: -0.02em;">{{ $preorderConfirmTitle }}</h1>
+    <p style="font-size: 1.05rem; color: var(--muted, #8B7355); margin-bottom: 2rem;">{{ $preorderConfirmMessage }}</p>
 
     <div style="background: var(--surface, #fff); border: 1px solid var(--border, #EDE4D4); border-radius: 16px; padding: 1.5rem; text-align: left; margin-bottom: 1.5rem; box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);">
         <h3 style="margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--border, #EDE4D4); font-size: 1rem; color: var(--muted, #8B7355); text-transform: uppercase; letter-spacing: 0.04em;">Order Details</h3>
@@ -38,9 +63,9 @@
 
     <div style="background: var(--amber-light); border: 1px solid var(--border, #EDE4D4); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; text-align: left;">
         <h4 style="margin-bottom: 0.75rem; color: var(--amber); font-size: 1rem;">What's Next?</h4>
-        <p style="margin-bottom: 0.5rem;">1. Our team will review your pre-order</p>
-        <p style="margin-bottom: 0.5rem;">2. We'll call you at {{ str_replace('+960', '', $preOrder->customer_phone) }} to confirm</p>
-        <p style="margin-bottom: 0;">3. You'll receive SMS confirmation once approved</p>
+        @foreach($preorderConfirmSteps as $idx => $step)
+            <p style="margin-bottom: {{ $loop->last ? '0' : '0.5rem' }};">{{ $idx + 1 }}. {{ $step['text'] ?? '' }}</p>
+        @endforeach
     </div>
 
     <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">

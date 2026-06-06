@@ -125,9 +125,13 @@
 @endsection
 
 @section('content')
+@php
+    $menuPageTitle = \App\Models\SiteSetting::get('menu_page_title', 'Our Complete Menu');
+    $menuPageSubtitle = \App\Models\SiteSetting::get('menu_page_subtitle', 'Browse and add items to your cart');
+@endphp
 <div class="menu-hero">
-    <h1>Our Complete Menu</h1>
-    <p style="font-size: 1.1rem; color: #636e72; margin-top: 0.5rem;">Browse and add items to your cart</p>
+    <h1>{{ $menuPageTitle }}</h1>
+    <p style="font-size: 1.1rem; color: #636e72; margin-top: 0.5rem;">{{ $menuPageSubtitle }}</p>
 </div>
 
 <!-- Desktop: One Row -->

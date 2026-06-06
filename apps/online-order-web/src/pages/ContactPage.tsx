@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export function ContactPage() {
-  const s = useSiteSettings();
+  const { settings: s, text } = useSiteSettingsContext();
 
   const phone     = s.business_phone   || '+960 912 0011';
   const phoneTel  = 'tel:' + phone.replace(/[^+\d]/g, '');
@@ -25,10 +25,10 @@ export function ContactPage() {
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '0.875rem' }}>
-          Contact Us
+          {text('contact_page_title', 'Contact Us')}
         </h1>
         <p style={{ fontSize: '1.05rem', color: 'var(--color-text-muted)', lineHeight: 1.65 }}>
-          Have a question or feedback? We'd love to hear from you.
+          {text('contact_page_subtitle', "Have a question or feedback? We'd love to hear from you.")}
         </p>
       </div>
 

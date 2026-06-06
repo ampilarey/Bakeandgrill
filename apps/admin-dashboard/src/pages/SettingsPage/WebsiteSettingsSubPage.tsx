@@ -169,6 +169,104 @@ function ProofDetailsEditor({ label, description, value, onChange }: {
   );
 }
 
+function AboutValuesEditor({ label, description, value, onChange }: {
+  label: string; description?: string; value: string; onChange: (v: string) => void;
+}) {
+  let items: { initial: string; title: string; description: string }[] = [];
+  try { items = JSON.parse(value || '[]'); } catch { /* empty */ }
+  while (items.length < 4) items.push({ initial: '', title: '', description: '' });
+
+  const update = (idx: number, field: string, v: string) => {
+    const next = items.map((item, i) => i === idx ? { ...item, [field]: v } : item);
+    onChange(JSON.stringify(next.slice(0, 4)));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{label}</label>
+      {description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{description}</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {items.slice(0, 4).map((item, idx) => (
+          <div key={idx} style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input value={item.initial} onChange={(e) => update(idx, 'initial', e.target.value)} placeholder="F" title="Initial letter"
+                style={{ width: 40, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', textAlign: 'center', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', flexShrink: 0 }} />
+              <input value={item.title} onChange={(e) => update(idx, 'title', e.target.value)} placeholder="Title"
+                style={{ flex: 1, minWidth: 120, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
+            </div>
+            <input value={item.description} onChange={(e) => update(idx, 'description', e.target.value)} placeholder="Description"
+              style={{ width: '100%', height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408', boxSizing: 'border-box' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PreorderStepsEditor({ label, description, value, onChange }: {
+  label: string; description?: string; value: string; onChange: (v: string) => void;
+}) {
+  let items: { text: string }[] = [];
+  try { items = JSON.parse(value || '[]'); } catch { /* empty */ }
+  while (items.length < 3) items.push({ text: '' });
+
+  const update = (idx: number, v: string) => {
+    const next = items.map((item, i) => i === idx ? { text: v } : item);
+    onChange(JSON.stringify(next.slice(0, 3)));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{label}</label>
+      {description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{description}</p>}
+      <div style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 12, overflow: 'hidden' }}>
+        {items.slice(0, 3).map((item, idx) => (
+          <div key={idx} style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderTop: idx === 0 ? 'none' : '1px solid #F0EBE5', gap: 8 }}>
+            <span style={{ width: 20, fontSize: 12, fontWeight: 700, color: '#9C8E7E', flexShrink: 0 }}>{idx + 1}.</span>
+            <input value={item.text} onChange={(e) => update(idx, e.target.value)} placeholder="Step description"
+              style={{ flex: 1, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FooterLinksEditor({ label, description, value, onChange }: {
+  label: string; description?: string; value: string; onChange: (v: string) => void;
+}) {
+  let items: { label: string; url: string }[] = [];
+  try { items = JSON.parse(value || '[]'); } catch { /* empty */ }
+  while (items.length < 2) items.push({ label: '', url: '' });
+
+  const update = (idx: number, field: string, v: string) => {
+    const next = items.map((item, i) => i === idx ? { ...item, [field]: v } : item);
+    onChange(JSON.stringify(next));
+  };
+
+  const addRow = () => onChange(JSON.stringify([...items, { label: '', url: '' }]));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{label}</label>
+      {description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{description}</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map((item, idx) => (
+          <div key={idx} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input value={item.label} onChange={(e) => update(idx, 'label', e.target.value)} placeholder="Label"
+              style={{ flex: 1, minWidth: 100, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
+            <input value={item.url} onChange={(e) => update(idx, 'url', e.target.value)} placeholder="/privacy"
+              style={{ flex: 1, minWidth: 100, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
+          </div>
+        ))}
+        <button type="button" onClick={addRow} style={{ alignSelf: 'flex-start', fontSize: 12, fontWeight: 600, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+          + Add link
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CategoriesEditor({ label, description, value, onChange, triggerUpload }: {
   label: string; description?: string; value: string; onChange: (v: string) => void;
   triggerUpload: (key: string, onDone: (url: string) => void) => void;
@@ -376,6 +474,18 @@ export function WebsiteSettings() {
 
                 if (item.type === 'json' && item.key === 'homepage_categories') {
                   return <CategoriesEditor key={item.key} label={item.label} description={item.description ?? undefined} value={form[item.key] ?? ''} onChange={(v) => setForm((f) => ({ ...f, [item.key]: v }))} triggerUpload={triggerUpload} />;
+                }
+
+                if (item.type === 'json' && item.key === 'about_values') {
+                  return <AboutValuesEditor key={item.key} label={item.label} description={item.description ?? undefined} value={form[item.key] ?? ''} onChange={(v) => setForm((f) => ({ ...f, [item.key]: v }))} />;
+                }
+
+                if (item.type === 'json' && item.key === 'preorder_confirm_steps') {
+                  return <PreorderStepsEditor key={item.key} label={item.label} description={item.description ?? undefined} value={form[item.key] ?? ''} onChange={(v) => setForm((f) => ({ ...f, [item.key]: v }))} />;
+                }
+
+                if (item.type === 'json' && item.key === 'footer_links') {
+                  return <FooterLinksEditor key={item.key} label={item.label} description={item.description ?? undefined} value={form[item.key] ?? ''} onChange={(v) => setForm((f) => ({ ...f, [item.key]: v }))} />;
                 }
 
                 if (item.type === 'textarea' || item.type === 'json') {

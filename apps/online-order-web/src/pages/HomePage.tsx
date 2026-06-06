@@ -9,14 +9,6 @@ import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { HeroCarousel } from '../components/HeroCarousel';
 import { useCart } from '../context/CartContext';
 
-// ─── Category shortcuts data ──────────────────────────────────────────────────
-const CATEGORIES = [
-  { icon: '🥐', name: 'Hedhikaa', slug: 'hedhikaa', hook: 'Ready by 7am, made the right way', color: 'var(--color-surface-alt)' },
-  { icon: '🍞', name: 'Fresh Bakes', slug: 'fresh-bakes', hook: 'Croissants that crackle. Baked at dawn.', color: 'var(--color-surface-alt)' },
-  { icon: '🔥', name: 'Grills', slug: 'grills', hook: 'Proper char. Proper flavor.', color: 'var(--color-surface-alt)' },
-  { icon: '🎂', name: 'Special Orders', slug: 'special-orders', hook: 'Cakes made to order. Call ahead.', color: 'var(--color-surface-alt)' },
-];
-
 function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct: number | null | undefined): boolean {
   if (!badge || !discountPct || discountPct <= 0) return false;
   return !badge.includes(`${discountPct}%`);
@@ -50,7 +42,7 @@ export function HomePage() {
   const [corpForm, setCorpForm] = useState({ contact_name: '', phone: '', company: '', headcount: '', notes: '' });
   const [corpSubmitting, setCorpSubmitting] = useState(false);
   const [corpMessage, setCorpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-  const { settings: s, trustItems, heroSlides } = useSiteSettingsContext();
+  const { settings: s, trustItems, heroSlides, homepageCategories, text } = useSiteSettingsContext();
   const reorderFetched = useRef(false);
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
@@ -129,18 +121,25 @@ export function HomePage() {
     >
       {statusBadge}
       <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-        <span className="home-banner-eyebrow">Malé&apos;s neighbourhood café</span>
-        <h1 className="home-banner-title">
-          Where Dhivehi breakfast
-          <br />
-          meets <em>artisan baking</em>
-        </h1>
-        <p className="home-banner-sub">
-          Real food. Proper char. Baked fresh every morning at 5am.
-        </p>
+        {(() => {
+          const heroSub = text(
+            'home_hero_fallback_subtitle',
+            'Where Dhivehi breakfast meets artisan baking. Real food. Proper char. Baked fresh every morning at 5am.',
+          );
+          const dotSplit = heroSub.match(/^(.+?)\.\s+(.+)$/s);
+          const heroHeadline = dotSplit ? dotSplit[1] : heroSub;
+          const heroBody = dotSplit ? dotSplit[2] : '';
+          return (
+            <>
+              <span className="home-banner-eyebrow">{text('home_hero_fallback_title', "Malé's neighbourhood café")}</span>
+              <h1 className="home-banner-title">{heroHeadline}</h1>
+              {heroBody && <p className="home-banner-sub">{heroBody}</p>}
+            </>
+          );
+        })()}
         <div className="home-banner-ctas">
           <Link to="/menu" className="home-banner-cta-primary btn-primary-hover">
-            Order Now →
+            {text('nav_order_cta_text', 'Order Now →')}
           </Link>
           <Link to="/menu" className="home-banner-cta-secondary btn-ghost-hover">
             View Menu
@@ -236,10 +235,10 @@ export function HomePage() {
       <section className="home-section" style={{ paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.4rem' }}>
-            What we're known for
+            {text('home_categories_eyebrow', "What we're known for")}
           </p>
           <h2 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.03em' }}>
-            Made for Malé
+            {text('home_categories_title', 'Made for Malé')}
           </h2>
         </div>
         <div style={{
@@ -247,28 +246,31 @@ export function HomePage() {
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: '1rem',
         }}>
-          {CATEGORIES.map((cat) => (
+          {homepageCategories.map((cat, idx) => {
+            const catLink = (cat.link ?? '/menu').replace(/^\/order/, '') || '/menu';
+            return (
             <Link
-              key={cat.name}
-              to="/menu"
+              key={cat.name ?? cat.label ?? idx}
+              to={catLink}
               className="cat-card-hover"
               style={{
                 display: 'block',
-                background: cat.color,
+                background: 'var(--color-surface-alt)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-2xl)',
                 padding: '1.5rem',
                 textDecoration: 'none',
               }}
             >
-              <div style={{ fontSize: '2rem', marginBottom: '0.75rem', lineHeight: 1 }}>{cat.icon}</div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.35rem' }}>{cat.name}</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>{cat.hook}</p>
+              <div style={{ fontSize: '2rem', marginBottom: '0.75rem', lineHeight: 1 }}>{cat.icon ?? ''}</div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.35rem' }}>{cat.name ?? cat.label ?? ''}</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>{cat.hook ?? ''}</p>
               <div style={{ marginTop: '0.875rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                 Order →
               </div>
             </Link>
-          ))}
+          );
+          })}
         </div>
       </section>
 
@@ -278,8 +280,8 @@ export function HomePage() {
           <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>Today's Specials</h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0' }}>Limited-time deals, today only</p>
+                <h2 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>{text('home_specials_title', "Today's Specials")}</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0' }}>{text('home_specials_eyebrow', 'Limited-time deals, today only')}</p>
               </div>
               <Link to="/menu" style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>View all →</Link>
             </div>
@@ -348,10 +350,10 @@ export function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
                 <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.25rem' }}>
-                  🔥 Most ordered
+                  {text('home_featured_eyebrow_handpicked', '🔥 Most ordered')}
                 </p>
                 <h2 style={{ fontSize: 'clamp(1.3rem, 3.5vw, 1.75rem)', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.03em', margin: 0 }}>
-                  Popular right now
+                  {text('home_featured_title_handpicked', 'Popular right now')}
                 </h2>
               </div>
               <Link
@@ -413,10 +415,10 @@ export function HomePage() {
           <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.35rem' }}>
-                Loved by locals
+                {text('home_proof_eyebrow', 'Loved by locals')}
               </p>
               <h2 style={{ fontSize: 'clamp(1.3rem, 3.5vw, 1.75rem)', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.03em', margin: 0 }}>
-                What customers say
+                {text('proof_label', 'What customers say')}
               </h2>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
@@ -526,9 +528,9 @@ export function HomePage() {
       }}>
         <div className="chat-block" style={{ maxWidth: '440px', margin: '0 auto' }}>
           <p style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>💬</p>
-          <p className="chat-block-heading">Questions? We reply fast.</p>
+          <p className="chat-block-heading">{text('home_location_title', 'Questions? We reply fast.')}</p>
           <p className="chat-block-sub" style={{ marginBottom: '1.25rem' }}>
-            Reach us on WhatsApp or Viber — usually within 10 minutes.
+            {text('home_location_subtitle', 'Reach us on WhatsApp or Viber — usually within 10 minutes.')}
           </p>
           <div className="chat-btns">
             <a
@@ -554,11 +556,12 @@ export function HomePage() {
       {/* ── Browse menu CTA ───────────────────────────────────── */}
       <section className="home-section" style={{ background: 'var(--color-footer-bg)', paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', textAlign: 'center' }}>
         <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'white', marginBottom: '0.75rem', letterSpacing: '-0.03em' }}>
-            Hungry? Browse the menu.
-          </h2>
+          <h2
+            style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'white', marginBottom: '0.75rem', letterSpacing: '-0.03em' }}
+            dangerouslySetInnerHTML={{ __html: text('cta_band_headline', 'Hungry? Browse the menu.') }}
+          />
           <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 'var(--text-body)', marginBottom: '1.75rem', lineHeight: 1.65 }}>
-            Order in seconds — no app needed.
+            {text('cta_band_subtext', 'Order in seconds — no app needed.')}
           </p>
           <Link
             to="/menu"
