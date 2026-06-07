@@ -7,8 +7,6 @@ namespace App\Domains\Orders\Services;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
-use App\Domains\Orders\Services\OrderTotalsCalculator;
-use App\Domains\Orders\Services\PackagingFeeCalculator;
 use App\Models\Customer;
 use App\Models\Device;
 use App\Models\Item;
@@ -137,7 +135,7 @@ class OrderCreationService
             );
             $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
 
-            if ($discountLaar > 0 && $user instanceof \App\Models\User && ! $user->hasPermission('promotions.discounts')) {
+            if ($discountLaar > 0 && $user instanceof \App\Models\User && !$user->hasPermission('promotions.discounts')) {
                 abort(403, 'You do not have permission to apply manual discounts.');
             }
 

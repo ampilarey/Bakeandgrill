@@ -41,7 +41,7 @@ return new class extends Migration
 
             $table->unique(
                 ['source_type', 'source_id', 'direction', 'tax_code', 'document_no'],
-                'tax_ledger_idempotency'
+                'tax_ledger_idempotency',
             );
             $table->index(['period_key', 'direction', 'tax_code']);
         });

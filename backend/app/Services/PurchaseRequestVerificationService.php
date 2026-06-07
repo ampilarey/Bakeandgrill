@@ -55,7 +55,10 @@ final class PurchaseRequestVerificationService
                 'verified_notes' => $data['verified_notes'] ?? $item->verified_notes,
             ]);
 
-            $this->audit->log('purchase_request.verified', 'PurchaseRequestItem', $item->id,
+            $this->audit->log(
+                'purchase_request.verified',
+                'PurchaseRequestItem',
+                $item->id,
                 ['status' => 'bought'],
                 ['status' => 'received'],
                 ['request_id' => $pr->id, 'item_id' => $item->id, 'role' => $user->role?->slug],

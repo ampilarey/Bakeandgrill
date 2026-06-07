@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Orders\Services;
 
+use App\Domains\Gst\Services\GstSettingsService;
+use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Orders\DTOs\DiscountsInput;
 use App\Domains\Orders\DTOs\ServiceChargeBreakdown;
 use App\Domains\Orders\DTOs\TotalsBreakdown;
 use App\Domains\Orders\Support\EffectiveDiscount;
-use App\Domains\Gst\Services\GstSettingsService;
-use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Shared\ValueObjects\Money;
 use App\Models\Order;
 

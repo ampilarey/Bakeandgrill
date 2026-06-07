@@ -33,9 +33,10 @@ final class EffectiveDiscount
     {
         return self::allocate($subtotalLaar, self::partsFromDiscountsInput($discounts));
     }
+
     /**
-     * @param  array<string, int>  $parts  e.g. ['promo' => 500, 'loyalty' => 200]
-     * @return array<string, int>  Allocated laar per key (sums to effective total)
+     * @param array<string, int> $parts e.g. ['promo' => 500, 'loyalty' => 200]
+     * @return array<string, int> Allocated laar per key (sums to effective total)
      */
     public static function allocate(int $subtotalLaar, array $parts): array
     {

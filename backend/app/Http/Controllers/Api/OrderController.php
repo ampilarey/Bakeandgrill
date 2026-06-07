@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Payments\Actions\SettleOrderPaymentAction;
-use App\Domains\Payments\Services\PaymentAllocationService;
 use App\Domains\Kitchen\Support\KitchenHandoverSettings;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Domains\Orders\DTOs\OrderCancelledData;
-use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderCancelled;
-use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Payments\Actions\SettleOrderPaymentAction;
+use App\Domains\Payments\Services\PaymentAllocationService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerOrderRequest;
 use App\Http\Requests\StoreOrderBatchRequest;
@@ -34,7 +32,6 @@ use App\Services\OrderStatusMachine;
 use App\Services\PermissionService;
 use App\Services\ShiftAccessService;
 use App\Services\StockManagementService;
-use App\Support\DeferAfterResponse;
 use App\Support\OrderSettlement;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;

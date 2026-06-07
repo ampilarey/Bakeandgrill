@@ -248,7 +248,7 @@ class CustomerController extends Controller
             ->where('customer_id', $customer->id)
             ->whereNotNull('paid_at')
             ->selectRaw('COUNT(*) as orders_count')
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as total_spent')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr) . ' as total_spent')
             ->selectRaw('MIN(paid_at) as first_paid_at, MAX(paid_at) as last_paid_at')
             ->first();
 

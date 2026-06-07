@@ -121,7 +121,7 @@ class PaymentCommissionService
     }
 
     /**
-     * @param  array{user_id?: int|null, shift_id?: int|null, device_id?: int|null, payment_query?: callable(Builder): void|null}  $filters
+     * @param array{user_id?: int|null, shift_id?: int|null, device_id?: int|null, payment_query?: callable(Builder): void|null} $filters
      */
     public function paymentCommissionSummary(Carbon $from, Carbon $to, array $filters = []): array
     {
@@ -132,7 +132,7 @@ class PaymentCommissionService
             ->whereBetween('payments.processed_at', [$from, $to])
             ->whereIn('payments.status', self::SETTLED_STATUSES)
             ->whereNotNull('payments.commission_channel')
-            ->whereHas('order', function ($oq) use ($from, $to, $filters) {
+            ->whereHas('order', function ($oq) use ($filters) {
                 $oq->whereIn('status', \App\Domains\Reporting\Support\ReportMoneySql::SALE_STATUSES)
                     ->when(isset($filters['user_id']), fn ($q) => $q->where('user_id', $filters['user_id']))
                     ->when(isset($filters['shift_id']), fn ($q) => $q->where('shift_id', $filters['shift_id']))

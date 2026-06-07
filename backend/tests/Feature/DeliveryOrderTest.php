@@ -10,8 +10,6 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\MenuGroup;
 use App\Models\Order;
-use App\Models\Role;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;

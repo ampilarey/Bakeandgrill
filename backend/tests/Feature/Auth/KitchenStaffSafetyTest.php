@@ -11,7 +11,6 @@ use App\Models\Category;
 use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -22,8 +21,8 @@ use Tests\TestCase;
 
 class KitchenStaffSafetyTest extends TestCase
 {
-    use RefreshDatabase;
     use ModelHelpers;
+    use RefreshDatabase;
 
     private const DEVICE_ID = 'KITCHEN-KDS-01';
 

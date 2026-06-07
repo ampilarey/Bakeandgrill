@@ -27,8 +27,8 @@ use Tests\TestCase;
 
 class KitchenProductionWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
     use ModelHelpers;
+    use RefreshDatabase;
 
     private const KDS_DEVICE = 'KITCHEN-KP-01';
 

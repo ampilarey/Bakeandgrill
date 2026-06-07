@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
-use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Models\Customer;
 use App\Models\GiftCard;

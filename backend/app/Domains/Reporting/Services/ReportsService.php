@@ -313,9 +313,9 @@ class ReportsService
             ->whereNotNull('delivery_island')
             ->where('delivery_island', '!=', '')
             ->selectRaw('delivery_island as zone, COUNT(*) as orders_count')
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr($orderTotalExpr).' as order_total')
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr($feeLaarExpr).' as fees_total')
-            ->selectRaw('ROUND(COALESCE(AVG('.$feeLaarExpr.'), 0) / 100.0, 2) as avg_fee')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($orderTotalExpr) . ' as order_total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($feeLaarExpr) . ' as fees_total')
+            ->selectRaw('ROUND(COALESCE(AVG(' . $feeLaarExpr . '), 0) / 100.0, 2) as avg_fee')
             ->groupBy('delivery_island')
             ->orderByDesc('orders_count')
             ->get();
@@ -725,10 +725,10 @@ class ReportsService
             ->whereIn('o.status', ReportMoneySql::SALE_STATUSES)
             ->whereBetween('o.created_at', [$from, $to])
             ->selectRaw('c.id, c.name, c.phone, COUNT(o.id) as order_count')
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as total_spent')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr) . ' as total_spent')
             ->selectRaw('MAX(o.created_at) as last_order')
             ->groupBy('c.id', 'c.name', 'c.phone')
-            ->orderByRaw('SUM('.$totalLaarExpr.') DESC')
+            ->orderByRaw('SUM(' . $totalLaarExpr . ') DESC')
             ->limit($limit)
             ->get();
 
@@ -760,8 +760,8 @@ class ReportsService
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
             ->selectRaw('orders.user_id, users.name, COUNT(*) as orders_count')
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as total')
-            ->selectRaw('ROUND(COALESCE(AVG('.$totalLaarExpr.'), 0) / 100.0, 2) as avg_order')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr) . ' as total')
+            ->selectRaw('ROUND(COALESCE(AVG(' . $totalLaarExpr . '), 0) / 100.0, 2) as avg_order')
             ->groupBy('orders.user_id', 'users.name')
             ->get()
             ->keyBy('user_id');
@@ -851,8 +851,8 @@ class ReportsService
             ->whereBetween('created_at', [$from, $to])
             ->whereIn('status', ReportMoneySql::SALE_STATUSES)
             ->selectRaw("{$hourExpr} as hour, COUNT(*) as count")
-            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr).' as revenue')
-            ->selectRaw('ROUND(COALESCE(AVG('.$totalLaarExpr.'), 0) / 100.0, 2) as avg_total')
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr) . ' as revenue')
+            ->selectRaw('ROUND(COALESCE(AVG(' . $totalLaarExpr . '), 0) / 100.0, 2) as avg_total')
             ->groupByRaw($hourExpr)
             ->orderBy('hour')
             ->get();

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;

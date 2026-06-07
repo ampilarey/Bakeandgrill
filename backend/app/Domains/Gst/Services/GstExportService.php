@@ -44,7 +44,7 @@ class GstExportService
         }
 
         $data = $this->reports->outputStatement($period);
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         $sheet1 = $spreadsheet->getActiveSheet();
         $sheet1->setTitle('TaxInvoices');
@@ -103,7 +103,7 @@ class GstExportService
     public function inputStatementXlsx(string $period): string
     {
         $data = $this->reports->inputStatement($period);
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Input Tax Statement');
 

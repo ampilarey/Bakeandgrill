@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Gst\Services\GstReportService;
+use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -190,7 +190,7 @@ class FinanceReportController extends Controller
         [$from, $to] = $this->parseRange($request);
 
         return response()->json(
-            app(GstReportService::class)->legacyTaxSummary($from->toDateString(), $to->toDateString())
+            app(GstReportService::class)->legacyTaxSummary($from->toDateString(), $to->toDateString()),
         );
     }
 

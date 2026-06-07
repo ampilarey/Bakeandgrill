@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\InventoryItem;
 use App\Domains\Gst\Services\GstLedgerPoster;
+use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
