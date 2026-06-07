@@ -11,6 +11,11 @@ class CustomerCreditLedger extends Model
 {
     protected $table = 'customer_credit_ledger';
 
+    protected $casts = [
+        'amount_laar' => 'integer',
+        'balance_after_laar' => 'integer',
+    ];
+
     protected $fillable = [
         'customer_id',
         'type',

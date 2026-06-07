@@ -295,7 +295,15 @@ export function ReportsPage() {
     } else if (tab === 'Refunds' && refundsReport) {
       downloadCSV('refunds-by-reason', (refundsReport.rows ?? []).map(r => ({ Reason: r.reason, Count: r.refunds_count, Amount: mvr(r.amount) })));
     } else if (tab === 'Credit Exposure' && creditExposure) {
-      downloadCSV('credit-exposure', (creditExposure.top_customers ?? []).map(c => ({ Customer: c.name, Balance: mvr(c.balance) })));
+      downloadCSV('credit-exposure', (creditExposure.top_customers ?? []).map(c => ({
+        Customer: c.name,
+        Balance: mvr(c.balance),
+        Limit: mvr(c.limit),
+        Available: mvr(c.available),
+        Status: c.status,
+        Enabled: c.credit_enabled ? 'yes' : 'no',
+        Overdue: c.overdue_invoices_count,
+      })));
     }
   };
 
@@ -932,12 +940,20 @@ export function ReportsPage() {
                 <thead><tr>
                   <th style={S.th}>Customer</th>
                   <th style={{ ...S.th, textAlign: 'right' }}>Balance</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Limit</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Available</th>
+                  <th style={S.th}>Status</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Overdue</th>
                 </tr></thead>
                 <tbody>
                   {(creditExposure.top_customers ?? []).map((c) => (
                     <tr key={c.id}>
                       <td style={{ ...S.td, fontWeight: 600 }}>{c.name}</td>
                       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{mvr(c.balance)}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{mvr(c.limit)}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{mvr(c.available)}</td>
+                      <td style={S.td}>{c.credit_enabled ? c.status : `${c.status} (disabled)`}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{c.overdue_invoices_count}</td>
                     </tr>
                   ))}
                 </tbody>

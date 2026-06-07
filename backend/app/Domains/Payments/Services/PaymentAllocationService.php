@@ -18,7 +18,7 @@ final class PaymentAllocationService
     /** @return list<string> */
     public function nonShiftMethods(): array
     {
-        return array_merge(self::GATEWAY_METHODS, ['house_account', 'wallet']);
+        return array_merge(self::GATEWAY_METHODS, ['wallet']);
     }
 
     /**
@@ -30,6 +30,16 @@ final class PaymentAllocationService
 
         return collect($payments)->contains(
             fn (array $row) => !in_array($row['method'] ?? '', $nonShift, true),
+        );
+    }
+
+    /**
+     * @param list<array<string, mixed>> $payments
+     */
+    public function needsCreditShift(array $payments): bool
+    {
+        return collect($payments)->contains(
+            fn (array $row) => ($row['method'] ?? '') === 'house_account',
         );
     }
 

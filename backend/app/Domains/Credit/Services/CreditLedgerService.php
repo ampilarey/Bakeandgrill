@@ -282,6 +282,7 @@ final class CreditLedgerService
                 'order_id' => $order->id,
                 'invoice_id' => $invoice->id,
                 'payment_id' => $payment->id,
+                'shift_id' => $payment->shift_id,
                 'method' => 'house_account',
                 'recorded_by' => $actor->id,
                 'notes' => 'POS credit charge for order ' . ($order->order_number ?? $order->id),
@@ -358,7 +359,7 @@ final class CreditLedgerService
                 CashMovement::create([
                     'shift_id' => $shift->id,
                     'user_id' => $actor->id,
-                    'type' => 'in',
+                    'type' => 'cash_in',
                     'amount' => round($amountLaar / 100, 2),
                     'reason' => 'Customer credit repayment — ' . ($locked->name ?? $locked->phone),
                 ]);

@@ -1054,7 +1054,19 @@ export interface CreditExposureReport {
   total_balance_laar: number;
   total_balance: number;
   customers_count: number;
-  top_customers: { id: number; name: string; balance_laar: number; balance: number }[];
+  top_customers: {
+    id: number;
+    name: string;
+    balance_laar: number;
+    balance: number;
+    limit_laar: number;
+    limit: number;
+    available_laar: number;
+    available: number;
+    status: string;
+    credit_enabled: boolean;
+    overdue_invoices_count: number;
+  }[];
 }
 
 export async function getCreditExposureReport(): Promise<CreditExposureReport> {

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Reporting\Services;
 
+use App\Domains\Credit\Services\CreditEligibilityService;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\AuditLog;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\Order;
@@ -477,28 +479,55 @@ class ReportsService
      */
     public function creditExposure(): array
     {
+        $eligibility = app(CreditEligibilityService::class);
+        $today = now()->toDateString();
+
         $totalLaar = (int) Customer::query()
-            ->where('credit_enabled', true)
             ->where('credit_balance_laar', '>', 0)
             ->sum('credit_balance_laar');
 
         $customersCount = (int) Customer::query()
-            ->where('credit_enabled', true)
             ->where('credit_balance_laar', '>', 0)
             ->count();
 
-        $top = Customer::query()
-            ->where('credit_enabled', true)
+        $topCustomers = Customer::query()
             ->where('credit_balance_laar', '>', 0)
             ->orderByDesc('credit_balance_laar')
             ->limit(10)
-            ->get(['id', 'name', 'credit_balance_laar'])
-            ->map(fn (Customer $c) => [
-                'id' => $c->id,
-                'name' => (string) $c->name,
-                'balance_laar' => (int) $c->credit_balance_laar,
-                'balance' => round((int) $c->credit_balance_laar / 100, 2),
-            ])
+            ->get();
+
+        $customerIds = $topCustomers->pluck('id');
+
+        $overdueCounts = $customerIds->isEmpty()
+            ? collect()
+            : Invoice::query()
+                ->selectRaw('customer_id, COUNT(*) as cnt')
+                ->whereIn('customer_id', $customerIds)
+                ->where('type', 'sale')
+                ->whereIn('status', ['sent', 'overdue'])
+                ->whereRaw('total_laar > amount_paid_laar')
+                ->where('due_date', '<', $today)
+                ->groupBy('customer_id')
+                ->pluck('cnt', 'customer_id');
+
+        $top = $topCustomers
+            ->map(function (Customer $c) use ($eligibility, $overdueCounts): array {
+                $availableLaar = $eligibility->availableCreditLaar($c);
+
+                return [
+                    'id' => $c->id,
+                    'name' => (string) $c->name,
+                    'balance_laar' => (int) $c->credit_balance_laar,
+                    'balance' => round((int) $c->credit_balance_laar / 100, 2),
+                    'limit_laar' => (int) $c->credit_limit_laar,
+                    'limit' => round((int) $c->credit_limit_laar / 100, 2),
+                    'available_laar' => $availableLaar,
+                    'available' => round($availableLaar / 100, 2),
+                    'status' => $c->credit_status ?? 'blocked',
+                    'credit_enabled' => (bool) $c->credit_enabled,
+                    'overdue_invoices_count' => (int) ($overdueCounts[$c->id] ?? 0),
+                ];
+            })
             ->values()
             ->all();
 

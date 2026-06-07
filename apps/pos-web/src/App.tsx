@@ -578,7 +578,7 @@ function App() {
     if (orderType === "Delivery") {
       setDeliveryDetails((prev) => resolveDeliveryDetails(prev, customer));
     }
-    if (!order.resumedIsPaid || order.resumedOrderId == null) return;
+    if (order.resumedOrderId == null) return;
     try {
       await updateOrderCustomer(order.resumedOrderId, customer.id);
     } catch (e) {
@@ -588,7 +588,7 @@ function App() {
 
   const handleDetachCustomer = useCallback(async () => {
     cart.detachCustomer();
-    if (!order.resumedIsPaid || order.resumedOrderId == null) return;
+    if (order.resumedOrderId == null) return;
     try {
       await updateOrderCustomer(order.resumedOrderId, null);
     } catch (e) {

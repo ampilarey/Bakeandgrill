@@ -67,13 +67,44 @@ class PaymentAllocationTest extends TestCase
         ]);
     }
 
-    public function test_non_shift_methods_include_wallet_and_house_account(): void
+    public function test_non_shift_methods_include_wallet_but_not_house_account(): void
     {
         $methods = $this->allocation->nonShiftMethods();
 
         $this->assertContains('wallet', $methods);
-        $this->assertContains('house_account', $methods);
+        $this->assertNotContains('house_account', $methods);
         $this->assertContains('bml', $methods);
+    }
+
+    public function test_needs_credit_shift_when_house_account_present(): void
+    {
+        $this->assertTrue($this->allocation->needsCreditShift([
+            ['method' => 'house_account', 'amount' => 50.0],
+        ]));
+        $this->assertFalse($this->allocation->needsCreditShift([
+            ['method' => 'cash', 'amount' => 50.0],
+        ]));
+    }
+
+    public function test_house_account_payment_requires_payments_credit_permission(): void
+    {
+        $this->staff->revokePermission('payments.credit');
+        $this->staff->unsetRelation('permissions');
+
+        $order = $this->makeAllocationOrder();
+        $permissions = app(PermissionService::class);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectExceptionMessage('You do not have permission to charge customer credit.');
+
+        $this->allocation->resolveAccountCustomers(
+            $order,
+            [['method' => 'house_account', 'amount' => 25.0]],
+            $this->staff,
+            app(CustomerCreditService::class),
+            app(CustomerDepositService::class),
+            $permissions,
+        );
     }
 
     public function test_wallet_payment_requires_payments_wallet_permission(): void

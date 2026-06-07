@@ -1408,6 +1408,19 @@ class OrderController extends Controller
             );
         }
 
+        if ($allocation->needsCreditShift($validated['payments'])) {
+            $isOwner = $collector->role?->slug === 'owner';
+            if ($isOwner) {
+                $collectorShift ??= app(ShiftAccessService::class)->findOpenShift($collector);
+            } else {
+                $creditShift = app(ShiftAccessService::class)->requireOpenShift(
+                    $collector,
+                    'Open a shift before charging customer credit.',
+                );
+                $collectorShift = $collectorShift ?? $creditShift;
+            }
+        }
+
         [$order, $paidTotal] = app(SettleOrderPaymentAction::class)->execute(
             $id,
             $validated,
