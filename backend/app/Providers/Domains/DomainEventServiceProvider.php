@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers\Domains;
 
-use App\Domains\Customers\Listeners\ReverseCreditOnRefundListener;
+use App\Domains\Credit\Listeners\ReverseCreditOnRefundListener;
 use App\Domains\Gst\Listeners\PostGstOnOrderPaidListener;
 use App\Domains\Gst\Listeners\PostGstOnRefundListener;
 use App\Domains\Inventory\Events\LowStockReached;

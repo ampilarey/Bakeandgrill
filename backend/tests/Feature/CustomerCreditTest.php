@@ -211,7 +211,19 @@ class CustomerCreditTest extends TestCase
     public function test_customer_orders_include_credit_settlement_label(): void
     {
         $this->approveCustomer(50000);
-        $this->chargeCustomerCredit(5000);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+        $orderId = $this->createOrder($this->customer->id);
+        $order = \App\Models\Order::findOrFail($orderId);
+        $orderTotalMvr = ((int) ($order->total_laar ?? round((float) $order->total * 100))) / 100;
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", [
+                'payments' => [['method' => 'house_account', 'amount' => $orderTotalMvr]],
+                'print_receipt' => false,
+            ])
+            ->assertOk();
 
         Sanctum::actingAs($this->customer->fresh(), ['customer']);
 

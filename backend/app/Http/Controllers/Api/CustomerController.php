@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Customers\Services\CustomerCreditService;
+use App\Domains\Deposits\Services\CustomerDepositService;
 use App\Domains\Loyalty\Services\PointsCalculator;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Http\Controllers\Controller;
@@ -322,6 +323,28 @@ class CustomerController extends Controller
             'credit' => $customer->credit_enabled
                 ? app(CustomerCreditService::class)->customerFacingSummary($customer)
                 : null,
+            'deposit' => app(CustomerDepositService::class)->customerFacingSummary($customer),
+        ]);
+    }
+
+    /**
+     * GET /api/customer/deposit — prepaid wallet balance.
+     */
+    public function deposit(Request $request)
+    {
+        $customer = $request->user();
+
+        if (!$customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        $summary = app(CustomerDepositService::class)->depositSummary($customer);
+        if (!$summary['has_account'] && (int) $summary['balance_laar'] === 0) {
+            return response()->json(['deposit' => null]);
+        }
+
+        return response()->json([
+            'deposit' => app(CustomerDepositService::class)->customerFacingSummary($customer),
         ]);
     }
 

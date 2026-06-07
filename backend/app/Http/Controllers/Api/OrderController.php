@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Customers\Services\CustomerCreditService;
+use App\Domains\Payments\Actions\SettleOrderPaymentAction;
+use App\Domains\Payments\Services\PaymentAllocationService;
 use App\Domains\Kitchen\Support\KitchenHandoverSettings;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
@@ -1440,233 +1441,25 @@ class OrderController extends Controller
 
         $validated = $request->validated();
         $printReceipt = !array_key_exists('print_receipt', $validated) || $validated['print_receipt'] === true;
-        $gatewayMethods = ['bml_pay', 'bml', 'online'];
-        $nonShiftMethods = array_merge($gatewayMethods, ['house_account']);
-        $needsCollectorShift = collect($validated['payments'])->contains(
-            fn (array $row) => !in_array($row['method'], $nonShiftMethods, true),
-        );
-        $collectorShift = null;
+        $allocation = app(PaymentAllocationService::class);
         $collector = $request->user();
-        if ($needsCollectorShift) {
+        $collectorShift = null;
+
+        if ($allocation->needsCollectorShift($validated['payments'])) {
             $collectorShift = app(ShiftAccessService::class)->requireOpenShift(
                 $collector,
                 'Open a shift before taking payment.',
             );
         }
 
-        // Single transaction with row-lock to prevent concurrent split-payment race conditions
-        // where two requests both read paidTotal < total and both set status = 'partial'.
-        [$order, $paidTotal] = DB::transaction(function () use ($id, $validated, $request, $printReceipt, $gatewayMethods, $nonShiftMethods, $collectorShift, $collector): array {
-            $order = Order::with('payments')->lockForUpdate()->findOrFail($id);
-
-            $paymentRows = $validated['payments'];
-            $allIdempotentReplay = count($paymentRows) > 0 && collect($paymentRows)->every(function (array $row): bool {
-                $key = $row['idempotency_key'] ?? null;
-
-                return is_string($key) && $key !== '' && Payment::where('idempotency_key', $key)->exists();
-            });
-
-            if ($allIdempotentReplay) {
-                $paidTotalLaar = (int) $order->payments()
-                    ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                    ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
-                    ->value('total_laar');
-
-                return [$order, round($paidTotalLaar / 100, 2)];
-            }
-
-            // Guard: payments cannot be added to terminal or already-paid orders
-            $machine = app(OrderStatusMachine::class);
-            $terminalStatuses = ['cancelled', 'refunded', 'paid', 'completed'];
-            if (in_array($order->status, $terminalStatuses, true)) {
-                abort(422, "Cannot add payments to a {$order->status} order.");
-            }
-
-            $creditService = app(CustomerCreditService::class);
-            $permissions = app(PermissionService::class);
-            $creditCustomer = null;
-            foreach ($validated['payments'] as $paymentPayload) {
-                if (($paymentPayload['method'] ?? '') !== 'house_account') {
-                    continue;
-                }
-                if (!$order->customer_id) {
-                    abort(422, 'This customer is not approved for credit.');
-                }
-                if (!$permissions->hasPermission($collector, 'payments.credit')) {
-                    abort(403, 'You do not have permission to charge customer credit.');
-                }
-                $creditCustomer = Customer::findOrFail((int) $order->customer_id);
-                $creditService->assertCanCharge(
-                    $creditCustomer,
-                    (int) round((float) $paymentPayload['amount'] * 100),
-                );
-            }
-
-            $tenderMethods = collect($validated['payments'])->pluck('method')->unique()->values();
-            if ($tenderMethods->count() > 1) {
-                if (!$permissions->hasPermission($collector, 'payments.split')) {
-                    abort(403, 'You do not have permission to take split payments.');
-                }
-            } else {
-                $method = (string) ($tenderMethods->first() ?? 'cash');
-                if ($method !== 'house_account') {
-                    $tenderPermission = $method === 'cash' ? 'payments.cash' : 'payments.card';
-                    if (!$permissions->hasPermission($collector, $tenderPermission)) {
-                        abort(403, 'You do not have permission to take this payment type.');
-                    }
-                }
-            }
-
-            // Held tickets must transition back to 'pending' before any
-            // payment is applied. Previously addPayments silently flipped a
-            // held order straight to 'paid', which bypassed the
-            // OrderStatusMachine and left `held_at` populated forever —
-            // KDS / Open Tickets filters then disagreed with Sales Reports
-            // about whether the ticket was still "parked". This walks the
-            // state machine first so the transition is auditable and
-            // `held_at` is cleared properly.
-            if ($order->status === 'held') {
-                $machine->assertTransitionAllowed($order, 'pending');
-                $order->update(['status' => 'pending', 'held_at' => null]);
-                $order->refresh();
-            }
-
-            // Sanity cap to block fat-finger overpayments. We don't cap
-            // strictly at the remaining balance because cash payments
-            // legitimately tender ABOVE the total (cashier gives change
-            // physically) and the cashier records the actual cash
-            // handed over so the drawer reconciles. Non-cash methods
-            // (card/online/bank) have NO change-making, so an
-            // overshoot there is always a typo.
-            //
-            // Policy:
-            //   - All-cash row(s): allow up to 5x the remaining balance
-            //     (covers reasonable change-making on small tickets;
-            //     blocks "MVR 12000 on a MVR 120 ticket" typos).
-            //   - Any non-cash row: cap the TOTAL incoming at the
-            //     remaining balance (no change is given on a card
-            //     swipe).
-            $orderTotalLaarPre = (int) ($order->total_laar ?? round((float) $order->total * 100));
-            $alreadyPaidLaar = (int) $order->payments()
-                ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as t')
-                ->value('t');
-            $remainingLaar = max(0, $orderTotalLaarPre - $alreadyPaidLaar);
-
-            $incomingLaar = 0;
-            $anyNonCash = false;
-            foreach ($validated['payments'] as $row) {
-                $incomingLaar += (int) round((float) $row['amount'] * 100);
-                if ($row['method'] !== 'cash') {
-                    $anyNonCash = true;
-                }
-            }
-
-            // Skip the cap entirely on zero-balance tickets (fully-
-            // discounted comp orders settle with a single
-            // { cash, 0 } row and we don't want the cap to reject that).
-            if ($remainingLaar > 0) {
-                $capLaar = $anyNonCash
-                    ? $remainingLaar + 50 // small rounding tolerance for non-cash
-                    : max($remainingLaar * 5, $remainingLaar + 10000); // cash: 5x or +MVR 100 floor
-                if ($incomingLaar > $capLaar) {
-                    abort(422, sprintf(
-                        'Tender (MVR %.2f) far exceeds remaining balance (MVR %.2f). Re-check the amount.',
-                        $incomingLaar / 100,
-                        $remainingLaar / 100,
-                    ));
-                }
-            }
-
-            $oldStatus = $order->status;
-
-            foreach ($validated['payments'] as $paymentPayload) {
-                if (!empty($paymentPayload['idempotency_key'])) {
-                    $existingPayment = Payment::where('idempotency_key', $paymentPayload['idempotency_key'])->first();
-                    if ($existingPayment !== null) {
-                        continue;
-                    }
-                }
-
-                // Online/gateway methods require async confirmation; all other methods (cash, card POS, etc.)
-                // are treated as immediately paid. Staff cannot arbitrarily set status.
-                $gatewayMethods = ['bml_pay', 'bml', 'online'];
-                $paymentStatus = in_array($paymentPayload['method'], $gatewayMethods, true) ? 'pending' : 'paid';
-
-                // Always persist amount_laar alongside amount so downstream
-                // laari sums (BML remainder calc, payment_status flips) don't
-                // need a COALESCE fallback. Float→laari conversion uses round()
-                // to avoid 19.99 * 100 = 1998.9999… type drift.
-                $amountLaar = (int) round((float) $paymentPayload['amount'] * 100);
-
-                $payment = Payment::create([
-                    'order_id' => $order->id,
-                    'method' => $paymentPayload['method'],
-                    'amount' => $paymentPayload['amount'],
-                    'amount_laar' => $amountLaar,
-                    'status' => $paymentStatus,
-                    'reference_number' => $paymentPayload['reference_number'] ?? null,
-                    'idempotency_key' => $paymentPayload['idempotency_key'] ?? null,
-                    'processed_at' => now(),
-                    'collected_by_user_id' => $collector->id,
-                    'shift_id' => in_array($paymentPayload['method'], $nonShiftMethods, true)
-                        ? null
-                        : $collectorShift?->id,
-                ]);
-
-                if ($paymentPayload['method'] === 'house_account' && $creditCustomer !== null) {
-                    $creditService->recordCharge($creditCustomer, $order, $payment, $collector, $request);
-                }
-
-                if ($paymentStatus === 'paid') {
-                    app(\App\Domains\Payments\Services\PaymentCommissionService::class)->applyToPayment($payment);
-                }
-
-                app(AuditLogService::class)->log('payment.created', 'Payment', $payment->id, [], $payment->toArray(), ['order_id' => $order->id], $request);
-            }
-
-            // Re-sum inside the lock so we see all newly inserted payments.
-            // Use integer laari to avoid float precision issues (COALESCE covers legacy
-            // POS payments that may only have 'amount' populated, not 'amount_laar').
-            $paidTotalLaar = (int) $order->payments()
-                ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
-                ->value('total_laar');
-
-            $orderTotalLaar = $order->total_laar ?? (int) round($order->total * 100);
-            $paidTotal = round($paidTotalLaar / 100, 2);
-
-            if ($paidTotalLaar >= $orderTotalLaar) {
-                // Mirror the financial state into the dedicated `payment_status`
-                // column so Open Tickets can show an UNPAID badge without
-                // recomputing payments on every list render. The order's
-                // lifecycle `status` (pending → paid → completed) and
-                // financial state are now tracked independently — fully
-                // paid here regardless of whether the kitchen has started.
-                $order->update([
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                    'payment_status' => 'paid',
-                ]);
-
-                app(AuditLogService::class)->log('order.paid', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'paid'], ['paid_total' => $paidTotal], $request);
-
-                DB::afterCommit(function () use ($order, $printReceipt): void {
-                    DeferAfterResponse::run(function () use ($order, $printReceipt): void {
-                        OrderPaid::dispatch(OrderPaidData::fromOrder($order->fresh(), $printReceipt));
-                    }, 'OrderPaid');
-                });
-            } else {
-                $order->update([
-                    'status' => 'partial',
-                    'payment_status' => 'partial',
-                ]);
-
-                app(AuditLogService::class)->log('order.partial', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'partial'], ['paid_total' => $paidTotal], $request);
-            }
-
-            return [$order, $paidTotal];
-        });
+        [$order, $paidTotal] = app(SettleOrderPaymentAction::class)->execute(
+            $id,
+            $validated,
+            $collector,
+            $collectorShift,
+            $request,
+            $printReceipt,
+        );
 
         return response()->json([
             'order' => $order->fresh('payments'),

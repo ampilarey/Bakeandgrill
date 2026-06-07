@@ -26,17 +26,6 @@ use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\TableController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
-
 // Health check endpoint
 Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
 
@@ -333,7 +322,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     // purchase workflow, forecasting) — required HERE so static paths like
     // /suppliers/performance and /purchases/suggest are registered BEFORE the
     // {id} wildcard routes below, preventing route shadowing.
-    require __DIR__ . '/api_finance.php';
+    require __DIR__ . '/domains/finance.php'; // __DIR__ is routes/domains when loaded via api.php
 
     // Suppliers — read requires suppliers.view, write requires suppliers.manage
     Route::middleware('permission:suppliers.view')->group(function () {
@@ -573,6 +562,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group(function () {
     Route::get('/me', [CustomerController::class, 'me']);
     Route::get('/credit', [CustomerController::class, 'credit']);
+    Route::get('/deposit', [CustomerController::class, 'deposit']);
     Route::patch('/credit/preferences', [CustomerController::class, 'updateCreditPreferences']);
     Route::get('/orders', [CustomerController::class, 'orders']);
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
@@ -1002,6 +992,16 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admi
 
     Route::middleware('permission:customers.credit.repay')->group(function () {
         Route::post('/{id}/credit/repayments', [App\Http\Controllers\Api\CustomerCreditController::class, 'repay']);
+    });
+
+    Route::middleware('permission:customers.deposit.manage')->group(function () {
+        Route::get('/{id}/deposit', [App\Http\Controllers\Api\CustomerDepositController::class, 'show']);
+        Route::patch('/{id}/deposit', [App\Http\Controllers\Api\CustomerDepositController::class, 'update']);
+        Route::post('/{id}/deposit/top-up', [App\Http\Controllers\Api\CustomerDepositController::class, 'topUp']);
+    });
+
+    Route::middleware('permission:customers.deposit.adjust')->group(function () {
+        Route::post('/{id}/deposit/adjust', [App\Http\Controllers\Api\CustomerDepositController::class, 'adjust']);
     });
 });
 

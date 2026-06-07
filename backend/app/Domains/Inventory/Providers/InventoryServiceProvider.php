@@ -13,5 +13,10 @@ class InventoryServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ItemRepositoryInterface::class, EloquentItemRepository::class);
+        $this->app->singleton(\App\Services\InventoryDeductionService::class);
+        $this->app->alias(
+            \App\Services\InventoryDeductionService::class,
+            \App\Domains\Inventory\Services\InventoryDeductionService::class,
+        );
     }
 }
