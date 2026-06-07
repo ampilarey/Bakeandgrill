@@ -9,6 +9,8 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
+use App\Domains\Orders\Actions\HoldOrderAction;
+use App\Domains\Orders\Actions\ResumeOrderAction;
 use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Payments\Actions\SettleOrderPaymentAction;
@@ -410,22 +412,7 @@ class OrderController extends Controller
             'ticket_note' => 'nullable|string|max:255',
         ]);
 
-        $order = DB::transaction(function () use ($id, $request, $payload) {
-            $order = Order::lockForUpdate()->findOrFail($id);
-            app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'held');
-            $oldStatus = $order->status;
-            $update = ['status' => 'held', 'held_at' => now()];
-            if (array_key_exists('ticket_name', $payload)) {
-                $update['ticket_name'] = $payload['ticket_name'] ?: null;
-            }
-            if (array_key_exists('ticket_note', $payload)) {
-                $update['ticket_note'] = $payload['ticket_note'] ?: null;
-            }
-            $order->update($update);
-            app(AuditLogService::class)->log('order.held', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'held', 'ticket_name' => $order->ticket_name], [], $request);
-
-            return $order;
-        });
+        $order = app(HoldOrderAction::class)->execute($id, $payload, $request);
 
         return response()->json(['order' => $order]);
     }
@@ -436,36 +423,8 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
-        // Optional flag — POS sets this true when the resumed ticket
-        // changed (new items added since hold) so the kitchen prints the
-        // updated chit. Default false because resuming a ticket immediately
-        // back to charge shouldn't trigger a duplicate kitchen print.
         $reprintKitchen = (bool) $request->boolean('reprint_kitchen', false);
-
-        $order = DB::transaction(function () use ($id, $request) {
-            $order = Order::lockForUpdate()->findOrFail($id);
-            app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'pending');
-            $oldStatus = $order->status;
-            $order->update(['status' => 'pending', 'held_at' => null]);
-            app(AuditLogService::class)->log('order.resumed', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'pending'], [], $request);
-
-            return $order;
-        });
-
-        // Kitchen reprint on resume — fires only when the caller asked for
-        // it (e.g. POS detected line-item changes). Print job dispatch is
-        // best-effort and idempotent at the queue level.
-        if ($reprintKitchen) {
-            try {
-                app(\App\Services\PrintJobService::class)
-                    ->enqueueKitchen($order->fresh(), reason: 'resume_reprint');
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Kitchen reprint on resume failed', [
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        $order = app(ResumeOrderAction::class)->execute($id, $reprintKitchen, $request);
 
         return response()->json(['order' => $order]);
     }

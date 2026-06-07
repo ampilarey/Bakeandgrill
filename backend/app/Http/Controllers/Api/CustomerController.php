@@ -293,6 +293,7 @@ class CustomerController extends Controller
             ],
             'recent_orders' => $recent,
             'credit' => app(CustomerCreditService::class)->creditSummary($customer),
+            'deposit' => app(CustomerDepositService::class)->depositSummary($customer),
         ]);
     }
 

@@ -553,6 +553,12 @@ export type PosCustomerSummary = {
     available_laar: number;
     can_charge: boolean;
   };
+  deposit?: {
+    has_account: boolean;
+    status: 'active' | 'frozen' | 'closed';
+    balance_laar: number;
+    can_use: boolean;
+  };
 };
 
 export async function fetchCustomerSummary(customerId: number): Promise<PosCustomerSummary> {

@@ -111,6 +111,69 @@ export async function recordCustomerCreditRepayment(
   return req(`/admin/customers/${customerId}/credit/repayments`, { method: 'POST', body: JSON.stringify(data) });
 }
 
+export type CustomerDepositInfo = {
+  customer_id: number;
+  has_account: boolean;
+  status: 'active' | 'frozen' | 'closed';
+  balance_laar: number;
+  balance_mvr: number;
+  can_use: boolean;
+  notes?: string | null;
+};
+
+export type CustomerDepositLedgerRow = {
+  id: number;
+  type: string;
+  amount_laar: number;
+  amount_mvr: number;
+  balance_after_laar: number;
+  balance_after_mvr: number;
+  order_id?: number | null;
+  payment_id?: number | null;
+  notes?: string | null;
+  created_at?: string | null;
+};
+
+export async function fetchCustomerDeposit(customerId: number): Promise<{
+  deposit: CustomerDepositInfo;
+  ledger: CustomerDepositLedgerRow[];
+}> {
+  return req(`/admin/customers/${customerId}/deposit`);
+}
+
+export async function updateCustomerDeposit(
+  customerId: number,
+  data: {
+    action: 'set_status';
+    status: 'active' | 'frozen' | 'closed';
+  },
+): Promise<{ deposit: CustomerDepositInfo }> {
+  return req(`/admin/customers/${customerId}/deposit`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function topUpCustomerDeposit(
+  customerId: number,
+  data: {
+    amount_mvr?: number;
+    amount_laar?: number;
+    method: 'cash' | 'card' | 'bank_transfer';
+    reference?: string;
+    notes?: string;
+  },
+): Promise<{ deposit: CustomerDepositInfo; ledger: CustomerDepositLedgerRow }> {
+  return req(`/admin/customers/${customerId}/deposit/top-up`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function adjustCustomerDeposit(
+  customerId: number,
+  data: {
+    amount_laar: number;
+    notes: string;
+  },
+): Promise<{ deposit: CustomerDepositInfo; ledger: CustomerDepositLedgerRow }> {
+  return req(`/admin/customers/${customerId}/deposit/adjust`, { method: 'POST', body: JSON.stringify(data) });
+}
+
 export async function fetchAdminCustomers(params?: {
   search?: string;
   is_active?: boolean;

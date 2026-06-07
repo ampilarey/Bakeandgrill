@@ -262,13 +262,14 @@ cd e2e && npx playwright test apps-smoke.spec.ts pos-flow.spec.ts
 
 - [x] Phase 1: `MODULARIZATION_AUDIT.md`
 - [x] Phase 2: `MODULAR_ARCHITECTURE.md` (this file)
-- [ ] Wave 1–2: Shared + Permissions + `ShiftCashMovementTest`
-- [ ] Wave 5: Credit domain extraction
-- [ ] Wave 6: Deposits domain (full)
-- [ ] Wave 7: Payment orchestration
-- [ ] Domain route split
-- [ ] Waves 8–17: Remaining domain moves
-- [ ] Frontend builds + final report
+- [x] Wave 1–2: Shared + Permissions + `ShiftCashMovementTest`
+- [x] Wave 5: Credit domain extraction
+- [x] Wave 6: Deposits domain (full backend + admin/POS UI)
+- [x] Wave 7: Payment orchestration (`SettleOrderPaymentAction`, `PaymentAllocationService`)
+- [x] Domain route split (`routes/domains/*`)
+- [x] Waves 8–17 (phase 1): Key service moves + `HoldOrderAction` / `ResumeOrderAction`
+- [x] Frontend builds + final report
+- [ ] Optional: full controller/model moves, domain `OrderStateMachine` swap (see `OrderStateMachineParityTest`)
 
 ---
 

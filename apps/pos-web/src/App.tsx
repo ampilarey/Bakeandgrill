@@ -100,6 +100,7 @@ function App() {
   const canOpsReports = hasPosPermission(staffPermissions, "reports.view");
   const canOpsMarketing = hasPosPermission(staffPermissions, "integrations.sms");
   const canUseCredit = hasPosPermission(staffPermissions, "payments.credit");
+  const canUseWallet = hasPosPermission(staffPermissions, "payments.wallet");
   const canPayCash = hasPosPermission(staffPermissions, "payments.cash");
   const canPayCard = hasPosPermission(staffPermissions, "payments.card");
   const canPaySplit = hasPosPermission(staffPermissions, "payments.split");
@@ -198,6 +199,8 @@ function App() {
   const [showCharge, setShowCharge] = useState(false);
   const [chargeCreditAvailable, setChargeCreditAvailable] = useState(0);
   const [chargeCreditEligible, setChargeCreditEligible] = useState(false);
+  const [chargeWalletAvailable, setChargeWalletAvailable] = useState(0);
+  const [chargeWalletEligible, setChargeWalletEligible] = useState(false);
   const [showSaveTicket, setShowSaveTicket] = useState(false);
   const [showOpenShift, setShowOpenShift] = useState(false);
   const [showCloseShift, setShowCloseShift] = useState(false);
@@ -641,9 +644,11 @@ function App() {
   }, [isLoggedIn]);
 
   useEffect(() => {
-    if (!showCharge || !cart.attachedCustomer || !canUseCredit) {
+    if (!showCharge || !cart.attachedCustomer) {
       setChargeCreditEligible(false);
       setChargeCreditAvailable(0);
+      setChargeWalletEligible(false);
+      setChargeWalletAvailable(0);
       return;
     }
     let cancelled = false;
@@ -651,17 +656,33 @@ function App() {
       .then((summary) => {
         if (cancelled) return;
         const credit = summary.credit;
-        setChargeCreditEligible(Boolean(credit?.can_charge));
-        setChargeCreditAvailable((credit?.available_laar ?? 0) / 100);
+        if (canUseCredit) {
+          setChargeCreditEligible(Boolean(credit?.can_charge));
+          setChargeCreditAvailable((credit?.available_laar ?? 0) / 100);
+        } else {
+          setChargeCreditEligible(false);
+          setChargeCreditAvailable(0);
+        }
+        const deposit = summary.deposit;
+        const balanceMvr = (deposit?.balance_laar ?? 0) / 100;
+        if (canUseWallet && deposit?.status === 'active' && balanceMvr > 0) {
+          setChargeWalletEligible(Boolean(deposit.can_use));
+          setChargeWalletAvailable(balanceMvr);
+        } else {
+          setChargeWalletEligible(false);
+          setChargeWalletAvailable(0);
+        }
       })
       .catch(() => {
         if (!cancelled) {
           setChargeCreditEligible(false);
           setChargeCreditAvailable(0);
+          setChargeWalletEligible(false);
+          setChargeWalletAvailable(0);
         }
       });
     return () => { cancelled = true; };
-  }, [showCharge, cart.attachedCustomer?.id, canUseCredit]);
+  }, [showCharge, cart.attachedCustomer?.id, canUseCredit, canUseWallet]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -1695,6 +1716,8 @@ function App() {
           total={chargeTotal}
           creditEligible={canUseCredit && chargeCreditEligible && isReachable}
           creditAvailableMvr={chargeCreditAvailable}
+          walletEligible={canUseWallet && chargeWalletEligible && isReachable}
+          walletAvailableMvr={chargeWalletAvailable}
           isOffline={!isReachable}
           allowedTenders={{
             cash: canPayCash,

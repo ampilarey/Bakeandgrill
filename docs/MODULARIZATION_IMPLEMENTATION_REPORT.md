@@ -105,16 +105,27 @@ Frontend: `./scripts/build-all.sh admin pos kds order delivery` — all five app
 
 ---
 
-## Remaining risks / next waves
+## Follow-up completed (post-plan)
+
+| Item | Status |
+|------|--------|
+| Admin deposit UI (`CustomerDepositSection` in Customer 360) | Done |
+| POS `wallet` tender (`ChargeOverlay` + `pos-summary.deposit`) | Done |
+| `PaymentAllocationTest` | Done |
+| `KdsPrintTicketTest` | Done |
+| `BmlInitiateContractTest` | Done |
+| `OrderStateMachineParityTest` | Done |
+| `HoldOrderAction` / `ResumeOrderAction` | Done |
+
+## Remaining risks / optional next waves
 
 | Item | Risk | Recommendation |
 |------|------|----------------|
-| `OrderStatusMachine` (legacy) vs `Domains/Orders/StateMachine/OrderStateMachine` | Drift | Unify behind parity tests before switching production path |
-| `OrderController` (~1600 lines) | High touch area | Continue extracting actions; keep `SettleOrderPaymentAction` pattern |
+| `OrderStatusMachine` (legacy) vs `Domains/Orders/StateMachine/OrderStateMachine` | Drift | Unify behind expanded parity tests before switching production path |
+| `OrderController` (~1500 lines) | High touch area | Continue extracting actions (`fireToKitchen`, `cancel`, etc.) |
 | Models in `app/Models/` | No domain ownership yet | Wave 4+ optional moves with `class_alias` stubs |
 | Domain route files via `require` only | `use` imports don't inherit | Use FQCN in domain route files OR keep merged `api.php` |
-| KDS / BML / print-proxy | Production critical | No changes this wave; add `KdsPrintTicketTest`, `BmlInitiateContractTest` before moves |
-| Admin deposit UI | Backend-only | Add admin customer panel slice when ready (API routes exist) |
+| BML / print-proxy | Production critical | Contract tests added; gateway code still change-controlled |
 
 ---
 

@@ -3,7 +3,7 @@ import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { z } from "../theme";
 
-export type ChargeMethod = "cash" | "card" | "digital_wallet" | "house_account";
+export type ChargeMethod = "cash" | "card" | "digital_wallet" | "house_account" | "wallet";
 
 type Props = {
   total: number;
@@ -23,6 +23,9 @@ type Props = {
   /** Show Credit Account tender when customer is approved for credit. */
   creditEligible?: boolean;
   creditAvailableMvr?: number;
+  /** Show prepaid wallet tender when customer has deposit balance. */
+  walletEligible?: boolean;
+  walletAvailableMvr?: number;
   /** When true, only cash / card / transfer are offered. */
   isOffline?: boolean;
   /** Hide tender types the cashier is not permitted to use. */
@@ -49,6 +52,7 @@ const METHOD_LABEL: Record<ChargeMethod, string> = {
   card: "Card",
   digital_wallet: "Transfer",
   house_account: "Credit Account",
+  wallet: "Prepaid Wallet",
 };
 
 /**
@@ -68,6 +72,8 @@ export function ChargeOverlay({
   deliveryFee,
   creditEligible = false,
   creditAvailableMvr = 0,
+  walletEligible = false,
+  walletAvailableMvr = 0,
   isOffline = false,
   allowedTenders,
   onClose,
@@ -110,7 +116,7 @@ export function ChargeOverlay({
   useEffect(() => { setReceived(total > 0 ? total.toFixed(2) : ""); }, [total, method]);
 
   useEffect(() => {
-    if (method === "house_account") return;
+    if (method === "house_account" || method === "wallet") return;
     if (baseMethods.includes(method)) return;
     if (baseMethods.length > 0) setMethod(baseMethods[0]);
   }, [method, baseMethods]);
@@ -212,12 +218,16 @@ export function ChargeOverlay({
     split
     && method !== "cash"
     && method !== "house_account"
+    && method !== "wallet"
     && Number.isFinite(splitNum)
     && splitNum > 0
     && splitNum < total;
 
   const creditOverLimit = method === "house_account" && total > creditAvailableMvr + 0.001;
   const canConfirmCredit = method === "house_account" && creditEligible && !creditOverLimit && total > 0;
+  const walletOverLimit = method === "wallet" && total > walletAvailableMvr + 0.001;
+  const canConfirmWallet = method === "wallet" && walletEligible && !walletOverLimit && total > 0;
+  const canConfirmAccountTender = canConfirmCredit || canConfirmWallet;
 
   const confirm = async () => {
     // Split tender: send TWO rows — the requested non-cash portion +
@@ -239,7 +249,7 @@ export function ChargeOverlay({
       ]);
       return;
     }
-    if (!enough && !splitValid && !canConfirmCredit) return;
+    if (!enough && !splitValid && !canConfirmAccountTender) return;
     const amount = method === "cash"
       ? Math.max(total, receivedNum) // record what the cashier collected
       : total;
@@ -380,6 +390,18 @@ export function ChargeOverlay({
                     }}
                   >Credit Account</button>
                 )}
+                {walletEligible && !isOffline && (
+                  <button
+                    onClick={() => setMethod("wallet")}
+                    style={{
+                      flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
+                      background: method === "wallet" ? "#047857" : "#ECFDF5",
+                      color: method === "wallet" ? "#fff" : "#047857",
+                      border: `1px solid ${method === "wallet" ? "#047857" : "#A7F3D0"}`,
+                      fontWeight: 700, fontSize: 13, cursor: "pointer",
+                    }}
+                  >Prepaid Wallet</button>
+                )}
               </div>
               {method === "house_account" && (
                 <div style={{
@@ -389,8 +411,20 @@ export function ChargeOverlay({
                   fontSize: 12, color: creditOverLimit ? "#B91C1C" : "#1D4ED8",
                 }}>
                   {creditOverLimit
-                    ? `This customer is not approved for credit. Available: MVR ${creditAvailableMvr.toFixed(2)}.`
+                    ? `Amount exceeds available credit (MVR ${creditAvailableMvr.toFixed(2)}).`
                     : `Available credit: MVR ${creditAvailableMvr.toFixed(2)}`}
+                </div>
+              )}
+              {method === "wallet" && (
+                <div style={{
+                  marginTop: 8, padding: "10px 12px", borderRadius: 8,
+                  background: walletOverLimit ? "#FEE2E2" : "#ECFDF5",
+                  border: `1px solid ${walletOverLimit ? "#FCA5A5" : "#A7F3D0"}`,
+                  fontSize: 12, color: walletOverLimit ? "#B91C1C" : "#047857",
+                }}>
+                  {walletOverLimit
+                    ? `Amount exceeds prepaid balance (MVR ${walletAvailableMvr.toFixed(2)}).`
+                    : `Prepaid balance: MVR ${walletAvailableMvr.toFixed(2)}`}
                 </div>
               )}
             </div>
@@ -410,7 +444,7 @@ export function ChargeOverlay({
               </div>
             )}
 
-            {method !== "cash" && method !== "house_account" && !isOffline && tenderAllowed.split && (
+            {method !== "cash" && method !== "house_account" && method !== "wallet" && !isOffline && tenderAllowed.split && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "10px 12px", borderRadius: 10, background: "#fff",
@@ -429,7 +463,7 @@ export function ChargeOverlay({
               </div>
             )}
 
-            {split && method !== "cash" && method !== "house_account" && !isOffline && tenderAllowed.split && (
+            {split && method !== "cash" && method !== "house_account" && method !== "wallet" && !isOffline && tenderAllowed.split && (
               <div>
                 <p style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
                 <CashInput
@@ -488,7 +522,7 @@ export function ChargeOverlay({
               </>
             )}
 
-            {method !== "cash" && method !== "house_account" && !split && (
+            {method !== "cash" && method !== "house_account" && method !== "wallet" && !split && (
               <div style={{
                 padding: 14, borderRadius: 10, background: "#fff",
                 border: "1px solid #E2E8F0", fontSize: 13, color: "#475569",
@@ -527,12 +561,12 @@ export function ChargeOverlay({
               background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
               fontWeight: 600, fontSize: 15, cursor: "pointer",
             }}>Cancel</button>
-            <button onClick={confirm} disabled={(!enough && !splitValid && !canConfirmCredit) || submitting || creditOverLimit} style={{
+            <button onClick={confirm} disabled={(!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit} style={{
               flex: 2, padding: "14px 18px", borderRadius: 12,
-              background: ((!enough && !splitValid && !canConfirmCredit) || submitting || creditOverLimit) ? "#A7F3D0" : "#10B981",
+              background: ((!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit) ? "#A7F3D0" : "#10B981",
               color: "#fff", border: "none",
               fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
-              cursor: ((!enough && !splitValid && !canConfirmCredit) || submitting || creditOverLimit) ? "not-allowed" : "pointer",
+              cursor: ((!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit) ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             }}>
               {submitting ? (

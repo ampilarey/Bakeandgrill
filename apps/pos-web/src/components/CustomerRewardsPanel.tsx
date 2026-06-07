@@ -117,6 +117,7 @@ export function CustomerRewardsPanel({
   const availablePoints = summary?.loyalty.available_points ?? 0;
   const tier = summary?.loyalty.tier ?? summary?.customer.tier ?? customer.tier ?? "bronze";
   const lastPaidAt = summary?.lifetime.last_paid_at;
+  const depositBalanceMvr = (summary?.deposit?.balance_laar ?? 0) / 100;
 
   const handleApplyPromo = async () => {
     const code = promoCode.trim().toUpperCase();
@@ -265,6 +266,13 @@ export function CustomerRewardsPanel({
             <Stat label="Tier" value={tier.toUpperCase()} />
             <Stat label="Lifetime orders" value={lifetimeOrders.toLocaleString()} />
             <Stat label="Lifetime spent" value={`MVR ${lifetimeSpent.toFixed(2)}`} />
+            {depositBalanceMvr > 0 && (
+              <Stat
+                label="Prepaid wallet"
+                value={`MVR ${depositBalanceMvr.toFixed(2)}`}
+                full
+              />
+            )}
             {lastPaidAt && (
               <Stat
                 label="Last visit"

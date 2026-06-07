@@ -7,6 +7,7 @@ import {
 } from '../api';
 import { Badge, Btn, ErrorMsg, Input, Spinner } from './SharedUI';
 import { CustomerCreditSection } from './CustomerCreditSection';
+import { CustomerDepositSection } from './CustomerDepositSection';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
 const BADGE_MAP: Record<string, { label: string; color: string }> = {
@@ -201,8 +202,12 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               </div>
             )}
 
-            {can('customers.credit.manage') && (
+            {(can('customers.credit.manage') || can('customers.credit.repay')) && (
               <CustomerCreditSection customerId={customerId} />
+            )}
+
+            {(can('customers.deposit.manage') || can('customers.deposit.adjust')) && (
+              <CustomerDepositSection customerId={customerId} />
             )}
 
             <div>

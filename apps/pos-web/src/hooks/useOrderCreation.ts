@@ -449,7 +449,7 @@ export function useOrderCreation(params: Params) {
 
     const blocked = paymentSnapshot.some((p) => {
       const method = p.method as string;
-      return method === "house_account" || method === "bml" || method === "online";
+      return method === "house_account" || method === "wallet" || method === "bml" || method === "online";
     });
     if (blocked) {
       flashError("Only cash, card, and transfer are available offline.");
