@@ -206,7 +206,9 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               <CustomerCreditSection customerId={customerId} />
             )}
 
-            {(can('customers.deposit.view') || can('customers.deposit.manage') || can('customers.deposit.receive') || can('customers.deposit.adjust')) && (
+            {(can('customers.deposit.view') || can('customers.deposit.manage') || can('customers.deposit.receive')
+              || can('customers.deposit.adjust') || can('customers.deposit.refund') || can('customers.deposit.freeze')
+              || can('customers.deposit.transfer_credit')) && (
               <CustomerDepositSection customerId={customerId} />
             )}
 

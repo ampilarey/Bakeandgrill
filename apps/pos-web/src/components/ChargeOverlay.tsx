@@ -23,7 +23,7 @@ type Props = {
   /** Show Credit Account tender when customer is approved for credit. */
   creditEligible?: boolean;
   creditAvailableMvr?: number;
-  /** Show prepaid wallet tender when customer has deposit balance. */
+  /** Show customer deposit tender when customer has prepaid balance. */
   walletEligible?: boolean;
   walletAvailableMvr?: number;
   /** When true, only cash / card / transfer are offered. */
@@ -412,7 +412,7 @@ export function ChargeOverlay({
                       border: `1px solid ${method === "wallet" ? "#047857" : "#A7F3D0"}`,
                       fontWeight: 700, fontSize: 13, cursor: "pointer",
                     }}
-                  >Prepaid Wallet</button>
+                  >{METHOD_LABEL.wallet}</button>
                 )}
               </div>
               {method === "house_account" && (
