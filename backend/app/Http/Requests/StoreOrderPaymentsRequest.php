@@ -27,9 +27,26 @@ class StoreOrderPaymentsRequest extends FormRequest
         'bml',
         'online',
         'wallet',
+        'customer_deposit',
         'cheque',
         'house_account',
     ];
+
+    protected function prepareForValidation(): void
+    {
+        $payments = $this->input('payments', []);
+        if (!is_array($payments)) {
+            return;
+        }
+
+        foreach ($payments as $i => $row) {
+            if (($row['method'] ?? '') === 'customer_deposit') {
+                $payments[$i]['method'] = 'wallet';
+            }
+        }
+
+        $this->merge(['payments' => $payments]);
+    }
 
     public function authorize(): bool
     {

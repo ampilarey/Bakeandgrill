@@ -18,7 +18,7 @@ final class PaymentAllocationService
     /** @return list<string> */
     public function nonShiftMethods(): array
     {
-        return array_merge(self::GATEWAY_METHODS, ['wallet']);
+        return self::GATEWAY_METHODS;
     }
 
     /**
@@ -41,6 +41,22 @@ final class PaymentAllocationService
         return collect($payments)->contains(
             fn (array $row) => ($row['method'] ?? '') === 'house_account',
         );
+    }
+
+    /**
+     * @param list<array<string, mixed>> $payments
+     */
+    public function needsDepositShift(array $payments): bool
+    {
+        return collect($payments)->contains(
+            fn (array $row) => in_array($row['method'] ?? '', ['wallet', 'customer_deposit'], true),
+        );
+    }
+
+    public function canUseDepositPayment(User $collector, PermissionService $permissions): bool
+    {
+        return $permissions->hasPermission($collector, 'payments.deposit')
+            || $permissions->hasPermission($collector, 'payments.wallet');
     }
 
     /**
@@ -72,11 +88,12 @@ final class PaymentAllocationService
                     (int) round((float) $paymentPayload['amount'] * 100),
                 );
             }
-            if (($paymentPayload['method'] ?? '') === 'wallet') {
+            $method = $paymentPayload['method'] ?? '';
+            if (in_array($method, ['wallet', 'customer_deposit'], true)) {
                 if (!$order->customer_id) {
                     abort(422, 'This customer has no prepaid deposit balance.');
                 }
-                if (!$permissions->hasPermission($collector, 'payments.wallet')) {
+                if (!$this->canUseDepositPayment($collector, $permissions)) {
                     abort(403, 'You do not have permission to use customer deposit balance.');
                 }
                 $depositCustomer = Customer::findOrFail((int) $order->customer_id);
@@ -105,7 +122,7 @@ final class PaymentAllocationService
         }
 
         $method = (string) ($tenderMethods->first() ?? 'cash');
-        if (in_array($method, ['house_account', 'wallet'], true)) {
+        if (in_array($method, ['house_account', 'wallet', 'customer_deposit'], true)) {
             return;
         }
 

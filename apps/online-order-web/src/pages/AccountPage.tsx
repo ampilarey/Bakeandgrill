@@ -9,6 +9,7 @@ import {
   getMyPreOrders, getMyReviews, submitReview, fetchCustomerOrders,
   getMyReferralCode,
   getCustomerCredit,
+  getCustomerDepositLedger,
   updateCustomerCreditPreferences,
   fetchCustomerAddresses,
   createCustomerAddress,
@@ -20,6 +21,7 @@ import type {
   AuthCustomer, CustomerReservation, FavouriteItem,
   CustomerPreOrder, CustomerReview, Order,
   CustomerCreditSummary, CustomerCreditInvoice,
+  CustomerDepositSummary, CustomerDepositTransaction,
   CustomerAddress,
 } from '../api';
 import type { LoyaltyAccount, LoyaltyTierProgress } from '@shared/types';
@@ -93,7 +95,7 @@ export function AccountPage() {
   const navigate = useNavigate();
   const { token, authReady, setAuth, clearAuth, customerName } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals' | 'credit'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals' | 'credit' | 'deposit'>('profile');
 
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -148,6 +150,13 @@ export function AccountPage() {
   const [creditError, setCreditError] = useState('');
   const [creditLoaded, setCreditLoaded] = useState(false);
   const [reminderSaving, setReminderSaving] = useState(false);
+
+  // Deposit account
+  const [deposit, setDeposit] = useState<CustomerDepositSummary | null>(null);
+  const [depositTransactions, setDepositTransactions] = useState<CustomerDepositTransaction[]>([]);
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [depositError, setDepositError] = useState('');
+  const [depositLoaded, setDepositLoaded] = useState(false);
 
   // Profile edit state
   const [profileForm, setProfileForm] = useState({ name: '', email: '', date_of_birth: '' });
@@ -259,6 +268,19 @@ export function AccountPage() {
       .catch((e: Error) => setCreditError(e.message || 'Failed to load credit account.'))
       .finally(() => setCreditLoading(false));
   }, [token, authReady, activeTab, creditLoaded]);
+
+  useEffect(() => {
+    if (!authReady || !token || activeTab !== 'deposit' || depositLoaded) return;
+    setDepositLoading(true);
+    getCustomerDepositLedger(token)
+      .then((res) => {
+        setDeposit(res.deposit);
+        setDepositTransactions(res.transactions ?? []);
+        setDepositLoaded(true);
+      })
+      .catch((e: Error) => setDepositError(e.message || 'Failed to load deposit account.'))
+      .finally(() => setDepositLoading(false));
+  }, [token, authReady, activeTab, depositLoaded]);
 
   useEffect(() => {
     if (!authReady || !token || activeTab !== 'addresses' || addressesLoaded) return;
@@ -509,6 +531,7 @@ export function AccountPage() {
           { id: 'addresses',    label: '📍 Addresses'     },
           { id: 'loyalty',      label: '⭐ Loyalty'       },
           { id: 'credit',       label: '💳 Credit'        },
+          { id: 'deposit',      label: '💰 Deposit'       },
           { id: 'referrals',    label: '🎁 Referrals'     },
           { id: 'reservations', label: '🗓 Reservations'  },
           { id: 'favourites',   label: '❤️ Favourites'    },
@@ -1293,6 +1316,99 @@ export function AccountPage() {
                       </div>
                       );
                     })}
+                  </div>
+                )}
+              </SectionCard>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── Deposit tab ── */}
+      {activeTab === 'deposit' && (
+        <>
+          {depositError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{depositError}</p>}
+          {depositLoading ? (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>Loading…</div>
+          ) : !deposit ? (
+            <SectionCard title="Deposit Balance">
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <p style={{ fontSize: 32, margin: '0 0 8px' }}>💰</p>
+                <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
+                  You do not have a prepaid deposit balance. Ask the restaurant if you would like to prepay for faster checkout in-store.
+                </p>
+              </div>
+            </SectionCard>
+          ) : (
+            <>
+              <div style={{
+                background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+                border: '2px solid #A7F3D0',
+                borderRadius: 18,
+                padding: '24px 20px',
+              }}>
+                <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#047857', margin: '0 0 12px' }}>
+                  Deposit Balance · {deposit.status}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <p style={{ fontSize: 11, color: '#065F46', margin: '0 0 4px', fontWeight: 700 }}>Available balance</p>
+                    <p style={{ fontSize: 22, fontWeight: 900, color: '#047857', margin: 0 }}>MVR {deposit.balance_mvr.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: '#065F46', margin: '0 0 4px', fontWeight: 700 }}>In-store use</p>
+                    <p style={{ fontSize: 22, fontWeight: 900, color: deposit.can_use ? '#15803D' : '#9CA3AF', margin: 0 }}>
+                      {deposit.can_use ? 'Available' : 'Unavailable'}
+                    </p>
+                  </div>
+                </div>
+                {deposit.status !== 'active' && (
+                  <p style={{ margin: '12px 0 0', fontSize: 13, color: '#B45309' }}>
+                    Your deposit account is {deposit.status}. Contact the restaurant for assistance.
+                  </p>
+                )}
+              </div>
+
+              <SectionCard title="Recent Activity">
+                {depositTransactions.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No deposit transactions yet.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {depositTransactions.map((tx) => (
+                      <div
+                        key={tx.id}
+                        style={{
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 12,
+                          padding: '12px 14px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: 12,
+                        }}
+                      >
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>{tx.label}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                            {tx.created_at ? new Date(tx.created_at).toLocaleString() : ''}
+                            {tx.order_id ? ` · Order #${tx.order_id}` : ''}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{
+                            margin: 0,
+                            fontWeight: 800,
+                            fontSize: 15,
+                            color: tx.direction === 'credit' ? '#15803D' : '#1E3A8A',
+                          }}>
+                            {tx.direction === 'credit' ? '+' : '−'}MVR {tx.amount_mvr.toFixed(2)}
+                          </p>
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                            Bal MVR {tx.balance_after_mvr.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </SectionCard>

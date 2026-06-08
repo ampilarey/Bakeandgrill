@@ -52,7 +52,7 @@ const METHOD_LABEL: Record<ChargeMethod, string> = {
   card: "Card",
   digital_wallet: "Transfer",
   house_account: "Credit Account",
-  wallet: "Prepaid Wallet",
+  wallet: "Pay from Deposit",
 };
 
 /**
@@ -225,8 +225,10 @@ export function ChargeOverlay({
 
   const creditOverLimit = method === "house_account" && total > creditAvailableMvr + 0.001;
   const canConfirmCredit = method === "house_account" && creditEligible && !creditOverLimit && total > 0;
-  const walletOverLimit = method === "wallet" && total > walletAvailableMvr + 0.001;
-  const canConfirmWallet = method === "wallet" && walletEligible && !walletOverLimit && total > 0;
+  const walletFullPay = method === "wallet" && walletEligible && total <= walletAvailableMvr + 0.001;
+  const walletPartialPay = method === "wallet" && walletEligible && walletAvailableMvr > 0 && total > walletAvailableMvr + 0.001;
+  const walletOverLimit = method === "wallet" && walletEligible && walletAvailableMvr <= 0;
+  const canConfirmWallet = (walletFullPay || walletPartialPay) && total > 0;
   const canConfirmAccountTender = canConfirmCredit || canConfirmWallet;
 
   const confirm = async () => {
@@ -235,6 +237,16 @@ export function ChargeOverlay({
     // shortfall with cash, but being explicit here means the server
     // sees the actual split the cashier chose, which is what shows up
     // in the day's tender breakdown report.
+    if (walletPartialPay) {
+      const depositLaar = Math.min(toLaari(total), toLaari(walletAvailableMvr));
+      const deposit = fromLaari(depositLaar);
+      const rest = fromLaari(toLaari(total) - depositLaar);
+      await onConfirm([
+        { method: "wallet", amount: deposit },
+        { method: "cash", amount: rest },
+      ]);
+      return;
+    }
     if (splitValid) {
       // Compute the cash remainder in integer laari so the two
       // amounts we send the server sum exactly to `total` — no
@@ -423,8 +435,10 @@ export function ChargeOverlay({
                   fontSize: 12, color: walletOverLimit ? "#B91C1C" : "#047857",
                 }}>
                   {walletOverLimit
-                    ? `Amount exceeds prepaid balance (MVR ${walletAvailableMvr.toFixed(2)}).`
-                    : `Prepaid balance: MVR ${walletAvailableMvr.toFixed(2)}`}
+                    ? `No deposit balance available.`
+                    : walletPartialPay
+                      ? `Deposit balance MVR ${walletAvailableMvr.toFixed(2)} — remainder will be collected in cash.`
+                      : `Deposit balance: MVR ${walletAvailableMvr.toFixed(2)}`}
                 </div>
               )}
             </div>

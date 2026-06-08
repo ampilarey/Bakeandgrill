@@ -122,7 +122,7 @@ final class SettleOrderPaymentAction
                     $this->creditService->recordCharge($accounts['credit'], $order, $payment, $collector, $request);
                 }
 
-                if ($paymentPayload['method'] === 'wallet' && $accounts['deposit'] !== null) {
+                if (in_array($paymentPayload['method'], ['wallet', 'customer_deposit'], true) && $accounts['deposit'] !== null) {
                     $this->depositService->recordUsage($accounts['deposit'], $order, $payment, $collector, $request);
                 }
 

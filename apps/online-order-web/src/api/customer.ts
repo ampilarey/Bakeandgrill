@@ -214,3 +214,31 @@ export async function updateCustomerCreditPreferences(
     body: JSON.stringify(data),
   });
 }
+
+export type CustomerDepositSummary = {
+  balance_mvr: number;
+  status: 'active' | 'frozen' | 'closed';
+  can_use: boolean;
+};
+
+export type CustomerDepositTransaction = {
+  id: number;
+  label: string;
+  type: string;
+  amount_mvr: number;
+  direction: 'credit' | 'debit';
+  balance_after_mvr: number;
+  order_id?: number | null;
+  created_at?: string | null;
+};
+
+export async function getCustomerDeposit(token: string): Promise<{ deposit: CustomerDepositSummary | null }> {
+  return request('/customer/deposit', { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export async function getCustomerDepositLedger(token: string): Promise<{
+  deposit: CustomerDepositSummary | null;
+  transactions: CustomerDepositTransaction[];
+}> {
+  return request('/customer/deposit/ledger', { headers: { Authorization: `Bearer ${token}` } });
+}

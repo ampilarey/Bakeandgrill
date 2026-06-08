@@ -100,7 +100,8 @@ function App() {
   const canOpsReports = hasPosPermission(staffPermissions, "reports.view");
   const canOpsMarketing = hasPosPermission(staffPermissions, "integrations.sms");
   const canUseCredit = hasPosPermission(staffPermissions, "payments.credit");
-  const canUseWallet = hasPosPermission(staffPermissions, "payments.wallet");
+  const canUseWallet = hasPosPermission(staffPermissions, "payments.deposit")
+    || hasPosPermission(staffPermissions, "payments.wallet");
   const canPayCash = hasPosPermission(staffPermissions, "payments.cash");
   const canPayCard = hasPosPermission(staffPermissions, "payments.card");
   const canPaySplit = hasPosPermission(staffPermissions, "payments.split");

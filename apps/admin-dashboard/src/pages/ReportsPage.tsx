@@ -3,7 +3,7 @@ import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
-  getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport,
+  getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
   getCashierPerformanceReport, getProductMarginsReport, getCustomerCohortsReport, getStockDiscrepancyReport,
   getHourlySalesReport, getStationPerformanceReport,
@@ -11,7 +11,7 @@ import {
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
-  type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport,
+  type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport, type DepositExposureReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
   type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
   type HourlySalesReport, type StationPerformanceReport,
@@ -92,7 +92,7 @@ const REPORT_SECTIONS = [
   {
     id: 'finance',
     label: 'Finance',
-    tabs: ['X / Z Report', 'Tax', 'Accounts Payable', 'Accounts Receivable', 'Credit Exposure'],
+    tabs: ['X / Z Report', 'Tax', 'Accounts Payable', 'Accounts Receivable', 'Credit Exposure', 'Deposit Exposure'],
   },
   {
     id: 'operations',
@@ -192,6 +192,7 @@ export function ReportsPage() {
   const [voidsReport, setVoidsReport] = useState<VoidsByStaffReport | null>(null);
   const [refundsReport, setRefundsReport] = useState<RefundsByReasonReport | null>(null);
   const [creditExposure, setCreditExposure] = useState<CreditExposureReport | null>(null);
+  const [depositExposure, setDepositExposure] = useState<DepositExposureReport | null>(null);
   const [overridesReport, setOverridesReport] = useState<ManagerOverridesReport | null>(null);
   const [velocityReport, setVelocityReport] = useState<StockVelocityReport | null>(null);
   const [shiftVariances, setShiftVariances] = useState<ShiftVariancesReport | null>(null);
@@ -242,6 +243,7 @@ export function ReportsPage() {
       if (tab === 'Voids')               setVoidsReport(await getVoidsByStaffReport({ from, to }));
       if (tab === 'Refunds')             setRefundsReport(await getRefundsByReasonReport({ from, to }));
       if (tab === 'Credit Exposure')     setCreditExposure(await getCreditExposureReport());
+      if (tab === 'Deposit Exposure')    setDepositExposure(await getDepositExposureReport());
       if (tab === 'Overrides')             setOverridesReport(await getManagerOverridesReport({ from, to }));
       if (tab === 'Stock Velocity')       setVelocityReport(await getStockVelocityReport({ from, to }));
       if (tab === 'Shift Variances')       setShiftVariances(await getShiftVariancesReport({ from, to }));
@@ -304,6 +306,12 @@ export function ReportsPage() {
         Enabled: c.credit_enabled ? 'yes' : 'no',
         Overdue: c.overdue_invoices_count,
       })));
+    } else if (tab === 'Deposit Exposure' && depositExposure) {
+      downloadCSV('deposit-exposure', (depositExposure.top_customers ?? []).map(c => ({
+        Customer: c.name,
+        Balance: mvr(c.balance),
+        Status: c.status,
+      })));
     }
   };
 
@@ -312,7 +320,8 @@ export function ReportsPage() {
     (tab === 'Accounts Payable' && ap) || (tab === 'Accounts Receivable' && ar) ||
     (tab === 'Promotions' && promoReport) || (tab === 'Loyalty' && loyaltyReport) ||
     (tab === 'Discounts' && discountsReport) || (tab === 'Voids' && voidsReport) ||
-    (tab === 'Refunds' && refundsReport) || (tab === 'Credit Exposure' && creditExposure);
+    (tab === 'Refunds' && refundsReport) || (tab === 'Credit Exposure' && creditExposure)
+    || (tab === 'Deposit Exposure' && depositExposure);
 
   return (
     <>
@@ -915,6 +924,39 @@ export function ReportsPage() {
                       <td style={{ ...S.td, fontWeight: 600, textTransform: 'capitalize' }}>{row.reason.replace(/_/g, ' ')}</td>
                       <td style={S.td}>{row.refunds_count}</td>
                       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* ── Deposit exposure ── */}
+      {!loading && tab === 'Deposit Exposure' && depositExposure && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Total Liability" value={mvr(depositExposure.total_balance)} accent="#047857" />
+            <StatCard label="Customers with Balance" value={String(depositExposure.customers_count)} accent="#8b5cf6" />
+          </div>
+          {(depositExposure.top_customers ?? []).length === 0 ? (
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding deposit balances.</p></Card>
+          ) : (
+            <Card>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by deposit balance</p>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Customer</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Balance</th>
+                  <th style={S.th}>Status</th>
+                </tr></thead>
+                <tbody>
+                  {(depositExposure.top_customers ?? []).map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ ...S.td, fontWeight: 600 }}>{c.name}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#047857' }}>{mvr(c.balance)}</td>
+                      <td style={S.td}>{c.status}</td>
                     </tr>
                   ))}
                 </tbody>

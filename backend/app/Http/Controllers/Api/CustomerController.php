@@ -350,6 +350,45 @@ class CustomerController extends Controller
     }
 
     /**
+     * GET /api/customer/deposit/ledger — recent deposit transactions (sanitized).
+     */
+    public function depositLedger(Request $request)
+    {
+        $customer = $request->user();
+
+        if (!$customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        $service = app(CustomerDepositService::class);
+        $summary = $service->depositSummary($customer);
+        if (!$summary['has_account'] && (int) $summary['balance_laar'] === 0) {
+            return response()->json(['deposit' => null, 'transactions' => []]);
+        }
+
+        $rows = \App\Models\CustomerDepositLedger::query()
+            ->where('customer_id', $customer->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (\App\Models\CustomerDepositLedger $row) => [
+                'id' => $row->id,
+                'label' => $service->customerFacingLedgerLabel($row->type),
+                'type' => $row->type,
+                'amount_mvr' => round(abs((int) $row->amount_laar) / 100, 2),
+                'direction' => $row->amount_laar >= 0 ? 'credit' : 'debit',
+                'balance_after_mvr' => round((int) $row->balance_after_laar / 100, 2),
+                'order_id' => $row->order_id,
+                'created_at' => $row->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'deposit' => $service->customerFacingSummary($customer),
+            'transactions' => $rows,
+        ]);
+    }
+
+    /**
      * GET /api/customer/credit — balance, limit, and open invoices.
      */
     public function credit(Request $request)

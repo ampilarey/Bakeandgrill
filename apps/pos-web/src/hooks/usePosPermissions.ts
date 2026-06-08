@@ -21,6 +21,8 @@ const POS_PERM_ALIASES: Record<string, string[]> = {
   'promotions.apply_promo_code': ['promotions.discounts'],
   'promotions.gift_cards': ['promotions.discounts'],
   'integrations.sms': ['sms_marketing.view', 'sms_marketing.manage'],
+  'payments.deposit': ['payments.wallet'],
+  'payments.wallet': ['payments.deposit'],
 };
 
 /** Check if the current cashier holds a permission slug (owner bypass is server-side). */

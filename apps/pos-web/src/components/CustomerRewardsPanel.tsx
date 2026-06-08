@@ -118,6 +118,10 @@ export function CustomerRewardsPanel({
   const tier = summary?.loyalty.tier ?? summary?.customer.tier ?? customer.tier ?? "bronze";
   const lastPaidAt = summary?.lifetime.last_paid_at;
   const depositBalanceMvr = (summary?.deposit?.balance_laar ?? 0) / 100;
+  const depositStatus = summary?.deposit?.status ?? 'active';
+  const creditEnabled = summary?.credit?.enabled ?? false;
+  const creditAvailableMvr = (summary?.credit?.available_laar ?? 0) / 100;
+  const creditBalanceMvr = (summary?.credit?.balance_laar ?? 0) / 100;
 
   const handleApplyPromo = async () => {
     const code = promoCode.trim().toUpperCase();
@@ -266,11 +270,22 @@ export function CustomerRewardsPanel({
             <Stat label="Tier" value={tier.toUpperCase()} />
             <Stat label="Lifetime orders" value={lifetimeOrders.toLocaleString()} />
             <Stat label="Lifetime spent" value={`MVR ${lifetimeSpent.toFixed(2)}`} />
-            {depositBalanceMvr > 0 && (
+            <Stat
+              label="Deposit balance"
+              value={
+                depositStatus !== 'active'
+                  ? `${depositStatus.toUpperCase()} · MVR ${depositBalanceMvr.toFixed(2)}`
+                  : `MVR ${depositBalanceMvr.toFixed(2)}`
+              }
+            />
+            {creditEnabled && (
               <Stat
-                label="Prepaid wallet"
-                value={`MVR ${depositBalanceMvr.toFixed(2)}`}
-                full
+                label="Credit available"
+                value={
+                  creditBalanceMvr > 0
+                    ? `MVR ${creditAvailableMvr.toFixed(2)} (owed MVR ${creditBalanceMvr.toFixed(2)})`
+                    : `MVR ${creditAvailableMvr.toFixed(2)}`
+                }
               />
             )}
             {lastPaidAt && (

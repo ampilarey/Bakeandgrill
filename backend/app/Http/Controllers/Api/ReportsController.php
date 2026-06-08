@@ -199,6 +199,19 @@ class ReportsController extends Controller
         return response()->json($this->reports->creditExposure());
     }
 
+    public function depositExposure()
+    {
+        return response()->json($this->reports->depositExposure());
+    }
+
+    public function depositActivity(Request $request)
+    {
+        $from = Carbon::parse($request->query('from', now()->subDays(30)->toDateString()))->startOfDay();
+        $to = Carbon::parse($request->query('to', now()->toDateString()))->endOfDay();
+
+        return response()->json($this->reports->depositActivity($from, $to));
+    }
+
     public function managerOverrides(Request $request)
     {
         [$from, $to] = $this->parseRange($request);

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\Deposits\Services;
 
+use App\Domains\Credit\Services\CustomerCreditService;
 use App\Models\CashMovement;
 use App\Models\Customer;
 use App\Models\CustomerDepositAccount;
 use App\Models\CustomerDepositLedger;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Refund;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\ShiftAccessService;
@@ -37,6 +39,18 @@ final class DepositLedgerService
         );
     }
 
+    public function receiveDeposit(
+        Customer $customer,
+        int $amountLaar,
+        string $method,
+        User $actor,
+        ?string $reference = null,
+        ?string $notes = null,
+        ?Request $request = null,
+    ): CustomerDepositLedger {
+        return $this->topUp($customer, $amountLaar, $method, $actor, $reference, $notes, $request);
+    }
+
     public function topUp(
         Customer $customer,
         int $amountLaar,
@@ -46,7 +60,7 @@ final class DepositLedgerService
         ?string $notes = null,
         ?Request $request = null,
     ): CustomerDepositLedger {
-        $allowedMethods = ['cash', 'card', 'bank_transfer'];
+        $allowedMethods = ['cash', 'card', 'bank_transfer', 'online', 'bml'];
         if (!in_array($method, $allowedMethods, true)) {
             abort(422, 'Invalid top-up method.');
         }
@@ -79,7 +93,8 @@ final class DepositLedgerService
                 }
             }
 
-            $newBalance = (int) $account->balance_laar + $amountLaar;
+            $balanceBefore = (int) $account->balance_laar;
+            $newBalance = $balanceBefore + $amountLaar;
             $account->update([
                 'balance_laar' => $newBalance,
                 'status' => $account->status === 'closed' ? 'active' : $account->status,
@@ -90,19 +105,16 @@ final class DepositLedgerService
                 CashMovement::create([
                     'shift_id' => $shift->id,
                     'user_id' => $actor->id,
-                    'type' => 'in',
+                    'type' => 'cash_in',
                     'amount' => round($amountLaar / 100, 2),
-                    'reason' => 'Customer deposit top-up — ' . ($customer->name ?? $customer->phone),
+                    'reason' => 'Customer deposit received — ' . ($customer->name ?? $customer->phone),
                 ]);
             }
 
-            $ledger = CustomerDepositLedger::create([
-                'customer_id' => $customer->id,
-                'type' => 'top_up',
-                'amount_laar' => $amountLaar,
-                'balance_after_laar' => $newBalance,
+            $ledger = $this->writeLedger($account, 'top_up', $amountLaar, $balanceBefore, $newBalance, $actor, [
+                'method' => $method,
                 'shift_id' => $shift?->id,
-                'actor_user_id' => $actor->id,
+                'reference' => $reference,
                 'notes' => $notes ?? $reference,
             ]);
 
@@ -110,7 +122,7 @@ final class DepositLedgerService
                 'customer.deposit.top_up',
                 'Customer',
                 $customer->id,
-                ['balance_laar' => $newBalance - $amountLaar],
+                ['balance_laar' => $balanceBefore],
                 ['balance_laar' => $newBalance, 'amount_laar' => $amountLaar, 'method' => $method],
                 ['ledger_id' => $ledger->id],
                 $request,
@@ -139,7 +151,8 @@ final class DepositLedgerService
                 abort(422, 'Deposit account is closed.');
             }
 
-            $newBalance = (int) $locked->balance_laar + $amountLaar;
+            $balanceBefore = (int) $locked->balance_laar;
+            $newBalance = $balanceBefore + $amountLaar;
             if ($newBalance < 0) {
                 abort(422, 'Adjustment would make deposit balance negative.');
             }
@@ -149,12 +162,10 @@ final class DepositLedgerService
                 'updated_by' => $actor->id,
             ]);
 
-            $ledger = CustomerDepositLedger::create([
-                'customer_id' => $customer->id,
-                'type' => 'adjustment',
-                'amount_laar' => $amountLaar,
-                'balance_after_laar' => $newBalance,
-                'actor_user_id' => $actor->id,
+            $type = $amountLaar > 0 ? 'adjustment_add' : 'adjustment_deduct';
+
+            $ledger = $this->writeLedger($locked, $type, $amountLaar, $balanceBefore, $newBalance, $actor, [
+                'method' => 'adjustment',
                 'notes' => $notes,
             ]);
 
@@ -170,6 +181,16 @@ final class DepositLedgerService
 
             return $ledger;
         });
+    }
+
+    public function freezeAccount(Customer $customer, User $actor, ?Request $request = null): CustomerDepositAccount
+    {
+        return $this->setStatus($customer, 'frozen', $actor, $request);
+    }
+
+    public function unfreezeAccount(Customer $customer, User $actor, ?Request $request = null): CustomerDepositAccount
+    {
+        return $this->setStatus($customer, 'active', $actor, $request);
     }
 
     public function setStatus(
@@ -206,6 +227,16 @@ final class DepositLedgerService
         });
     }
 
+    public function useDepositForOrder(
+        Customer $customer,
+        Order $order,
+        Payment $payment,
+        User $actor,
+        ?Request $request = null,
+    ): ?CustomerDepositLedger {
+        return $this->recordUsage($customer, $order, $payment, $actor, $request);
+    }
+
     public function recordUsage(
         Customer $customer,
         Order $order,
@@ -229,21 +260,19 @@ final class DepositLedgerService
             $amountLaar = (int) $payment->amount_laar;
             $this->eligibility->assertCanUseDeposit($customer, $amountLaar, $account);
 
-            $newBalance = (int) $account->balance_laar - $amountLaar;
+            $balanceBefore = (int) $account->balance_laar;
+            $newBalance = $balanceBefore - $amountLaar;
             $account->update([
                 'balance_laar' => $newBalance,
                 'updated_by' => $actor->id,
             ]);
 
-            $ledger = CustomerDepositLedger::create([
-                'customer_id' => $customer->id,
-                'type' => 'usage',
-                'amount_laar' => -$amountLaar,
-                'balance_after_laar' => $newBalance,
+            $ledger = $this->writeLedger($account, 'usage', -$amountLaar, $balanceBefore, $newBalance, $actor, [
+                'method' => 'wallet',
                 'order_id' => $order->id,
                 'payment_id' => $payment->id,
-                'actor_user_id' => $actor->id,
-                'notes' => 'POS deposit payment for order ' . ($order->order_number ?? $order->id),
+                'shift_id' => $payment->shift_id,
+                'notes' => 'Customer deposit payment for order ' . ($order->order_number ?? $order->id),
             ]);
 
             $this->audit->log(
@@ -265,6 +294,151 @@ final class DepositLedgerService
         });
     }
 
+    /**
+     * Payout unused deposit balance back to the customer (cash/card/bank).
+     */
+    public function payoutDeposit(
+        Customer $customer,
+        int $amountLaar,
+        string $method,
+        User $actor,
+        ?string $reference = null,
+        ?string $notes = null,
+        ?Request $request = null,
+    ): CustomerDepositLedger {
+        $allowedMethods = ['cash', 'card', 'bank_transfer'];
+        if (!in_array($method, $allowedMethods, true)) {
+            abort(422, 'Invalid payout method.');
+        }
+
+        if ($amountLaar <= 0) {
+            abort(422, 'Payout amount must be greater than zero.');
+        }
+
+        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request) {
+            $account = CustomerDepositAccount::lockForUpdate()
+                ->where('customer_id', $customer->id)
+                ->first();
+
+            if ($account === null || $account->status !== 'active') {
+                abort(422, 'Deposit account is not available for payout.');
+            }
+
+            $balanceBefore = (int) $account->balance_laar;
+            if ($amountLaar > $balanceBefore) {
+                abort(422, sprintf(
+                    'Payout exceeds available deposit balance (MVR %.2f).',
+                    $balanceBefore / 100,
+                ));
+            }
+
+            $shift = null;
+            if ($method === 'cash') {
+                $isOwner = $actor->role?->slug === 'owner';
+                $shift = $this->shifts->findOpenShift($actor);
+                if ($shift === null && !$isOwner) {
+                    abort(422, 'Open a shift before recording a cash deposit payout.');
+                }
+            }
+
+            $newBalance = $balanceBefore - $amountLaar;
+            $account->update([
+                'balance_laar' => $newBalance,
+                'updated_by' => $actor->id,
+            ]);
+
+            if ($method === 'cash' && $shift !== null) {
+                CashMovement::create([
+                    'shift_id' => $shift->id,
+                    'user_id' => $actor->id,
+                    'type' => 'cash_out',
+                    'amount' => round($amountLaar / 100, 2),
+                    'reason' => 'Customer deposit payout — ' . ($customer->name ?? $customer->phone),
+                ]);
+            }
+
+            $ledger = $this->writeLedger($account, 'payout', -$amountLaar, $balanceBefore, $newBalance, $actor, [
+                'method' => $method,
+                'shift_id' => $shift?->id,
+                'reference' => $reference,
+                'notes' => $notes ?? $reference,
+            ]);
+
+            $this->audit->log(
+                'customer.deposit.payout',
+                'Customer',
+                $customer->id,
+                ['balance_laar' => $balanceBefore],
+                ['amount_laar' => $amountLaar, 'balance_after_laar' => $newBalance, 'method' => $method],
+                ['ledger_id' => $ledger->id],
+                $request,
+            );
+
+            return $ledger;
+        });
+    }
+
+    /**
+     * Restore deposit balance when an order paid with wallet is refunded.
+     */
+    public function reverseUsageForOrderRefund(
+        Order $order,
+        int $refundAmountLaar,
+        Refund $refund,
+        User $actor,
+    ): void {
+        if (CustomerDepositLedger::where('refund_id', $refund->id)->where('type', 'reversal')->exists()) {
+            return;
+        }
+
+        $walletPaidLaar = (int) $order->payments()
+            ->where('method', 'wallet')
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total')
+            ->value('total');
+
+        if ($walletPaidLaar <= 0 || !$order->customer_id) {
+            return;
+        }
+
+        $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        $reversalLaar = $orderTotalLaar > 0
+            ? (int) min($refundAmountLaar, (int) round($walletPaidLaar * ($refundAmountLaar / $orderTotalLaar)))
+            : 0;
+
+        if ($reversalLaar <= 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $reversalLaar, $refund, $actor) {
+            $account = CustomerDepositAccount::lockForUpdate()
+                ->where('customer_id', $order->customer_id)
+                ->first();
+
+            if ($account === null) {
+                $account = $this->getOrCreateAccount(Customer::findOrFail((int) $order->customer_id), $actor);
+                $account = CustomerDepositAccount::lockForUpdate()->findOrFail($account->id);
+            }
+
+            $balanceBefore = (int) $account->balance_laar;
+            $newBalance = $balanceBefore + $reversalLaar;
+            $account->update([
+                'balance_laar' => $newBalance,
+                'updated_by' => $actor->id,
+            ]);
+
+            $this->writeLedger($account, 'reversal', $reversalLaar, $balanceBefore, $newBalance, $actor, [
+                'method' => 'wallet',
+                'order_id' => $order->id,
+                'refund_id' => $refund->id,
+                'notes' => 'Deposit restored for refund on order ' . ($order->order_number ?? $order->id),
+            ]);
+        });
+    }
+
+    /**
+     * @deprecated Use reverseUsageForOrderRefund for order refunds. Credits balance (legacy name).
+     */
     public function refundToDeposit(
         Customer $customer,
         int $amountLaar,
@@ -281,19 +455,15 @@ final class DepositLedgerService
             $account = $this->getOrCreateAccount($customer, $actor);
             $locked = CustomerDepositAccount::lockForUpdate()->findOrFail($account->id);
 
-            $newBalance = (int) $locked->balance_laar + $amountLaar;
+            $balanceBefore = (int) $locked->balance_laar;
+            $newBalance = $balanceBefore + $amountLaar;
             $locked->update([
                 'balance_laar' => $newBalance,
                 'updated_by' => $actor->id,
             ]);
 
-            $ledger = CustomerDepositLedger::create([
-                'customer_id' => $customer->id,
-                'type' => 'refund',
-                'amount_laar' => $amountLaar,
-                'balance_after_laar' => $newBalance,
+            $ledger = $this->writeLedger($locked, 'refund', $amountLaar, $balanceBefore, $newBalance, $actor, [
                 'order_id' => $order?->id,
-                'actor_user_id' => $actor->id,
                 'notes' => $notes,
             ]);
 
@@ -309,5 +479,135 @@ final class DepositLedgerService
 
             return $ledger;
         });
+    }
+
+    public function transferToCredit(
+        Customer $customer,
+        int $amountLaar,
+        User $actor,
+        ?string $notes = null,
+        ?Request $request = null,
+    ): array {
+        if ($amountLaar <= 0) {
+            abort(422, 'Transfer amount must be greater than zero.');
+        }
+
+        if (!$customer->credit_enabled) {
+            abort(422, 'Customer does not have an active credit account.');
+        }
+
+        $creditBalance = (int) $customer->credit_balance_laar;
+        if ($creditBalance <= 0) {
+            abort(422, 'Customer has no outstanding credit balance to pay down.');
+        }
+
+        return DB::transaction(function () use ($customer, $amountLaar, $actor, $notes, $request, $creditBalance) {
+            $account = CustomerDepositAccount::lockForUpdate()
+                ->where('customer_id', $customer->id)
+                ->first();
+
+            if ($account === null || $account->status !== 'active') {
+                abort(422, 'Deposit account is not active.');
+            }
+
+            $depositBalance = (int) $account->balance_laar;
+            $transferLaar = min($amountLaar, $depositBalance, $creditBalance);
+
+            if ($transferLaar <= 0) {
+                abort(422, 'Nothing to transfer — check deposit and credit balances.');
+            }
+
+            $balanceBefore = $depositBalance;
+            $newBalance = $balanceBefore - $transferLaar;
+            $account->update([
+                'balance_laar' => $newBalance,
+                'updated_by' => $actor->id,
+            ]);
+
+            $depositLedger = $this->writeLedger($account, 'transfer_to_credit', -$transferLaar, $balanceBefore, $newBalance, $actor, [
+                'method' => 'transfer',
+                'notes' => $notes ?? 'Deposit applied to credit account',
+            ]);
+
+            $creditLedger = app(CustomerCreditService::class)->recordRepayment(
+                $customer->fresh(),
+                $transferLaar,
+                'bank_transfer',
+                $actor,
+                null,
+                'DEPOSIT-TRANSFER-' . $depositLedger->id,
+                $notes ?? 'Paid from customer deposit balance',
+                $request,
+            );
+
+            $this->audit->log(
+                'customer.deposit.transfer_to_credit',
+                'Customer',
+                $customer->id,
+                ['deposit_balance_laar' => $balanceBefore, 'credit_balance_laar' => $creditBalance],
+                [
+                    'amount_laar' => $transferLaar,
+                    'deposit_balance_after_laar' => $newBalance,
+                    'deposit_ledger_id' => $depositLedger->id,
+                    'credit_ledger_id' => $creditLedger->id,
+                ],
+                [],
+                $request,
+            );
+
+            return [
+                'deposit_ledger' => $depositLedger,
+                'credit_ledger' => $creditLedger,
+                'amount_laar' => $transferLaar,
+            ];
+        });
+    }
+
+    /**
+     * @return array{total_received_laar: int, total_used_laar: int}
+     */
+    public function activityTotals(int $customerId): array
+    {
+        $received = (int) CustomerDepositLedger::where('customer_id', $customerId)
+            ->whereIn('type', ['top_up', 'adjustment_add', 'reversal', 'refund'])
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')
+            ->value('t');
+
+        $used = (int) CustomerDepositLedger::where('customer_id', $customerId)
+            ->whereIn('type', ['usage', 'payout', 'transfer_to_credit', 'adjustment_deduct'])
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')
+            ->value('t');
+
+        return ['total_received_laar' => $received, 'total_used_laar' => $used];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    private function writeLedger(
+        CustomerDepositAccount $account,
+        string $type,
+        int $amountLaar,
+        int $balanceBefore,
+        int $balanceAfter,
+        User $actor,
+        array $extra = [],
+    ): CustomerDepositLedger {
+        return CustomerDepositLedger::create([
+            'customer_id' => $account->customer_id,
+            'deposit_account_id' => $account->id,
+            'type' => $type,
+            'amount_laar' => $amountLaar,
+            'balance_before_laar' => $balanceBefore,
+            'balance_after_laar' => $balanceAfter,
+            'order_id' => $extra['order_id'] ?? null,
+            'payment_id' => $extra['payment_id'] ?? null,
+            'refund_id' => $extra['refund_id'] ?? null,
+            'shift_id' => $extra['shift_id'] ?? null,
+            'method' => $extra['method'] ?? null,
+            'actor_user_id' => $actor->id,
+            'notes' => $extra['notes'] ?? null,
+            'reference' => $extra['reference'] ?? null,
+        ]);
     }
 }

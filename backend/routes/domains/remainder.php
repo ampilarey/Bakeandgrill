@@ -413,14 +413,29 @@ Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admi
         Route::post('/{id}/credit/repayments', [App\Http\Controllers\Api\CustomerCreditController::class, 'repay']);
     });
 
-    Route::middleware('permission:customers.deposit.manage')->group(function () {
+    Route::middleware('permission:customers.deposit.view')->group(function () {
         Route::get('/{id}/deposit', [App\Http\Controllers\Api\CustomerDepositController::class, 'show']);
+        Route::get('/{id}/deposit/ledger', [App\Http\Controllers\Api\CustomerDepositController::class, 'ledger']);
+    });
+
+    Route::middleware('permission:customers.deposit.freeze')->group(function () {
         Route::patch('/{id}/deposit', [App\Http\Controllers\Api\CustomerDepositController::class, 'update']);
+    });
+
+    Route::middleware('permission:customers.deposit.receive')->group(function () {
         Route::post('/{id}/deposit/top-up', [App\Http\Controllers\Api\CustomerDepositController::class, 'topUp']);
     });
 
     Route::middleware('permission:customers.deposit.adjust')->group(function () {
         Route::post('/{id}/deposit/adjust', [App\Http\Controllers\Api\CustomerDepositController::class, 'adjust']);
+    });
+
+    Route::middleware('permission:customers.deposit.refund')->group(function () {
+        Route::post('/{id}/deposit/refund', [App\Http\Controllers\Api\CustomerDepositController::class, 'refund']);
+    });
+
+    Route::middleware('permission:customers.deposit.transfer_credit')->group(function () {
+        Route::post('/{id}/deposit/transfer-to-credit', [App\Http\Controllers\Api\CustomerDepositController::class, 'transferToCredit']);
     });
 });
 

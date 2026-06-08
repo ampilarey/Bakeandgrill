@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CloseShiftRequest;
 use App\Http\Requests\OpenShiftRequest;
 use App\Models\CashMovement;
+use App\Models\CustomerDepositLedger;
 use App\Models\Device;
 use App\Models\Order;
 use App\Models\Payment;
@@ -83,13 +84,42 @@ class ShiftController extends Controller
 
         $expectedLaar = $openingLaar + $cashInLaar - $cashOutLaar + $cashSalesLaar + $cashRefundsRawLaar - $refundCashOutLaar;
 
+        $depositCash = $this->depositCashTotalsForShift($shift->id);
+
         return [
             'opening' => $opening,
             'cash_in' => $cashIn,
             'cash_out' => $cashOut,
             'cash_sales' => round($cashSalesLaar / 100, 2),
             'cash_refunds' => round((abs($cashRefundsRawLaar) + $refundCashOutLaar) / 100, 2),
+            'deposit_cash_received' => $depositCash['received'],
+            'deposit_cash_refunded' => $depositCash['refunded'],
             'expected' => round($expectedLaar / 100, 2),
+        ];
+    }
+
+    /**
+     * @return array{received: float, refunded: float}
+     */
+    private function depositCashTotalsForShift(int $shiftId): array
+    {
+        $receivedLaar = (int) CustomerDepositLedger::query()
+            ->where('shift_id', $shiftId)
+            ->where('type', 'top_up')
+            ->where('method', 'cash')
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')
+            ->value('t');
+
+        $refundedLaar = (int) CustomerDepositLedger::query()
+            ->where('shift_id', $shiftId)
+            ->where('type', 'payout')
+            ->where('method', 'cash')
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')
+            ->value('t');
+
+        return [
+            'received' => round($receivedLaar / 100, 2),
+            'refunded' => round($refundedLaar / 100, 2),
         ];
     }
 
@@ -164,6 +194,8 @@ class ShiftController extends Controller
                 'cash_refunds' => $cashRefunds,
                 'paid_in' => $cashIn,
                 'paid_out' => $cashOut,
+                'deposit_cash_received' => $cash['deposit_cash_received'] ?? 0,
+                'deposit_cash_refunded' => $cash['deposit_cash_refunded'] ?? 0,
                 'expected_cash' => $expectedCash,
             ],
             'sales_summary' => [

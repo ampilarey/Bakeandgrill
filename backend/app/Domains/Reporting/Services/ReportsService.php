@@ -10,6 +10,8 @@ use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\AuditLog;
 use App\Models\Customer;
+use App\Models\CustomerDepositAccount;
+use App\Models\CustomerDepositLedger;
 use App\Models\Invoice;
 use App\Models\InventoryItem;
 use App\Models\Item;
@@ -536,6 +538,77 @@ class ReportsService
             'total_balance' => round($totalLaar / 100, 2),
             'customers_count' => $customersCount,
             'top_customers' => $top,
+        ];
+    }
+
+    /**
+     * Outstanding customer deposit liability (prepaid balances held).
+     *
+     * @return array<string, mixed>
+     */
+    public function depositExposure(): array
+    {
+        $totalLaar = (int) CustomerDepositAccount::query()
+            ->where('balance_laar', '>', 0)
+            ->sum('balance_laar');
+
+        $customersCount = (int) CustomerDepositAccount::query()
+            ->where('balance_laar', '>', 0)
+            ->count();
+
+        $top = CustomerDepositAccount::query()
+            ->with('customer:id,name')
+            ->where('balance_laar', '>', 0)
+            ->orderByDesc('balance_laar')
+            ->limit(10)
+            ->get()
+            ->map(fn (CustomerDepositAccount $a) => [
+                'id' => $a->customer_id,
+                'name' => (string) ($a->customer?->name ?? 'Customer'),
+                'balance_laar' => (int) $a->balance_laar,
+                'balance' => round((int) $a->balance_laar / 100, 2),
+                'status' => $a->status,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'total_balance_laar' => $totalLaar,
+            'total_balance' => round($totalLaar / 100, 2),
+            'customers_count' => $customersCount,
+            'top_customers' => $top,
+        ];
+    }
+
+    /**
+     * Deposit ledger activity for a date range (not sales).
+     *
+     * @return array{from: string, to: string, received_laar: int, used_laar: int, payouts_laar: int, transfers_laar: int}
+     */
+    public function depositActivity(Carbon $from, Carbon $to): array
+    {
+        $base = CustomerDepositLedger::query()->whereBetween('created_at', [$from, $to]);
+
+        $receivedLaar = (int) (clone $base)->whereIn('type', ['top_up', 'adjustment_add', 'reversal', 'refund'])
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')->value('t');
+        $usedLaar = (int) (clone $base)->where('type', 'usage')
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')->value('t');
+        $payoutsLaar = (int) (clone $base)->where('type', 'payout')
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')->value('t');
+        $transfersLaar = (int) (clone $base)->where('type', 'transfer_to_credit')
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')->value('t');
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'received_laar' => $receivedLaar,
+            'received' => round($receivedLaar / 100, 2),
+            'used_laar' => $usedLaar,
+            'used' => round($usedLaar / 100, 2),
+            'payouts_laar' => $payoutsLaar,
+            'payouts' => round($payoutsLaar / 100, 2),
+            'transfers_laar' => $transfersLaar,
+            'transfers' => round($transfersLaar / 100, 2),
         ];
     }
 

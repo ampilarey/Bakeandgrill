@@ -7,11 +7,13 @@ namespace Tests\Feature\Deposits;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\CustomerCreditLedger;
 use App\Models\CustomerDepositLedger;
 use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Role;
+use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -200,6 +202,227 @@ class DepositsTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_manager_can_payout_deposit_to_customer(): void
+    {
+        $this->topUpDeposit(10000);
+
+        Sanctum::actingAs($this->manager, ['staff']);
+
+        $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/refund", [
+            'amount_mvr' => 40,
+            'method' => 'cash',
+            'reason' => 'Customer requested cash back',
+        ])->assertCreated()
+            ->assertJsonPath('deposit.balance_laar', 6000);
+
+        $this->assertTrue(
+            CustomerDepositLedger::where('customer_id', $this->customer->id)
+                ->where('type', 'payout')
+                ->exists(),
+        );
+    }
+
+    public function test_payout_cannot_exceed_balance(): void
+    {
+        $this->topUpDeposit(5000);
+
+        Sanctum::actingAs($this->manager, ['staff']);
+
+        $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/refund", [
+            'amount_mvr' => 100,
+            'method' => 'cash',
+            'reason' => 'Too much',
+        ])->assertStatus(422);
+    }
+
+    public function test_split_payment_deposit_plus_cash(): void
+    {
+        $this->topUpDeposit(3000);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $orderId = $this->createOrder($this->customer->id);
+        $order = Order::findOrFail($orderId);
+        $orderTotalMvr = ((int) ($order->total_laar ?? round((float) $order->total * 100))) / 100;
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", [
+                'payments' => [
+                    ['method' => 'wallet', 'amount' => 30.0],
+                    ['method' => 'cash', 'amount' => $orderTotalMvr - 30.0],
+                ],
+                'print_receipt' => false,
+            ])
+            ->assertOk();
+
+        Sanctum::actingAs($this->manager, ['staff']);
+        $this->getJson("/api/admin/customers/{$this->customer->id}/deposit")
+            ->assertOk()
+            ->assertJsonPath('deposit.balance_laar', 0);
+    }
+
+    public function test_order_refund_restores_deposit_balance(): void
+    {
+        $this->topUpDeposit(10000);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $orderId = $this->createOrder($this->customer->id);
+        $order = Order::findOrFail($orderId);
+        $orderTotalMvr = ((int) ($order->total_laar ?? round((float) $order->total * 100))) / 100;
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", [
+                'payments' => [['method' => 'wallet', 'amount' => $orderTotalMvr]],
+                'print_receipt' => false,
+            ])
+            ->assertOk();
+
+        Sanctum::actingAs($this->owner, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $this->postJson("/api/orders/{$orderId}/refunds", [
+            'amount' => $orderTotalMvr,
+            'reason' => 'Wrong order',
+        ])->assertCreated();
+
+        Sanctum::actingAs($this->manager, ['staff']);
+        $this->getJson("/api/admin/customers/{$this->customer->id}/deposit")
+            ->assertOk()
+            ->assertJsonPath('deposit.balance_laar', 10000);
+
+        $this->assertTrue(
+            CustomerDepositLedger::where('customer_id', $this->customer->id)
+                ->where('type', 'reversal')
+                ->exists(),
+        );
+    }
+
+    public function test_owner_can_transfer_deposit_to_credit(): void
+    {
+        $this->approveCustomer(50000);
+        $this->chargeCustomerCredit(10000);
+        $this->topUpDeposit(15000);
+
+        $creditBefore = (int) $this->customer->fresh()->credit_balance_laar;
+        $transferLaar = min(5000, $creditBefore);
+
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/transfer-to-credit", [
+            'amount_mvr' => $transferLaar / 100,
+            'notes' => 'Apply deposit to credit',
+        ])->assertCreated()
+            ->assertJsonPath('deposit.balance_laar', 15000 - $transferLaar);
+
+        $this->customer->refresh();
+        $this->assertSame($creditBefore - $transferLaar, (int) $this->customer->credit_balance_laar);
+        $this->assertTrue(
+            CustomerDepositLedger::where('customer_id', $this->customer->id)
+                ->where('type', 'transfer_to_credit')
+                ->exists(),
+        );
+        $this->assertTrue(
+            CustomerCreditLedger::where('customer_id', $this->customer->id)
+                ->where('type', 'payment')
+                ->exists(),
+        );
+    }
+
+    public function test_transfer_rejected_when_no_credit_balance(): void
+    {
+        $this->topUpDeposit(10000);
+
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/transfer-to-credit", [
+            'amount_mvr' => 25,
+        ])->assertStatus(422);
+    }
+
+    public function test_second_wallet_payment_fails_when_balance_insufficient(): void
+    {
+        $this->topUpDeposit(10000);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $orderId1 = $this->createOrder($this->customer->id);
+        $order1 = Order::findOrFail($orderId1);
+        $total1 = ((int) ($order1->total_laar ?? round((float) $order1->total * 100))) / 100;
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId1}/payments", [
+                'payments' => [['method' => 'wallet', 'amount' => $total1]],
+                'print_receipt' => false,
+            ])
+            ->assertOk();
+
+        $orderId2 = $this->createOrder($this->customer->id);
+        $order2 = Order::findOrFail($orderId2);
+        $total2 = ((int) ($order2->total_laar ?? round((float) $order2->total * 100))) / 100;
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId2}/payments", [
+                'payments' => [['method' => 'wallet', 'amount' => $total2]],
+                'print_receipt' => false,
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_deposit_exposure_report(): void
+    {
+        $this->topUpDeposit(7500);
+
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        $this->getJson('/api/reports/deposit-exposure')
+            ->assertOk()
+            ->assertJsonPath('total_balance_laar', 7500)
+            ->assertJsonPath('customers_count', 1);
+    }
+
+    public function test_cash_top_up_appears_in_shift_summary(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $open = $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+        $shiftId = (int) $open->json('shift.id');
+
+        $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/top-up", [
+            'amount_mvr' => 100,
+            'method' => 'cash',
+        ])->assertCreated();
+
+        $this->getJson("/api/shifts/{$shiftId}/summary")
+            ->assertOk()
+            ->assertJsonPath('cash_drawer.deposit_cash_received', 100);
+    }
+
+    public function test_staff_without_deposit_permission_cannot_pay_with_wallet(): void
+    {
+        $this->topUpDeposit(10000);
+
+        $this->staff->revokePermission('payments.wallet');
+        $this->staff->revokePermission('payments.deposit');
+        $this->staff->unsetRelation('permissions');
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $orderId = $this->createOrder($this->customer->id);
+        $order = Order::findOrFail($orderId);
+        $orderTotalMvr = ((int) ($order->total_laar ?? round((float) $order->total * 100))) / 100;
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", [
+                'payments' => [['method' => 'wallet', 'amount' => $orderTotalMvr]],
+                'print_receipt' => false,
+            ])
+            ->assertStatus(403);
+    }
+
     public function test_frozen_account_blocks_wallet_usage(): void
     {
         $this->topUpDeposit(10000);
@@ -229,12 +452,47 @@ class DepositsTest extends TestCase
     private function topUpDeposit(int $amountLaar): void
     {
         Sanctum::actingAs($this->manager, ['staff']);
-        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+        if (Shift::where('user_id', $this->manager->id)->whereNull('closed_at')->doesntExist()) {
+            $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+        }
 
         $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/top-up", [
             'amount_laar' => $amountLaar,
             'method' => 'cash',
         ])->assertCreated();
+    }
+
+    private function approveCustomer(int $limitLaar): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve',
+            'credit_limit_laar' => $limitLaar,
+        ])->assertOk();
+        $this->customer->refresh();
+    }
+
+    private function chargeCustomerCredit(?int $targetLaar = null): void
+    {
+        Sanctum::actingAs($this->staff, ['staff']);
+        if (Shift::where('user_id', $this->staff->id)->whereNull('closed_at')->doesntExist()) {
+            $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+        }
+
+        while ($targetLaar === null || (int) $this->customer->fresh()->credit_balance_laar < $targetLaar) {
+            $orderId = $this->createOrder($this->customer->id);
+            $order = Order::findOrFail($orderId);
+            $orderTotalMvr = ((int) ($order->total_laar ?? round((float) $order->total * 100))) / 100;
+
+            $this->withHeader('X-Device-Identifier', $this->device->identifier)
+                ->postJson("/api/orders/{$orderId}/payments", [
+                    'payments' => [['method' => 'house_account', 'amount' => $orderTotalMvr]],
+                    'print_receipt' => false,
+                ])
+                ->assertOk();
+
+            $this->customer->refresh();
+        }
     }
 
     private function createOrder(?int $customerId): int

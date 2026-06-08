@@ -1073,6 +1073,17 @@ export async function getCreditExposureReport(): Promise<CreditExposureReport> {
   return req('/reports/credit-exposure');
 }
 
+export interface DepositExposureReport {
+  total_balance_laar: number;
+  total_balance: number;
+  customers_count: number;
+  top_customers: { id: number; name: string; balance_laar: number; balance: number; status: string }[];
+}
+
+export async function getDepositExposureReport(): Promise<DepositExposureReport> {
+  return req('/reports/deposit-exposure');
+}
+
 // ── System Health ─────────────────────────────────────────────────────────────
 
 export interface SystemHealth {

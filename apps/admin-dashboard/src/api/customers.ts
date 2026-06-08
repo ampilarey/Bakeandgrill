@@ -119,17 +119,28 @@ export type CustomerDepositInfo = {
   balance_mvr: number;
   can_use: boolean;
   notes?: string | null;
+  total_received_laar?: number;
+  total_used_laar?: number;
+  total_received_mvr?: number;
+  total_used_mvr?: number;
+  credit_balance_laar?: number;
+  credit_balance_mvr?: number;
 };
 
 export type CustomerDepositLedgerRow = {
   id: number;
   type: string;
+  method?: string | null;
   amount_laar: number;
   amount_mvr: number;
+  balance_before_laar?: number | null;
   balance_after_laar: number;
   balance_after_mvr: number;
   order_id?: number | null;
   payment_id?: number | null;
+  refund_id?: number | null;
+  reference?: string | null;
+  actor_name?: string | null;
   notes?: string | null;
   created_at?: string | null;
 };
@@ -172,6 +183,36 @@ export async function adjustCustomerDeposit(
   },
 ): Promise<{ deposit: CustomerDepositInfo; ledger: CustomerDepositLedgerRow }> {
   return req(`/admin/customers/${customerId}/deposit/adjust`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function fetchCustomerDepositLedger(
+  customerId: number,
+  params?: { page?: number; per_page?: number },
+): Promise<{ data: CustomerDepositLedgerRow[]; meta: { current_page: number; last_page: number; per_page: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.per_page) qs.set('per_page', String(params.per_page));
+  const suffix = qs.toString() ? `?${qs}` : '';
+  return req(`/admin/customers/${customerId}/deposit/ledger${suffix}`);
+}
+
+export async function refundCustomerDeposit(
+  customerId: number,
+  data: {
+    amount_mvr: number;
+    method: 'cash' | 'card' | 'bank_transfer';
+    reason: string;
+    reference?: string;
+  },
+): Promise<{ deposit: CustomerDepositInfo; ledger: CustomerDepositLedgerRow }> {
+  return req(`/admin/customers/${customerId}/deposit/refund`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function transferCustomerDepositToCredit(
+  customerId: number,
+  data: { amount_mvr: number; notes?: string },
+): Promise<{ deposit: CustomerDepositInfo; amount_laar: number; credit_balance_laar: number }> {
+  return req(`/admin/customers/${customerId}/deposit/transfer-to-credit`, { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function fetchAdminCustomers(params?: {

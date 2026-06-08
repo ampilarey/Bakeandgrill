@@ -39,6 +39,31 @@ class CustomerDepositController extends Controller
     }
 
     /**
+     * GET /admin/customers/{id}/deposit/ledger
+     */
+    public function ledger(Request $request, int $id): JsonResponse
+    {
+        $customer = Customer::findOrFail($id);
+        $perPage = min(100, max(10, (int) $request->query('per_page', 25)));
+
+        $paginator = CustomerDepositLedger::query()
+            ->with('actor:id,name')
+            ->where('customer_id', $customer->id)
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
+
+        return response()->json([
+            'data' => collect($paginator->items())->map(fn (CustomerDepositLedger $row) => $this->formatLedgerRow($row, true)),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    /**
      * PATCH /admin/customers/{id}/deposit
      */
     public function update(Request $request, int $id): JsonResponse
@@ -76,7 +101,7 @@ class CustomerDepositController extends Controller
         $validated = $request->validate([
             'amount_laar' => ['nullable', 'integer', 'min:1'],
             'amount_mvr' => ['nullable', 'numeric', 'min:0.01'],
-            'method' => ['required', 'in:cash,card,bank_transfer'],
+            'method' => ['required', 'in:cash,card,bank_transfer,online,bml'],
             'reference' => ['nullable', 'string', 'max:200'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -85,7 +110,7 @@ class CustomerDepositController extends Controller
             ? (int) $validated['amount_laar']
             : (int) round(((float) $validated['amount_mvr']) * 100);
 
-        $ledger = $this->deposits->topUp(
+        $ledger = $this->deposits->receiveDeposit(
             $customer,
             $amountLaar,
             $validated['method'],
@@ -98,7 +123,7 @@ class CustomerDepositController extends Controller
         $account = $this->deposits->getOrCreateAccount($customer->fresh());
 
         return response()->json([
-            'ledger' => $this->formatLedgerRow($ledger),
+            'ledger' => $this->formatLedgerRow($ledger, true),
             'deposit' => $this->formatDeposit($customer->fresh(), $account),
         ], 201);
     }
@@ -128,8 +153,84 @@ class CustomerDepositController extends Controller
         $account = $this->deposits->getOrCreateAccount($customer->fresh());
 
         return response()->json([
-            'ledger' => $this->formatLedgerRow($ledger),
+            'ledger' => $this->formatLedgerRow($ledger, true),
             'deposit' => $this->formatDeposit($customer->fresh(), $account),
+        ], 201);
+    }
+
+    /**
+     * POST /admin/customers/{id}/deposit/refund
+     */
+    public function refund(Request $request, int $id): JsonResponse
+    {
+        $customer = Customer::findOrFail($id);
+        $actor = $request->user();
+        abort_unless($actor !== null, 401);
+
+        $validated = $request->validate([
+            'amount_laar' => ['nullable', 'integer', 'min:1'],
+            'amount_mvr' => ['nullable', 'numeric', 'min:0.01'],
+            'method' => ['required', 'in:cash,card,bank_transfer'],
+            'reference' => ['nullable', 'string', 'max:200'],
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $amountLaar = isset($validated['amount_laar'])
+            ? (int) $validated['amount_laar']
+            : (int) round(((float) $validated['amount_mvr']) * 100);
+
+        $ledger = $this->deposits->payoutDeposit(
+            $customer,
+            $amountLaar,
+            $validated['method'],
+            $actor,
+            $validated['reference'] ?? null,
+            $validated['reason'],
+            $request,
+        );
+
+        $account = $this->deposits->getOrCreateAccount($customer->fresh());
+
+        return response()->json([
+            'ledger' => $this->formatLedgerRow($ledger, true),
+            'deposit' => $this->formatDeposit($customer->fresh(), $account),
+        ], 201);
+    }
+
+    /**
+     * POST /admin/customers/{id}/deposit/transfer-to-credit
+     */
+    public function transferToCredit(Request $request, int $id): JsonResponse
+    {
+        $customer = Customer::findOrFail($id);
+        $actor = $request->user();
+        abort_unless($actor !== null, 401);
+
+        $validated = $request->validate([
+            'amount_laar' => ['nullable', 'integer', 'min:1'],
+            'amount_mvr' => ['nullable', 'numeric', 'min:0.01'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $amountLaar = isset($validated['amount_laar'])
+            ? (int) $validated['amount_laar']
+            : (int) round(((float) $validated['amount_mvr']) * 100);
+
+        $result = $this->deposits->transferToCredit(
+            $customer,
+            $amountLaar,
+            $actor,
+            $validated['notes'] ?? null,
+            $request,
+        );
+
+        $account = $this->deposits->getOrCreateAccount($customer->fresh());
+
+        return response()->json([
+            'amount_laar' => $result['amount_laar'],
+            'deposit_ledger' => $this->formatLedgerRow($result['deposit_ledger'], true),
+            'deposit' => $this->formatDeposit($customer->fresh(), $account),
+            'credit_balance_laar' => (int) $customer->fresh()->credit_balance_laar,
         ], 201);
     }
 
@@ -143,26 +244,40 @@ class CustomerDepositController extends Controller
         return array_merge($summary, [
             'customer_id' => $customer->id,
             'balance_mvr' => round($summary['balance_laar'] / 100, 2),
+            'total_received_mvr' => round(($summary['total_received_laar'] ?? 0) / 100, 2),
+            'total_used_mvr' => round(($summary['total_used_laar'] ?? 0) / 100, 2),
+            'credit_balance_laar' => (int) $customer->credit_balance_laar,
+            'credit_balance_mvr' => round((int) $customer->credit_balance_laar / 100, 2),
         ]);
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function formatLedgerRow(CustomerDepositLedger $row): array
+    private function formatLedgerRow(CustomerDepositLedger $row, bool $includeActor = false): array
     {
-        return [
+        $data = [
             'id' => $row->id,
             'type' => $row->type,
+            'method' => $row->method,
             'amount_laar' => $row->amount_laar,
             'amount_mvr' => round($row->amount_laar / 100, 2),
+            'balance_before_laar' => $row->balance_before_laar,
             'balance_after_laar' => $row->balance_after_laar,
             'balance_after_mvr' => round($row->balance_after_laar / 100, 2),
             'order_id' => $row->order_id,
             'payment_id' => $row->payment_id,
+            'refund_id' => $row->refund_id,
             'shift_id' => $row->shift_id,
-            'notes' => $row->notes,
+            'reference' => $row->reference,
             'created_at' => $row->created_at?->toIso8601String(),
         ];
+
+        if ($includeActor) {
+            $data['actor_name'] = $row->actor?->name;
+            $data['notes'] = $row->notes;
+        }
+
+        return $data;
     }
 }

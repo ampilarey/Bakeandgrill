@@ -67,13 +67,23 @@ class PaymentAllocationTest extends TestCase
         ]);
     }
 
-    public function test_non_shift_methods_include_wallet_but_not_house_account(): void
+    public function test_non_shift_methods_exclude_wallet_and_house_account(): void
     {
         $methods = $this->allocation->nonShiftMethods();
 
-        $this->assertContains('wallet', $methods);
+        $this->assertNotContains('wallet', $methods);
         $this->assertNotContains('house_account', $methods);
         $this->assertContains('bml', $methods);
+    }
+
+    public function test_needs_deposit_shift_when_wallet_present(): void
+    {
+        $this->assertTrue($this->allocation->needsDepositShift([
+            ['method' => 'wallet', 'amount' => 25.0],
+        ]));
+        $this->assertFalse($this->allocation->needsDepositShift([
+            ['method' => 'cash', 'amount' => 25.0],
+        ]));
     }
 
     public function test_needs_credit_shift_when_house_account_present(): void
@@ -110,6 +120,7 @@ class PaymentAllocationTest extends TestCase
     public function test_wallet_payment_requires_payments_wallet_permission(): void
     {
         $this->staff->revokePermission('payments.wallet');
+        $this->staff->revokePermission('payments.deposit');
         $this->staff->unsetRelation('permissions');
 
         $order = $this->makeAllocationOrder();

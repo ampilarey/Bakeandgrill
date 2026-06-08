@@ -159,6 +159,26 @@ class Customer extends Model implements AuthenticatableContract
         return $this->hasMany(CustomerCreditLedger::class);
     }
 
+    public function depositAccount(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CustomerDepositAccount::class);
+    }
+
+    public function depositLedger(): HasMany
+    {
+        return $this->hasMany(CustomerDepositLedger::class);
+    }
+
+    public function getDepositBalanceLaarAttribute(): int
+    {
+        return (int) ($this->depositAccount?->balance_laar ?? 0);
+    }
+
+    public function getDepositStatusAttribute(): string
+    {
+        return $this->depositAccount?->status ?? 'active';
+    }
+
     public function addresses(): HasMany
     {
         return $this->hasMany(CustomerAddress::class);

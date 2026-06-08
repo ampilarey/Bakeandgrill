@@ -103,6 +103,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         OrderRefunded::class => [
             RestoreInventoryOnRefundListener::class,
             ReverseCreditOnRefundListener::class,
+            \App\Domains\Deposits\Listeners\ReverseDepositOnRefundListener::class,
             DecrementDailySpecialSoldCountListener::class,
             PostGstOnRefundListener::class,
             DispatchWebhookOnDomainEvent::class,

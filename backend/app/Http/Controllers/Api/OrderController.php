@@ -1421,6 +1421,19 @@ class OrderController extends Controller
             }
         }
 
+        if ($allocation->needsDepositShift($validated['payments'])) {
+            $isOwner = $collector->role?->slug === 'owner';
+            if ($isOwner) {
+                $collectorShift ??= app(ShiftAccessService::class)->findOpenShift($collector);
+            } else {
+                $depositShift = app(ShiftAccessService::class)->requireOpenShift(
+                    $collector,
+                    'Open a shift before using customer deposit payment.',
+                );
+                $collectorShift = $collectorShift ?? $depositShift;
+            }
+        }
+
         [$order, $paidTotal] = app(SettleOrderPaymentAction::class)->execute(
             $id,
             $validated,
