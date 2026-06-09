@@ -11,6 +11,7 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Domains\Orders\Actions\HoldOrderAction;
 use App\Domains\Orders\Actions\ResumeOrderAction;
+use App\Domains\Orders\Services\OrderVisibilityService;
 use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Payments\Actions\SettleOrderPaymentAction;
@@ -372,33 +373,11 @@ class OrderController extends Controller
         $order = Order::with(['items.modifiers', 'payments', 'customer', 'table', 'user:id,name', 'device:id,name,identifier', 'shift:id,opened_at'])
             ->findOrFail($id);
 
-        $permissions = app(PermissionService::class);
-        if (!$this->staffCanViewOrder($request, $order, $permissions)) {
+        if (!app(OrderVisibilityService::class)->staffCanViewOrder($request->user(), $order)) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         return response()->json(['order' => $order]);
-    }
-
-    private function staffCanViewOrder(Request $request, Order $order, PermissionService $permissions): bool
-    {
-        $user = $request->user();
-        if ($permissions->hasPermission($user, 'pos.view_all_station_orders')) {
-            return true;
-        }
-        if ((int) $order->user_id === (int) $user->id) {
-            return true;
-        }
-        if (in_array($order->type, ['online_pickup', 'delivery'], true)) {
-            return true;
-        }
-
-        return $this->isHandoffVisibleOrder($order);
-    }
-
-    private function isHandoffVisibleOrder(Order $order): bool
-    {
-        return !in_array($order->status, ['cancelled', 'refunded', 'completed'], true);
     }
 
     public function hold(Request $request, int $id): JsonResponse

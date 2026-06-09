@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
 use App\Models\Shift;
+use App\Services\StockManagementService;
 use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\DB;
 

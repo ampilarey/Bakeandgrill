@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Stock;
 
+use App\Models\Customer;
 use App\Models\GiftCard;
 use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -247,5 +248,15 @@ class GiftCardStockTest extends TestCase
     public function test_list_requires_auth(): void
     {
         $this->getJson('/api/admin/gift-cards')->assertStatus(401);
+    }
+
+    public function test_customer_token_cannot_issue_or_list_admin_gift_cards(): void
+    {
+        $customer = Customer::create(['name' => 'Gift Guard', 'phone' => '+9607333001']);
+        $token = $customer->createToken('cust', ['customer'])->plainTextToken;
+        $headers = ['Authorization' => "Bearer {$token}"];
+
+        $this->getJson('/api/admin/gift-cards', $headers)->assertForbidden();
+        $this->postJson('/api/admin/gift-cards', ['amount' => 25], $headers)->assertForbidden();
     }
 }

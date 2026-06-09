@@ -121,8 +121,6 @@ class BmlConnectService
             Log::error('BML: Payment creation failed', [
                 'local_id' => $localId,
                 'status' => $response->status(),
-                'body' => $response->body(),
-                'payload_sent' => $payload,
             ]);
             throw new \RuntimeException("BML payment creation failed ({$response->status()}): " . $response->body());
         }

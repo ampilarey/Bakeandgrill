@@ -114,4 +114,33 @@ class ShiftCashMovementTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_staff_cannot_add_cash_movement_to_another_users_shift(): void
+    {
+        $otherRole = Role::firstOrCreate(['slug' => 'staff2'], ['name' => 'Staff 2', 'description' => '', 'is_active' => true]);
+        $other = User::create([
+            'name' => 'Other Staff',
+            'email' => 'other-shift@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $otherRole->id,
+            'pin_hash' => Hash::make('5678'),
+            'is_active' => true,
+        ]);
+
+        $otherShift = Shift::create([
+            'user_id' => $other->id,
+            'opened_at' => now(),
+            'opening_cash' => 100,
+        ]);
+
+        $this->preparePosApi($this->staff, $this->device);
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/shifts/{$otherShift->id}/cash-movements", [
+                'type' => 'cash_in',
+                'amount' => 25,
+                'reason' => 'Should fail',
+            ])
+            ->assertNotFound();
+    }
 }

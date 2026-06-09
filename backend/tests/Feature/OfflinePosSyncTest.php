@@ -149,6 +149,24 @@ class OfflinePosSyncTest extends TestCase
         $this->assertSame(1, Payment::where('idempotency_key', 'offline:pay:' . $payload['idempotency_key'])->count());
     }
 
+    public function test_rapid_duplicate_offline_sync_does_not_create_duplicate_orders(): void
+    {
+        $payload = $this->buildOrderPayload('cash', 50.0);
+
+        $first = $this->syncPayload([$payload]);
+        $second = $this->syncPayload([$payload]);
+
+        $first->assertOk()->assertJsonPath('results.0.status', 'synced');
+        $second->assertOk()->assertJsonPath('results.0.status', 'synced');
+
+        $this->assertSame(
+            $first->json('results.0.server_order_id'),
+            $second->json('results.0.server_order_id'),
+        );
+        $this->assertSame(1, Order::where('offline_id', $payload['idempotency_key'])->count());
+        $this->assertSame(1, Payment::where('order_id', (int) $first->json('results.0.server_order_id'))->count());
+    }
+
     public function test_rejects_house_account_payment_method(): void
     {
         $payload = $this->buildOrderPayload('house_account', 50.0);
@@ -361,7 +379,7 @@ class OfflinePosSyncTest extends TestCase
             'totals' => $totals,
             'payment' => [
                 'method' => $method,
-                'amount' => $amount,
+                'amount' => $totals['total'],
             ],
         ];
 

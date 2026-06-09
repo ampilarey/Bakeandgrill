@@ -201,6 +201,27 @@ class SmsLoggingTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $response->json('total'));
     }
 
+    public function test_admin_sms_logs_redact_otp_message(): void
+    {
+        SmsLog::create([
+            'message' => 'Your Bake & Grill code is 654321. Valid for 10 minutes.',
+            'to' => '+9607000098',
+            'type' => 'otp',
+            'status' => 'demo',
+            'encoding' => 'gsm7',
+            'segments' => 1,
+            'provider' => 'dhiraagu',
+        ]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $response = $this->getJson('/api/admin/sms/logs?type=otp');
+        $response->assertStatus(200);
+
+        $messages = collect($response->json('data'))->pluck('message');
+        $this->assertTrue($messages->every(fn ($m) => $m === '[redacted]'));
+    }
+
     public function test_otp_request_logs_sms(): void
     {
         $before = SmsLog::count();

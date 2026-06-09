@@ -236,6 +236,48 @@ class WebhookIdempotencyTest extends TestCase
         );
     }
 
+    public function test_valid_bml_webhook_signature_confirms_payment(): void
+    {
+        $secret = 'test-webhook-secret-key';
+        config([
+            'bml.enforce_signature' => true,
+            'bml.webhook_secret' => $secret,
+            'app.env' => 'production',
+        ]);
+
+        $transactionId = 'TXN-VALID-SIG-001';
+        $webhookBody = json_encode([
+            'transactionId' => $transactionId,
+            'localId' => $this->payment->local_id,
+            'state' => 'CONFIRMED',
+            'amount' => '150.00',
+            'currency' => 'MVR',
+        ]);
+
+        $this->payment->update([
+            'provider_transaction_id' => $transactionId,
+            'status' => 'initiated',
+        ]);
+
+        $signature = hash_hmac('sha256', $webhookBody, $secret);
+
+        $response = $this->call(
+            'POST',
+            '/api/payments/bml/webhook',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_X-BML-Signature' => $signature],
+            $webhookBody,
+        );
+
+        $this->assertSame(200, $response->status());
+        $this->assertDatabaseHas('webhook_logs', [
+            'gateway' => 'bml',
+            'idempotency_key' => 'bml:webhook:' . $transactionId,
+        ]);
+    }
+
     public function test_bml_webhook_enforce_signature_false_processes_payload(): void
     {
         config(['bml.enforce_signature' => false, 'bml.webhook_secret' => null]);

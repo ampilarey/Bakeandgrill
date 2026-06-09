@@ -61,6 +61,14 @@ class SmsCampaignController extends Controller
 
         $logs = $query->paginate($validated['per_page'] ?? 50);
 
+        $logs->getCollection()->transform(function (SmsLog $log) {
+            if ($log->type === 'otp') {
+                $log->message = '[redacted]';
+            }
+
+            return $log;
+        });
+
         return response()->json($logs);
     }
 

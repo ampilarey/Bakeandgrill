@@ -1084,6 +1084,24 @@ export async function getDepositExposureReport(): Promise<DepositExposureReport>
   return req('/reports/deposit-exposure');
 }
 
+export interface DepositActivityReport {
+  from: string;
+  to: string;
+  received_laar: number;
+  received: number;
+  used_laar: number;
+  used: number;
+  payouts_laar: number;
+  payouts: number;
+  transfers_laar: number;
+  transfers: number;
+}
+
+export async function getDepositActivityReport(params: { from: string; to: string }): Promise<DepositActivityReport> {
+  const qs = new URLSearchParams({ from: params.from, to: params.to });
+  return req(`/reports/deposit-activity?${qs}`);
+}
+
 // ── System Health ─────────────────────────────────────────────────────────────
 
 export interface SystemHealth {

@@ -3,7 +3,7 @@ import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
-  getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport,
+  getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport, getDepositActivityReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
   getCashierPerformanceReport, getProductMarginsReport, getCustomerCohortsReport, getStockDiscrepancyReport,
   getHourlySalesReport, getStationPerformanceReport,
@@ -11,7 +11,7 @@ import {
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
-  type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport, type DepositExposureReport,
+  type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport, type DepositExposureReport, type DepositActivityReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
   type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
   type HourlySalesReport, type StationPerformanceReport,
@@ -92,7 +92,7 @@ const REPORT_SECTIONS = [
   {
     id: 'finance',
     label: 'Finance',
-    tabs: ['X / Z Report', 'Tax', 'Accounts Payable', 'Accounts Receivable', 'Credit Exposure', 'Deposit Exposure'],
+    tabs: ['X / Z Report', 'Tax', 'Accounts Payable', 'Accounts Receivable', 'Credit Exposure', 'Deposit Exposure', 'Deposit Activity'],
   },
   {
     id: 'operations',
@@ -193,6 +193,7 @@ export function ReportsPage() {
   const [refundsReport, setRefundsReport] = useState<RefundsByReasonReport | null>(null);
   const [creditExposure, setCreditExposure] = useState<CreditExposureReport | null>(null);
   const [depositExposure, setDepositExposure] = useState<DepositExposureReport | null>(null);
+  const [depositActivity, setDepositActivity] = useState<DepositActivityReport | null>(null);
   const [overridesReport, setOverridesReport] = useState<ManagerOverridesReport | null>(null);
   const [velocityReport, setVelocityReport] = useState<StockVelocityReport | null>(null);
   const [shiftVariances, setShiftVariances] = useState<ShiftVariancesReport | null>(null);
@@ -244,6 +245,7 @@ export function ReportsPage() {
       if (tab === 'Refunds')             setRefundsReport(await getRefundsByReasonReport({ from, to }));
       if (tab === 'Credit Exposure')     setCreditExposure(await getCreditExposureReport());
       if (tab === 'Deposit Exposure')    setDepositExposure(await getDepositExposureReport());
+      if (tab === 'Deposit Activity')    setDepositActivity(await getDepositActivityReport({ from, to }));
       if (tab === 'Overrides')             setOverridesReport(await getManagerOverridesReport({ from, to }));
       if (tab === 'Stock Velocity')       setVelocityReport(await getStockVelocityReport({ from, to }));
       if (tab === 'Shift Variances')       setShiftVariances(await getShiftVariancesReport({ from, to }));
@@ -271,7 +273,7 @@ export function ReportsPage() {
     fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
   }, []);
 
-  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance';
+  const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance' || tab === 'Deposit Activity';
 
   const handleExportCSV = () => {
     if (tab === 'Summary' && summary) {
@@ -312,6 +314,14 @@ export function ReportsPage() {
         Balance: mvr(c.balance),
         Status: c.status,
       })));
+    } else if (tab === 'Deposit Activity' && depositActivity) {
+      downloadCSV('deposit-activity', [{
+        Period: `${depositActivity.from} — ${depositActivity.to}`,
+        Received: mvr(depositActivity.received),
+        Used: mvr(depositActivity.used),
+        Payouts: mvr(depositActivity.payouts),
+        'To Credit': mvr(depositActivity.transfers),
+      }]);
     }
   };
 
@@ -321,7 +331,8 @@ export function ReportsPage() {
     (tab === 'Promotions' && promoReport) || (tab === 'Loyalty' && loyaltyReport) ||
     (tab === 'Discounts' && discountsReport) || (tab === 'Voids' && voidsReport) ||
     (tab === 'Refunds' && refundsReport) || (tab === 'Credit Exposure' && creditExposure)
-    || (tab === 'Deposit Exposure' && depositExposure);
+    || (tab === 'Deposit Exposure' && depositExposure)
+    || (tab === 'Deposit Activity' && depositActivity);
 
   return (
     <>
@@ -963,6 +974,24 @@ export function ReportsPage() {
               </table>
             </Card>
           )}
+        </>
+      )}
+
+      {/* ── Deposit activity (ledger movements, not sales) ── */}
+      {!loading && tab === 'Deposit Activity' && depositActivity && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Received (top-ups)" value={mvr(depositActivity.received)} accent="#047857" />
+            <StatCard label="Used on orders" value={mvr(depositActivity.used)} accent="#f59e0b" />
+            <StatCard label="Cash payouts" value={mvr(depositActivity.payouts)} accent="#ef4444" />
+            <StatCard label="Transferred to credit" value={mvr(depositActivity.transfers)} accent="#8b5cf6" />
+          </div>
+          <Card>
+            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 8px' }}>Deposit ledger activity</p>
+            <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>
+              Period {depositActivity.from} — {depositActivity.to}. These figures are customer liability movements, not café revenue.
+            </p>
+          </Card>
         </>
       )}
 

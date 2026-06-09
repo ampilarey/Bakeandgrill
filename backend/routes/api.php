@@ -597,7 +597,7 @@ Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut'])
     ->middleware('throttle:5,10');
 
 // Staff-only: update internal notes on a customer profile
-Route::middleware(['auth:sanctum', 'permission:customers.manage'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage'])->group(function () {
     Route::patch('/customers/{id}/notes', [CustomerController::class, 'updateNotes']);
 });
 
@@ -841,7 +841,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 });
 
 // Admin: gift cards and referral overview
-Route::middleware(['auth:sanctum', 'permission:promotions.manage'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.manage'])->group(function () {
     Route::get('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'index']);
     Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
     Route::get('/admin/referrals', [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
@@ -953,13 +953,13 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 });
 
 // Admin: moderate reviews
-Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admin/reviews')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage'])->prefix('admin/reviews')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\ReviewController::class, 'adminIndex']);
     Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
 });
 
 // Admin: customer management
-Route::middleware(['auth:sanctum', 'permission:customers.manage'])->prefix('admin/customers')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage'])->prefix('admin/customers')->group(function () {
     Route::middleware('permission:customers.analytics')->group(function () {
         Route::get('/metrics', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'metrics']);
     });
@@ -1111,14 +1111,14 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.webho
 // ─── Site Settings ──────────────────────────────────────────────────────────
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
     ->middleware('throttle:60,1');
-Route::middleware(['auth:sanctum', 'permission:website.manage'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
     Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
     Route::put('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
     Route::post('/site-settings/upload', [App\Http\Controllers\Api\SiteSettingsController::class, 'upload']);
 });
 
 // ─── Permissions Management (Owner only) ───────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:roles_permissions.manage'])->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:roles_permissions.manage'])->group(function () {
     Route::get('/permissions', [App\Http\Controllers\Api\PermissionController::class, 'index']);
     Route::get('/roles/{slug}/permissions', [App\Http\Controllers\Api\RolePermissionController::class, 'show']);
     Route::put('/roles/{slug}/permissions', [App\Http\Controllers\Api\RolePermissionController::class, 'update']);
@@ -1127,7 +1127,7 @@ Route::middleware(['auth:sanctum', 'permission:roles_permissions.manage'])->grou
 });
 
 // ─── POS Admin oversight (reports.view) ──────────────────────────────────────
-Route::middleware(['auth:sanctum', 'permission:reports.view'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:reports.view'])->prefix('admin')->group(function () {
     Route::get('/pos/overview', [App\Http\Controllers\Api\PosAdminController::class, 'overview']);
     Route::get('/pos/staff-options', [App\Http\Controllers\Api\PosAdminController::class, 'staffOptions']);
     Route::get('/audit-logs', [App\Http\Controllers\Api\AuditLogController::class, 'index']);
@@ -1140,13 +1140,13 @@ Route::middleware(['auth:sanctum', 'permission:reports.view'])->prefix('admin')-
 Route::get('/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
 
 // Protected admin health — returns full details for internal monitoring
-Route::middleware(['auth:sanctum', 'permission:website.manage'])
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])
     ->get('/admin/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'admin']);
 
-Route::middleware(['auth:sanctum', 'permission:website.manage'])
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])
     ->get('/admin/system/health/detailed', [App\Http\Controllers\Api\SystemHealthController::class, 'detailed']);
 
-Route::middleware(['auth:sanctum', 'permission:website.manage'])->prefix('admin/pos')->group(function () {
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->prefix('admin/pos')->group(function () {
     Route::get('/maintenance-preview', [App\Http\Controllers\Api\PosAdminController::class, 'maintenancePreview']);
     Route::post('/cleanup-stale-tickets', [App\Http\Controllers\Api\PosAdminController::class, 'cleanupStaleTickets']);
 });

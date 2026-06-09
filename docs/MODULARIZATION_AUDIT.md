@@ -59,7 +59,8 @@ The project is a **hybrid modular monolith**: newer flows use `Domains/*` (event
 | **System** | 2 | Low | Health, scheduler tracker |
 | **Webhooks** | 3 | Medium | Dispatch service, job, listener |
 
-**Missing vs target architecture:** `Credit/`, `Deposits/`, `Staff/`, `PublicWebsite/`, domain `Controllers/` (0 files).
+**Missing vs target architecture:** `Staff/` (as domain folder), `PublicWebsite/`, domain `Controllers/` (0 files).  
+**Now present:** `Credit/` and `Deposits/` domains (services, listeners, providers) — see [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md).
 
 ---
 
@@ -135,7 +136,7 @@ Models stay in `app/Models/` during waves 1–3. Logical ownership:
 | **Auth / Staff** | `User`, `Role`, `Permission`, `Device`, `StaffSchedule`, `TimePunch`, `OtpVerification` |
 | **Customers** | `Customer`, `CustomerAddress`, `CustomerTag`, `CustomerTagAssignment`, `CustomerFollowUpNote`, `AbandonedCart` |
 | **Credit** | `CustomerCreditLedger` (+ credit columns on `Customer`) |
-| **Deposits** | *(none yet — greenfield)* |
+| **Deposits** | `CustomerDepositAccount`, `CustomerDepositLedger` (+ deposit columns on `Customer`) |
 | **Orders** | `Order`, `OrderItem`, `OrderItemModifier`, `OrderPromotion`, `PreOrder`, `OfflineSyncRecord`, `RestaurantTable`, `Receipt`, `ReceiptFeedback` |
 | **Payments** | `Payment`, `Refund`, `GiftCard`, `GiftCardTransaction` |
 | **Shifts** | `Shift`, `CashMovement` |
@@ -273,8 +274,8 @@ PaymentConfirmedListener
 | Orders | Strong (`OrderFlowTest`, `OrderStatusMachineTest`, contracts) | Merge/split edge cases |
 | KDS | `KdsBumpEventsTest` | print-ticket, menu-groups, SSE stream |
 | BML | Return URL, webhook, signature unit test | Initiate response contract test |
-| Credit | `CustomerCreditTest` (19) | POS + BML + credit mix |
-| **Deposits / wallet** | None | **Greenfield** |
+| Credit | `CustomerCreditTest` (29) | POS + BML + credit mix |
+| **Deposits / wallet** | `Deposits/DepositsTest` (18), `DepositActivityReportTest` | Owner shift policy for wallet pay |
 | Printing | `PrintPayloadContractTest` | `/print-jobs` API, proxy integration |
 | SMS | Broad module tests | POS promotion send E2E |
 
@@ -286,12 +287,12 @@ PaymentConfirmedListener
 
 | | Credit | Deposits |
 |---|--------|----------|
-| **Exists?** | Yes | **No** |
-| **Location** | `Domains/Customers/Services/CustomerCreditService.php` | — |
-| **Payment method** | `house_account` | `wallet` validated but blocked in offline sync |
-| **Ledger** | `customer_credit_ledger` | — |
-| **Tests** | 19 feature tests | — |
-| **Business rule** | Customer owes B&G; approval required | Customer prepaid balance (planned) |
+| **Exists?** | Yes | **Yes** |
+| **Location** | `Domains/Credit/` (`CustomerCreditService`, `CreditLedgerService`) | `Domains/Deposits/` (`CustomerDepositService`, `DepositLedgerService`) |
+| **Payment method** | `house_account` | `wallet` (blocked in offline sync) |
+| **Ledger** | `customer_credit_ledger` | `customer_deposit_ledger` |
+| **Tests** | 29 feature tests | 18 + activity report test |
+| **Business rule** | Customer owes B&G; approval required | Customer prepaid balance; top-ups are liability not revenue |
 
 ---
 
@@ -303,8 +304,8 @@ See [`MODULAR_ARCHITECTURE.md`](MODULAR_ARCHITECTURE.md) for target tree and dep
 1. Shared + Permissions  
 2. Auth + Staff  
 3. Customers  
-4. **Credit** (extract from Customers)  
-5. **Deposits** (new feature + domain)  
+4. ~~**Credit** (extract from Customers)~~ — **done** (`Domains/Credit/`)  
+5. ~~**Deposits** (new feature + domain)~~ — **done** (`Domains/Deposits/`)  
 6. Payments orchestration (no BML changes)  
 7. Orders (defer OrderStateMachine swap)  
 8. Shifts, Menu, Inventory, Kitchen/KDS, Delivery, Printing, SMS, Reporting, PublicWebsite  

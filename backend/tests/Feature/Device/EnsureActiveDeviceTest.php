@@ -135,4 +135,17 @@ class EnsureActiveDeviceTest extends TestCase
             'status' => 'approved',
         ]);
     }
+
+    public function test_missing_device_header_is_allowed_in_relaxed_mode(): void
+    {
+        config(['pos.strict_device_approval' => false]);
+
+        $this->postJson('/api/orders', [
+            'type' => 'takeaway',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])
+            ->assertCreated();
+
+        $this->assertDatabaseCount('devices', 0);
+    }
 }

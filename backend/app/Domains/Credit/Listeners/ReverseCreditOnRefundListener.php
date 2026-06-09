@@ -8,6 +8,7 @@ use App\Domains\Credit\Services\CustomerCreditService;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\Order;
 use App\Models\Refund;
+use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
@@ -36,11 +37,31 @@ class ReverseCreditOnRefundListener implements ShouldQueue
         }
 
         $amountLaar = (int) round($event->data->amount * 100);
-        $actor = $refund->user;
+        $actor = $this->resolveRefundActor($refund, $order);
         if ($actor === null) {
             return;
         }
 
         $this->credit->reverseChargeForRefund($order, $amountLaar, $actor);
+    }
+
+    private function resolveRefundActor(Refund $refund, Order $order): ?User
+    {
+        if ($refund->user !== null) {
+            return $refund->user;
+        }
+
+        if ($order->user_id) {
+            $orderStaff = User::find($order->user_id);
+            if ($orderStaff !== null) {
+                return $orderStaff;
+            }
+        }
+
+        return User::query()
+            ->whereHas('role', fn ($q) => $q->where('slug', 'owner'))
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->first();
     }
 }
